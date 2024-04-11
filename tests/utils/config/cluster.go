@@ -91,39 +91,44 @@ type Networking struct {
 	PodCIDR     string `json:"pod_cidr,omitempty"`
 	HostPrefix  string `json:"host_prefix,omitempty"`
 }
-
+type AdditionalSecurityGroups struct {
+	ControlPlaneSecurityGroups string `json:"control_plane_sgs,omitempty"`
+	InfraSecurityGroups        string `json:"infra_sgs,omitempty"`
+	WorkerSecurityGroups       string `json:"worker_sgs,omitempty"`
+}
 type ClusterConfig struct {
-	DisableScpChecks          bool           `json:"disable_scp_checks,omitempty"`
-	DisableWorkloadMonitoring bool           `json:"disable_workload_monitoring,omitempty"`
-	EnableCustomerManagedKey  bool           `json:"enable_customer_managed_key,omitempty"`
-	EtcdEncryption            bool           `json:"etcd_encryption,omitempty"`
-	Fips                      bool           `json:"fips,omitempty"`
-	Hypershift                bool           `json:"hypershift,omitempty"`
-	MultiAZ                   bool           `json:"multi_az,omitempty"`
-	Private                   bool           `json:"private,omitempty"`
-	PrivateLink               bool           `json:"private_link,omitempty"`
-	Sts                       bool           `json:"sts,omitempty"`
-	AuditLogArn               string         `json:"audit_log_arn,omitempty"`
-	AvailabilityZones         string         `json:"availability_zones,omitempty"`
-	DefaultMpLabels           string         `json:"default_mp_labels,omitempty"`
-	Ec2MetadataHttpTokens     string         `json:"ec2_metadata_http_tokens,omitempty"`
-	Name                      string         `json:"name,omitempty"`
-	Region                    string         `json:"region,omitempty"`
-	Tags                      string         `json:"tags,omitempty"`
-	WorkerDiskSize            string         `json:"worker_disk_size,omitempty"`
-	DomainPrefix              string         `json:"domain_prefix,omitempty"`
-	BillingAccount            string         `json:"billing_account,omitempty"`
-	Autoscaling               *Autoscaling   `json:"autoscaling,omitempty"`
-	Aws                       *AWS           `json:"aws,omitempty"`
-	Encryption                *Encryption    `json:"encryption,omitempty"`
-	Nodes                     *Nodes         `json:"nodes,omitempty"`
-	Properties                *Properties    `json:"properties,omitempty"`
-	Proxy                     *Proxy         `json:"proxy,omitempty"`
-	Subnets                   *Subnets       `json:"subnets,omitempty"`
-	Version                   *Version       `json:"version,omitempty"`
-	Autoscaler                *Autoscaler    `json:"autoscaler,omitempty"`
-	IngressConfig             *IngressConfig `json:"ingress_config,omitempty"`
-	Networking                *Networking    `json:"networking,omitempty"`
+	DisableScpChecks          bool                      `json:"disable_scp_checks,omitempty"`
+	DisableWorkloadMonitoring bool                      `json:"disable_workload_monitoring,omitempty"`
+	EnableCustomerManagedKey  bool                      `json:"enable_customer_managed_key,omitempty"`
+	EtcdEncryption            bool                      `json:"etcd_encryption,omitempty"`
+	Fips                      bool                      `json:"fips,omitempty"`
+	Hypershift                bool                      `json:"hypershift,omitempty"`
+	MultiAZ                   bool                      `json:"multi_az,omitempty"`
+	Private                   bool                      `json:"private,omitempty"`
+	PrivateLink               bool                      `json:"private_link,omitempty"`
+	Sts                       bool                      `json:"sts,omitempty"`
+	AuditLogArn               string                    `json:"audit_log_arn,omitempty"`
+	AvailabilityZones         string                    `json:"availability_zones,omitempty"`
+	DefaultMpLabels           string                    `json:"default_mp_labels,omitempty"`
+	Ec2MetadataHttpTokens     string                    `json:"ec2_metadata_http_tokens,omitempty"`
+	Name                      string                    `json:"name,omitempty"`
+	Region                    string                    `json:"region,omitempty"`
+	Tags                      string                    `json:"tags,omitempty"`
+	WorkerDiskSize            string                    `json:"worker_disk_size,omitempty"`
+	DomainPrefix              string                    `json:"domain_prefix,omitempty"`
+	BillingAccount            string                    `json:"billing_account,omitempty"`
+	AdditionalSecurityGroups  *AdditionalSecurityGroups `json:"additional_sgs,omitempty"`
+	Autoscaling               *Autoscaling              `json:"autoscaling,omitempty"`
+	Aws                       *AWS                      `json:"aws,omitempty"`
+	Autoscaler                *Autoscaler               `json:"autoscaler,omitempty"`
+	Encryption                *Encryption               `json:"encryption,omitempty"`
+	IngressConfig             *IngressConfig            `json:"ingress_config,omitempty"`
+	Networking                *Networking               `json:"networking,omitempty"`
+	Nodes                     *Nodes                    `json:"nodes,omitempty"`
+	Properties                *Properties               `json:"properties,omitempty"`
+	Proxy                     *Proxy                    `json:"proxy,omitempty"`
+	Subnets                   *Subnets                  `json:"subnets,omitempty"`
+	Version                   *Version                  `json:"version,omitempty"`
 }
 
 func ParseClusterProfile() (*ClusterConfig, error) {
