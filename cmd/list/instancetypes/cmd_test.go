@@ -179,9 +179,11 @@ var _ = Describe("list instance-types", func() {
 		]
 	}
 	`
-		regionSuccessOutput = `ID             CATEGORY               CPU_CORES  MEMORY
+		regionSuccessOutput = `INFO: Using fake_installer_arn for the Installer role
+ID             CATEGORY               CPU_CORES  MEMORY
 g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 `
+		mockAwsClient *aws.MockClient
 	)
 
 	BeforeEach(func() {
@@ -226,9 +228,9 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		}
 
 		ctrl := gomock.NewController(GinkgoT())
-		awsClient := aws.NewMockClient(ctrl)
-		r.AWSClient = awsClient
-		awsClient.EXPECT().GetAWSAccessKeys().Return(&aws.AccessKey{
+		mockAwsClient = aws.NewMockClient(ctrl)
+		r.AWSClient = mockAwsClient
+		mockAwsClient.EXPECT().GetAWSAccessKeys().Return(&aws.AccessKey{
 			AccessKeyID:     "abc123",
 			SecretAccessKey: "abc123",
 		}, nil).AnyTimes()
@@ -244,6 +246,8 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 	It("Succeeds with --region", func() {
 
 		cmd.Flags().Set("region", "us-east-1")
+
+		mockAwsClient.EXPECT().FindRoleARNs(aws.InstallerAccountRole, "").Return([]string{"fake_installer_arn"}, nil)
 
 		// POST /api/clusters_mgmt/v1/aws_inquiries/machine_types
 		apiServer.AppendHandlers(
@@ -287,6 +291,8 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 
 		cmd.Flags().Set("region", "us-east-xyz")
 
+		mockAwsClient.EXPECT().FindRoleARNs(aws.InstallerAccountRole, "").Return([]string{"fake_installer_arn"}, nil)
+
 		// POST /api/clusters_mgmt/v1/aws_inquiries/machine_types
 		apiServer.AppendHandlers(
 			RespondWithJSON(
@@ -300,7 +306,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		Expect(err.Error()).To(
 			ContainSubstring("Region 'us-east-xyz' not found."))
 		Expect(stderr).To(Equal(""))
-		Expect(stdout).To(Equal(""))
+		Expect(stdout).To(Equal("INFO: Using fake_installer_arn for the Installer role\n"))
 	})
 
 	It("Succeeds", func() {
