@@ -71,6 +71,9 @@ func IsURL(val interface{}) error {
 // nolint
 func IsValidHostname(val interface{}) error {
 	hostname := val.(string)
+	if hostname == "" {
+		return nil
+	}
 	if hostname == "github.com" || strings.HasSuffix(hostname, ".github.com") {
 		return fmt.Errorf(fmt.Sprintf("'%s' hostname cannot be equal to [*.]github.com", hostname))
 	}
