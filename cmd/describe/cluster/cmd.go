@@ -330,7 +330,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	deleteProtection := DisabledOutput
-	if !cluster.DeleteProtection().Enabled() {
+	if cluster.DeleteProtection().Enabled() {
 		deleteProtection = EnabledOutput
 	}
 
