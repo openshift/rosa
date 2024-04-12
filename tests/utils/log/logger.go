@@ -32,7 +32,7 @@ func (l *Log) Redact(fmtedString string) string {
 	for _, regexP := range RedactKeyList {
 		if l.NeedRedact(fmtedString, regexP) {
 			l.logger.Debugf("Got need redacted string from log match regex %s", regexP.String())
-			fmtedString = regexP.ReplaceAllString(fmtedString, fmt.Sprintf(`$1"%s$3`, RedactValue))
+			fmtedString = regexP.ReplaceAllString(fmtedString, fmt.Sprintf(`$1%s$3`, RedactValue))
 		}
 	}
 	return fmtedString

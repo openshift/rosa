@@ -23,13 +23,9 @@ var _ = Describe("Edit IDP",
 		defer GinkgoRecover()
 
 		var (
-			clusterID string
-
+			clusterID  string
 			rosaClient *rosacli.Client
 			idpService rosacli.IDPService
-
-			rosaSensitiveClient *rosacli.Client
-			idpServiceSensitive rosacli.IDPService
 		)
 
 		BeforeEach(func() {
@@ -40,8 +36,6 @@ var _ = Describe("Edit IDP",
 			By("Init the clients")
 			rosaClient = rosacli.NewClient()
 			idpService = rosaClient.IDP
-			rosaSensitiveClient = rosacli.NewSensitiveClient()
-			idpServiceSensitive = rosaSensitiveClient.IDP
 
 		})
 
@@ -49,15 +43,13 @@ var _ = Describe("Edit IDP",
 			By("Clean remaining resources")
 			var errorList []error
 			errorList = append(errorList, rosaClient.CleanResources(clusterID))
-			errorList = append(errorList, rosaSensitiveClient.CleanResources(clusterID))
+			errorList = append(errorList, rosaClient.CleanResources(clusterID))
 			Expect(errors.Join(errorList...)).ToNot(HaveOccurred())
 
 		})
 
 		It("can create/describe/delete admin user - [id:35878]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				var (
 					idpType    = "htpasswd"
@@ -75,7 +67,7 @@ var _ = Describe("Edit IDP",
 				output, err = rosaClient.User.DescribeAdmin(clusterID)
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("There is an admin on cluster"))
+				Expect(textData).Should(ContainSubstring("There is 'cluster-admin' user on cluster"))
 
 				By("List IDP")
 				idpTab, _, err := idpService.ListIDP(clusterID)
@@ -92,7 +84,7 @@ var _ = Describe("Edit IDP",
 				output, err = rosaClient.User.DescribeAdmin(clusterID)
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("There is no admin on cluster"))
+				Expect(textData).Should(ContainSubstring("WARN: There is no 'cluster-admin' user on cluster"))
 
 				By("List IDP after the admin is deleted")
 				idpTab, _, err = idpService.ListIDP(clusterID)
@@ -109,7 +101,7 @@ var _ = Describe("Edit IDP",
 				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpName))
 
 				By("Create admin")
-				output, err = rosaSensitiveClient.User.CreateAdmin(clusterID)
+				output, err = rosaClient.User.CreateAdmin(clusterID)
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Admin account has been added"))
@@ -122,7 +114,7 @@ var _ = Describe("Edit IDP",
 				output, err = rosaClient.User.DescribeAdmin(clusterID)
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("There is an admin on cluster"))
+				Expect(textData).Should(ContainSubstring("There is 'cluster-admin' user on cluster"))
 
 				By("List IDP")
 				idpTab, _, err = idpService.ListIDP(clusterID)
@@ -132,15 +124,13 @@ var _ = Describe("Edit IDP",
 
 				By("login the cluster with the created cluster admin")
 				time.Sleep(3 * time.Minute)
-				stdout, err := rosaSensitiveClient.Runner.RunCMD(strings.Split(command, " "))
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
 				Expect(stdout.String()).Should(ContainSubstring("Login successful"))
 			})
 
 		It("can create/List/Delete IDPs for rosa clusters - [id:35896]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				// common IDP variables
 				var (
@@ -170,7 +160,7 @@ var _ = Describe("Edit IDP",
 				idp := make(map[string]theIDP)
 				idp["Github"] = theIDP{
 					name: "mygithub",
-					url:  "https://hn.com",
+					url:  "testhub.com",
 					org:  "myorg",
 				}
 				idp["LDAP"] = theIDP{
@@ -276,8 +266,6 @@ var _ = Describe("Edit IDP",
 
 		It("can create/delete the HTPasswd IDPs - [id:49137]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				var (
 					idpType            = "htpasswd"
@@ -288,22 +276,22 @@ var _ = Describe("Edit IDP",
 				)
 
 				By("Create admin")
-				output, err := rosaSensitiveClient.User.CreateAdmin(clusterID)
+				output, err := rosaClient.User.CreateAdmin(clusterID)
 				Expect(err).To(BeNil())
-				textData := rosaSensitiveClient.Parser.TextData.Input(output).Parse().Tip()
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Admin account has been added"))
 
 				By("Create one htpasswd idp with multiple users")
 				_, singleUserName, singleUserPasswd, err = common.GenerateHtpasswdPair("user1", "pass1")
 				Expect(err).To(BeNil())
-				output, err = idpServiceSensitive.CreateIDP(
+				output, err = idpService.CreateIDP(
 					clusterID, idpNames[0],
 					"--type", idpType,
 					"--username", singleUserName,
 					"--password", singleUserPasswd,
 					"-y")
 				Expect(err).To(BeNil())
-				textData = rosaSensitiveClient.Parser.TextData.Input(output).Parse().Tip()
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
 				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
 				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[0]))
@@ -311,13 +299,13 @@ var _ = Describe("Edit IDP",
 				By("Create one htpasswd idp with single users")
 				multipleuserPasswd, err = common.GenerateMultipleHtpasswdPairs(2)
 				Expect(err).To(BeNil())
-				output, err = idpServiceSensitive.CreateIDP(
+				output, err = idpService.CreateIDP(
 					clusterID, idpNames[1],
 					"--type", idpType,
 					"--users", strings.Join(multipleuserPasswd, ","),
 					"-y")
 				Expect(err).To(BeNil())
-				textData = rosaSensitiveClient.Parser.TextData.Input(output).Parse().Tip()
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
 				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
 				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[1]))
@@ -328,13 +316,13 @@ var _ = Describe("Edit IDP",
 				location, err := common.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(location)
-				output, err = idpServiceSensitive.CreateIDP(
+				output, err = idpService.CreateIDP(
 					clusterID, idpNames[2],
 					"--type", idpType,
 					"--from-file", location,
 					"-y")
 				Expect(err).To(BeNil())
-				textData = rosaSensitiveClient.Parser.TextData.Input(output).Parse().Tip()
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[2]))
 				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
 				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[2]))

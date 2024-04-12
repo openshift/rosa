@@ -24,7 +24,7 @@ profiles:
     shared_vpc: false
     ingress_customized: true
     oidc_config: unmanaged
-    admin_enabled: true
+    admin_enabled: false #TODO// Disable to compatible with current day1. Needs to enable after new day1 enabled for the jobs.
     volume_size: 150
     autoscaler_enabled: true
     disable_uwm: true
