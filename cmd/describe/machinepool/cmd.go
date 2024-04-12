@@ -23,6 +23,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -67,12 +68,11 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
-	machinePool := args.machinePool
 	// Allow the use also directly the machine pool id as positional parameter
 	if len(argv) == 1 && !cmd.Flag("machinepool").Changed {
-		machinePool = argv[0]
+		args.machinePool = argv[0]
 	}
-	if machinePool == "" {
+	if args.machinePool == "" {
 		return fmt.Errorf("You need to specify a machine pool name")
 	}
 	clusterKey := r.GetClusterKey()
@@ -83,9 +83,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 	isHypershift := cluster.Hypershift().Enabled()
 
-	if isHypershift {
-		return describeNodePool(r, cluster, clusterKey, machinePool)
-	} else {
-		return describeMachinePool(r, cluster, clusterKey, machinePool)
-	}
+	service := machinepool.NewMachinePoolService()
+
+	return service.DescribeMachinePool(r, cluster, clusterKey, isHypershift, args.machinePool)
 }
