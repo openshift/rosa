@@ -26,6 +26,9 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
+	interactiveRoles "github.com/openshift/rosa/pkg/interactive/roles"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -52,10 +55,46 @@ func init() {
 	initFlags(Cmd)
 }
 
+var args struct {
+	region               string
+	installerRoleArn     string
+	externalId           string
+	hostedClusterEnabled bool
+}
+
+const (
+	InstallerRoleArnFlag = "role-arn"
+)
+
 func initFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
+
+	flags.BoolVar(
+		&args.hostedClusterEnabled,
+		"hosted-cp",
+		false,
+		"Enable the use of Hosted Control Planes",
+	)
+
+	flags.StringVar(
+		&args.externalId,
+		"external-id",
+		"",
+		"An optional unique identifier that might be required when you assume a role in another account.",
+	)
+
+	// normalizing installer role argument to support deprecated flag
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
+	flags.StringVar(
+		&args.installerRoleArn,
+		InstallerRoleArnFlag,
+		"",
+		"STS Role ARN with get secrets permission.",
+	)
+
 	arguments.AddRegionFlag(flags)
 	output.AddFlag(cmd)
+	confirm.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -68,15 +107,33 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
-	r.Reporter.Debugf("Fetching instance types")
+func checkInteractiveModeNeeded(cmd *cobra.Command) {
+	installerRoleArnNotSet := (!cmd.Flags().Changed(InstallerRoleArnFlag) || args.installerRoleArn == "") &&
+		!confirm.Yes()
+	if installerRoleArnNotSet {
+		interactive.Enable()
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	checkInteractiveModeNeeded(cmd)
+	r.Reporter.Debugf("Fetching instance types")
 	var machineTypes ocm.MachineTypeList
 	if cmd.Flags().Changed("region") {
+		if interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "") {
+			args.installerRoleArn = interactiveRoles.
+				GetInstallerRoleArn(
+					r,
+					cmd,
+					args.installerRoleArn,
+					"",
+					r.AWSClient.FindRoleARNs,
+				)
+		}
 		var availabilityZones []string
 		roleArn := ""
-		regionList, _, err := r.OCMClient.GetRegionList(false, "", "", "",
-			r.AWSClient, false, false)
+		regionList, _, err := r.OCMClient.GetRegionList(false, args.installerRoleArn, args.externalId, "",
+			r.AWSClient, args.hostedClusterEnabled, false)
 		if err != nil {
 			return err
 		}
