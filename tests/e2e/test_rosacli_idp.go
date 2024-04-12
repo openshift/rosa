@@ -42,6 +42,7 @@ var _ = Describe("Edit IDP",
 			idpService = rosaClient.IDP
 			rosaSensitiveClient = rosacli.NewSensitiveClient()
 			idpServiceSensitive = rosaSensitiveClient.IDP
+
 		})
 
 		AfterEach(func() {
@@ -50,6 +51,7 @@ var _ = Describe("Edit IDP",
 			errorList = append(errorList, rosaClient.CleanResources(clusterID))
 			errorList = append(errorList, rosaSensitiveClient.CleanResources(clusterID))
 			Expect(errors.Join(errorList...)).ToNot(HaveOccurred())
+
 		})
 
 		It("can create/describe/delete admin user - [id:35878]",
@@ -64,7 +66,7 @@ var _ = Describe("Edit IDP",
 				)
 
 				By("Create admin")
-				output, err := rosaSensitiveClient.User.CreateAdmin(clusterID)
+				output, err := rosaClient.User.CreateAdmin(clusterID)
 				Expect(err).To(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Admin account has been added"))

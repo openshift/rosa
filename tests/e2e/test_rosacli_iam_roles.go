@@ -3,8 +3,6 @@ package e2e
 import (
 	"fmt"
 	"math/rand"
-	// "regexp"
-	// "strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -523,8 +521,6 @@ var _ = Describe("Edit IAM",
 
 		It("can validate when user create operator-roles to cluster - [id:43051]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Check if cluster is sts cluster")
 				StsCluster, err := clusterService.IsSTSCluster(clusterID)
@@ -565,8 +561,6 @@ var _ = Describe("Edit IAM",
 
 		It("can validate that upgrade account-roles with the managed policies should be forbidden - [id:57441]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				defer func() {
 					By("Cleanup created account-roles in high level of the test case")
@@ -627,8 +621,6 @@ var _ = Describe("Edit IAM",
 
 		It("can delete account-roles with --hosted-cp and --classic - [id:62083]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				defer func() {
 					By("Cleanup created account-roles in high level of the test case")
@@ -684,8 +676,6 @@ var _ = Describe("Edit IAM",
 
 		It("can validate create/link/unlink user-role - [id:52580]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				var (
 					userRolePrefix                                string
@@ -731,7 +721,8 @@ var _ = Describe("Edit IAM",
 					"-y")
 				Expect(err).NotTo(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("There was an error creating the ocm user role: NoSuchEntity"))
+				Expect(textData).Should(ContainSubstring("There was an error creating the ocm user role: operation error IAM: CreateRole"))
+				Expect(textData).Should(ContainSubstring("api error NoSuchEntity"))
 
 				By("Create an user-role")
 				output, err = ocmResourceService.CreateUserRole("--mode", "auto",

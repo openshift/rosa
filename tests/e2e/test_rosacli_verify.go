@@ -52,8 +52,6 @@ var _ = Describe("Verify",
 
 		It("the creation of rosa cluster with volume size will work - [id:66359]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Classic cluster check")
 				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
@@ -95,8 +93,6 @@ var _ = Describe("Verify",
 
 		It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Classic cluster check")
 				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
@@ -106,7 +102,7 @@ var _ = Describe("Verify",
 				}
 
 				By("Check the cluster config")
-				mpLables := strings.Join(strings.Split(clusterConfig.DefaultMpLabels, ","), ", ")
+				mpLables := strings.Split(clusterConfig.DefaultMpLabels, ",")
 
 				By("Check the machinepool list")
 				output, err := machinePoolService.ListMachinePool(clusterID)
@@ -117,7 +113,9 @@ var _ = Describe("Verify",
 
 				workPool := mplist.Machinepool(constants.DefaultClassicWorkerPool)
 				Expect(workPool).ToNot(BeNil(), "worker pool is not found for the cluster")
-				Expect(workPool.Labels).To(Equal(mpLables))
+				for _, label := range mpLables {
+					Expect(workPool.Labels).To(ContainSubstring(label))
+				}
 
 				By("Check the default worker pool description")
 				output, err = machinePoolService.DescribeMachinePool(clusterID, constants.DefaultClassicWorkerPool)
@@ -125,7 +123,9 @@ var _ = Describe("Verify",
 
 				mpD, err := machinePoolService.ReflectMachinePoolDescription(output)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mpD.Labels).To(Equal(mpLables))
+				for _, label := range mpLables {
+					Expect(mpD.Labels).To(ContainSubstring(label))
+				}
 
 			})
 

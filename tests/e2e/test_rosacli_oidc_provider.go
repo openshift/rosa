@@ -41,8 +41,6 @@ var _ = Describe("OIDC provider",
 
 		It("validate when user create oidc-provider to cluster - [id:43046]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Check if cluster is sts cluster")
 				StsCluster, err := clusterService.IsSTSCluster(clusterID)

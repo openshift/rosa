@@ -53,8 +53,6 @@ var _ = Describe("Edit OIDC config",
 
 		It("can create/list/delete BYO oidc config in auto mode - [id:57570]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				defer func() {
 					By("make sure that all oidc configs created during the testing")
