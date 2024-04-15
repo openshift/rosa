@@ -96,18 +96,18 @@ version:
   raw_id: openshift-4.12.24
 `
 	describeClassicStringOutput = `
-ID:                         nodepool85
-Cluster ID:                 24vf9iitg3p6tlml88iml6j6mu095mh8
-Autoscaling:                No
-Replicas:                   0
-Instance type:              m5.xlarge
-Labels:                     
-Taints:                     
-Availability zones:         us-east-1a, us-east-1b, us-east-1c
-Subnets:                    
-Spot instances:             Yes (max $5)
-Disk size:                  default
-Security Group IDs:         
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Replicas:                              0
+Instance type:                         m5.xlarge
+Labels:                                
+Taints:                                
+Availability zones:                    us-east-1a, us-east-1b, us-east-1c
+Subnets:                               
+Spot instances:                        Yes (max $5)
+Disk size:                             default
+Additional Security Group IDs:         
 `
 	describeClassicYamlOutput = `availability_zones:
 - us-east-1a
