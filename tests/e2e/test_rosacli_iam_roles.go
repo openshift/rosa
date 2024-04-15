@@ -921,8 +921,6 @@ var _ = Describe("Edit IAM",
 
 		It("can create/link/unlink/delete user-role in auto mode - [id:52419]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				var (
 					userrolePrefix     string
