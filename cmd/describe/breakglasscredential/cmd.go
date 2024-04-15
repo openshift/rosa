@@ -124,6 +124,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 
 	if getKubeconfig {
+		if breakGlassCredentialConfig.Kubeconfig() == "" {
+			r.Reporter.Infof("The credential is not ready yet. Please wait a few minutes for it to be fully ready.")
+			return nil
+		}
 		fmt.Print(breakGlassCredentialConfig.Kubeconfig())
 		return nil
 	}

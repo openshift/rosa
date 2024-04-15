@@ -64,6 +64,20 @@ var _ = Describe("Break glass credential", func() {
 			Expect(stdout).To(Equal(describeStringOutput))
 		})
 
+		It("Pass a break glass credential id and --kubeconfig through parameter and it is found", func() {
+			args.id = breakGlassCredentialId
+			args.kubeconfig = true
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatResource(credential)))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{})
+			Expect(err).To(BeNil())
+			Expect(stderr).To(BeEmpty())
+			Expect(stdout).To(Equal(
+				"INFO: The credential is not ready yet. Please wait a few minutes for it to be fully ready.\n"))
+		})
+
 		It("Pass a break glass credential id through parameter and it is found, but it has been revoked", func() {
 			args.id = breakGlassCredentialId
 			const breakGlassCredentialId = "test-id-1"
