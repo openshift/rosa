@@ -2,6 +2,8 @@ package arguments
 
 import (
 	"fmt"
+	"io"
+	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -27,7 +29,9 @@ var _ = Describe("Client", func() {
 				Short: "Child command used for testing deprecation",
 				Long: "This child command is used for testing the deprecation of the 'region' flag in " +
 					"arguments.go - it is used for nothing else.",
+				Run: func(c *cobra.Command, a []string) {},
 			}
+
 			cmd.AddCommand(childCmd)
 
 			AddRegionFlag(cmd.PersistentFlags())
@@ -35,10 +39,16 @@ var _ = Describe("Client", func() {
 		})
 		It("Test deprecation of region flag", func() {
 			MarkRegionDeprecated(cmd, []*cobra.Command{childCmd})
-			regionFlag := cmd.PersistentFlags().Lookup("region")
-			debugFlag := cmd.PersistentFlags().Lookup("debug")
-			Expect(regionFlag.Deprecated).To(Equal(regionDeprecationMessage))
-			Expect(debugFlag.Deprecated).To(Equal(""))
+			original := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			childCmd.SetArgs([]string{"--region", "us-east-1"})
+			childCmd.Run(childCmd, []string{"--region", "us-east-1"})
+			err := w.Close()
+			Expect(err).ToNot(HaveOccurred())
+			out, _ := io.ReadAll(r)
+			os.Stdout = original
+			Expect(string(out)).To(ContainSubstring(regionDeprecationMessage))
 		})
 	})
 
