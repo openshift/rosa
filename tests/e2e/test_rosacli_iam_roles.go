@@ -785,8 +785,6 @@ var _ = Describe("Edit IAM",
 
 		It("can create/delete/unlink/link ocm-roles in auto mode - [id:46187]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				var (
 					ocmrolePrefix                                 string
@@ -866,7 +864,8 @@ var _ = Describe("Edit IAM",
 					"-y")
 				Expect(err).NotTo(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("There was an error creating the ocm role: NoSuchEntity"))
+				Expect(textData).Should(ContainSubstring("There was an error creating the ocm role"))
+				Expect(textData).Should(ContainSubstring("NoSuchEntity"))
 
 				By("Create an ocm-role")
 				output, err = ocmResourceService.CreateOCMRole("--mode", "auto",

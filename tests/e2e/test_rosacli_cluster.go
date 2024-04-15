@@ -48,8 +48,6 @@ var _ = Describe("Edit cluster",
 
 		It("can check the description of the cluster - [id:34102]",
 			labels.Medium,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Describe cluster in text format")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -68,7 +66,7 @@ var _ = Describe("Edit cluster",
 				Expect(CD.ID).To(Equal(jsonData.DigString("id")))
 				Expect(CD.ExternalID).To(Equal(jsonData.DigString("external_id")))
 				Expect(CD.ChannelGroup).To(Equal(jsonData.DigString("version", "channel_group")))
-				Expect(CD.DNS).To(Equal(jsonData.DigString("name") + "." + jsonData.DigString("dns", "base_domain")))
+				Expect(CD.DNS).To(Equal(jsonData.DigString("domain_prefix") + "." + jsonData.DigString("dns", "base_domain")))
 				Expect(CD.AWSAccount).NotTo(BeEmpty())
 				Expect(CD.APIURL).To(Equal(jsonData.DigString("api", "url")))
 				Expect(CD.ConsoleURL).To(Equal(jsonData.DigString("console", "url")))
@@ -105,8 +103,6 @@ var _ = Describe("Edit cluster",
 
 		It("can restrict master API endpoint to direct, private connectivity or not - [id:38850]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Check the cluster is not private cluster")
 				private, err := clusterService.IsPrivateCluster(clusterID)
@@ -236,8 +232,6 @@ var _ = Describe("Edit cluster",
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Check the cluster is STS cluster or skip")
 				isSTSCluster, err := clusterService.IsSTSCluster(clusterID)
@@ -282,7 +276,9 @@ var _ = Describe("Edit cluster",
 				replacingFlags := map[string]string{
 					"--version":               clusterVersion,
 					"--cluster-name":          clusterName,
+					"-c":                      clusterName,
 					"--operator-roles-prefix": operatorPrefix,
+					"--domain-prefix":         clusterName,
 				}
 
 				if rosalCommand.GetFlagValue("--https-proxy", true) != "" {
