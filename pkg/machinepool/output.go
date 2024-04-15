@@ -29,18 +29,18 @@ var nodePoolOutputString string = "\n" +
 	"Message:                               %s\n"
 
 var machinePoolOutputString = "\n" +
-	"ID:                         %s\n" +
-	"Cluster ID:                 %s\n" +
-	"Autoscaling:                %s\n" +
-	"Replicas:                   %s\n" +
-	"Instance type:              %s\n" +
-	"Labels:                     %s\n" +
-	"Taints:                     %s\n" +
-	"Availability zones:         %s\n" +
-	"Subnets:                    %s\n" +
-	"Spot instances:             %s\n" +
-	"Disk size:                  %s\n" +
-	"Security Group IDs:         %s\n"
+	"ID:                                    %s\n" +
+	"Cluster ID:                            %s\n" +
+	"Autoscaling:                           %s\n" +
+	"Replicas:                              %s\n" +
+	"Instance type:                         %s\n" +
+	"Labels:                                %s\n" +
+	"Taints:                                %s\n" +
+	"Availability zones:                    %s\n" +
+	"Subnets:                               %s\n" +
+	"Spot instances:                        %s\n" +
+	"Disk size:                             %s\n" +
+	"Additional Security Group IDs:         %s\n"
 
 func machinePoolOutput(clusterId string, machinePool *cmv1.MachinePool) string {
 	return fmt.Sprintf(machinePoolOutputString,

@@ -41,6 +41,26 @@ var _ = Describe("Output", Ordered, func() {
 			result := machinePoolOutput("test-cluster", machinePool)
 			Expect(out).To(Equal(result))
 		})
+		It("machinepool output with additional security groups", func() {
+			awsMachinePoolBuilder := cmv1.NewAWSMachinePool().AdditionalSecurityGroupIds("123")
+			machinePoolBuilder := *cmv1.NewMachinePool().ID("test-mp").Autoscaling(cmv1.NewMachinePoolAutoscaling().
+				ID("test-as")).Replicas(4).InstanceType("test-it").
+				Labels(labels).Taints(taintsBuilder).AvailabilityZones("test-az").
+				Subnets("test-subnet").
+				AWS(awsMachinePoolBuilder)
+			machinePool, err := machinePoolBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			labelsOutput := ocmOutput.PrintLabels(labels)
+			taintsOutput := ocmOutput.PrintTaints([]*cmv1.Taint{taint})
+
+			out := fmt.Sprintf(machinePoolOutputString,
+				"test-mp", "test-cluster", "Yes", "0-0", "test-it", labelsOutput, taintsOutput,
+				"test-az", "test-subnet", ocmOutput.PrintMachinePoolSpot(machinePool),
+				ocmOutput.PrintMachinePoolDiskSize(machinePool), "123")
+
+			result := machinePoolOutput("test-cluster", machinePool)
+			Expect(out).To(Equal(result))
+		})
 		It("machinepool output without autoscaling", func() {
 			machinePoolBuilder := *cmv1.NewMachinePool().ID("test-mp2").
 				Replicas(4).InstanceType("test-it2").Labels(labels).
