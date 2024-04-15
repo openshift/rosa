@@ -367,8 +367,6 @@ var _ = Describe("Edit nodepool",
 
 		It("does support 'version' parameter on nodepool - [id:61138]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				nodePoolName := common.GenerateRandomName("np-61138", 2)
 

@@ -21,23 +21,20 @@ var _ = Describe("Verify",
 	func() {
 		defer GinkgoRecover()
 		var (
-			clusterID           string
-			rosaClient          *rosacli.Client
-			rosaSensitiveClient *rosacli.Client
-			clusterService      rosacli.ClusterService
-			machinePoolService  rosacli.MachinePoolService
-			clusterConfig       *config.ClusterConfig
+			clusterID          string
+			rosaClient         *rosacli.Client
+			clusterService     rosacli.ClusterService
+			machinePoolService rosacli.MachinePoolService
+			clusterConfig      *config.ClusterConfig
 		)
 
 		BeforeEach(func() {
 			By("Get the cluster")
-			// clusterID = config.GetClusterID()
-			clusterID = config.GetClusterID() // For Jean Chen
+			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
-			rosaSensitiveClient = rosacli.NewSensitiveClient()
 			clusterService = rosaClient.Cluster
 			machinePoolService = rosaClient.MachinePool
 			var err error
@@ -131,8 +128,6 @@ var _ = Describe("Verify",
 
 		It("the windows certificates expiration - [id:64040]",
 			labels.Medium,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				//If the case fails,please open a card to ask dev update windows certificates.
 				//Example card: https://issues.redhat.com/browse/SDA-8990
@@ -149,7 +144,7 @@ var _ = Describe("Verify",
 				domains := []string{"api.openshift.com", "sso.redhat.com"}
 				for _, url := range domains {
 					cmd := fmt.Sprintf("openssl s_client -connect %s:443 -showcerts 2>&1  | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'", url)
-					stdout, err := rosaSensitiveClient.Runner.RunCMD([]string{"bash", "-c", cmd})
+					stdout, err := rosaClient.Runner.RunCMD([]string{"bash", "-c", cmd})
 					Expect(err).ToNot(HaveOccurred())
 					result := strings.Trim(stdout.String(), "\n")
 					ca := strings.Split(result, "-----END CERTIFICATE-----")
