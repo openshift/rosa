@@ -14,6 +14,7 @@ var _ = Describe("Client", func() {
 	var (
 		cmd      *cobra.Command
 		childCmd *cobra.Command
+		o        string
 	)
 
 	Context("Region deprecation test", func() {
@@ -29,26 +30,62 @@ var _ = Describe("Client", func() {
 				Short: "Child command used for testing deprecation",
 				Long: "This child command is used for testing the deprecation of the 'region' flag in " +
 					"arguments.go - it is used for nothing else.",
-				Run: func(c *cobra.Command, a []string) {},
+				Run: func(c *cobra.Command, a []string) {
+					//nothing to be done
+				},
 			}
 
 			cmd.AddCommand(childCmd)
 
 			AddRegionFlag(cmd.PersistentFlags())
 			AddDebugFlag(cmd.PersistentFlags())
+			flagSet := cmd.PersistentFlags()
+			flagSet.StringVarP(
+				&o,
+				"output",
+				"o",
+				"",
+				"",
+			)
 		})
-		It("Test deprecation of region flag", func() {
+		It("Without setting region", func() {
 			MarkRegionDeprecated(cmd, []*cobra.Command{childCmd})
 			original := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			childCmd.SetArgs([]string{"--region", "us-east-1"})
-			childCmd.Run(childCmd, []string{"--region", "us-east-1"})
+			childCmd.Run(childCmd, []string{})
+			err := w.Close()
+			Expect(err).ToNot(HaveOccurred())
+			out, _ := io.ReadAll(r)
+			os.Stdout = original
+			Expect(string(out)).To(BeEmpty())
+		})
+		It("Setting region", func() {
+			MarkRegionDeprecated(cmd, []*cobra.Command{childCmd})
+			original := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			childCmd.Flag("region").Value.Set("us-east-1")
+			childCmd.Run(childCmd, []string{})
 			err := w.Close()
 			Expect(err).ToNot(HaveOccurred())
 			out, _ := io.ReadAll(r)
 			os.Stdout = original
 			Expect(string(out)).To(ContainSubstring(regionDeprecationMessage))
+		})
+		It("Setting output to json", func() {
+			MarkRegionDeprecated(cmd, []*cobra.Command{childCmd})
+			original := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			childCmd.Flag("region").Value.Set("us-east-1")
+			childCmd.Flag("output").Value.Set("json")
+			childCmd.Run(childCmd, []string{})
+			err := w.Close()
+			Expect(err).ToNot(HaveOccurred())
+			out, _ := io.ReadAll(r)
+			os.Stdout = original
+			Expect(string(out)).To(BeEmpty())
 		})
 	})
 
