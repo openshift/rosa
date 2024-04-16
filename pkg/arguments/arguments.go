@@ -34,6 +34,7 @@ import (
 const boolType string = "bool"
 
 const regionFlagName = "region"
+const outputFlagName = "output"
 const regionDeprecationMessage = "Region flag will be removed from this command in future versions"
 
 var hasUnknownFlags bool
@@ -333,11 +334,14 @@ func MarkRegionDeprecated(parentCmd *cobra.Command, childrenCmds []*cobra.Comman
 		})
 		currentRun := cmd.Run
 		cmd.Run = func(c *cobra.Command, args []string) {
-			outputFlag := cmd.Flag("output")
-			regionFlag := cmd.Flag("region")
-			hasChangedOutputFlag := outputFlag != nil && outputFlag.Value.String() != outputFlag.DefValue
-			hasChangedRegionFlag := regionFlag != nil && regionFlag.Value.String() != regionFlag.DefValue
-			if hasChangedRegionFlag && !hasChangedOutputFlag {
+			hasRegion := false
+			cmd.Parent().PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+				if flag.Name == regionFlagName {
+					hasRegion = true
+				}
+			})
+			outputFlag := cmd.Flags().Lookup(outputFlagName)
+			if (outputFlag == nil || outputFlag.Value.String() == "") && hasRegion {
 				_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "\u001B[0;33mW:\u001B[m ", regionDeprecationMessage)
 			}
 			currentRun(c, args)
