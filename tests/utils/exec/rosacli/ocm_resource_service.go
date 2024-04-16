@@ -58,8 +58,10 @@ type OCMResourceService interface {
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
 	GetOIDCIdFromList(providerURL string) (string, error)
 
+	ListOperatorRoles(flags ...string) (bytes.Buffer, error)
 	DeleteOperatorRoles(flags ...string) (bytes.Buffer, error)
 	CreateOperatorRoles(flags ...string) (bytes.Buffer, error)
+	ReflectOperatorRoleList(result bytes.Buffer) (opl OperatorRoleList, err error)
 
 	CreateOIDCProvider(flags ...string) (bytes.Buffer, error)
 }
@@ -131,7 +133,21 @@ type AccountRole struct {
 type AccountRoleList struct {
 	AccountRoleList []*AccountRole `json:"AccountRoleList,omitempty"`
 }
+type OperatorRole struct {
+	AWSManaged        string `json:"AWS Managed,omitempty"`
+	ClusterID         string `json:"CLUSTER ID,omitempty"`
+	InUse             string `json:"IN USE,omitempty"`
+	Operatorname      string `json:"OPERATOR NAME,omitempty"`
+	OperatorNamespace string `json:"OPERATOR NAMESPACE,omitempty"`
+	Policies          string `json:"POLICIES,omitempty"`
+	RoleName          string `json:"ROLE NAME,omitempty"`
+	RoleArn           string `json:"ROLE ARN,omitempty"`
+	Version           string `json:"VERSION,omitempty"`
+}
 
+type OperatorRoleList struct {
+	OperatorRoleList []*OperatorRole `json:"OperatorRoleList,omitempty"`
+}
 type OIDCConfig struct {
 	ID        string `json:"ID,omitempty"`
 	Managed   string `json:"MANAGED,omitempty"`
@@ -525,6 +541,28 @@ func (ors *ocmResourceService) DeleteOperatorRoles(flags ...string) (bytes.Buffe
 	deleteOperatorRoles := ors.client.Runner
 	deleteOperatorRoles = deleteOperatorRoles.Cmd("delete", "operator-roles").CmdFlags(flags...)
 	return deleteOperatorRoles.Run()
+}
+
+// run `rosa list operator-roles`
+func (ors *ocmResourceService) ListOperatorRoles(flags ...string) (bytes.Buffer, error) {
+	listOperatorRoles := ors.client.Runner
+	listOperatorRoles = listOperatorRoles.Cmd("list", "operator-roles").CmdFlags(flags...)
+	return listOperatorRoles.Run()
+}
+
+// Pasrse the result of 'rosa list operator-roles' to OperatorRoleList struct
+func (ors *ocmResourceService) ReflectOperatorRoleList(result bytes.Buffer) (opl OperatorRoleList, err error) {
+	opl = OperatorRoleList{}
+	theMap := ors.client.Parser.TableData.Input(result).Parse().Output()
+	for _, accountRoleItem := range theMap {
+		opr := &OperatorRole{}
+		err = MapStructure(accountRoleItem, opr)
+		if err != nil {
+			return
+		}
+		opl.OperatorRoleList = append(opl.OperatorRoleList, opr)
+	}
+	return
 }
 
 // run `rosa create oidc-provider` command

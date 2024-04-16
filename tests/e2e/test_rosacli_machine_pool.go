@@ -104,8 +104,6 @@ var _ = Describe("Create machinepool",
 
 		It("can create spot machinepool - [id: 43251]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Create a spot machinepool on the cluster")
 				machinePoolName := "spotmp"

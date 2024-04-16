@@ -14,11 +14,6 @@ import (
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
-// TODO Some code here has been commented as it is still using the old AWS SDK v1
-// And we did not want to import the package in rosa repository
-// This should be activated and moved to `ocm-common` (ex-`openshift-rosa-cli`) once available
-// Follow comments "TODO to uncomment after migration" to find out what was commented
-
 var _ = Describe("Edit IAM",
 	labels.Day2,
 	labels.FeatureRoles,
@@ -29,12 +24,11 @@ var _ = Describe("Edit IAM",
 			accountRolePrefixesNeedCleanup  = make([]string, 0)
 			operatorRolePrefixedNeedCleanup = make([]string, 0)
 
-			clusterID string
-			// TODO to uncomment after migration
-			// clusterConfig      *config.ClusterConfig
-			rosaClient         *rosacli.Client
-			clusterService     rosacli.ClusterService
-			ocmResourceService rosacli.OCMResourceService
+			clusterID              string
+			rosaClient             *rosacli.Client
+			clusterService         rosacli.ClusterService
+			ocmResourceService     rosacli.OCMResourceService
+			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
 		)
 		BeforeEach(func() {
 			By("Get the cluster id")
@@ -43,8 +37,6 @@ var _ = Describe("Edit IAM",
 
 			By("Parse cluster profile")
 			var err error
-			// TODO to uncomment after migration
-			// clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Init the client")
@@ -61,8 +53,6 @@ var _ = Describe("Edit IAM",
 
 		It("can create/list/delete account-roles - [id:43070]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				defer func() {
 					By("Cleanup created account-roles in high level of the test case")
@@ -84,43 +74,10 @@ var _ = Describe("Edit IAM",
 					path            = "/fd/sd/"
 					versionH        = "4.13"
 					versionC        = "4.12"
-					// TODO to uncomment after migration
-					// permissionsBoundaryPolicyName = "permissionB43070"
 				)
-
-				// TODO to uncomment after migration
-				// var policyDocument = `{
-				//         "Version": "2012-10-17",
-				//         "Statement": [
-				//           {
-				//                 "Effect": "Allow",
-				//                 "Action": [
-				//                   "ec2:DescribeTags"
-				//                 ],
-				//                 "Resource": "*"
-				//           }
-				//         ]
-				//   }`
 
 				By("Create boundary policy")
 				rosaClient.Runner.JsonFormat()
-				// TODO to uncomment after migration
-				// awsClient, err := aws_v2.CreateAWSV2Client("", clusterConfig.Region)
-				// Expect(err).ToNot(HaveOccurred())
-				// permissionsBoundaryPolicy, err := awsClient.CreateIAMPolicy(permissionsBoundaryPolicyName, policyDocument, map[string]string{})
-				// Expect(err).To(BeNil())
-				// permissionsBoundaryArn := *permissionsBoundaryPolicy.Arn
-				// defer func() {
-				// 	err := wait.Poll(20*time.Second, 320*time.Second, func() (bool, error) {
-				// 		err := awsClient.DeleteIAMPolicy(permissionsBoundaryArn)
-				// 		if err != nil {
-				// 			Logger.Errorf("it met err %v when delete policy %s", err, permissionsBoundaryArn)
-				// 			return false, nil
-				// 		}
-				// 		return true, nil
-				// 	})
-				// 	common.AssertWaitPollNoErr(err, "can not delete policy in 320s")
-				// }()
 
 				whoamiOutput, err := ocmResourceService.Whoami()
 				Expect(err).To(BeNil())
@@ -128,52 +85,51 @@ var _ = Describe("Edit IAM",
 				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 				AWSAccountID := whoamiData.AWSAccountID
 
-				// TODO to uncomment after migration
-				// By("Create advanced account-roles of both hosted-cp and classic")
-				// output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
-				// 	"--prefix", userRolePrefixB,
-				// 	"--path", path,
-				// 	"--permissions-boundary", permissionsBoundaryArn,
-				// 	"-y")
-				// Expect(err).To(BeNil())
+				By("Create advanced account-roles of both hosted-cp and classic")
+				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", userRolePrefixB,
+					"--path", path,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"-y")
+				Expect(err).To(BeNil())
 
-				// accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, userRolePrefixB)
-				// textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				// Expect(textData).To(ContainSubstring("Creating classic account roles"))
-				// Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
-				// Expect(textData).To(ContainSubstring("Created role"))
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, userRolePrefixB)
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Creating classic account roles"))
+				Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
+				Expect(textData).To(ContainSubstring("Created role"))
 
-				// By("Create advance account-roles of only hosted-cp")
-				// output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
-				// 	"--prefix", userRolePrefixH,
-				// 	"--path", path,
-				// 	"--permissions-boundary", permissionsBoundaryArn,
-				// 	"--version", versionH,
-				// 	"--hosted-cp",
-				// 	"-y")
-				// Expect(err).To(BeNil())
+				By("Create advance account-roles of only hosted-cp")
+				output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", userRolePrefixH,
+					"--path", path,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"--version", versionH,
+					"--hosted-cp",
+					"-y")
+				Expect(err).To(BeNil())
 
-				// accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, userRolePrefixH)
-				// textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				// Expect(textData).ToNot(ContainSubstring("Creating classic account roles"))
-				// Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
-				// Expect(textData).To(ContainSubstring("Created role"))
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, userRolePrefixH)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).ToNot(ContainSubstring("Creating classic account roles"))
+				Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
+				Expect(textData).To(ContainSubstring("Created role"))
 
-				// By("Create advance account-roles of only classic")
-				// output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
-				// 	"--prefix", userRolePrefixC,
-				// 	"--path", path,
-				// 	"--permissions-boundary", permissionsBoundaryArn,
-				// 	"--version", versionC,
-				// 	"--classic",
-				// 	"-y")
-				// Expect(err).To(BeNil())
+				By("Create advance account-roles of only classic")
+				output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", userRolePrefixC,
+					"--path", path,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"--version", versionC,
+					"--classic",
+					"-y")
+				Expect(err).To(BeNil())
 
-				// accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, userRolePrefixC)
-				// textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				// Expect(textData).To(ContainSubstring("Creating classic account roles"))
-				// Expect(textData).ToNot(ContainSubstring("Creating hosted CP account roles"))
-				// Expect(textData).To(ContainSubstring("Created role"))
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, userRolePrefixC)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Creating classic account roles"))
+				Expect(textData).ToNot(ContainSubstring("Creating hosted CP account roles"))
+				Expect(textData).To(ContainSubstring("Created role"))
 
 				By("List account-roles and check the result are expected")
 				accountRoleList, _, err := ocmResourceService.ListAccountRole()
@@ -198,12 +154,12 @@ var _ = Describe("Edit IAM",
 				Expect(selectedRoleC.AWSManaged).To(Equal("No"))
 
 				By("Delete account-roles")
-				output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+				output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
 					"--prefix", userRolePrefixB,
 					"-y")
 
 				Expect(err).To(BeNil())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("Successfully deleted the classic account roles"))
 				Expect(textData).To(ContainSubstring("Successfully deleted the hosted CP account roles"))
 
@@ -242,8 +198,6 @@ var _ = Describe("Edit IAM",
 
 		It("can create operator-roles prior to cluster creation - [id:60971]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				defer func() {
 					By("Cleanup created operator-roles in high level of the test case")
@@ -271,75 +225,27 @@ var _ = Describe("Edit IAM",
 					hostedCPInstallerRoleArn        string
 					classicInstallerRoleArn         string
 					accountRolePrefix               string
-					// TODO to uncomment after migration
-					// permissionsBoundaryPolicyName   = "permissionB60971"
 				)
-				// TODO to uncomment after migration
-				// var policyDocument = `{
-				//         "Version": "2012-10-17",
-				//         "Statement": [
-				//           {
-				//                 "Effect": "Allow",
-				//                 "Action": [
-				//                   "ec2:DescribeTags"
-				//                 ],
-				//                 "Resource": "*"
-				//           }
-				//         ]
-				//   }`
 
-				// TODO to uncomment after migration
-				// DO This code has been moved from openshift-tests-private during migration
-				// it should move to `openshift-rosa-cli` repository once test case is in verification process
-				// listOperatorRoles := func(awsClient *aws_v2.AwsV2Client, prefix string, version string) ([]*types.Role, error) {
-				// 	operatorRoles := []*types.Role{}
-				// 	roles, err := awsClient.ListRoles()
-				// 	if err != nil {
-				// 		return operatorRoles, err
-				// 	}
-				// 	prefixOperatorRoleRE := regexp.MustCompile(`(?i)(?P<Prefix>[\w+=,.@-]+)-(openshift|kube-system)`)
-				// 	for _, role := range roles {
-				// 		matches := prefixOperatorRoleRE.FindStringSubmatch(*role.RoleName)
-				// 		if len(matches) == 0 {
-				// 			continue
-				// 		}
-				// 		prefixIndex := prefixOperatorRoleRE.SubexpIndex("Prefix")
-				// 		foundPrefix := strings.ToLower(matches[prefixIndex])
-				// 		if foundPrefix != prefix {
-				// 			continue
-				// 		}
-				// 		operatorRoles = append(operatorRoles, &role)
-				// 	}
-				// 	return operatorRoles, nil
-				// }
+				listOperatorRoles := func(prefix string) (rosacli.OperatorRoleList, error) {
+					var operatorRoleList rosacli.OperatorRoleList
+					output, err := ocmResourceService.ListOperatorRoles(
+						"--prefix", prefix,
+					)
+					if err != nil {
+						return operatorRoleList, err
+					}
+					operatorRoleList, err = ocmResourceService.ReflectOperatorRoleList(output)
+					return operatorRoleList, err
+				}
 
-				// By("Create boundary policy")
-				// awsClient, err := aws_v2.CreateAWSV2Client("", clusterConfig.Region)
-				// Expect(err).ToNot(HaveOccurred())
-				// permissionsBoundaryPolicy, err := awsClient.CreateIAMPolicy(permissionsBoundaryPolicyName, policyDocument, map[string]string{})
-				// Expect(err).To(BeNil())
-				// permissionsBoundaryArn := *permissionsBoundaryPolicy.Arn
-				// Expect(err).To(BeNil())
-				// defer func() {
-				// 	err := wait.Poll(20*time.Second, 200*time.Second, func() (bool, error) {
-				// 		err := awsClient.DeleteIAMPolicy(permissionsBoundaryArn)
-				// 		if err != nil {
-				// 			Logger.Errorf("it met err %v when delete policy %s", err, permissionsBoundaryArn)
-				// 			return false, nil
-				// 		}
-				// 		return true, nil
-				// 	})
-				// 	common.AssertWaitPollNoErr(err, "can not delete policy in 200s")
-				// }()
-
-				// By("Create account-roles for testing")
-				// rand.Seed(time.Now().UnixNano())
-				// accountRolePrefix = fmt.Sprintf("QEAuto-accr60971-%s", time.Now().UTC().Format("20060102"))
-				// _, err = ocmResourceService.CreateAccountRole("--mode", "auto",
-				// 	"--prefix", accountRolePrefix,
-				// 	"--permissions-boundary", permissionsBoundaryArn,
-				// 	"-y")
-				// Expect(err).To(BeNil())
+				By("Create account-roles for testing")
+				accountRolePrefix = fmt.Sprintf("QEAuto-accr60971-%s", time.Now().UTC().Format("20060102"))
+				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"-y")
+				Expect(err).To(BeNil())
 
 				defer func() {
 					By("Cleanup created account-roles")
@@ -387,28 +293,22 @@ var _ = Describe("Edit IAM",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Created role"))
 				operatorRolePrefixedNeedCleanup = append(operatorRolePrefixedNeedCleanup, classicSTSOperatorRolesPrefix)
-				// TODO to uncomment after migration
-				// defer func() {
-				// 	output, err := ocmResourceService.DeleteOperatorRoles(
-				// 		"--prefix", classicSTSOperatorRolesPrefix,
-				// 		"--mode", "auto",
-				// 		"-y",
-				// 	)
-				// 	Expect(err).To(BeNil())
-				// 	textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				// 	Expect(textData).To(ContainSubstring("Successfully deleted the operator roles"))
 
-				// 	roles, err := listOperatorRoles(awsClient, classicSTSOperatorRolesPrefix, "")
-				// 	Expect(err).To(BeNil())
-				// 	Expect(len(roles)).To(Equal(0))
+				defer func() {
+					output, err := ocmResourceService.DeleteOperatorRoles(
+						"--prefix", classicSTSOperatorRolesPrefix,
+						"--mode", "auto",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("Successfully deleted the operator roles"))
 
-				// 	operatorRolePrefixedNeedCleanup = common.RemoveFromStringSlice(operatorRolePrefixedNeedCleanup, classicSTSOperatorRolesPrefix)
-				// }()
+				}()
 
-				// TODO to uncomment after migration
-				// roles, err := listOperatorRoles(awsClient, classicSTSOperatorRolesPrefix, "")
-				// Expect(err).To(BeNil())
-				// Expect(len(roles)).To(Equal(6))
+				roles, err := listOperatorRoles(classicSTSOperatorRolesPrefix)
+				Expect(err).To(BeNil())
+				Expect(len(roles.OperatorRoleList)).To(Equal(6))
 
 				output, err = ocmResourceService.CreateOperatorRoles(
 					"--oidc-config-id", oidcPrivodeIDFromOutputMessage,
@@ -423,28 +323,19 @@ var _ = Describe("Edit IAM",
 				Expect(textData).Should(ContainSubstring("Created role"))
 				operatorRolePrefixedNeedCleanup = append(operatorRolePrefixedNeedCleanup, hostedCPOperatorRolesPrefix)
 
-				// TODO to uncomment after migration
-				// roles, err = listOperatorRoles(awsClient, hostedCPOperatorRolesPrefix, "")
-				// Expect(err).To(BeNil())
-				// Expect(len(roles)).To(Equal(8))
-
-				// TODO to uncomment after migration
-				// defer func() {
-				// 	output, err := ocmResourceService.DeleteOperatorRoles(
-				// 		"--prefix", hostedCPOperatorRolesPrefix,
-				// 		"--mode", "auto",
-				// 		"-y",
-				// 	)
-				// 	Expect(err).To(BeNil())
-				// 	textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				// 	Expect(textData).To(ContainSubstring("Successfully deleted the operator roles"))
-
-				// 	roles, err := listOperatorRoles(awsClient, hostedCPOperatorRolesPrefix, "")
-				// 	Expect(err).To(BeNil())
-				// 	Expect(len(roles)).To(Equal(0))
-
-				// 	operatorRolePrefixedNeedCleanup = common.RemoveFromStringSlice(operatorRolePrefixedNeedCleanup, hostedCPOperatorRolesPrefix)
-				// }()
+				roles, err = listOperatorRoles(hostedCPOperatorRolesPrefix)
+				Expect(err).To(BeNil())
+				Expect(len(roles.OperatorRoleList)).To(Equal(8))
+				defer func() {
+					output, err := ocmResourceService.DeleteOperatorRoles(
+						"--prefix", hostedCPOperatorRolesPrefix,
+						"--mode", "auto",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("Successfully deleted the operator roles"))
+				}()
 
 				By("Create operator roles with not-existed role")
 				output, err = ocmResourceService.CreateOperatorRoles(
@@ -925,23 +816,9 @@ var _ = Describe("Edit IAM",
 					userrolePrefix     string
 					ocmAccountUsername string
 					foundUserRole      rosacli.UserRole
-					// TODO to uncomment after migration
-					// permissionsBoundaryPolicyName = "sdqePBN4userrole"
+
 					path = "/aa/bb/"
 				)
-				// TODO to uncomment after migration
-				// var policyDocument = `{
-				//         "Version": "2012-10-17",
-				//         "Statement": [
-				//           {
-				//                 "Effect": "Allow",
-				//                 "Action": [
-				//                   "ec2:DescribeTags"
-				//                 ],
-				//                 "Resource": "*"
-				//           }
-				//         ]
-				//   }`
 
 				rosaClient.Runner.JsonFormat()
 				whoamiOutput, err := ocmResourceService.Whoami()
@@ -949,35 +826,14 @@ var _ = Describe("Edit IAM",
 				rosaClient.Runner.UnsetFormat()
 				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 				ocmAccountUsername = whoamiData.OCMAccountUsername
-				rand.Seed(time.Now().UnixNano())
 				userrolePrefix = fmt.Sprintf("QEAuto-userr-%s-52419", time.Now().UTC().Format("20060102"))
-
-				// TODO to uncomment after migration
-				// By("Create boundary policy")
-				// rosaClient.Runner.JsonFormat()
-				// awsClient, err := aws_v2.CreateAWSV2Client("", clusterConfig.Region)
-				// Expect(err).ToNot(HaveOccurred())
-				// permissionsBoundaryPolicy, err := awsClient.CreateIAMPolicy(permissionsBoundaryPolicyName, policyDocument, map[string]string{})
-				// Expect(err).To(BeNil())
-				// permissionsBoundaryArn := *permissionsBoundaryPolicy.Arn
-				// rosaClient.Runner.UnsetFormat()
-				// defer func() {
-				// 	err := wait.Poll(20*time.Second, 320*time.Second, func() (bool, error) {
-				// 		err := awsClient.DeleteIAMPolicy(permissionsBoundaryArn)
-				// 		if err != nil {
-				// 			Logger.Errorf("it met err %v when delete policy %s", err, permissionsBoundaryArn)
-				// 			return false, nil
-				// 		}
-				// 		return true, nil
-				// 	})
-				// 	common.AssertWaitPollNoErr(err, "can not delete policy in 320s")
-				// }()
 
 				By("Create an user-role")
 				output, err := ocmResourceService.CreateUserRole(
 					"--mode", "auto",
 					"--prefix", userrolePrefix,
 					"--path", path,
+					"--permissions-boundary", permissionsBoundaryArn,
 					"-y")
 				Expect(err).To(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
