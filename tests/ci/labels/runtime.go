@@ -4,6 +4,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
+// Pre check
+var E2ECommit = Label("e2e-commit")
+
 // day1/day1-post and day2
 var Day1 = Label("day1")
 var Day1Prepare = Label("day1-prepare")
