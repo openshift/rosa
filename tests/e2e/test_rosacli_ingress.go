@@ -42,8 +42,6 @@ var _ = Describe("Edit default ingress",
 
 		It("can update on rosa HCP cluster - [id:63323]",
 			labels.Critical,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Retrieve cluster and get default ingress id")
 				if !isHosted {

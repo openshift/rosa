@@ -43,8 +43,6 @@ var _ = Describe("Network verifier",
 		//OCP-64917 - [OCM-152] Verify network via the rosa cli
 		It("can verify network - [id:64917]",
 			labels.High,
-			labels.MigrationToVerify,
-			labels.Exclude,
 			func() {
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
