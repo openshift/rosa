@@ -97,8 +97,8 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {
-		r.Reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
-		os.Exit(1)
+		r.Reporter.Infof("There are no users configured for cluster '%s'", clusterKey)
+		os.Exit(0)
 	}
 
 	longestUserId := 0.0
