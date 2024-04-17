@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	InvalidClientTokenID 		 = "InvalidClientTokenId"
-	AccessDenied         		 = "AccessDenied"
+	SignatureDoesNotMatch        = "SignatureDoesNotMatch"
+	InvalidClientTokenID         = "InvalidClientTokenId"
+	AccessDenied                 = "AccessDenied"
 	Forbidden                    = "Forbidden"
 	DryRunOperation              = "DryRunOperation"
 	UnauthorizedOperation        = "UnauthorizedOperation"
@@ -28,7 +29,7 @@ const (
 	NoSuchHostedZone             = "NoSuchHostedZone"
 	DependencyViolation          = "DependencyViolation"
 	NoSuchEntity                 = "NoSuchEntity"
-	InvalidRouteTableID			 = "InvalidRouteTableID.NotFound"
+	InvalidRouteTableID          = "InvalidRouteTableID.NotFound"
 	InvalidInternetGatewayID     = "InvalidInternetGatewayID.NotFound"
 	InvalidVpcID                 = "InvalidVpcID.NotFound"
 	InvalidAllocationID          = "InvalidAllocationID.NotFound"
@@ -79,4 +80,3 @@ func IsDeleteConfictException(err error) bool {
 	var deleteConflict *iamtypes.DeleteConflictException
 	return errors.As(err, &deleteConflict)
 }
-

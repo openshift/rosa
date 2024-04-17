@@ -33,6 +33,7 @@ type ClusterService interface {
 	GetClusterVersion(clusterID string) (config.Version, error)
 	IsBYOVPCCluster(clusterID string) (bool, error)
 	IsExternalAuthenticationEnabled(clusterID string) (bool, error)
+	GetJSONClusterDescription(clusterID string) (*jsonData, error)
 }
 
 type clusterService struct {
@@ -192,7 +193,7 @@ func (c *clusterService) CleanResources(clusterID string) (errors []error) {
 
 // Check if the cluster is hosted-cp cluster
 func (c *clusterService) IsHostedCPCluster(clusterID string) (bool, error) {
-	jsonData, err := c.getJSONClusterDescription(clusterID)
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
 	if err != nil {
 		return false, err
 	}
@@ -201,7 +202,7 @@ func (c *clusterService) IsHostedCPCluster(clusterID string) (bool, error) {
 
 // Check if the cluster is sts cluster. hosted-cp cluster is also treated as sts cluster
 func (c *clusterService) IsSTSCluster(clusterID string) (bool, error) {
-	jsonData, err := c.getJSONClusterDescription(clusterID)
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
 	if err != nil {
 		return false, err
 	}
@@ -210,7 +211,7 @@ func (c *clusterService) IsSTSCluster(clusterID string) (bool, error) {
 
 // Check if the cluster is private cluster
 func (c *clusterService) IsPrivateCluster(clusterID string) (bool, error) {
-	jsonData, err := c.getJSONClusterDescription(clusterID)
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
 	if err != nil {
 		return false, err
 	}
@@ -219,7 +220,7 @@ func (c *clusterService) IsPrivateCluster(clusterID string) (bool, error) {
 
 // Check if the cluster is using reusable oidc-config
 func (c *clusterService) IsUsingReusableOIDCConfig(clusterID string) (bool, error) {
-	jsonData, err := c.getJSONClusterDescription(clusterID)
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
 	if err != nil {
 		return false, err
 	}
@@ -239,7 +240,7 @@ func (c *clusterService) GetClusterVersion(clusterID string) (clusterVersion con
 	} else {
 		// Else retrieve from cluster description
 		var jsonData *jsonData
-		jsonData, err = c.getJSONClusterDescription(clusterID)
+		jsonData, err = c.GetJSONClusterDescription(clusterID)
 		if err != nil {
 			return
 		}
@@ -251,7 +252,7 @@ func (c *clusterService) GetClusterVersion(clusterID string) (clusterVersion con
 	return
 }
 
-func (c *clusterService) getJSONClusterDescription(clusterID string) (*jsonData, error) {
+func (c *clusterService) GetJSONClusterDescription(clusterID string) (*jsonData, error) {
 	c.client.Runner.JsonFormat()
 	output, err := c.DescribeCluster(clusterID)
 	if err != nil {
@@ -264,7 +265,7 @@ func (c *clusterService) getJSONClusterDescription(clusterID string) (*jsonData,
 
 // Check if the cluster is byo vpc cluster
 func (c *clusterService) IsBYOVPCCluster(clusterID string) (bool, error) {
-	jsonData, err := c.getJSONClusterDescription(clusterID)
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
 	if err != nil {
 		return false, err
 	}
@@ -291,7 +292,7 @@ func RetrieveDesiredComputeNodes(clusterDescription *ClusterDescription) (nodesN
 
 // Check if the cluster is external authentication enabled cluster
 func (c *clusterService) IsExternalAuthenticationEnabled(clusterID string) (bool, error) {
-	jsonData, err := c.getJSONClusterDescription(clusterID)
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
 	if err != nil {
 		return false, err
 	}

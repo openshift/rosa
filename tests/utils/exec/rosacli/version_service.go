@@ -6,7 +6,7 @@ import (
 
 	"github.com/Masterminds/semver"
 
-	. "github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 const VersionChannelGroupStable = "stable"
@@ -124,7 +124,7 @@ func (v *versionService) ListAndReflectJsonVersions(channelGroup string, hostedC
 }
 
 func (v *versionService) CleanResources(clusterID string) (errors []error) {
-	Logger.Debugf("Nothing to clean in Version Service")
+	log.Logger.Debugf("Nothing to clean in Version Service")
 	return
 }
 
@@ -142,6 +142,26 @@ func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version str
 	}
 	if nvl, err = nvl.Sort(true); err == nil && nvl.Len() > 0 {
 		vs = nvl.OpenShiftVersions[0]
+	}
+	return
+
+}
+
+// This function will find the nearest lower OCP version which version is under `Major.minor.{optional-sub}`.
+// `strict` will find only the `Major.monior,{optional-sub}` ones
+func (vl *OpenShiftVersionTableList) FindNearestBackwardOptionalVersion(version string, optionalsub int, strict bool) (vs *OpenShiftVersionTableOutput, err error) {
+	var baseVersionSemVer *semver.Version
+	log.Logger.Debugf("Filter versions according to %s", version)
+	baseVersionSemVer, err = semver.NewVersion(version)
+	if err != nil {
+		return
+	}
+	nvl, err := vl.FilterVersionsSameMajorAndEqualOrLowerThanMinor(baseVersionSemVer.Major(), baseVersionSemVer.Minor(), strict)
+	if err != nil {
+		return
+	}
+	if nvl, err = nvl.Sort(true); err == nil && nvl.Len() >= optionalsub {
+		vs = nvl.OpenShiftVersions[optionalsub]
 	}
 	return
 

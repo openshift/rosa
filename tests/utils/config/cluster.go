@@ -40,6 +40,7 @@ type Proxy struct {
 	Enabled         bool   `json:"enabled,omitempty"`
 	Http            string `json:"http,omitempty"`
 	Https           string `json:"https,omitempty"`
+	NoProxy         string `json:"no_proxy,omitempty"`
 	TrustBundleFile string `json:"trust_bundle_file,omitempty"`
 }
 

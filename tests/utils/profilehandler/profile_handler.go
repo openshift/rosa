@@ -8,7 +8,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/utils/common"
-	CON "github.com/openshift/rosa/tests/utils/common/constants"
+	con "github.com/openshift/rosa/tests/utils/common/constants"
 	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
@@ -29,7 +29,7 @@ func LoadProfileYamlFile(profileName string) *Profile {
 	log.Logger.Infof("Loaded cluster profile configuration from origional cluster %s : %v", profileName, *p.ClusterConfig)
 	log.Logger.Infof("Loaded cluster profile configuration from origional account-roles %s : %v", profileName, *p.AccountRoleConfig)
 	if p.NamePrefix == "" {
-		p.NamePrefix = CON.DefaultNamePrefix
+		p.NamePrefix = con.DefaultNamePrefix
 	}
 	return p
 }
@@ -107,6 +107,9 @@ func GenerateAccountRoleCreationFlag(client *rosacli.Client,
 
 // GenerateClusterCreateFlags will generate cluster creation flags
 func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]string, error) {
+	if profile.ClusterConfig.NameLegnth == 0 {
+		profile.ClusterConfig.NameLegnth = con.DefaultNameLength //Set to a default value when it is not set
+	}
 	clusterName := PreparePrefix(profile.NamePrefix, profile.ClusterConfig.NameLegnth)
 	profile.ClusterConfig.Name = clusterName
 	var clusterConfiguration = new(ClusterConfigure.ClusterConfig)
@@ -163,7 +166,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	}
 	if profile.ClusterConfig.STS {
 		var accRoles *rosacli.AccountRolesUnit
-		accountRolePrefix := common.TrimNameByLength(clusterName, CON.MaxRolePrefixLength)
+		var oidcConfigID string
+		accountRolePrefix := common.TrimNameByLength(clusterName, con.MaxRolePrefixLength)
 		log.Logger.Infof("Got sts set to true. Going to prepare Account roles with prefix %s", accountRolePrefix)
 		accRoles, err := PrepareAccountRoles(
 			client, accountRolePrefix,
@@ -183,6 +187,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			"--support-role-arn", accRoles.SupportRole,
 			"--worker-iam-role", accRoles.WorkerRole,
 		)
+
 		clusterConfiguration.Sts = true
 		clusterConfiguration.Aws = &ClusterConfigure.AWS{
 			Sts: ClusterConfigure.Sts{
@@ -196,13 +201,13 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 				"--controlplane-iam-role", accRoles.ControlPlaneRole,
 			)
 			clusterConfiguration.Aws.Sts.ControlPlaneRoleArn = accRoles.ControlPlaneRole
+
 		}
 		operatorRolePrefix := accountRolePrefix
 		if profile.ClusterConfig.OIDCConfig != "" {
-			oidcConfigPrefix := common.TrimNameByLength(clusterName, CON.MaxOIDCConfigPrefixLength)
+			oidcConfigPrefix := common.TrimNameByLength(clusterName, con.MaxOIDCConfigPrefixLength)
 			log.Logger.Infof("Got  oidc config setting, going to prepare the %s oidc with prefix %s",
 				profile.ClusterConfig.OIDCConfig, oidcConfigPrefix)
-			var oidcConfigID string
 			oidcConfigID, err = PrepareOIDCConfig(client, profile.ClusterConfig.OIDCConfig,
 				profile.Region, accRoles.InstallerRole, oidcConfigPrefix)
 			if err != nil {
@@ -213,7 +218,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 				return flags, err
 			}
 			err = PrepareOperatorRolesByOIDCConfig(client, operatorRolePrefix,
-				oidcConfigID, accRoles.InstallerRole, "", profile.ClusterConfig.HCP)
+				oidcConfigID, accRoles.InstallerRole, "", profile.ClusterConfig.HCP, profile.ChannelGroup)
 			if err != nil {
 				return flags, err
 			}
@@ -225,10 +230,20 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags, "--operator-roles-prefix", operatorRolePrefix)
 		clusterConfiguration.Aws.Sts.OperatorRolesPrefix = operatorRolePrefix
 		userData.OperatorRolesPrefix = operatorRolePrefix
+
+		if profile.ClusterConfig.AuditLogForward {
+			auditLogRoleName := accountRolePrefix
+			auditRoleArn, err := PrepareAuditlogRoleArnByOIDCConfig(client, auditLogRoleName, oidcConfigID, profile.Region)
+			clusterConfiguration.AuditLogArn = auditRoleArn
+			userData.AuditLogArn = auditRoleArn
+			if err != nil {
+				return flags, err
+			}
+			flags = append(flags,
+				"--audit-log-arn", auditRoleArn)
+		}
 	}
-	if profile.ClusterConfig.AdditionalSGNumber != 0 {
-		PrepareSecurityGroupsDummy("", profile.Region, profile.ClusterConfig.AdditionalSGNumber)
-	}
+
 	if profile.ClusterConfig.AdminEnabled {
 		// Comment below part due to OCM-7112
 		log.Logger.Infof("Day1 admin is enabled. Going to generate the admin user and password and record in %s",
@@ -243,10 +258,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		)
 		common.CreateFileWithContent(config.Test.ClusterAdminFile, fmt.Sprintf("%s:%s", userName, password))
 	}
-	if profile.ClusterConfig.AuditLogForward {
-		PrepareAuditlogDummy()
-		clusterConfiguration.AuditLogArn = ""
-	}
+
 	if profile.ClusterConfig.Autoscale {
 		minReplicas := "3"
 		maxRelicas := "6"
@@ -332,11 +344,97 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 		clusterConfiguration.Autoscaler = autoscaler
 	}
+	if profile.ClusterConfig.NetworkingSet {
+		networking := &ClusterConfigure.Networking{
+			MachineCIDR: "10.0.0.0/16",
+			PodCIDR:     "192.168.0.0/18",
+			ServiceCIDR: "172.31.0.0/24",
+			HostPrefix:  "25",
+		}
+		flags = append(flags,
+			"--machine-cidr", networking.MachineCIDR, // Placeholder, it should be vpc CIDR
+			"--service-cidr", networking.ServiceCIDR,
+			"--pod-cidr", networking.PodCIDR,
+			"--host-prefix", networking.HostPrefix,
+		)
+		clusterConfiguration.Networking = networking
+	}
 	if profile.ClusterConfig.BYOVPC {
-		PrepareSubnetsDummy("", profile.Region, "")
+		vpcPrefix := common.TrimNameByLength(clusterName, 20)
+		log.Logger.Info("Got BYOVPC set to true. Going to prepare subnets")
+		cidrValue := con.DefaultVPCCIDRValue
+		if profile.ClusterConfig.NetworkingSet {
+			cidrValue = clusterConfiguration.Networking.MachineCIDR
+		}
+		vpc, err := PrepareVPC(profile.Region, vpcPrefix, cidrValue)
+		if err != nil {
+			return flags, err
+		}
+		userData.VpcID = vpc.VpcID
+		zones := strings.Split(profile.ClusterConfig.Zones, ",")
+		zones = common.RemoveFromStringSlice(zones, "")
+		subnets, err := PrepareSubnets(vpc, profile.Region, zones, profile.ClusterConfig.MultiAZ)
+		if err != nil {
+			return flags, err
+		}
+		subnetsFlagValue := strings.Join(append(subnets["private"], subnets["public"]...), ",")
+		clusterConfiguration.Subnets = &ClusterConfigure.Subnets{
+			PrivateSubnetIds: strings.Join(subnets["private"], ","),
+			PublicSubnetIds:  strings.Join(subnets["public"], ","),
+		}
+		if profile.ClusterConfig.PrivateLink {
+			log.Logger.Info("Got private link set to true. Only set private subnets to cluster flags")
+			subnetsFlagValue = strings.Join(subnets["private"], ",")
+			clusterConfiguration.Subnets = &ClusterConfigure.Subnets{
+				PrivateSubnetIds: strings.Join(subnets["private"], ","),
+			}
+		}
+		flags = append(flags,
+			"--subnet-ids", subnetsFlagValue)
+
+		if profile.ClusterConfig.AdditionalSGNumber != 0 {
+			securityGroups, err := PrepareAdditionalSecurityGroups(vpc, profile.ClusterConfig.AdditionalSGNumber, vpcPrefix)
+			if err != nil {
+				return flags, err
+			}
+			computeSGs := strings.Join(securityGroups, ",")
+			infraSGs := strings.Join(securityGroups, ",")
+			controlPlaneSGs := strings.Join(securityGroups, ",")
+			flags = append(flags,
+				"--additional-infra-security-group-ids", infraSGs,
+				"--additional-control-plane-security-group-ids", controlPlaneSGs,
+				"--additional-compute-security-group-ids", computeSGs,
+			)
+			clusterConfiguration.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
+				ControlPlaneSecurityGroups: controlPlaneSGs,
+				InfraSecurityGroups:        infraSGs,
+				WorkerSecurityGroups:       computeSGs,
+			}
+		}
+		if profile.ClusterConfig.ProxyEnabled {
+			proxy, err := PrepareProxy(vpc, profile.Region, config.Test.ProxySSHPemFile, config.Test.ProxyCABundleFile)
+			if err != nil {
+				return flags, err
+			}
+
+			clusterConfiguration.Proxy = &ClusterConfigure.Proxy{
+				Enabled:         profile.ClusterConfig.ProxyEnabled,
+				Http:            proxy.HTTPProxy,
+				Https:           proxy.HTTPsProxy,
+				NoProxy:         proxy.NoProxy,
+				TrustBundleFile: proxy.CABundleFilePath,
+			}
+			flags = append(flags,
+				"--http-proxy", proxy.HTTPProxy,
+				"--https-proxy", proxy.HTTPsProxy,
+				"--no-proxy", proxy.NoProxy,
+				"--additional-trust-bundle-file", proxy.CABundleFilePath,
+			)
+
+		}
 	}
 	if profile.ClusterConfig.BillingAccount != "" {
-		flags = append(flags, " --billing-account", profile.ClusterConfig.BillingAccount)
+		flags = append(flags, "--billing-account", profile.ClusterConfig.BillingAccount)
 		clusterConfiguration.BillingAccount = profile.ClusterConfig.BillingAccount
 	}
 	if profile.ClusterConfig.DisableSCPChecks {
@@ -347,9 +445,21 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags, "--disable-workload-monitoring")
 		clusterConfiguration.DisableWorkloadMonitoring = true
 	}
-	if profile.ClusterConfig.ETCDKMS {
-		PrepareKMSKeyDummy(profile.Region)
+	if profile.ClusterConfig.EtcdKMS {
+		keyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP)
+		userData.EtcdKMSKey = keyArn
+		if err != nil {
+			return flags, err
+		}
+		flags = append(flags,
+			"--etcd-encryption-kms-arn", keyArn,
+		)
+		if clusterConfiguration.Encryption == nil {
+			clusterConfiguration.Encryption = &ClusterConfigure.Encryption{}
+		}
+		clusterConfiguration.Encryption.EtcdEncryptionKmsArn = keyArn
 	}
+
 	if profile.ClusterConfig.Ec2MetadataHttpTokens != "" {
 		flags = append(flags, "--ec2-metadata-http-tokens", profile.ClusterConfig.Ec2MetadataHttpTokens)
 		clusterConfiguration.Ec2MetadataHttpTokens = profile.ClusterConfig.Ec2MetadataHttpTokens
@@ -373,10 +483,22 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags, "--compute-machine-type", profile.ClusterConfig.InstanceType)
 	}
 	if profile.ClusterConfig.KMSKey {
-		PrepareKMSKeyDummy(profile.Region)
+		kmsKeyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP)
+		userData.KMSKey = kmsKeyArn
 		clusterConfiguration.Encryption = &ClusterConfigure.Encryption{
-			KmsKeyArn: "", // placeHolder
+			KmsKeyArn: kmsKeyArn, // placeHolder
 		}
+		if err != nil {
+			return flags, err
+		}
+		flags = append(flags,
+			"--kms-key-arn", kmsKeyArn,
+			"--enable-customer-managed-key",
+		)
+		if clusterConfiguration.Encryption == nil {
+			clusterConfiguration.Encryption = &ClusterConfigure.Encryption{}
+		}
+		clusterConfiguration.Encryption.KmsKeyArn = kmsKeyArn
 	}
 	if profile.ClusterConfig.LabelEnabled {
 		dmpLabel := "test-label/openshift.io=,test-label=testvalue"
@@ -387,21 +509,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags, "--multi-az")
 		clusterConfiguration.MultiAZ = profile.ClusterConfig.MultiAZ
 	}
-	if profile.ClusterConfig.NetWorkingSet {
-		networking := &ClusterConfigure.Networking{
-			MachineCIDR: "10.2.0.0/16",
-			PodCIDR:     "192.168.0.0/18",
-			ServiceCIDR: "172.31.0.0/24",
-			HostPrefix:  "25",
-		}
-		flags = append(flags,
-			"--machine-cidr", networking.MachineCIDR, // Placeholder, it should be vpc CIDR
-			"--service-cidr", networking.ServiceCIDR,
-			"--pod-cidr", networking.PodCIDR,
-			"--host-prefix", networking.HostPrefix,
-		)
-		clusterConfiguration.Networking = networking
-	}
+
 	if profile.ClusterConfig.Private {
 		flags = append(flags, "--private")
 		clusterConfiguration.Private = profile.ClusterConfig.Private
@@ -416,14 +524,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			ProvisionShardID: profile.ClusterConfig.ProvisionShard,
 		}
 	}
-	if profile.ClusterConfig.ProxyEnabled {
-		PrepareProxysDummy("", profile.Region, "")
 
-		clusterConfiguration.Proxy = &ClusterConfigure.Proxy{
-			Enabled: profile.ClusterConfig.ProxyEnabled,
-		}
-
-	}
 	if profile.ClusterConfig.SharedVPC {
 		//Placeholder for shared vpc, need to research what to be set here
 	}
@@ -441,6 +542,9 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags, " --availability-zones", profile.ClusterConfig.Zones)
 		clusterConfiguration.AvailabilityZones = profile.ClusterConfig.Zones
 	}
+	if profile.ClusterConfig.ExternalAuthConfig {
+		flags = append(flags, "--external-auth-providers-enabled")
+	}
 
 	return flags, nil
 }
@@ -454,27 +558,27 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 			return err
 		}
 		switch output.State {
-		case CON.Ready:
+		case con.Ready:
 			log.Logger.Infof("Cluster %s is ready now.", cluster)
 			return nil
-		case CON.Uninstalling:
+		case con.Uninstalling:
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready",
-				cluster, CON.Uninstalling)
+				cluster, con.Uninstalling)
 		default:
-			if strings.Contains(output.State, CON.Error) {
-				log.Logger.Errorf("Cluster is in %s status now. Recording the installation log", CON.Error)
+			if strings.Contains(output.State, con.Error) {
+				log.Logger.Errorf("Cluster is in %s status now. Recording the installation log", con.Error)
 				RecordClusterInstallationLog(client, cluster)
 				return fmt.Errorf("cluster %s is in %s state with reason: %s",
-					cluster, CON.Error, output.State)
+					cluster, con.Error, output.State)
 			}
-			if strings.Contains(output.State, CON.Pending) ||
-				strings.Contains(output.State, CON.Installing) ||
-				strings.Contains(output.State, CON.Validating) {
+			if strings.Contains(output.State, con.Pending) ||
+				strings.Contains(output.State, con.Installing) ||
+				strings.Contains(output.State, con.Validating) {
 				time.Sleep(2 * time.Minute)
 				continue
 			}
-			if strings.Contains(output.State, CON.Waiting) {
-				log.Logger.Infof("Cluster is in status of %v, wait for ready", CON.Waiting)
+			if strings.Contains(output.State, con.Waiting) {
+				log.Logger.Infof("Cluster is in status of %v, wait for ready", con.Waiting)
 				if sleepTime >= 6 {
 					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. Check the user data preparation for roles", output.State)
 				}
@@ -550,6 +654,19 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClu
 		}
 
 	}
+	// Need to decorate the KMS key
+	if profile.ClusterConfig.KMSKey {
+		err = ElaborateKMSKeyForSTSCluster(client, description.ID, false)
+		if err != nil {
+			return description, err
+		}
+	}
+	if profile.ClusterConfig.EtcdKMS {
+		err = ElaborateKMSKeyForSTSCluster(client, description.ID, true)
+		if err != nil {
+			return description, err
+		}
+	}
 	// if profile.ClusterConfig.BYOVPC {
 	// log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", description.ID)
 	// 	ReverifyClusterNetwork(client, description.ID)
@@ -562,6 +679,5 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClu
 		}
 		description, err = client.Cluster.DescribeClusterAndReflect(profile.ClusterConfig.Name)
 	}
-
 	return description, err
 }

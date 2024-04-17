@@ -2,13 +2,16 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	TC "github.com/openshift/rosa/tests/ci/config"
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 	PH "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -38,5 +41,21 @@ var _ = Describe("ROSA CLI Test", func() {
 			Expect(err).ToNot(HaveOccurred())
 			fmt.Println(cluster.ID)
 		})
+		It("TestRemovingFunc", func() {
+			s := strings.Split("", ",")
+			s = common.RemoveFromStringSlice(s, "")
+			fmt.Println(len(s))
+		})
+	})
+	Describe("ocm-common test", func() {
+		It("VPCClientTesting", func() {
+			vpcClient, err := profilehandler.PrepareVPC("us-east-1", "xueli-test", "10.0.0.0/16")
+			Expect(err).ToNot(HaveOccurred())
+			defer vpcClient.DeleteVPCChain(true)
+			subnets, err := profilehandler.PrepareSubnets(vpcClient, "us-east-1", []string{}, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(subnets)).To(Equal(2))
+		})
+
 	})
 })

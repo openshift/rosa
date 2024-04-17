@@ -10,6 +10,7 @@ const (
 	AcceleratorManufacturerAmd               AcceleratorManufacturer = "amd"
 	AcceleratorManufacturerNvidia            AcceleratorManufacturer = "nvidia"
 	AcceleratorManufacturerXilinx            AcceleratorManufacturer = "xilinx"
+	AcceleratorManufacturerHabana            AcceleratorManufacturer = "habana"
 )
 
 // Values returns all known values for AcceleratorManufacturer. Note that this can
@@ -21,6 +22,7 @@ func (AcceleratorManufacturer) Values() []AcceleratorManufacturer {
 		"amd",
 		"nvidia",
 		"xilinx",
+		"habana",
 	}
 }
 
@@ -37,6 +39,9 @@ const (
 	AcceleratorNameT4            AcceleratorName = "t4"
 	AcceleratorNameVu9p          AcceleratorName = "vu9p"
 	AcceleratorNameV100          AcceleratorName = "v100"
+	AcceleratorNameA10g          AcceleratorName = "a10g"
+	AcceleratorNameH100          AcceleratorName = "h100"
+	AcceleratorNameT4g           AcceleratorName = "t4g"
 )
 
 // Values returns all known values for AcceleratorName. Note that this can be
@@ -53,6 +58,9 @@ func (AcceleratorName) Values() []AcceleratorName {
 		"t4",
 		"vu9p",
 		"v100",
+		"a10g",
+		"h100",
+		"t4g",
 	}
 }
 
@@ -574,6 +582,7 @@ const (
 	AvailabilityZoneStateInformation AvailabilityZoneState = "information"
 	AvailabilityZoneStateImpaired    AvailabilityZoneState = "impaired"
 	AvailabilityZoneStateUnavailable AvailabilityZoneState = "unavailable"
+	AvailabilityZoneStateConstrained AvailabilityZoneState = "constrained"
 )
 
 // Values returns all known values for AvailabilityZoneState. Note that this can
@@ -585,6 +594,7 @@ func (AvailabilityZoneState) Values() []AvailabilityZoneState {
 		"information",
 		"impaired",
 		"unavailable",
+		"constrained",
 	}
 }
 
@@ -3680,6 +3690,17 @@ const (
 	InstanceTypeR7i24xlarge     InstanceType = "r7i.24xlarge"
 	InstanceTypeR7i48xlarge     InstanceType = "r7i.48xlarge"
 	InstanceTypeDl2q24xlarge    InstanceType = "dl2q.24xlarge"
+	InstanceTypeMac2M2Metal     InstanceType = "mac2-m2.metal"
+	InstanceTypeI4i12xlarge     InstanceType = "i4i.12xlarge"
+	InstanceTypeI4i24xlarge     InstanceType = "i4i.24xlarge"
+	InstanceTypeC7iMetal24xl    InstanceType = "c7i.metal-24xl"
+	InstanceTypeC7iMetal48xl    InstanceType = "c7i.metal-48xl"
+	InstanceTypeM7iMetal24xl    InstanceType = "m7i.metal-24xl"
+	InstanceTypeM7iMetal48xl    InstanceType = "m7i.metal-48xl"
+	InstanceTypeR7iMetal24xl    InstanceType = "r7i.metal-24xl"
+	InstanceTypeR7iMetal48xl    InstanceType = "r7i.metal-48xl"
+	InstanceTypeR7izMetal16xl   InstanceType = "r7iz.metal-16xl"
+	InstanceTypeR7izMetal32xl   InstanceType = "r7iz.metal-32xl"
 )
 
 // Values returns all known values for InstanceType. Note that this can be
@@ -4459,6 +4480,17 @@ func (InstanceType) Values() []InstanceType {
 		"r7i.24xlarge",
 		"r7i.48xlarge",
 		"dl2q.24xlarge",
+		"mac2-m2.metal",
+		"i4i.12xlarge",
+		"i4i.24xlarge",
+		"c7i.metal-24xl",
+		"c7i.metal-48xl",
+		"m7i.metal-24xl",
+		"m7i.metal-48xl",
+		"r7i.metal-24xl",
+		"r7i.metal-48xl",
+		"r7iz.metal-16xl",
+		"r7iz.metal-32xl",
 	}
 }
 
@@ -7262,8 +7294,9 @@ type SubnetState string
 
 // Enum values for SubnetState
 const (
-	SubnetStatePending   SubnetState = "pending"
-	SubnetStateAvailable SubnetState = "available"
+	SubnetStatePending     SubnetState = "pending"
+	SubnetStateAvailable   SubnetState = "available"
+	SubnetStateUnavailable SubnetState = "unavailable"
 )
 
 // Values returns all known values for SubnetState. Note that this can be expanded
@@ -7273,6 +7306,7 @@ func (SubnetState) Values() []SubnetState {
 	return []SubnetState{
 		"pending",
 		"available",
+		"unavailable",
 	}
 }
 
