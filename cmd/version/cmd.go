@@ -17,79 +17,54 @@ limitations under the License.
 package version
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
-	verify "github.com/openshift/rosa/cmd/verify/rosa"
-	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var (
-	args struct {
-		clientOnly bool
-		verbose    bool
-	}
-
-	Cmd             = makeCmd()
-	delegateCommand = verify.Cmd.Run // used in testing
+const (
+	use   = "version"
+	short = "Prints the version of the tool"
+	long  = "Prints the version number of the tool."
 )
 
-func makeCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Prints the version of the tool",
-		Long:  "Prints the version number of the tool.",
-		Run:   run,
+func NewRosaVersionCommand() *cobra.Command {
+	o := NewRosaVersionUserOptions()
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: short,
+		Long:  long,
 		Args:  cobra.NoArgs,
+		Run:   rosa.DefaultRunner(rosa.RuntimeWithOCM(), RosaVersionRunner(o)),
 	}
-}
 
-func init() {
-	initFlags(Cmd)
-}
-
-func initFlags(cmd *cobra.Command) {
-	flags := cmd.Flags()
-
-	flags.BoolVar(
-		&args.clientOnly,
+	cmd.Flags().SortFlags = false
+	cmd.Flags().BoolVar(
+		&o.clientOnly,
 		"client",
 		false,
 		"Client version only (no remote version check)",
 	)
-
-	flags.BoolVarP(
-		&args.verbose,
+	cmd.Flags().BoolVarP(
+		&o.verbose,
 		"verbose",
 		"v",
 		false,
 		"Display verbose version information, including download locations",
 	)
+	return cmd
 }
 
-func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime()
-	defer r.Cleanup()
-	err := runWithRuntime(r, cmd)
-	if err != nil {
-		r.Reporter.Errorf(err.Error())
-		os.Exit(1)
+func RosaVersionRunner(userOptions RosaVersionUserOptions) rosa.CommandRunner {
+	return func(ctx context.Context, runtime *rosa.Runtime, command *cobra.Command, args []string) error {
+		options, err := NewRosaVersionOptions()
+		options.BindAndValidate(userOptions)
+		if err != nil {
+			return fmt.Errorf("there was a problem creating version options: %v", err)
+		}
+		return options.Version()
 	}
-}
-
-func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
-	fmt.Fprintf(os.Stdout, "%s\n", info.Version)
-	if args.verbose {
-		fmt.Fprintf(os.Stdout, "Information and download locations:\n\t%s\n\t%s\n",
-			verify.ConsoleLatestFolder,
-			verify.DownloadLatestMirrorFolder)
-	}
-	if !args.clientOnly {
-		delegateCommand(verify.Cmd, []string{})
-	}
-
-	return nil
 }

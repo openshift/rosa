@@ -38,5 +38,5 @@ func init() {
 	Cmd.AddCommand(oc.Cmd)
 	Cmd.AddCommand(permissions.Cmd)
 	Cmd.AddCommand(quota.Cmd)
-	Cmd.AddCommand(rosa.Cmd)
+	Cmd.AddCommand(rosa.NewVerifyRosaCommand())
 }
