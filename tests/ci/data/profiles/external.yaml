@@ -1,0 +1,34 @@
+profiles:
+- as: rosa-non-fips
+  version: latest
+  channel_group: candidate
+  region: "us-east-1"
+  cluster:
+    multi_az: true
+    instance_type: ""
+    hcp: false
+    sts: true
+    byo_vpc: true
+    private_link: false
+    private: false
+    etcd_encryption: true
+    fips: false
+    autoscale: false
+    kms_key: true
+    networking: true
+    proxy_enabled: false
+    label_enabled: true
+    tag_enabled: false
+    zones: ""
+    imdsv2: "required"
+    shared_vpc: false
+    oidc_config: unmanaged
+    audit_log: false
+    admin_enabled: true
+    volume_size: 150
+    autoscaler_enabled: true
+    disable_uwm: true
+    additional_sg_number: 3
+  account-role:
+    path: ""
+    permission_boundary: ""

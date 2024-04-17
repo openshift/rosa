@@ -49,7 +49,8 @@ var Cmd = &cobra.Command{
 
   # Edit a cluster-autoscaler with total CPU constraints
   rosa edit autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs

@@ -20,6 +20,7 @@ package arguments
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -28,8 +29,12 @@ import (
 	"github.com/openshift/rosa/pkg/aws/profile"
 	"github.com/openshift/rosa/pkg/aws/region"
 	"github.com/openshift/rosa/pkg/debug"
-	"github.com/openshift/rosa/pkg/helper"
 )
+
+const boolType string = "bool"
+
+const regionFlagName = "region"
+const regionDeprecationMessage = "Region flag will be removed from this command in future versions"
 
 var hasUnknownFlags bool
 
@@ -119,7 +124,7 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 			// Skip EOF and known flags
 			if flag := flags.Lookup(flagName); flag != nil {
 				validArgs = append(validArgs, arg)
-				if flag.Value.Type() != "bool" {
+				if flag.Value.Type() != boolType {
 					upcomingValue = true
 				}
 			} else if failOnUnknown {
@@ -139,7 +144,7 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 			flagName := arg[1:]
 			if flag := flags.Lookup(flagName); flag != nil {
 				validArgs = append(validArgs, arg)
-				if flag.Value.Type() != "bool" {
+				if flag.Value.Type() != boolType {
 					upcomingValue = true
 				}
 			} else if failOnUnknown {
@@ -180,6 +185,90 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 	}
 	if helpVal {
 		return pflag.ErrHelp
+	}
+
+	return nil
+}
+
+// PreprocessUnknownFlagsWithId Parses known and unknown flags will take the command line arguments and map the ones
+// that fit with known flags.
+func PreprocessUnknownFlagsWithId(cmd *cobra.Command, argv []string) error {
+	flags := cmd.Flags()
+
+	var validArgs []string
+	var upcomingValue bool
+
+	// If help is called, regardless of other flags, return we want help.
+	// Also say we need help if the command isn't runnable.
+	helpVal, err := cmd.Flags().GetBool("help")
+	if err != nil {
+		// should be impossible to get here as we always declare a help
+		// flag in InitDefaultHelpFlag()
+		panic(fmt.Errorf("\"help\" flag is incorrectly declared as non-bool. Please correct your code. Error: %w", err))
+	}
+	if helpVal {
+		return pflag.ErrHelp
+	}
+
+	foundId := false
+	for i, arg := range argv {
+		switch {
+		// Upcoming value from a space-separated value
+		case upcomingValue:
+			if strings.HasPrefix(arg, "-") {
+				return fmt.Errorf("No value given for flag '%s'", argv[i-1])
+			}
+			validArgs = append(validArgs, arg)
+			upcomingValue = false
+		// A long flag with a space separated value
+		case strings.HasPrefix(arg, "--") && !strings.Contains(arg, "="):
+			flagName := arg[2:]
+			// Skip EOF and known flags
+			if flag := flags.Lookup(flagName); flag != nil {
+				validArgs = append(validArgs, arg)
+				if flag.Value.Type() != boolType {
+					upcomingValue = true
+				}
+			} else {
+				upcomingValue = true
+			}
+		// A long flag with a value after an equal sign
+		case strings.HasPrefix(arg, "--") && strings.Contains(arg, "="):
+			flagName := strings.SplitN(arg[2:], "=", 2)[0]
+			if flags.Lookup(flagName) != nil {
+				validArgs = append(validArgs, arg)
+			}
+			upcomingValue = false
+		// A short flag with a space separated value
+		case strings.HasPrefix(arg, "-") && !strings.Contains(arg, "="):
+			flagName := arg[1:]
+			if flag := flags.Lookup(flagName); flag != nil {
+				validArgs = append(validArgs, arg)
+				if flag.Value.Type() != boolType {
+					upcomingValue = true
+				}
+			} else {
+				upcomingValue = true
+			}
+		// A short flag with with a value after an equal sign
+		case strings.HasPrefix(arg, "-") && strings.Contains(arg, "="):
+			flagName := strings.SplitN(arg[1:], "=", 2)[0]
+			if flags.Lookup(flagName) != nil {
+				validArgs = append(validArgs, arg)
+			}
+			upcomingValue = false
+		default:
+			foundId = true
+		}
+	}
+
+	err = flags.Parse(validArgs)
+	if err != nil {
+		return err
+	}
+
+	if !foundId {
+		return fmt.Errorf("ID argument not found in list of arguments passed to command")
 	}
 
 	return nil
@@ -228,20 +317,30 @@ func IsValidMode(modes []string, mode string) bool {
 	return false
 }
 
-func markGlobalFlagsHidden(command *cobra.Command, hidden ...string) {
+func deprecateRegion(command *cobra.Command) {
 	command.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
-		name := flag.Name
-		if helper.Contains(hidden, name) {
-			flag.Hidden = true
+		if flag.Name == regionFlagName {
+			flag.Deprecated = regionDeprecationMessage
 		}
 	})
 }
 
-func MarkRegionHidden(parentCmd *cobra.Command, childrenCmds []*cobra.Command) {
+func MarkRegionDeprecated(parentCmd *cobra.Command, childrenCmds []*cobra.Command) {
 	for _, cmd := range childrenCmds {
 		cmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
-			markGlobalFlagsHidden(parentCmd, "region")
+			deprecateRegion(parentCmd)
 			command.Parent().HelpFunc()(command, strings)
 		})
+		currentRun := cmd.Run
+		cmd.Run = func(c *cobra.Command, args []string) {
+			outputFlag := cmd.Flag("output")
+			regionFlag := cmd.Flag("region")
+			hasChangedOutputFlag := outputFlag != nil && outputFlag.Value.String() != outputFlag.DefValue
+			hasChangedRegionFlag := regionFlag != nil && regionFlag.Value.String() != regionFlag.DefValue
+			if hasChangedRegionFlag && !hasChangedOutputFlag {
+				_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "\u001B[0;33mW:\u001B[m ", regionDeprecationMessage)
+			}
+			currentRun(c, args)
+		}
 	}
 }

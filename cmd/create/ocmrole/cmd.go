@@ -53,7 +53,8 @@ var Cmd = &cobra.Command{
 
   # Create ocm role with a specific permissions boundary
   rosa create ocm-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -101,17 +102,17 @@ func init() {
 		"Attach Classic ROSA AWS managed policies to the account roles. This is an alias for --managed-policies")
 	flags.MarkHidden("mp")
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -228,13 +229,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Role creation mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 			os.Exit(1)
@@ -270,9 +265,9 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		r.Reporter.Infof("Creating role using '%s'", r.Creator.ARN)
-		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary, r.Creator.AccountID,
+		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary,
 			orgID, env, isAdmin, policies, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the ocm role: %s", err)
@@ -284,14 +279,10 @@ func run(cmd *cobra.Command, argv []string) {
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 		})
-		err = linkocmrole.Cmd.RunE(linkocmrole.Cmd, []string{roleARN})
-		if err != nil {
-			r.Reporter.Errorf("Unable to link role arn '%s' with the organization account id : '%s' : %v",
-				roleARN, orgID, err)
-		}
-	case aws.ModeManual:
+		linkocmrole.Cmd.Run(linkocmrole.Cmd, []string{roleARN})
+	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
-		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, aws.ModeManual)
+		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, interactive.ModeManual)
 		if err != nil {
 			r.Reporter.Warnf("Creating ocm role '%s' should fail: %s", roleNameRequested, err)
 		}
@@ -313,10 +304,11 @@ func run(cmd *cobra.Command, argv []string) {
 			roleNameRequested,
 			path,
 			permissionsBoundary,
-			r.Creator.AccountID,
+			r.Creator,
 			env,
 			isAdmin,
 			managedPolicies,
+			confirm.Yes(),
 			policies,
 		)
 		if err != nil {
@@ -326,13 +318,13 @@ func run(cmd *cobra.Command, argv []string) {
 
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }
 
 func buildCommands(prefix string, roleName string, rolePath string, permissionsBoundary string,
-	accountID string, env string, isAdmin bool, managedPolicies bool,
+	creator *aws.Creator, env string, isAdmin bool, managedPolicies bool, autoConfirmLink bool,
 	policies map[string]*cmv1.AWSSTSPolicy) (string, error) {
 	commands := []string{}
 	policyName := aws.GetPolicyName(roleName)
@@ -381,7 +373,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 			return "", err
 		}
 	} else {
-		policyARN = aws.GetPolicyARN(accountID, roleName, rolePath)
+		policyARN = aws.GetPolicyARN(creator.Partition, creator.AccountID, roleName, rolePath)
 	}
 	attachRolePolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.AttachRolePolicy).
@@ -416,7 +408,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 				return "", err
 			}
 		} else {
-			policyARN = aws.GetAdminPolicyARN(accountID, roleName, rolePath)
+			policyARN = aws.GetAdminPolicyARN(creator.Partition, creator.AccountID, roleName, rolePath)
 		}
 		attachRoleAdminPolicy := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.AttachRolePolicy).
@@ -432,14 +424,17 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 	}
 
 	linkRole := fmt.Sprintf("rosa link ocm-role --role-arn %s",
-		aws.GetRoleARN(accountID, roleName, rolePath))
+		aws.GetRoleARN(creator.AccountID, roleName, rolePath, creator.Partition))
+	if autoConfirmLink {
+		linkRole += " -y"
+	}
 	commands = append(commands, linkRole)
 
 	return awscb.JoinCommands(commands), nil
 }
 
 func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath string,
-	permissionsBoundary string, accountID string, orgID string, env string, isAdmin bool,
+	permissionsBoundary string, orgID string, env string, isAdmin bool,
 	policies map[string]*cmv1.AWSSTSPolicy, managedPolicies bool) (string, error) {
 	var policyARN string
 	var err error
@@ -450,20 +445,20 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 			return "", err
 		}
 	} else {
-		policyARN = aws.GetPolicyARN(accountID, roleName, rolePath)
+		policyARN = aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
 	}
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
 	}
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":           aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetail, map[string]string{
+		"partition":           r.Creator.Partition,
 		"aws_account_id":      aws.GetJumpAccount(env),
 		"ocm_organization_id": orgID,
 	})
 
-	roleARN, exists, err := checkRoleExists(r, roleName, isAdmin, aws.ModeAuto)
+	roleARN, exists, err := checkRoleExists(r, roleName, isAdmin, interactive.ModeAuto)
 	if err != nil {
 		return "", err
 	}
@@ -515,7 +510,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 				return "", err
 			}
 		} else {
-			policyARN = aws.GetAdminPolicyARN(accountID, roleName, "")
+			policyARN = aws.GetAdminPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, "")
 		}
 		iamTags[tags.AdminRole] = tags.True
 		policyDetail = aws.GetPolicyDetails(policies, filename)
@@ -533,8 +528,8 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":           aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetail, map[string]string{
+		"partition":           r.Creator.Partition,
 		"aws_account_id":      aws.GetJumpAccount(env),
 		"ocm_organization_id": orgID,
 	})
@@ -613,7 +608,7 @@ func checkRoleExists(r *rosa.Runtime, roleName string, isAdmin bool,
 			return roleARN, true, nil
 		}
 
-		if mode == aws.ModeAuto && !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
+		if mode == interactive.ModeAuto && !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
 			return roleARN, true, nil
 		}
 	}

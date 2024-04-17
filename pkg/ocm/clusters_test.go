@@ -33,7 +33,7 @@ var _ = Context("List Clusters", func() {
 		creator := &aws.Creator{
 			AccountID: "12345678",
 		}
-		role := &aws.Role{}
+		role := aws.Role{}
 
 		It("Correctly builds the query for Installer Account Role", func() {
 

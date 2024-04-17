@@ -22,8 +22,10 @@ import (
 	"github.com/openshift/rosa/cmd/create/accountroles"
 	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/autoscaler"
+	"github.com/openshift/rosa/cmd/create/breakglasscredential"
 	"github.com/openshift/rosa/cmd/create/cluster"
 	"github.com/openshift/rosa/cmd/create/dnsdomains"
+	"github.com/openshift/rosa/cmd/create/externalauthprovider"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/kubeletconfig"
 	"github.com/openshift/rosa/cmd/create/machinepool"
@@ -43,6 +45,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"add"},
 	Short:   "Create a resource from stdin",
 	Long:    "Create a resource from stdin",
+	Args:    cobra.NoArgs,
 }
 
 func init() {
@@ -61,6 +64,8 @@ func init() {
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
 	Cmd.AddCommand(kubeletconfig.Cmd)
+	Cmd.AddCommand(externalauthprovider.Cmd)
+	Cmd.AddCommand(breakglasscredential.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -70,7 +75,10 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, operatorroles.Cmd,
 		userrole.Cmd, ocmrole.Cmd,
-		oidcprovider.Cmd,
+		oidcprovider.Cmd, breakglasscredential.Cmd,
+		admin.Cmd, autoscaler.Cmd, dnsdomains.Cmd,
+		externalauthprovider.Cmd, idp.Cmd, kubeletconfig.Cmd,
+		oidcprovider.Cmd, tuningconfigs.Cmd,
 	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

@@ -26,7 +26,7 @@ var _ = Describe("Validation", func() {
 			validator := MinValue(50)
 			err := validator(45)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings, got int"))
+			Expect(err.Error()).To(ContainSubstring("can only validate strings, got 45"))
 		})
 
 		It("Passes validation if the answer is greater than the min", func() {
@@ -62,7 +62,7 @@ var _ = Describe("Validation", func() {
 			validator := MaxValue(50)
 			err := validator(45)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings, got int"))
+			Expect(err.Error()).To(ContainSubstring("can only validate strings, got 45"))
 		})
 
 		It("Passes validation if the answer is less than the max", func() {
@@ -74,6 +74,30 @@ var _ = Describe("Validation", func() {
 		It("Passes validation if the answer is equal to the max", func() {
 			validator := MaxValue(50)
 			err := validator("50")
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+	Context("GitHub Hostname", func() {
+		It("Fails validation if hostname is 'https://domain.customer.com'", func() {
+			err := IsValidHostname("https://domain.customer.com")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(
+				"'https://domain.customer.com' hostname must be a valid DNS subdomain or IP address"),
+			)
+		})
+		It("Fails validation if hostname is 'github.com'", func() {
+			err := IsValidHostname("github.com")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(
+				"'github.com' hostname cannot be equal to [*.]github.com"),
+			)
+		})
+		It("Passes validation if hostname is 'domain.customer.com'", func() {
+			err := IsValidHostname("domain.customer.com")
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("Passes validation if hostname is ''", func() {
+			err := IsValidHostname("")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

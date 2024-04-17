@@ -47,7 +47,8 @@ var Cmd = &cobra.Command{
 
   # Create a cluster-autoscaler with total CPU constraints
   rosa create autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
@@ -66,7 +67,6 @@ func run(cmd *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	clusterKey := r.GetClusterKey()
-
 	cluster := r.FetchCluster()
 
 	if cluster.Hypershift().Enabled() {

@@ -41,7 +41,8 @@ var Cmd = &cobra.Command{
 	Long:    "List account roles and policies for the current AWS account.",
 	Example: `  # List all account roles
   rosa list account-roles`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

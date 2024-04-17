@@ -28,6 +28,7 @@ var Cmd = &cobra.Command{
 	Short:   "UnLink a ocm/user role from stdin",
 	Long:    "UnLink a ocm/user role from stdin",
 	Hidden:  false,
+	Args:    cobra.NoArgs,
 }
 
 func init() {
@@ -37,4 +38,7 @@ func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	confirm.AddFlag(flags)
+
+	globallyAvailableCommands := []*cobra.Command{ocmrole.Cmd, userrole.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

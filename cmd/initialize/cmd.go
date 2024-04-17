@@ -55,7 +55,8 @@ var Cmd = &cobra.Command{
 
   # Configure a new AWS account using pre-existing OCM credentials
   rosa init --token=$OFFLINE_ACCESS_TOKEN`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -191,11 +192,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate AWS quota
 	// Call `verify quota` as part of init
-	err = quota.Cmd.RunE(cmd, argv)
-	if err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
-	}
+	quota.Cmd.Run(cmd, argv)
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	r.Reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)

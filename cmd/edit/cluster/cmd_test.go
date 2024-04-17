@@ -36,21 +36,19 @@ const (
 var _ = Describe("Edit cluster", func() {
 	Context("warnUserForOAuthHCPVisibility", func() {
 		var testRuntime test.TestingRuntime
-		mockHypershiftClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockHypershiftClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(true))
 		})
-		Expect(err).To(BeNil())
 
-		mockClassicCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClassicCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(false))
 		})
-		Expect(err).To(BeNil())
 
 		BeforeEach(func() {
 			testRuntime.InitRuntime()

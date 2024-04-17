@@ -23,13 +23,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
-	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -50,7 +49,8 @@ var Cmd = &cobra.Command{
 	Long:  "Show details of a cluster",
 	Example: `  # Describe a cluster named "mycluster"
   rosa describe cluster --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {
@@ -157,16 +157,18 @@ func run(cmd *cobra.Command, argv []string) {
 		phase = fmt.Sprintf("(%s)", cluster.Status().Description())
 	}
 
+	domainPrefix := cluster.DomainPrefix()
+
 	clusterDNS := "Not ready"
 	if cluster.Status() != nil && cluster.Status().DNSReady() {
-		clusterDNS = strings.Join([]string{cluster.Name(), cluster.DNS().BaseDomain()}, ".")
+		clusterDNS = strings.Join([]string{domainPrefix, cluster.DNS().BaseDomain()}, ".")
 	}
 
 	clusterName := cluster.Name()
 
-	isPrivate := "No"
+	isPrivate := output.No
 	if cluster.API().Listening() == cmv1.ListeningMethodInternal {
-		isPrivate = "Yes"
+		isPrivate = output.Yes
 	}
 
 	detailsPage := getDetailsLink(r.OCMClient.GetConnectionURL())
@@ -182,7 +184,7 @@ func run(cmd *cobra.Command, argv []string) {
 	subnetsStr := ""
 	if len(cluster.AWS().SubnetIDs()) > 0 {
 		subnetsStr = fmt.Sprintf(" - Subnets:                 %s\n",
-			ocmOutput.PrintStringSlice(cluster.AWS().SubnetIDs()))
+			output.PrintStringSlice(cluster.AWS().SubnetIDs()))
 	}
 
 	var machinePools []*cmv1.MachinePool
@@ -201,6 +203,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Print short cluster description:
 	str = fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
+		"Domain Prefix:              %s\n"+
 		"Display Name:               %s\n"+
 		"ID:                         %s\n"+
 		"External ID:                %s\n"+
@@ -224,6 +227,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"%s"+
 		"%s",
 		clusterName,
+		domainPrefix,
 		displayName,
 		cluster.ID(),
 		cluster.ExternalID(),
@@ -232,7 +236,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Version().ChannelGroup(),
 		clusterDNS,
 		creatorARN.AccountID,
-		BillingAccount(cluster, isHypershift),
+		BillingAccount(cluster),
 		cluster.API().URL(),
 		cluster.Console().URL(),
 		cluster.Region().ID(),
@@ -317,21 +321,28 @@ func run(cmd *cobra.Command, argv []string) {
 					operatorIAMRole.RoleARN())
 			}
 		}
-		var awsManaged string
+
+		awsManaged := output.No
 		if cluster.AWS().STS().ManagedPolicies() {
-			awsManaged = "Yes"
-		} else {
-			awsManaged = "No"
+			awsManaged = output.Yes
 		}
 		str = fmt.Sprintf("%sManaged Policies:           %s\n", str, awsManaged)
+	}
+
+	deleteProtection := DisabledOutput
+	if cluster.DeleteProtection().Enabled() {
+		deleteProtection = EnabledOutput
 	}
 
 	str = fmt.Sprintf("%s"+
 		"State:                      %s %s\n"+
 		"Private:                    %s\n"+
-		"Created:                    %s\n", str,
+		"Delete Protection:          %s\n"+
+		"Created:                    %s\n",
+		str,
 		cluster.State(), phase,
 		isPrivate,
+		deleteProtection,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
 	str = fmt.Sprintf("%s"+
@@ -396,6 +407,8 @@ func run(cmd *cobra.Command, argv []string) {
 	if isHypershift {
 		str = fmt.Sprintf("%s"+
 			"Audit Log Forwarding:       %s\n", str, getAuditLogForwardingStatus(cluster))
+		str = fmt.Sprintf("%s"+
+			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
 		if cluster.AWS().AuditLog().RoleArn() != "" {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
@@ -639,13 +652,13 @@ Nodes:
 		if hasSgsControlPlane {
 			nodeConfig += fmt.Sprintf(
 				"   - Control Plane:	%s\n",
-				ocmOutput.PrintStringSlice(
+				output.PrintStringSlice(
 					cluster.AWS().AdditionalControlPlaneSecurityGroupIds()))
 		}
 		if hasSgsInfra {
 			nodeConfig += fmt.Sprintf(
 				"   - Infra:		%s\n",
-				ocmOutput.PrintStringSlice(
+				output.PrintStringSlice(
 					cluster.AWS().AdditionalInfraSecurityGroupIds()))
 		}
 	}
@@ -727,8 +740,8 @@ func formatClusterHypershift(cluster *cmv1.Cluster,
 	return ret, nil
 }
 
-func BillingAccount(cluster *cmv1.Cluster, isHostedControlPlane bool) string {
-	if !isHostedControlPlane || cluster.AWS().BillingAccountID() == "" {
+func BillingAccount(cluster *cmv1.Cluster) string {
+	if cluster.AWS().BillingAccountID() == "" {
 		return ""
 	}
 	return fmt.Sprintf("AWS Billing Account:        %s\n", cluster.AWS().BillingAccountID())
@@ -740,4 +753,12 @@ func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
 		auditLogForwardingStatus = EnabledOutput
 	}
 	return auditLogForwardingStatus
+}
+
+func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {
+	externalAuthConfigStatus := DisabledOutput
+	if cluster.ExternalAuthConfig().Enabled() {
+		externalAuthConfigStatus = EnabledOutput
+	}
+	return externalAuthConfigStatus
 }

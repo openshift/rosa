@@ -21,8 +21,10 @@ import (
 
 	"github.com/openshift/rosa/cmd/list/accountroles"
 	"github.com/openshift/rosa/cmd/list/addon"
+	"github.com/openshift/rosa/cmd/list/breakglasscredential"
 	"github.com/openshift/rosa/cmd/list/cluster"
 	"github.com/openshift/rosa/cmd/list/dnsdomains"
+	"github.com/openshift/rosa/cmd/list/externalauthprovider"
 	"github.com/openshift/rosa/cmd/list/gates"
 	"github.com/openshift/rosa/cmd/list/idp"
 	"github.com/openshift/rosa/cmd/list/ingress"
@@ -33,6 +35,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/oidcprovider"
 	"github.com/openshift/rosa/cmd/list/operatorroles"
 	"github.com/openshift/rosa/cmd/list/region"
+	"github.com/openshift/rosa/cmd/list/rhRegion"
 	"github.com/openshift/rosa/cmd/list/service"
 	"github.com/openshift/rosa/cmd/list/tuningconfigs"
 	"github.com/openshift/rosa/cmd/list/upgrade"
@@ -46,6 +49,7 @@ var Cmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all resources of a specific type",
 	Long:  "List all resources of a specific type",
+	Args:  cobra.NoArgs,
 }
 
 func init() {
@@ -69,6 +73,9 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
+	Cmd.AddCommand(rhRegion.Cmd)
+	Cmd.AddCommand(externalauthprovider.Cmd)
+	Cmd.AddCommand(breakglasscredential.Cmd)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
@@ -76,7 +83,13 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, userroles.Cmd,
 		ocmroles.Cmd, oidcconfig.Cmd,
-		oidcprovider.Cmd,
+		oidcprovider.Cmd, cluster.Cmd,
+		breakglasscredential.Cmd, addon.Cmd,
+		externalauthprovider.Cmd, dnsdomains.Cmd,
+		gates.Cmd, idp.Cmd, ingress.Cmd, machinepool.Cmd,
+		operatorroles.Cmd, region.Cmd, rhRegion.Cmd,
+		service.Cmd, tuningconfigs.Cmd, upgrade.Cmd,
+		user.Cmd, version.Cmd,
 	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

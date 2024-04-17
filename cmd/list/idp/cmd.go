@@ -36,7 +36,8 @@ var Cmd = &cobra.Command{
 	Long:    "List identity providers for a cluster.",
 	Example: `  # List all identity providers on a cluster named "mycluster"
   rosa list idps --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -54,6 +55,11 @@ func run(_ *cobra.Command, _ []string) {
 	if cluster.State() != cmv1.ClusterStateReady &&
 		cluster.State() != cmv1.ClusterStateHibernating {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		os.Exit(1)
+	}
+
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Listing identity providers is not supported for clusters with external authentication configured.")
 		os.Exit(1)
 	}
 

@@ -1,0 +1,21 @@
+coverage:
+  status:
+    project:
+      default:
+        paths:
+          - "cmd"
+          - "pkg"
+        informational: true
+    patch:
+      default:
+        paths:
+          - "cmd"
+          - "pkg"
+        informational: true
+ignore:
+  - "**/*_mock.go"
+  - "**/*_test.go"
+  - "assets"
+  - "hack"
+  - "templates"
+  - "vendor"

@@ -38,6 +38,7 @@ var Cmd = &cobra.Command{
   rosa describe upgrade`,
 	Run:    run,
 	Hidden: false,
+	Args:   cobra.NoArgs,
 }
 
 var args struct {

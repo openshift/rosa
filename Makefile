@@ -16,6 +16,8 @@
 
 include .bingo/Variables.mk
 
+.DEFAULT_GOAL := rosa
+
 # Ensure go modules are enabled:
 export GO111MODULE=on
 export GOPROXY=https://proxy.golang.org
@@ -32,11 +34,11 @@ rosa:
 
 .PHONY: test
 test:
-	go test ./...
+	go test $(shell go list ./... | grep -v /tests/)
 
 .PHONY: coverage
 coverage:
-	go test -coverprofile=cover.out -covermode=atomic -p 4 ./...
+	go test -coverprofile=cover.out -covermode=atomic -p 4 $(shell go list ./... | grep -v /tests/)
 
 .PHONY: install
 install:
@@ -52,15 +54,20 @@ fmt-imports: $(GCI)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --timeout 5m0s ./...
+	$(GOLANGCI_LINT) run --timeout 5m0s --skip-dirs tests ./...
 
 .PHONY: commits/check
 commits/check:
 	@./hack/commit-msg-verify.sh
 
+.PHONY: diff
+diff:
+	git diff --exit-code
+
 .PHONY: verify
 verify: fmt
 	go mod tidy
+	go mod vendor
 	$(MAKE) diff
 
 .PHONY: clean
@@ -68,9 +75,11 @@ clean:
 	rm -rf \
 		./cover.out \
 		rosa \
-		*-darwin-amd64 \
-		*-linux-amd64 \
-		*-windows-amd64 \
+		rosa-darwin-amd64 \
+		rosa-darwin-arm64 \
+		rosa-linux-amd64 \
+		rosa-linux-arm64 \
+		rosa-windows-amd64.exe \
 		*.sha256 \
 		$(NULL)
 
@@ -83,12 +92,22 @@ codecov: coverage
 	@./hack/codecov.sh
 
 mocks: $(MOCKGEN)
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/iamapi.go github.com/aws/aws-sdk-go/service/iam/iamiface IAMAPI
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/organaztionsapi.go github.com/aws/aws-sdk-go/service/organizations/organizationsiface OrganizationsAPI
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/stsapi.go github.com/aws/aws-sdk-go/service/sts/stsiface STSAPI
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/cloudformationapi.go github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface CloudFormationAPI
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/ec2api.go github.com/aws/aws-sdk-go/service/ec2/ec2iface EC2API
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/servicequotasapi.go github.com/aws/aws-sdk-go/service/servicequotas/servicequotasiface ServiceQuotasAPI
 	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=cmd/create/idp/mocks/identityprovider.go -source=cmd/create/idp/cmd.go IdentityProvider
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/s3api.go github.com/aws/aws-sdk-go/service/s3/s3iface S3API
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/aws/mocks/secretsmanagerapi.go github.com/aws/aws-sdk-go/service/secretsmanager/secretsmanageriface SecretsManagerAPI
+	$(MOCKGEN) -source=pkg/aws/api_interface/iam_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_iam_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/organizations_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_organizations_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/sts_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_sts_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/cloudformation_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_cloudformation_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/servicequotas_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_servicequotas_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_ec2_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_s3_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_secretsmanager_api_client.go
+
+
+.PHONY: e2e_test
+e2e_test: install
+	ginkgo run \
+        --label-filter $(LabelFilter)\
+        --timeout 5h \
+        -r \
+        --focus-file tests/e2e/.* \
+		$(NULL)

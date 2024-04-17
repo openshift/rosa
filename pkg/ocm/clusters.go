@@ -19,7 +19,6 @@ package ocm
 import (
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"reflect"
 	"strconv"
@@ -36,7 +35,6 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/interactive/consts"
-	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -65,6 +63,7 @@ func NewDefaultIngressSpec() DefaultIngressSpec {
 type Spec struct {
 	// Basic configs
 	Name                      string
+	DomainPrefix              string
 	Region                    string
 	MultiAZ                   bool
 	Version                   string
@@ -114,6 +113,10 @@ type Spec struct {
 	// Disable SCP checks in the installer by setting credentials mode as mint
 	DisableSCPChecks *bool
 
+	// Non-STS
+	AWSAccessKey *aws.AccessKey
+	AWSCreator   *aws.Creator
+
 	// STS
 	IsSTS               bool
 	RoleARN             string
@@ -124,6 +127,9 @@ type Spec struct {
 	WorkerRoleARN       string
 	OidcConfigId        string
 	Mode                string
+
+	// External authentication configuration
+	ExternalAuthProvidersEnabled bool
 
 	NodeDrainGracePeriodInMinutes float64
 
@@ -227,16 +233,7 @@ func (c *Client) HasClusters(creator *aws.Creator) (bool, error) {
 }
 
 func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
-	logger := logging.NewLogger()
-	// Create the AWS client:
-	awsClient, err := aws.NewClient().
-		Logger(logger).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create AWS client: %v", err)
-	}
-
-	spec, err := c.createClusterSpec(config, awsClient)
+	spec, err := c.createClusterSpec(config)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create cluster spec: %v", err)
 	}
@@ -271,7 +268,7 @@ var accountRoleTypeFieldMap = map[string]string{
 	aws.WorkerAccountRoleType:       "aws.sts.instance_iam_roles.worker_role_arn",
 }
 
-func getAccountRoleClusterFilter(aws *aws.Creator, role *aws.Role) (string, error) {
+func getAccountRoleClusterFilter(aws *aws.Creator, role aws.Role) (string, error) {
 	query := getClusterFilter(aws)
 	accountRoleField := accountRoleTypeFieldMap[role.RoleType]
 	if accountRoleField == "" {
@@ -283,7 +280,7 @@ func getAccountRoleClusterFilter(aws *aws.Creator, role *aws.Role) (string, erro
 	return fmt.Sprintf("%s AND %s='%s'", query, accountRoleField, role.RoleARN), nil
 }
 
-func (c *Client) GetClustersUsingAccountRole(aws *aws.Creator, role *aws.Role, count int) ([]*cmv1.Cluster, error) {
+func (c *Client) GetClustersUsingAccountRole(aws *aws.Creator, role aws.Role, count int) ([]*cmv1.Cluster, error) {
 	query, err := getAccountRoleClusterFilter(aws, role)
 	if err != nil {
 		return nil, err
@@ -339,22 +336,8 @@ func (c *Client) GetAllClusters(creator *aws.Creator) (clusters []*cmv1.Cluster,
 	return response.Items().Slice(), nil
 }
 
-func (c *Client) getClusterByID(clusterID string) (*cmv1.Cluster, bool, error) {
-	response, err := c.ocm.ClustersMgmt().V1().Clusters().
-		Cluster(clusterID).
-		Get().
-		Send()
-	if err != nil {
-		if response.Status() == http.StatusNotFound {
-			return &cmv1.Cluster{}, false, nil
-		}
-		return &cmv1.Cluster{}, false, err
-	}
-
-	return response.Body(), true, nil
-}
-
-func (c *Client) getCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
+// GetCluster gets a cluster key that can be either 'id', 'name' or 'external_id'
+func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
 	query := fmt.Sprintf("%s AND (id = '%s' OR name = '%s' OR external_id = '%s')",
 		getClusterFilter(creator),
 		clusterKey, clusterKey, clusterKey,
@@ -378,23 +361,6 @@ func (c *Client) getCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 	}
 }
 
-func (c *Client) getSubscriptionByExternalID(externalID string) (*amv1.Subscription, bool, error) {
-	query := fmt.Sprintf("external_cluster_id = '%s'", externalID)
-	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().List().
-		Search(query).
-		Page(1).
-		Size(1).
-		Send()
-	if err != nil {
-		return nil, false, err
-	}
-	if response.Total() < 1 {
-		return &amv1.Subscription{}, false, nil
-	}
-
-	return response.Items().Slice()[0], true, nil
-}
-
 func (c *Client) GetSubscriptionBySubscriptionID(id string) (*amv1.Subscription, bool, error) {
 	response, err := c.ocm.AccountsMgmt().V1().Subscriptions().Subscription(id).
 		Get().
@@ -408,40 +374,6 @@ func (c *Client) GetSubscriptionBySubscriptionID(id string) (*amv1.Subscription,
 	}
 
 	return response.Body(), true, nil
-}
-
-// GetCluster gets a cluster key that can be either 'id', 'name' or 'external_id'
-func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
-	if len(clusterKey) > maxClusterNameLength {
-		// Try to fetch subscription with UUID
-		if helper.IsValidUUID(clusterKey) {
-			subscription, subscriptionExists, err := c.getSubscriptionByExternalID(clusterKey)
-			if err != nil {
-				return nil, err
-			}
-			if subscriptionExists {
-				cluster, exists, err := c.getClusterByID(subscription.ClusterID())
-				if err != nil {
-					return nil, err
-				}
-				if exists {
-					return cluster, nil
-				}
-			}
-		} else {
-			// Try to fetch cluster with ID
-			cluster, exists, err := c.getClusterByID(clusterKey)
-			if err != nil {
-				return nil, err
-			}
-			if exists {
-				return cluster, nil
-			}
-		}
-	}
-
-	// Fallback to listing clusters with parameters
-	return c.getCluster(clusterKey, creator)
 }
 
 func (c *Client) GetClusterByID(clusterKey string, creator *aws.Creator) (*cmv1.Cluster, error) {
@@ -740,60 +672,55 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 	return cluster, nil
 }
 
-func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Cluster, error) {
-	reporter, err := rprtr.New().
-		Build()
-
+func (c *Client) UpdateClusterDeletionProtection(clusterId string, deleteProtection *cmv1.DeleteProtection) error {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().
+		Cluster(clusterId).
+		DeleteProtection().
+		Update().
+		Body(deleteProtection).
+		Send()
 	if err != nil {
-		return nil, fmt.Errorf("Error creating cluster reporter: %v", err)
+		return handleErr(response.Error(), err)
 	}
+	return nil
+}
 
-	awsCreator, err := awsClient.GetCreator()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get AWS creator: %v", err)
-	}
-
-	var awsAccessKey *aws.AccessKey
-	if config.CustomProperties != nil && config.CustomProperties[properties.UseLocalCredentials] == "true" {
-		reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
-		awsAccessKey, err = awsClient.GetLocalAWSAccessKeys()
+// EnsureNoPendingClusters ensures that no clusters are pending in the account. For non-STS clusters,
+// the osdCcsAdmin user credentials are used to create the cluster, and it is required that these credentials
+// are rotated between cluster creation. If a user is creating a non-STS cluster, we need to therefore make sure
+// no other clusters are pending in the account in order to ensure no race condition occurs.
+func (c *Client) EnsureNoPendingClusters(awsCreator *aws.Creator) error {
+	reporter := rprtr.CreateReporter()
+	/**
+	1) Poll the cluster with same arn from ocm
+	2) Check the status and if pending enter to a loop until it becomes installing
+	3) Do it only for ROSA clusters and before UpsertAccessKey
+	*/
+	deadline := time.Now().Add(5 * time.Minute)
+	for {
+		pendingCluster, err := c.GetPendingClusterForARN(awsCreator)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get local AWS credentials: %v", err)
+			reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
+			os.Exit(1)
 		}
-	} else if config.RoleARN == "" {
-		/**
-		1) Poll the cluster with same arn from ocm
-		2) Check the status and if pending enter to a loop until it becomes installing
-		3) Do it only for ROSA clusters and before UpsertAccessKey
-		*/
-		deadline := time.Now().Add(5 * time.Minute)
-		for {
-			pendingCluster, err := c.GetPendingClusterForARN(awsCreator)
-			if err != nil {
-				reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
-				os.Exit(1)
-			}
-			if time.Now().After(deadline) {
-				reporter.Errorf("Timeout waiting for the cluster '%s' installation. Try again in a few minutes",
-					pendingCluster.ID())
-				os.Exit(1)
-			}
-			if pendingCluster == nil {
-				break
-			} else {
-				reporter.Infof("Waiting for cluster '%s' with the same creator ARN to start installing",
-					pendingCluster.ID())
-				time.Sleep(30 * time.Second)
-			}
+		if time.Now().After(deadline) {
+			reporter.Errorf("Timeout waiting for the cluster '%s' installation. Try again in a few minutes",
+				pendingCluster.ID())
+			os.Exit(1)
 		}
-		// Create the access key for the AWS user:
-		awsAccessKey, err = awsClient.GetAWSAccessKeys()
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get access keys for user '%s': %v",
-				aws.AdminUserName, err)
+		if pendingCluster == nil {
+			break
+		} else {
+			reporter.Infof("Waiting for cluster '%s' with the same creator ARN to start installing",
+				pendingCluster.ID())
+			time.Sleep(30 * time.Second)
 		}
 	}
+	return nil
+}
 
+func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
+	reporter := rprtr.CreateReporter()
 	clusterProperties := map[string]string{}
 
 	if config.CustomProperties != nil {
@@ -817,7 +744,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		)
 	}
 
-	clusterProperties[ocmConsts.CreatorArn] = awsCreator.ARN
+	if config.AWSCreator == nil {
+		return nil, fmt.Errorf("AWS creator metadata is required")
+	}
+
+	clusterProperties[ocmConsts.CreatorArn] = config.AWSCreator.ARN
 	clusterProperties[properties.CLIVersion] = info.Version
 
 	// Create the cluster:
@@ -835,6 +766,10 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		FIPS(config.FIPS).
 		EtcdEncryption(config.EtcdEncryption).
 		Properties(clusterProperties)
+
+	if config.DomainPrefix != "" {
+		clusterBuilder.DomainPrefix(config.DomainPrefix)
+	}
 
 	if config.DisableWorkloadMonitoring != nil {
 		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
@@ -867,6 +802,11 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	if config.Hypershift.Enabled {
 		hyperShiftBuilder := cmv1.NewHypershift().Enabled(true)
 		clusterBuilder.Hypershift(hyperShiftBuilder)
+	}
+
+	if config.ExternalAuthProvidersEnabled {
+		externalAuthConfigBuilder := cmv1.NewExternalAuthConfig().Enabled(true)
+		clusterBuilder.ExternalAuthConfig(externalAuthConfigBuilder)
 	}
 
 	if config.ComputeMachineType != "" || config.ComputeNodes != 0 || len(config.AvailabilityZones) > 0 ||
@@ -933,7 +873,7 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 	}
 
 	awsBuilder := cmv1.NewAWS().
-		AccountID(awsCreator.AccountID)
+		AccountID(config.AWSCreator.AccountID)
 
 	if len(config.AdditionalComputeSecurityGroupIds) > 0 {
 		awsBuilder = awsBuilder.AdditionalComputeSecurityGroupIds(config.AdditionalComputeSecurityGroupIds...)
@@ -998,16 +938,19 @@ func (c *Client) createClusterSpec(config Spec, awsClient aws.Client) (*cmv1.Clu
 		stsBuilder = stsBuilder.InstanceIAMRoles(instanceIAMRolesBuilder)
 
 		mode := false
-		if config.Mode == aws.ModeAuto {
+		if config.Mode == "auto" {
 			mode = true
 		}
 		stsBuilder.AutoMode(mode)
 
 		awsBuilder = awsBuilder.STS(stsBuilder)
 	} else {
+		if config.AWSAccessKey == nil {
+			return nil, fmt.Errorf("AWS access key metadata is required for non-STS clusters")
+		}
 		awsBuilder = awsBuilder.
-			AccessKeyID(awsAccessKey.AccessKeyID).
-			SecretAccessKey(awsAccessKey.SecretAccessKey)
+			AccessKeyID(config.AWSAccessKey.AccessKeyID).
+			SecretAccessKey(config.AWSAccessKey.SecretAccessKey)
 	}
 	if config.KMSKeyArn != "" {
 		awsBuilder = awsBuilder.KMSKeyArn(config.KMSKeyArn)

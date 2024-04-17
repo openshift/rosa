@@ -29,6 +29,7 @@ var Cmd = &cobra.Command{
 	Use:   "install",
 	Short: "Installs a resource into a cluster",
 	Long:  "Installs a resource into a cluster",
+	Args:  cobra.NoArgs,
 }
 
 func init() {
@@ -39,4 +40,7 @@ func init() {
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
+
+	globallyAvailableCommands := []*cobra.Command{addon.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

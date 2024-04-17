@@ -22,6 +22,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/admin"
 	cadmin "github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -89,14 +90,15 @@ var Cmd = &cobra.Command{
 	Long:  "Deletes the cluster-admin user used to login to the cluster",
 	Example: `  # Delete the admin user
   rosa delete admin --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -106,12 +108,22 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf(
+			"Deleting the 'cluster-admin' user is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	// Try to find the htpasswd identity provider:
 	clusterID := cluster.ID()
-	clusterAdminIDP, _ := cadmin.FindExistingClusterAdminIDP(cluster, r)
+	clusterAdminIDP, _, err := cadmin.FindIDPWithAdmin(cluster, r)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
 
 	if clusterAdminIDP == nil {
-		r.Reporter.Errorf("Cluster '%s' does not have an admin user", r.ClusterKey)
+		r.Reporter.Errorf("Cluster '%s' does not have ‘%s’ user", r.ClusterKey, cadmin.ClusterAdminUsername)
 		os.Exit(1)
 	}
 
@@ -119,7 +131,7 @@ func run(cmd *cobra.Command, _ []string) {
 		// delete `cluster-admin` user from the HTPasswd IDP
 		r.Reporter.Debugf("Deleting user '%s' from cluster-admins group on cluster '%s'",
 			cadmin.ClusterAdminUsername, r.ClusterKey)
-		err := r.OCMClient.DeleteUser(clusterID, "cluster-admins", cadmin.ClusterAdminUsername)
+		err := r.OCMClient.DeleteUser(clusterID, admin.ClusterAdminGroupname, cadmin.ClusterAdminUsername)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)

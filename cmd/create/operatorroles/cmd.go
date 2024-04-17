@@ -58,7 +58,8 @@ var Cmd = &cobra.Command{
 
   # Create operator roles with a specific permissions boundary
   rosa create operator-roles -c mycluster --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	RunE: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(3),
 }
 
 func init() {
@@ -128,12 +129,12 @@ func init() {
 	)
 	flags.MarkHidden("channel-group")
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -141,7 +142,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	isProgmaticallyCalled := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
-		aws.SetModeKey(argv[1])
+		interactive.SetModeKey(argv[1])
 		args.permissionsBoundary = argv[2]
 
 		// if mode is empty skip interactive is true
@@ -156,7 +157,7 @@ func run(cmd *cobra.Command, argv []string) error {
 		os.Exit(1)
 	}
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -183,19 +184,13 @@ func run(cmd *cobra.Command, argv []string) error {
 		cluster = r.FetchCluster()
 	}
 
-	if args.forcePolicyCreation && mode != aws.ModeAuto {
+	if args.forcePolicyCreation && mode != interactive.ModeAuto {
 		r.Reporter.Warnf("Forcing creation of policies only works in auto mode")
 		os.Exit(1)
 	}
 
 	if interactive.Enabled() && !isProgmaticallyCalled {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Role creation mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 			os.Exit(1)
@@ -252,16 +247,25 @@ func run(cmd *cobra.Command, argv []string) error {
 			r.Reporter.Errorf("Error getting latest version: %s", err)
 			os.Exit(1)
 		}
-		return handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
+		err = handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
 			mode, policies, latestPolicyVersion)
+		if err != nil {
+			r.Reporter.Errorf("Error creating operator roles: %s", err)
+			os.Exit(1)
+		}
+		return
 	}
 	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)
 	}
-	return handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
+	err = handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
 		mode, policies, latestPolicyVersion)
+	if err != nil {
+		r.Reporter.Errorf("Error creating operator roles: %s", err)
+		os.Exit(1)
+	}
 }
 
 func convertV1OperatorIAMRoleIntoOcmOperatorIamRole(

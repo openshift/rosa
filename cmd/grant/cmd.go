@@ -27,6 +27,7 @@ var Cmd = &cobra.Command{
 	Use:   "grant",
 	Short: "Grant role to a specific resource",
 	Long:  "Grant role to a specific resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {
@@ -35,4 +36,6 @@ func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+	globallyAvailableCommands := []*cobra.Command{user.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

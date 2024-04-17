@@ -21,7 +21,10 @@ import (
 
 	"github.com/openshift/rosa/cmd/describe/addon"
 	"github.com/openshift/rosa/cmd/describe/admin"
+	"github.com/openshift/rosa/cmd/describe/autoscaler"
+	"github.com/openshift/rosa/cmd/describe/breakglasscredential"
 	"github.com/openshift/rosa/cmd/describe/cluster"
+	"github.com/openshift/rosa/cmd/describe/externalauthprovider"
 	"github.com/openshift/rosa/cmd/describe/installation"
 	"github.com/openshift/rosa/cmd/describe/kubeletconfig"
 	"github.com/openshift/rosa/cmd/describe/machinepool"
@@ -35,6 +38,7 @@ var Cmd = &cobra.Command{
 	Use:   "describe",
 	Short: "Show details of a specific resource",
 	Long:  "Show details of a specific resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {
@@ -47,8 +51,20 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(kubeletconfig.Cmd)
+	Cmd.AddCommand(autoscaler.NewDescribeAutoscalerCommand())
+	Cmd.AddCommand(externalauthprovider.Cmd)
+	Cmd.AddCommand(breakglasscredential.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+
+	globallyAvailableCommands := []*cobra.Command{
+		tuningconfigs.Cmd, cluster.Cmd, service.Cmd,
+		machinepool.Cmd, addon.Cmd, upgrade.Cmd,
+		admin.Cmd, breakglasscredential.Cmd,
+		externalauthprovider.Cmd, installation.Cmd,
+		kubeletconfig.Cmd, machinepool.Cmd, upgrade.Cmd,
+	}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

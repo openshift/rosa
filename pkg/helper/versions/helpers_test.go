@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -64,16 +65,16 @@ var _ = Describe("Version Helpers", Ordered, func() {
 				Expect(minimalVersion).To(Equal(expected))
 			},
 			Entry("Future control plane",
+				"4.17.0",
 				"4.15.0",
-				"4.13.0",
 			),
 			Entry("Nightly control plane",
-				"4.14.0-0.nightly-2023-02-27-084419",
-				"4.12.0",
+				"4.16.0-0.nightly-2023-02-27-084419",
+				"4.14.0",
 			),
 			Entry("Current control plane",
-				"4.12.5",
-				"4.12.0-0.a",
+				"4.14.5",
+				"4.12.0",
 			),
 		)
 	})

@@ -51,7 +51,7 @@ var _ = Describe("MachinePool", func() {
 		Entry(
 			"Bad value -> KO",
 			"key=node-role.kubernetes.io/infra:NoEffect",
-			"Invalid label value 'node-role.kubernetes.io/infra': at key: 'key'", 0),
+			"Invalid taint value 'node-role.kubernetes.io/infra': at key: 'key'", 0),
 	)
 
 	DescribeTable("Parse Labels", func(userLabels, expectedError string, numberOfLabels int) {
@@ -90,7 +90,7 @@ var _ = Describe("MachinePool", func() {
 })
 
 var _ = Describe("Machine pool for hosted clusters", func() {
-	DescribeTable("Machine pool replicas validation",
+	DescribeTable("Machine pool min replicas validation",
 		func(minReplicas int, autoscaling bool, hasError bool) {
 			err := MinNodePoolReplicaValidator(autoscaling)(minReplicas)
 			if hasError {
@@ -120,6 +120,31 @@ var _ = Describe("Machine pool for hosted clusters", func() {
 			false,
 		),
 	)
+	DescribeTable("Machine pool max replicas validation",
+		func(minReplicas int, maxReplicas int, hasError bool) {
+			err := MaxNodePoolReplicaValidator(minReplicas)(maxReplicas)
+			if hasError {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Max > Min -> OK",
+			1,
+			2,
+			false,
+		),
+		Entry("Min < Max -> OK",
+			2,
+			1,
+			true,
+		),
+		Entry("Min = Max -> OK",
+			2,
+			2,
+			false,
+		),
+	)
 })
 
 var _ = Describe("Label validations", func() {
@@ -128,6 +153,7 @@ var _ = Describe("Label validations", func() {
 			err := ValidateLabelKeyValuePair(key, value)
 			if hasError {
 				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("label"))
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -161,6 +187,146 @@ var _ = Describe("Label validations", func() {
 			"/",
 			"myvalue",
 			true,
+		),
+	)
+})
+
+var _ = Describe("Taint validations", func() {
+	DescribeTable("Taint validation",
+		func(key string, value string, hasError bool) {
+			err := ValidateTaintKeyValuePair(key, value)
+			if hasError {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("taint"))
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Should not error with key of 'mykey', value 'myvalue'",
+			"mykey",
+			"myvalue",
+			false,
+		),
+		Entry("Should error with key of 'bad key', value 'myvalue'",
+			"bad key",
+			"myvalue",
+			true,
+		),
+		Entry("Should error with key of 'mykey', value 'bad value'",
+			"mykey",
+			"bad value",
+			true,
+		),
+		Entry("Should not error with key of 'xyz/mykey', value 'myvalue'",
+			"xyz/mykey",
+			"myvalue",
+			false,
+		),
+		Entry("Should error with key of '/mykey', value 'myvalue'",
+			"/mykey",
+			"myvalue",
+			true,
+		),
+		Entry("Should error with key of '/', value 'myvalue'",
+			"/",
+			"myvalue",
+			true,
+		),
+	)
+})
+
+var _ = Describe("Create node drain grace period builder validations", func() {
+	DescribeTable("Create node drain grace period builder validations",
+		func(period string, errMsg string) {
+			_, err := CreateNodeDrainGracePeriodBuilder(period)
+			if errMsg != "" {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errMsg))
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Should not error with empty value",
+			"",
+			"",
+		),
+		Entry("Should not error with 0 value",
+			"0",
+			"",
+		),
+		Entry("Should not error with lower limit value",
+			"1 minute",
+			"",
+		),
+		Entry("Should not error with hour unit",
+			"1 hour",
+			"",
+		),
+		Entry("Should error if the time is not a numeric value",
+			"hour",
+			"Invalid time for the node drain grace period",
+		),
+	)
+})
+
+var _ = Describe("Validate node drain grace period", func() {
+	DescribeTable("Validate node drain grace period",
+		func(period interface{}, errMsg string) {
+			err := ValidateNodeDrainGracePeriod(period)
+			if errMsg != "" {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errMsg))
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Should not error with empty value",
+			"",
+			"",
+		),
+		Entry("Should not error with 0 value",
+			"0",
+			"",
+		),
+		Entry("Should not error with lower limit value",
+			"1 minute",
+			"",
+		),
+		Entry("Should not error with upper limit value",
+			"10080 minutes",
+			"",
+		),
+		Entry("Should not error with hour unit",
+			"1 hour",
+			"",
+		),
+		Entry("Should not error with hours unit",
+			"168 hours",
+			"",
+		),
+		Entry("Should error with invalid number of tokens",
+			"1 minute later",
+			"Expected format to include the duration",
+		),
+		Entry("Should error with invalid unit",
+			"1 day",
+			"Invalid unit",
+		),
+		Entry("Should error with float value",
+			"1.1",
+			"duration must be an integer",
+		),
+		Entry("Should error with float value",
+			"-1 minute",
+			"cannot be negative",
+		),
+		Entry("Should error above upper limit minutes",
+			"10081 minutes",
+			"cannot exceed the maximum of 10080 minutes",
+		),
+		Entry("Should error above upper limit hours",
+			"169 hours",
+			"cannot exceed the maximum of 168 hours",
 		),
 	)
 })

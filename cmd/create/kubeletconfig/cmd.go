@@ -38,7 +38,8 @@ var Cmd = &cobra.Command{
 	Example: `  # Create a custom kubeletconfig with a pod-pids-limit of 5000
   rosa create kubeletconfig --cluster=mycluster --pod-pids-limit=5000
   `,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 var args struct {

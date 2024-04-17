@@ -19,6 +19,7 @@ package revoke
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/revoke/breakglasscredential"
 	"github.com/openshift/rosa/cmd/revoke/user"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -28,13 +29,17 @@ var Cmd = &cobra.Command{
 	Use:   "revoke",
 	Short: "Revoke role from a specific resource",
 	Long:  "Revoke role from a specific resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {
 	Cmd.AddCommand(user.Cmd)
+	Cmd.AddCommand(breakglasscredential.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
+	globallyAvailableCommands := []*cobra.Command{breakglasscredential.Cmd, user.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

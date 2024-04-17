@@ -34,6 +34,7 @@ var Cmd = &cobra.Command{
 
   # Show uninstall logs for a cluster named 'mycluster'
   rosa logs uninstall --cluster=mycluster`,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -43,4 +44,6 @@ func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+	globallyAvailableCommands := []*cobra.Command{install.Cmd, uninstall.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

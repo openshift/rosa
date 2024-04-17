@@ -54,7 +54,8 @@ var Cmd = &cobra.Command{
 
   # Create account roles with a specific permissions boundary
   rosa create account-roles --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -132,7 +133,7 @@ func init() {
 		"Create only classic Rosa account roles",
 	)
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -141,7 +142,7 @@ func init() {
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -164,14 +165,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	// Determine if Classic ROSA managed policies are enabled
-	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
-	if isManagedSet && env == ocm.Production {
-		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
-		os.Exit(1)
-	}
 	managedPolicies := args.managed
-
 	if args.forcePolicyCreation && managedPolicies {
 		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
 		os.Exit(1)
@@ -185,9 +179,24 @@ func run(cmd *cobra.Command, argv []string) {
 	isClassicValueSet := cmd.Flags().Changed("classic")
 	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
 
+	// Determine if Classic ROSA managed policies are enabled
+	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
+
 	// Hosted cluster roles always use managed policies
-	if isHostedCPValueSet && cmd.Flags().Changed("managed-policies") && !args.managed {
-		r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
+	if isHostedCPValueSet && args.hostedCP && isManagedSet {
+		if args.managed {
+			r.Reporter.Warnf("Setting `managed-policies` flag for hosted CP account roles has no effect. " +
+				"Hosted CP account roles are managed policies only")
+			isManagedSet = false
+			managedPolicies = false
+		} else {
+			r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
+			os.Exit(1)
+		}
+	}
+
+	if isManagedSet && env == ocm.Production {
+		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
 		os.Exit(1)
 	}
 
@@ -217,10 +226,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Validate AWS quota
 	// Call `verify quota` as part of init
-	err = quota.Cmd.RunE(cmd, argv)
-	if err != nil {
-		r.Reporter.Warnf("Insufficient AWS quotas. Cluster installation might fail.")
-	}
+	quota.Cmd.Run(cmd, argv)
 	// Verify version of `oc`
 	oc.Cmd.Run(cmd, argv)
 
@@ -320,20 +326,14 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Role creation mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 			os.Exit(1)
 		}
 	}
 
-	if args.forcePolicyCreation && mode != aws.ModeAuto {
+	if args.forcePolicyCreation && mode != interactive.ModeAuto {
 		r.Reporter.Warnf("Forcing creation of policies only works in auto mode")
 		os.Exit(1)
 	}
@@ -386,7 +386,7 @@ func run(cmd *cobra.Command, argv []string) {
 		policyVersion, path)
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		err = rolesCreator.createRoles(r, input)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
@@ -407,9 +407,9 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response: ocm.Success,
 			ocm.Version:  policyVersion,
 		})
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		err = aws.GenerateAccountRolePolicyFiles(r.Reporter, env, policies, rolesCreator.skipPermissionFiles(),
-			rolesCreator.getAccountRolesMap())
+			rolesCreator.getAccountRolesMap(), r.Creator.Partition)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
@@ -429,7 +429,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Version: policyVersion,
 		})
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }

@@ -62,16 +62,16 @@ var _ = Describe("List upgrade", func() {
 		var testRuntime test.TestingRuntime
 		var nodePoolName = "nodepool85"
 
-		mockClusterError, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClusterError := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateError)
 			c.Hypershift(cmv1.NewHypershift().Enabled(true))
 		})
-		Expect(err).To(BeNil())
+
 		var hypershiftClusterNotReady = test.FormatClusterList([]*cmv1.Cluster{mockClusterError})
 
-		mockClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
@@ -79,16 +79,16 @@ var _ = Describe("List upgrade", func() {
 			c.Version(cmv1.NewVersion().RawID("4.12.26").ChannelGroup("stable").
 				ID("4.12.26").Enabled(true).AvailableUpgrades("4.12.27"))
 		})
-		Expect(err).To(BeNil())
+
 		var hypershiftClusterReady = test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
-		mockClassicCluster, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClassicCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(false))
 		})
-		Expect(err).To(BeNil())
+
 		var classicCluster = test.FormatClusterList([]*cmv1.Cluster{mockClassicCluster})
 
 		versionNoUpgrades := cmv1.NewVersion().ID("openshift-v4.12.24").RawID("4.12.24").ReleaseImage("1").

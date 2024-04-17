@@ -52,7 +52,6 @@ var pathTreeData = `{
           }
         },
         "labels": null,
-        "notify": null,
         "notify_details": null,
         "organizations": {
           "-": {
@@ -96,7 +95,6 @@ var pathTreeData = `{
             "labels": {
               "-": null
             },
-            "notify": null,
             "reserved_resources": {
               "-": null
             },
@@ -205,6 +203,9 @@ var pathTreeData = `{
             "aws_infrastructure_access_role_grants": {
               "-": null
             },
+            "break_glass_credentials": {
+              "-": null
+            },
             "clusterdeployment": null,
             "control_plane": {
               "upgrade_policies": {
@@ -213,6 +214,11 @@ var pathTreeData = `{
             },
             "credentials": null,
             "delete_protection": null,
+            "external_auth_config": {
+              "external_auths": {
+                "-": null
+              }
+            },
             "external_configuration": {
               "labels": {
                 "-": null
@@ -273,14 +279,6 @@ var pathTreeData = `{
                 "upgrade_policies": {
                   "-": null
                 }
-              }
-            },
-            "product": {
-              "minimal_versions": {
-                "-": null
-              },
-              "technology_previews": {
-                "-": null
               }
             },
             "provision_shard": null,
@@ -347,9 +345,7 @@ var pathTreeData = `{
         "provision_shards": {
           "-": null
         },
-        "trusted_ip_addresses": {
-          "-": null
-        },
+        "trusted_ip_addresses": null,
         "version_gates": {
           "-": null
         },

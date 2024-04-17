@@ -43,7 +43,8 @@ var Cmd = &cobra.Command{
 	Long:    "Create OIDC provider for operators to authenticate against in an STS cluster.",
 	Example: `  # Create OIDC provider for cluster named "mycluster"
   rosa create oidc-provider --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(3),
 }
 
 const (
@@ -67,7 +68,7 @@ func init() {
 	)
 
 	ocm.AddOptionalClusterFlag(Cmd)
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -82,7 +83,7 @@ func run(cmd *cobra.Command, argv []string) {
 	shouldUseClusterKey := true
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
-		aws.SetModeKey(argv[1])
+		interactive.SetModeKey(argv[1])
 
 		if argv[1] != "" {
 			isProgmaticallyCalled = true
@@ -100,7 +101,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -124,13 +125,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !cmd.Flags().Changed("mode") && interactive.Enabled() && !isProgmaticallyCalled {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OIDC provider creation mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "OIDC provider creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
@@ -161,7 +156,8 @@ func run(cmd *cobra.Command, argv []string) {
 		clusterId = cluster.ID()
 	}
 
-	oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
+	oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL,
+		r.Creator.Partition, r.Creator.AccountID)
 	if err != nil {
 		if strings.Contains(err.Error(), "AccessDenied") {
 			r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
@@ -183,7 +179,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		if !output.HasFlag() || r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Creating OIDC provider using '%s'", r.Creator.ARN)
 		}
@@ -207,7 +203,7 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.ClusterID: clusterKey,
 			ocm.Response:  ocm.Success,
 		})
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		commands, err := buildCommands(r, oidcEndpointURL, clusterId)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
@@ -225,7 +221,7 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }

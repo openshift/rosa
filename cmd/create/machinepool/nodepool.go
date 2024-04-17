@@ -10,8 +10,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/helper/features"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
-	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
@@ -27,13 +27,6 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	if isSubnetSet && isAvailabilityZoneSet {
 		r.Reporter.Errorf("Setting both `subnet` and `availability-zone` flag is not supported." +
 			" Please select `subnet` or `availability-zone` to create a single availability zone machine pool")
-		os.Exit(1)
-	}
-
-	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
-	if isSecurityGroupIdsSet {
-		r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
-			securitygroups.MachinePoolSecurityGroupFlag)
 		os.Exit(1)
 	}
 
@@ -230,10 +223,29 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 	}
 
 	existingLabels := make(map[string]string, 0)
-	labelMap := mpHelpers.GetLabelMap(cmd, r, existingLabels, args.labels)
+	labelMap := machinepools.GetLabelMap(cmd, r, existingLabels, args.labels)
 
 	existingTaints := make([]*cmv1.Taint, 0)
-	taintBuilders := mpHelpers.GetTaints(cmd, r, existingTaints, args.taints)
+	taintBuilders := machinepools.GetTaints(cmd, r, existingTaints, args.taints)
+
+	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
+	securityGroupIds := args.securityGroupIds
+	isVersionCompatibleSecurityGroupIds, err := features.IsFeatureSupported(
+		features.AdditionalDay2SecurityGroupsHcpFeature, version)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if interactive.Enabled() && !isSecurityGroupIdsSet && isVersionCompatibleSecurityGroupIds {
+		securityGroupIds, err = getSecurityGroupsOption(r, cmd, cluster)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+	for i, sg := range securityGroupIds {
+		securityGroupIds[i] = strings.TrimSpace(sg)
+	}
 
 	npBuilder := cmv1.NewNodePool()
 	npBuilder.ID(name).Labels(labelMap).
@@ -372,7 +384,32 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
-	npBuilder.AWSNodePool(cmv1.NewAWSNodePool().InstanceType(instanceType))
+	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds))
+
+	nodeDrainGracePeriod := args.nodeDrainGracePeriod
+	if interactive.Enabled() {
+		nodeDrainGracePeriod, err = interactive.GetString(interactive.Input{
+			Question: "Node drain grace period",
+			Help:     cmd.Flags().Lookup("node-drain-grace-period").Usage,
+			Default:  nodeDrainGracePeriod,
+			Required: false,
+			Validators: []interactive.Validator{
+				machinepools.ValidateNodeDrainGracePeriod,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for Node drain grace period: %s", err)
+			os.Exit(1)
+		}
+	}
+	if nodeDrainGracePeriod != "" {
+		nodeDrainBuilder, err := machinepools.CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
+		npBuilder.NodeDrainGracePeriod(nodeDrainBuilder)
+	}
 
 	if version != "" {
 		npBuilder.Version(cmv1.NewVersion().ID(version))
@@ -455,4 +492,14 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 	}
 
 	return "", fmt.Errorf("Failed to find a private subnet for '%s' availability zone", availabilityZone)
+}
+
+func createAwsNodePoolBuilder(instanceType string, securityGroupIds []string) *cmv1.AWSNodePoolBuilder {
+	awsNpBuilder := cmv1.NewAWSNodePool().InstanceType(instanceType)
+
+	if len(securityGroupIds) > 0 {
+		awsNpBuilder.AdditionalSecurityGroupIds(securityGroupIds...)
+	}
+
+	return awsNpBuilder
 }

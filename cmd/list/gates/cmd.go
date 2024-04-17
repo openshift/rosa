@@ -54,7 +54,9 @@ var Cmd = &cobra.Command{
 
   # List available gates for cluster upgrade version
   rosa list gates -c <cluster_id> --version 4.9.15`,
-	Run: run}
+	Run:  run,
+	Args: cobra.NoArgs,
+}
 
 func init() {
 	flags := Cmd.Flags()
@@ -96,7 +98,7 @@ var (
 	versionGates = []*v1.VersionGate{}
 )
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 

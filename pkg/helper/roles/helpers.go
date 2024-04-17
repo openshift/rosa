@@ -14,14 +14,28 @@ import (
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
 const (
-	RosaUpgradeAccRolesModeAuto = "ROSAUpgradeAccountRolesModeAuto"
+	RosaUpgradeAccRolesModeAuto            = "ROSAUpgradeAccountRolesModeAuto"
+	maxClusterNameLengthToUseForRolePrefix = 27
 )
+
+// GeOperatorRolePrefixFromClusterName returns a valid operator role prefix from the cluster name
+// An operator role prefix is considered valid if it's length is less than or equal to 32 chars.
+// A random 4 characters label is attached to the cluster name to reduce chances of collision.
+// The cluster name and the random label are separate by '-'.
+// If the cluster name is longer than 27 characters, only the first 27 characters will be used.
+func GeOperatorRolePrefixFromClusterName(clusterName string) string {
+	if len(clusterName) > maxClusterNameLengthToUseForRolePrefix {
+		return fmt.Sprintf("%s-%s", clusterName[0:maxClusterNameLengthToUseForRolePrefix], helper.RandomLabel(4))
+	}
+	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
+}
 
 func GetOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperator) string {
 	rolePrefix := cluster.AWS().STS().OperatorRolePrefix()
@@ -52,6 +66,7 @@ func BuildMissingOperatorRoleCommand(
 			}
 		} else {
 			policyARN = aws.GetOperatorPolicyARN(
+				r.Creator.Partition,
 				accountID,
 				operatorRolePolicyPrefix,
 				operator.Namespace(),
@@ -60,7 +75,7 @@ func BuildMissingOperatorRoleCommand(
 			)
 		}
 		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(r.Creator.Partition, cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return "", err
 		}
@@ -115,7 +130,7 @@ func ValidateUnmanagedAccountRoles(roleARNs []string, awsClient aws.Client, vers
 		}
 
 		validVersion, err := awsCommonValidations.HasCompatibleVersionTags(
-			aws.FromV1TagToV2Tag(role.Tags),
+			role.Tags,
 			ocm.GetVersionMinor(version),
 		)
 		if err != nil {
@@ -191,14 +206,14 @@ func createOperatorRole(
 	policies map[string]*cmv1.AWSSTSPolicy, unifiedPath string, managedPolicies bool) error {
 	accountID := r.Creator.AccountID
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		err := upgradeMissingOperatorRole(missingRoles, cluster, accountID, prefix, r,
 			policies, unifiedPath, managedPolicies)
 		if err != nil {
 			return err
 		}
 		helper.DisplaySpinnerWithDelay(r.Reporter, "Waiting for operator roles to reconcile", 5*time.Second)
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		commands, err := BuildMissingOperatorRoleCommand(
 			missingRoles, cluster, accountID, r, policies, unifiedPath, prefix, managedPolicies)
 		if err != nil {
@@ -209,7 +224,7 @@ func createOperatorRole(
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 	return nil
@@ -233,10 +248,11 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 				return err
 			}
 		} else {
-			policyARN = aws.GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
+			policyARN = aws.GetOperatorPolicyARN(r.Creator.Partition,
+				accountID, prefix, operator.Namespace(), operator.Name(), unifiedPath)
 		}
 
-		policy, err := aws.GenerateOperatorRolePolicyDoc(cluster, accountID, operator, policyDetails)
+		policy, err := aws.GenerateOperatorRolePolicyDoc(r.Creator.Partition, cluster, accountID, operator, policyDetails)
 		if err != nil {
 			return err
 		}

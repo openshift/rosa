@@ -29,6 +29,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"registers"},
 	Short:   "Registers a specific resource",
 	Long:    "Registers a specific resource",
+	Args:    cobra.NoArgs,
 }
 
 func init() {
@@ -39,8 +40,6 @@ func init() {
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
 
-	globallyAvailableCommands := []*cobra.Command{
-		oidcconfig.Cmd,
-	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	globallyAvailableCommands := []*cobra.Command{oidcconfig.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

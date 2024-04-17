@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 
+	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -17,7 +18,17 @@ import (
 )
 
 // To clear existing labels in interactive mode, the user enters "" as an empty list value
-const interactiveModeEmptyLabels = `""`
+const (
+	interactiveModeEmptyLabels = `""`
+	nodeDrainUnitMinute        = "minute"
+	nodeDrainUnitMinutes       = "minutes"
+	nodeDrainUnitHour          = "hour"
+	nodeDrainUnitHours         = "hours"
+	nodeDrainUnits             = nodeDrainUnitMinute + "|" + nodeDrainUnitMinutes + "|" +
+		nodeDrainUnitHour + "|" + nodeDrainUnitHours
+	MaxNodeDrainTimeInMinutes = 10080
+	MaxNodeDrainTimeInHours   = 168
+)
 
 func MinNodePoolReplicaValidator(autoscaling bool) interactive.Validator {
 	return func(val interface{}) error {
@@ -128,7 +139,7 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 		splitKeyValue := strings.Split(splitEffect[0], "=")
 		newTaintBuilder := cmv1.NewTaint().Key(splitKeyValue[0]).Value(splitKeyValue[1]).Effect(splitEffect[1])
 		newTaint, _ := newTaintBuilder.Build()
-		if err := ValidateLabelKeyValuePair(newTaint.Key(), newTaint.Value()); err != nil {
+		if err := ValidateTaintKeyValuePair(newTaint.Key(), newTaint.Value()); err != nil {
 			errs = append(errs, err)
 			continue
 		}
@@ -147,13 +158,21 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 	return taintBuilders, nil
 }
 
+func ValidateTaintKeyValuePair(key, value string) error {
+	return ValidateKeyValuePair(key, value, "taint")
+}
+
 func ValidateLabelKeyValuePair(key, value string) error {
+	return ValidateKeyValuePair(key, value, "label")
+}
+
+func ValidateKeyValuePair(key, value string, resourceName string) error {
 	if errs := validation.IsQualifiedName(key); len(errs) != 0 {
-		return fmt.Errorf("Invalid label key '%s': %s", key, strings.Join(errs, "; "))
+		return fmt.Errorf("Invalid %s key '%s': %s", resourceName, key, strings.Join(errs, "; "))
 	}
 
 	if errs := validation.IsValidLabelValue(value); len(errs) != 0 {
-		return fmt.Errorf("Invalid label value '%s': at key: '%s': %s",
+		return fmt.Errorf("Invalid %s value '%s': at key: '%s': %s", resourceName,
 			value, key, strings.Join(errs, "; "))
 	}
 	return nil
@@ -220,4 +239,68 @@ func HostedClusterOnlyFlag(r *rosa.Runtime, cmd *cobra.Command, flagName string)
 		r.Reporter.Errorf("Setting the `%s` flag is only supported for hosted clusters", flagName)
 		os.Exit(1)
 	}
+}
+
+func CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod string) (*cmv1.ValueBuilder, error) {
+	valueBuilder := cmv1.NewValue()
+	if nodeDrainGracePeriod == "" {
+		return valueBuilder, nil
+	}
+
+	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
+	nodeDrainValue, err := strconv.ParseFloat(nodeDrainParsed[0], commonUtils.MaxByteSize)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid time for the node drain grace period: %s", err)
+	}
+
+	// Default to minutes if no unit is specified
+	if len(nodeDrainParsed) > 1 {
+		if nodeDrainParsed[1] == nodeDrainUnitHours || nodeDrainParsed[1] == nodeDrainUnitHour {
+			nodeDrainValue = nodeDrainValue * 60
+		}
+	}
+
+	valueBuilder.Value(nodeDrainValue).Unit("minutes")
+	return valueBuilder, nil
+}
+
+func ValidateNodeDrainGracePeriod(val interface{}) error {
+	nodeDrainGracePeriod := val.(string)
+	if nodeDrainGracePeriod == "" {
+		return nil
+	}
+
+	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
+	if len(nodeDrainParsed) > 2 {
+		return fmt.Errorf("Expected format to include the duration and "+
+			"the unit (%s).", nodeDrainUnits)
+	}
+	nodeDrainValue, err := strconv.ParseInt(nodeDrainParsed[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Invalid value '%s', the duration must be an integer.",
+			nodeDrainParsed[0])
+	}
+
+	// Default to minutes if no unit is specified
+	if len(nodeDrainParsed) > 1 {
+		if nodeDrainParsed[1] != nodeDrainUnitHours && nodeDrainParsed[1] != nodeDrainUnitHour &&
+			nodeDrainParsed[1] != "minutes" && nodeDrainParsed[1] != "minute" {
+			return fmt.Errorf("Invalid unit '%s', value unit is '%s'", nodeDrainParsed[1], nodeDrainUnits)
+		}
+		if nodeDrainParsed[1] == nodeDrainUnitHours || nodeDrainParsed[1] == nodeDrainUnitHour {
+			if nodeDrainValue > MaxNodeDrainTimeInHours {
+				return fmt.Errorf("Value '%v' cannot exceed the maximum of %d hours "+
+					"(1 week)", nodeDrainValue, MaxNodeDrainTimeInHours)
+			}
+			nodeDrainValue = nodeDrainValue * 60
+		}
+	}
+	if nodeDrainValue < 0 {
+		return fmt.Errorf("Value '%v' cannot be negative", nodeDrainValue)
+	}
+	if nodeDrainValue > MaxNodeDrainTimeInMinutes {
+		return fmt.Errorf("Value '%v' cannot exceed the maximum of %d minutes "+
+			"(1 week)", nodeDrainValue, MaxNodeDrainTimeInMinutes)
+	}
+	return nil
 }

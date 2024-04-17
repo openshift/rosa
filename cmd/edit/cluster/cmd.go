@@ -28,18 +28,20 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-const doubleQuotesToRemove = "\"\""
+const enableDeleteProtectionFlagName = "enable-delete-protection"
 
 var args struct {
 	// Basic options
-	expirationTime     string
-	expirationDuration time.Duration
+	expirationTime         string
+	expirationDuration     time.Duration
+	enableDeleteProtection bool
 
 	// Networking options
 	private                   bool
@@ -62,7 +64,8 @@ var Cmd = &cobra.Command{
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -84,6 +87,12 @@ func init() {
 		"expiration",
 		0,
 		"Expire cluster after a relative duration like 2h, 8h, 72h. Only one of expiration-time / expiration may be used.",
+	)
+	flags.BoolVar(
+		&args.enableDeleteProtection,
+		enableDeleteProtectionFlagName,
+		false,
+		"Toggle cluster deletion protection against accidental cluster deletion.",
 	)
 	// Cluster expiration is not supported in production
 	flags.MarkHidden("expiration-time")
@@ -319,7 +328,7 @@ func run(cmd *cobra.Command, _ []string) {
 			def = *httpProxy
 			if def == "" {
 				// received double quotes from the user. need to remove the existing value
-				def = doubleQuotesToRemove
+				def = input.DoubleQuotesToRemove
 			}
 		}
 		httpProxyValue, err = interactive.GetString(interactive.Input{
@@ -335,7 +344,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if len(httpProxyValue) == 0 {
 			//user skipped the prompt by pressing 'enter'
 			httpProxy = nil
-		} else if httpProxyValue == doubleQuotesToRemove {
+		} else if httpProxyValue == input.DoubleQuotesToRemove {
 			//user entered double quotes ("") to remove the existing value
 			httpProxy = new(string)
 			*httpProxy = ""
@@ -343,7 +352,7 @@ func run(cmd *cobra.Command, _ []string) {
 			httpProxy = &httpProxyValue
 		}
 	}
-	if httpProxy != nil && *httpProxy != doubleQuotesToRemove {
+	if httpProxy != nil && *httpProxy != input.DoubleQuotesToRemove {
 		err = ocm.ValidateHTTPProxy(*httpProxy)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
@@ -361,7 +370,7 @@ func run(cmd *cobra.Command, _ []string) {
 			def = *httpsProxy
 			if def == "" {
 				// received double quotes from the user. need to remove the existing value
-				def = doubleQuotesToRemove
+				def = input.DoubleQuotesToRemove
 			}
 		}
 		httpsProxyValue, err = interactive.GetString(interactive.Input{
@@ -376,7 +385,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if len(httpsProxyValue) == 0 {
 			//user skipped the prompt by pressing 'enter'
 			httpsProxy = nil
-		} else if httpsProxyValue == doubleQuotesToRemove {
+		} else if httpsProxyValue == input.DoubleQuotesToRemove {
 			//user entered double quotes ("") to remove the existing value
 			httpsProxy = new(string)
 			*httpsProxy = ""
@@ -384,7 +393,7 @@ func run(cmd *cobra.Command, _ []string) {
 			httpsProxy = &httpsProxyValue
 		}
 	}
-	if httpsProxy != nil && *httpsProxy != doubleQuotesToRemove {
+	if httpsProxy != nil && *httpsProxy != input.DoubleQuotesToRemove {
 		err = interactive.IsURL(*httpsProxy)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
@@ -415,7 +424,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if len(noProxySlice) > 0 {
-		if len(noProxySlice) == 1 && noProxySlice[0] == doubleQuotesToRemove {
+		if len(noProxySlice) == 1 && noProxySlice[0] == input.DoubleQuotesToRemove {
 			noProxySlice[0] = ""
 		}
 
@@ -459,7 +468,7 @@ func run(cmd *cobra.Command, _ []string) {
 			def = *additionalTrustBundleFile
 			if def == "" {
 				// received double quotes from the iser. need to remove the existing value
-				def = doubleQuotesToRemove
+				def = input.DoubleQuotesToRemove
 			}
 		}
 		additionalTrustBundleFileValue, err = interactive.GetCert(interactive.Input{
@@ -475,7 +484,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if len(additionalTrustBundleFileValue) == 0 {
 			//user skipped the prompt by pressing 'enter'
 			additionalTrustBundleFile = nil
-		} else if additionalTrustBundleFileValue == doubleQuotesToRemove {
+		} else if additionalTrustBundleFileValue == input.DoubleQuotesToRemove {
 			//user entered double quotes ("") to remove the existing value
 			additionalTrustBundleFile = new(string)
 			*additionalTrustBundleFile = ""
@@ -483,7 +492,7 @@ func run(cmd *cobra.Command, _ []string) {
 			additionalTrustBundleFile = &additionalTrustBundleFileValue
 		}
 	}
-	if additionalTrustBundleFile != nil && *additionalTrustBundleFile != doubleQuotesToRemove {
+	if additionalTrustBundleFile != nil && *additionalTrustBundleFile != input.DoubleQuotesToRemove {
 		err = ocm.ValidateAdditionalTrustBundle(*additionalTrustBundleFile)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
@@ -517,13 +526,15 @@ func run(cmd *cobra.Command, _ []string) {
 	if httpsProxy != nil {
 		clusterConfig.HTTPSProxy = httpsProxy
 	}
+
 	if noProxySlice != nil {
 		str := strings.Join(noProxySlice, ",")
 		clusterConfig.NoProxy = &str
 	}
+
 	if additionalTrustBundleFile != nil {
 		clusterConfig.AdditionalTrustBundle = new(string)
-		if *additionalTrustBundleFile == doubleQuotesToRemove {
+		if *additionalTrustBundleFile == input.DoubleQuotesToRemove {
 			*clusterConfig.AdditionalTrustBundle = *additionalTrustBundleFile
 		} else {
 			// Get certificate contents
@@ -537,13 +548,48 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
+
 	if auditLogRole != nil {
 		clusterConfig.AuditLogRoleARN = new(string)
 		*clusterConfig.AuditLogRoleARN = *auditLogRole
 	}
 
+	// Deletion Protection
+	var deleteProtection bool
+	if !cmd.Flags().Changed(enableDeleteProtectionFlagName) {
+		deleteProtection = cluster.DeleteProtection().Enabled()
+	} else if interactive.Enabled() {
+		deleteProtection = args.enableDeleteProtection
+	}
+
+	if interactive.Enabled() {
+		deleteProtection, err = interactive.GetBool(interactive.Input{
+			Question: "Enable cluster deletion protection",
+			Help:     cmd.Flags().Lookup(enableDeleteProtectionFlagName).Usage,
+			Default:  deleteProtection,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	if cluster.DeleteProtection().Enabled() != deleteProtection {
+		r.Reporter.Debugf("Updating cluster deletion protection to : %t", deleteProtection)
+		newDeleteProtection, err := cmv1.NewDeleteProtection().Enabled(deleteProtection).Build()
+		if err != nil {
+			r.Reporter.Errorf("Failed to build delete protection: %v", err)
+			os.Exit(1)
+		}
+
+		if err := r.OCMClient.UpdateClusterDeletionProtection(cluster.ID(), newDeleteProtection); err != nil {
+			r.Reporter.Errorf("Failed to update cluster delete protection: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)
-	err = r.OCMClient.UpdateCluster(clusterKey, r.Creator, clusterConfig)
+	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterConfig)
 	if err != nil {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)

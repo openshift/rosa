@@ -7,7 +7,6 @@ reviewers:
 - marcolan018
 - oriAdler
 - pvasant
-- renan-campos
 - robpblake
 - thomasmckay
 - willkutler
@@ -16,7 +15,8 @@ approvers:
 - gdbranco
 - oriAdler
 - pvasant
-- renan-campos
+- robpblake
+- davidleerh
 emeritus_approvers:
 - igoihman
 - jharrington22

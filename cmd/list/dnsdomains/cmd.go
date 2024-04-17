@@ -39,7 +39,8 @@ var Cmd = &cobra.Command{
 	Long:    "List DNS Domains",
 	Example: `  # List all DNS Domains tied to your organization ID"
   rosa list dns-domain`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

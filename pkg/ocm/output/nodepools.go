@@ -23,13 +23,14 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 )
 
 func PrintNodePoolAutoscaling(autoscaling *cmv1.NodePoolAutoscaling) string {
 	if autoscaling != nil {
-		return Yes
+		return output.Yes
 	}
-	return No
+	return output.No
 }
 
 func PrintNodePoolReplicas(autoscaling *cmv1.NodePoolAutoscaling, replicas int) string {
@@ -46,6 +47,14 @@ func PrintNodePoolInstanceType(aws *cmv1.AWSNodePool) string {
 		return ""
 	}
 	return aws.InstanceType()
+}
+
+func PrintNodePoolAdditionalSecurityGroups(aws *cmv1.AWSNodePool) string {
+	if aws == nil {
+		return ""
+	}
+
+	return output.PrintStringSlice(aws.AdditionalSecurityGroupIds())
 }
 
 func PrintNodePoolCurrentReplicas(status *cmv1.NodePoolStatus) string {
@@ -72,9 +81,9 @@ func PrintNodePoolVersion(version *cmv1.Version) string {
 
 func PrintNodePoolAutorepair(autorepair bool) string {
 	if autorepair {
-		return Yes
+		return output.Yes
 	}
-	return No
+	return output.No
 }
 
 func PrintNodePoolTuningConfigs(tuningConfigs []string) string {
@@ -82,4 +91,16 @@ func PrintNodePoolTuningConfigs(tuningConfigs []string) string {
 		return ""
 	}
 	return strings.Join(tuningConfigs, ",")
+}
+
+func PrintNodeDrainGracePeriod(period *cmv1.Value) string {
+	if period != nil && period.Value() != 0 {
+		unit := "minute"
+		if period.Value() > 1 {
+			unit += "s"
+		}
+		return fmt.Sprintf("%d %s", int(period.Value()), unit)
+	}
+
+	return ""
 }

@@ -185,20 +185,24 @@ func getUserList(cmd *cobra.Command, r *rosa.Runtime) (userList map[string]strin
 
 func GetUserDetails(cmd *cobra.Command, r *rosa.Runtime,
 	usernameKey, passwordKey, defaultUsername, defaultPassword string) (string, string) {
-	return GetIdpUserNameFromPrompt(cmd, r, usernameKey, defaultUsername),
+	return GetIdpUserNameFromPrompt(cmd, r, usernameKey, defaultUsername, false),
 		GetIdpPasswordFromPrompt(cmd, r, passwordKey, defaultPassword)
 }
 
 func GetIdpUserNameFromPrompt(cmd *cobra.Command, r *rosa.Runtime,
-	usernameKey, defaultUsername string) string {
+	usernameKey, defaultUsername string, acceptClusterAdmin bool) string {
+	validators := []interactive.Validator{
+		UsernameValidator,
+	}
+	if !acceptClusterAdmin {
+		validators = append(validators, clusterAdminValidator)
+	}
 	username, err := interactive.GetString(interactive.Input{
-		Question: "Username",
-		Help:     cmd.Flags().Lookup(usernameKey).Usage,
-		Default:  defaultUsername,
-		Required: true,
-		Validators: []interactive.Validator{
-			UsernameValidator,
-		},
+		Question:   "Username",
+		Help:       cmd.Flags().Lookup(usernameKey).Usage,
+		Default:    defaultUsername,
+		Required:   true,
+		Validators: validators,
 	})
 	if err != nil {
 		exitHTPasswdCreate("Expected a valid username: %s", r.ClusterKey, err, r)
@@ -244,13 +248,20 @@ func exitHTPasswdCreate(format, clusterKey string, err error, r *rosa.Runtime) {
 
 func UsernameValidator(val interface{}) error {
 	if username, ok := val.(string); ok {
-		if username == ClusterAdminUsername {
-			return fmt.Errorf("username '%s' is not allowed. It is preserved for cluster admin creation. "+
-				"Run `rosa create admin -c <cluster_id>` to create user '%s'", username, username)
-		}
 		if strings.ContainsAny(username, "/:%") {
 			return fmt.Errorf("invalid username '%s': "+
 				"username must not contain /, :, or %%", username)
+		}
+		return nil
+	}
+	return fmt.Errorf("can only validate strings, got '%v'", val)
+}
+
+func clusterAdminValidator(val interface{}) error {
+	if username, ok := val.(string); ok {
+		if username == ClusterAdminUsername {
+			return fmt.Errorf("username '%s' is not allowed. It is preserved for cluster admin creation. "+
+				"Run `rosa create admin -c <cluster_id>` to create user '%s'", username, username)
 		}
 		return nil
 	}

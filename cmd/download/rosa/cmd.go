@@ -23,9 +23,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/verify/rosa"
 	helper "github.com/openshift/rosa/pkg/helper/download"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/version"
 )
 
 var Cmd = &cobra.Command{
@@ -35,18 +35,19 @@ var Cmd = &cobra.Command{
 	Long:    "Downloads to latest compatible version of the ROSA client tools.",
 	Example: `  # Download rosa client tools
   rosa download rosa`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
-func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
+func run(_ *cobra.Command, _ []string) {
+	reporter := rprtr.CreateReporter()
 
 	platform := getPlatform()
 	extension := helper.GetExtension()
 
 	filename := fmt.Sprintf("rosa-%s.%s", platform, extension)
 
-	downloadURL := fmt.Sprintf("%s%s", rosa.DownloadLatestMirrorFolder, filename)
+	downloadURL := fmt.Sprintf("%s%s", version.DownloadLatestMirrorFolder, filename)
 
 	reporter.Infof("Downloading %s to your current directory", downloadURL)
 

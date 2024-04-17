@@ -46,7 +46,8 @@ var Cmd = &cobra.Command{
 	Long:    "List operator roles and policies for the current AWS account.",
 	Example: `  # List all operator roles
   rosa list operator-roles`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 const (

@@ -35,11 +35,12 @@ var Cmd = &cobra.Command{
 	Long:    "Downloads to latest compatible version of the OpenShift client tools.",
 	Example: `  # Download oc client tools
   rosa download oc`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	reporter := rprtr.CreateReporterOrExit()
+	reporter := rprtr.CreateReporter()
 
 	// Verify whether `oc` is installed
 	oc.Cmd.Run(cmd, argv)

@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
@@ -68,9 +68,10 @@ import (
 )
 
 const (
-	OidcConfigIdFlag      = "oidc-config-id"
-	ClassicOidcConfigFlag = "classic-oidc-config"
-	workerDiskSizeFlag    = "worker-disk-size"
+	OidcConfigIdFlag                 = "oidc-config-id"
+	ClassicOidcConfigFlag            = "classic-oidc-config"
+	ExternalAuthProvidersEnabledFlag = "external-auth-providers-enabled"
+	workerDiskSizeFlag               = "worker-disk-size"
 	// #nosec G101
 	Ec2MetadataHttpTokensFlag = "ec2-metadata-http-tokens"
 
@@ -79,7 +80,8 @@ const (
 	MinReplicasSingleAZ = 2
 	MinReplicaMultiAZ   = 3
 
-	listInputMessage = "Format should be a comma-separated list."
+	listInputMessage          = "Format should be a comma-separated list."
+	listBillingAccountMessage = "To see the list of billing account options, you can use interactive mode by passing '-i'."
 
 	// nolint:lll
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
@@ -108,6 +110,7 @@ var args struct {
 	expirationDuration        time.Duration
 	expirationTime            string
 	clusterName               string
+	domainPrefix              string
 	region                    string
 	version                   string
 	channelGroup              string
@@ -163,8 +166,9 @@ var args struct {
 	operatorRolesPermissionsBoundary string
 
 	// Oidc Config
-	oidcConfigId      string
-	classicOidcConfig bool
+	oidcConfigId                 string
+	classicOidcConfig            bool
+	externalAuthProvidersEnabled bool
 
 	// Proxy
 	enableProxy               bool
@@ -183,8 +187,7 @@ var args struct {
 	// Cluster Admin
 	createAdminUser      bool
 	clusterAdminPassword string
-	// Deprecated Cluster Admin
-	clusterAdminUser string
+	clusterAdminUser     string
 
 	// Audit Log Forwarding
 	AuditLogRoleARN string
@@ -230,7 +233,8 @@ func makeCmd() *cobra.Command {
 
   # Create a cluster in the us-east-2 region
   rosa create cluster --cluster-name=mycluster --region=us-east-2`,
-		Run: run,
+		Run:  run,
+		Args: cobra.NoArgs,
 	}
 }
 
@@ -248,7 +252,7 @@ func initFlags(cmd *cobra.Command) {
 		"name",
 		"n",
 		"",
-		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
+		"Name of the cluster.",
 	)
 	flags.MarkDeprecated("name", "use --cluster-name instead")
 
@@ -257,7 +261,20 @@ func initFlags(cmd *cobra.Command) {
 		"cluster-name",
 		"c",
 		"",
-		"Name of the cluster. This will be used when generating a sub-domain for your cluster on openshiftapps.com.",
+		"The unique name of the cluster. The name can be used as the identifier of the cluster."+
+			" The maximum length is 54 characters."+
+			"Once set, the cluster name cannot be changed",
+	)
+
+	flags.StringVar(
+		&args.domainPrefix,
+		"domain-prefix",
+		"",
+		"An optional unique domain prefix of the cluster. This will be used when generating a "+
+			"sub-domain for your cluster on openshiftapps.com. It must be unique per organization "+
+			"and consist of lowercase alphanumeric characters or '-', start with an alphabetic "+
+			"character, and end with an alphanumeric character. The maximum length is 15 characters. "+
+			"Once set, the cluster domain prefix cannot be changed",
 	)
 
 	flags.BoolVar(
@@ -350,6 +367,14 @@ func initFlags(cmd *cobra.Command) {
 		"Use classic OIDC configuration without registering an ID.",
 	)
 	flags.MarkHidden(ClassicOidcConfigFlag)
+
+	flags.BoolVar(
+		&args.externalAuthProvidersEnabled,
+		ExternalAuthProvidersEnabledFlag,
+		false,
+		"Enable external authentication configuration for a Hosted Control Plane cluster.",
+	)
+	flags.MarkHidden(ExternalAuthProvidersEnabledFlag)
 
 	flags.StringSliceVar(
 		&args.tags,
@@ -698,12 +723,13 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Disable CNI creation to let users bring their own CNI.",
 	)
+	flags.MarkHidden("no-cni")
 
 	flags.StringVar(
 		&args.clusterAdminUser,
 		"cluster-admin-user",
 		"",
-		`Deprecated cluster admin flag. Please use --create-admin-user.`,
+		`Username of Cluster Admin. Username must not contain /, :, or %%`,
 	)
 	flags.StringVar(
 		&args.clusterAdminPassword,
@@ -713,7 +739,6 @@ func initFlags(cmd *cobra.Command) {
 		- Be at least 14 characters (ASCII-standard) without whitespaces
 		- Include uppercase letters, lowercase letters, and numbers or symbols (ASCII-standard characters only)`,
 	)
-	// cluster admin flags deprecated to be removed
 	flags.MarkHidden("cluster-admin-user")
 
 	flags.StringVar(
@@ -804,7 +829,7 @@ func initFlags(cmd *cobra.Command) {
 			listInputMessage,
 	)
 
-	aws.AddModeFlag(cmd)
+	interactive.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
@@ -819,7 +844,7 @@ func run(cmd *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	// Validate mode
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -835,17 +860,8 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// validate flags for cluster admin
 	isHostedCP := args.hostedClusterEnabled
-	createAdminUser := args.createAdminUser
-	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
-	if (createAdminUser || clusterAdminPassword != "") && isHostedCP {
-		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
-		os.Exit(1)
-	}
-	// error when using deprecated admin flags
-	clusterAdminUser := strings.Trim(args.clusterAdminUser, " \t")
-	if clusterAdminUser != "" {
-		r.Reporter.Errorf("'--cluster-admin-user' flag has been deprecated " +
-			"and replaced with '--create-admin-user'")
+	if isHostedCP && fedramp.Enabled() {
+		r.Reporter.Errorf("Fedramp does not currently support Hosted Control Plane clusters. Please use classic")
 		os.Exit(1)
 	}
 
@@ -917,13 +933,54 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterName = strings.Trim(clusterName, " \t")
 
 	if !ocm.IsValidClusterName(clusterName) {
-		r.Reporter.Errorf("Cluster name must consist" +
-			" of no more than 15 lowercase alphanumeric characters or '-', " +
-			"start with a letter, and end with an alphanumeric character.")
+		r.Reporter.Errorf("Cluster name must consist"+
+			" of no more than %d lowercase alphanumeric characters or '-', "+
+			"start with a letter, and end with an alphanumeric character.", ocm.MaxClusterNameLength)
 		os.Exit(1)
 	}
 
+	// Get cluster domain prefix
+	domainPrefix := strings.Trim(args.domainPrefix, " \t")
+
 	if interactive.Enabled() {
+		domainPrefix, err = interactive.GetString(interactive.Input{
+			Question: "Domain prefix",
+			Help:     cmd.Flags().Lookup("domain-prefix").Usage,
+			Default:  domainPrefix,
+			Required: false,
+			Validators: []interactive.Validator{
+				ocm.ClusterDomainPrefixValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid domain prefix: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	// Trim domain prefix to remove any leading/trailing invisible characters
+	domainPrefix = strings.Trim(domainPrefix, " \t")
+
+	if domainPrefix != "" && !ocm.IsValidClusterDomainPrefix(domainPrefix) {
+		r.Reporter.Errorf("Domain prefix must consist"+
+			" of no more than %d lowercase alphanumeric characters or '-', "+
+			"start with a letter, and end with an alphanumeric character.", ocm.MaxClusterDomainPrefixLength)
+		os.Exit(1)
+	}
+
+	if clusterHasLongNameWithoutDomainPrefix(clusterName, domainPrefix) {
+		prompt := "Your cluster has a name longer than 15 characters, it will contain" +
+			" an autogenerated domain prefix as a sub-domain for your cluster on " +
+			"openshiftapps.com when provisioned. Do you want to proceed?"
+		if !confirm.ConfirmRaw(prompt) {
+			r.Reporter.Warnf("You opted out from creating a cluster with an autogenerated " +
+				"sub-domain for your cluster on openshiftapps.com. To customise the sub-domain" +
+				", use the '--domain-prefix' flag")
+			os.Exit(0)
+		}
+	}
+
+	if interactive.Enabled() && !fedramp.Enabled() {
 		isHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster with Hosted Control Plane",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
@@ -952,41 +1009,55 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Errors when users elects for cluster admin via flags and elects for hosted control plane via interactive prompt"
-	if isHostedCP && (createAdminUser || clusterAdminPassword != "") {
-		r.Reporter.Errorf("Setting Cluster Admin is only supported in classic ROSA clusters")
-		os.Exit(1)
-	}
-
+	createAdminUser := args.createAdminUser
+	clusterAdminUser := admin.ClusterAdminUsername
+	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
 	// isClusterAdmin is a flag indicating if user wishes to create cluster admin
 	isClusterAdmin := false
-	if !isHostedCP {
-		if createAdminUser {
-			isClusterAdmin = true
-			// user supplies create-admin-user flag without cluster-admin-password will generate random password
-			if clusterAdminPassword == "" {
-				r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
-				clusterAdminPassword, err = idputils.GenerateRandomPassword()
-				if err != nil {
-					r.Reporter.Errorf("Failed to generate a random password")
-					os.Exit(1)
-				}
+
+	if createAdminUser || clusterAdminPassword != "" {
+		isClusterAdmin = true
+		// user supplies create-admin-user flag without cluster-admin-password will generate random password
+		if clusterAdminPassword == "" {
+			r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
+			clusterAdminPassword, err = idputils.GenerateRandomPassword()
+			if err != nil {
+				r.Reporter.Errorf("Failed to generate a random password")
+				os.Exit(1)
 			}
 		}
 		// validates both user inputted custom password and randomly generated password
-		if clusterAdminPassword != "" {
-			err = passwordValidator.PasswordValidator(clusterAdminPassword)
+		err = passwordValidator.PasswordValidator(clusterAdminPassword)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		if clusterAdminUser != "" {
+			err = idp.UsernameValidator(clusterAdminUser)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
-			isClusterAdmin = true
+		} else {
+			clusterAdminUser = admin.ClusterAdminUsername
 		}
+	}
 
-		//check to remove first condition (interactive mode)
-		if interactive.Enabled() && !isClusterAdmin {
-			isClusterAdmin, err = interactive.GetBool(interactive.Input{
-				Question: "Create cluster admin user",
+	//check to remove first condition (interactive mode)
+	if interactive.Enabled() && !isClusterAdmin {
+		isClusterAdmin, err = interactive.GetBool(interactive.Input{
+			Question: "Create cluster admin user",
+			Default:  false,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+		if isClusterAdmin {
+			//clusterAdminUser = idp.GetIdpUserNameFromPrompt(cmd, r, "cluster-admin-user", clusterAdminUser, true)
+			isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
+				Question: "Create custom password for cluster admin",
 				Default:  false,
 				Required: true,
 			})
@@ -994,31 +1065,20 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Errorf("Expected a valid value: %s", err)
 				os.Exit(1)
 			}
-			if isClusterAdmin {
-				isCustomAdminPassword, err := interactive.GetBool(interactive.Input{
-					Question: "Create custom password for cluster admin",
-					Default:  false,
-					Required: true,
-				})
+			if !isCustomAdminPassword {
+				clusterAdminPassword, err = idputils.GenerateRandomPassword()
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid value: %s", err)
+					r.Reporter.Errorf("Failed to generate a random password")
 					os.Exit(1)
 				}
-				if !isCustomAdminPassword {
-					clusterAdminPassword, err = idputils.GenerateRandomPassword()
-					if err != nil {
-						r.Reporter.Errorf("Failed to generate a random password")
-						os.Exit(1)
-					}
-				} else {
-					clusterAdminPassword = idp.GetIdpPasswordFromPrompt(cmd, r,
-						"cluster-admin-password", clusterAdminPassword)
-					args.clusterAdminPassword = clusterAdminPassword
-				}
+			} else {
+				clusterAdminPassword = idp.GetIdpPasswordFromPrompt(cmd, r,
+					"cluster-admin-password", clusterAdminPassword)
+				args.clusterAdminPassword = clusterAdminPassword
 			}
 		}
-		outputClusterAdminDetails(r, isClusterAdmin, clusterAdminPassword)
 	}
+	outputClusterAdminDetails(r, isClusterAdmin, clusterAdminUser, clusterAdminPassword)
 
 	if isHostedCP && cmd.Flags().Changed(arguments.NewDefaultMPLabelsFlag) {
 		r.Reporter.Errorf("Setting the worker machine pool labels is not supported for hosted clusters")
@@ -1037,7 +1097,8 @@ func run(cmd *cobra.Command, _ []string) {
 		if !isHcpBillingTechPreview {
 
 			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account.")
+				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account. %s",
+					listBillingAccountMessage)
 				os.Exit(1)
 			}
 
@@ -1058,7 +1119,7 @@ func run(cmd *cobra.Command, _ []string) {
 						"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
 					)
 				} else {
-					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters.")
+					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters. %s", listBillingAccountMessage)
 				}
 			}
 
@@ -1080,8 +1141,9 @@ func run(cmd *cobra.Command, _ []string) {
 					billingAccount = aws.ParseOption(billingAccount)
 				}
 
-				if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-					r.Reporter.Errorf("Expected a valid billing account")
+				err := validateBillingAccount(billingAccount)
+				if err != nil {
+					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
 				}
 
@@ -1111,6 +1173,14 @@ func run(cmd *cobra.Command, _ []string) {
 	if !isHostedCP && billingAccount != "" {
 		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
 		os.Exit(1)
+	}
+
+	externalAuthProvidersEnabled := args.externalAuthProvidersEnabled
+	if externalAuthProvidersEnabled {
+		if !isHostedCP {
+			r.Reporter.Errorf("External authentication configuration is only supported for a Hosted Control Plane cluster.")
+			os.Exit(1)
+		}
 	}
 
 	etcdEncryptionKmsARN := args.etcdEncryptionKmsARN
@@ -1252,21 +1322,21 @@ func run(cmd *cobra.Command, _ []string) {
 	// validate mode passed is allowed value
 
 	if isSTS && mode != "" {
-		isValidMode := arguments.IsValidMode(aws.Modes, mode)
+		isValidMode := arguments.IsValidMode(interactive.Modes, mode)
 		if !isValidMode {
-			r.Reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, aws.Modes)
+			r.Reporter.Errorf("Invalid --mode '%s'. Allowed values are %s", mode, interactive.Modes)
 			os.Exit(1)
 		}
 	}
 
-	if args.watch && isSTS && mode == aws.ModeAuto && !confirm.Yes() {
+	if args.watch && isSTS && mode == interactive.ModeAuto && !confirm.Yes() {
 		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'auto' " +
 			"without also supplying '--yes' option." +
 			"To watch your cluster installation logs, run 'rosa logs install' instead after the cluster has began creating.")
 		os.Exit(1)
 	}
 
-	if args.watch && isSTS && mode == aws.ModeManual {
+	if args.watch && isSTS && mode == interactive.ModeManual {
 		r.Reporter.Errorf("Cannot watch for STS cluster installation logs in mode 'manual'." +
 			"It requires manual commands to be performed as part of the process." +
 			"To watch your cluster installation logs, run 'rosa logs install' after the cluster has began creating.")
@@ -1611,7 +1681,7 @@ func run(cmd *cobra.Command, _ []string) {
 	computedOperatorIamRoleList := []ocm.OperatorIAMRole{}
 	if isSTS {
 		if operatorRolesPrefix == "" {
-			operatorRolesPrefix = getRolePrefix(clusterName)
+			operatorRolesPrefix = roles.GeOperatorRolePrefixFromClusterName(clusterName)
 		}
 		if interactive.Enabled() {
 			operatorRolesPrefix, err = interactive.GetString(interactive.Input{
@@ -2019,7 +2089,7 @@ func run(cmd *cobra.Command, _ []string) {
 	privateSubnetsCount := 0
 
 	var availabilityZones []string
-	var subnets []*ec2.Subnet
+	var subnets []ec2types.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
 		initialSubnets, err := getInitialValidSubnets(awsClient, args.subnetIDs, r.Reporter)
@@ -2040,7 +2110,12 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Unable to parse service CIDR")
 			os.Exit(1)
 		}
-		subnets = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		var filterError error
+		subnets, filterError = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
+		if filterError != nil {
+			r.Reporter.Errorf("%s", filterError)
+			os.Exit(1)
+		}
 		if privateLink {
 			subnets = filterPrivateSubnets(subnets, r)
 		}
@@ -2068,7 +2143,7 @@ func run(cmd *cobra.Command, _ []string) {
 			for _, subnetArg := range subnetIDs {
 				verifiedSubnet := false
 				for _, subnet := range subnets {
-					if awssdk.StringValue(subnet.SubnetId) == subnetArg {
+					if awssdk.ToString(subnet.SubnetId) == subnetArg {
 						verifiedSubnet = true
 					}
 				}
@@ -2080,15 +2155,15 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		mapVpcToSubnet := map[string][]*ec2.Subnet{}
+		mapVpcToSubnet := map[string][]ec2types.Subnet{}
 
 		for _, subnet := range subnets {
 			mapVpcToSubnet[*subnet.VpcId] = append(mapVpcToSubnet[*subnet.VpcId], subnet)
-			subnetID := awssdk.StringValue(subnet.SubnetId)
-			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
+			subnetID := awssdk.ToString(subnet.SubnetId)
+			availabilityZone := awssdk.ToString(subnet.AvailabilityZone)
 			mapSubnetIDToSubnet[subnetID] = aws.Subnet{
 				AvailabilityZone: availabilityZone,
-				OwnerID:          awssdk.StringValue(subnet.OwnerId),
+				OwnerID:          awssdk.ToString(subnet.OwnerId),
 			}
 			mapAZCreated[availabilityZone] = false
 		}
@@ -2492,13 +2567,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Network Type:
-	networkType := validateNetworkType(r)
+	if err := validateNetworkType(args.networkType); err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 	if cmd.Flags().Changed("network-type") && interactive.Enabled() {
-		networkType, err = interactive.GetOption(interactive.Input{
+		args.networkType, err = interactive.GetOption(interactive.Input{
 			Question: "Network Type",
 			Help:     cmd.Flags().Lookup("network-type").Usage,
 			Options:  ocm.NetworkTypes,
-			Default:  networkType,
+			Default:  args.networkType,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid network type: %s", err)
@@ -2964,46 +3042,49 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := ocm.Spec{
-		Name:                      clusterName,
-		Region:                    region,
-		MultiAZ:                   multiAZ,
-		Version:                   version,
-		ChannelGroup:              channelGroup,
-		Flavour:                   args.flavour,
-		FIPS:                      fips,
-		EtcdEncryption:            etcdEncryption,
-		EtcdEncryptionKMSArn:      etcdEncryptionKmsARN,
-		EnableProxy:               enableProxy,
-		AdditionalTrustBundle:     additionalTrustBundle,
-		Expiration:                expiration,
-		ComputeMachineType:        computeMachineType,
-		ComputeNodes:              computeNodes,
-		Autoscaling:               autoscaling,
-		MinReplicas:               minReplicas,
-		MaxReplicas:               maxReplicas,
-		ComputeLabels:             labelMap,
-		NetworkType:               networkType,
-		MachineCIDR:               machineCIDR,
-		ServiceCIDR:               serviceCIDR,
-		PodCIDR:                   podCIDR,
-		HostPrefix:                hostPrefix,
-		Private:                   &private,
-		DryRun:                    &args.dryRun,
-		DisableSCPChecks:          &args.disableSCPChecks,
-		AvailabilityZones:         availabilityZones,
-		SubnetIds:                 subnetIDs,
-		PrivateLink:               &privateLink,
-		IsSTS:                     isSTS,
-		RoleARN:                   roleARN,
-		ExternalID:                externalID,
-		SupportRoleARN:            supportRoleARN,
-		OperatorIAMRoles:          computedOperatorIamRoleList,
-		ControlPlaneRoleARN:       controlPlaneRoleARN,
-		WorkerRoleARN:             workerRoleARN,
-		Mode:                      mode,
-		Tags:                      tagsList,
-		KMSKeyArn:                 kmsKeyARN,
-		DisableWorkloadMonitoring: &disableWorkloadMonitoring,
+		Name:                         clusterName,
+		DomainPrefix:                 domainPrefix,
+		Region:                       region,
+		MultiAZ:                      multiAZ,
+		Version:                      version,
+		ChannelGroup:                 channelGroup,
+		Flavour:                      args.flavour,
+		FIPS:                         fips,
+		EtcdEncryption:               etcdEncryption,
+		EtcdEncryptionKMSArn:         etcdEncryptionKmsARN,
+		EnableProxy:                  enableProxy,
+		AdditionalTrustBundle:        additionalTrustBundle,
+		Expiration:                   expiration,
+		ComputeMachineType:           computeMachineType,
+		ComputeNodes:                 computeNodes,
+		Autoscaling:                  autoscaling,
+		MinReplicas:                  minReplicas,
+		MaxReplicas:                  maxReplicas,
+		ComputeLabels:                labelMap,
+		NetworkType:                  args.networkType,
+		MachineCIDR:                  machineCIDR,
+		ServiceCIDR:                  serviceCIDR,
+		PodCIDR:                      podCIDR,
+		HostPrefix:                   hostPrefix,
+		Private:                      &private,
+		DryRun:                       &args.dryRun,
+		DisableSCPChecks:             &args.disableSCPChecks,
+		AvailabilityZones:            availabilityZones,
+		SubnetIds:                    subnetIDs,
+		PrivateLink:                  &privateLink,
+		AWSCreator:                   awsCreator,
+		IsSTS:                        isSTS,
+		RoleARN:                      roleARN,
+		ExternalID:                   externalID,
+		ExternalAuthProvidersEnabled: externalAuthProvidersEnabled,
+		SupportRoleARN:               supportRoleARN,
+		OperatorIAMRoles:             computedOperatorIamRoleList,
+		ControlPlaneRoleARN:          controlPlaneRoleARN,
+		WorkerRoleARN:                workerRoleARN,
+		Mode:                         mode,
+		Tags:                         tagsList,
+		KMSKeyArn:                    kmsKeyARN,
+		DisableWorkloadMonitoring:    &disableWorkloadMonitoring,
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
@@ -3044,7 +3125,7 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.AdditionalTrustBundle = additionalTrustBundle
 	}
 	if isClusterAdmin {
-		clusterConfig.ClusterAdminUser = admin.ClusterAdminUsername
+		clusterConfig.ClusterAdminUser = clusterAdminUser
 		clusterConfig.ClusterAdminPassword = clusterAdminPassword
 	}
 	if isSharedVPC {
@@ -3085,6 +3166,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	clusterConfig, err = clusterConfigFor(r.Reporter, clusterConfig, awsCreator, awsClient)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Creating cluster '%s'", clusterName)
 		if interactive.Enabled() {
@@ -3093,6 +3180,13 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
+	}
+
+	if !clusterConfig.IsSTS {
+		if err := r.OCMClient.EnsureNoPendingClusters(awsCreator); err != nil {
+			r.Reporter.Errorf("%v", err)
+			os.Exit(1)
+		}
 	}
 
 	cluster, err := r.OCMClient.CreateCluster(clusterConfig)
@@ -3127,11 +3221,7 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create operator roles.")
 			}
-			err := operatorroles.Cmd.RunE(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
-			if err != nil {
-				r.Reporter.Errorf("There was a problem creating operator roles: %v", err)
-				os.Exit(1)
-			}
+			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
@@ -3146,7 +3236,8 @@ func run(cmd *cobra.Command, _ []string) {
 				output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			}
 			oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
-			oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, r.Creator.AccountID)
+			oidcProviderExists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL,
+				r.Creator.Partition, r.Creator.AccountID)
 			if err != nil {
 				if strings.Contains(err.Error(), "AccessDenied") {
 					r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
@@ -3182,21 +3273,52 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+// clusterConfigFor builds the cluster spec for the OCM API from our command-line options.
+// TODO: eventually, this method signature should be func(args) ocm.Spec.
+func clusterConfigFor(
+	reporter *reporter.Object,
+	clusterConfig ocm.Spec,
+	awsCreator *aws.Creator,
+	awsCredentialsGetter aws.AccessKeyGetter,
+) (ocm.Spec, error) {
+	if clusterConfig.CustomProperties != nil && clusterConfig.CustomProperties[properties.UseLocalCredentials] ==
+		strconv.FormatBool(true) {
+		reporter.Warnf("Using local AWS access key for '%s'", awsCreator.ARN)
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetLocalAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get local AWS credentials: %w", err)
+		}
+	} else if clusterConfig.RoleARN == "" {
+		// Create the access key for the AWS user:
+		var err error
+		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetAWSAccessKeys()
+		if err != nil {
+			return clusterConfig, fmt.Errorf("Failed to get access keys for user '%s': %w",
+				aws.AdminUserName, err)
+		}
+	}
+	return clusterConfig, nil
+}
+
+func validateBillingAccount(billingAccount string) error {
+	if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
+		return fmt.Errorf("billing account is invalid. Run the command again with a valid billing account. %s",
+			listBillingAccountMessage)
+	}
+	return nil
+}
+
 // validateNetworkType ensure user passes a valid network type parameter at creation
-func validateNetworkType(r *rosa.Runtime) string {
-	var networkType string
-	if args.networkType == "" {
-		// Parameter not specified, nothing to do
-		return networkType
-	}
-	if helper.Contains(ocm.NetworkTypes, args.networkType) {
-		networkType = args.networkType
-	}
+func validateNetworkType(networkType string) error {
 	if networkType == "" {
-		r.Reporter.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
-		os.Exit(1)
+		// Parameter not specified, nothing to do
+		return nil
 	}
-	return networkType
+	if !helper.Contains(ocm.NetworkTypes, networkType) {
+		return fmt.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
+	}
+	return nil
 }
 
 func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
@@ -3304,9 +3426,9 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	return oidcConfig
 }
 
-func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.Subnet {
+func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) []ec2types.Subnet {
 	excludedSubnetsDueToPublic := []string{}
-	filteredSubnets := []*ec2.Subnet{}
+	filteredSubnets := []ec2types.Subnet{}
 	publicSubnetMap, err := r.AWSClient.FetchPublicSubnetMap(initialSubnets)
 	if err != nil {
 		r.Reporter.Errorf("Unable to check if subnet have an IGW: %v", err)
@@ -3314,11 +3436,11 @@ func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.
 	}
 	for _, subnet := range initialSubnets {
 		skip := false
-		if isPublic, ok := publicSubnetMap[awssdk.StringValue(subnet.SubnetId)]; ok {
+		if isPublic, ok := publicSubnetMap[awssdk.ToString(subnet.SubnetId)]; ok {
 			if isPublic {
 				excludedSubnetsDueToPublic = append(
 					excludedSubnetsDueToPublic,
-					awssdk.StringValue(subnet.SubnetId),
+					awssdk.ToString(subnet.SubnetId),
 				)
 				skip = true
 			}
@@ -3335,24 +3457,25 @@ func filterPrivateSubnets(initialSubnets []*ec2.Subnet, r *rosa.Runtime) []*ec2.
 	return filteredSubnets
 }
 
+// filterCidrRangeSubnets filters the initial set of subnets to those that are part of the machine network,
+// and not part of the service network
 func filterCidrRangeSubnets(
-	initialSubnets []*ec2.Subnet,
+	initialSubnets []ec2types.Subnet,
 	machineNetwork *net.IPNet,
 	serviceNetwork *net.IPNet,
 	r *rosa.Runtime,
-) []*ec2.Subnet {
+) ([]ec2types.Subnet, error) {
 	excludedSubnetsDueToCidr := []string{}
-	filteredSubnets := []*ec2.Subnet{}
+	filteredSubnets := []ec2types.Subnet{}
 	for _, subnet := range initialSubnets {
 		skip := false
 		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse subnet CIDR")
-			os.Exit(1)
+			return nil, fmt.Errorf("Unable to parse subnet CIDR: %w", err)
 		}
 
 		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
-			excludedSubnetsDueToCidr = append(excludedSubnetsDueToCidr, awssdk.StringValue(subnet.SubnetId))
+			excludedSubnetsDueToCidr = append(excludedSubnetsDueToCidr, awssdk.ToString(subnet.SubnetId))
 			skip = true
 		}
 
@@ -3364,7 +3487,7 @@ func filterCidrRangeSubnets(
 		r.Reporter.Warnf("The following subnets have been excluded"+
 			" because they do not fit into chosen CIDR ranges: %s", helper.SliceToSortedString(excludedSubnetsDueToCidr))
 	}
-	return filteredSubnets
+	return filteredSubnets, nil
 }
 
 func isValidCidrRange(
@@ -3547,6 +3670,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	properties []string) string {
 	command := "rosa create cluster"
 	command += fmt.Sprintf(" --cluster-name %s", spec.Name)
+	if spec.DomainPrefix != "" {
+		command += fmt.Sprintf(" --domain-prefix %s", spec.DomainPrefix)
+	}
+
 	if spec.IsSTS {
 		command += " --sts"
 		if spec.Mode != "" {
@@ -3554,10 +3681,17 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		}
 	}
 	if spec.ClusterAdminUser != "" {
+		argAdded := false
 		// Checks if admin password is from user (both flag and interactive)
 		if args.clusterAdminPassword != "" && spec.ClusterAdminPassword != "" {
 			command += fmt.Sprintf(" --cluster-admin-password %s", spec.ClusterAdminPassword)
-		} else {
+			argAdded = true
+		}
+		if spec.ClusterAdminUser != admin.ClusterAdminUsername {
+			command += fmt.Sprintf(" --cluster-admin-user %s", spec.ClusterAdminUser)
+			argAdded = true
+		}
+		if !argAdded {
 			command += " --create-admin-user"
 		}
 	}
@@ -3580,6 +3714,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if args.classicOidcConfig {
 		command += fmt.Sprintf(" --%s", ClassicOidcConfigFlag)
+	}
+	if args.externalAuthProvidersEnabled {
+		command += fmt.Sprintf(" --%s", ExternalAuthProvidersEnabledFlag)
 	}
 	if len(spec.Tags) > 0 {
 		command += fmt.Sprintf(" --tags \"%s\"", strings.Join(buildTagsCommand(spec.Tags), ","))
@@ -3782,10 +3919,6 @@ func buildTagsCommand(tags map[string]string) []string {
 	return formattedTags
 }
 
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
-}
-
 func calculateReplicas(
 	isMinReplicasSet bool,
 	isMaxReplicasSet bool,
@@ -3833,39 +3966,53 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 }
 
-func getInitialValidSubnets(aws aws.Client, ids []string, r *reporter.Object) ([]*ec2.Subnet, error) {
-	initialValidSubnets := []*ec2.Subnet{}
-	excludedSubnets := []string{}
+func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Object) ([]ec2types.Subnet, error) {
+	var initialValidSubnets []ec2types.Subnet
+	rhManagedSubnets := []string{}
+	localZoneSubnets := []string{}
 
-	validSubnets, err := aws.ListSubnets(ids...)
+	validSubnets, err := awsClient.ListSubnets(ids...)
 
 	if err != nil {
 		return initialValidSubnets, err
 	}
+
 	for _, subnet := range validSubnets {
 		hasRHManaged := tags.Ec2ResourceHasTag(subnet.Tags, tags.RedHatManaged, strconv.FormatBool(true))
-		if !hasRHManaged {
-			initialValidSubnets = append(initialValidSubnets, subnet)
+		if hasRHManaged {
+			rhManagedSubnets = append(rhManagedSubnets, awssdk.ToString(subnet.SubnetId))
 		} else {
-			excludedSubnets = append(excludedSubnets, awssdk.StringValue(subnet.SubnetId))
+			zoneType, err := awsClient.GetAvailabilityZoneType(awssdk.ToString(subnet.AvailabilityZone))
+			if err != nil {
+				return initialValidSubnets, err
+			}
+			if zoneType == aws.LocalZone || zoneType == aws.WavelengthZone {
+				localZoneSubnets = append(localZoneSubnets, awssdk.ToString(subnet.SubnetId))
+			} else {
+				initialValidSubnets = append(initialValidSubnets, subnet)
+			}
 		}
 	}
-	if len(validSubnets) != len(initialValidSubnets) {
+	if len(rhManagedSubnets) != 0 {
 		r.Warnf("The following subnets were excluded because they belong"+
-			" to a VPC that is managed by Red Hat: %s", helper.SliceToSortedString(excludedSubnets))
+			" to a VPC that is managed by Red Hat: %s", helper.SliceToSortedString(rhManagedSubnets))
+	}
+	if len(localZoneSubnets) != 0 {
+		r.Warnf("The following subnets were excluded because they are on local zone or wavelength zone: %s",
+			helper.SliceToSortedString(localZoneSubnets))
 	}
 	return initialValidSubnets, nil
 }
 
-func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdminPassword string) {
+func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdminUser, createAdminPassword string) {
 	if isClusterAdmin {
-		r.Reporter.Infof("cluster admin user is %s", admin.ClusterAdminUsername)
+		r.Reporter.Infof("cluster admin user is %s", createAdminUser)
 		r.Reporter.Infof("cluster admin password is %s", createAdminPassword)
 	}
 }
 
 func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
-	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []*ec2.Subnet, subnetIds []string,
+	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []ec2types.Subnet, subnetIds []string,
 	additionalSgIds *[]string) {
 	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
 	if hasChangedSgIdsFlag {
@@ -3895,8 +4042,8 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc && !isHostedCp {
 		vpcId := ""
 		for _, subnet := range currentSubnets {
-			if awssdk.StringValue(subnet.SubnetId) == subnetIds[0] {
-				vpcId = awssdk.StringValue(subnet.VpcId)
+			if awssdk.ToString(subnet.SubnetId) == subnetIds[0] {
+				vpcId = awssdk.ToString(subnet.VpcId)
 			}
 		}
 		if vpcId == "" {
@@ -3982,4 +4129,8 @@ func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 	}
 
 	return machinePoolRootDisk, nil
+}
+
+func clusterHasLongNameWithoutDomainPrefix(clusterName, domainPrefix string) bool {
+	return domainPrefix == "" && len(clusterName) > ocm.MaxClusterDomainPrefixLength
 }

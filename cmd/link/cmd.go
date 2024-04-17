@@ -31,6 +31,7 @@ var Cmd = &cobra.Command{
 	Short:   "Link OCM role to specific OCM organization",
 	Long:    "Link OCM role to specific OCM organization",
 	Hidden:  false,
+	Args:    cobra.NoArgs,
 }
 
 func init() {
@@ -41,4 +42,6 @@ func init() {
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
 	confirm.AddFlag(flags)
+	globallyAvailableCommands := []*cobra.Command{userrole.Cmd, ocmrole.Cmd}
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

@@ -32,6 +32,7 @@ var Cmd = &cobra.Command{
 	Use:   "upgrade",
 	Short: "Upgrade a resource",
 	Long:  "Upgrade a resource",
+	Args:  cobra.NoArgs,
 }
 
 func init() {
@@ -48,7 +49,7 @@ func init() {
 
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, operatorroles.Cmd,
-		roles.Cmd,
+		roles.Cmd, machinepool.Cmd, cluster.Cmd,
 	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

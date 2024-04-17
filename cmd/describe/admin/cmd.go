@@ -33,14 +33,15 @@ var Cmd = &cobra.Command{
 	Long:  "Show details of the cluster-admin user and a command to login to the cluster",
 	Example: `  # Describe cluster-admin user of a cluster named mycluster
   rosa describe admin -c mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
 	ocm.AddClusterFlag(Cmd)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -52,16 +53,27 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf(
+			"Describing the 'cluster-admin' user is not supported for clusters with external authentication configured.",
+		)
+		os.Exit(1)
+	}
+
 	// Try to find an existing htpasswd identity provider and
 	// check if cluster-admin user already exists
-	existingClusterAdminIdp, _ := cadmin.FindExistingClusterAdminIDP(cluster, r)
-
+	existingClusterAdminIdp, _, err := cadmin.FindIDPWithAdmin(cluster, r)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
 	if existingClusterAdminIdp != nil {
-		r.Reporter.Infof("There is an admin on cluster '%s'. To login, run the following command:\n"+
-			"   oc login %s --username %s", clusterKey, cluster.API().URL(), cadmin.ClusterAdminUsername)
+		r.Reporter.Infof("There is '%s' user on cluster '%s'. To login, run the following command:\n"+
+			"   oc login %s --username %s",
+			cadmin.ClusterAdminUsername, clusterKey, cluster.API().URL(), cadmin.ClusterAdminUsername)
 	} else {
-		r.Reporter.Warnf("There is no admin on cluster '%s'. To create it run the following command:\n"+
-			"   rosa create admin -c %s", clusterKey, clusterKey)
+		r.Reporter.Warnf("There is no '%s' user on cluster '%s'. To create it run the following command:\n"+
+			"   rosa create admin -c %s", cadmin.ClusterAdminUsername, clusterKey, clusterKey)
 		os.Exit(0)
 	}
 }

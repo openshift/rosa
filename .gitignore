@@ -13,6 +13,8 @@ docs/
 /rosa-linux-arm64
 /rosa-linux-arm64.sha256
 /*policy.json
+/tests/output
 .envrc
 .env
 cover.out
+/temp

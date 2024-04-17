@@ -43,7 +43,8 @@ var Cmd = &cobra.Command{
 	Long:    "Delete OCM role from the current AWS organization",
 	Example: ` # Delete OCM role
 rosa delete ocm-role --role-arn arn:aws:iam::123456789012:role/xxx-OCM-Role-1223456778`,
-	RunE: run,
+	Args: cobra.MaximumNArgs(1),
+	Run:  run,
 }
 
 func init() {
@@ -55,17 +56,17 @@ func init() {
 		"",
 		"Role ARN to delete from the OCM organization account")
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -74,7 +75,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	orgID, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
 		r.Reporter.Errorf("Error getting organization account: %v", err)
-		return err
+		os.Exit(1)
 	}
 
 	if len(argv) > 0 {
@@ -142,13 +143,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	isLinked := helper.Contains(linkedRoles, roleARN)
 
 	if interactive.Enabled() && !cmd.Flags().Changed("mode") {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OCM role deletion mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "OCM role deletion mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OCM role deletion mode: %s", err)
 			os.Exit(1)
@@ -178,16 +173,11 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeAuto", nil)
 		if isLinked {
 			r.Reporter.Warnf("Role ARN '%s' is linked to organization '%s'", roleARN, orgID)
-			err = unlinkocmrole.Cmd.RunE(unlinkocmrole.Cmd, []string{roleARN})
-			if err != nil {
-				r.Reporter.Errorf("Unable to unlink role ARN '%s' from organization : '%s' : %v",
-					roleARN, orgID, err)
-				os.Exit(1)
-			}
+			unlinkocmrole.Cmd.Run(unlinkocmrole.Cmd, []string{roleARN})
 		}
 		if roleExistOnAWS {
 			err := r.AWSClient.DeleteOCMRole(roleName, managedPolicies)
@@ -197,7 +187,7 @@ func run(cmd *cobra.Command, argv []string) error {
 			}
 			r.Reporter.Infof("Successfully deleted the OCM role")
 		}
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeManual", nil)
 		commands, err := buildCommands(roleName, roleARN, isLinked, r.AWSClient, roleExistOnAWS, managedPolicies)
 		if err != nil {
@@ -213,11 +203,9 @@ func run(cmd *cobra.Command, argv []string) error {
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
-
-	return nil
 }
 
 func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws.Client,

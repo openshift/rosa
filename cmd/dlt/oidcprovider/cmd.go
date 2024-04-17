@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -41,7 +40,8 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up OIDC provider of deleted STS cluster.",
 	Example: `  # Delete OIDC provider for cluster named "mycluster"
   rosa delete oidc-provider --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(3),
 }
 
 const (
@@ -65,7 +65,7 @@ func init() {
 	)
 
 	ocm.AddOptionalClusterFlag(Cmd)
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 }
 
@@ -76,7 +76,7 @@ func run(cmd *cobra.Command, argv []string) {
 	isProgmaticallyCalled := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
-		aws.SetModeKey(argv[1])
+		interactive.SetModeKey(argv[1])
 		if argv[1] != "" {
 			isProgmaticallyCalled = true
 		}
@@ -86,7 +86,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -99,15 +99,9 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !cmd.Flags().Changed("mode") && interactive.Enabled() && !isProgmaticallyCalled {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OIDC provider deletion mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "OIDC provider deletion mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid OIDC provider deletion mode: %s", err)
+			r.Reporter.Errorf("Expected a valid OIDC provider deletion mode: %v", err)
 			os.Exit(1)
 		}
 	}
@@ -202,7 +196,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOIDCProviderModeAuto", nil)
 		if !confirm.Prompt(true, "Delete the OIDC provider '%s'?", providerArn) {
 			os.Exit(1)
@@ -213,7 +207,7 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		r.Reporter.Infof("Successfully deleted the OIDC provider %s", providerArn)
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOIDCProviderModeManual", nil)
 		commands := buildCommand(providerArn)
 		if r.Reporter.IsTerminal() {
@@ -221,7 +215,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }

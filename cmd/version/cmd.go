@@ -17,45 +17,54 @@ limitations under the License.
 package version
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/verify/rosa"
-	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var (
-	writer io.Writer = os.Stdout
-	args   struct {
-		clientOnly bool
-	}
-
-	Cmd = &cobra.Command{
-		Use:   "version",
-		Short: "Prints the version of the tool",
-		Long:  "Prints the version number of the tool.",
-		Run:   run,
-	}
-	delegateCommand = rosa.Cmd.Run
+const (
+	use   = "version"
+	short = "Prints the version of the tool"
+	long  = "Prints the version number of the tool."
 )
 
-func init() {
-	flags := Cmd.Flags()
+func NewRosaVersionCommand() *cobra.Command {
+	o := NewRosaVersionUserOptions()
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: short,
+		Long:  long,
+		Args:  cobra.NoArgs,
+		Run:   rosa.DefaultRunner(rosa.RuntimeWithOCM(), RosaVersionRunner(o)),
+	}
 
-	flags.BoolVar(
-		&args.clientOnly,
+	cmd.Flags().SortFlags = false
+	cmd.Flags().BoolVar(
+		&o.clientOnly,
 		"client",
 		false,
 		"Client version only (no remote version check)",
 	)
+	cmd.Flags().BoolVarP(
+		&o.verbose,
+		"verbose",
+		"v",
+		false,
+		"Display verbose version information, including download locations",
+	)
+	return cmd
 }
 
-func run(_ *cobra.Command, _ []string) {
-	fmt.Fprintf(writer, "%s (Build: %s)\n", info.Version, info.Build)
-	if !args.clientOnly {
-		delegateCommand(rosa.Cmd, []string{})
+func RosaVersionRunner(userOptions RosaVersionUserOptions) rosa.CommandRunner {
+	return func(ctx context.Context, runtime *rosa.Runtime, command *cobra.Command, args []string) error {
+		options, err := NewRosaVersionOptions()
+		options.BindAndValidate(userOptions)
+		if err != nil {
+			return fmt.Errorf("there was a problem creating version options: %v", err)
+		}
+		return options.Version()
 	}
 }

@@ -21,11 +21,17 @@ import (
 	"net/url"
 	"strings"
 
+	"go.uber.org/mock/gomock"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocmCommonValidations "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	mock "github.com/openshift/rosa/pkg/aws"
 )
 
 var _ = Describe("Http tokens", func() {
@@ -306,4 +312,195 @@ var _ = Describe("ValidateBalancingIgnoredLabels", func() {
 		err := ValidateBalancingIgnoredLabels(val)
 		Expect(err).To(HaveOccurred())
 	})
+})
+
+var _ = Describe("expectedSubnetsCount", func() {
+	When("multiAZ and privateLink are true", func() {
+		It("Should return privateLinkMultiAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(true, true)).To(Equal(privateLinkMultiAZSubnetsCount))
+		})
+	})
+
+	When("multiAZ is true and privateLink is false", func() {
+		It("Should return privateLinkSingleAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(true, false)).To(Equal(BYOVPCMultiAZSubnetsCount))
+		})
+	})
+
+	When("multiAZ is false and privateLink is true", func() {
+		It("Should return BYOVPCMultiAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(false, true)).To(Equal(privateLinkSingleAZSubnetsCount))
+		})
+	})
+
+	When("multiAZ and privateLink are false", func() {
+		It("Should return BYOVPCSingleAZSubnetsCount", func() {
+			Expect(expectedSubnetsCount(false, false)).To(Equal(BYOVPCSingleAZSubnetsCount))
+		})
+	})
+})
+
+var _ = Describe("ValidateSubnetsCount", func() {
+	When("When privateLink is true", func() {
+		When("multiAZ is true", func() {
+			It("should return an error if subnetsInputCount is not equal to privateLinkMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, true, privateLinkMultiAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'private link cluster' should be"+
+					" '%d', instead received: '%d'", privateLinkMultiAZSubnetsCount, privateLinkMultiAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to privateLinkMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, true, privateLinkMultiAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		When("multiAZ is false", func() {
+			It("should return an error if subnetsInputCount is not equal to privateLinkSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, true, privateLinkSingleAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'private link cluster' should be"+
+					" '%d', instead received: '%d'", privateLinkSingleAZSubnetsCount, privateLinkSingleAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to privateLinkSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, true, privateLinkSingleAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	When("privateLink is false", func() {
+		When("multiAZ is true", func() {
+			It("should return an error if subnetsInputCount is not equal to BYOVPCMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, false, BYOVPCMultiAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'cluster' should be"+
+					" '%d', instead received: '%d'", BYOVPCMultiAZSubnetsCount, BYOVPCMultiAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to BYOVPCMultiAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(true, false, BYOVPCMultiAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		When("multiAZ is false", func() {
+			It("should return an error if subnetsInputCount is not equal to BYOVPCSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, false, BYOVPCSingleAZSubnetsCount+1)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'cluster' should"+
+					" be '%d', instead received: '%d'", BYOVPCSingleAZSubnetsCount, BYOVPCSingleAZSubnetsCount+1)))
+			})
+
+			It("should not return an error if subnetsInputCount is equal to BYOVPCSingleAZSubnetsCount", func() {
+				err := ValidateSubnetsCount(false, false, BYOVPCSingleAZSubnetsCount)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+})
+
+var _ = Describe("ValidateHostedClusterSubnets for Private Cluster", func() {
+	var (
+		mockClient *mock.MockClient
+		ids        = []string{"subnet-public-1", "subnet-private-2"}
+		subnets    = []ec2types.Subnet{
+			{SubnetId: aws.String("subnet-public-1")},
+			{SubnetId: aws.String("subnet-private-2")},
+		}
+	)
+	BeforeEach(func() {
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient = mock.NewMockClient(mockCtrl)
+		mockClient.EXPECT().GetVPCSubnets(gomock.Any()).Return(subnets, nil).AnyTimes()
+	})
+	It("should not return an error when only private subnets are present for a private cluster", func() {
+		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{subnets[1]}, nil)
+		_, err := ValidateHostedClusterSubnets(mockClient, true, []string{"subnet-private-2"})
+		Expect(err).NotTo(HaveOccurred())
+	})
+	It("should return an error when public subnets are present for a private cluster", func() {
+		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{}, nil)
+		_, err := ValidateHostedClusterSubnets(mockClient, true, ids)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("The number of public subnets for a private hosted cluster should be zero"))
+	})
+})
+
+var _ = Describe("IsValidClusterName()", func() {
+	DescribeTable("IsValidClusterName() test cases", func(name string, expected bool) {
+		valid := IsValidClusterName(name)
+		Expect(expected).To(Equal(valid))
+	},
+		Entry("returns false when an empty name is given", "", false),
+		Entry("returns false when name is not a valid DNS label", "9hjh9", false),
+		Entry("returns false when name is not a valid DNS label", "hjh-", false),
+		Entry("returns false when name is longer than 54 chars", strings.Repeat("h", 55), false),
+		Entry("returns true when name valid", strings.Repeat("h", 25), true))
+})
+
+var _ = Describe("ClusterNameValidator()", func() {
+	DescribeTable("ClusterNameValidator() test cases", func(name interface{}, shouldErr bool) {
+		err := ClusterNameValidator(name)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when a non string arg is given", 5, true),
+		Entry("should error when an empty name is given", "", true),
+		Entry("should error when name is not a valid DNS label", "9hjh9", true),
+		Entry("should error when name is not a valid DNS label", "hjh-", true),
+		Entry("should error when name is longer than 54 chars", strings.Repeat("h", 55), true),
+		Entry("should not error when name valid", strings.Repeat("h", 25), false))
+})
+
+var _ = Describe("IsValidClusterDomainPrefix()", func() {
+	DescribeTable("IsValidClusterDomainPrefix() test cases", func(domainPrefix string, expected bool) {
+		valid := IsValidClusterDomainPrefix(domainPrefix)
+		Expect(expected).To(Equal(valid))
+	},
+		Entry("returns false when an empty domain prefix is given", "", false),
+		Entry("returns false when domain prefix is not a valid DNS label", "9hjh9", false),
+		Entry("returns false when domain prefix is not a valid DNS label", "hjh-", false),
+		Entry("returns false when domain prefix is longer than 15 chars", strings.Repeat("h", 16), false),
+		Entry("returns true when domain prefix valid", strings.Repeat("h", 15), true))
+})
+
+var _ = Describe("ClusterDomainPrefixValidator()", func() {
+	DescribeTable("ClusterDomainPrefixValidator() test case", func(domainPrefix interface{}, shouldErr bool) {
+		err := ClusterDomainPrefixValidator(domainPrefix)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when a non string arg is given", 5, true),
+		Entry("should not error when an empty domain prefix is given", "", false),
+		Entry("shoud error when domain prefix is not a valid DNS label", "9hjh9", true),
+		Entry("should error when domain prefix is not a valid DNS label", "hjh-", true),
+		Entry("should error when domain prefix is longer than 15 chars", strings.Repeat("h", 16), true),
+		Entry("should not error when domain prefix valid", strings.Repeat("h", 15), false))
+})
+
+var _ = Describe("ValidateClaimValidationRules()", func() {
+	DescribeTable("ValidateClaimValidationRules() test case", func(input interface{}, shouldErr bool, errMsg string) {
+		err := ValidateClaimValidationRules(input)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(errMsg))
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when a non string arg is given", 5, true, "can only validate string types, got int"),
+		Entry("should not error when an empty claim validation rule is given", "", false, ""),
+		Entry("shoud error when claim validation rule is not a valid value", "9hjh9", true,
+			"invalid identifier '9hjh9' for 'claim validation rule. 'Should be in a <claim>:<required_value> format."),
+		Entry("should not error when claim validation rule with single pair is valid", "abc:efg", false, ""))
+	Entry("should not error when claim validation rule with multiple pairs is valid", "abc:efg,lala:wuwu", false, "")
 })

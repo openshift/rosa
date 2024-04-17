@@ -34,7 +34,8 @@ var Cmd = &cobra.Command{
 	Long:    "Show details of an add-on installation",
 	Example: `  # Describe the 'bar' add-on installation on cluster 'foo'
   rosa describe addon-installation --cluster foo --addon bar`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 var args struct {
@@ -61,7 +62,7 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, argv []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

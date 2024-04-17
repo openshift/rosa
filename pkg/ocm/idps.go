@@ -175,8 +175,6 @@ func getIDPListWithoutAuthURLSupport() []string {
 func BuildOAuthURL(cluster *cmv1.Cluster, idpType cmv1.IdentityProviderType) (string, error) {
 	var oauthURL string
 	if cluster.Hypershift().Enabled() {
-		// TODO(adecorte): this logic is not valid if ExternalDNS is not configured. This should be the case only in
-		// local env. We should either align local or have a specific logic for this case
 		// https://api.example.com:443 -> https://oauth.example.com
 		apiURL := cluster.API().URL()
 		if OAuthURLNeedsPort(idpType) {

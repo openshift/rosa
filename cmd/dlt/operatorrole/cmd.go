@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -49,7 +48,8 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up operator roles of deleted STS cluster.",
 	Example: `  # Delete Operator roles for cluster named "mycluster"
   rosa delete operator-roles --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -63,7 +63,7 @@ func init() {
 	)
 
 	ocm.AddOptionalClusterFlag(Cmd)
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 }
 
@@ -71,11 +71,11 @@ const (
 	hypershiftSubscriptionPlanId = "MOA-HostedControlPlane"
 )
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -92,13 +92,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Operator roles deletion mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Operator roles deletion mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid operator role deletion mode: %s", err)
 			os.Exit(1)
@@ -223,7 +217,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	errOccured := false
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
 		for _, role := range foundOperatorRoles {
 			if !confirm.Prompt(true, "Delete the operator role '%s'?", role) {
@@ -250,7 +244,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if !errOccured {
 			r.Reporter.Infof("Successfully deleted the operator roles")
 		}
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
 		policyMap, err := r.AWSClient.GetPolicies(foundOperatorRoles)
 		if err != nil {
@@ -263,7 +257,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }

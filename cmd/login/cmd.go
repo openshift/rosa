@@ -18,13 +18,18 @@ package login
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/golang-jwt/jwt/v4"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift-online/ocm-sdk-go/authentication"
+	"github.com/openshift-online/ocm-sdk-go/authentication/securestore"
 	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/pkg/arguments"
@@ -32,6 +37,8 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -43,31 +50,37 @@ const oauthClientId = "ocm-cli"
 
 var reAttempt bool
 
+var env string
+
 var args struct {
-	tokenURL     string
-	clientID     string
-	clientSecret string
-	scopes       []string
-	env          string
-	token        string
-	insecure     bool
-	useAuthCode  bool
+	tokenURL      string
+	clientID      string
+	clientSecret  string
+	scopes        []string
+	env           string
+	token         string
+	insecure      bool
+	useAuthCode   bool
+	useDeviceCode bool
+	rhRegion      string
 }
 
 var Cmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to your Red Hat account",
-	Long: fmt.Sprintf("Log in to your Red Hat account, saving the credentials to the configuration file.\n"+
+	Long: fmt.Sprintf("Log in to your Red Hat account, saving the credentials to the configuration file or OS Keyring.\n"+
 		"The supported mechanism is by using a token, which can be obtained at: %s\n\n"+
 		"The application looks for the token in the following order, stopping when it finds it:\n"+
-		"\t1. Command-line flags\n"+
-		"\t2. Environment variable (ROSA_TOKEN)\n"+
-		"\t3. Environment variable (OCM_TOKEN)\n"+
-		"\t4. Configuration file\n"+
-		"\t5. Command-line prompt\n", uiTokenPage),
+		fmt.Sprintf("\t1. OS Keyring via Environment variable (%s)\n", properties.KeyringEnvKey)+
+		"\t2. Command-line flags\n"+
+		"\t3. Environment variable (ROSA_TOKEN)\n"+
+		"\t4. Environment variable (OCM_TOKEN)\n"+
+		"\t5. Configuration file\n"+
+		"\t6. Command-line prompt\n", uiTokenPage),
 	Example: fmt.Sprintf(`  # Login to the OpenShift API with an existing token generated from %s
   rosa login --token=$OFFLINE_ACCESS_TOKEN`, uiTokenPage),
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -103,14 +116,15 @@ func init() {
 		"OpenID scope. If this option is used it will completely replace the default "+
 			"scopes. Can be repeated multiple times to specify multiple scopes.",
 	)
+	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.env,
-		"env",
-		sdk.DefaultURL,
+		arguments.NewEnvFlag,
+		"",
 		"Environment of the API gateway. The value can be the complete URL or an alias. "+
 			"The valid aliases are 'production', 'staging' and 'integration'.",
 	)
-	flags.MarkHidden("env")
+	flags.MarkHidden(arguments.NewEnvFlag)
 	flags.StringVarP(
 		&args.token,
 		"token",
@@ -129,41 +143,113 @@ func init() {
 		&args.useAuthCode,
 		"use-auth-code",
 		false,
-		"Enables OAuth Authorization Code login using PKCE. If this option is provided, "+
-			"the user will be taken to Red Hat SSO for authentication. In order to use a different account"+
-			"log out from sso.redhat.com after using the 'ocm logout' command.",
+		"Login using OAuth Authorization Code. This should be used for most cases where a "+
+			"browser is available. See --use-device-code for remote hosts and containers.",
 	)
-	flags.MarkHidden("use-auth-code")
+	flags.BoolVar(
+		&args.useDeviceCode,
+		"use-device-code",
+		false,
+		"Login using OAuth Device Code. "+
+			"This should only be used for remote hosts and containers where browsers are "+
+			"not available. See --use-auth-code for all other scenarios.",
+	)
+	flags.StringVar(
+		&args.rhRegion,
+		"rh-region",
+		"",
+		"OCM data sovereignty region identifier. --env will be used to initiate a service discovery "+
+			"request to find the region URL matching the provided identifier. Use `rosa list rh-regions` "+
+			"to see available regions.",
+	)
+	flags.MarkHidden("rh-region")
 	arguments.AddRegionFlag(flags)
 	fedramp.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime()
+	defer r.Cleanup()
+	err := runWithRuntime(r, cmd, argv)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
+	ctx := cmd.Context()
+	var spin *spinner.Spinner
+	if r.Reporter.IsTerminal() && !output.HasFlag() {
+		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	}
 
 	// Check mandatory options:
-	env := args.env
-	if env == "" {
-		r.Reporter.Errorf("Option '--env' is mandatory")
+	env = args.env
+
+	// Fail fast if config is keyring managed and invalid
+	if keyring, ok := config.IsKeyringManaged(); ok {
+		err := securestore.ValidateBackend(keyring)
+		if err != nil {
+			return fmt.Errorf("Error validating keyring: %v", err)
+		}
+	}
+
+	// Confirm that token is not passed with auth code flags
+	if (args.useAuthCode || args.useDeviceCode) && args.token != "" {
+		r.Reporter.Errorf("Token cannot be passed with '--use-auth-code' or '--use-device-code' commands")
+		os.Exit(1)
+	}
+
+	// FedRAMP does not support oauth code flow login yet
+	if fedramp.HasFlag(cmd) && (args.useAuthCode || args.useDeviceCode) {
+		r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
 		os.Exit(1)
 	}
 
 	if args.useAuthCode {
-		fmt.Println("You will now be redirected to Red Hat SSO login")
+		r.Reporter.Infof("You will now be redirected to Red Hat SSO login")
+
+		if spin != nil {
+			spin.Start()
+		}
+		// Short wait for a less jarring experience
+		time.Sleep(2 * time.Second)
+		if spin != nil {
+			spin.Stop()
+		}
 		token, err := authentication.InitiateAuthCode(oauthClientId)
 		if err != nil {
-			r.Reporter.Errorf("An error occurred while retrieving the token : %v", err)
-			os.Exit(1)
+			return fmt.Errorf("An error occurred while retrieving the token: %v", err)
 		}
 		args.token = token
-		fmt.Println("Token received successfully")
+		args.clientID = oauthClientId
+		r.Reporter.Infof("Token received successfully")
+	} else if args.useDeviceCode {
+		deviceAuthConfig := &authentication.DeviceAuthConfig{
+			ClientID: oauthClientId,
+		}
+		_, err := deviceAuthConfig.InitiateDeviceAuth(ctx)
+		if err != nil {
+			return fmt.Errorf("An error occurred while initiating device auth: %v", err)
+		}
+		deviceAuthResp := deviceAuthConfig.DeviceAuthResponse
+
+		r.Reporter.Infof("To login, navigate to %v on another device and enter code %v",
+			deviceAuthResp.VerificationURI, deviceAuthResp.UserCode)
+		r.Reporter.Infof("Checking status every %v seconds...", deviceAuthResp.Interval)
+		token, err := deviceAuthConfig.PollForTokenExchange(ctx)
+		if err != nil {
+			return fmt.Errorf("An error occurred while polling for token exchange: %v", err)
+		}
+		args.token = token
+		args.clientID = oauthClientId
 	}
 
 	// Load the configuration file:
 	cfg, err := config.Load()
 	if err != nil {
-		r.Reporter.Errorf("Failed to load config file: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to load config file: %v", err)
 	}
 	if cfg == nil {
 		cfg = new(config.Config)
@@ -172,25 +258,13 @@ func run(cmd *cobra.Command, argv []string) {
 	token := args.token
 
 	// Determine if we should be using the FedRAMP environment:
-	if fedramp.HasFlag(cmd) ||
-		(cfg.FedRAMP && token == "") ||
-		fedramp.IsGovRegion(arguments.GetRegion()) ||
-		config.IsEncryptedToken(token) {
-		fedramp.Enable()
-		// Always default to prod
-		if env == sdk.DefaultURL {
-			env = "production"
-		}
-		if fedramp.HasAdminFlag(cmd) {
-			uiTokenPage = fedramp.AdminLoginURLs[env]
-		} else {
-			uiTokenPage = fedramp.LoginURLs[env]
-		}
-	} else {
-		fedramp.Disable()
+	err = CheckAndLogIntoFedramp(fedramp.HasFlag(cmd), fedramp.HasAdminFlag(cmd), cfg, token, r)
+	if err != nil {
+		r.Reporter.Errorf("%s", err.Error())
+		os.Exit(1)
 	}
 
-	haveReqs := token != ""
+	haveReqs := token != "" || (args.clientID != "" && args.clientSecret != "")
 
 	// Verify environment variables:
 	if !haveReqs && !reAttempt && !fedramp.Enabled() {
@@ -205,8 +279,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if !haveReqs {
 		armed, err := cfg.Armed()
 		if err != nil {
-			r.Reporter.Errorf("Failed to verify configuration: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to verify configuration: %v", err)
 		}
 		haveReqs = armed
 	}
@@ -219,15 +292,13 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Failed to parse token: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to parse token: %v", err)
 		}
 		haveReqs = token != ""
 	}
 
 	if !haveReqs {
-		r.Reporter.Errorf("Failed to login to OCM. See 'rosa login --help' for information.")
-		os.Exit(1)
+		return fmt.Errorf("Failed to login to OCM. See 'rosa login --help' for information.")
 	}
 
 	// Red Hat SSO does not issue encrypted refresh tokens, but AWS Cognito does. If the token
@@ -236,11 +307,13 @@ func run(cmd *cobra.Command, argv []string) {
 		fedramp.Enable()
 	}
 
-	// Apply the default configuration details if not explicitly provided by the user:
-	gatewayURL, ok := ocm.URLAliases[env]
-	if !ok {
-		gatewayURL = env
+	gatewayURL, err := ocm.ResolveGatewayUrl(env, cfg)
+	if err != nil {
+		r.Reporter.Errorf("Failed to resolve gateway URL: %v", err)
+		os.Exit(1)
 	}
+
+	var ok bool
 	tokenURL := sdk.DefaultTokenURL
 	if args.tokenURL != "" {
 		tokenURL = args.tokenURL
@@ -280,6 +353,26 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	// If an --rh-region is provided, gatewayURL is resolved from ResolveGatewayUrl() and then used to initiate
+	// service discovery for the environment gatewayURL is a part of, but it (and
+	// ultimately the cfg.URL) is then updated to the URL of the matching --rh-region:
+	//   1. resolve the gatewayURL as above
+	//   2. fetch a well-known file from sdk.GetRhRegion
+	//   3. update the gatewayURL to the region URL matching args.rhRegion
+	//
+	// So `--env=https://api.stage.openshift.com --rh-region=ap-southeast-1` might result in
+	// gatewayURL/cfg.URL being mutated to "https://api.aws.ap-southeast-1.stage.openshift.com"
+	//
+	// See ocm-sdk-go/rh_region.go for full details on how service discovery works.
+	if args.rhRegion != "" {
+		regValue, err := sdk.GetRhRegion(gatewayURL, args.rhRegion)
+		if err != nil {
+			r.Reporter.Errorf("Can't find region: %v", err)
+			os.Exit(1)
+		}
+		gatewayURL = fmt.Sprintf("https://%s", regValue.URL)
+	}
+
 	// Update the configuration with the values given in the command line:
 	cfg.TokenURL = tokenURL
 	cfg.ClientID = clientID
@@ -297,15 +390,13 @@ func run(cmd *cobra.Command, argv []string) {
 			// If a token has been provided parse it:
 			jwtToken, err := config.ParseToken(token)
 			if err != nil {
-				r.Reporter.Errorf("Failed to parse token: %v", err)
-				os.Exit(1)
+				return fmt.Errorf("Failed to parse token: %v", err)
 			}
 
 			// Put the token in the place of the configuration that corresponds to its type:
 			typ, err := tokenType(jwtToken)
 			if err != nil {
-				r.Reporter.Errorf("Failed to extract type from 'typ' claim of token: %v", err)
-				os.Exit(1)
+				return fmt.Errorf("Failed to extract type from 'typ' claim of token: %v", err)
 			}
 			switch typ {
 			case "Bearer", "":
@@ -315,8 +406,7 @@ func run(cmd *cobra.Command, argv []string) {
 				cfg.AccessToken = ""
 				cfg.RefreshToken = token
 			default:
-				r.Reporter.Errorf("Don't know how to handle token type '%s' in token", typ)
-				os.Exit(1)
+				return fmt.Errorf("Don't know how to handle token type '%s' in token", typ)
 			}
 		}
 	}
@@ -329,19 +419,17 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		if strings.Contains(err.Error(), "token needs to be updated") && !reAttempt {
 			reattemptLogin(cmd, argv)
-			return
+			return nil
 		} else {
-			r.Reporter.Errorf("Failed to create OCM connection: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to create OCM connection: %v", err)
 		}
 	}
-	defer r.Cleanup()
 
 	accessToken, refreshToken, err := r.OCMClient.GetConnectionTokens()
 	if err != nil {
-		r.Reporter.Errorf("Failed to get token. Your session might be expired: %v", err)
-		r.Reporter.Infof("Get a new offline access token at %s", uiTokenPage)
-		os.Exit(1)
+		return fmt.Errorf(
+			"Failed to get token. Your session might be expired: %v\nGet a new offline access token at %s",
+			err, uiTokenPage)
 	}
 	reAttempt = false
 	// Save the configuration:
@@ -349,14 +437,15 @@ func run(cmd *cobra.Command, argv []string) {
 	cfg.RefreshToken = refreshToken
 	err = config.Save(cfg)
 	if err != nil {
-		r.Reporter.Errorf("Failed to save config file: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to save config file: %v", err)
 	}
 
-	username, err := cfg.GetData("username")
+	username, err := cfg.GetData("preferred_username")
 	if err != nil {
-		r.Reporter.Errorf("Failed to get username: %v", err)
-		os.Exit(1)
+		username, err = cfg.GetData("username")
+		if err != nil {
+			return fmt.Errorf("Failed to get username: %v", err)
+		}
 	}
 
 	r.Reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
@@ -365,6 +454,19 @@ func run(cmd *cobra.Command, argv []string) {
 		ocm.Username: username,
 		ocm.URL:      cfg.URL,
 	})
+
+	if args.useAuthCode || args.useDeviceCode {
+		ssoURL, err := url.Parse(cfg.TokenURL)
+		if err != nil {
+			return fmt.Errorf("can't parse token url '%s': %v", args.tokenURL, err)
+		}
+		ssoHost := ssoURL.Scheme + "://" + ssoURL.Hostname()
+
+		r.Reporter.Infof("To switch accounts, logout from %s and run `rosa logout` "+
+			"before attempting to login again", ssoHost)
+	}
+
+	return nil
 }
 
 func reattemptLogin(cmd *cobra.Command, argv []string) {
@@ -395,7 +497,7 @@ func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 }
 
 func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
-	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", "env", "token", "insecure"}
+	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", arguments.NewEnvFlag, "token", "insecure"}
 	hasLoginFlags := false
 	// Check if the user set login flags
 	for _, loginFlag := range loginFlags {
@@ -425,9 +527,12 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 	}
 
 	if isLoggedIn {
-		username, err := cfg.GetData("username")
+		username, err := cfg.GetData("preferred_username")
 		if err != nil {
-			return fmt.Errorf("Failed to get username: %v", err)
+			username, err = cfg.GetData("username")
+			if err != nil {
+				return fmt.Errorf("Failed to get username: %v", err)
+			}
 		}
 
 		if reporter.IsTerminal() {
@@ -437,5 +542,33 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 	}
 
 	run(cmd, argv)
+	return nil
+}
+
+func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, token string,
+	runtime *rosa.Runtime) error {
+	if hasFlag ||
+		(cfg.FedRAMP && token == "") ||
+		fedramp.IsGovRegion(arguments.GetRegion()) ||
+		config.IsEncryptedToken(token) {
+		// Display error to user if they attempt to log into govcloud without a region specified (fixes OCM-5718)
+		if !fedramp.IsGovRegion(arguments.GetRegion()) {
+			return errors.Errorf("When logging into the FedRAMP environment, a recognized us-gov region needs " +
+				"to be specified. Example: --region us-gov-west-1")
+		}
+
+		fedramp.Enable()
+		// Always default to prod
+		if env == sdk.DefaultURL || env == "" {
+			env = "production"
+		}
+		if hasAdminFlag {
+			uiTokenPage = fedramp.AdminLoginURLs[env]
+		} else {
+			uiTokenPage = fedramp.LoginURLs[env]
+		}
+	} else {
+		fedramp.Disable()
+	}
 	return nil
 }

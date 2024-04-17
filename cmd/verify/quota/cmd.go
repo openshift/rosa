@@ -18,6 +18,7 @@ package quota
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -36,7 +37,8 @@ var Cmd = &cobra.Command{
 
   # Verify AWS quotas in a different region
   rosa verify quota --region=us-west-2`,
-	RunE: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
@@ -46,7 +48,7 @@ func init() {
 	arguments.AddProfileFlag(flags)
 }
 
-func run(cmd *cobra.Command, _ []string) (err error) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
@@ -54,7 +56,7 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
 		r.Reporter.Errorf("Error getting region: %v", err)
-		return err
+		os.Exit(1)
 	}
 
 	// Create the AWS client:
@@ -68,7 +70,7 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 			r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
 		}
 		r.Reporter.Errorf("Error creating AWS client: %v", err)
-		return err
+		os.Exit(1)
 	}
 
 	if r.Reporter.IsTerminal() {
@@ -79,12 +81,11 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		r.OCMClient.LogEvent("ROSAVerifyQuotaInsufficient", nil)
 		r.Reporter.Errorf("Insufficient AWS quotas")
 		r.Reporter.Errorf("%v", err)
-		return err
+		os.Exit(1)
 	}
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("AWS quota ok. " +
 			"If cluster installation fails, validate actual AWS resource usage against " +
 			"https://docs.openshift.com/rosa/rosa_getting_started/rosa-required-aws-service-quotas.html")
 	}
-	return nil
 }

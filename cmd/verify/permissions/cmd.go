@@ -38,7 +38,8 @@ var Cmd = &cobra.Command{
 
   # Verify AWS permissions in a different region
   rosa verify permissions --region=us-west-2`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -48,7 +49,7 @@ func init() {
 	arguments.AddRegionFlag(flags)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 

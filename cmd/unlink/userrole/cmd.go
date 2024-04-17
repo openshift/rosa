@@ -38,7 +38,8 @@ var Cmd = &cobra.Command{
 	Long:    "Unlink user role from a specific OCM account",
 	Example: ` # Unlink user role
 rosa unlink user-role --role-arn arn:aws:iam::{accountid}:role/{prefix}-User-{username}-Role`,
-	RunE: run,
+	Run:  run,
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {
@@ -61,7 +62,8 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) (err error) {
+func run(cmd *cobra.Command, argv []string) {
+	var err error
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
@@ -129,5 +131,4 @@ func run(cmd *cobra.Command, argv []string) (err error) {
 		os.Exit(1)
 	}
 	r.Reporter.Infof("Successfully unlinked role ARN '%s' from account '%s'", roleArn, accountID)
-	return nil
 }

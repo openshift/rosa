@@ -3,10 +3,14 @@ package securitygroups
 import (
 	"fmt"
 	"os"
+	"strconv"
 
+	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	. "github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -47,8 +51,15 @@ func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 	if len(possibleSgs) > 0 {
 		options := []string{}
 		for _, sg := range possibleSgs {
-			options = append(options, aws.SetSecurityGroupOption(sg))
+			if isValidSecurityGroup(sg) {
+				options = append(options, aws.SetSecurityGroupOption(sg))
+			}
 		}
+		// No available security groups.
+		if len(options) == 0 {
+			return securityGroupIds
+		}
+
 		securityGroupIds, err = GetMultipleOptions(Input{
 			Question: fmt.Sprintf("Additional '%s' Security Group IDs", kind),
 			Help:     cmd.Flags().Lookup(SgKindFlagMap[kind]).Usage,
@@ -64,4 +75,15 @@ func GetSecurityGroupIds(r *rosa.Runtime, cmd *cobra.Command,
 		}
 	}
 	return securityGroupIds
+}
+
+func isValidSecurityGroup(sg types.SecurityGroup) bool {
+	if aws.Ec2ResourceHasTag(sg.Tags, tags.RedHatManaged, strconv.FormatBool(true)) {
+		return false
+	}
+	if awsSdk.ToString(sg.GroupName) == "default" {
+		return false
+	}
+
+	return true
 }

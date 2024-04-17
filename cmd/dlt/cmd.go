@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/autoscaler"
 	"github.com/openshift/rosa/cmd/dlt/cluster"
 	"github.com/openshift/rosa/cmd/dlt/dnsdomains"
+	"github.com/openshift/rosa/cmd/dlt/externalauthprovider"
 	"github.com/openshift/rosa/cmd/dlt/idp"
 	"github.com/openshift/rosa/cmd/dlt/ingress"
 	"github.com/openshift/rosa/cmd/dlt/kubeletconfig"
@@ -45,6 +46,7 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"remove"},
 	Short:   "Delete a specific resource",
 	Long:    "Delete a specific resource",
+	Args:    cobra.NoArgs,
 }
 
 func init() {
@@ -65,6 +67,7 @@ func init() {
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
 	Cmd.AddCommand(kubeletconfig.Cmd)
+	Cmd.AddCommand(externalauthprovider.Cmd)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -74,7 +77,10 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, operatorrole.Cmd,
 		userrole.Cmd, ocmrole.Cmd,
-		oidcprovider.Cmd,
+		oidcprovider.Cmd, upgrade.Cmd, admin.Cmd,
+		service.Cmd, autoscaler.Cmd, idp.Cmd,
+		cluster.Cmd, dnsdomains.Cmd, externalauthprovider.Cmd,
+		kubeletconfig.Cmd, machinepool.Cmd, tuningconfigs.Cmd,
 	}
-	arguments.MarkRegionHidden(Cmd, globallyAvailableCommands)
+	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

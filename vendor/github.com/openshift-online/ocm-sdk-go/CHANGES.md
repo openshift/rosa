@@ -3,6 +3,63 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.411
+- Upgrade pgx version and other dependencies
+
+## 0.1.410
+- Update model version v0.0.364
+  - Add `BreakGlassCredentials` to the `Cluster` resource model.
+
+## 0.1.409
+- Update model version v0.0.363
+  - Add `NodeDrainGracePeriod` to the `NodePool` model.
+- Update model version v0.0.362
+  - Changed `UserName` attribute for TokenClaimMappings to `Username`.
+
+## 0.1.408
+- Update model version v0.0.361
+  - Add `Scope` attribute to `ReservedResource`.
+  - Add `Scope` attribute to `ClusterAuthorizationRequest`.
+
+## 0.1.407
+- Update model version v0.0.360
+  - Add `ComponentRoutes` attribute to `Ingress`
+
+## 0.1.406
+- Migrate Keychain `securestore` usage to non-CGO libraries 
+
+## 0.1.405
+- Update model version v0.0.359
+  - Add `ExternalAuthConfig` resource to `Cluster` model.
+  - Add `DomainPrefix` to `Cluster` model.
+
+## 0.1.404
+- Update model version v0.0.357
+  - Add `ExternalAuth` to `ExternalAuthConfig` model
+
+## 0.1.403
+- Update model version v0.0.356
+  - Reverting change to remove provision shard from cluster
+
+## 0.1.402
+- Update model version v0.0.355
+  - Removed undefined api calls from the model
+  - Add support to `securestore` that allows the caller to define a keyring target
+  - Additional `securestore` Error Standardization
+  - Add error handling to `securestore` for denied Keychain access due to permissions
+
+## 0.1.401
+- Update model version v0.0.353
+  - Added support for `PackageImage` for `clusters_mgmt`
+
+## 0.1.400
+- Update model version v0.0.352
+  - Remove `StatusBoard` `fullname` search parameter.
+  - Deprecate `Notify` resource.
+
+## 0.1.399
+- Additional error handling for `securestore`
+
 ## 0.1.398
 - Add regions support from ocm shards
 - Don't error when response is 204 and no content-type

@@ -26,6 +26,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -38,7 +39,8 @@ var Cmd = &cobra.Command{
 	Long:    "List administrative cluster users.",
 	Example: `  # List all users on a cluster named "mycluster"
   rosa list users --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -59,11 +61,16 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Listing cluster users is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	var clusterAdmins []*cmv1.User
 	var err error
 	r.Reporter.Debugf("Loading users for cluster '%s'", clusterKey)
 	// Load cluster-admins for this cluster
-	clusterAdmins, err = r.OCMClient.GetUsers(cluster.ID(), "cluster-admins")
+	clusterAdmins, err = r.OCMClient.GetUsers(cluster.ID(), admin.ClusterAdminGroupname)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster-admins for cluster '%s': %v", clusterKey, err)
 		os.Exit(1)
@@ -90,22 +97,22 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	if len(clusterAdmins) == 0 && len(dedicatedAdmins) == 0 {
-		r.Reporter.Warnf("There are no users configured for cluster '%s'", clusterKey)
-		os.Exit(1)
+		r.Reporter.Infof("There are no users configured for cluster '%s'", clusterKey)
+		os.Exit(0)
 	}
 
 	longestUserId := 0.0
 	groups := make(map[string][]string)
 	for _, user := range clusterAdmins {
 		longestUserId = math.Max(longestUserId, float64(len(user.ID())))
-		groups[user.ID()] = []string{"cluster-admins"}
+		groups[user.ID()] = []string{admin.ClusterAdminGroupname}
 	}
 	for _, user := range dedicatedAdmins {
 		longestUserId = math.Max(longestUserId, float64(len(user.ID())))
 		if _, ok := groups[user.ID()]; ok {
-			groups[user.ID()] = []string{"cluster-admins", "dedicated-admins"}
+			groups[user.ID()] = []string{admin.ClusterAdminGroupname, admin.DedicatedAdminGroupname}
 		} else {
-			groups[user.ID()] = []string{"dedicated-admins"}
+			groups[user.ID()] = []string{admin.DedicatedAdminGroupname}
 		}
 	}
 

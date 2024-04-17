@@ -17,13 +17,15 @@ limitations under the License.
 package aws
 
 import (
+	"context"
 	"fmt"
 	"sort"
+	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
@@ -79,7 +81,7 @@ func (c *awsClient) ValidateRoleARNAccountIDMatchCallerAccountID(roleARN string)
 }
 
 func (c *awsClient) HasPermissionsBoundary(roleName string) (bool, error) {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
+	output, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
@@ -90,7 +92,7 @@ func (c *awsClient) HasPermissionsBoundary(roleName string) (bool, error) {
 }
 
 func (c *awsClient) deletePermissionsBoundary(roleName string) error {
-	output, err := c.iamClient.GetRole(&iam.GetRoleInput{
+	output, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
@@ -98,7 +100,7 @@ func (c *awsClient) deletePermissionsBoundary(roleName string) error {
 	}
 
 	if output.Role.PermissionsBoundary != nil {
-		_, err := c.iamClient.DeleteRolePermissionsBoundary(&iam.DeleteRolePermissionsBoundaryInput{
+		_, err := c.iamClient.DeleteRolePermissionsBoundary(context.Background(), &iam.DeleteRolePermissionsBoundaryInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
@@ -110,7 +112,7 @@ func (c *awsClient) deletePermissionsBoundary(roleName string) error {
 }
 
 func (c *awsClient) deleteOCMRolePolicies(roleName string, managedPolicies bool) error {
-	policiesOutput, err := c.iamClient.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+	policiesOutput, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
 		RoleName: aws.String(roleName),
 	})
 	if err != nil {
@@ -118,7 +120,7 @@ func (c *awsClient) deleteOCMRolePolicies(roleName string, managedPolicies bool)
 	}
 
 	for _, policy := range policiesOutput.AttachedPolicies {
-		_, err := c.iamClient.DetachRolePolicy(&iam.DetachRolePolicyInput{
+		_, err := c.iamClient.DetachRolePolicy(context.Background(), &iam.DetachRolePolicyInput{
 			PolicyArn: policy.PolicyArn,
 			RoleName:  aws.String(roleName),
 		})
@@ -127,12 +129,10 @@ func (c *awsClient) deleteOCMRolePolicies(roleName string, managedPolicies bool)
 		}
 
 		if !managedPolicies {
-			_, err = c.iamClient.DeletePolicy(&iam.DeletePolicyInput{PolicyArn: policy.PolicyArn})
+			_, err = c.iamClient.DeletePolicy(context.Background(), &iam.DeletePolicyInput{PolicyArn: policy.PolicyArn})
 			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					if awsErr.Code() == iam.ErrCodeDeleteConflictException { // policy is attached to another entity
-						continue
-					}
+				if awserr.IsDeleteConfictException(err) {
+					continue
 				}
 				return err
 			}
@@ -148,11 +148,11 @@ func SortRolesByLinkedRole(roles []Role) {
 	})
 }
 
-func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID string,
+func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, partition string, accountID string,
 	prefix string, policies map[string]string, defaultPolicyVersion string,
 	credRequests map[string]*cmv1.STSOperator, path string) error {
 	for credrequest, operator := range credRequests {
-		policyARN := GetOperatorPolicyARN(accountID, prefix, operator.Namespace(), operator.Name(), path)
+		policyARN := GetOperatorPolicyARN(partition, accountID, prefix, operator.Namespace(), operator.Name(), path)
 		filename := fmt.Sprintf("openshift_%s_policy", credrequest)
 		policy := policies[filename]
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policy,
@@ -171,12 +171,13 @@ func UpgradeOperatorPolicies(reporter *rprtr.Object, awsClient Client, accountID
 	return nil
 }
 
-func BuildOperatorRoleCommands(prefix string, accountID string, awsClient Client,
+func BuildOperatorRoleCommands(prefix string, partition string, accountID string, awsClient Client,
 	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, policyPath string,
 	cluster *cmv1.Cluster) []string {
 	commands := []string{}
 	for credrequest, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(
+			partition,
 			accountID,
 			prefix,
 			operator.Namespace(),
@@ -216,9 +217,9 @@ type OidcProviderOutput struct {
 	ClusterId string
 }
 
-func (c *awsClient) ListOidcProviders(targetClusterId string) ([]OidcProviderOutput, error) {
+func (c *awsClient) ListOidcProviders(targetClusterId string, config *cmv1.OidcConfig) ([]OidcProviderOutput, error) {
 	providers := []OidcProviderOutput{}
-	output, err := c.iamClient.ListOpenIDConnectProviders(&iam.ListOpenIDConnectProvidersInput{})
+	output, err := c.iamClient.ListOpenIDConnectProviders(context.Background(), &iam.ListOpenIDConnectProvidersInput{})
 	if err != nil {
 		return providers, err
 	}
@@ -229,14 +230,14 @@ func (c *awsClient) ListOidcProviders(targetClusterId string) ([]OidcProviderOut
 		isTruncated := true
 		var marker *string
 		for isTruncated {
-			resp, err := c.iamClient.ListOpenIDConnectProviderTags(&iam.ListOpenIDConnectProviderTagsInput{
+			resp, err := c.iamClient.ListOpenIDConnectProviderTags(context.Background(), &iam.ListOpenIDConnectProviderTagsInput{
 				OpenIDConnectProviderArn: provider.Arn,
 				Marker:                   marker,
 			})
 			if err != nil {
 				return providers, err
 			}
-			isTruncated = *resp.IsTruncated
+			isTruncated = resp.IsTruncated
 			marker = resp.Marker
 			skip := true
 			clusterId := ""
@@ -257,6 +258,15 @@ func (c *awsClient) ListOidcProviders(targetClusterId string) ([]OidcProviderOut
 						ClusterId: clusterId,
 					})
 					return providers, nil
+				}
+			}
+			if config != nil {
+				resourceId, err := GetResourceIdFromOidcProviderARN(*provider.Arn)
+				if err != nil {
+					return nil, fmt.Errorf("unable to get resource ID from OIDC Provider's ARN. Error: '%v'", err)
+				}
+				if config == nil || !strings.Contains(config.IssuerUrl(), resourceId) {
+					skip = true
 				}
 			}
 			if skip {

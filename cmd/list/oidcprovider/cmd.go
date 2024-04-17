@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -38,7 +39,12 @@ var Cmd = &cobra.Command{
 	Long:    "List OIDC providers for the current AWS account.",
 	Example: `  # List all oidc providers
   rosa list oidc-providers`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
+}
+
+var args struct {
+	oidcConfigId string
 }
 
 func init() {
@@ -46,6 +52,14 @@ func init() {
 	flags.SortFlags = false
 	output.AddFlag(Cmd)
 	ocm.AddOptionalClusterFlag(Cmd)
+
+	flags.StringVarP(
+		&args.oidcConfigId,
+		"oidc-config-id",
+		"",
+		"",
+		"Filter by OIDC Config ID, returns one provider linked to the config ID.",
+	)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -66,8 +80,16 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterKey := r.GetClusterKey()
 		clusterId = clusterKey
 	}
-
-	providers, err := r.AWSClient.ListOidcProviders(clusterId)
+	var config *v1.OidcConfig
+	var err error
+	if args.oidcConfigId != "" {
+		config, err = r.OCMClient.GetOidcConfig(args.oidcConfigId)
+		if err != nil {
+			r.Reporter.Errorf("Failed to get OIDC config: %v", err)
+			os.Exit(1)
+		}
+	}
+	providers, err := r.AWSClient.ListOidcProviders(clusterId, config)
 
 	if spin != nil {
 		spin.Stop()
@@ -117,17 +139,21 @@ func run(cmd *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "OIDC PROVIDER ARN\tCluster ID\tIn Use\n")
 	for _, provider := range providers {
-		providerInUse := "No"
-		if ok := providersInUse[provider.Arn]; ok {
-			providerInUse = "Yes"
-		}
-		fmt.Fprintf(
-			writer,
-			"%s\t%s\t%v\n",
-			provider.Arn,
-			provider.ClusterId,
-			providerInUse,
-		)
+		printProvider(writer, providersInUse, provider)
 	}
 	writer.Flush()
+}
+
+func printProvider(writer *tabwriter.Writer, providersInUse map[string]bool, provider aws.OidcProviderOutput) {
+	providerInUse := "No"
+	if ok := providersInUse[provider.Arn]; ok {
+		providerInUse = "Yes"
+	}
+	fmt.Fprintf(
+		writer,
+		"%s\t%s\t%v\n",
+		provider.Arn,
+		provider.ClusterId,
+		providerInUse,
+	)
 }

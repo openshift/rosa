@@ -60,6 +60,12 @@ func run(_ *cobra.Command, argv []string) {
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
+
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Deleting IDP is not supported for clusters with external authentication configured.")
+		os.Exit(1)
+	}
+
 	// Try to find the identity provider:
 	r.Reporter.Debugf("Loading identity provider '%s'", idpName)
 	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
@@ -80,7 +86,11 @@ func run(_ *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if ocm.IdentityProviderType(idp) == ocm.HTPasswdIDPType {
-		clusterAdminIDP, _ := cadmin.FindExistingClusterAdminIDP(cluster, r)
+		clusterAdminIDP, _, err := cadmin.FindIDPWithAdmin(cluster, r)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
 		if clusterAdminIDP != nil && clusterAdminIDP.Name() == idp.Name() {
 			r.Reporter.Warnf("The cluster-admin user is contained in the HTPasswd IDP. Deleting the IDP will " +
 				"also delete the admin user.")

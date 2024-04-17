@@ -11,43 +11,70 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
+	"github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/test"
 )
 
 const (
 	nodePoolName         = "nodepool85"
 	describeStringOutput = `
-ID:                         nodepool85
-Cluster ID:                 24vf9iitg3p6tlml88iml6j6mu095mh8
-Autoscaling:                No
-Desired replicas:           0
-Current replicas:           
-Instance type:              m5.xlarge
-Labels:                     
-Taints:                     
-Availability zone:          us-east-1a
-Subnet:                     
-Version:                    4.12.24
-Autorepair:                 No
-Tuning configs:             
-Message:                    
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Desired replicas:                      0
+Current replicas:                      
+Instance type:                         m5.xlarge
+Labels:                                
+Tags:                                  
+Taints:                                
+Availability zone:                     us-east-1a
+Subnet:                                
+Version:                               4.12.24
+Autorepair:                            No
+Tuning configs:                        
+Additional security group IDs:         
+Node drain grace period:               1 minute
+Message:                               
 `
 	describeStringWithUpgradeOutput = `
-ID:                         nodepool85
-Cluster ID:                 24vf9iitg3p6tlml88iml6j6mu095mh8
-Autoscaling:                No
-Desired replicas:           0
-Current replicas:           
-Instance type:              m5.xlarge
-Labels:                     
-Taints:                     
-Availability zone:          us-east-1a
-Subnet:                     
-Version:                    4.12.24
-Autorepair:                 No
-Tuning configs:             
-Message:                    
-Scheduled upgrade:          scheduled 4.12.25 on 2023-08-07 15:22 UTC
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Desired replicas:                      0
+Current replicas:                      
+Instance type:                         m5.xlarge
+Labels:                                
+Tags:                                  
+Taints:                                
+Availability zone:                     us-east-1a
+Subnet:                                
+Version:                               4.12.24
+Autorepair:                            No
+Tuning configs:                        
+Additional security group IDs:         
+Node drain grace period:               1 minute
+Message:                               
+Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
+`
+	describeStringWithTagsOutput = `
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Desired replicas:                      0
+Current replicas:                      
+Instance type:                         m5.xlarge
+Labels:                                
+Tags:                                  foo=bar
+Taints:                                
+Availability zone:                     us-east-1a
+Subnet:                                
+Version:                               4.12.24
+Autorepair:                            No
+Tuning configs:                        
+Additional security group IDs:         
+Node drain grace period:               1 minute
+Message:                               
+Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
 
 	describeYamlWithUpgradeOutput = `availability_zone: us-east-1a
@@ -56,6 +83,9 @@ aws_node_pool:
   kind: AWSNodePool
 id: nodepool85
 kind: NodePool
+node_drain_grace_period:
+  unit: minute
+  value: 1
 scheduledUpgrade:
   nextRun: 2023-08-07 15:22 UTC
   state: scheduled
@@ -66,18 +96,18 @@ version:
   raw_id: openshift-4.12.24
 `
 	describeClassicStringOutput = `
-ID:                         nodepool85
-Cluster ID:                 24vf9iitg3p6tlml88iml6j6mu095mh8
-Autoscaling:                No
-Replicas:                   0
-Instance type:              m5.xlarge
-Labels:                     
-Taints:                     
-Availability zones:         us-east-1a, us-east-1b, us-east-1c
-Subnets:                    
-Spot instances:             Yes (max $5)
-Disk size:                  default
-Security Group IDs:         
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Replicas:                              0
+Instance type:                         m5.xlarge
+Labels:                                
+Taints:                                
+Availability zones:                    us-east-1a, us-east-1b, us-east-1c
+Subnets:                               
+Spot instances:                        Yes (max $5)
+Disk size:                             default
+Additional Security Group IDs:         
 `
 	describeClassicYamlOutput = `availability_zones:
 - us-east-1a
@@ -100,25 +130,25 @@ var _ = Describe("Upgrade machine pool", func() {
 		format.TruncatedDiff = false
 		var testRuntime test.TestingRuntime
 
-		mockClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(true))
 		})
-		Expect(err).To(BeNil())
+
 		hypershiftClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClusterReady})
 
-		mockClassicClusterReady, err := test.MockOCMCluster(func(c *cmv1.ClusterBuilder) {
+		mockClassicClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(false))
 		})
-		Expect(err).To(BeNil())
 		classicClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClassicClusterReady})
 
 		nodePoolResponse := formatNodePool()
+		npResponseAwsTags := formatNodePoolWithTags()
 		mpResponse := formatMachinePool()
 
 		upgradePolicies := make([]*cmv1.NodePoolUpgradePolicy, 0)
@@ -204,6 +234,20 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(stdout).To(Equal(describeYamlWithUpgradeOutput))
 				Expect(stderr).To(BeEmpty())
 			})
+			It("Pass a machine pool name through parameter and it is found. Has AWS tags", func() {
+				args.machinePool = nodePoolName
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				// First get
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
+				// Second get for upgrades
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
+				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+					Cmd, &[]string{})
+				Expect(err).To(BeNil())
+				Expect(stdout).To(Equal(describeStringWithTagsOutput))
+				Expect(stderr).To(BeEmpty())
+			})
 		})
 		Context("ROSA Classic", func() {
 			It("Pass a machine pool name through argv but it is not found", func() {
@@ -238,6 +282,21 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(stdout).To(Equal(describeClassicStringOutput))
 				Expect(stderr).To(BeEmpty())
 			})
+			It("Format AWS additional security groups if exist", func() {
+				securityGroupsIds := []string{"123", "321"}
+				awsNodePool, err := cmv1.NewAWSNodePool().AdditionalSecurityGroupIds(securityGroupsIds...).Build()
+				Expect(err).ToNot(HaveOccurred())
+
+				securityGroupsOutput := output.PrintNodePoolAdditionalSecurityGroups(awsNodePool)
+				Expect(securityGroupsOutput).To(Equal("123, 321"))
+			})
+			It("Return an empty list for additional security groups if empty AWS node pool is passed", func() {
+				awsNodePool, err := cmv1.NewAWSNodePool().Build()
+				Expect(err).ToNot(HaveOccurred())
+
+				securityGroupsOutput := output.PrintNodePoolAdditionalSecurityGroups(awsNodePool)
+				Expect(securityGroupsOutput).To(Equal(""))
+			})
 			It("Pass a machine pool name through parameter and it is found. yaml output", func() {
 				args.machinePool = nodePoolName
 				Cmd.Flags().Set("output", "yaml")
@@ -257,8 +316,20 @@ var _ = Describe("Upgrade machine pool", func() {
 func formatNodePool() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge")
+	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
-		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").Build()
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).Build()
+	Expect(err).To(BeNil())
+	return test.FormatResource(np)
+}
+
+// formatNodePool simulates the output of APIs for a fake node pool with AWS tags
+func formatNodePoolWithTags() string {
+	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").Tags(map[string]string{"foo": "bar"})
+	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
+	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).Build()
 	Expect(err).To(BeNil())
 	return test.FormatResource(np)
 }

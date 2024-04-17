@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strings"
 
-	awssdk "github.com/aws/aws-sdk-go/aws"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -31,7 +31,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -273,7 +273,7 @@ func run(cmd *cobra.Command, argv []string) {
 		for _, subnetArg := range subnetIDs {
 			verifiedSubnet := false
 			for _, subnet := range subnets {
-				if awssdk.StringValue(subnet.SubnetId) == subnetArg {
+				if awssdk.ToString(subnet.SubnetId) == subnetArg {
 					verifiedSubnet = true
 				}
 			}
@@ -284,8 +284,8 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		for _, subnet := range subnets {
-			subnetID := awssdk.StringValue(subnet.SubnetId)
-			availabilityZone := awssdk.StringValue(subnet.AvailabilityZone)
+			subnetID := awssdk.ToString(subnet.SubnetId)
+			availabilityZone := awssdk.ToString(subnet.AvailabilityZone)
 
 			mapSubnetToAZ[subnetID] = availabilityZone
 			mapAZCreated[availabilityZone] = false
@@ -401,7 +401,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// operator role logic.
-	operatorRolesPrefix := getRolePrefix(args.ClusterName)
+	operatorRolesPrefix := roles.GeOperatorRolePrefixFromClusterName(args.ClusterName)
 	operatorIAMRoleList := []ocm.OperatorIAMRole{}
 
 	// Managed Services does not support Hypershift at this time.
@@ -474,8 +474,4 @@ func getAccountRolePrefix(roleARN string, role aws.AccountRole) (string, error) 
 	}
 	rolePrefix := aws.TrimRoleSuffix(roleName, fmt.Sprintf("-%s-Role", role.Name))
 	return rolePrefix, nil
-}
-
-func getRolePrefix(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, helper.RandomLabel(4))
 }

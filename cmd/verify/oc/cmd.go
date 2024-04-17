@@ -33,11 +33,12 @@ var Cmd = &cobra.Command{
 	Long:    "Verify that the OpenShift client tools is installed and compatible.",
 	Example: `  # Verify oc client tools
   rosa verify oc`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func run(_ *cobra.Command, _ []string) {
-	reporter := rprtr.CreateReporterOrExit()
+	reporter := rprtr.CreateReporter()
 
 	// Verify whether `oc` is installed
 	if reporter.IsTerminal() {

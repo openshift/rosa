@@ -30,6 +30,7 @@ var Cmd = &cobra.Command{
 	Use:   "verify",
 	Short: "Verify resources are configured correctly for cluster install",
 	Long:  "Verify resources are configured correctly for cluster install",
+	Args:  cobra.NoArgs,
 }
 
 func init() {
@@ -37,5 +38,5 @@ func init() {
 	Cmd.AddCommand(oc.Cmd)
 	Cmd.AddCommand(permissions.Cmd)
 	Cmd.AddCommand(quota.Cmd)
-	Cmd.AddCommand(rosa.Cmd)
+	Cmd.AddCommand(rosa.NewVerifyRosaCommand())
 }

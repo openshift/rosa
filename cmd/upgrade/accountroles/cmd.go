@@ -53,13 +53,14 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade account-wide IAM roles to the latest version before upgrading your cluster.",
 	Example: `  # Upgrade account roles for ROSA STS clusters
   rosa upgrade account-roles`,
-	RunE: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
 	flags := Cmd.Flags()
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	flags.StringVarP(
 		&args.prefix,
@@ -96,7 +97,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 	reporter := r.Reporter
@@ -104,7 +105,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	ocmClient := r.OCMClient
 
 	skipInteractive := false
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -172,7 +173,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 		r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies. "+
 			"An upgrade isn't needed", prefix)
-		return nil
+		return
 	}
 
 	creator, err := awsClient.GetCreator()
@@ -218,18 +219,12 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	if interactive.Enabled() && !skipInteractive {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Account role upgrade mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Account role upgrade mode")
 		if err != nil {
 			reporter.Errorf("Expected a valid Account role upgrade mode: %s", err)
 			os.Exit(1)
 		}
-		aws.SetModeKey(mode)
+		interactive.SetModeKey(mode)
 	}
 	policies, err := ocmClient.GetPolicies("")
 	if err != nil {
@@ -238,22 +233,20 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		if isUpgradeNeedForAccountRolePolicies {
 			reporter.Infof("Starting to upgrade the policies")
-			err = r.WithSpinner(func() error {
-				return upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.AccountID, policies,
-					policyVersion, policyPath, isVersionChosen)
-			})
+			err := upgradeAccountRolePolicies(reporter, awsClient, prefix, creator.Partition, creator.AccountID, policies,
+				policyVersion, policyPath, isVersionChosen)
 			if err != nil {
 				LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
 				reporter.Errorf("Error upgrading the role polices: %s", err)
 				os.Exit(1)
 			}
 		}
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		if isUpgradeNeedForAccountRolePolicies {
-			err = aws.GenerateAccountRolePolicyFiles(reporter, env, policies, false, aws.AccountRoles)
+			err = aws.GenerateAccountRolePolicyFiles(reporter, env, policies, false, aws.AccountRoles, creator.Partition)
 			if err != nil {
 				reporter.Errorf("There was an error generating the policy files: %s", err)
 				os.Exit(1)
@@ -264,15 +257,14 @@ func run(cmd *cobra.Command, argv []string) error {
 			reporter.Infof("Run the following commands to upgrade the account role policies:\n")
 		}
 
-		commands := buildCommands(prefix, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
+		commands := buildCommands(prefix, creator.Partition, creator.AccountID, isUpgradeNeedForAccountRolePolicies,
 			awsClient, policyVersion, policyPath)
 		fmt.Println(commands)
 
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
-	return err
 }
 
 func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter *rprtr.Object) {
@@ -286,8 +278,9 @@ func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, er
 	}
 }
 
-func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, accountID string,
-	policies map[string]*cmv1.AWSSTSPolicy, policyVersion string, policyPath string, isVersionChosen bool) error {
+func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, partition string,
+	accountID string, policies map[string]*cmv1.AWSSTSPolicy, policyVersion string,
+	policyPath string, isVersionChosen bool) error {
 	for file, role := range aws.AccountRoles {
 		roleName := common.GetRoleName(prefix, role.Name)
 		promptString := fmt.Sprintf("Upgrade the '%s' role policy latest version ?", roleName)
@@ -298,7 +291,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 			continue
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
-		policyARN := aws.GetPolicyARN(accountID, roleName, policyPath)
+		policyARN := aws.GetPolicyARN(partition, accountID, roleName, policyPath)
 
 		policyDetails := aws.GetPolicyDetails(policies, filename)
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
@@ -334,13 +327,13 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 	return nil
 }
 
-func buildCommands(prefix string, accountID string, isUpgradeNeedForAccountRolePolicies bool,
+func buildCommands(prefix string, partition string, accountID string, isUpgradeNeedForAccountRolePolicies bool,
 	awsClient aws.Client, defaultPolicyVersion string, policyPath string) string {
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
 			accRoleName := common.GetRoleName(prefix, role.Name)
-			policyARN := aws.GetPolicyARN(accountID, accRoleName, policyPath)
+			policyARN := aws.GetPolicyARN(partition, accountID, accRoleName, policyPath)
 			_, err := awsClient.IsPolicyExists(policyARN)
 			hasPolicy := err == nil
 			policyName := aws.GetPolicyName(accRoleName)

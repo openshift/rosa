@@ -29,6 +29,7 @@ func GenerateCommand() *cobra.Command {
 		Short:  "Resume cluster",
 		Long:   "Resume a hibernating cluster",
 		Hidden: true,
+		Args:   cobra.NoArgs,
 	}
 	Cmd.AddCommand(cluster.GenerateCommand())
 	flags := Cmd.PersistentFlags()

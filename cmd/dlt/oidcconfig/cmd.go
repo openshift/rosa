@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
@@ -44,7 +44,8 @@ var Cmd = &cobra.Command{
 	Long:    "Cleans up OIDC config based on registered OIDC Config ID.",
 	Example: `  # Delete OIDC config based on registered OIDC Config ID that has been supplied
 	rosa delete oidc-config --oidc-config-id <oidc_config_id>`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 const (
@@ -68,17 +69,17 @@ func init() {
 		"Registered ID for identification of OIDC config",
 	)
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 
 	interactive.AddFlag(flags)
 	confirm.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -98,13 +99,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OIDC Config deletion mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "OIDC Config deletion mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
 			os.Exit(1)
@@ -127,7 +122,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Registered OIDC Config ID '%s'"+
 			" has been removed from OCM and can no longer be used", args.oidcConfigId)
-		if mode == aws.ModeManual {
+		if mode == interactive.ModeManual {
 			r.Reporter.Infof("Remember to run given commands to clean up aws resources")
 		}
 	}
@@ -264,11 +259,11 @@ func getOidcConfigStrategy(mode string, input OidcConfigInput) (DeleteOidcConfig
 		return &deleteManagedOidcConfigStrategy{}, nil
 	}
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		return &deleteUnmanagedOidcConfigAutoStrategy{oidcConfig: input}, nil
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		return &deleteUnmanagedOidcConfigManualStrategy{oidcConfig: input}, nil
 	default:
-		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		return nil, weberr.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 	}
 }

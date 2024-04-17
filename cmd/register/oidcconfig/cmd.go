@@ -48,7 +48,8 @@ var Cmd = &cobra.Command{
 	Long:    "Registers unmanaged OIDC config with Openshift Clusters Manager.",
 	Example: `  # Register OIDC config
 	rosa register oidc-config`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -77,7 +78,7 @@ func init() {
 		"Secrets Manager ARN with private key secret.",
 	)
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
@@ -93,23 +94,17 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 	}
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if !cmd.Flags().Changed("mode") {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "OIDC Provider creation mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "OIDC Provider creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OIDC Provider creation mode: %s", err)
 			os.Exit(1)

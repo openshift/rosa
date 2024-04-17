@@ -39,7 +39,8 @@ var Cmd = &cobra.Command{
 	Long:  "Displays information about your AWS and Red Hat accounts",
 	Example: `  # Displays user information
   rosa whoami`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

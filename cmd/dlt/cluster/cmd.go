@@ -46,7 +46,8 @@ var Cmd = &cobra.Command{
 	Long:  "Delete cluster.",
 	Example: `  # Delete a cluster named "mycluster"
   rosa delete cluster --cluster=mycluster`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -59,9 +60,10 @@ func init() {
 		&args.bestEffort,
 		"best-effort",
 		false,
-		"Deleting a cluster with \"best effort\" means that certain resources "+
-			"may be left behind in the cloud account and will need manual cleanup. "+
-			"This option should be used with care.",
+		"Skips steps in the cluster destruction chain that are known to cause "+
+			"the cluster deletion process to fail. You should use this option with "+
+			"care and it is recommended that you manually check your AWS account for "+
+			"any resources that might be left over after using --best-effort.",
 	)
 
 	flags.BoolVarP(
@@ -73,7 +75,7 @@ func init() {
 	)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

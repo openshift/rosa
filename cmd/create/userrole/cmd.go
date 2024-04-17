@@ -52,7 +52,8 @@ var Cmd = &cobra.Command{
 
   # Create user role with a specific permissions boundary
   rosa create user-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -77,16 +78,16 @@ func init() {
 		"The arn path for the user role and policies.",
 	)
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -179,13 +180,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Role creation mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 			os.Exit(1)
@@ -206,7 +201,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		r.Reporter.Infof("Creating ocm user role using '%s'", r.Creator.ARN)
 		roleARN, err := createRoles(r, prefix, path, currentAccount.Username(), env,
 			currentAccount.ID(), permissionsBoundary, policies)
@@ -221,14 +216,10 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Response: ocm.Success,
 		})
 
-		err = linkuser.Cmd.RunE(linkuser.Cmd, []string{roleARN})
-		if err != nil {
-			r.Reporter.Errorf("Unable to link role arn '%s' with the account id : '%s' : %v",
-				roleARN, currentAccount.ID(), err)
-		}
-	case aws.ModeManual:
+		linkuser.Cmd.Run(linkuser.Cmd, []string{roleARN})
+	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateUserRoleModeManual", map[string]string{})
-		err = generateUserRolePolicyFiles(r.Reporter, env, currentAccount.ID(), policies)
+		err = generateUserRolePolicyFiles(r.Reporter, env, r.Creator.Partition, currentAccount.ID(), policies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -241,24 +232,24 @@ func run(cmd *cobra.Command, argv []string) {
 			prefix,
 			path,
 			currentAccount.Username(),
-			r.Creator.AccountID,
+			r.Creator,
 			env,
 			permissionsBoundary,
 		)
 		fmt.Println(commands)
 
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }
 
 func buildCommands(prefix string, path string, userName string,
-	accountID string, env string, permissionsBoundary string) string {
+	creator *aws.Creator, env string, permissionsBoundary string) string {
 	commands := []string{}
 	roleName := aws.GetUserRoleName(prefix, aws.OCMUserRole, userName)
 
-	roleARN := aws.GetRoleARN(accountID, roleName, path)
+	roleARN := aws.GetRoleARN(creator.AccountID, roleName, path, creator.Partition)
 	iamTags := map[string]string{
 		tags.RolePrefix:    prefix,
 		tags.RoleType:      aws.OCMUserRole,
@@ -289,8 +280,8 @@ func createRoles(r *rosa.Runtime,
 
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":      aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetail, map[string]string{
+		"partition":      r.Creator.Partition,
 		"aws_account_id": aws.GetJumpAccount(env),
 		"ocm_account_id": accountID,
 	})
@@ -319,12 +310,12 @@ func createRoles(r *rosa.Runtime,
 	return roleARN, nil
 }
 
-func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, accountID string,
+func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, partition string, accountID string,
 	policies map[string]*cmv1.AWSSTSPolicy) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := aws.GetPolicyDetails(policies, filename)
-	policy := aws.InterpolatePolicyDocument(policyDetail, map[string]string{
-		"partition":      aws.GetPartition(),
+	policy := aws.InterpolatePolicyDocument(partition, policyDetail, map[string]string{
+		"partition":      partition,
 		"aws_account_id": aws.GetJumpAccount(env),
 		"ocm_account_id": accountID,
 	})

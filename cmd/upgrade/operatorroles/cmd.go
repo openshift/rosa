@@ -44,13 +44,14 @@ var Cmd = &cobra.Command{
 	Long:    "Upgrade cluster-specific operator IAM roles to latest version.",
 	Example: `  # Upgrade cluster-specific operator IAM roles
   rosa upgrade operators-roles`,
-	RunE: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
 	flags := Cmd.Flags()
 
-	aws.AddModeFlag(Cmd)
+	interactive.AddModeFlag(Cmd)
 	ocm.AddClusterFlag(Cmd)
 
 	flags.StringVar(
@@ -64,11 +65,11 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) error {
+func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	mode, err := aws.GetMode()
+	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -168,7 +169,7 @@ func run(cmd *cobra.Command, argv []string) error {
 
 		r.Reporter.Infof("Cluster '%s' operator roles have attached managed policies. "+
 			"An upgrade isn't needed", cluster.Name())
-		return nil
+		os.Exit(0)
 	}
 
 	isAccountRoleUpgradeNeed := false
@@ -189,7 +190,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 
 	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
-		r.Creator.AccountID, latestPolicyVersion, credRequests, unifiedPath)
+		r.Creator.Partition, r.Creator.AccountID, latestPolicyVersion, credRequests, unifiedPath)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -203,12 +204,13 @@ func run(cmd *cobra.Command, argv []string) error {
 	//Check if the upgrade is needed for the operators
 	missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, version)
 	if err != nil {
-		return err
+		r.Reporter.Errorf("Error finding operator roles for upgrade '%s'", err)
+		os.Exit(1)
 	}
 
 	if len(missingRolesInCS) <= 0 && !isOperatorPolicyUpgradeNeeded {
 		r.Reporter.Infof("Operator roles associated with the cluster '%s' are already up-to-date.", cluster.ID())
-		return nil
+		os.Exit(0)
 	}
 
 	if len(missingRolesInCS) > 0 || isOperatorPolicyUpgradeNeeded {
@@ -233,11 +235,10 @@ func run(cmd *cobra.Command, argv []string) error {
 	if len(missingRolesInCS) > 0 {
 		err = roles.CreateMissingRoles(r, missingRolesInCS, cluster, mode, prefix, policies, unifiedPath, false)
 		if err != nil {
-			return err
+			r.Reporter.Errorf("Error creating operator roles: %s", err)
+			os.Exit(1)
 		}
 	}
-
-	return nil
 }
 
 func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
@@ -245,12 +246,12 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, cluster *cmv1.Cluster,
 	policyPath string) error {
 	switch mode {
-	case aws.ModeAuto:
+	case interactive.ModeAuto:
 		if !confirm.Prompt(true, "Upgrade the operator role policy to version %s?", defaultPolicyVersion) {
 			return nil
 		}
-		err := aws.UpgradeOperatorRolePolicies(r.Reporter, r.AWSClient, r.Creator.AccountID, prefix, policies,
-			defaultPolicyVersion, credRequests, policyPath, cluster)
+		err := aws.UpgradeOperatorRolePolicies(r.Reporter, r.AWSClient, r.Creator.Partition,
+			r.Creator.AccountID, prefix, policies, defaultPolicyVersion, credRequests, policyPath, cluster)
 		if err != nil {
 			if strings.Contains(err.Error(), "Throttling") {
 				r.OCMClient.LogEvent("ROSAUpgradeOperatorRolesModeAuto", map[string]string{
@@ -262,9 +263,9 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 			return r.Reporter.Errorf("Error upgrading the operator policies: %s", err)
 		}
 		return nil
-	case aws.ModeManual:
+	case interactive.ModeManual:
 		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests,
-			cluster.AWS().PrivateHostedZoneRoleARN())
+			cluster.AWS().PrivateHostedZoneRoleARN(), r.Creator.Partition)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			os.Exit(1)
@@ -278,11 +279,11 @@ func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
 					"Account Role policies upgrade has completed.\n")
 			}
 		}
-		commands := aws.BuildOperatorRoleCommands(prefix, r.Creator.AccountID, r.AWSClient,
+		commands := aws.BuildOperatorRoleCommands(prefix, r.Creator.Partition, r.Creator.AccountID, r.AWSClient,
 			defaultPolicyVersion, credRequests, policyPath, cluster)
 		fmt.Println(awscb.JoinCommands(commands))
 	default:
-		return r.Reporter.Errorf("Invalid mode. Allowed values are %s", aws.Modes)
+		return r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 	}
 	return nil
 }
@@ -295,18 +296,10 @@ func handleModeFlag(cmd *cobra.Command, mode string) (string, error) {
 
 	if interactive.Enabled() {
 		var err error
-		mode, err = interactive.GetOption(interactive.Input{
-			Question: "Operator IAM role/policy upgrade mode",
-			Help:     cmd.Flags().Lookup("mode").Usage,
-			Default:  aws.ModeAuto,
-			Options:  aws.Modes,
-			Required: true,
-		})
+		mode, err = interactive.GetOptionMode(cmd, mode, "Operator IAM role/policy upgrade mode")
 		if err != nil {
 			return "", fmt.Errorf("expected a valid operator IAM role upgrade mode: %s", err)
 		}
 	}
-	aws.SetModeKey(mode)
-
 	return mode, nil
 }

@@ -18,13 +18,16 @@ package main
 
 import (
 	"fmt"
-	versionUtil "github.com/openshift/rosa/pkg/version"
+	"github.com/openshift/rosa/pkg/info"
+	"github.com/openshift/rosa/pkg/reporter"
+	versionUtils "github.com/openshift/rosa/pkg/version"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/completion"
+	"github.com/openshift/rosa/cmd/config"
 	"github.com/openshift/rosa/cmd/create"
 	"github.com/openshift/rosa/cmd/describe"
 	"github.com/openshift/rosa/cmd/dlt"
@@ -37,17 +40,18 @@ import (
 	"github.com/openshift/rosa/cmd/install"
 	"github.com/openshift/rosa/cmd/link"
 	"github.com/openshift/rosa/cmd/list"
-	"github.com/openshift/rosa/cmd/list/version"
 	"github.com/openshift/rosa/cmd/login"
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/cmd/logs"
 	"github.com/openshift/rosa/cmd/register"
 	"github.com/openshift/rosa/cmd/resume"
 	"github.com/openshift/rosa/cmd/revoke"
+	"github.com/openshift/rosa/cmd/token"
 	"github.com/openshift/rosa/cmd/uninstall"
 	"github.com/openshift/rosa/cmd/unlink"
 	"github.com/openshift/rosa/cmd/upgrade"
 	"github.com/openshift/rosa/cmd/verify"
+	"github.com/openshift/rosa/cmd/version"
 	"github.com/openshift/rosa/cmd/whoami"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/color"
@@ -60,10 +64,30 @@ var root = &cobra.Command{
 		"For further documentation visit " +
 		"https://access.redhat.com/documentation/en-us/red_hat_openshift_service_on_aws\n",
 	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-		if versionUtil.ShouldRunCheck(cmd.Use) {
-			versionUtil.Check()
+		if versionUtils.ShouldRunCheck(cmd.Use) {
+			rprtr := reporter.CreateReporter()
+			version, err := versionUtils.NewRosaVersion()
+			if err != nil {
+				rprtr.Warnf("Could not verify the current version of ROSA.")
+				rprtr.Warnf("You might be running on an outdated version. Make sure you are using the current version of ROSA.")
+				return
+			}
+			latestVersionFromMirror, isLatest, err := version.IsLatest(info.Version)
+			if err != nil {
+				rprtr.Warnf("There was a problem retrieving the latest version of ROSA.")
+				rprtr.Warnf("You might be running on an outdated version. Make sure you are using the current version of ROSA.")
+			}
+			if !isLatest {
+				rprtr.Warnf("The current version (%s) is not up to date with latest released version (%s).",
+					info.Version,
+					latestVersionFromMirror.Original(),
+				)
+
+				rprtr.Warnf("It is recommended that you update to the latest version.")
+			}
 		}
 	},
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -92,12 +116,14 @@ func init() {
 	root.AddCommand(uninstall.Cmd)
 	root.AddCommand(upgrade.Cmd)
 	root.AddCommand(verify.Cmd)
-	root.AddCommand(version.Cmd)
+	root.AddCommand(version.NewRosaVersionCommand())
 	root.AddCommand(whoami.Cmd)
 	root.AddCommand(hibernate.GenerateCommand())
 	root.AddCommand(resume.GenerateCommand())
 	root.AddCommand(link.Cmd)
 	root.AddCommand(unlink.Cmd)
+	root.AddCommand(token.Cmd)
+	root.AddCommand(config.Cmd)
 }
 
 func main() {

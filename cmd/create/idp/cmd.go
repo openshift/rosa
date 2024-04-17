@@ -96,7 +96,8 @@ var Cmd = &cobra.Command{
 
   # Add an identity provider following interactive prompts
   rosa create idp --cluster=mycluster --interactive`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -330,6 +331,11 @@ func run(cmd *cobra.Command, _ []string) {
 	cluster := r.FetchCluster()
 	if cluster.State() != cmv1.ClusterStateReady {
 		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		os.Exit(1)
+	}
+
+	if cluster.ExternalAuthConfig().Enabled() {
+		r.Reporter.Errorf("Adding IDP is not supported for clusters with external authentication configured.")
 		os.Exit(1)
 	}
 

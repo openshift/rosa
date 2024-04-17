@@ -41,7 +41,8 @@ var Cmd = &cobra.Command{
 	Long:    "Add a tuning config to a cluster.",
 	Example: `  # Add a tuning config with name "tuned1" and spec from a file "file1" to a cluster named "mycluster"
  rosa create tuning-config --name=tuned1 --spec-path=file1 --cluster=mycluster"`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

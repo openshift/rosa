@@ -1,27 +1,46 @@
 package interactive
 
-import "testing"
+import (
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
 
-func Test_containsString(t *testing.T) {
-	type args struct {
+var _ = Describe("containsString", func() {
+	var (
 		s     []string
 		input string
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{"contains", args{[]string{"a", "b", "c"}, "a"}, true},
-		{"not contains", args{[]string{"a", "b", "c"}, "d"}, false},
-		{"empty", args{[]string{}, "d"}, false},
-		{"empty", args{[]string{"a", "b", "c"}, ""}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := containsString(tt.args.s, tt.args.input); got != tt.want {
-				t.Errorf("containsString() %s = %v, want %v", tt.name, got, tt.want)
-			}
+	)
+
+	BeforeEach(func() {
+		s = []string{"a", "b", "c"}
+	})
+
+	Context("when the string is present", func() {
+		It("should return true", func() {
+			input = "a"
+			Expect(containsString(s, input)).To(BeTrue())
 		})
-	}
-}
+	})
+
+	Context("when the string is not present", func() {
+		It("should return false", func() {
+			input = "d"
+			Expect(containsString(s, input)).To(BeFalse())
+		})
+	})
+
+	Context("when the slice is empty", func() {
+		It("should return false", func() {
+			s = []string{}
+			input = "d"
+			Expect(containsString(s, input)).To(BeFalse())
+		})
+	})
+
+	Context("when the input string is empty", func() {
+		It("should return false", func() {
+			input = ""
+			Expect(containsString(s, input)).To(BeFalse())
+		})
+	})
+})

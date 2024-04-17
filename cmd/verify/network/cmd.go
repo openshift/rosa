@@ -54,7 +54,8 @@ func makeCmd() *cobra.Command {
 		Long:  "Verify that the VPC subnets are configured correctly.",
 		Example: `  # Verify two subnets
 	rosa verify network --subnet-ids subnet-03046a9b92b5014fb,subnet-03046a9c92b5014fb`,
-		Run: run,
+		Run:  run,
+		Args: cobra.NoArgs,
 	}
 }
 

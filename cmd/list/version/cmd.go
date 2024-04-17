@@ -43,7 +43,8 @@ var Cmd = &cobra.Command{
 	Long:    "List versions of OpenShift that are available for creating clusters.",
 	Example: `  # List all OpenShift versions
   rosa list versions`,
-	Run: run,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -62,7 +63,7 @@ func init() {
 	output.AddFlag(Cmd)
 }
 
-func run(cmd *cobra.Command, _ []string) {
+func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 	isHostedCp := args.hostedCp
