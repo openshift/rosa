@@ -1,6 +1,7 @@
 # The image is for Prow CI steps to manage the ROSA cluster lifecycle and testing
 FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.21-openshift-4.16 as builder
 WORKDIR /go/src/github.com/openshift/rosa
+COPY . .
 RUN go install ./cmd/rosa
 RUN go test -c -o /go/bin/rosatest ./tests/e2e
 RUN rosa verify openshift-client
