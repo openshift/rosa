@@ -365,6 +365,68 @@ var _ = Describe("Edit nodepool",
 				Expect(len(common.ParseTuningConfigs(np.TuningConfigs))).To(Equal(0))
 			})
 
+		It("create nodepool with tuning config will validate well - [id:63179]",
+			labels.Medium, labels.NonClassicCluster,
+			func() {
+				tuningConfigService := rosaClient.TuningConfig
+				nodePoolName := common.GenerateRandomName("np-63179", 2)
+				tuningConfigName_1 := common.GenerateRandomName("tuned01", 2)
+				nonExistingTuningConfigName := common.GenerateRandomName("fake_tuning_config", 2)
+
+				tuningConfigPayload := `
+		{
+			"profile": [
+			  {
+				"data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"25\"\n",
+				"name": "%s-profile"
+			  }
+			],
+			"recommend": [
+			  {
+				"priority": 10,
+				"profile": "%s-profile"
+			  }
+			]
+		 }
+		`
+
+				By("Prepare tuning configs")
+				_, err := tuningConfigService.CreateTuningConfig(clusterID, tuningConfigName_1, fmt.Sprintf(tuningConfigPayload, tuningConfigName_1, tuningConfigName_1))
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Create nodepool with the non-existing tuning configs")
+				output, err := machinePoolService.CreateMachinePool(clusterID, nodePoolName,
+					"--replicas", "3",
+					"--tuning-configs", nonExistingTuningConfigName,
+				)
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(err).To(HaveOccurred())
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': Tuning config with name '%s' does not exist for cluster '%s'", clusterID, nonExistingTuningConfigName, clusterID)))
+
+				By("Create nodepool with duplicate tuning configs")
+				output, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
+					"--replicas", "3",
+					"--tuning-configs", fmt.Sprintf("%s,%s", tuningConfigName_1, tuningConfigName_1),
+				)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(err).To(HaveOccurred())
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': Tuning config with name '%s' is duplicated", clusterID, tuningConfigName_1)))
+
+				By("Create a nodepool")
+				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
+					"--replicas", "3",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Update nodepool with non-existing tuning config")
+				output, err = machinePoolService.EditMachinePool(clusterID, nodePoolName,
+					"--tuning-configs", nonExistingTuningConfigName,
+				)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(err).To(HaveOccurred())
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Failed to update machine pool '%s' on hosted cluster '%s': Tuning config with name '%s' does not exist for cluster '%s'", nodePoolName, clusterID, nonExistingTuningConfigName, clusterID)))
+			})
+
 		It("does support 'version' parameter on nodepool - [id:61138]",
 			labels.High,
 			func() {
