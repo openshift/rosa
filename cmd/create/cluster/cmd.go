@@ -4051,7 +4051,7 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 			os.Exit(1)
 		}
 		*additionalSgIds = interactiveSgs.
-			GetSecurityGroupIds(r, cmd, vpcId, kind)
+			GetSecurityGroupIds(r, cmd, vpcId, kind, "")
 	}
 	for i, sg := range *additionalSgIds {
 		(*additionalSgIds)[i] = strings.TrimSpace(sg)
