@@ -49,7 +49,8 @@ func init() {
 	Cmd.AddCommand(installation.Cmd)
 	Cmd.AddCommand(upgrade.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
-	Cmd.AddCommand(machinepool.Cmd)
+	machinePoolCommand := machinepool.NewDescribeMachinePoolCommand()
+	Cmd.AddCommand(machinePoolCommand)
 	Cmd.AddCommand(kubeletconfig.Cmd)
 	Cmd.AddCommand(autoscaler.NewDescribeAutoscalerCommand())
 	Cmd.AddCommand(externalauthprovider.Cmd)
@@ -61,10 +62,10 @@ func init() {
 
 	globallyAvailableCommands := []*cobra.Command{
 		tuningconfigs.Cmd, cluster.Cmd, service.Cmd,
-		machinepool.Cmd, addon.Cmd, upgrade.Cmd,
+		machinePoolCommand, addon.Cmd, upgrade.Cmd,
 		admin.Cmd, breakglasscredential.Cmd,
 		externalauthprovider.Cmd, installation.Cmd,
-		kubeletconfig.Cmd, machinepool.Cmd, upgrade.Cmd,
+		kubeletconfig.Cmd, upgrade.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

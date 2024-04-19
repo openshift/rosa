@@ -304,9 +304,10 @@ func NewTestRuntime() *TestingRuntime {
 
 // TestingRuntime is a wrapper for the structure used for testing
 type TestingRuntime struct {
-	SsoServer   *ghttp.Server
-	ApiServer   *ghttp.Server
-	RosaRuntime *rosa.Runtime
+	SsoServer    *ghttp.Server
+	ApiServer    *ghttp.Server
+	RosaRuntime  *rosa.Runtime
+	StdOutReader stdOutReader
 }
 
 func (t *TestingRuntime) InitRuntime() {
@@ -367,4 +368,33 @@ func (t *TestingRuntime) SetCluster(clusterKey string, cluster *v1.Cluster) {
 	ocm.SetClusterKey(clusterKey)
 	t.RosaRuntime.Cluster = cluster
 	t.RosaRuntime.ClusterKey = clusterKey
+}
+
+type stdOutReader struct {
+	w           *os.File
+	r           *os.File
+	stdOutState *os.File
+}
+
+// Record pipes Stdout to a reader for returning all Stdout output with Read and saves the state of
+// stdout to later return to normal. These two functions should be called in series
+func (s *stdOutReader) Record() error {
+	var err error
+	s.stdOutState = os.Stdout
+	s.r, s.w, err = os.Pipe()
+	os.Stdout = s.w
+	return err
+}
+
+// Read reads the output using the information gathered from Record, then returns Stdout to printing
+// normally at the end of this function using the state captured from Record
+func (s *stdOutReader) Read() (string, error) {
+	err := s.w.Close()
+	if err != nil {
+		return "", err
+	}
+	out, err := io.ReadAll(s.r)
+	os.Stdout = s.stdOutState
+
+	return string(out), err
 }

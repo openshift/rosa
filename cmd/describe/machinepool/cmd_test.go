@@ -1,6 +1,7 @@
 package machinepool
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -12,11 +13,13 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/ocm/output"
+	. "github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/test"
 )
 
 const (
 	nodePoolName         = "nodepool85"
+	clusterId            = "24vf9iitg3p6tlml88iml6j6mu095mh8"
 	describeStringOutput = `
 ID:                                    nodepool85
 Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
@@ -128,7 +131,6 @@ var _ = Describe("Upgrade machine pool", func() {
 	Context("Upgrade machine pool command", func() {
 		// Full diff for long string to help debugging
 		format.TruncatedDiff = false
-		var testRuntime test.TestingRuntime
 
 		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
@@ -157,130 +159,159 @@ var _ = Describe("Upgrade machine pool", func() {
 
 		noNodePoolUpgradePolicy := test.FormatNodePoolUpgradePolicyList([]*cmv1.NodePoolUpgradePolicy{})
 
+		var t *test.TestingRuntime
+
 		BeforeEach(func() {
-			testRuntime.InitRuntime()
-			// Reset flag to avoid any side effect on other tests
-			Cmd.Flags().Set("output", "")
+			t = test.NewTestRuntime()
+			SetOutput("")
 		})
 		It("Fails if we are not specifying a machine pool name", func() {
-			args.machinePool = ""
-			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			runner := DescribeMachinePoolRunner(NewDescribeMachinepoolUserOptions())
+			err := runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(), []string{})
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("You need to specify a machine pool name"))
+			Expect(err.Error()).To(ContainSubstring("you need to specify a machine pool name"))
 		})
 		Context("Hypershift", func() {
 			It("Pass a machine pool name through argv but it is not found", func() {
-				args.machinePool = ""
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{nodePoolName})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
-				Expect(stdout).To(BeEmpty())
-				Expect(stderr).To(BeEmpty())
-			})
-			It("Pass a machine pool name through parameter but it is not found", func() {
-				args.machinePool = nodePoolName
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
-				Expect(stdout).To(BeEmpty())
-				Expect(stderr).To(BeEmpty())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stdout).To(Equal(""))
 			})
 			It("Pass a machine pool name through parameter and it is found. no upgrades", func() {
-				args.machinePool = nodePoolName
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				// First get
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
 				// Second get for upgrades
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(describeStringOutput))
-				Expect(stderr).To(BeEmpty())
 			})
 			It("Pass a machine pool name through parameter and it is found. 1 upgrade", func() {
-				args.machinePool = nodePoolName
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				// First get
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
 				// Second get for upgrades
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(describeStringWithUpgradeOutput))
-				Expect(stderr).To(BeEmpty())
 			})
 			It("Pass a machine pool name through parameter and it is found. 1 upgrade. Yaml output", func() {
-				args.machinePool = nodePoolName
-				Cmd.Flags().Set("output", "yaml")
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				// First get
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
 				// Second get for upgrades
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--output", "yaml", "--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(describeYamlWithUpgradeOutput))
-				Expect(stderr).To(BeEmpty())
 			})
 			It("Pass a machine pool name through parameter and it is found. Has AWS tags", func() {
-				args.machinePool = nodePoolName
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				// First get
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
 				// Second get for upgrades
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseAwsTags))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(describeStringWithTagsOutput))
-				Expect(stderr).To(BeEmpty())
 			})
 		})
 		Context("ROSA Classic", func() {
 			It("Pass a machine pool name through argv but it is not found", func() {
-				args.machinePool = ""
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{nodePoolName})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
-				Expect(stdout).To(BeEmpty())
-				Expect(stderr).To(BeEmpty())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stdout).To(Equal(""))
 			})
 			It("Pass a machine pool name through parameter but it is not found", func() {
-				args.machinePool = nodePoolName
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
-				Expect(stdout).To(BeEmpty())
-				Expect(stderr).To(BeEmpty())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stdout).To(Equal(""))
 			})
 			It("Pass a machine pool name through parameter and it is found", func() {
-				args.machinePool = nodePoolName
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "-c", clusterId})
 				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(describeClassicStringOutput))
-				Expect(stderr).To(BeEmpty())
 			})
 			It("Format AWS additional security groups if exist", func() {
 				securityGroupsIds := []string{"123", "321"}
@@ -298,15 +329,19 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(securityGroupsOutput).To(Equal(""))
 			})
 			It("Pass a machine pool name through parameter and it is found. yaml output", func() {
-				args.machinePool = nodePoolName
-				Cmd.Flags().Set("output", "yaml")
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
-				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
-				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
-					Cmd, &[]string{})
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
+					[]string{"--machinepool", nodePoolName, "--output", "yaml", "-c", clusterId})
 				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(describeClassicYamlOutput))
-				Expect(stderr).To(BeEmpty())
 			})
 		})
 	})

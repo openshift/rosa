@@ -17,8 +17,8 @@ limitations under the License.
 package machinepool
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -29,61 +29,65 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:     "machinepool",
-	Aliases: []string{"machine-pool"},
-	Short:   "Show details of a machine pool on a cluster",
-	Long:    "Show details of a machine pool on a cluster.",
-	Example: `  # Show details of a machine pool named "mymachinepool"" on a cluster named "mycluster"
-  rosa describe machinepool --cluster=mycluster --machinepool=mymachinepool`,
-	Run:  run,
-	Args: cobra.MaximumNArgs(1),
-}
+const (
+	use     = "machinepool"
+	alias   = "machine-pool"
+	short   = "Show details of a machine pool on a cluster"
+	long    = "Show details of a machine pool on a cluster."
+	example = `  # Show details of a machine pool named "mymachinepool"" on a cluster named "mycluster"
+  rosa describe machinepool --cluster=mycluster --machinepool=mymachinepool`
+)
 
-var args struct {
-	machinePool string
-}
+func NewDescribeMachinePoolCommand() *cobra.Command {
+	options := NewDescribeMachinepoolUserOptions()
+	cmd := &cobra.Command{
+		Use:     use,
+		Short:   short,
+		Long:    long,
+		Aliases: []string{alias},
+		Example: example,
+		Args:    cobra.NoArgs,
+		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeMachinePoolRunner(options)),
+	}
 
-func init() {
-	flags := Cmd.Flags()
-	flags.SortFlags = false
-	ocm.AddClusterFlag(Cmd)
-	output.AddFlag(Cmd)
+	flags := cmd.Flags()
 	flags.StringVar(
-		&args.machinePool,
+		&options.machinepool,
 		"machinepool",
 		"",
 		"Machine pool of the cluster to target",
 	)
+
+	output.AddFlag(cmd)
+	ocm.AddClusterFlag(cmd)
+	return cmd
 }
 
-func run(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
-	err := runWithRuntime(r, cmd, argv)
-	if err != nil {
-		r.Reporter.Errorf(err.Error())
-		os.Exit(1)
-	}
-}
+func DescribeMachinePoolRunner(userOptions DescribeMachinepoolUserOptions) rosa.CommandRunner {
+	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, argv []string) error {
+		options := NewDescribeMachinepoolOptions()
+		// Allow the use also directly the machine pool id as positional parameter
+		if len(argv) == 1 && !cmd.Flag("machinepool").Changed {
+			userOptions.machinepool = argv[0]
+		} else {
+			err := cmd.ParseFlags(argv)
+			if err != nil {
+				return fmt.Errorf("unable to parse flags: %s", err)
+			}
+		}
+		err := options.Bind(userOptions)
+		if err != nil {
+			return err
+		}
+		clusterKey := runtime.GetClusterKey()
+		cluster := runtime.FetchCluster()
+		if cluster.State() != cmv1.ClusterStateReady {
+			return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
+		}
+		isHypershift := cluster.Hypershift().Enabled()
 
-func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
-	// Allow the use also directly the machine pool id as positional parameter
-	if len(argv) == 1 && !cmd.Flag("machinepool").Changed {
-		args.machinePool = argv[0]
-	}
-	if args.machinePool == "" {
-		return fmt.Errorf("You need to specify a machine pool name")
-	}
-	clusterKey := r.GetClusterKey()
-	cluster := r.FetchCluster()
-	if cluster.State() != cmv1.ClusterStateReady {
-		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
-		os.Exit(1)
-	}
-	isHypershift := cluster.Hypershift().Enabled()
+		service := machinepool.NewMachinePoolService()
 
-	service := machinepool.NewMachinePoolService()
-
-	return service.DescribeMachinePool(r, cluster, clusterKey, isHypershift, args.machinePool)
+		return service.DescribeMachinePool(runtime, cluster, clusterKey, isHypershift, options.Machinepool())
+	}
 }
