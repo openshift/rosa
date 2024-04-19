@@ -13,9 +13,6 @@ var policyBuilder cmv1.NodePoolUpgradePolicyBuilder
 var date time.Time
 
 var _ = Describe("Machinepool and nodepool", func() {
-	Context("Machinepools", func() {
-
-	})
 	Context("Nodepools", Ordered, func() {
 		BeforeAll(func() {
 			location, err := time.LoadLocation("America/New_York")
