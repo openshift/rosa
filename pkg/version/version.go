@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"net/http"
 
+	"slices"
+
 	goVer "github.com/hashicorp/go-version"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/cache"
 	"github.com/openshift/rosa/pkg/clients"
 	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/output"
 )
 
 const (
@@ -62,8 +66,8 @@ type rosaVersion struct {
 	retriever Retriever
 }
 
-func (v rosaVersion) IsLatest(latestVersion string) (*goVer.Version, bool, error) {
-	currentVersion, err := goVer.NewVersion(latestVersion)
+func (v rosaVersion) IsLatest(version string) (*goVer.Version, bool, error) {
+	currentVersion, err := goVer.NewVersion(version)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to retrieve current version: %v", err)
 	}
@@ -78,4 +82,8 @@ func (v rosaVersion) IsLatest(latestVersion string) (*goVer.Version, bool, error
 	}
 
 	return nil, true, nil
+}
+
+func ShouldRunCheck(cmd *cobra.Command) bool {
+	return !slices.Contains([]string{"version", "rosa-client"}, cmd.Use) && !output.HasFlag()
 }

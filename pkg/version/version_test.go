@@ -9,6 +9,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/output"
 )
 
 var _ = Describe("IsLatest", func() {
@@ -80,6 +83,41 @@ var _ = Describe("NewRosaVersion", func() {
 			rosaVersion, err := NewRosaVersion()
 			Expect(err).To(BeNil())
 			Expect(rosaVersion).ToNot(BeNil())
+		})
+	})
+})
+
+var _ = Describe("ShouldRunCheck", func() {
+	When("command is part of skipped commands", func() {
+		It("should return false", func() {
+			cmd := &cobra.Command{Use: "version"}
+			cmd.ResetFlags()
+			output.AddFlag(cmd)
+			output.SetOutput("")
+			result := ShouldRunCheck(cmd)
+			Expect(result).To(Equal(false))
+		})
+	})
+
+	When("command contains 'output' flag", func() {
+		It("should return false", func() {
+			cmd := &cobra.Command{}
+			cmd.ResetFlags()
+			output.AddFlag(cmd)
+			output.SetOutput("json")
+			result := ShouldRunCheck(cmd)
+			Expect(result).To(Equal(false))
+		})
+	})
+
+	When("command is not part of skipped commands and doesn't contain 'output' flag", func() {
+		It("should return true", func() {
+			cmd := &cobra.Command{}
+			cmd.ResetFlags()
+			output.AddFlag(cmd)
+			output.SetOutput("")
+			result := ShouldRunCheck(cmd)
+			Expect(result).To(Equal(true))
 		})
 	})
 })
