@@ -150,6 +150,13 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 			r.Reporter.Errorf("Failed to determine if the Installer role ARN has hosted CP policies: %v", err)
 			os.Exit(1)
 		}
+
+		if !hostedCPPolicies {
+			r.Reporter.Errorf(
+				"Failed to create the operator role since the Installer role ARN '%v' does not have hosted CP policies",
+				args.installerRoleArn)
+			os.Exit(1)
+		}
 	}
 
 	operatorRolesList, err := convertV1OperatorIAMRoleIntoOcmOperatorIamRole(operatorIAMRoleList)
