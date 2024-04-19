@@ -29,6 +29,7 @@ type MachinePoolService interface {
 	DescribeAndReflectMachinePool(clusterID string, name string) (*MachinePoolDescription, error)
 
 	RetrieveHelpForCreate() (bytes.Buffer, error)
+	RetrieveHelpForEdit() (bytes.Buffer, error)
 }
 
 type machinepoolService struct {
@@ -273,6 +274,11 @@ func (m *machinepoolService) ReflectNodePoolList(result bytes.Buffer) (npl *Node
 // Create MachinePool
 func (m *machinepoolService) RetrieveHelpForCreate() (output bytes.Buffer, err error) {
 	return m.client.Runner.Cmd("create", "machinepool").CmdFlags("-h").Run()
+}
+
+// Edit Machinepool
+func (m *machinepoolService) RetrieveHelpForEdit() (output bytes.Buffer, err error) {
+	return m.client.Runner.Cmd("edit", "machinepool").CmdFlags("-h").Run()
 }
 
 // Pasrse the result of 'rosa describe cluster' to the RosaClusterDescription struct

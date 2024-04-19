@@ -730,4 +730,80 @@ var _ = Describe("Edit nodepool",
 				analyzeUpgrade(nodePoolManualName, "manual")
 				analyzeUpgrade(nodePoolAutoName, "automatic")
 			})
+
+		It("create/edit nodepool with node_drain_grace_period to HCP cluster via ROSA cli can work well - [id:72715]",
+			labels.High, labels.NonClassicCluster,
+			func() {
+				By("check help message for create/edit machinepool")
+				help, err := machinePoolService.RetrieveHelpForCreate()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(help.String()).To(ContainSubstring("--node-drain-grace-period"))
+				help, err = machinePoolService.RetrieveHelpForEdit()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(help.String()).To(ContainSubstring("--node-drain-grace-period"))
+
+				By("Create nodepool with different node-drain-grace-periods")
+				nodeDrainGracePeriodsReqAndRes := []map[string]string{{"20": "20 minutes", "20 hours": "1200 minutes", "20 minutes": "20 minutes"}}
+				for _, nodnodeDrainGracePeriod := range nodeDrainGracePeriodsReqAndRes {
+					for req, res := range nodnodeDrainGracePeriod {
+
+						nodePoolName := common.GenerateRandomName("np-72715", 2)
+						By("Create nodepool with node-drain-grace-period")
+						_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
+							"--replicas", "3",
+							"--node-drain-grace-period", req,
+						)
+						Expect(err).ToNot(HaveOccurred())
+
+						By("Describe nodepool")
+						output, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(output.NodeDrainGracePeriod).To(Equal(res))
+					}
+				}
+
+				By("Create nodepool without node-drain-grace-period")
+				nodePoolName := common.GenerateRandomName("np-72715", 3)
+				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
+					"--replicas", "3",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Describe cluster in json format")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				value := jsonData.DigFloat("node_drain_grace_period", "value")
+				nodeDrainGracePeriodForCluster := strconv.FormatFloat(value, 'f', -1, 64)
+
+				By("Describe nodepool")
+				output, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
+				Expect(err).ToNot(HaveOccurred())
+				if nodeDrainGracePeriodForCluster == "0" {
+					Expect(output.NodeDrainGracePeriod).To(Equal(""))
+				} else {
+					Expect(output.NodeDrainGracePeriod).To(Equal(nodeDrainGracePeriodForCluster))
+				}
+
+				By("Edit nodepool with different node-drain-grace-periods")
+				nodeDrainGracePeriodsReqAndRes = []map[string]string{{"10": "10 minutes", "10 hours": "600 minutes", "10 minutes": "10 minutes"}}
+				for _, nodnodeDrainGracePeriod := range nodeDrainGracePeriodsReqAndRes {
+					for req, res := range nodnodeDrainGracePeriod {
+
+						By("Edit nodepool with node-drain-grace-period")
+						_, err = machinePoolService.EditMachinePool(clusterID, nodePoolName,
+							"--node-drain-grace-period", req,
+							"--replicas", "3",
+						)
+						Expect(err).ToNot(HaveOccurred())
+
+						By("Describe nodepool")
+						output, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(output.NodeDrainGracePeriod).To(Equal(res))
+					}
+				}
+			})
 	})
