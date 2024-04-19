@@ -165,9 +165,14 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	var err error
 	if cluster.Hypershift().Enabled() {
-		editNodePool(cmd, machinePoolID, clusterKey, cluster, r)
+		err = editNodePool(cmd, machinePoolID, clusterKey, cluster, r)
 	} else {
-		editMachinePool(cmd, machinePoolID, clusterKey, cluster, r)
+		err = editMachinePool(cmd, machinePoolID, clusterKey, cluster, r)
+	}
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 }
