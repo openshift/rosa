@@ -38,7 +38,7 @@ func NewRosaVersionCommand() *cobra.Command {
 		Short: short,
 		Long:  long,
 		Args:  cobra.NoArgs,
-		Run:   rosa.DefaultRunner(rosa.RuntimeWithOCM(), RosaVersionRunner(o)),
+		Run:   rosa.DefaultRunner(rosa.DefaultRuntime(), RosaVersionRunner(o)),
 	}
 
 	cmd.Flags().SortFlags = false
@@ -59,7 +59,7 @@ func NewRosaVersionCommand() *cobra.Command {
 }
 
 func RosaVersionRunner(userOptions RosaVersionUserOptions) rosa.CommandRunner {
-	return func(ctx context.Context, runtime *rosa.Runtime, command *cobra.Command, args []string) error {
+	return func(_ context.Context, _ *rosa.Runtime, _ *cobra.Command, _ []string) error {
 		options, err := NewRosaVersionOptions()
 		options.BindAndValidate(userOptions)
 		if err != nil {
