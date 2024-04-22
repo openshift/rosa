@@ -47,6 +47,12 @@ var _ = Describe("Edit User",
 					clusterAdminsUserName    = "testcu"
 				)
 
+				By("Try to list the user when there is no one")
+				_, output, err := userService.ListUsers(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("INFO: There are no users configured for cluster '%s'", clusterID))
+
 				By("Grant dedicated-admins user")
 				out, err := userService.GrantUser(
 					clusterID,
@@ -54,7 +60,7 @@ var _ = Describe("Edit User",
 					dedicatedAdminsUserName,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Granted role '%s' to user '%s' on cluster '%s'", dedicatedAdminsGroupName, dedicatedAdminsUserName, clusterID))
 
 				By("Grant cluster-admins user")
