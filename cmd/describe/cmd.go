@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/describe/breakglasscredential"
 	"github.com/openshift/rosa/cmd/describe/cluster"
 	"github.com/openshift/rosa/cmd/describe/externalauthprovider"
+	"github.com/openshift/rosa/cmd/describe/ingress"
 	"github.com/openshift/rosa/cmd/describe/installation"
 	"github.com/openshift/rosa/cmd/describe/kubeletconfig"
 	"github.com/openshift/rosa/cmd/describe/machinepool"
@@ -42,19 +43,18 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.AddCommand(addon.Cmd)
-	Cmd.AddCommand(admin.Cmd)
-	Cmd.AddCommand(cluster.Cmd)
-	Cmd.AddCommand(service.Cmd)
-	Cmd.AddCommand(installation.Cmd)
-	Cmd.AddCommand(upgrade.Cmd)
-	Cmd.AddCommand(tuningconfigs.Cmd)
 	machinePoolCommand := machinepool.NewDescribeMachinePoolCommand()
-	Cmd.AddCommand(machinePoolCommand)
-	Cmd.AddCommand(kubeletconfig.Cmd)
-	Cmd.AddCommand(autoscaler.NewDescribeAutoscalerCommand())
-	Cmd.AddCommand(externalauthprovider.Cmd)
-	Cmd.AddCommand(breakglasscredential.Cmd)
+	ingressCommand := ingress.NewDescribeIngressCommand()
+	cmds := []*cobra.Command{
+		addon.Cmd, admin.Cmd, cluster.Cmd, service.Cmd,
+		installation.Cmd, upgrade.Cmd, tuningconfigs.Cmd,
+		machinePoolCommand, kubeletconfig.Cmd,
+		autoscaler.NewDescribeAutoscalerCommand(), ingressCommand,
+		externalauthprovider.Cmd, breakglasscredential.Cmd,
+	}
+	for _, cmd := range cmds {
+		Cmd.AddCommand(cmd)
+	}
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -65,7 +65,7 @@ func init() {
 		machinePoolCommand, addon.Cmd, upgrade.Cmd,
 		admin.Cmd, breakglasscredential.Cmd,
 		externalauthprovider.Cmd, installation.Cmd,
-		kubeletconfig.Cmd, upgrade.Cmd,
+		kubeletconfig.Cmd, upgrade.Cmd, ingressCommand,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

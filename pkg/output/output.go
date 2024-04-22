@@ -76,6 +76,10 @@ func Print(resource interface{}) error {
 		if idps, ok := resource.([]*cmv1.IdentityProvider); ok {
 			cmv1.MarshalIdentityProviderList(idps, &b)
 		}
+	case "*v1.Ingress":
+		if ingress, ok := resource.(*cmv1.Ingress); ok {
+			cmv1.MarshalIngress(ingress, &b)
+		}
 	case "[]*v1.Ingress":
 		if ingresses, ok := resource.([]*cmv1.Ingress); ok {
 			cmv1.MarshalIngressList(ingresses, &b)
