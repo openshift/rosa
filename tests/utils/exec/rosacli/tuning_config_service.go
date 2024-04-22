@@ -3,6 +3,7 @@ package rosacli
 import (
 	"bytes"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -119,6 +120,18 @@ func (tcs *tuningConfigService) ListTuningConfigsAndReflect(clusterID string) (*
 	return tcs.ReflectTuningConfigList(output)
 }
 
+// Check the tuningConfig with the name exists in the tuningConfigList
+func (tuningConfigs TuningConfigList) IsPresent(tcName string) (existed bool) {
+	existed = false
+	for _, tuningConfig := range tuningConfigs.TuningConfigs {
+		if tuningConfig.Name == tcName {
+			existed = true
+			break
+		}
+	}
+	return
+}
+
 func (tcs *tuningConfigService) DescribeTuningConfig(clusterID string, tcID string) (bytes.Buffer, error) {
 	describe := tcs.client.Runner.
 		Cmd("describe", "tuning-configs", tcID).
@@ -138,7 +151,11 @@ func (tcs *tuningConfigService) DescribeTuningConfigAndReflect(clusterID string,
 func (tcs *tuningConfigService) ReflectTuningConfigDescription(result bytes.Buffer) (res *TuningConfigDescription, err error) {
 	var data []byte
 	res = &TuningConfigDescription{}
-	theMap, err := tcs.client.Parser.TextData.Input(result).Parse().YamlToMap()
+	// Apply transformation to avoid issue with getting of Spec Content
+	theMap, err := tcs.client.Parser.TextData.Input(result).Parse().TransformOutput(func(str string) (newStr string) {
+		newStr = strings.Replace(str, "Spec:", "Spec: |\n ", 1)
+		return
+	}).YamlToMap()
 	if err != nil {
 		return
 	}
