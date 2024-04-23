@@ -443,7 +443,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvailabilityZoneSet bool,
 	cluster *cmv1.Cluster) (string, error) {
 
-	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(true, cluster.AWS().SubnetIDs()[0])
 	if err != nil {
 		return "", err
 	}

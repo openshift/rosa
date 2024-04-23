@@ -75,10 +75,10 @@ const (
 
 	// Since CloudFormation stacks are region-dependent, we hard-code OCM's default region and
 	// then use it to ensure that the user always gets the stack from the same region.
-	DefaultRegion = "us-east-1"
-	Inline        = "inline"
-	Attached      = "attached"
-
+	DefaultRegion  = "us-east-1"
+	Inline         = "inline"
+	Attached       = "attached"
+	standardZone   = "availability-zone"
 	LocalZone      = "local-zone"
 	WavelengthZone = "wavelength-zone"
 
@@ -111,8 +111,8 @@ type Client interface {
 	GetSubnetAvailabilityZone(subnetID string) (string, error)
 	GetAvailabilityZoneType(availabilityZoneName string) (string, error)
 	GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error)
-	GetVPCPrivateSubnets(subnetID string) ([]ec2types.Subnet, error)
-	FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2types.Subnet, error)
+	GetVPCPrivateSubnets(isHostedCp bool, subnetID string) ([]ec2types.Subnet, error)
+	FilterVPCsPrivateSubnets(isHostedCp bool, subnets []ec2types.Subnet) ([]ec2types.Subnet, error)
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
@@ -535,13 +535,13 @@ func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
 	return *res.Subnets[0].AvailabilityZone, nil
 }
 
-func (c *awsClient) GetVPCPrivateSubnets(subnetID string) ([]ec2types.Subnet, error) {
+func (c *awsClient) GetVPCPrivateSubnets(isHostedCp bool, subnetID string) ([]ec2types.Subnet, error) {
 	subnets, err := c.GetVPCSubnets(subnetID)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.FilterVPCsPrivateSubnets(subnets)
+	return c.FilterVPCsPrivateSubnets(isHostedCp, subnets)
 }
 
 // getVPCSubnets gets a subnet ID and fetches all the subnets that belong to the same VPC as the provided subnet.
@@ -584,7 +584,7 @@ func (c *awsClient) GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error) {
 
 // FilterPrivateSubnets gets a slice of subnets that belongs to the same VPC and filters the private subnets.
 // Assumption: subnets - non-empty slice.
-func (c *awsClient) FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2types.Subnet, error) {
+func (c *awsClient) FilterVPCsPrivateSubnets(isHostedCp bool, subnets []ec2types.Subnet) ([]ec2types.Subnet, error) {
 	// Fetch VPC route tables
 	vpcID := subnets[0].VpcId
 	describeRouteTablesOutput, err := c.ec2Client.DescribeRouteTables(context.Background(), &ec2.DescribeRouteTablesInput{
@@ -613,11 +613,52 @@ func (c *awsClient) FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2ty
 		}
 	}
 
+	// Temporary filter until local-zone and wave-length zones are supported by HCP
+	if isHostedCp {
+		privateSubnets, err = c.filterSubnetsWithStandardAvailabilityZones(privateSubnets)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if len(privateSubnets) < 1 {
 		return nil, fmt.Errorf("failed to find private subnets associated with VPC '%s'", *subnets[0].VpcId)
 	}
 
 	return privateSubnets, nil
+}
+
+func (c *awsClient) filterSubnetsWithStandardAvailabilityZones(subnets []ec2types.Subnet) ([]ec2types.Subnet, error) {
+	filteredSubnets := []ec2types.Subnet{}
+	subnetAvailabilityZonesList := []string{}
+	standardAvailabilityZonesMap := map[string]bool{}
+
+	// list of availability zones to pass as input
+	for _, subnet := range subnets {
+		subnetAvailabilityZonesList = append(subnetAvailabilityZonesList, aws.ToString(subnet.AvailabilityZone))
+	}
+
+	describeAvailabilityZonesOutput, err := c.ec2Client.DescribeAvailabilityZones(
+		context.Background(),
+		&ec2.DescribeAvailabilityZonesInput{ZoneNames: subnetAvailabilityZonesList})
+	if err != nil {
+		return filteredSubnets, err
+	}
+
+	for _, availabilityZone := range describeAvailabilityZonesOutput.AvailabilityZones {
+		if aws.ToString(availabilityZone.ZoneType) == standardZone {
+			standardAvailabilityZonesMap[aws.ToString(availabilityZone.ZoneName)] = true
+		}
+	}
+
+	for _, subnet := range subnets {
+		_, exists := standardAvailabilityZonesMap[aws.ToString(subnet.AvailabilityZone)]
+		if exists {
+			filteredSubnets = append(filteredSubnets, subnet)
+		}
+	}
+
+	return filteredSubnets, nil
 }
 
 // isPublicSubnet a public subnet is a subnet that's associated with a route table that has a route to an
@@ -638,12 +679,12 @@ func (c *awsClient) isPublicSubnet(subnetID *string, routeTables []ec2types.Rout
 }
 
 func (c *awsClient) getSubnetRouteTable(subnetID *string,
-	routeTables []ec2types.RouteTable) (*ec2types.RouteTable, error) {
+	routeTables []ec2types.RouteTable) (ec2types.RouteTable, error) {
 	// Subnet route table — A route table that's associated with a subnet
 	for _, routeTable := range routeTables {
 		for _, association := range routeTable.Associations {
 			if aws.ToString(association.SubnetId) == aws.ToString(subnetID) {
-				return &routeTable, nil
+				return routeTable, nil
 			}
 		}
 	}
@@ -653,13 +694,13 @@ func (c *awsClient) getSubnetRouteTable(subnetID *string,
 	for _, routeTable := range routeTables {
 		for _, association := range routeTable.Associations {
 			if aws.ToBool(association.Main) {
-				return &routeTable, nil
+				return routeTable, nil
 			}
 		}
 	}
 
 	// Each subnet in the VPC must be associated with a route table
-	return nil, fmt.Errorf("failed to find subnet '%s' route table", *subnetID)
+	return ec2types.RouteTable{}, fmt.Errorf("failed to find subnet '%s' route table", *subnetID)
 }
 
 // getSubnetIDs will return the list of subnetsIDs supported for the region picked.

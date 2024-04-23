@@ -417,12 +417,12 @@ var _ = Describe("ValidateHostedClusterSubnets for Private Cluster", func() {
 		mockClient.EXPECT().GetVPCSubnets(gomock.Any()).Return(subnets, nil).AnyTimes()
 	})
 	It("should not return an error when only private subnets are present for a private cluster", func() {
-		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{subnets[1]}, nil)
+		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any(), gomock.Any()).Return([]ec2types.Subnet{subnets[1]}, nil)
 		_, err := ValidateHostedClusterSubnets(mockClient, true, []string{"subnet-private-2"})
 		Expect(err).NotTo(HaveOccurred())
 	})
 	It("should return an error when public subnets are present for a private cluster", func() {
-		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{}, nil)
+		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any(), gomock.Any()).Return([]ec2types.Subnet{}, nil)
 		_, err := ValidateHostedClusterSubnets(mockClient, true, ids)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("The number of public subnets for a private hosted cluster should be zero"))
