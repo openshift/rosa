@@ -45,6 +45,9 @@ var pathTreeData = `{
           "-": null
         },
         "current_account": null,
+        "default_capabilities": {
+          "-": null
+        },
         "deleted_subscriptions": null,
         "feature_toggles": {
           "-": {
@@ -320,6 +323,7 @@ var pathTreeData = `{
         "limited_support_reason_templates": {
           "-": null
         },
+        "load_balancer_quota_values": null,
         "machine_types": {
           "-": null
         },
@@ -345,6 +349,7 @@ var pathTreeData = `{
         "provision_shards": {
           "-": null
         },
+        "storage_quota_values": null,
         "trusted_ip_addresses": null,
         "version_gates": {
           "-": null
