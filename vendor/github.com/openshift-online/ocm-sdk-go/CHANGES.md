@@ -3,6 +3,29 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.416
+- Update windows api.openshift certs 
+
+## 0.1.415
+- Update model version v0.0.369
+  - Update metamodel version to 0.0.60
+  - [OCM-6294] add /load_balancer_quota_values endpoint
+  - [OCM-7027] feat: document pagination and ordering support for break glass
+  - [OCM-7144] Add /storage_quota_values endpoint
+  - Add Azure resource to Cluster resource.
+  - Fix spacing in description of Azure's ManagedResourceGroupName
+
+## 0.1.414
+- Update metamodel version v0.0.60
+
+## 0.1.413
+- Update model version v0.0.366
+  - Fix Default Capabilities.
+
+## 0.1.412
+- Update model version v0.0.365
+  - [OCM-6763] Add default capability resource to SDK.
+
 ## 0.1.411
 - Upgrade pgx version and other dependencies
 
