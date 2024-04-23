@@ -80,20 +80,6 @@ func addIngressV2Flags(flags *pflag.FlagSet) {
 	)
 
 	flags.StringVar(
-		&args.clusterRoutesHostname,
-		clusterRoutesHostnameFlag,
-		"",
-		"Components route hostname for oauth, console, downloads.",
-	)
-
-	flags.StringVar(
-		&args.clusterRoutesTlsSecretRef,
-		clusterRoutesTlsSecretRefFlag,
-		"",
-		"Components route TLS secret reference for oauth, console, downloads.",
-	)
-
-	flags.StringVar(
 		&args.componentRoutes,
 		componentRoutesFlag,
 		"",

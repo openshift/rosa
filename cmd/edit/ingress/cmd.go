@@ -307,8 +307,6 @@ func run(cmd *cobra.Command, argv []string) {
 	var excludedNamespaces *string
 	var wildcardPolicy *string
 	var namespaceOwnershipPolicy *string
-	var clusterRoutesHostname *string
-	var clusterRoutesTlsSecretRef *string
 	var componentRoutes map[string]*cmv1.ComponentRouteBuilder
 	if !hasLegacyIngressSupport {
 		isInteractiveEnabledAndNotHcp := interactive.Enabled() && !ocm.IsHyperShiftCluster(cluster)
@@ -371,26 +369,6 @@ func run(cmd *cobra.Command, argv []string) {
 			namespaceOwnershipPolicy = &namespaceOwnershipPolicyArg
 		}
 
-		// old flags for unified component routes
-		// can only set via arguments to allow changing back
-		// interactive mode removed as it's not supported anymore
-		if cmd.Flags().Changed(clusterRoutesHostnameFlag) {
-			if ocm.IsHyperShiftCluster(cluster) {
-				r.Reporter.Errorf("Updating Cluster Routes Hostname is not supported for Hosted Control Plane clusters")
-				os.Exit(1)
-			}
-			clusterRoutesHostname = &args.clusterRoutesHostname
-		}
-		if cmd.Flags().Changed(clusterRoutesTlsSecretRefFlag) {
-			if ocm.IsHyperShiftCluster(cluster) {
-				r.Reporter.Errorf(
-					"Updating Cluster Routes TLS Secret Reference is not supported for Hosted Control Plane clusters",
-				)
-				os.Exit(1)
-			}
-			clusterRoutesTlsSecretRef = &args.clusterRoutesTlsSecretRef
-		}
-
 		if cmd.Flags().Changed(componentRoutesFlag) {
 			if ocm.IsHyperShiftCluster(cluster) {
 				r.Reporter.Errorf(
@@ -443,8 +421,6 @@ func run(cmd *cobra.Command, argv []string) {
 	curWildcardPolicy := ingress.RouteWildcardPolicy()
 	curNamespaceOwnershipPolicy := ingress.RouteNamespaceOwnershipPolicy()
 	curExcludedNamespaces := ingress.ExcludedNamespaces()
-	curClusterRoutesHostname := ingress.ClusterRoutesHostname()
-	curClusterRoutesTlsSecretRef := ingress.ClusterRoutesTlsSecretRef()
 	curComponentRoutes := ingress.ComponentRoutes()
 
 	ingressBuilder := cmv1.NewIngress().ID(ingress.ID())
@@ -489,14 +465,6 @@ func run(cmd *cobra.Command, argv []string) {
 			cmv1.NamespaceOwnershipPolicy(*namespaceOwnershipPolicy))
 	}
 
-	if clusterRoutesHostname != nil {
-		ingressBuilder = ingressBuilder.ClusterRoutesHostname(*clusterRoutesHostname)
-	}
-
-	if clusterRoutesTlsSecretRef != nil {
-		ingressBuilder = ingressBuilder.ClusterRoutesTlsSecretRef(*clusterRoutesTlsSecretRef)
-	}
-
 	if len(componentRoutes) != 0 {
 		ingressBuilder = ingressBuilder.ComponentRoutes(componentRoutes)
 	}
@@ -521,18 +489,12 @@ func run(cmd *cobra.Command, argv []string) {
 	sameNamespaceOwnershipPolicy := (namespaceOwnershipPolicy == nil) ||
 		(curNamespaceOwnershipPolicy == ingress.RouteNamespaceOwnershipPolicy())
 
-	sameClusterRoutesHostname := (clusterRoutesHostname == nil) ||
-		(curClusterRoutesHostname == ingress.ClusterRoutesHostname())
-
-	sameClusterRoutesTlsSecretRef := (clusterRoutesTlsSecretRef == nil) ||
-		(curClusterRoutesTlsSecretRef == ingress.ClusterRoutesTlsSecretRef())
-
 	sameComponentRoutes := (componentRoutes == nil) ||
 		(reflect.DeepEqual(curComponentRoutes, ingress.ComponentRoutes()))
 
 	if sameListeningMethod && sameRouteSelectors && sameLbType &&
 		sameExcludedNamespaces && sameWildcardPolicy && sameNamespaceOwnershipPolicy &&
-		sameClusterRoutesHostname && sameClusterRoutesTlsSecretRef && sameComponentRoutes {
+		sameComponentRoutes {
 		r.Reporter.Warnf("No need to update ingress as there are no changes")
 		os.Exit(0)
 	}
