@@ -34,7 +34,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.29.0
 	github.com/openshift-online/ocm-common v0.0.0-20240129111424-ff8c6c11d909
-	github.com/openshift-online/ocm-sdk-go v0.1.411
+	github.com/openshift-online/ocm-sdk-go v0.1.416
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
