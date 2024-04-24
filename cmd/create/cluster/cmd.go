@@ -2058,9 +2058,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Subnet IDs
-	subnetIDs := args.subnetIDs
+	subnetIDs := helper.FilterEmptyStrings(args.subnetIDs)
 	subnetsProvided := len(subnetIDs) > 0
-	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
+	r.Reporter.Debugf("Received the following subnetIDs: %v", subnetIDs)
 	// If the user has set the availability zones (allowed for non-BYOVPC clusters), don't prompt the BYOVPC message
 	if !useExistingVPC && !subnetsProvided && !isAvailabilityZonesSet && interactive.Enabled() {
 		existingVPCHelp := "To install into an existing VPC you need to ensure that your VPC is configured " +
@@ -2092,7 +2092,7 @@ func run(cmd *cobra.Command, _ []string) {
 	var subnets []ec2types.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
-		initialSubnets, err := getInitialValidSubnets(awsClient, args.subnetIDs, r.Reporter)
+		initialSubnets, err := getInitialValidSubnets(awsClient, subnetIDs, r.Reporter)
 		if err != nil {
 			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
@@ -2205,7 +2205,7 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		// Validate subnets in the case the user has provided them using the `args.subnets`
+		// Validate subnets in the case the user has provided them using the `args.subnetIDs`
 		if useExistingVPC || subnetsProvided {
 			if !isHostedCP {
 				err = ocm.ValidateSubnetsCount(multiAZ, privateLink, len(subnetIDs))

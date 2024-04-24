@@ -157,5 +157,13 @@ var _ = Describe("Helper", func() {
 				Entry("Uses the first 27 characters of the cluster name when the cluster name is > 27 chars",
 					strings.Repeat("a", 54), strings.Repeat("a", 27)))
 		})
+
+		var _ = Context("FilterEmptyStrings()", func() {
+			It("OK: get filters subnets", func() {
+				subnets := []string{"test1", "test2", ""}
+				filteredSubnets := FilterEmptyStrings(subnets)
+				Expect(filteredSubnets).To(Equal([]string{"test1", "test2"}))
+			})
+		})
 	})
 })
