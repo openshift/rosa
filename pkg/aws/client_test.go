@@ -63,6 +63,7 @@ var _ = Describe("Client", func() {
 			mockSTSApi,
 			mockCfAPI,
 			mocks.NewMockServiceQuotasApiClient(mockCtrl),
+			mocks.NewMockServiceQuotasApiClient(mockCtrl),
 			&AccessKey{},
 			false,
 		)

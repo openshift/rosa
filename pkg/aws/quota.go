@@ -17,6 +17,8 @@ type quota struct {
 	DesiredValue *float64
 }
 
+const IAMServiceCode = "iam"
+
 // List of service quotas we verify for cluster installs
 // to support 5 x multi zone clusters
 var serviceQuotaServices = []quota{
@@ -151,4 +153,12 @@ func GetServiceQuota(serviceQuotas []servicequotastypes.ServiceQuota,
 		}
 	}
 	return servicequotastypes.ServiceQuota{}, fmt.Errorf("Unable to find quota with service code: %s", quotaCode)
+}
+
+func (c *awsClient) GetIAMServiceQuota(quotaCode string) (
+	*servicequotas.GetServiceQuotaOutput, error) {
+	return c.iamQuotaClient.GetServiceQuota(context.Background(), &servicequotas.GetServiceQuotaInput{
+		ServiceCode: aws.String(IAMServiceCode),
+		QuotaCode:   aws.String(quotaCode),
+	})
 }
