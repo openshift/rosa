@@ -22,6 +22,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -56,9 +57,6 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if cluster.Hypershift().Enabled() {
-		listNodePools(r, clusterKey, cluster)
-	} else {
-		listMachinePools(r, clusterKey, cluster)
-	}
+	service := machinepool.NewMachinePoolService()
+	service.ListMachinePools(r, clusterKey, cluster, cluster.Hypershift().Enabled())
 }

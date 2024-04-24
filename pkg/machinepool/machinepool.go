@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
+	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
+	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -18,6 +21,7 @@ var notFoundMessage string = "Machine pool '%s' not found"
 type MachinePoolService interface {
 	DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, isHypershift bool,
 		machinePoolId string) error
+	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, isHypershift bool)
 }
 
 type machinePool struct {
@@ -27,6 +31,49 @@ var _ MachinePoolService = &machinePool{}
 
 func NewMachinePoolService() MachinePoolService {
 	return &machinePool{}
+}
+
+// ListMachinePools lists all machinepools (or, nodepools if hypershift) in a cluster
+func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, isHypershift bool) {
+	// Load any existing machine pools for this cluster
+	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
+	var err error
+	var machinePools []*cmv1.MachinePool
+	var nodePools []*cmv1.NodePool
+	if !isHypershift {
+		machinePools, err = r.OCMClient.GetMachinePools(cluster.ID())
+	} else {
+		nodePools, err = r.OCMClient.GetNodePools(cluster.ID())
+	}
+	if err != nil {
+		r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+		os.Exit(1)
+	}
+
+	if output.HasFlag() {
+		if !isHypershift {
+			err = output.Print(machinePools)
+		} else {
+			err = output.Print(nodePools)
+		}
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	// Create the writer that will be used to print the tabulated results:
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	var finalStringToOutput string
+	if !isHypershift {
+		finalStringToOutput = printMachinePools(machinePools)
+	} else {
+		finalStringToOutput = printNodePools(nodePools)
+	}
+	fmt.Fprintf(writer, finalStringToOutput)
+	writer.Flush()
 }
 
 // DescribeMachinePool describes either a machinepool, or, a nodepool (if hypershift)
@@ -123,4 +170,48 @@ func appendUpgradesIfExist(scheduledUpgrade *cmv1.NodePoolUpgradePolicy, output 
 		)
 	}
 	return output
+}
+
+func printMachinePools(machinePools []*cmv1.MachinePool) string {
+	outputString := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t" +
+		"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\tSG IDs\n"
+	for _, machinePool := range machinePools {
+		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\t%s\t%s\n",
+			machinePool.ID(),
+			ocmOutput.PrintMachinePoolAutoscaling(machinePool.Autoscaling()),
+			ocmOutput.PrintMachinePoolReplicas(machinePool.Autoscaling(), machinePool.Replicas()),
+			machinePool.InstanceType(),
+			ocmOutput.PrintLabels(machinePool.Labels()),
+			ocmOutput.PrintTaints(machinePool.Taints()),
+			output.PrintStringSlice(machinePool.AvailabilityZones()),
+			output.PrintStringSlice(machinePool.Subnets()),
+			ocmOutput.PrintMachinePoolSpot(machinePool),
+			ocmOutput.PrintMachinePoolDiskSize(machinePool),
+			output.PrintStringSlice(machinePool.AWS().AdditionalSecurityGroupIds()),
+		)
+	}
+	return outputString
+}
+
+func printNodePools(nodePools []*cmv1.NodePool) string {
+	outputString := "ID\tAUTOSCALING\tREPLICAS\t" +
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\t\n"
+	for _, nodePool := range nodePools {
+		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t\n",
+			nodePool.ID(),
+			ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
+			ocmOutput.PrintNodePoolReplicasShort(
+				ocmOutput.PrintNodePoolCurrentReplicas(nodePool.Status()),
+				ocmOutput.PrintNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
+			),
+			ocmOutput.PrintNodePoolInstanceType(nodePool.AWSNodePool()),
+			ocmOutput.PrintLabels(nodePool.Labels()),
+			ocmOutput.PrintTaints(nodePool.Taints()),
+			nodePool.AvailabilityZone(),
+			nodePool.Subnet(),
+			ocmOutput.PrintNodePoolVersion(nodePool.Version()),
+			ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
+		)
+	}
+	return outputString
 }
