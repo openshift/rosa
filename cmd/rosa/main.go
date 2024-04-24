@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/attach"
 	"github.com/openshift/rosa/cmd/completion"
 	"github.com/openshift/rosa/cmd/config"
 	"github.com/openshift/rosa/cmd/create"
@@ -101,6 +102,7 @@ func init() {
 	root.AddCommand(unlink.Cmd)
 	root.AddCommand(token.Cmd)
 	root.AddCommand(config.Cmd)
+	root.AddCommand(attach.NewRosaAttachCommand())
 }
 
 func main() {

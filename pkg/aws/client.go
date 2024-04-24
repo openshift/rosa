@@ -90,6 +90,8 @@ const (
 	minRetryDelay    = 1 * time.Second
 	minThrottleDelay = 5 * time.Second
 	maxThrottleDelay = 5 * time.Second
+
+	IAMServiceRegion = "us-east-1"
 )
 
 // Client defines a client interface
@@ -138,6 +140,7 @@ type Client interface {
 	ListOperatorRoles(version string, clusterID string) (map[string][]OperatorRoleDetail, error)
 	ListOidcProviders(targetClusterId string, config *cmv1.OidcConfig) ([]OidcProviderOutput, error)
 	GetRoleByARN(roleARN string) (iamtypes.Role, error)
+	GetRoleByName(roleName string) (iamtypes.Role, error)
 	DeleteOperatorRole(roles string, managedPolicies bool) error
 	GetOperatorRolesFromAccountByClusterID(
 		clusterID string,
@@ -206,6 +209,7 @@ type Client interface {
 	GetAccountRoleByArn(roleArn string) (Role, error)
 	GetSecurityGroupIds(vpcId string) ([]ec2types.SecurityGroup, error)
 	FetchPublicSubnetMap(subnets []ec2types.Subnet) (map[string]bool, error)
+	GetIAMServiceQuota(quotaCode string) (*servicequotas.GetServiceQuotaOutput, error)
 }
 
 type AccessKeyGetter interface {
@@ -232,6 +236,7 @@ type awsClient struct {
 	stsClient           client.StsApiClient
 	cfClient            client.CloudFormationApiClient
 	serviceQuotasClient client.ServiceQuotasApiClient
+	iamQuotaClient      client.ServiceQuotasApiClient
 	awsAccessKeys       *AccessKey
 	useLocalCredentials bool
 }
@@ -264,6 +269,7 @@ func New(
 	stsClient client.StsApiClient,
 	cfClient client.CloudFormationApiClient,
 	serviceQuotasClient client.ServiceQuotasApiClient,
+	iamQuotaClient client.ServiceQuotasApiClient,
 	awsAccessKeys *AccessKey,
 	useLocalCredentials bool,
 
@@ -279,6 +285,7 @@ func New(
 		stsClient,
 		cfClient,
 		serviceQuotasClient,
+		iamQuotaClient,
 		awsAccessKeys,
 		useLocalCredentials,
 	}
@@ -422,6 +429,13 @@ func (b *ClientBuilder) Build() (Client, error) {
 		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
 	}
 
+	// IAM Service is only available in "us-east-1", need to create specific config for it
+	iamCfg, err := b.BuildSession()
+	if err != nil {
+		return nil, err
+	}
+	iamCfg.Region = IAMServiceRegion
+
 	// Create and populate the object:
 	c := &awsClient{
 		cfg:                 cfg,
@@ -434,6 +448,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 		stsClient:           sts.NewFromConfig(cfg),
 		cfClient:            cloudformation.NewFromConfig(cfg),
 		serviceQuotasClient: servicequotas.NewFromConfig(cfg),
+		iamQuotaClient:      servicequotas.NewFromConfig(iamCfg),
 		useLocalCredentials: b.useLocalCredentials,
 	}
 
@@ -994,6 +1009,10 @@ func (c *awsClient) GetRoleByARN(roleARN string) (iamtypes.Role, error) {
 	m := strings.LastIndex(resource, "/")
 	roleName := resource[m+1:]
 
+	return c.GetRoleByName(roleName)
+}
+
+func (c *awsClient) GetRoleByName(roleName string) (iamtypes.Role, error) {
 	roleOutput, err := c.iamClient.GetRole(context.Background(),
 		&iam.GetRoleInput{
 			RoleName: aws.String(roleName),

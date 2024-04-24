@@ -60,6 +60,10 @@ const (
 	Username            = "Username"
 	URL                 = "URL"
 	IsThrottle          = "IsThrottle"
+	Account             = "Account"
+	Organization        = "Organization"
+	RoleName            = "RoleName"
+	PolicyArn           = "PolicyArn"
 
 	OCMRoleLabel  = "sts_ocm_role"
 	USERRoleLabel = "sts_user_role"
