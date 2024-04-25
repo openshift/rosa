@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/machinepools"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -26,11 +27,6 @@ import (
 
 func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) {
 	var err error
-
-	if cmd.Flags().Changed("tags") {
-		r.Reporter.Errorf("Setting the 'tags' flag is currently only allowed for Hosted Control Plane clusters")
-		os.Exit(1)
-	}
 
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
@@ -437,6 +433,8 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 		maxPrice = &price
 	}
 
+	awsTags := machinepools.GetAwsTags(cmd, r, args.tags)
+
 	mpBuilder := cmv1.NewMachinePool().
 		ID(name).
 		InstanceType(instanceType).
@@ -462,6 +460,9 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	}
 	if len(securityGroupIds) > 0 {
 		awsMpBuilder.AdditionalSecurityGroupIds(securityGroupIds...)
+	}
+	if len(awsTags) > 0 {
+		awsMpBuilder.Tags(awsTags)
 	}
 	mpBuilder.AWS(awsMpBuilder)
 

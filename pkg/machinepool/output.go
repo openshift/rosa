@@ -40,7 +40,8 @@ var machinePoolOutputString = "\n" +
 	"Subnets:                               %s\n" +
 	"Spot instances:                        %s\n" +
 	"Disk size:                             %s\n" +
-	"Additional Security Group IDs:         %s\n"
+	"Additional Security Group IDs:         %s\n" +
+	"Tags:                                  %s\n"
 
 func machinePoolOutput(clusterId string, machinePool *cmv1.MachinePool) string {
 	return fmt.Sprintf(machinePoolOutputString,
@@ -56,6 +57,7 @@ func machinePoolOutput(clusterId string, machinePool *cmv1.MachinePool) string {
 		ocmOutput.PrintMachinePoolSpot(machinePool),
 		ocmOutput.PrintMachinePoolDiskSize(machinePool),
 		output.PrintStringSlice(machinePool.AWS().AdditionalSecurityGroupIds()),
+		ocmOutput.PrintUserAwsTags(machinePool.AWS().Tags()),
 	)
 }
 
