@@ -120,5 +120,30 @@ var _ = Describe("Policy Service", func() {
 					"aws iam attach-role-policy --role-name %s --policy-arn %s\n",
 				roleName, policyArn1, roleName, policyArn2)))
 		})
+		It("Test ValidateDetachOptions", func() {
+			awsClient.EXPECT().GetRoleByName(roleName).Return(*role, nil)
+			awsClient.EXPECT().IsPolicyExists(policyArn1).Return(nil, nil)
+			awsClient.EXPECT().IsPolicyExists(policyArn2).Return(nil, nil)
+			err := policySvc.ValidateDetachOptions(roleName, policyArns)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+		It("Test AutoDetachArbitraryPolicy", func() {
+			awsClient.EXPECT().DetachRolePolicy(policyArn1, roleName).Return(nil)
+			awsClient.EXPECT().DetachRolePolicy(policyArn2, roleName).Return(&iamtypes.NoSuchEntityException{})
+			output, err := policySvc.AutoDetachArbitraryPolicy(roleName, policyArns,
+				"sample-account-id", "sample-org-id")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(output).To(Equal(fmt.Sprintf("Detached policy '%s' from role '%s'\n"+
+				"The policy '%s' is currently not attached to role '%s'\n",
+				policyArn1, roleName, policyArn2, roleName)))
+		})
+		It("Test ManualDetachArbitraryPolicy", func() {
+			output := policySvc.ManualDetachArbitraryPolicy(roleName, policyArns,
+				"sample-account-id", "sample-org-id")
+			Expect(output).To(Equal(fmt.Sprintf(
+				"aws iam detach-role-policy --role-name %s --policy-arn %s\n"+
+					"aws iam detach-role-policy --role-name %s --policy-arn %s\n",
+				roleName, policyArn1, roleName, policyArn2)))
+		})
 	})
 })

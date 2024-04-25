@@ -22,6 +22,7 @@ import (
 	"slices"
 
 	awsutil "github.com/aws/aws-sdk-go-v2/aws"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -37,6 +38,9 @@ type PolicyService interface {
 	ValidateAttachOptions(roleName string, policyArns []string) error
 	AutoAttachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) (string, error)
 	ManualAttachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) string
+	ValidateDetachOptions(roleName string, policyArns []string) error
+	AutoDetachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) (string, error)
+	ManualDetachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) string
 }
 
 type policyService struct {
@@ -56,39 +60,19 @@ func NewPolicyService(OCMClient *ocm.Client, AWSClient aws.Client) PolicyService
 // verify role is RedHat managed
 // verify role has quota to attach the policies
 func (p *policyService) ValidateAttachOptions(roleName string, policyArns []string) error {
-	role, err := p.AWSClient.GetRoleByName(roleName)
+	err := validateRoleAndPolicies(p.AWSClient, roleName, policyArns)
 	if err != nil {
-		return fmt.Errorf(
-			"Failed to find the role %s: %s",
-			roleName, err,
-		)
+		return err
 	}
-	isRedHatManaged := false
-	for _, tag := range role.Tags {
-		if awsutil.ToString(tag.Key) == tags.RedHatManaged &&
-			awsutil.ToString(tag.Value) == "true" {
-			isRedHatManaged = true
-			break
-		}
-	}
-	if !isRedHatManaged {
-		return fmt.Errorf("Cannot attach policies to non-ROSA roles")
-	}
-
 	err = validatePolicyQuota(p.AWSClient, roleName, policyArns)
 	if err != nil {
 		return err
 	}
-	for _, policyArn := range policyArns {
-		_, err = p.AWSClient.IsPolicyExists(policyArn)
-		if err != nil {
-			return fmt.Errorf(
-				"Failed to find the policy %s: %s",
-				policyArn, err,
-			)
-		}
-	}
 	return nil
+}
+
+func (p *policyService) ValidateDetachOptions(roleName string, policyArns []string) error {
+	return validateRoleAndPolicies(p.AWSClient, roleName, policyArns)
 }
 
 func (p *policyService) AutoAttachArbitraryPolicy(roleName string, policyArns []string,
@@ -127,6 +111,48 @@ func (p *policyService) ManualAttachArbitraryPolicy(roleName string, policyArns 
 	return cmd
 }
 
+func (p *policyService) AutoDetachArbitraryPolicy(roleName string, policyArns []string,
+	accountID, orgID string) (string, error) {
+	output := ""
+	for _, policyArn := range policyArns {
+		err := p.AWSClient.DetachRolePolicy(policyArn, roleName)
+		if err != nil {
+			if awserr.IsNoSuchEntityException(err) {
+				output = output + fmt.Sprintf("The policy '%s' is currently not attached to role '%s'\n",
+					policyArn, roleName)
+			} else {
+				return output, fmt.Errorf("Failed to detach policy '%s' from role '%s': %s",
+					policyArn, roleName, err)
+			}
+		} else {
+			output = output + fmt.Sprintf("Detached policy '%s' from role '%s'\n", policyArn, roleName)
+			p.OCMClient.LogEvent("ROSADetachPolicyAuto", map[string]string{
+				ocm.Account:      accountID,
+				ocm.Organization: orgID,
+				ocm.RoleName:     roleName,
+				ocm.PolicyArn:    policyArn,
+			})
+		}
+	}
+	return output, nil
+}
+
+func (p *policyService) ManualDetachArbitraryPolicy(roleName string, policyArns []string,
+	accountID, orgID string) string {
+	cmd := ""
+	for _, policyArn := range policyArns {
+		cmd = cmd + fmt.Sprintf("aws iam detach-role-policy --role-name %s --policy-arn %s\n",
+			roleName, policyArn)
+		p.OCMClient.LogEvent("ROSADetachPolicyManual", map[string]string{
+			ocm.Account:      accountID,
+			ocm.Organization: orgID,
+			ocm.RoleName:     roleName,
+			ocm.PolicyArn:    policyArn,
+		})
+	}
+	return cmd
+}
+
 func validatePolicyQuota(c aws.Client, roleName string, policyArns []string) error {
 	quota, err := c.GetIAMServiceQuota(QuotaCode)
 	if err != nil {
@@ -134,7 +160,7 @@ func validatePolicyQuota(c aws.Client, roleName string, policyArns []string) err
 	}
 	attachedPolicies, err := c.GetAttachedPolicy(&roleName)
 	if err != nil {
-		return fmt.Errorf("Failed to get attached policies of role %s: %s", roleName, err)
+		return fmt.Errorf("Failed to get attached policies of role '%s': %s", roleName, err)
 	}
 	if len(policyArns)+len(attachedPolicies) > int(*quota.Quota.Value) {
 		policySkipped := 0
@@ -147,6 +173,38 @@ func validatePolicyQuota(c aws.Client, roleName string, policyArns []string) err
 			return fmt.Errorf("Failed to attach policies due to quota limitations"+
 				" (total limit: %d, expected: %d)",
 				int(*quota.Quota.Value), len(policyArns)+len(attachedPolicies)-policySkipped)
+		}
+	}
+	return nil
+}
+
+func validateRoleAndPolicies(c aws.Client, roleName string, policyArns []string) error {
+	role, err := c.GetRoleByName(roleName)
+	if err != nil {
+		return fmt.Errorf(
+			"Failed to find the role '%s': %s",
+			roleName, err,
+		)
+	}
+	isRedHatManaged := false
+	for _, tag := range role.Tags {
+		if awsutil.ToString(tag.Key) == tags.RedHatManaged &&
+			awsutil.ToString(tag.Value) == "true" {
+			isRedHatManaged = true
+			break
+		}
+	}
+	if !isRedHatManaged {
+		return fmt.Errorf("Cannot attach/detach policies to non-ROSA roles")
+	}
+
+	for _, policyArn := range policyArns {
+		_, err = c.IsPolicyExists(policyArn)
+		if err != nil {
+			return fmt.Errorf(
+				"Failed to find the policy '%s': %s",
+				policyArn, err,
+			)
 		}
 	}
 	return nil

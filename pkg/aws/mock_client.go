@@ -332,6 +332,20 @@ func (mr *MockClientMockRecorder) DetachRolePolicies(roleName any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DetachRolePolicies", reflect.TypeOf((*MockClient)(nil).DetachRolePolicies), roleName)
 }
 
+// DetachRolePolicy mocks base method.
+func (m *MockClient) DetachRolePolicy(policyArn, roleName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DetachRolePolicy", policyArn, roleName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DetachRolePolicy indicates an expected call of DetachRolePolicy.
+func (mr *MockClientMockRecorder) DetachRolePolicy(policyArn, roleName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DetachRolePolicy", reflect.TypeOf((*MockClient)(nil).DetachRolePolicy), policyArn, roleName)
+}
+
 // EnsureOsdCcsAdminUser mocks base method.
 func (m *MockClient) EnsureOsdCcsAdminUser(stackName, adminUserName, awsRegion string) (bool, error) {
 	m.ctrl.T.Helper()
