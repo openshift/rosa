@@ -9,7 +9,7 @@ import (
 )
 
 func GetCommitAuthor() (string, error) {
-	command := "git log -n 1 --pretty=format:%an"
+	command := "git log -n 1 --no-merges --pretty=format:%an"
 	runner := NewRunner()
 
 	output, err := runner.RunCMD(strings.Split(command, " "))
@@ -21,7 +21,7 @@ func GetCommitAuthor() (string, error) {
 }
 
 func GetCommitFoucs() (string, error) {
-	command := "git log -n 1 --pretty=format:%s"
+	command := "git log -n 1 --no-merges --pretty=format:%s"
 	runner := NewRunner()
 
 	output, err := runner.RunCMD(strings.Split(command, " "))

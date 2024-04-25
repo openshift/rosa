@@ -5,7 +5,7 @@ COPY . .
 RUN go install ./cmd/rosa
 RUN go test -c -o /go/bin/rosatest ./tests/e2e
 RUN rosa verify openshift-client
-RUN rosatest --ginkgo.label-filter "e2e-commit"
+RUN rosatest --ginkgo.no-color --ginkgo.label-filter "e2e-commit"
 
 FROM registry.ci.openshift.org/ci/cli-ocm:latest as ocmcli
 
