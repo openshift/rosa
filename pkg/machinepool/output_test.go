@@ -36,7 +36,7 @@ var _ = Describe("Output", Ordered, func() {
 			out := fmt.Sprintf(machinePoolOutputString,
 				"test-mp", "test-cluster", "Yes", "0-0", "test-it", labelsOutput, taintsOutput,
 				"test-az", "test-subnet", ocmOutput.PrintMachinePoolSpot(machinePool),
-				ocmOutput.PrintMachinePoolDiskSize(machinePool), "")
+				ocmOutput.PrintMachinePoolDiskSize(machinePool), "", "")
 
 			result := machinePoolOutput("test-cluster", machinePool)
 			Expect(out).To(Equal(result))
@@ -56,7 +56,29 @@ var _ = Describe("Output", Ordered, func() {
 			out := fmt.Sprintf(machinePoolOutputString,
 				"test-mp", "test-cluster", "Yes", "0-0", "test-it", labelsOutput, taintsOutput,
 				"test-az", "test-subnet", ocmOutput.PrintMachinePoolSpot(machinePool),
-				ocmOutput.PrintMachinePoolDiskSize(machinePool), "123")
+				ocmOutput.PrintMachinePoolDiskSize(machinePool), "123", "")
+
+			result := machinePoolOutput("test-cluster", machinePool)
+			Expect(out).To(Equal(result))
+		})
+		It("machinepool output with aws tags", func() {
+			awsMachinePoolBuilder := cmv1.NewAWSMachinePool().Tags(map[string]string{
+				"test-tag": "test-value",
+			})
+			machinePoolBuilder := *cmv1.NewMachinePool().ID("test-mp").Autoscaling(cmv1.NewMachinePoolAutoscaling().
+				ID("test-as")).Replicas(4).InstanceType("test-it").
+				Labels(labels).Taints(taintsBuilder).AvailabilityZones("test-az").
+				Subnets("test-subnet").
+				AWS(awsMachinePoolBuilder)
+			machinePool, err := machinePoolBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			labelsOutput := ocmOutput.PrintLabels(labels)
+			taintsOutput := ocmOutput.PrintTaints([]*cmv1.Taint{taint})
+
+			out := fmt.Sprintf(machinePoolOutputString,
+				"test-mp", "test-cluster", "Yes", "0-0", "test-it", labelsOutput, taintsOutput,
+				"test-az", "test-subnet", ocmOutput.PrintMachinePoolSpot(machinePool),
+				ocmOutput.PrintMachinePoolDiskSize(machinePool), "", "test-tag=test-value")
 
 			result := machinePoolOutput("test-cluster", machinePool)
 			Expect(out).To(Equal(result))
@@ -73,7 +95,7 @@ var _ = Describe("Output", Ordered, func() {
 			out := fmt.Sprintf(machinePoolOutputString,
 				"test-mp2", "test-cluster", "No", "4", "test-it2", labelsOutput, taintsOutput,
 				"test-az2", "test-subnet2", ocmOutput.PrintMachinePoolSpot(machinePool),
-				ocmOutput.PrintMachinePoolDiskSize(machinePool), "")
+				ocmOutput.PrintMachinePoolDiskSize(machinePool), "", "")
 
 			result := machinePoolOutput("test-cluster", machinePool)
 			Expect(out).To(Equal(result))

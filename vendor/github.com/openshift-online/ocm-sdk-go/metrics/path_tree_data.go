@@ -201,7 +201,8 @@ var pathTreeData = `{
                 "principals": {
                   "-": null
                 }
-              }
+              },
+              "role_policy_bindings": null
             },
             "aws_infrastructure_access_role_grants": {
               "-": null
