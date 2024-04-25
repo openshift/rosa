@@ -34,7 +34,7 @@ const (
 	alias   = "machine-pool"
 	short   = "Show details of a machine pool on a cluster"
 	long    = "Show details of a machine pool on a cluster."
-	example = `  # Show details of a machine pool named "mymachinepool"" on a cluster named "mycluster"
+	example = `  # Show details of a machine pool named "mymachinepool" on a cluster named "mycluster"
   rosa describe machinepool --cluster=mycluster --machinepool=mymachinepool`
 )
 
@@ -46,7 +46,7 @@ func NewDescribeMachinePoolCommand() *cobra.Command {
 		Long:    long,
 		Aliases: []string{alias},
 		Example: example,
-		Args:    cobra.NoArgs,
+		Args:    cobra.MaximumNArgs(1),
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeMachinePoolRunner(options)),
 	}
 
@@ -71,6 +71,7 @@ func DescribeMachinePoolRunner(userOptions DescribeMachinepoolUserOptions) rosa.
 			userOptions.machinepool = argv[0]
 		} else {
 			err := cmd.ParseFlags(argv)
+			userOptions.machinepool = cmd.Flag("machinepool").Value.String()
 			if err != nil {
 				return fmt.Errorf("unable to parse flags: %s", err)
 			}

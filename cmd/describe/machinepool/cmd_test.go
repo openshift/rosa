@@ -172,6 +172,27 @@ var _ = Describe("Upgrade machine pool", func() {
 			Expect(err.Error()).To(ContainSubstring("you need to specify a machine pool name"))
 		})
 		Context("Hypershift", func() {
+			It("Works without passing `--machinepool`", func() {
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				// First get
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				// Second get for upgrades
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				cmd := NewDescribeMachinePoolCommand()
+				cmd.Flag("cluster").Value.Set(clusterId)
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{nodePoolName})
+				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stdout).To(Equal(describeStringWithUpgradeOutput))
+			})
 			It("Pass a machine pool name through argv but it is not found", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
