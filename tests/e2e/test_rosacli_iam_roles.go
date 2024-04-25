@@ -874,4 +874,130 @@ var _ = Describe("Edit IAM",
 				foundUserRole = userRoleList.UserRole(userrolePrefix, ocmAccountUsername)
 				Expect(foundUserRole.Linded).To(Equal("No"))
 			})
+
+		It("create/delete hypershift account roles with managed policies - [id:61322]",
+			labels.Critical,
+			func() {
+				defer func() {
+					By("Cleanup created account-roles in the test case")
+					if len(accountRolePrefixesNeedCleanup) > 0 {
+						for _, v := range accountRolePrefixesNeedCleanup {
+							_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+								"--prefix", v,
+								"-y")
+
+							Expect(err).To(BeNil())
+						}
+					}
+				}()
+
+				var (
+					rolePrefixStable    = "prefixS"
+					rolePrefixCandidate = "prefixC"
+					rolePrefixClassic   = "prefixClassic"
+					versionStable       = "4.13"
+					versionCandidate    = "4.14"
+					path                = "/fd/sd/"
+				)
+
+				By("Get the AWS Account Id")
+				rosaClient.Runner.JsonFormat()
+
+				whoamiOutput, err := ocmResourceService.Whoami()
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+				AWSAccountID := whoamiData.AWSAccountID
+
+				By("Create account-roles of hosted-cp in stable channel")
+				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", rolePrefixStable,
+					"--path", path,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"--force-policy-creation", "--version", versionStable,
+					"--channel-group", "stable",
+					"--hosted-cp",
+					"-y")
+				Expect(err).To(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, rolePrefixStable)
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).ToNot(ContainSubstring("Creating classic account roles"))
+				Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
+				Expect(textData).To(ContainSubstring("WARN: Setting `version` flag for hosted CP managed policies has no effect, any supported ROSA version can be installed with managed policies"))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Installer-Role'", rolePrefixStable)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Support-Role'", rolePrefixStable)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Worker-Role'", rolePrefixStable)))
+
+				By("Create account-roles of hosted-cp in candidate channel")
+				output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", rolePrefixCandidate,
+					"--path", path,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"--version", versionCandidate,
+					"--channel-group", "candidate",
+					"--hosted-cp",
+					"-y")
+				Expect(err).To(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, rolePrefixCandidate)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).ToNot(ContainSubstring("Creating classic account roles"))
+				Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
+				Expect(textData).To(ContainSubstring("WARN: Setting `version` flag for hosted CP managed policies has no effect, any supported ROSA version can be installed with managed policies"))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Installer-Role'", rolePrefixCandidate)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Support-Role'", rolePrefixCandidate)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Worker-Role'", rolePrefixCandidate)))
+
+				By("List the acount roles ")
+				accountRoleList, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+
+				By("Get the stable/candidate account roles that are created above")
+				accountRoleSetStable := accountRoleList.AccountRoles(rolePrefixStable)
+				accountRoleSetCandidate := accountRoleList.AccountRoles(rolePrefixCandidate)
+
+				selectedRoleStable := accountRoleSetStable[rand.Intn(len(accountRoleSetStable))]
+				selectedRoleCandidate := accountRoleSetCandidate[rand.Intn(len(accountRoleSetCandidate))]
+
+				By("Check 3 roles are created for hosted CP account roles")
+				Expect(len(accountRoleSetStable)).To(Equal(3))
+				Expect(len(accountRoleSetCandidate)).To(Equal(3))
+
+				By("Check the roles are AWS managed, and path and version flag works correctly")
+				Expect(selectedRoleStable.AWSManaged).To(Equal("Yes"))
+				Expect(selectedRoleStable.RoleArn).To(Equal(fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s", AWSAccountID, path, rolePrefixStable, rosacli.RoleTypeSuffixMap[selectedRoleStable.RoleType])))
+				Expect(selectedRoleStable.OpenshiftVersion).To(Equal(versionStable))
+				Expect(selectedRoleCandidate.AWSManaged).To(Equal("Yes"))
+				Expect(selectedRoleCandidate.RoleArn).To(Equal(fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s", AWSAccountID, path, rolePrefixCandidate, rosacli.RoleTypeSuffixMap[selectedRoleCandidate.RoleType])))
+				Expect(selectedRoleCandidate.OpenshiftVersion).To(Equal(versionCandidate))
+
+				By("Delete the hypershift account roles in auto mode")
+				output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", rolePrefixStable,
+					"--hosted-cp",
+					"-y",
+				)
+
+				Expect(err).To(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Successfully deleted the hosted CP account roles"))
+
+				By("Create a classic account role")
+				_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", rolePrefixClassic,
+					"--classic",
+					"-y")
+				Expect(err).To(BeNil())
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, rolePrefixClassic)
+
+				By("Try to delete classic account-role with --hosted-cp flag")
+				output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", rolePrefixClassic,
+					"--hosted-cp",
+					"-y")
+				Expect(err).ToNot(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("WARN: There are no hosted CP account roles to be deleted"))
+			})
 	})
