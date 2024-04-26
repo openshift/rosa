@@ -57,8 +57,8 @@ var _ = Describe("Policy Service", func() {
 	Context("Attach Policy", Ordered, func() {
 		BeforeAll(func() {
 			roleName = "sample-role"
-			policyArn1 = "sample-policy-arn-1"
-			policyArn2 = "sample-policy-arn-2"
+			policyArn1 = "arn:aws:iam::111111111111:policy/Sample-Policy-1"
+			policyArn2 = "arn:aws:iam::111111111111:policy/Sample-Policy-2"
 			policyArns = []string{policyArn1, policyArn2}
 			role = &iamtypes.Role{
 				Tags: []iamtypes.Tag{
@@ -92,6 +92,19 @@ var _ = Describe("Policy Service", func() {
 			ocmClient = ocm.NewClientWithConnection(connection)
 
 			policySvc = NewPolicyService(ocmClient, awsClient)
+		})
+		It("Test validateRoleAndPolicies -- valid rolename and policyarn", func() {
+			awsClient.EXPECT().GetRoleByName(roleName).Return(*role, nil)
+			err := validateRoleAndPolicies(awsClient, "", policyArns)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprintf(
+				"Invalid role name '%s', expected a valid role name matching %s",
+				"", mock.RoleNameRE.String())))
+			err = validateRoleAndPolicies(awsClient, roleName, []string{"invalid-policy-arn"})
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprintf(
+				"Invalid policy arn '%s', expected a valid policy arn matching %s",
+				"invalid-policy-arn", mock.PolicyArnRE.String())))
 		})
 		It("Test ValidateAttachOptions", func() {
 			awsClient.EXPECT().GetRoleByName(roleName).Return(*role, nil)

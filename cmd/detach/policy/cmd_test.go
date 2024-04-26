@@ -67,8 +67,8 @@ var _ = Describe("rosa detach policy", func() {
 
 		const (
 			roleName   = "sample-role"
-			policyArn1 = "sample-policy-arn-1"
-			policyArn2 = "sample-policy-arn-2"
+			policyArn1 = "arn:aws:iam::111111111111:policy/Sample-Policy-1"
+			policyArn2 = "arn:aws:iam::111111111111:policy/Sample-Policy-2"
 
 			roleNotFoundMsg   = "roleNotFoundMsg"
 			policyNotFoundMsg = "policyNotFoundMsg"

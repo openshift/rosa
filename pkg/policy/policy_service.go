@@ -179,6 +179,10 @@ func validatePolicyQuota(c aws.Client, roleName string, policyArns []string) err
 }
 
 func validateRoleAndPolicies(c aws.Client, roleName string, policyArns []string) error {
+	if !aws.RoleNameRE.MatchString(roleName) {
+		return fmt.Errorf("Invalid role name '%s', expected a valid role name matching %s",
+			roleName, aws.RoleNameRE.String())
+	}
 	role, err := c.GetRoleByName(roleName)
 	if err != nil {
 		return fmt.Errorf(
@@ -199,6 +203,10 @@ func validateRoleAndPolicies(c aws.Client, roleName string, policyArns []string)
 	}
 
 	for _, policyArn := range policyArns {
+		if !aws.PolicyArnRE.MatchString(policyArn) {
+			return fmt.Errorf("Invalid policy arn '%s', expected a valid policy arn matching %s",
+				policyArn, aws.PolicyArnRE.String())
+		}
 		_, err = c.IsPolicyExists(policyArn)
 		if err != nil {
 			return fmt.Errorf(

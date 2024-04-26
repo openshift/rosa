@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"slices"
+
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
@@ -33,7 +35,7 @@ const (
 	short   = "Detach AWS IAM Policies from an AWS IAM Role"
 	long    = "Detach AWS IAM Policies from an AWS IAM Role in the authenticated AWS Account"
 	example = `  # Detach policy <policy_arn_1> and <policy_arn_2> from role <role_name>
-  rosa detach policy --role-arn=<role_name> --policy-arns=<policy_arn_1>,<policy_arn_2>`
+  rosa detach policy --role-name=<role_name> --policy-arns=<policy_arn_1>,<policy_arn_2>`
 )
 
 type RosaDetachPolicyOptions struct {
@@ -84,6 +86,8 @@ func DetachPolicyRunner(userOptions *RosaDetachPolicyOptions) rosa.CommandRunner
 		options.BindAndValidate(*userOptions)
 		policySvc := policy.NewPolicyService(r.OCMClient, r.AWSClient)
 		policyArns := strings.Split(options.policyArns, ",")
+		slices.Sort(policyArns)
+		policyArns = slices.Compact(policyArns)
 		err := policySvc.ValidateDetachOptions(options.roleName, policyArns)
 		if err != nil {
 			return err
