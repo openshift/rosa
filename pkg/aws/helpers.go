@@ -40,6 +40,9 @@ var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 var RoleArnRE = regexp.MustCompile(
 	`^arn:aws[\w-]*:iam::\d{12}:role(?:\/+[\w+=,.@-]+)+$`,
 )
+var PolicyArnRE = regexp.MustCompile(
+	`^arn:aws[\w-]*:iam::(\d{12}|aws):policy(?:\/+[\w+=,.@-]+)+$`,
+)
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
 var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
