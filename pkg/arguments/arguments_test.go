@@ -12,9 +12,10 @@ import (
 
 var _ = Describe("Client", func() {
 	var (
-		cmd      *cobra.Command
-		childCmd *cobra.Command
-		o        string
+		cmd                      *cobra.Command
+		childCmd                 *cobra.Command
+		o                        string
+		disableRegionDeprecation bool
 	)
 
 	Context("Region deprecation test", func() {
@@ -45,6 +46,13 @@ var _ = Describe("Client", func() {
 				"output",
 				"o",
 				"",
+				"",
+			)
+			flagSet.BoolVarP(
+				&disableRegionDeprecation,
+				DisableRegionDeprecationFlagName,
+				"",
+				true,
 				"",
 			)
 		})
@@ -86,6 +94,20 @@ var _ = Describe("Client", func() {
 			out, _ := io.ReadAll(r)
 			os.Stdout = original
 			Expect(string(out)).To(BeEmpty())
+		})
+		It("Nested function (disableRegionDeprecation flag)", func() {
+			MarkRegionDeprecated(cmd, []*cobra.Command{childCmd})
+			original := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			childCmd.Flag(DisableRegionDeprecationFlagName).Value.Set("true")
+			childCmd.Run(childCmd, []string{})
+			err := w.Close()
+			Expect(err).ToNot(HaveOccurred())
+			out, _ := io.ReadAll(r)
+			os.Stdout = original
+			Expect(string(out)).To(BeEmpty())
+			childCmd.Flag(DisableRegionDeprecationFlagName).Value.Set("false")
 		})
 	})
 

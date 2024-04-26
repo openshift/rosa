@@ -3214,7 +3214,12 @@ func run(cmd *cobra.Command, _ []string) {
 				"for more information.")
 	}
 
+	var disableRegionDeprecation bool
+	clusterdescribe.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
+		true, "Temporarily used for disabling a warning message ran from other commands (no reason to"+
+			" print for cluster describe called inside cluster create, but there is a use for a lone describe.")
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{cluster.ID()})
+	disableRegionDeprecation = false // No longer disable
 
 	if isSTS {
 		if mode != "" {
