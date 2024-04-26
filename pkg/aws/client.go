@@ -192,6 +192,7 @@ type Client interface {
 	DescribeAvailabilityZones() ([]string, error)
 	IsLocalAvailabilityZone(availabilityZoneName string) (bool, error)
 	DetachRolePolicies(roleName string) error
+	DetachRolePolicy(policyArn string, roleName string) error
 	HasManagedPolicies(roleARN string) (bool, error)
 	HasHostedCPPolicies(roleARN string) (bool, error)
 	GetAccountRoleARN(prefix string, roleType string) (string, error)
@@ -1089,7 +1090,7 @@ func (c *awsClient) DetachRolePolicies(roleName string) error {
 		marker = resp.Marker
 	}
 	for _, attachedPolicy := range attachedPolicies {
-		err := c.detachRolePolicy(*attachedPolicy.PolicyArn, roleName)
+		err := c.DetachRolePolicy(*attachedPolicy.PolicyArn, roleName)
 		if err != nil {
 			return err
 		}
@@ -1097,7 +1098,7 @@ func (c *awsClient) DetachRolePolicies(roleName string) error {
 	return nil
 }
 
-func (c *awsClient) detachRolePolicy(policyArn string, roleName string) error {
+func (c *awsClient) DetachRolePolicy(policyArn string, roleName string) error {
 	_, err := c.iamClient.DetachRolePolicy(context.Background(),
 		&iam.DetachRolePolicyInput{PolicyArn: &policyArn, RoleName: &roleName})
 	if err != nil {

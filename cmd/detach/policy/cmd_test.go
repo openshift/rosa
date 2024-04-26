@@ -25,8 +25,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
-	"github.com/aws/aws-sdk-go-v2/service/servicequotas/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
@@ -35,20 +33,19 @@ import (
 
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
-	"github.com/openshift/rosa/pkg/policy"
 	. "github.com/openshift/rosa/pkg/test"
 )
 
-func TestAttachPolicy(t *testing.T) {
+func TestDetachPolicy(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "rosa attach policy")
+	RunSpecs(t, "rosa detach policy")
 }
 
-var _ = Describe("rosa attach policy", func() {
+var _ = Describe("rosa detach policy", func() {
 	Context("Create Command", func() {
 		It("Returns Command", func() {
 
-			cmd := NewAttachPolicyCommand()
+			cmd := NewDetachPolicyCommand()
 			Expect(cmd).NotTo(BeNil())
 
 			Expect(cmd.Use).To(Equal(use))
@@ -72,7 +69,6 @@ var _ = Describe("rosa attach policy", func() {
 			roleName   = "sample-role"
 			policyArn1 = "sample-policy-arn-1"
 			policyArn2 = "sample-policy-arn-2"
-			policyArn3 = "sample-policy-arn-3"
 
 			roleNotFoundMsg   = "roleNotFoundMsg"
 			policyNotFoundMsg = "policyNotFoundMsg"
@@ -82,30 +78,23 @@ var _ = Describe("rosa attach policy", func() {
 			t          *TestingRuntime
 			c          *cobra.Command
 			mockClient *mock.MockClient
-			options    *RosaAttachPolicyOptions
-			quota      *servicequotas.GetServiceQuotaOutput
+			options    *RosaDetachPolicyOptions
 			role       *iamtypes.Role
 		)
 
 		BeforeEach(func() {
-			c = NewAttachPolicyCommand()
-			options = &RosaAttachPolicyOptions{
+			c = NewDetachPolicyCommand()
+			options = &RosaDetachPolicyOptions{
 				roleName:   roleName,
 				policyArns: policyArn1 + "," + policyArn2,
 			}
 			c.Flags().Set("mode", "auto")
-			quotaValue := 2.0
 			role = &iamtypes.Role{
 				Tags: []iamtypes.Tag{
 					{
 						Key:   aws.String(tags.RedHatManaged),
 						Value: aws.String("true"),
 					},
-				},
-			}
-			quota = &servicequotas.GetServiceQuotaOutput{
-				Quota: &types.ServiceQuota{
-					Value: &quotaValue,
 				},
 			}
 
@@ -122,7 +111,7 @@ var _ = Describe("rosa attach policy", func() {
 
 		It("Returns an error if the role does not exist", func() {
 			mockClient.EXPECT().GetRoleByName(roleName).Return(iamtypes.Role{}, fmt.Errorf(roleNotFoundMsg))
-			runner := AttachPolicyRunner(options)
+			runner := DetachPolicyRunner(options)
 			err := runner(context.Background(), t.RosaRuntime, c, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprintf(
@@ -131,7 +120,7 @@ var _ = Describe("rosa attach policy", func() {
 
 		It("Returns an error if the role does not has tag 'red-hat-managed'", func() {
 			mockClient.EXPECT().GetRoleByName(roleName).Return(iamtypes.Role{}, nil)
-			runner := AttachPolicyRunner(options)
+			runner := DetachPolicyRunner(options)
 			err := runner(context.Background(), t.RosaRuntime, c, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Cannot attach/detach policies to non-ROSA roles"))
@@ -140,37 +129,20 @@ var _ = Describe("rosa attach policy", func() {
 		It("Returns an error if one policy does not exist", func() {
 			mockClient.EXPECT().GetRoleByName(roleName).Return(*role, nil)
 			mockClient.EXPECT().IsPolicyExists(policyArn1).Return(nil, fmt.Errorf(policyNotFoundMsg))
-			runner := AttachPolicyRunner(options)
+			runner := DetachPolicyRunner(options)
 			err := runner(context.Background(), t.RosaRuntime, c, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprintf(
 				"Failed to find the policy '%s': %s", policyArn1, policyNotFoundMsg)))
 		})
 
-		It("Returns an error if exceeds policy quota per role", func() {
+		It("Detach policy from role", func() {
 			mockClient.EXPECT().GetRoleByName(roleName).Return(*role, nil)
 			mockClient.EXPECT().IsPolicyExists(policyArn1).Return(nil, nil)
 			mockClient.EXPECT().IsPolicyExists(policyArn2).Return(nil, nil)
-			mockClient.EXPECT().IsPolicyExists(policyArn3).Return(nil, nil)
-			mockClient.EXPECT().GetAttachedPolicy(aws.String(roleName)).Return([]mock.PolicyDetail{}, nil)
-			mockClient.EXPECT().GetIAMServiceQuota(policy.QuotaCode).Return(quota, nil)
-			options.policyArns = options.policyArns + "," + policyArn3
-			runner := AttachPolicyRunner(options)
-			err := runner(context.Background(), t.RosaRuntime, c, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(fmt.Sprintf("Failed to attach policies due to quota limitations"+
-				" (total limit: %d, expected: %d)", 2, 3)))
-		})
-
-		It("Attach policy to role", func() {
-			mockClient.EXPECT().GetRoleByName(roleName).Return(*role, nil)
-			mockClient.EXPECT().GetIAMServiceQuota(policy.QuotaCode).Return(quota, nil)
-			mockClient.EXPECT().GetAttachedPolicy(aws.String(roleName)).Return([]mock.PolicyDetail{}, nil)
-			mockClient.EXPECT().IsPolicyExists(policyArn1).Return(nil, nil)
-			mockClient.EXPECT().IsPolicyExists(policyArn2).Return(nil, nil)
-			mockClient.EXPECT().AttachRolePolicy(roleName, policyArn1).Return(nil)
-			mockClient.EXPECT().AttachRolePolicy(roleName, policyArn2).Return(nil)
-			runner := AttachPolicyRunner(options)
+			mockClient.EXPECT().DetachRolePolicy(policyArn1, roleName).Return(nil)
+			mockClient.EXPECT().DetachRolePolicy(policyArn2, roleName).Return(nil)
+			runner := DetachPolicyRunner(options)
 			err := runner(context.Background(), t.RosaRuntime, c, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})

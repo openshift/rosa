@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/cmd/config"
 	"github.com/openshift/rosa/cmd/create"
 	"github.com/openshift/rosa/cmd/describe"
+	"github.com/openshift/rosa/cmd/detach"
 	"github.com/openshift/rosa/cmd/dlt"
 	"github.com/openshift/rosa/cmd/docs"
 	"github.com/openshift/rosa/cmd/download"
@@ -103,6 +104,7 @@ func init() {
 	root.AddCommand(token.Cmd)
 	root.AddCommand(config.Cmd)
 	root.AddCommand(attach.NewRosaAttachCommand())
+	root.AddCommand(detach.NewRosaDetachCommand())
 }
 
 func main() {
