@@ -153,7 +153,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 
 		if !hostedCPPolicies {
 			r.Reporter.Errorf(
-				"Failed to create the operator role since the Installer role ARN '%v' does not have hosted CP policies",
+				"Failed to create the operator role since the Installer role ARN '%v' does not have managed policies",
 				args.installerRoleArn)
 			os.Exit(1)
 		}
