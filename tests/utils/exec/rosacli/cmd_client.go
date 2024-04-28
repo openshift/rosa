@@ -30,17 +30,18 @@ type Client struct {
 
 	// services
 	// Keep in alphabetical order
-	Cluster            ClusterService
-	IDP                IDPService
-	Ingress            IngressService
-	KubeletConfig      KubeletConfigService
-	MachinePool        MachinePoolService
-	MachinePoolUpgrade MachinePoolUpgradeService
-	NetworkVerifier    NetworkVerifierService
-	OCMResource        OCMResourceService
-	TuningConfig       TuningConfigService
-	User               UserService
-	Version            VersionService
+	Cluster              ClusterService
+	IDP                  IDPService
+	Ingress              IngressService
+	KubeletConfig        KubeletConfigService
+	MachinePool          MachinePoolService
+	MachinePoolUpgrade   MachinePoolUpgradeService
+	NetworkVerifier      NetworkVerifierService
+	OCMResource          OCMResourceService
+	TuningConfig         TuningConfigService
+	User                 UserService
+	Version              VersionService
+	BreakGlassCredential BreakGlassCredentialService
 }
 
 func NewClient() *Client {
@@ -64,6 +65,7 @@ func NewClient() *Client {
 	client.TuningConfig = NewTuningConfigService(client)
 	client.User = NewUserService(client)
 	client.Version = NewVersionService(client)
+	client.BreakGlassCredential = NewBreakGlassCredentialService(client)
 
 	return client
 }
@@ -89,6 +91,7 @@ func (c *Client) CleanResources(clusterID string) error {
 	errorList = append(errorList, c.IDP.CleanResources(clusterID)...)
 	errorList = append(errorList, c.OCMResource.CleanResources(clusterID)...)
 	errorList = append(errorList, c.Cluster.CleanResources(clusterID)...)
+	errorList = append(errorList, c.BreakGlassCredential.CleanResources(clusterID)...)
 
 	return errors.Join(errorList...)
 

@@ -32,6 +32,7 @@ type ClusterService interface {
 	IsUsingReusableOIDCConfig(clusterID string) (bool, error)
 	GetClusterVersion(clusterID string) (config.Version, error)
 	IsBYOVPCCluster(clusterID string) (bool, error)
+	IsExternalAuthenticationEnabled(clusterID string) (bool, error)
 }
 
 type clusterService struct {
@@ -89,6 +90,7 @@ type ClusterDescription struct {
 	LimitedSupport           []map[string]string `yaml:"Limited Support,omitempty"`
 	AuditLogRoleARN          string              `yaml:"Audit Log Role ARN,omitempty"`
 	FailedInflightChecks     string              `yaml:"Failed Inflight Checks,omitempty"`
+	ExternalAuthentication   string              `yaml:"External Authentication, omitempty"`
 }
 
 func (c *clusterService) DescribeCluster(clusterID string) (bytes.Buffer, error) {
@@ -285,4 +287,13 @@ func RetrieveDesiredComputeNodes(clusterDescription *ClusterDescription) (nodesN
 		nodesNb, err = strconv.Atoi(strings.Split(autoscaleInfo, "-")[0])
 	}
 	return
+}
+
+// Check if the cluster is external authentication enabled cluster
+func (c *clusterService) IsExternalAuthenticationEnabled(clusterID string) (bool, error) {
+	jsonData, err := c.getJSONClusterDescription(clusterID)
+	if err != nil {
+		return false, err
+	}
+	return jsonData.DigBool("external_auth_config", "enabled"), nil
 }
