@@ -33,6 +33,7 @@ type BreakGlassCredentialService interface {
 
 type breakglasscredentialService struct {
 	ResourcesService
+	created map[string]bool
 }
 
 type BreakGlassCredential struct {
@@ -57,6 +58,7 @@ func NewBreakGlassCredentialService(client *Client) BreakGlassCredentialService 
 		ResourcesService: ResourcesService{
 			client: client,
 		},
+		created: make(map[string]bool),
 	}
 }
 
@@ -66,6 +68,9 @@ func (b *breakglasscredentialService) CreateBreakGlassCredential(clusterID strin
 		Cmd("create", "break-glass-credential").
 		CmdFlags(append(flags, "-c", clusterID, "--username", userName)...).
 		Run()
+	if err == nil {
+		b.created[clusterID] = true
+	}
 	return
 }
 
@@ -196,10 +201,12 @@ func (b *breakglasscredentialService) RetrieveHelpForDelete() (output bytes.Buff
 }
 
 func (b *breakglasscredentialService) CleanResources(clusterID string) (errors []error) {
-	Logger.Infof("Remove remaining break-glass-credentials")
-	_, err := b.DeleteBreakGlassCredential(clusterID)
-	if err != nil {
-		errors = append(errors, err)
+	if b.created[clusterID] {
+		Logger.Infof("Remove remaining break-glass-credentials")
+		_, err := b.DeleteBreakGlassCredential(clusterID)
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
 
 	return
