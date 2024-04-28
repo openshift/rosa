@@ -37,8 +37,8 @@ var _ = Describe("Create machinepool",
 
 		AfterEach(func() {
 			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			rosaClient.CleanResources(clusterID)
+
 		})
 
 		It("can create machinepool with volume size set - [id:66872]",
@@ -102,7 +102,7 @@ var _ = Describe("Create machinepool",
 
 			})
 
-		It("can create spot machinepool - [id: 43251]",
+		It("can create spot machinepool - [id:43251]",
 			labels.High,
 			func() {
 				By("Create a spot machinepool on the cluster")
@@ -145,6 +145,60 @@ var _ = Describe("Create machinepool",
 					}
 				}
 
+			})
+
+		It("can create machinepool with tags - [id:73469]",
+			labels.NonHCPCluster,
+			labels.Day2,
+			func() {
+				By("Check the help message of machinepool creation")
+				out, err := machinePoolService.CreateMachinePool(clusterID, "mp-73469", "-h")
+				Expect(err).ToNot(HaveOccurred(), out.String())
+				Expect(out.String()).Should(ContainSubstring("--tags strings"))
+
+				By("Create a machinepool with tags set")
+				tags := []string{
+					"test:testvalue",
+					"test2:testValue/openshift",
+				}
+				out, err = machinePoolService.CreateMachinePool(clusterID, "mp-73469",
+					"--replicas", "3",
+					"--tags", strings.Join(tags, ","),
+				)
+				Expect(err).ToNot(HaveOccurred(), out.String())
+
+				By("Describe the machinepool")
+				description, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, "mp-73469")
+				Expect(err).ToNot(HaveOccurred(), out.String())
+
+				for _, tag := range tags {
+					Expect(description.Tags).Should(ContainSubstring(strings.Replace(tag, ":", "=", -1)))
+				}
+
+				By("Create with invalid tags")
+				invalidTagMap := map[string]string{
+					"invalidFmt": "invalid",
+					"noTagValue": "notagvalue:",
+					"noTagKey":   ":notagkey",
+					"nonAscii":   "non-ascii:值",
+				}
+				for errorType, tag := range invalidTagMap {
+					out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
+						"--replicas", "3",
+						"--tags", tag,
+					)
+					Expect(err).To(HaveOccurred())
+					switch errorType {
+					case "invalidFmt":
+						Expect(out.String()).Should(ContainSubstring("invalid tag format for tag"))
+					case "noTagValue":
+						Expect(out.String()).Should(ContainSubstring("invalid tag format, tag key or tag value can not be empty"))
+					case "noTagKey":
+						Expect(out.String()).Should(ContainSubstring("invalid tag format, tag key or tag value can not be empty"))
+					case "nonAscii":
+						Expect(out.String()).Should(ContainSubstring("Invalid Machine Pool AWS tags"))
+					}
+				}
 			})
 	})
 

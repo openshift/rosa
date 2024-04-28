@@ -67,18 +67,19 @@ type MachinePoolList struct {
 
 // Struct for the 'rosa list machinepool' output for non-hosted-cp clusters
 type MachinePoolDescription struct {
-	ID               string `yaml:"ID,omitempty"`
-	ClusterID        string `yaml:"Cluster ID,omitempty"`
+	AvailablityZones string `yaml:"Availability zones,omitempty"`
 	AutoScaling      string `yaml:"Autoscaling,omitempty"`
-	Replicas         string `yaml:"Replicas,omitempty"`
+	ClusterID        string `yaml:"Cluster ID,omitempty"`
+	DiskSize         string `yaml:"Disk size,omitempty"`
+	ID               string `yaml:"ID,omitempty"`
 	InstanceType     string `yaml:"Instance type,omitempty"`
 	Labels           string `yaml:"Labels,omitempty"`
-	Taints           string `yaml:"Taints,omitempty"`
-	AvailablityZones string `yaml:"Availability zones,omitempty"`
+	Replicas         string `yaml:"Replicas,omitempty"`
+	SecurityGroupIDs string `yaml:"Security Group IDs,omitempty"`
 	Subnets          string `yaml:"Subnets,omitempty"`
 	SpotInstances    string `yaml:"Spot instances,omitempty"`
-	DiskSize         string `yaml:"Disk size,omitempty"`
-	SecurityGroupIDs string `yaml:"Security Group IDs,omitempty"`
+	Taints           string `yaml:"Taints,omitempty"`
+	Tags             string `yaml:"Tags,omitempty"`
 }
 
 // Struct for the 'rosa list machinepool' output for hosted-cp clusters
