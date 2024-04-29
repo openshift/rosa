@@ -806,4 +806,56 @@ var _ = Describe("Edit nodepool",
 					}
 				}
 			})
+
+		It("Validations will work for editing machinepool via rosa cli - [id:73391]",
+			labels.Medium, labels.NonClassicCluster,
+			func() {
+				nonExistingMachinepoolName := common.GenerateRandomName("mp-fake", 2)
+				machinepoolName := common.GenerateRandomName("mp-73391", 2)
+
+				By("Try to edit machinepool with the name not present in cluster")
+				output, err := machinePoolService.EditMachinePool(clusterID, nonExistingMachinepoolName, "--replicas", "3")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' does not exist for hosted cluster '%s'", nonExistingMachinepoolName, clusterID))
+
+				By("Create a new machinepool to the cluster")
+				output, err = machinePoolService.CreateMachinePool(clusterID, machinepoolName, "--replicas", "3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", machinepoolName, clusterID))
+
+				By("Try to edit the version of the machinepool")
+				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--version", "4.15.2")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Editing versions is not supported, for upgrades please use 'rosa upgrade machinepool'"))
+
+				By("Try to edit the replicas of the machinepool with negative value")
+				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "-9")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("The number of machine pool replicas needs to be a non-negative integer"))
+
+				By("Try to edit the machinepool with --min-replicas flag when autoscaling is disabled for the machinepool.")
+				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "2")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas'", machinepoolName))
+
+				By("Try to edit the machinepool with --max-replicas flag when autoscaling is disabled for the machinepool.")
+				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--max-replicas", "5")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas'", machinepoolName))
+
+				By("Edit the machinepool to autoscaling mode.")
+				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--enable-autoscaling", "--min-replicas", "2", "--max-replicas", "6")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Updated machine pool '%s' on hosted cluster '%s'", machinepoolName, clusterID))
+
+				By("Try to edit machinepool with negative min_replicas value.")
+				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "-3")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("The number of machine pool min-replicas needs to be greater than zero"))
+
+				By("Try to edit machinepool with --replicas flag when the autoscaling is enabled for the machinepool.")
+				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "3")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Failed to get autoscaling or replicas: 'Autoscaling enabled on machine pool '%s'. can't set replicas'", machinepoolName))
+			})
 	})
