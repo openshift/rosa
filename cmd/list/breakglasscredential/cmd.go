@@ -66,7 +66,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	if len(breakGlassCredentials) == 0 {
-		r.Reporter.Infof("there are no break glass credentials for this cluster")
+		r.Reporter.Infof("There are no break glass credentials for cluster '%s'", clusterKey)
 		return nil
 	}
 

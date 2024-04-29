@@ -65,15 +65,13 @@ var _ = Describe("list external-auth-provider", func() {
 			Cmd.Flags().Set("output", "")
 		})
 
-		It("Fails with zero results", func() {
+		It("Warning with zero results", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
 			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(
-				ContainSubstring("there are no external authentication providers for this cluster"))
+			Expect(err).To(BeNil())
 			Expect(stderr).To(Equal(""))
-			Expect(stdout).To(Equal(""))
+			Expect(stdout).To(Equal("INFO: There are no external authentication providers for cluster 'cluster1'\n"))
 		})
 
 		It("Returns error if not found", func() {

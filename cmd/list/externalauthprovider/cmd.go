@@ -82,7 +82,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	if len(externalAuthProviders) == 0 {
-		return fmt.Errorf("there are no external authentication providers for this cluster")
+		r.Reporter.Infof("There are no external authentication providers for cluster '%s'", clusterKey)
+		return nil
 	}
 
 	// Create the writer that will be used to print the tabulated results:
