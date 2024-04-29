@@ -12,11 +12,13 @@ import (
 
 var _ = Describe("PreCheck", func() {
 	It("commits-focus", labels.E2ECommit, func() {
-		author, err := rosacli.GetCommitAuthor()
+		_, err := rosacli.GetCommitAuthor()
 		Expect(err).ToNot(HaveOccurred())
 
 		focus, err := rosacli.GetCommitFoucs()
 		Expect(err).ToNot(HaveOccurred())
-		fmt.Printf("[%s] Focus: %v\n", author, focus)
+		if focus != "" {
+			fmt.Printf("The latest commit updates the test: %s\n", focus)
+		}
 	})
 })
