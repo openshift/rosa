@@ -25,9 +25,9 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/ghodss/yaml"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
+	"sigs.k8s.io/yaml"
 
 	"gitlab.com/c0b/go-ordered-json"
 
