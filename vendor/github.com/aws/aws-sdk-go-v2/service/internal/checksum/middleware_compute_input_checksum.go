@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	internalcontext "github.com/aws/aws-sdk-go-v2/internal/context"
 	presignedurlcust "github.com/aws/aws-sdk-go-v2/service/internal/presigned-url"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -73,6 +74,8 @@ type computeInputPayloadChecksum struct {
 
 	useTrailer bool
 }
+
+type useTrailer struct{}
 
 // ID provides the middleware's identifier.
 func (m *computeInputPayloadChecksum) ID() string {
@@ -177,15 +180,9 @@ func (m *computeInputPayloadChecksum) HandleFinalize(
 				// ContentSHA256Header middleware handles the header
 				ctx = v4.SetPayloadHash(ctx, streamingUnsignedPayloadTrailerPayloadHash)
 			}
-
 			m.useTrailer = true
-			mw := &addInputChecksumTrailer{
-				EnableTrailingChecksum:           m.EnableTrailingChecksum,
-				RequireChecksum:                  m.RequireChecksum,
-				EnableComputePayloadHash:         m.EnableComputePayloadHash,
-				EnableDecodedContentLengthHeader: m.EnableDecodedContentLengthHeader,
-			}
-			return mw.HandleFinalize(ctx, in, next)
+			ctx = middleware.WithStackValue(ctx, useTrailer{}, true)
+			return next.HandleFinalize(ctx, in)
 		}
 
 		// If trailing checksums are not enabled but protocol is still HTTPS
@@ -267,6 +264,9 @@ func (m *addInputChecksumTrailer) HandleFinalize(
 ) (
 	out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
 ) {
+	if enabled, _ := middleware.GetStackValue(ctx, useTrailer{}).(bool); !enabled {
+		return next.HandleFinalize(ctx, in)
+	}
 	req, ok := in.Request.(*smithyhttp.Request)
 	if !ok {
 		return out, metadata, computeInputTrailingChecksumError{
@@ -377,7 +377,7 @@ func (m *addInputChecksumTrailer) HandleFinalize(
 }
 
 func getInputAlgorithm(ctx context.Context) (Algorithm, bool, error) {
-	ctxAlgorithm := getContextInputAlgorithm(ctx)
+	ctxAlgorithm := internalcontext.GetChecksumInputAlgorithm(ctx)
 	if ctxAlgorithm == "" {
 		return "", false, nil
 	}

@@ -1,3 +1,11 @@
+# v1.31.0 (2024-04-12)
+
+* **Feature**: This feature supports the ability to specify a custom rotation period for automatic key rotations, the ability to perform on-demand key rotations, and visibility into your key material rotations.
+
+# v1.30.1 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.30.0 (2024-03-18)
 
 * **Feature**: Adds the ability to use the default policy name by omitting the policyName parameter in calls to PutKeyPolicy and GetKeyPolicy

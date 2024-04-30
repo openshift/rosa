@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -152,12 +151,12 @@ type SimulateCustomPolicyInput struct {
 	// results. If your simulation does not match one of the following scenarios, then
 	// you can omit this parameter. The following list shows each of the supported
 	// scenario values and the resources that you must define to run the simulation.
-	// Each of the EC2 scenarios requires that you specify instance, image, and
+	// Each of the Amazon EC2 scenarios requires that you specify instance, image, and
 	// security group resources. If your scenario includes an EBS volume, then you must
-	// specify that volume as a resource. If the EC2 scenario includes VPC, then you
-	// must supply the network interface resource. If it includes an IP subnet, then
-	// you must specify the subnet resource. For more information on the EC2 scenario
-	// options, see Supported platforms (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-supported-platforms.html)
+	// specify that volume as a resource. If the Amazon EC2 scenario includes VPC, then
+	// you must supply the network interface resource. If it includes an IP subnet,
+	// then you must specify the subnet resource. For more information on the Amazon
+	// EC2 scenario options, see Supported platforms (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-supported-platforms.html)
 	// in the Amazon EC2 User Guide.
 	//   - EC2-VPC-InstanceStore instance, image, security group, network interface
 	//   - EC2-VPC-InstanceStore-Subnet instance, image, security group, network
@@ -248,25 +247,25 @@ func (c *Client) addOperationSimulateCustomPolicyMiddlewares(stack *middleware.S
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -287,7 +286,7 @@ func (c *Client) addOperationSimulateCustomPolicyMiddlewares(stack *middleware.S
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opSimulateCustomPolicy(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

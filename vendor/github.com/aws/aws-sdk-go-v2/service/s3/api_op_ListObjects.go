@@ -13,12 +13,12 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns some or all (up to 1,000) of the objects in a bucket. You can use the
-// request parameters as selection criteria to return a subset of the objects in a
-// bucket. A 200 OK response can contain valid or invalid XML. Be sure to design
-// your application to parse the contents of the response and handle it
-// appropriately. This action has been revised. We recommend that you use the newer
-// version, ListObjectsV2 (https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html)
+// This operation is not supported by directory buckets. Returns some or all (up
+// to 1,000) of the objects in a bucket. You can use the request parameters as
+// selection criteria to return a subset of the objects in a bucket. A 200 OK
+// response can contain valid or invalid XML. Be sure to design your application to
+// parse the contents of the response and handle it appropriately. This action has
+// been revised. We recommend that you use the newer version, ListObjectsV2 (https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html)
 // , when developing applications. For backward compatibility, Amazon S3 continues
 // to support ListObjects . The following operations are related to ListObjects :
 //   - ListObjectsV2 (https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html)
@@ -43,16 +43,26 @@ func (c *Client) ListObjects(ctx context.Context, params *ListObjectsInput, optF
 
 type ListObjectsInput struct {
 
-	// The name of the bucket containing the objects. When using this action with an
-	// access point, you must direct requests to the access point hostname. The access
-	// point hostname takes the form
-	// AccessPointName-AccountId.s3-accesspoint.Region.amazonaws.com. When using this
-	// action with an access point through the Amazon Web Services SDKs, you provide
-	// the access point ARN in place of the bucket name. For more information about
-	// access point ARNs, see Using access points (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-access-points.html)
-	// in the Amazon S3 User Guide. When you use this action with Amazon S3 on
-	// Outposts, you must direct requests to the S3 on Outposts hostname. The S3 on
-	// Outposts hostname takes the form
+	// The name of the bucket containing the objects. Directory buckets - When you use
+	// this operation with a directory bucket, you must use virtual-hosted-style
+	// requests in the format Bucket_name.s3express-az_id.region.amazonaws.com .
+	// Path-style requests are not supported. Directory bucket names must be unique in
+	// the chosen Availability Zone. Bucket names must follow the format
+	// bucket_base_name--az-id--x-s3 (for example,  DOC-EXAMPLE-BUCKET--usw2-az1--x-s3
+	// ). For information about bucket naming restrictions, see Directory bucket
+	// naming rules (https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-naming-rules.html)
+	// in the Amazon S3 User Guide. Access points - When you use this action with an
+	// access point, you must provide the alias of the access point in place of the
+	// bucket name or specify the access point ARN. When using the access point ARN,
+	// you must direct requests to the access point hostname. The access point hostname
+	// takes the form AccessPointName-AccountId.s3-accesspoint.Region.amazonaws.com.
+	// When using this action with an access point through the Amazon Web Services
+	// SDKs, you provide the access point ARN in place of the bucket name. For more
+	// information about access point ARNs, see Using access points (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-access-points.html)
+	// in the Amazon S3 User Guide. Access points and Object Lambda access points are
+	// not supported by directory buckets. S3 on Outposts - When you use this action
+	// with Amazon S3 on Outposts, you must direct requests to the S3 on Outposts
+	// hostname. The S3 on Outposts hostname takes the form
 	// AccessPointName-AccountId.outpostID.s3-outposts.Region.amazonaws.com . When you
 	// use this action with S3 on Outposts through the Amazon Web Services SDKs, you
 	// provide the Outposts access point ARN in place of the bucket name. For more
@@ -73,9 +83,9 @@ type ListObjectsInput struct {
 	// response.
 	EncodingType types.EncodingType
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	// Marker is where you want Amazon S3 to start listing from. Amazon S3 starts
@@ -104,6 +114,7 @@ type ListObjectsInput struct {
 
 func (in *ListObjectsInput) bindEndpointParams(p *EndpointParameters) {
 	p.Bucket = in.Bucket
+	p.Prefix = in.Prefix
 
 }
 
@@ -130,7 +141,9 @@ type ListObjectsOutput struct {
 	// MaxKeys value.
 	Delimiter *string
 
-	// Encoding type used by Amazon S3 to encode object keys in the response.
+	// Encoding type used by Amazon S3 to encode object keys in the response. If using
+	// url , non-ASCII characters used in an object's key name will be URL encoded. For
+	// example, the object test_file(3).png will appear as test_file%283%29.png.
 	EncodingType types.EncodingType
 
 	// A flag that indicates whether Amazon S3 returned all of the results that
@@ -161,7 +174,7 @@ type ListObjectsOutput struct {
 	Prefix *string
 
 	// If present, indicates that the requester was successfully charged for the
-	// request.
+	// request. This functionality is not supported for directory buckets.
 	RequestCharged types.RequestCharged
 
 	// Metadata pertaining to the operation's result.
@@ -192,25 +205,25 @@ func (c *Client) addOperationListObjectsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -225,6 +238,9 @@ func (c *Client) addOperationListObjectsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpListObjectsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -234,7 +250,7 @@ func (c *Client) addOperationListObjectsMiddlewares(stack *middleware.Stack, opt
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addListObjectsUpdateEndpoint(stack, options); err != nil {

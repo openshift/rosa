@@ -44,6 +44,26 @@ func (AccountGateStatus) Values() []AccountGateStatus {
 	}
 }
 
+type AttributeChangeType string
+
+// Enum values for AttributeChangeType
+const (
+	AttributeChangeTypeAdd    AttributeChangeType = "Add"
+	AttributeChangeTypeRemove AttributeChangeType = "Remove"
+	AttributeChangeTypeModify AttributeChangeType = "Modify"
+)
+
+// Values returns all known values for AttributeChangeType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client. The
+// ordering of this slice is not guaranteed to be stable across updates.
+func (AttributeChangeType) Values() []AttributeChangeType {
+	return []AttributeChangeType{
+		"Add",
+		"Remove",
+		"Modify",
+	}
+}
+
 type CallAs string
 
 // Enum values for CallAs
@@ -704,6 +724,32 @@ func (PermissionModels) Values() []PermissionModels {
 	return []PermissionModels{
 		"SERVICE_MANAGED",
 		"SELF_MANAGED",
+	}
+}
+
+type PolicyAction string
+
+// Enum values for PolicyAction
+const (
+	PolicyActionDelete             PolicyAction = "Delete"
+	PolicyActionRetain             PolicyAction = "Retain"
+	PolicyActionSnapshot           PolicyAction = "Snapshot"
+	PolicyActionReplaceAndDelete   PolicyAction = "ReplaceAndDelete"
+	PolicyActionReplaceAndRetain   PolicyAction = "ReplaceAndRetain"
+	PolicyActionReplaceAndSnapshot PolicyAction = "ReplaceAndSnapshot"
+)
+
+// Values returns all known values for PolicyAction. Note that this can be
+// expanded in the future, and so it is only as up to date as the client. The
+// ordering of this slice is not guaranteed to be stable across updates.
+func (PolicyAction) Values() []PolicyAction {
+	return []PolicyAction{
+		"Delete",
+		"Retain",
+		"Snapshot",
+		"ReplaceAndDelete",
+		"ReplaceAndRetain",
+		"ReplaceAndSnapshot",
 	}
 }
 

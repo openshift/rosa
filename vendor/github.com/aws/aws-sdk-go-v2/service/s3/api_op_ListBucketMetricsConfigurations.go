@@ -13,12 +13,13 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Lists the metrics configurations for the bucket. The metrics configurations are
-// only for the request metrics of the bucket and do not provide information on
-// daily storage metrics. You can have up to 1,000 configurations per bucket. This
-// action supports list pagination and does not return more than 100 configurations
-// at a time. Always check the IsTruncated element in the response. If there are
-// no more configurations to list, IsTruncated is set to false. If there are more
+// This operation is not supported by directory buckets. Lists the metrics
+// configurations for the bucket. The metrics configurations are only for the
+// request metrics of the bucket and do not provide information on daily storage
+// metrics. You can have up to 1,000 configurations per bucket. This action
+// supports list pagination and does not return more than 100 configurations at a
+// time. Always check the IsTruncated element in the response. If there are no
+// more configurations to list, IsTruncated is set to false. If there are more
 // configurations to list, IsTruncated is set to true, and there is a value in
 // NextContinuationToken . You use the NextContinuationToken value to continue the
 // pagination of the list by passing the value in continuation-token in the
@@ -62,9 +63,9 @@ type ListBucketMetricsConfigurationsInput struct {
 	// Amazon S3 understands.
 	ContinuationToken *string
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	noSmithyDocumentSerde
@@ -123,25 +124,25 @@ func (c *Client) addOperationListBucketMetricsConfigurationsMiddlewares(stack *m
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -156,6 +157,9 @@ func (c *Client) addOperationListBucketMetricsConfigurationsMiddlewares(stack *m
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpListBucketMetricsConfigurationsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -165,7 +169,7 @@ func (c *Client) addOperationListBucketMetricsConfigurationsMiddlewares(stack *m
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addListBucketMetricsConfigurationsUpdateEndpoint(stack, options); err != nil {
