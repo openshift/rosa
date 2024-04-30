@@ -34,6 +34,7 @@ func NewRosaVersionOptions() (*RosaVersionOptions, error) {
 	return &RosaVersionOptions{
 		verifyRosa: verifyRosa,
 		reporter:   reporter.CreateReporter(),
+		args:       NewRosaVersionUserOptions(),
 	}, nil
 }
 
