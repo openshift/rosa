@@ -39,9 +39,8 @@ var Cmd = &cobra.Command{
 	Long:    "Configure a cluster to use an external authentication provider instead of an internal oidc provider.",
 	Example: `  # Interactively create an external authentication provider to a cluster named "mycluster"
   rosa create external-auth-provider --cluster=mycluster --interactive`,
-	Run:    run,
-	Hidden: true,
-	Args:   cobra.NoArgs,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

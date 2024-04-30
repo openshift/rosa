@@ -35,9 +35,8 @@ var Cmd = &cobra.Command{
 	Long:    "Revoke all the break glass credentials from a cluster.",
 	Example: `  # Revoke all break glass credentials
   rosa revoke break-glass-credentials --cluster=mycluster`,
-	Run:    run,
-	Hidden: true,
-	Args:   cobra.NoArgs,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {
