@@ -24,7 +24,18 @@ var _ = Describe("RosaVersionOptions", func() {
 		mockVerify *rosa.MockVerifyRosa
 	)
 
-	When("When client only is set to false", func() {
+	When("calling NewRosaVersionOptions", func() {
+		It("should initialize ROSA Version Options correctly", func() {
+			options, err := NewRosaVersionOptions()
+			Expect(err).To(BeNil())
+			Expect(options).ToNot(BeNil())
+			Expect(options.reporter).ToNot(BeNil())
+			Expect(options.verifyRosa).ToNot(BeNil())
+			Expect(options.args).ToNot(BeNil())
+		})
+	})
+
+	When("client only is set to false", func() {
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 			mockVerify = rosa.NewMockVerifyRosa(ctrl)
