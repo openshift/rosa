@@ -37,9 +37,8 @@ var Cmd = &cobra.Command{
 	Long:    "Show details of a break glass credential on a cluster.",
 	Example: `  # Show details of a break glass credential with ID "12345" on a cluster named "mycluster"
   rosa describe break-glass-credential 12345 --cluster=mycluster `,
-	Run:    run,
-	Hidden: true,
-	Args:   cobra.MaximumNArgs(2),
+	Run:  run,
+	Args: cobra.MaximumNArgs(2),
 }
 
 var args struct {
