@@ -10,11 +10,13 @@ import (
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/middleware"
+	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Puts a S3 Intelligent-Tiering configuration to the specified bucket. You can
-// have up to 1,000 S3 Intelligent-Tiering configurations per bucket. The S3
+// This operation is not supported by directory buckets. Puts a S3
+// Intelligent-Tiering configuration to the specified bucket. You can have up to
+// 1,000 S3 Intelligent-Tiering configurations per bucket. The S3
 // Intelligent-Tiering storage class is designed to optimize storage costs by
 // automatically moving data to the most cost-effective storage access tier,
 // without performance impact or operational overhead. S3 Intelligent-Tiering
@@ -81,7 +83,7 @@ type PutBucketIntelligentTieringConfigurationInput struct {
 
 func (in *PutBucketIntelligentTieringConfigurationInput) bindEndpointParams(p *EndpointParameters) {
 	p.Bucket = in.Bucket
-
+	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
 
 type PutBucketIntelligentTieringConfigurationOutput struct {
@@ -113,25 +115,25 @@ func (c *Client) addOperationPutBucketIntelligentTieringConfigurationMiddlewares
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -146,6 +148,9 @@ func (c *Client) addOperationPutBucketIntelligentTieringConfigurationMiddlewares
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpPutBucketIntelligentTieringConfigurationValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -155,7 +160,7 @@ func (c *Client) addOperationPutBucketIntelligentTieringConfigurationMiddlewares
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addPutBucketIntelligentTieringConfigurationUpdateEndpoint(stack, options); err != nil {

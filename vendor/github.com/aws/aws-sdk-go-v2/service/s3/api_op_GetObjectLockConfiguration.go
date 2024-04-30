@@ -13,9 +13,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Gets the Object Lock configuration for a bucket. The rule specified in the
-// Object Lock configuration will be applied by default to every new object placed
-// in the specified bucket. For more information, see Locking Objects (https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lock.html)
+// This operation is not supported by directory buckets. Gets the Object Lock
+// configuration for a bucket. The rule specified in the Object Lock configuration
+// will be applied by default to every new object placed in the specified bucket.
+// For more information, see Locking Objects (https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lock.html)
 // . The following action is related to GetObjectLockConfiguration :
 //   - GetObjectAttributes (https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObjectAttributes.html)
 func (c *Client) GetObjectLockConfiguration(ctx context.Context, params *GetObjectLockConfigurationInput, optFns ...func(*Options)) (*GetObjectLockConfigurationOutput, error) {
@@ -35,8 +36,10 @@ func (c *Client) GetObjectLockConfiguration(ctx context.Context, params *GetObje
 
 type GetObjectLockConfigurationInput struct {
 
-	// The bucket whose Object Lock configuration you want to retrieve. When using
-	// this action with an access point, you must direct requests to the access point
+	// The bucket whose Object Lock configuration you want to retrieve. Access points
+	// - When you use this action with an access point, you must provide the alias of
+	// the access point in place of the bucket name or specify the access point ARN.
+	// When using the access point ARN, you must direct requests to the access point
 	// hostname. The access point hostname takes the form
 	// AccessPointName-AccountId.s3-accesspoint.Region.amazonaws.com. When using this
 	// action with an access point through the Amazon Web Services SDKs, you provide
@@ -47,9 +50,9 @@ type GetObjectLockConfigurationInput struct {
 	// This member is required.
 	Bucket *string
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	noSmithyDocumentSerde
@@ -93,25 +96,25 @@ func (c *Client) addOperationGetObjectLockConfigurationMiddlewares(stack *middle
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -126,6 +129,9 @@ func (c *Client) addOperationGetObjectLockConfigurationMiddlewares(stack *middle
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpGetObjectLockConfigurationValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -135,7 +141,7 @@ func (c *Client) addOperationGetObjectLockConfigurationMiddlewares(stack *middle
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addGetObjectLockConfigurationUpdateEndpoint(stack, options); err != nil {

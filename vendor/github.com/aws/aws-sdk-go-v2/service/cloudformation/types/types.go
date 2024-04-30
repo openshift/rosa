@@ -117,8 +117,8 @@ type Change struct {
 	// CloudFormation will perform.
 	ResourceChange *ResourceChange
 
-	// The type of entity that CloudFormation changes. Currently, the only entity type
-	// is Resource .
+	// The type of entity that CloudFormation changes.
+	//   - Resource This change is for a resource.
 	Type ChangeType
 
 	noSmithyDocumentSerde
@@ -540,6 +540,14 @@ type ResourceChange struct {
 	// determined).
 	Action ChangeAction
 
+	// An encoded JSON string containing the context of the resource after the change
+	// is executed.
+	AfterContext *string
+
+	// An encoded JSON string containing the context of the resource before the change
+	// is executed.
+	BeforeContext *string
+
 	// The change set ID of the nested change set.
 	ChangeSetId *string
 
@@ -557,6 +565,17 @@ type ResourceChange struct {
 	// The resource's physical ID (resource name). Resources that you are adding don't
 	// have physical IDs because they haven't been created.
 	PhysicalResourceId *string
+
+	// The action that will be taken on the physical resource when the change set is
+	// executed.
+	//   - Delete The resource will be deleted.
+	//   - Retain The resource will be retained.
+	//   - Snapshot The resource will have a snapshot taken.
+	//   - ReplaceAndDelete The resource will be replaced and then deleted.
+	//   - ReplaceAndRetain The resource will be replaced and then retained.
+	//   - ReplaceAndSnapshot The resource will be replaced and then have a snapshot
+	//   taken.
+	PolicyAction PolicyAction
 
 	// For the Modify action, indicates whether CloudFormation will replace the
 	// resource by creating a new one and deleting the old one. This value depends on
@@ -753,13 +772,30 @@ type ResourceScanSummary struct {
 // property, and whether the resource will be recreated.
 type ResourceTargetDefinition struct {
 
+	// The value of the property after the change is executed. Large values can be
+	// truncated.
+	AfterValue *string
+
 	// Indicates which resource attribute is triggering this update, such as a change
 	// in the resource attribute's Metadata , Properties , or Tags .
 	Attribute ResourceAttribute
 
+	// The type of change to be made to the property if the change is executed.
+	//   - Add The item will be added.
+	//   - Remove The item will be removed.
+	//   - Modify The item will be modified.
+	AttributeChangeType AttributeChangeType
+
+	// The value of the property before the change is executed. Large values can be
+	// truncated.
+	BeforeValue *string
+
 	// If the Attribute value is Properties , the name of the property. For all other
 	// attributes, the value is null.
 	Name *string
+
+	// The property path of the property.
+	Path *string
 
 	// If the Attribute value is Properties , indicates whether a change to this
 	// property causes the resource to be recreated. The value can be Never , Always ,
@@ -2417,7 +2453,7 @@ type TemplateSummaryConfig struct {
 
 // Detailed information concerning the specification of a CloudFormation extension
 // in a given account and Region. For more information, see Configuring extensions
-// at the account level (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/registry-register.html#registry-set-configuration)
+// at the account level (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/registry-private.html#registry-set-configuration)
 // in the CloudFormation User Guide.
 type TypeConfigurationDetails struct {
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	smithyauth "github.com/aws/smithy-go/auth"
 )
 
@@ -18,12 +19,29 @@ func (r *endpointAuthResolver) ResolveAuthSchemes(
 ) (
 	[]*smithyauth.Option, error,
 ) {
+	if params.endpointParams.Region == nil {
+		// #2502: We're correcting the endpoint binding behavior to treat empty
+		// Region as "unset" (nil), but auth resolution technically doesn't
+		// care and someone could be using V1 or non-default V2 endpoint
+		// resolution, both of which would bypass the required-region check.
+		// They shouldn't be broken because the region is technically required
+		// by this service's endpoint-based auth resolver, so we stub it here.
+		params.endpointParams.Region = aws.String("")
+	}
+
 	opts, err := r.resolveAuthSchemes(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
-	// a host of undocumented s3 operations can be done anonymously
+	// canonicalize sigv4-s3express ID
+	for _, opt := range opts {
+		if opt.SchemeID == "sigv4-s3express" {
+			opt.SchemeID = "com.amazonaws.s3#sigv4express"
+		}
+	}
+
+	// preserve pre-SRA behavior where everything technically had anonymous
 	return append(opts, &smithyauth.Option{
 		SchemeID: smithyauth.SchemeIDAnonymous,
 	}), nil
@@ -36,12 +54,12 @@ func (r *endpointAuthResolver) resolveAuthSchemes(
 ) {
 	baseOpts, err := (&defaultAuthSchemeResolver{}).ResolveAuthSchemes(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("get base options: %v", err)
+		return nil, fmt.Errorf("get base options: %w", err)
 	}
 
 	endpt, err := r.EndpointResolver.ResolveEndpoint(ctx, *params.endpointParams)
 	if err != nil {
-		return nil, fmt.Errorf("resolve endpoint: %v", err)
+		return nil, fmt.Errorf("resolve endpoint: %w", err)
 	}
 
 	endptOpts, ok := smithyauth.GetAuthOptions(&endpt.Properties)

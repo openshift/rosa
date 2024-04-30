@@ -10,20 +10,21 @@ import (
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/middleware"
+	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Sets an analytics configuration for the bucket (specified by the analytics
-// configuration ID). You can have up to 1,000 analytics configurations per bucket.
-// You can choose to have storage class analysis export analysis reports sent to a
-// comma-separated values (CSV) flat file. See the DataExport request element.
-// Reports are updated daily and are based on the object filters that you
-// configure. When selecting data export, you specify a destination bucket and an
-// optional destination prefix where the file is written. You can export the data
-// to a destination bucket in a different account. However, the destination bucket
-// must be in the same Region as the bucket that you are making the PUT analytics
-// configuration to. For more information, see Amazon S3 Analytics – Storage Class
-// Analysis (https://docs.aws.amazon.com/AmazonS3/latest/dev/analytics-storage-class.html)
+// This operation is not supported by directory buckets. Sets an analytics
+// configuration for the bucket (specified by the analytics configuration ID). You
+// can have up to 1,000 analytics configurations per bucket. You can choose to have
+// storage class analysis export analysis reports sent to a comma-separated values
+// (CSV) flat file. See the DataExport request element. Reports are updated daily
+// and are based on the object filters that you configure. When selecting data
+// export, you specify a destination bucket and an optional destination prefix
+// where the file is written. You can export the data to a destination bucket in a
+// different account. However, the destination bucket must be in the same Region as
+// the bucket that you are making the PUT analytics configuration to. For more
+// information, see Amazon S3 Analytics – Storage Class Analysis (https://docs.aws.amazon.com/AmazonS3/latest/dev/analytics-storage-class.html)
 // . You must create a bucket policy on the destination bucket where the exported
 // file is written to grant permissions to Amazon S3 to write objects to the
 // bucket. For an example policy, see Granting Permissions for Amazon S3 Inventory
@@ -84,9 +85,9 @@ type PutBucketAnalyticsConfigurationInput struct {
 	// This member is required.
 	Id *string
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	noSmithyDocumentSerde
@@ -94,7 +95,7 @@ type PutBucketAnalyticsConfigurationInput struct {
 
 func (in *PutBucketAnalyticsConfigurationInput) bindEndpointParams(p *EndpointParameters) {
 	p.Bucket = in.Bucket
-
+	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
 
 type PutBucketAnalyticsConfigurationOutput struct {
@@ -126,25 +127,25 @@ func (c *Client) addOperationPutBucketAnalyticsConfigurationMiddlewares(stack *m
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -159,6 +160,9 @@ func (c *Client) addOperationPutBucketAnalyticsConfigurationMiddlewares(stack *m
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpPutBucketAnalyticsConfigurationValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -168,7 +172,7 @@ func (c *Client) addOperationPutBucketAnalyticsConfigurationMiddlewares(stack *m
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addPutBucketAnalyticsConfigurationUpdateEndpoint(stack, options); err != nil {
