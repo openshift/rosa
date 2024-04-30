@@ -3,15 +3,24 @@ package profilehandler
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
+	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/tests/utils/common"
 	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGroup string, hcp bool) (
 	*rosacli.OpenShiftVersionTableOutput, error) {
+	log.Logger.Infof("Got version requirement %s going to prepare accordingly", versionRequirement)
 	versionList, err := client.Version.ListAndReflectVersions(channelGroup, hcp)
 	if err != nil {
 		return nil, err
@@ -27,7 +36,28 @@ func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGr
 			Version: versionRequirement,
 		}, nil
 	} else if con.VersionFlexyPattern.MatchString(versionRequirement) {
-		return nil, nil // TODO
+		log.Logger.Debugf("Version requirement matched %s", con.VersionFlexyPattern.String())
+		latestVersion, err := versionList.Latest()
+		if err != nil {
+			return nil, err
+		}
+		log.Logger.Infof("Got the latest version id %s", latestVersion.Version)
+		stream, step := strings.Split(versionRequirement, "-")[0], strings.Split(versionRequirement, "-")[1]
+		versionStep, err := strconv.Atoi(step)
+		if err != nil {
+			return nil, err
+		}
+		log.Logger.Infof("Going to prepare version for %s stream %v versions lower", stream, versionStep)
+		switch stream {
+		case "y":
+			version, err := versionList.FindNearestBackwardMinorVersion(latestVersion.Version, int64(versionStep), true)
+			return version, err
+		case "z":
+			version, err := versionList.FindNearestBackwardOptionalVersion(latestVersion.Version, versionStep, true)
+			return version, err
+		default:
+			return nil, fmt.Errorf("not supported stream configuration %s", stream)
+		}
 	}
 	return nil, fmt.Errorf("not supported version requirement: %s", versionRequirement)
 }
@@ -38,28 +68,117 @@ func PreparePrefix(profilePrefix string, nameLength int) string {
 	if nameLength > ocm.MaxClusterNameLength {
 		panic(fmt.Errorf("name length %d is longer than allowed max name length %d", nameLength, ocm.MaxClusterNameLength))
 	}
+
+	if len(profilePrefix) > nameLength {
+		newProfilePrefix := common.TrimNameByLength(profilePrefix, nameLength-4)
+		log.Logger.Warnf("Proifle name prefix %s is longer than the nameLength for random generated. Trimed it to %s", profilePrefix, newProfilePrefix)
+		profilePrefix = newProfilePrefix
+	}
 	return common.GenerateRandomName(profilePrefix, nameLength-len(profilePrefix)-1)
 }
 
-func PrepareSubnetsDummy(vpcID string, region string, zones string) map[string][]string {
-	return map[string][]string{}
+// PrepareVPC will prepare a single vpc
+func PrepareVPC(region string, vpcName string, cidrValue string) (*vpc_client.VPC, error) {
+	log.Logger.Info("Starting vpc preparation")
+	vpc, err := vpc_client.PrepareVPC(vpcName, region, cidrValue, false)
+	log.Logger.Info("VPC preparation finished")
+	return vpc, err
+
 }
 
-func PrepareProxysDummy(vpcID string, region string, zones string) map[string]string {
-	return map[string]string{
-		"https_proxy":  "",
-		"http_proxy":   "",
-		"no_proxy":     "",
-		"ca_file_path": "",
+// PrepareSubnets will prepare pair of subnets according to the vpcID and zones
+// if zones are empty list it will list the zones and pick according to multi-zone parameter. when multi-zone=true, 3 zones will be pickup
+func PrepareSubnets(vpcClient *vpc_client.VPC, region string, zones []string, multiZone bool) (map[string][]string, error) {
+	resultMap := map[string][]string{}
+	if len(zones) == 0 {
+		log.Logger.Info("Got no zones indicated. List the zones and pick from the listed zones")
+		resultZones, err := vpcClient.AWSClient.ListAvaliableZonesForRegion(region, "availability-zone")
+		if err != nil {
+			return resultMap, err
+		}
+		zones = resultZones[0:1]
+		if multiZone {
+			zones = resultZones[0:3]
+		}
 	}
+	for _, zone := range zones {
+		subnetMap, err := vpcClient.PreparePairSubnetByZone(zone)
+		if err != nil {
+			return resultMap, err
+		}
+		for subnetType, subnet := range subnetMap {
+			if _, ok := resultMap[subnetType]; !ok {
+				resultMap[subnetType] = []string{}
+			}
+			resultMap[subnetType] = append(resultMap[subnetType], subnet.ID)
+		}
+	}
+
+	return resultMap, nil
 }
 
-func PrepareKMSKeyDummy(region string) string {
-	return ""
+func PrepareProxy(vpcClient *vpc_client.VPC, zone string, sshPemFile string, caFile string) (*ProxyDetail, error) {
+	_, privateIP, caContent, err := vpcClient.LaunchProxyInstance("", zone, sshPemFile)
+	if err != nil {
+		return nil, err
+	}
+	_, err = common.CreateFileWithContent(caFile, caContent)
+	if err != nil {
+		return nil, err
+	}
+	return &ProxyDetail{
+		HTTPsProxy:       fmt.Sprintf("https://%s:8080", privateIP),
+		HTTPProxy:        fmt.Sprintf("http://%s:8080", privateIP),
+		CABundleFilePath: caFile,
+		NoProxy:          "quay.io",
+	}, nil
 }
 
-func PrepareSecurityGroupsDummy(vpcID string, region string, securityGroupCount int) []string {
-	return []string{}
+func PrepareKMSKey(region string, multiRegion bool, testClient string, hcp bool) (string, error) {
+	keyArn, err := kms_key.CreateOCMTestKMSKey(region, multiRegion, testClient)
+	if err != nil {
+		return keyArn, err
+	}
+	if hcp {
+		kms_key.AddTagToKMS(keyArn, region, map[string]string{
+			"red-hat": "true",
+		})
+	}
+	return keyArn, err
+}
+
+func ElaborateKMSKeyForSTSCluster(client *rosacli.Client, cluster string, etcdKMS bool) error {
+	jsonData, err := client.Cluster.GetJSONClusterDescription(cluster)
+	if err != nil {
+		return err
+	}
+	accountRoles := []string{
+		jsonData.DigString("aws", "sts", "role_arn"),
+	}
+	operaorRoleMap := map[string]string{}
+	keyArn := jsonData.DigString("aws", "kms_key_arn")
+	if etcdKMS {
+		keyArn = jsonData.DigString("aws", "etcd_encryption", "kms_key_arn")
+	}
+	operatorRoles := jsonData.DigObject("aws", "sts", "operator_iam_roles").([]interface{})
+	for _, operatorRole := range operatorRoles {
+		role := operatorRole.(map[string]interface{})
+		operaorRoleMap[role["name"].(string)] = role["role_arn"].(string)
+	}
+	region := jsonData.DigString("region", "id")
+	isHCP := jsonData.DigBool("hypershift", "enabled")
+	err = kms_key.ConfigKMSKeyPolicyForSTS(keyArn, region, isHCP, accountRoles, operaorRoleMap)
+	if err != nil {
+		log.Logger.Errorf("Elaborate the KMS key %s for cluster %s failed: %s", keyArn, cluster, err.Error())
+	} else {
+		log.Logger.Infof("Elaborate the KMS key %s for cluster %s successfully", keyArn, cluster)
+	}
+
+	return err
+}
+
+func PrepareAdditionalSecurityGroups(vpcClient *vpc_client.VPC, securityGroupCount int, namePrefix string) ([]string, error) {
+	return vpcClient.CreateAdditionalSecurityGroups(securityGroupCount, namePrefix, "")
 }
 
 // PrepareAccountRoles will prepare account roles according to the parameters
@@ -106,13 +225,14 @@ func PrepareOperatorRolesByOIDCConfig(client *rosacli.Client,
 	oidcConfigID string,
 	roleArn string,
 	sharedVPCRoleArn string,
-	hcp bool) error {
+	hcp bool, channelGroup string) error {
 	flags := []string{
 		"-y",
 		"--mode", "auto",
 		"--prefix", namePrefix,
 		"--role-arn", roleArn,
 		"--oidc-config-id", oidcConfigID,
+		"--channel-group", channelGroup,
 	}
 	if hcp {
 		flags = append(flags, "--hosted-cp")
@@ -132,8 +252,42 @@ func PrepareAdminUser() (string, string) {
 	return userName, password
 }
 
-func PrepareAuditlogDummy() string {
-	return ""
+func PrepareAuditlogRoleArnByOIDCConfig(client *rosacli.Client, auditLogRoleName string, oidcCONfigID string, region string) (string, error) {
+	oidcConfig, err := client.OCMResource.GetOIDCConfigFromList(oidcCONfigID)
+	if err != nil {
+		return "", err
+	}
+	return PrepareAuditlogRoleArnByIssuer(auditLogRoleName, oidcConfig.IssuerUrl, region)
+
+}
+
+func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL string, region string) (string, error) {
+	oidcIssuerURL = strings.TrimLeft(oidcIssuerURL, "https://")
+	log.Logger.Infof("Preparing audit log role with name %s and oidcIssuerURL %s", auditLogRoleName, oidcIssuerURL)
+	awsClient, err := aws_client.CreateAWSClient("", region)
+	if err != nil {
+		return "", err
+	}
+	policyName := fmt.Sprintf("%s-%s", "auditlogpolicy", auditLogRoleName)
+	policyArn, err := awsClient.CreatePolicyForAuditLogForward(policyName)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare audit log policy: %s", err.Error())
+		return "", err
+	}
+	roleArn, err := awsClient.CreateRoleForAuditLogForward(auditLogRoleName, awsClient.AccountID, oidcIssuerURL)
+	auditLogRoleArn := aws.ToString(roleArn.Arn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare audit log role: %s", err.Error())
+		return auditLogRoleArn, err
+	}
+	log.Logger.Infof("Create a new role for audit log forwarding: %s", auditLogRoleArn)
+
+	err = awsClient.AttachIAMPolicy(auditLogRoleName, policyArn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when attach audit log policy %s to role %s: %s", policyArn, auditLogRoleName, err.Error())
+	}
+
+	return auditLogRoleArn, err
 }
 
 func PrepareOperatorRolesByCluster(client *rosacli.Client, cluster string) error {

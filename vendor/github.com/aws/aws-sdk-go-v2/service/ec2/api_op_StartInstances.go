@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -23,7 +22,7 @@ import (
 // instance, make sure it is in a state from which it can be restarted. Stopping an
 // instance does not preserve data stored in RAM. Performing this operation on an
 // instance that uses an instance store as its root device returns an error. If you
-// attempt to start a T3 instance with host tenancy and the unlimted CPU credit
+// attempt to start a T3 instance with host tenancy and the unlimited CPU credit
 // option, the request fails. The unlimited CPU credit option is not supported on
 // Dedicated Hosts. Before you start the instance, either change its CPU credit
 // option to standard , or change its tenancy to default or dedicated . For more
@@ -96,25 +95,25 @@ func (c *Client) addOperationStartInstancesMiddlewares(stack *middleware.Stack, 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -135,7 +134,7 @@ func (c *Client) addOperationStartInstancesMiddlewares(stack *middleware.Stack, 
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opStartInstances(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

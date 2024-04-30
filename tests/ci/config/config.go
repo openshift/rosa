@@ -35,6 +35,8 @@ type TestConfig struct {
 	ClusterInstallLogArtifactFile string
 	ClusterAdminFile              string
 	TestFocusFile                 string
+	ProxySSHPemFile               string
+	ProxyCABundleFile             string
 	GlobalENV                     *GlobalENVVariables
 }
 type GlobalENVVariables struct {
@@ -68,10 +70,13 @@ func init() {
 	Test.ClusterTypeFile = path.Join(Test.OutputDir, "cluster-type") // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
 	Test.ConsoleUrlFile = path.Join(Test.OutputDir, "console.url")   // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
 	Test.InfraIDFile = path.Join(Test.OutputDir, "infra_id")         // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
+	Test.CreateCommandFile = path.Join(Test.OutputDir, "create_cluster.sh")
 	Test.ClusterDetailFile = path.Join(Test.OutputDir, "cluster-detail.json")
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
+	Test.ProxySSHPemFile = path.Join(Test.OutputDir, "openshift-qe.pem")
+	Test.ProxyCABundleFile = path.Join(Test.OutputDir, "proxy-bundle.ca")
 
 	waitingTime, err := strconv.Atoi(common.ReadENVWithDefaultValue("CLUSTER_TIMEOUT", "60"))
 	if err != nil {

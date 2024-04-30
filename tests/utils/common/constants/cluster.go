@@ -18,6 +18,12 @@ const (
 // profile
 const (
 	DefaultNamePrefix = "rosacli-ci"
+	DefaultNameLength = 15
+)
+
+// cluster configuration
+const (
+	DefaultVPCCIDRValue = "10.0.0.0/16"
 )
 
 // cluster status
@@ -36,5 +42,5 @@ var (
 	VersionLatestPattern     = regexp.MustCompile("latest")
 	VersionMajorMinorPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+$`)
 	VersionRawPattern        = regexp.MustCompile(`[0-9]+\.[0-9]+\.[0-9]+-?[0-9a-z\.-]*`)
-	VersionFlexyPattern      = regexp.MustCompile(`[xy]{1}-[1-3]{1}`)
+	VersionFlexyPattern      = regexp.MustCompile(`[zy]{1}-[1-3]{1}`)
 )

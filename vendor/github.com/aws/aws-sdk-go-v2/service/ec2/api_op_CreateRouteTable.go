@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -38,6 +37,11 @@ type CreateRouteTableInput struct {
 	// This member is required.
 	VpcId *string
 
+	// Unique, case-sensitive identifier that you provide to ensure the idempotency of
+	// the request. For more information, see Ensuring idempotency (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Run_Instance_Idempotency.html)
+	// .
+	ClientToken *string
+
 	// Checks whether you have the required permissions for the action, without
 	// actually making the request, and provides an error response. If you have the
 	// required permissions, the error response is DryRunOperation . Otherwise, it is
@@ -51,6 +55,10 @@ type CreateRouteTableInput struct {
 }
 
 type CreateRouteTableOutput struct {
+
+	// Unique, case-sensitive identifier to ensure the idempotency of the request.
+	// Only returned if a client token was provided in the request.
+	ClientToken *string
 
 	// Information about the route table.
 	RouteTable *types.RouteTable
@@ -83,25 +91,25 @@ func (c *Client) addOperationCreateRouteTableMiddlewares(stack *middleware.Stack
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -116,13 +124,16 @@ func (c *Client) addOperationCreateRouteTableMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addIdempotencyToken_opCreateRouteTableMiddleware(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateRouteTableValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateRouteTable(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -138,6 +149,39 @@ func (c *Client) addOperationCreateRouteTableMiddlewares(stack *middleware.Stack
 		return err
 	}
 	return nil
+}
+
+type idempotencyToken_initializeOpCreateRouteTable struct {
+	tokenProvider IdempotencyTokenProvider
+}
+
+func (*idempotencyToken_initializeOpCreateRouteTable) ID() string {
+	return "OperationIdempotencyTokenAutoFill"
+}
+
+func (m *idempotencyToken_initializeOpCreateRouteTable) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	if m.tokenProvider == nil {
+		return next.HandleInitialize(ctx, in)
+	}
+
+	input, ok := in.Parameters.(*CreateRouteTableInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("expected middleware input to be of type *CreateRouteTableInput ")
+	}
+
+	if input.ClientToken == nil {
+		t, err := m.tokenProvider.GetIdempotencyToken()
+		if err != nil {
+			return out, metadata, err
+		}
+		input.ClientToken = &t
+	}
+	return next.HandleInitialize(ctx, in)
+}
+func addIdempotencyToken_opCreateRouteTableMiddleware(stack *middleware.Stack, cfg Options) error {
+	return stack.Initialize.Add(&idempotencyToken_initializeOpCreateRouteTable{tokenProvider: cfg.IdempotencyTokenProvider}, middleware.Before)
 }
 
 func newServiceMetadataMiddleware_opCreateRouteTable(region string) *awsmiddleware.RegisterServiceMetadata {

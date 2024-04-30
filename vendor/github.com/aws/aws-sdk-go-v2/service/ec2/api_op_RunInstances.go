@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -147,11 +146,9 @@ type RunInstancesInput struct {
 	// apply when using an EBS-optimized instance. Default: false
 	EbsOptimized *bool
 
-	// An elastic GPU to associate with the instance. An Elastic GPU is a GPU resource
-	// that you can attach to your Windows instance to accelerate the graphics
-	// performance of your applications. For more information, see Amazon EC2 Elastic
-	// GPUs (https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/elastic-graphics.html)
-	// in the Amazon EC2 User Guide.
+	// Deprecated. Amazon Elastic Graphics reached end of life on January 8, 2024. For
+	// workloads that require graphics acceleration, we recommend that you use Amazon
+	// EC2 G4ad, G4dn, or G5 instances.
 	ElasticGpuSpecification []types.ElasticGpuSpecification
 
 	// An elastic inference accelerator to associate with the instance. Elastic
@@ -310,7 +307,6 @@ type RunInstancesInput struct {
 	// can specify tags for the following resources only:
 	//   - Instances
 	//   - Volumes
-	//   - Elastic graphics
 	//   - Spot Instance requests
 	//   - Network interfaces
 	// To tag a resource after it has been created, see CreateTags (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateTags.html)
@@ -377,25 +373,25 @@ func (c *Client) addOperationRunInstancesMiddlewares(stack *middleware.Stack, op
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -419,7 +415,7 @@ func (c *Client) addOperationRunInstancesMiddlewares(stack *middleware.Stack, op
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opRunInstances(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

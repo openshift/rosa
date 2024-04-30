@@ -57,7 +57,7 @@ type OCMResourceService interface {
 	CreateOIDCConfig(flags ...string) (bytes.Buffer, error)
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
 	GetOIDCIdFromList(providerURL string) (string, error)
-
+	GetOIDCConfigFromList(oidcConfigID string) (OIDCConfig, error)
 	ListOperatorRoles(flags ...string) (bytes.Buffer, error)
 	DeleteOperatorRoles(flags ...string) (bytes.Buffer, error)
 	CreateOperatorRoles(flags ...string) (bytes.Buffer, error)
@@ -517,6 +517,20 @@ func (ors *ocmResourceService) GetOIDCIdFromList(providerURL string) (string, er
 	}
 	Logger.Warnf("No oidc with the url %s is found.", providerURL)
 	return "", nil
+}
+func (ors *ocmResourceService) GetOIDCConfigFromList(oidcConfigID string) (OIDCConfig, error) {
+	var expectedOIDC OIDCConfig
+	oidcConfigList, _, err := ors.ListOIDCConfig()
+	if err != nil {
+		return expectedOIDC, err
+	}
+	for _, item := range oidcConfigList.OIDCConfigList {
+		if strings.EqualFold(item.ID, oidcConfigID) {
+			expectedOIDC = item
+			break
+		}
+	}
+	return expectedOIDC, nil
 }
 
 // Get specified oidc-config by oidc-config-id

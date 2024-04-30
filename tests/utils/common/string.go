@@ -51,7 +51,6 @@ func GenerateRandomStringWithSymbols(length int) string {
 func GenerateRandomString(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	rand.Seed(time.Now().UnixNano())
-
 	s := make([]byte, n)
 	for i := range s {
 		s[i] = letters[rand.Intn(len(letters))]

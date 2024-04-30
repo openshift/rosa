@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -250,7 +251,7 @@ var _ = Describe("Edit cluster",
 				versionService := rosaClient.Version
 				accountRoleList, _, err := ocmResourceService.ListAccountRole()
 				Expect(err).To(BeNil())
-				rosalCommand, err := config.RetrieveClusterCreationCommand()
+				rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
 				Expect(err).To(BeNil())
 
 				installerRole := rosalCommand.GetFlagValue("--role-arn", true)

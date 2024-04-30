@@ -41,14 +41,14 @@ type ClusterConfig struct {
 	DisableSCPChecks              bool   `yaml:"disable_scp_checks,omitempty" json:"disable_scp_checks,omitempty"`
 	ExternalAuthConfig            bool   `yaml:"external_auth_config,omitempty" json:"external_auth_config,omitempty"`
 	EtcdEncryption                bool   `yaml:"etcd_encryption,omitempty" json:"etcd_encryption,omitempty"`
-	ETCDKMS                       bool   `yaml:"etcd_kms,omitempty" json:"etcd_kms,omitempty"`
+	EtcdKMS                       bool   `yaml:"etcd_kms,omitempty" json:"etcd_kms,omitempty"`
 	FIPS                          bool   `yaml:"fips,omitempty" json:"fips,omitempty"`
 	HCP                           bool   `yaml:"hcp,omitempty" json:"hypershift,omitempty"`
 	IngressCustomized             bool   `yaml:"ingress_customized,omitempty" json:"ingress_customized,omitempty"`
 	KMSKey                        bool   `yaml:"kms_key,omitempty" json:"kms_key,omitempty"`
 	LabelEnabled                  bool   `yaml:"label_enabled,omitempty" json:"label_enabled,omitempty"`
 	MultiAZ                       bool   `yaml:"multi_az,omitempty" json:"multi_az,omitempty"`
-	NetWorkingSet                 bool   `yaml:"networking,omitempty" json:"networking,omitempty"`
+	NetworkingSet                 bool   `yaml:"networking,omitempty" json:"networking,omitempty"`
 	PrivateLink                   bool   `yaml:"private_link,omitempty" json:"private_link,omitempty"`
 	Private                       bool   `yaml:"private,omitempty" json:"private,omitempty"`
 	ProxyEnabled                  bool   `yaml:"proxy_enabled,omitempty" json:"proxy_enabled,omitempty"`
@@ -61,6 +61,7 @@ type ClusterConfig struct {
 type UserData struct {
 	AccountRolesPrefix  string `json:"account_roles_prefix,omitempty"`
 	AuditLogArn         string `json:"audit_log,omitempty"`
+	EtcdKMSKey          string `json:"etcd_kms_key,omitempty"`
 	KMSKey              string `json:"kms_key,omitempty"`
 	OperatorRolesPrefix string `json:"operator_roles_prefix,omitempty"`
 	OIDCConfigID        string `json:"oidc_config_id,omitempty"`
@@ -75,4 +76,11 @@ type ClusterDetail struct {
 	ClusterType string `json:"cluster_type,omitempty"`
 	ConsoleURL  string `json:"console_url,omitempty"`
 	InfraID     string `json:"infra_id,omitempty"`
+}
+
+type ProxyDetail struct {
+	HTTPsProxy       string
+	HTTPProxy        string
+	CABundleFilePath string
+	NoProxy          string
 }

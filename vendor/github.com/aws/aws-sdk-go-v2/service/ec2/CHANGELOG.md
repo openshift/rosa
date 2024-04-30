@@ -1,3 +1,133 @@
+# v1.152.0 (2024-03-19)
+
+* **Feature**: This release adds the new DescribeMacHosts API operation for getting information about EC2 Mac Dedicated Hosts. Users can now see the latest macOS versions that their underlying Apple Mac can support without needing to be updated.
+
+# v1.151.1 (2024-03-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.151.0 (2024-03-15)
+
+* **Feature**: Add media accelerator and neuron device information on the describe instance types API.
+
+# v1.150.1 (2024-03-12)
+
+* **Documentation**: Documentation updates for Amazon EC2.
+
+# v1.150.0 (2024-03-07)
+
+* **Feature**: This release adds an optional parameter to RegisterImage and CopyImage APIs to support tagging AMIs at the time of creation.
+* **Bug Fix**: Remove dependency on go-cmp.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.149.4 (2024-03-05)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.149.3 (2024-03-04)
+
+* **Bug Fix**: Update internal/presigned-url dependency for corrected API name.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.149.2 (2024-03-01)
+
+* **Documentation**: With this release, Amazon EC2 Auto Scaling groups, EC2 Fleet, and Spot Fleet improve the default price protection behavior of attribute-based instance type selection of Spot Instances, to consistently select from a wide range of instance types.
+
+# v1.149.1 (2024-02-23)
+
+* **Bug Fix**: Move all common, SDK-side middleware stack ops into the service client module to prevent cross-module compatibility issues in the future.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.149.0 (2024-02-22)
+
+* **Feature**: Add middleware stack snapshot tests.
+
+# v1.148.2 (2024-02-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.148.1 (2024-02-20)
+
+* **Bug Fix**: When sourcing values for a service's `EndpointParameters`, the lack of a configured region (i.e. `options.Region == ""`) will now translate to a `nil` value for `EndpointParameters.Region` instead of a pointer to the empty string `""`. This will result in a much more explicit error when calling an operation instead of an obscure hostname lookup failure.
+
+# v1.148.0 (2024-02-16)
+
+* **Feature**: Add new ClientOptions field to waiter config which allows you to extend the config for operation calls made by waiters.
+
+# v1.147.0 (2024-02-13)
+
+* **Feature**: Bump minimum Go version to 1.20 per our language support policy.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.146.0 (2024-01-29)
+
+* **Feature**: EC2 Fleet customers who use attribute based instance-type selection can now intuitively define their Spot instances price protection limit as a percentage of the lowest priced On-Demand instance type.
+
+# v1.145.0 (2024-01-24)
+
+* **Feature**: Introduced a new clientToken request parameter on CreateNetworkAcl and CreateRouteTable APIs. The clientToken parameter allows idempotent operations on the APIs.
+
+# v1.144.1 (2024-01-22)
+
+* **Documentation**: Documentation updates for Amazon EC2.
+
+# v1.144.0 (2024-01-11)
+
+* **Feature**: This release adds support for adding an ElasticBlockStorage volume configurations in ECS RunTask/StartTask/CreateService/UpdateService APIs. The configuration allows for attaching EBS volumes to ECS Tasks.
+
+# v1.143.0 (2024-01-08)
+
+* **Feature**: Amazon EC2 R7iz bare metal instances are powered by custom 4th generation Intel Xeon Scalable processors.
+
+# v1.142.1 (2024-01-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.142.0 (2023-12-19)
+
+* **Feature**: Provision BYOIPv4 address ranges and advertise them by specifying the network border groups option in Los Angeles, Phoenix and Dallas AWS Local Zones.
+
+# v1.141.0 (2023-12-08)
+
+* **Feature**: M2 Mac instances are built on Apple M2 Mac mini computers. I4i instances are powered by 3rd generation Intel Xeon Scalable processors. C7i compute optimized, M7i general purpose and R7i memory optimized instances are powered by custom 4th Generation Intel Xeon Scalable processors.
+* **Bug Fix**: Reinstate presence of default Retryer in functional options, but still respect max attempts set therein.
+
+# v1.140.1 (2023-12-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.140.0 (2023-12-06)
+
+* **Feature**: Releasing the new cpuManufacturer attribute within the DescribeInstanceTypes API response which notifies our customers with information on who the Manufacturer is for the processor attached to the instance, for example: Intel.
+* **Bug Fix**: Restore pre-refactor auth behavior where all operations could technically be performed anonymously.
+
+# v1.139.0 (2023-12-05)
+
+* **Feature**: Adds A10G, T4G, and H100 as accelerator name options and Habana as an accelerator manufacturer option for attribute based selection
+
+# v1.138.2 (2023-12-01)
+
+* **Bug Fix**: Correct wrapping of errors in authentication workflow.
+* **Bug Fix**: Correctly recognize cache-wrapped instances of AnonymousCredentials at client construction.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.138.1 (2023-11-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.138.0 (2023-11-29)
+
+* **Feature**: Expose Options() accessor on service clients.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.137.3 (2023-11-28.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.137.2 (2023-11-28)
+
+* **Bug Fix**: Respect setting RetryMaxAttempts in functional options at client construction.
+
 # v1.137.1 (2023-11-21)
 
 * **Documentation**: Documentation updates for Amazon EC2.

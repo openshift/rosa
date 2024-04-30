@@ -19,9 +19,7 @@ type command struct {
 }
 
 // Get the rosa command for creating cluster from ${SHARED_DIR}/create_cluster.sh
-func RetrieveClusterCreationCommand() (Command, error) {
-	sharedDIR := os.Getenv("SHARED_DIR")
-	filePath := sharedDIR + "/create_cluster.sh"
+func RetrieveClusterCreationCommand(filePath string) (Command, error) {
 	fileContents, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err

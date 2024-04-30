@@ -25,7 +25,7 @@ profiles:
     auditlog_forward: true
     admin_enabled: false
     disable_uwm: true
-    autoscaler_enabled: true
+    autoscaler_enabled: false
   account-role:
     customized_prefix: true
     path: ""

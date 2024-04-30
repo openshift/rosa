@@ -19,6 +19,7 @@ var RedactKeyList = []*regexp.Regexp{
 	regexp.MustCompile(`(--users\s+[a-zA-Z0-9-]+:)([^\s\n\\]+)([\s\S]+)`),
 	regexp.MustCompile(`(--cluster-admin-password\s+)([^\n\t\\\s]+)([\n\\\s]*)`),
 	regexp.MustCompile(`(--billing-account\s+)([^\n\t\\\s]+)([\n\\\s]*)`),
-	regexp.MustCompile(`(arn\:aws\:iam\:\:)([0-9]{12})([^\s\\\t\n]*)`),
-	regexp.MustCompile(`(arn\:aws\:secretsmanager\:[a-z0-9-]*\:)([0-9]{12})([^\s\\\t\n]*)`),
+	regexp.MustCompile(`(arn:aws:[a-z]+:[a-z0-9-]*:)([0-9]{12})(:)`),
+	regexp.MustCompile(`(AWS Account:\s*)([0-9]{12})([\n\\n].)`),
+	regexp.MustCompile(`(AWS Billing Account:\s*)([0-9]{12})([\n\\n].)`),
 }
