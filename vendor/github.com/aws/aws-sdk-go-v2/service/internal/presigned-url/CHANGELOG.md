@@ -1,3 +1,61 @@
+# v1.11.7 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.11.6 (2024-03-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.11.5 (2024-03-07)
+
+* **Bug Fix**: Remove dependency on go-cmp.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.11.4 (2024-03-05)
+
+* **Bug Fix**: Restore typo'd API `AddAsIsInternalPresigingMiddleware` as an alias for backwards compatibility.
+
+# v1.11.3 (2024-03-04)
+
+* **Bug Fix**: Correct a typo in internal AddAsIsPresigningMiddleware API.
+
+# v1.11.2 (2024-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.11.1 (2024-02-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.11.0 (2024-02-13)
+
+* **Feature**: Bump minimum Go version to 1.20 per our language support policy.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.10.10 (2024-01-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.10.9 (2023-12-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.10.8 (2023-12-01)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.10.7 (2023-11-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.10.6 (2023-11-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.10.5 (2023-11-28.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.10.4 (2023-11-20)
 
 * **Dependency Update**: Updated to the latest SDK module versions

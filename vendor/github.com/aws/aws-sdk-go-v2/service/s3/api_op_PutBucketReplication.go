@@ -11,11 +11,12 @@ import (
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/middleware"
+	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Creates a replication configuration or replaces an existing one. For more
-// information, see Replication (https://docs.aws.amazon.com/AmazonS3/latest/dev/replication.html)
+// This operation is not supported by directory buckets. Creates a replication
+// configuration or replaces an existing one. For more information, see Replication (https://docs.aws.amazon.com/AmazonS3/latest/dev/replication.html)
 // in the Amazon S3 User Guide. Specify the replication configuration in the
 // request body. In the replication configuration, you provide the name of the
 // destination bucket or buckets where you want Amazon S3 to replicate objects, the
@@ -83,12 +84,12 @@ type PutBucketReplicationInput struct {
 	// This member is required.
 	ReplicationConfiguration *types.ReplicationConfiguration
 
-	// Indicates the algorithm used to create the checksum for the object when using
-	// the SDK. This header will not provide any additional functionality if not using
-	// the SDK. When sending this header, there must be a corresponding x-amz-checksum
-	// or x-amz-trailer header sent. Otherwise, Amazon S3 fails the request with the
-	// HTTP status code 400 Bad Request . For more information, see Checking object
-	// integrity (https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity.html)
+	// Indicates the algorithm used to create the checksum for the object when you use
+	// the SDK. This header will not provide any additional functionality if you don't
+	// use the SDK. When you send this header, there must be a corresponding
+	// x-amz-checksum or x-amz-trailer header sent. Otherwise, Amazon S3 fails the
+	// request with the HTTP status code 400 Bad Request . For more information, see
+	// Checking object integrity (https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity.html)
 	// in the Amazon S3 User Guide. If you provide an individual checksum, Amazon S3
 	// ignores any provided ChecksumAlgorithm parameter.
 	ChecksumAlgorithm types.ChecksumAlgorithm
@@ -100,9 +101,9 @@ type PutBucketReplicationInput struct {
 	// or Amazon Web Services SDKs, this field is calculated automatically.
 	ContentMD5 *string
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	// A token to allow Object Lock to be enabled for an existing bucket.
@@ -113,7 +114,7 @@ type PutBucketReplicationInput struct {
 
 func (in *PutBucketReplicationInput) bindEndpointParams(p *EndpointParameters) {
 	p.Bucket = in.Bucket
-
+	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
 
 type PutBucketReplicationOutput struct {
@@ -145,25 +146,25 @@ func (c *Client) addOperationPutBucketReplicationMiddlewares(stack *middleware.S
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -178,6 +179,9 @@ func (c *Client) addOperationPutBucketReplicationMiddlewares(stack *middleware.S
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpPutBucketReplicationValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -187,7 +191,7 @@ func (c *Client) addOperationPutBucketReplicationMiddlewares(stack *middleware.S
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addPutBucketReplicationInputChecksumMiddlewares(stack, options); err != nil {
@@ -212,6 +216,9 @@ func (c *Client) addOperationPutBucketReplicationMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = s3cust.AddExpressDefaultChecksumMiddleware(stack); err != nil {
 		return err
 	}
 	return nil

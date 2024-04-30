@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -53,9 +52,10 @@ type ModifyInstanceAttributeInput struct {
 	// Modifies the DeleteOnTermination attribute for volumes that are currently
 	// attached. The volume must be owned by the caller. If no value is specified for
 	// DeleteOnTermination , the default is true and the volume is deleted when the
-	// instance is terminated. To add instance store volumes to an Amazon EBS-backed
-	// instance, you must add them when you launch the instance. For more information,
-	// see Update the block device mapping when launching an instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/block-device-mapping-concepts.html#Using_OverridingAMIBDM)
+	// instance is terminated. You can't modify the DeleteOnTermination attribute for
+	// volumes that are attached to Fargate tasks. To add instance store volumes to an
+	// Amazon EBS-backed instance, you must add them when you launch the instance. For
+	// more information, see Update the block device mapping when launching an instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/block-device-mapping-concepts.html#Using_OverridingAMIBDM)
 	// in the Amazon EC2 User Guide.
 	BlockDeviceMappings []types.InstanceBlockDeviceMappingSpecification
 
@@ -169,25 +169,25 @@ func (c *Client) addOperationModifyInstanceAttributeMiddlewares(stack *middlewar
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -208,7 +208,7 @@ func (c *Client) addOperationModifyInstanceAttributeMiddlewares(stack *middlewar
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opModifyInstanceAttribute(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

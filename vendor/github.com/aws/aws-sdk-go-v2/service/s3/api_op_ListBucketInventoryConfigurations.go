@@ -10,14 +10,16 @@ import (
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/middleware"
+	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns a list of inventory configurations for the bucket. You can have up to
-// 1,000 analytics configurations per bucket. This action supports list pagination
-// and does not return more than 100 configurations at a time. Always check the
-// IsTruncated element in the response. If there are no more configurations to
-// list, IsTruncated is set to false. If there are more configurations to list,
+// This operation is not supported by directory buckets. Returns a list of
+// inventory configurations for the bucket. You can have up to 1,000 analytics
+// configurations per bucket. This action supports list pagination and does not
+// return more than 100 configurations at a time. Always check the IsTruncated
+// element in the response. If there are no more configurations to list,
+// IsTruncated is set to false. If there are more configurations to list,
 // IsTruncated is set to true, and there is a value in NextContinuationToken . You
 // use the NextContinuationToken value to continue the pagination of the list by
 // passing the value in continuation-token in the request to GET the next page. To
@@ -60,9 +62,9 @@ type ListBucketInventoryConfigurationsInput struct {
 	// Amazon S3 understands.
 	ContinuationToken *string
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	noSmithyDocumentSerde
@@ -70,7 +72,7 @@ type ListBucketInventoryConfigurationsInput struct {
 
 func (in *ListBucketInventoryConfigurationsInput) bindEndpointParams(p *EndpointParameters) {
 	p.Bucket = in.Bucket
-
+	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
 
 type ListBucketInventoryConfigurationsOutput struct {
@@ -120,25 +122,25 @@ func (c *Client) addOperationListBucketInventoryConfigurationsMiddlewares(stack 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -153,6 +155,9 @@ func (c *Client) addOperationListBucketInventoryConfigurationsMiddlewares(stack 
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpListBucketInventoryConfigurationsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -162,7 +167,7 @@ func (c *Client) addOperationListBucketInventoryConfigurationsMiddlewares(stack 
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addListBucketInventoryConfigurationsUpdateEndpoint(stack, options); err != nil {

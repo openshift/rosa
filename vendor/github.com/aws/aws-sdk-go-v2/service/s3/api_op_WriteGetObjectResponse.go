@@ -18,9 +18,10 @@ import (
 	"time"
 )
 
-// Passes transformed objects to a GetObject operation when using Object Lambda
-// access points. For information about Object Lambda access points, see
-// Transforming objects with Object Lambda access points (https://docs.aws.amazon.com/AmazonS3/latest/userguide/transforming-objects.html)
+// This operation is not supported by directory buckets. Passes transformed
+// objects to a GetObject operation when using Object Lambda access points. For
+// information about Object Lambda access points, see Transforming objects with
+// Object Lambda access points (https://docs.aws.amazon.com/AmazonS3/latest/userguide/transforming-objects.html)
 // in the Amazon S3 User Guide. This operation supports metadata that can be
 // returned by GetObject (https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html)
 // , in addition to RequestRoute , RequestToken , StatusCode , ErrorCode , and
@@ -220,7 +221,7 @@ type WriteGetObjectResponseInput struct {
 	ReplicationStatus types.ReplicationStatus
 
 	// If present, indicates that the requester was successfully charged for the
-	// request.
+	// request. This functionality is not supported for directory buckets.
 	RequestCharged types.RequestCharged
 
 	// Provides information about object restoration operation and expiration time of
@@ -313,28 +314,28 @@ func (c *Client) addOperationWriteGetObjectResponseMiddlewares(stack *middleware
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddUnsignedPayloadMiddleware(stack); err != nil {
+	if err = addUnsignedPayload(stack); err != nil {
 		return err
 	}
-	if err = v4.AddContentSHA256HeaderMiddleware(stack); err != nil {
+	if err = addContentSHA256Header(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -349,6 +350,9 @@ func (c *Client) addOperationWriteGetObjectResponseMiddlewares(stack *middleware
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addEndpointPrefix_opWriteGetObjectResponseMiddleware(stack); err != nil {
 		return err
 	}
@@ -361,7 +365,7 @@ func (c *Client) addOperationWriteGetObjectResponseMiddlewares(stack *middleware
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addWriteGetObjectResponseUpdateEndpoint(stack, options); err != nil {

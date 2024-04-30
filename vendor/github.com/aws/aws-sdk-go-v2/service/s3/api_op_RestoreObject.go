@@ -14,10 +14,9 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Restores an archived copy of an object back into Amazon S3 This action is not
-// supported by Amazon S3 on Outposts. This action performs the following types of
-// requests:
-//   - select - Perform a select query on an archived object
+// This operation is not supported by directory buckets. Restores an archived copy
+// of an object back into Amazon S3 This functionality is not supported for Amazon
+// S3 on Outposts. This action performs the following types of requests:
 //   - restore an archive - Restore an archived object
 //
 // For more information about the S3 structure in the request body, see the
@@ -27,36 +26,6 @@ import (
 //     in the Amazon S3 User Guide
 //   - Protecting Data Using Server-Side Encryption (https://docs.aws.amazon.com/AmazonS3/latest/dev/serv-side-encryption.html)
 //     in the Amazon S3 User Guide
-//
-// Define the SQL expression for the SELECT type of restoration for your query in
-// the request body's SelectParameters structure. You can use expressions like the
-// following examples.
-//   - The following expression returns all records from the specified object.
-//     SELECT * FROM Object
-//   - Assuming that you are not using any headers for data stored in the object,
-//     you can specify columns with positional headers. SELECT s._1, s._2 FROM
-//     Object s WHERE s._3 > 100
-//   - If you have headers and you set the fileHeaderInfo in the CSV structure in
-//     the request body to USE , you can specify headers in the query. (If you set
-//     the fileHeaderInfo field to IGNORE , the first row is skipped for the query.)
-//     You cannot mix ordinal positions with header column names. SELECT s.Id,
-//     s.FirstName, s.SSN FROM S3Object s
-//
-// When making a select request, you can also do the following:
-//   - To expedite your queries, specify the Expedited tier. For more information
-//     about tiers, see "Restoring Archives," later in this topic.
-//   - Specify details about the data serialization format of both the input
-//     object that is being queried and the serialization of the CSV-encoded query
-//     results.
-//
-// The following are additional important facts about the select feature:
-//   - The output results are new Amazon S3 objects. Unlike archive retrievals,
-//     they are stored until explicitly deleted-manually or through a lifecycle
-//     configuration.
-//   - You can issue more than one select request on the same Amazon S3 object.
-//     Amazon S3 doesn't duplicate requests, so avoid issuing duplicate requests.
-//   - Amazon S3 accepts a select request even if the object has already been
-//     restored. A select request doesn’t return error response 409 .
 //
 // Permissions To use this operation, you must have permissions to perform the
 // s3:RestoreObject action. The bucket owner has this permission by default and can
@@ -141,8 +110,7 @@ import (
 //
 //   - Code: RestoreAlreadyInProgress
 //
-//   - Cause: Object restore is already in progress. (This error does not apply to
-//     SELECT type requests.)
+//   - Cause: Object restore is already in progress.
 //
 //   - HTTP Status Code: 409 Conflict
 //
@@ -179,16 +147,18 @@ func (c *Client) RestoreObject(ctx context.Context, params *RestoreObjectInput, 
 
 type RestoreObjectInput struct {
 
-	// The bucket name containing the object to restore. When using this action with
-	// an access point, you must direct requests to the access point hostname. The
+	// The bucket name containing the object to restore. Access points - When you use
+	// this action with an access point, you must provide the alias of the access point
+	// in place of the bucket name or specify the access point ARN. When using the
+	// access point ARN, you must direct requests to the access point hostname. The
 	// access point hostname takes the form
 	// AccessPointName-AccountId.s3-accesspoint.Region.amazonaws.com. When using this
 	// action with an access point through the Amazon Web Services SDKs, you provide
 	// the access point ARN in place of the bucket name. For more information about
 	// access point ARNs, see Using access points (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-access-points.html)
-	// in the Amazon S3 User Guide. When you use this action with Amazon S3 on
-	// Outposts, you must direct requests to the S3 on Outposts hostname. The S3 on
-	// Outposts hostname takes the form
+	// in the Amazon S3 User Guide. S3 on Outposts - When you use this action with
+	// Amazon S3 on Outposts, you must direct requests to the S3 on Outposts hostname.
+	// The S3 on Outposts hostname takes the form
 	// AccessPointName-AccountId.outpostID.s3-outposts.Region.amazonaws.com . When you
 	// use this action with S3 on Outposts through the Amazon Web Services SDKs, you
 	// provide the Outposts access point ARN in place of the bucket name. For more
@@ -203,28 +173,29 @@ type RestoreObjectInput struct {
 	// This member is required.
 	Key *string
 
-	// Indicates the algorithm used to create the checksum for the object when using
-	// the SDK. This header will not provide any additional functionality if not using
-	// the SDK. When sending this header, there must be a corresponding x-amz-checksum
-	// or x-amz-trailer header sent. Otherwise, Amazon S3 fails the request with the
-	// HTTP status code 400 Bad Request . For more information, see Checking object
-	// integrity (https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity.html)
+	// Indicates the algorithm used to create the checksum for the object when you use
+	// the SDK. This header will not provide any additional functionality if you don't
+	// use the SDK. When you send this header, there must be a corresponding
+	// x-amz-checksum or x-amz-trailer header sent. Otherwise, Amazon S3 fails the
+	// request with the HTTP status code 400 Bad Request . For more information, see
+	// Checking object integrity (https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity.html)
 	// in the Amazon S3 User Guide. If you provide an individual checksum, Amazon S3
 	// ignores any provided ChecksumAlgorithm parameter.
 	ChecksumAlgorithm types.ChecksumAlgorithm
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	// Confirms that the requester knows that they will be charged for the request.
 	// Bucket owners need not specify this parameter in their requests. If either the
-	// source or destination Amazon S3 bucket has Requester Pays enabled, the requester
-	// will pay for corresponding charges to copy the object. For information about
+	// source or destination S3 bucket has Requester Pays enabled, the requester will
+	// pay for corresponding charges to copy the object. For information about
 	// downloading objects from Requester Pays buckets, see Downloading Objects in
 	// Requester Pays Buckets (https://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectsinRequesterPaysBuckets.html)
-	// in the Amazon S3 User Guide.
+	// in the Amazon S3 User Guide. This functionality is not supported for directory
+	// buckets.
 	RequestPayer types.RequestPayer
 
 	// Container for restore job parameters.
@@ -244,7 +215,7 @@ func (in *RestoreObjectInput) bindEndpointParams(p *EndpointParameters) {
 type RestoreObjectOutput struct {
 
 	// If present, indicates that the requester was successfully charged for the
-	// request.
+	// request. This functionality is not supported for directory buckets.
 	RequestCharged types.RequestCharged
 
 	// Indicates the path in the provided S3 output location where Select results will
@@ -279,25 +250,25 @@ func (c *Client) addOperationRestoreObjectMiddlewares(stack *middleware.Stack, o
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -312,6 +283,9 @@ func (c *Client) addOperationRestoreObjectMiddlewares(stack *middleware.Stack, o
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpRestoreObjectValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -321,7 +295,7 @@ func (c *Client) addOperationRestoreObjectMiddlewares(stack *middleware.Stack, o
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRestoreObjectInputChecksumMiddlewares(stack, options); err != nil {

@@ -216,6 +216,13 @@ func resolveBaseEndpoint(cfg aws.Config, o *Options) {
 	}
 }
 
+func bindRegion(region string) *string {
+	if region == "" {
+		return nil
+	}
+	return aws.String(endpoints.MapFIPSRegion(region))
+}
+
 // EndpointParameters provides the parameters that influence how endpoints are
 // resolved.
 type EndpointParameters struct {
@@ -342,6 +349,44 @@ func (r *resolver) ResolveEndpoint(
 				if _UseDualStack == true {
 					if true == _PartitionResult.SupportsFIPS {
 						if true == _PartitionResult.SupportsDualStack {
+							if "aws" == _PartitionResult.Name {
+								uriString := func() string {
+									var out strings.Builder
+									out.WriteString("https://secretsmanager-fips.")
+									out.WriteString(_Region)
+									out.WriteString(".amazonaws.com")
+									return out.String()
+								}()
+
+								uri, err := url.Parse(uriString)
+								if err != nil {
+									return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+								}
+
+								return smithyendpoints.Endpoint{
+									URI:     *uri,
+									Headers: http.Header{},
+								}, nil
+							}
+							if "aws-us-gov" == _PartitionResult.Name {
+								uriString := func() string {
+									var out strings.Builder
+									out.WriteString("https://secretsmanager-fips.")
+									out.WriteString(_Region)
+									out.WriteString(".amazonaws.com")
+									return out.String()
+								}()
+
+								uri, err := url.Parse(uriString)
+								if err != nil {
+									return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+								}
+
+								return smithyendpoints.Endpoint{
+									URI:     *uri,
+									Headers: http.Header{},
+								}, nil
+							}
 							uriString := func() string {
 								var out strings.Builder
 								out.WriteString("https://secretsmanager-fips.")
@@ -390,6 +435,63 @@ func (r *resolver) ResolveEndpoint(
 			}
 			if _UseDualStack == true {
 				if true == _PartitionResult.SupportsDualStack {
+					if "aws" == _PartitionResult.Name {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://secretsmanager.")
+							out.WriteString(_Region)
+							out.WriteString(".amazonaws.com")
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+					if "aws-cn" == _PartitionResult.Name {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://secretsmanager.")
+							out.WriteString(_Region)
+							out.WriteString(".amazonaws.com.cn")
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+					if "aws-us-gov" == _PartitionResult.Name {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://secretsmanager.")
+							out.WriteString(_Region)
+							out.WriteString(".amazonaws.com")
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
 					uriString := func() string {
 						var out strings.Builder
 						out.WriteString("https://secretsmanager.")
@@ -442,7 +544,7 @@ type endpointParamsBinder interface {
 func bindEndpointParams(input interface{}, options Options) *EndpointParameters {
 	params := &EndpointParameters{}
 
-	params.Region = aws.String(endpoints.MapFIPSRegion(options.Region))
+	params.Region = bindRegion(options.Region)
 	params.UseDualStack = aws.Bool(options.EndpointOptions.UseDualStackEndpoint == aws.DualStackEndpointStateEnabled)
 	params.UseFIPS = aws.Bool(options.EndpointOptions.UseFIPSEndpoint == aws.FIPSEndpointStateEnabled)
 	params.Endpoint = options.BaseEndpoint

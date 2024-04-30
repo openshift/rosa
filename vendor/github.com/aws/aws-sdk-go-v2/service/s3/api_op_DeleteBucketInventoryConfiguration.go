@@ -9,15 +9,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/smithy-go/middleware"
+	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes an inventory configuration (identified by the inventory ID) from the
-// bucket. To use this operation, you must have permissions to perform the
-// s3:PutInventoryConfiguration action. The bucket owner has this permission by
-// default. The bucket owner can grant this permission to others. For more
-// information about permissions, see Permissions Related to Bucket Subresource
-// Operations (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-actions.html#using-with-s3-actions-related-to-bucket-subresources)
+// This operation is not supported by directory buckets. Deletes an inventory
+// configuration (identified by the inventory ID) from the bucket. To use this
+// operation, you must have permissions to perform the s3:PutInventoryConfiguration
+// action. The bucket owner has this permission by default. The bucket owner can
+// grant this permission to others. For more information about permissions, see
+// Permissions Related to Bucket Subresource Operations (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-actions.html#using-with-s3-actions-related-to-bucket-subresources)
 // and Managing Access Permissions to Your Amazon S3 Resources (https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-access-control.html)
 // . For information about the Amazon S3 inventory feature, see Amazon S3 Inventory (https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-inventory.html)
 // . Operations related to DeleteBucketInventoryConfiguration include:
@@ -51,9 +52,9 @@ type DeleteBucketInventoryConfigurationInput struct {
 	// This member is required.
 	Id *string
 
-	// The account ID of the expected bucket owner. If the bucket is owned by a
-	// different account, the request fails with the HTTP status code 403 Forbidden
-	// (access denied).
+	// The account ID of the expected bucket owner. If the account ID that you provide
+	// does not match the actual owner of the bucket, the request fails with the HTTP
+	// status code 403 Forbidden (access denied).
 	ExpectedBucketOwner *string
 
 	noSmithyDocumentSerde
@@ -61,7 +62,7 @@ type DeleteBucketInventoryConfigurationInput struct {
 
 func (in *DeleteBucketInventoryConfigurationInput) bindEndpointParams(p *EndpointParameters) {
 	p.Bucket = in.Bucket
-
+	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
 
 type DeleteBucketInventoryConfigurationOutput struct {
@@ -93,25 +94,25 @@ func (c *Client) addOperationDeleteBucketInventoryConfigurationMiddlewares(stack
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -126,6 +127,9 @@ func (c *Client) addOperationDeleteBucketInventoryConfigurationMiddlewares(stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
 	if err = addOpDeleteBucketInventoryConfigurationValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -135,7 +139,7 @@ func (c *Client) addOperationDeleteBucketInventoryConfigurationMiddlewares(stack
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addDeleteBucketInventoryConfigurationUpdateEndpoint(stack, options); err != nil {

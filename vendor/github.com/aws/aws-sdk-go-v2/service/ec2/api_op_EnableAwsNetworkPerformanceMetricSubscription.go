@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -30,8 +29,9 @@ func (c *Client) EnableAwsNetworkPerformanceMetricSubscription(ctx context.Conte
 
 type EnableAwsNetworkPerformanceMetricSubscriptionInput struct {
 
-	// The target Region or Availability Zone that the metric subscription is enabled
-	// for. For example, eu-west-1 .
+	// The target Region (like us-east-2 ) or Availability Zone ID (like use2-az2 )
+	// that the metric subscription is enabled for. If you use Availability Zone IDs,
+	// the Source and Destination Availability Zones must be in the same Region.
 	Destination *string
 
 	// Checks whether you have the required permissions for the action, without
@@ -43,8 +43,9 @@ type EnableAwsNetworkPerformanceMetricSubscriptionInput struct {
 	// The metric used for the enabled subscription.
 	Metric types.MetricType
 
-	// The source Region or Availability Zone that the metric subscription is enabled
-	// for. For example, us-east-1 .
+	// The source Region (like us-east-1 ) or Availability Zone ID (like use1-az1 )
+	// that the metric subscription is enabled for. If you use Availability Zone IDs,
+	// the Source and Destination Availability Zones must be in the same Region.
 	Source *string
 
 	// The statistic used for the enabled subscription.
@@ -86,25 +87,25 @@ func (c *Client) addOperationEnableAwsNetworkPerformanceMetricSubscriptionMiddle
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -122,7 +123,7 @@ func (c *Client) addOperationEnableAwsNetworkPerformanceMetricSubscriptionMiddle
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opEnableAwsNetworkPerformanceMetricSubscription(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

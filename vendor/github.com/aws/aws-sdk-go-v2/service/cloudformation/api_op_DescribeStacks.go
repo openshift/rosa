@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
@@ -19,8 +18,11 @@ import (
 )
 
 // Returns the description for the specified stack; if no stack name was
-// specified, then it returns the description for all the stacks created. If the
-// stack doesn't exist, a ValidationError is returned.
+// specified, then it returns the description for all the stacks created. For more
+// information about a stack's event history, see CloudFormation stack creation
+// events (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stack-resource-configuration-complete.html)
+// in the CloudFormation User Guide. If the stack doesn't exist, a ValidationError
+// is returned.
 func (c *Client) DescribeStacks(ctx context.Context, params *DescribeStacksInput, optFns ...func(*Options)) (*DescribeStacksOutput, error) {
 	if params == nil {
 		params = &DescribeStacksInput{}
@@ -99,25 +101,25 @@ func (c *Client) addOperationDescribeStacksMiddlewares(stack *middleware.Stack, 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -135,7 +137,7 @@ func (c *Client) addOperationDescribeStacksMiddlewares(stack *middleware.Stack, 
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeStacks(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -238,7 +240,16 @@ type StackCreateCompleteWaiterOptions struct {
 	// Set of options to modify how an operation is invoked. These apply to all
 	// operations invoked for this client. Use functional options on operation call to
 	// modify this list for per operation behavior.
+	//
+	// Passing options here is functionally equivalent to passing values to this
+	// config's ClientOptions field that extend the inner client's APIOptions directly.
 	APIOptions []func(*middleware.Stack) error
+
+	// Functional options to be passed to all operations invoked by this client.
+	//
+	// Function values that modify the inner APIOptions are applied after the waiter
+	// config's own APIOptions modifiers.
+	ClientOptions []func(*Options)
 
 	// MinDelay is the minimum amount of time to delay between retries. If unset,
 	// StackCreateCompleteWaiter will use default minimum delay of 30 seconds. Note
@@ -339,6 +350,9 @@ func (w *StackCreateCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range options.ClientOptions {
+				opt(o)
+			}
 		})
 
 		retryable, err := options.Retryable(ctx, params, out, err)
@@ -380,6 +394,262 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 		}
 
 		expectedValue := "CREATE_COMPLETE"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_COMPLETE"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_IN_PROGRESS"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_FAILED"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_ROLLBACK_IN_PROGRESS"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_ROLLBACK_FAILED"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS"
+		var match = true
+		listOfValues, ok := pathValue.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		}
+
+		if len(listOfValues) == 0 {
+			match = false
+		}
+		for _, v := range listOfValues {
+			value, ok := v.(types.StackStatus)
+			if !ok {
+				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
+			}
+
+			if string(value) != expectedValue {
+				match = false
+			}
+		}
+
+		if match {
+			return false, nil
+		}
+	}
+
+	if err == nil {
+		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		}
+
+		expectedValue := "UPDATE_ROLLBACK_COMPLETE"
 		var match = true
 		listOfValues, ok := pathValue.([]interface{})
 		if !ok {
@@ -547,7 +817,16 @@ type StackDeleteCompleteWaiterOptions struct {
 	// Set of options to modify how an operation is invoked. These apply to all
 	// operations invoked for this client. Use functional options on operation call to
 	// modify this list for per operation behavior.
+	//
+	// Passing options here is functionally equivalent to passing values to this
+	// config's ClientOptions field that extend the inner client's APIOptions directly.
 	APIOptions []func(*middleware.Stack) error
+
+	// Functional options to be passed to all operations invoked by this client.
+	//
+	// Function values that modify the inner APIOptions are applied after the waiter
+	// config's own APIOptions modifiers.
+	ClientOptions []func(*Options)
 
 	// MinDelay is the minimum amount of time to delay between retries. If unset,
 	// StackDeleteCompleteWaiter will use default minimum delay of 30 seconds. Note
@@ -648,6 +927,9 @@ func (w *StackDeleteCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range options.ClientOptions {
+				opt(o)
+			}
 		})
 
 		retryable, err := options.Retryable(ctx, params, out, err)
@@ -903,7 +1185,16 @@ type StackExistsWaiterOptions struct {
 	// Set of options to modify how an operation is invoked. These apply to all
 	// operations invoked for this client. Use functional options on operation call to
 	// modify this list for per operation behavior.
+	//
+	// Passing options here is functionally equivalent to passing values to this
+	// config's ClientOptions field that extend the inner client's APIOptions directly.
 	APIOptions []func(*middleware.Stack) error
+
+	// Functional options to be passed to all operations invoked by this client.
+	//
+	// Function values that modify the inner APIOptions are applied after the waiter
+	// config's own APIOptions modifiers.
+	ClientOptions []func(*Options)
 
 	// MinDelay is the minimum amount of time to delay between retries. If unset,
 	// StackExistsWaiter will use default minimum delay of 5 seconds. Note that
@@ -1002,6 +1293,9 @@ func (w *StackExistsWaiter) WaitForOutput(ctx context.Context, params *DescribeS
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range options.ClientOptions {
+				opt(o)
+			}
 		})
 
 		retryable, err := options.Retryable(ctx, params, out, err)
@@ -1062,7 +1356,16 @@ type StackImportCompleteWaiterOptions struct {
 	// Set of options to modify how an operation is invoked. These apply to all
 	// operations invoked for this client. Use functional options on operation call to
 	// modify this list for per operation behavior.
+	//
+	// Passing options here is functionally equivalent to passing values to this
+	// config's ClientOptions field that extend the inner client's APIOptions directly.
 	APIOptions []func(*middleware.Stack) error
+
+	// Functional options to be passed to all operations invoked by this client.
+	//
+	// Function values that modify the inner APIOptions are applied after the waiter
+	// config's own APIOptions modifiers.
+	ClientOptions []func(*Options)
 
 	// MinDelay is the minimum amount of time to delay between retries. If unset,
 	// StackImportCompleteWaiter will use default minimum delay of 30 seconds. Note
@@ -1163,6 +1466,9 @@ func (w *StackImportCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range options.ClientOptions {
+				opt(o)
+			}
 		})
 
 		retryable, err := options.Retryable(ctx, params, out, err)
@@ -1371,7 +1677,16 @@ type StackRollbackCompleteWaiterOptions struct {
 	// Set of options to modify how an operation is invoked. These apply to all
 	// operations invoked for this client. Use functional options on operation call to
 	// modify this list for per operation behavior.
+	//
+	// Passing options here is functionally equivalent to passing values to this
+	// config's ClientOptions field that extend the inner client's APIOptions directly.
 	APIOptions []func(*middleware.Stack) error
+
+	// Functional options to be passed to all operations invoked by this client.
+	//
+	// Function values that modify the inner APIOptions are applied after the waiter
+	// config's own APIOptions modifiers.
+	ClientOptions []func(*Options)
 
 	// MinDelay is the minimum amount of time to delay between retries. If unset,
 	// StackRollbackCompleteWaiter will use default minimum delay of 30 seconds. Note
@@ -1472,6 +1787,9 @@ func (w *StackRollbackCompleteWaiter) WaitForOutput(ctx context.Context, params 
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range options.ClientOptions {
+				opt(o)
+			}
 		})
 
 		retryable, err := options.Retryable(ctx, params, out, err)
@@ -1632,7 +1950,16 @@ type StackUpdateCompleteWaiterOptions struct {
 	// Set of options to modify how an operation is invoked. These apply to all
 	// operations invoked for this client. Use functional options on operation call to
 	// modify this list for per operation behavior.
+	//
+	// Passing options here is functionally equivalent to passing values to this
+	// config's ClientOptions field that extend the inner client's APIOptions directly.
 	APIOptions []func(*middleware.Stack) error
+
+	// Functional options to be passed to all operations invoked by this client.
+	//
+	// Function values that modify the inner APIOptions are applied after the waiter
+	// config's own APIOptions modifiers.
+	ClientOptions []func(*Options)
 
 	// MinDelay is the minimum amount of time to delay between retries. If unset,
 	// StackUpdateCompleteWaiter will use default minimum delay of 30 seconds. Note
@@ -1733,6 +2060,9 @@ func (w *StackUpdateCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range options.ClientOptions {
+				opt(o)
+			}
 		})
 
 		retryable, err := options.Retryable(ctx, params, out, err)

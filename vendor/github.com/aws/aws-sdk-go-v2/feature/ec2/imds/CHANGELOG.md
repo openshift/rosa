@@ -1,3 +1,57 @@
+# v1.16.1 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.16.0 (2024-03-21)
+
+* **Feature**: Add config switch `DisableDefaultTimeout` that allows you to disable the default operation timeout (5 seconds) for IMDS calls.
+
+# v1.15.4 (2024-03-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.3 (2024-03-07)
+
+* **Bug Fix**: Remove dependency on go-cmp.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.2 (2024-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.1 (2024-02-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.15.0 (2024-02-13)
+
+* **Feature**: Bump minimum Go version to 1.20 per our language support policy.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.11 (2024-01-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.10 (2023-12-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.9 (2023-12-01)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.8 (2023-11-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.7 (2023-11-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.14.6 (2023-11-28.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.14.5 (2023-11-20)
 
 * **Dependency Update**: Updated to the latest SDK module versions

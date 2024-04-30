@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -30,11 +29,12 @@ import (
 //     CloudTrail with Organizations, see Logging and monitoring in Organizations (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_security_incident-response.html#orgs_cloudtrail-integration)
 //     in the Organizations User Guide.
 //
-//   - You can close only 10% of member accounts, between 10 and 200, within a
+//   - You can close only 10% of member accounts, between 10 and 1000, within a
 //     rolling 30 day period. This quota is not bound by a calendar month, but starts
 //     when you close an account. After you reach this limit, you can close additional
 //     accounts. For more information, see Closing a member account in your
 //     organization (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_close.html)
+//     and Quotas for Organizations (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html)
 //     in the Organizations User Guide.
 //
 //   - To reinstate a closed account, contact Amazon Web Services Support within
@@ -100,25 +100,25 @@ func (c *Client) addOperationCloseAccountMiddlewares(stack *middleware.Stack, op
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -139,7 +139,7 @@ func (c *Client) addOperationCloseAccountMiddlewares(stack *middleware.Stack, op
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCloseAccount(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

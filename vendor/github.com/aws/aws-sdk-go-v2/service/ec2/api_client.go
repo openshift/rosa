@@ -64,7 +64,11 @@ func New(options Options, optFns ...func(*Options)) *Client {
 		fn(&options)
 	}
 
+	finalizeRetryMaxAttempts(&options)
+
 	ignoreAnonymousAuth(&options)
+
+	wrapWithAnonymousAuth(&options)
 
 	resolveAuthSchemes(&options)
 
@@ -73,6 +77,15 @@ func New(options Options, optFns ...func(*Options)) *Client {
 	}
 
 	return client
+}
+
+// Options returns a copy of the client configuration.
+//
+// Callers SHOULD NOT perform mutations on any inner structures within client
+// config. Config overrides should instead be made on a per-operation basis through
+// functional options.
+func (c *Client) Options() Options {
+	return c.options.Copy()
 }
 
 func (c *Client) invokeOperation(ctx context.Context, opID string, params interface{}, optFns []func(*Options), stackFns ...func(*middleware.Stack, Options) error) (result interface{}, metadata middleware.Metadata, err error) {
@@ -84,7 +97,7 @@ func (c *Client) invokeOperation(ctx context.Context, opID string, params interf
 		fn(&options)
 	}
 
-	finalizeRetryMaxAttemptOptions(&options, *c)
+	finalizeOperationRetryMaxAttempts(&options, *c)
 
 	finalizeClientEndpointResolverOptions(&options)
 
@@ -138,7 +151,7 @@ func (m *setOperationInputMiddleware) HandleSerialize(ctx context.Context, in mi
 
 func addProtocolFinalizerMiddlewares(stack *middleware.Stack, options Options, operation string) error {
 	if err := stack.Finalize.Add(&resolveAuthSchemeMiddleware{operation: operation, options: options}, middleware.Before); err != nil {
-		return fmt.Errorf("add ResolveAuthScheme: %v", err)
+		return fmt.Errorf("add ResolveAuthScheme: %w", err)
 	}
 	if err := stack.Finalize.Insert(&getIdentityMiddleware{options: options}, "ResolveAuthScheme", middleware.After); err != nil {
 		return fmt.Errorf("add GetIdentity: %v", err)
@@ -147,7 +160,7 @@ func addProtocolFinalizerMiddlewares(stack *middleware.Stack, options Options, o
 		return fmt.Errorf("add ResolveEndpointV2: %v", err)
 	}
 	if err := stack.Finalize.Insert(&signRequestMiddleware{}, "ResolveEndpointV2", middleware.After); err != nil {
-		return fmt.Errorf("add Signing: %v", err)
+		return fmt.Errorf("add Signing: %w", err)
 	}
 	return nil
 }
@@ -332,7 +345,15 @@ func resolveAWSRetryMaxAttempts(cfg aws.Config, o *Options) {
 	o.RetryMaxAttempts = cfg.RetryMaxAttempts
 }
 
-func finalizeRetryMaxAttemptOptions(o *Options, client Client) {
+func finalizeRetryMaxAttempts(o *Options) {
+	if o.RetryMaxAttempts == 0 {
+		return
+	}
+
+	o.Retryer = retry.AddWithMaxAttempts(o.Retryer, o.RetryMaxAttempts)
+}
+
+func finalizeOperationRetryMaxAttempts(o *Options, client Client) {
 	if v := o.RetryMaxAttempts; v == 0 || v == client.options.RetryMaxAttempts {
 		return
 	}
@@ -348,15 +369,35 @@ func resolveAWSEndpointResolver(cfg aws.Config, o *Options) {
 }
 
 func addClientUserAgent(stack *middleware.Stack, options Options) error {
-	if err := awsmiddleware.AddSDKAgentKeyValue(awsmiddleware.APIMetadata, "ec2", goModuleVersion)(stack); err != nil {
+	ua, err := getOrAddRequestUserAgent(stack)
+	if err != nil {
 		return err
 	}
 
+	ua.AddSDKAgentKeyValue(awsmiddleware.APIMetadata, "ec2", goModuleVersion)
 	if len(options.AppID) > 0 {
-		return awsmiddleware.AddSDKAgentKey(awsmiddleware.ApplicationIdentifier, options.AppID)(stack)
+		ua.AddSDKAgentKey(awsmiddleware.ApplicationIdentifier, options.AppID)
 	}
 
 	return nil
+}
+
+func getOrAddRequestUserAgent(stack *middleware.Stack) (*awsmiddleware.RequestUserAgent, error) {
+	id := (*awsmiddleware.RequestUserAgent)(nil).ID()
+	mw, ok := stack.Build.Get(id)
+	if !ok {
+		mw = awsmiddleware.NewRequestUserAgent()
+		if err := stack.Build.Add(mw, middleware.After); err != nil {
+			return nil, err
+		}
+	}
+
+	ua, ok := mw.(*awsmiddleware.RequestUserAgent)
+	if !ok {
+		return nil, fmt.Errorf("%T for %s middleware did not match expected type", mw, id)
+	}
+
+	return ua, nil
 }
 
 type HTTPSignerV4 interface {
@@ -377,6 +418,37 @@ func newDefaultV4Signer(o Options) *v4.Signer {
 	})
 }
 
+func addClientRequestID(stack *middleware.Stack) error {
+	return stack.Build.Add(&awsmiddleware.ClientRequestID{}, middleware.After)
+}
+
+func addComputeContentLength(stack *middleware.Stack) error {
+	return stack.Build.Add(&smithyhttp.ComputeContentLength{}, middleware.After)
+}
+
+func addRawResponseToMetadata(stack *middleware.Stack) error {
+	return stack.Deserialize.Add(&awsmiddleware.AddRawResponse{}, middleware.Before)
+}
+
+func addRecordResponseTiming(stack *middleware.Stack) error {
+	return stack.Deserialize.Add(&awsmiddleware.RecordResponseTiming{}, middleware.After)
+}
+func addStreamingEventsPayload(stack *middleware.Stack) error {
+	return stack.Finalize.Add(&v4.StreamingEventsPayload{}, middleware.Before)
+}
+
+func addUnsignedPayload(stack *middleware.Stack) error {
+	return stack.Finalize.Insert(&v4.UnsignedPayload{}, "ResolveEndpointV2", middleware.After)
+}
+
+func addComputePayloadSHA256(stack *middleware.Stack) error {
+	return stack.Finalize.Insert(&v4.ComputePayloadSHA256{}, "ResolveEndpointV2", middleware.After)
+}
+
+func addContentSHA256Header(stack *middleware.Stack) error {
+	return stack.Finalize.Insert(&v4.ContentSHA256Header{}, (*v4.ComputePayloadSHA256)(nil).ID(), middleware.After)
+}
+
 func resolveIdempotencyTokenProvider(o *Options) {
 	if o.IdempotencyTokenProvider != nil {
 		return
@@ -384,12 +456,17 @@ func resolveIdempotencyTokenProvider(o *Options) {
 	o.IdempotencyTokenProvider = smithyrand.NewUUIDIdempotencyToken(cryptorand.Reader)
 }
 
-func addRetryMiddlewares(stack *middleware.Stack, o Options) error {
-	mo := retry.AddRetryMiddlewaresOptions{
-		Retryer:          o.Retryer,
-		LogRetryAttempts: o.ClientLogMode.IsRetries(),
+func addRetry(stack *middleware.Stack, o Options) error {
+	attempt := retry.NewAttemptMiddleware(o.Retryer, smithyhttp.RequestCloner, func(m *retry.Attempt) {
+		m.LogAttempts = o.ClientLogMode.IsRetries()
+	})
+	if err := stack.Finalize.Insert(attempt, "Signing", middleware.Before); err != nil {
+		return err
 	}
-	return retry.AddRetryMiddlewares(stack, mo)
+	if err := stack.Finalize.Insert(&retry.MetricsHeader{}, attempt.ID(), middleware.After); err != nil {
+		return err
+	}
+	return nil
 }
 
 // resolves dual-stack endpoint configuration
@@ -427,12 +504,18 @@ type IdempotencyTokenProvider interface {
 	GetIdempotencyToken() (string, error)
 }
 
+func addRecursionDetection(stack *middleware.Stack) error {
+	return stack.Build.Add(&awsmiddleware.RecursionDetection{}, middleware.After)
+}
+
 func addRequestIDRetrieverMiddleware(stack *middleware.Stack) error {
-	return awsmiddleware.AddRequestIDRetrieverMiddleware(stack)
+	return stack.Deserialize.Insert(&awsmiddleware.RequestIDRetriever{}, "OperationDeserializer", middleware.Before)
+
 }
 
 func addResponseErrorMiddleware(stack *middleware.Stack) error {
-	return awshttp.AddResponseErrorMiddleware(stack)
+	return stack.Deserialize.Insert(&awshttp.ResponseErrorWrapper{}, "RequestIDRetriever", middleware.Before)
+
 }
 
 // HTTPPresignerV4 represents presigner interface used by presign url client
@@ -522,7 +605,7 @@ func (m *presignContextPolyfillMiddleware) HandleFinalize(ctx context.Context, i
 
 	schemeID := rscheme.Scheme.SchemeID()
 
-	if schemeID == "aws.auth#sigv4" {
+	if schemeID == "aws.auth#sigv4" || schemeID == "com.amazonaws.s3#sigv4express" {
 		if sn, ok := smithyhttp.GetSigV4SigningName(&rscheme.SignerProperties); ok {
 			ctx = awsmiddleware.SetSigningName(ctx, sn)
 		}
@@ -547,6 +630,12 @@ func (c presignConverter) convertToPresignMiddleware(stack *middleware.Stack, op
 	if _, ok := stack.Finalize.Get((*acceptencodingcust.DisableGzip)(nil).ID()); ok {
 		stack.Finalize.Remove((*acceptencodingcust.DisableGzip)(nil).ID())
 	}
+	if _, ok := stack.Finalize.Get((*retry.Attempt)(nil).ID()); ok {
+		stack.Finalize.Remove((*retry.Attempt)(nil).ID())
+	}
+	if _, ok := stack.Finalize.Get((*retry.MetricsHeader)(nil).ID()); ok {
+		stack.Finalize.Remove((*retry.MetricsHeader)(nil).ID())
+	}
 	stack.Deserialize.Clear()
 	stack.Build.Remove((*awsmiddleware.ClientRequestID)(nil).ID())
 	stack.Build.Remove("UserAgent")
@@ -570,7 +659,7 @@ func (c presignConverter) convertToPresignMiddleware(stack *middleware.Stack, op
 	if err != nil {
 		return err
 	}
-	err = presignedurlcust.AddAsIsPresigingMiddleware(stack)
+	err = presignedurlcust.AddAsIsPresigningMiddleware(stack)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ const (
 	AcceleratorManufacturerAmd               AcceleratorManufacturer = "amd"
 	AcceleratorManufacturerNvidia            AcceleratorManufacturer = "nvidia"
 	AcceleratorManufacturerXilinx            AcceleratorManufacturer = "xilinx"
+	AcceleratorManufacturerHabana            AcceleratorManufacturer = "habana"
 )
 
 // Values returns all known values for AcceleratorManufacturer. Note that this can
@@ -21,6 +22,7 @@ func (AcceleratorManufacturer) Values() []AcceleratorManufacturer {
 		"amd",
 		"nvidia",
 		"xilinx",
+		"habana",
 	}
 }
 
@@ -37,6 +39,9 @@ const (
 	AcceleratorNameT4            AcceleratorName = "t4"
 	AcceleratorNameVu9p          AcceleratorName = "vu9p"
 	AcceleratorNameV100          AcceleratorName = "v100"
+	AcceleratorNameA10g          AcceleratorName = "a10g"
+	AcceleratorNameH100          AcceleratorName = "h100"
+	AcceleratorNameT4g           AcceleratorName = "t4g"
 )
 
 // Values returns all known values for AcceleratorName. Note that this can be
@@ -53,6 +58,9 @@ func (AcceleratorName) Values() []AcceleratorName {
 		"t4",
 		"vu9p",
 		"v100",
+		"a10g",
+		"h100",
+		"t4g",
 	}
 }
 
@@ -574,6 +582,7 @@ const (
 	AvailabilityZoneStateInformation AvailabilityZoneState = "information"
 	AvailabilityZoneStateImpaired    AvailabilityZoneState = "impaired"
 	AvailabilityZoneStateUnavailable AvailabilityZoneState = "unavailable"
+	AvailabilityZoneStateConstrained AvailabilityZoneState = "constrained"
 )
 
 // Values returns all known values for AvailabilityZoneState. Note that this can
@@ -585,6 +594,7 @@ func (AvailabilityZoneState) Values() []AvailabilityZoneState {
 		"information",
 		"impaired",
 		"unavailable",
+		"constrained",
 	}
 }
 
@@ -1313,6 +1323,48 @@ func (DatafeedSubscriptionState) Values() []DatafeedSubscriptionState {
 	return []DatafeedSubscriptionState{
 		"Active",
 		"Inactive",
+	}
+}
+
+type DefaultInstanceMetadataEndpointState string
+
+// Enum values for DefaultInstanceMetadataEndpointState
+const (
+	DefaultInstanceMetadataEndpointStateDisabled     DefaultInstanceMetadataEndpointState = "disabled"
+	DefaultInstanceMetadataEndpointStateEnabled      DefaultInstanceMetadataEndpointState = "enabled"
+	DefaultInstanceMetadataEndpointStateNoPreference DefaultInstanceMetadataEndpointState = "no-preference"
+)
+
+// Values returns all known values for DefaultInstanceMetadataEndpointState. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client. The ordering of this slice is not guaranteed to be stable across
+// updates.
+func (DefaultInstanceMetadataEndpointState) Values() []DefaultInstanceMetadataEndpointState {
+	return []DefaultInstanceMetadataEndpointState{
+		"disabled",
+		"enabled",
+		"no-preference",
+	}
+}
+
+type DefaultInstanceMetadataTagsState string
+
+// Enum values for DefaultInstanceMetadataTagsState
+const (
+	DefaultInstanceMetadataTagsStateDisabled     DefaultInstanceMetadataTagsState = "disabled"
+	DefaultInstanceMetadataTagsStateEnabled      DefaultInstanceMetadataTagsState = "enabled"
+	DefaultInstanceMetadataTagsStateNoPreference DefaultInstanceMetadataTagsState = "no-preference"
+)
+
+// Values returns all known values for DefaultInstanceMetadataTagsState. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client. The ordering of this slice is not guaranteed to be stable across
+// updates.
+func (DefaultInstanceMetadataTagsState) Values() []DefaultInstanceMetadataTagsState {
+	return []DefaultInstanceMetadataTagsState{
+		"disabled",
+		"enabled",
+		"no-preference",
 	}
 }
 
@@ -2433,18 +2485,19 @@ type ImageAttributeName string
 
 // Enum values for ImageAttributeName
 const (
-	ImageAttributeNameDescription        ImageAttributeName = "description"
-	ImageAttributeNameKernel             ImageAttributeName = "kernel"
-	ImageAttributeNameRamdisk            ImageAttributeName = "ramdisk"
-	ImageAttributeNameLaunchPermission   ImageAttributeName = "launchPermission"
-	ImageAttributeNameProductCodes       ImageAttributeName = "productCodes"
-	ImageAttributeNameBlockDeviceMapping ImageAttributeName = "blockDeviceMapping"
-	ImageAttributeNameSriovNetSupport    ImageAttributeName = "sriovNetSupport"
-	ImageAttributeNameBootMode           ImageAttributeName = "bootMode"
-	ImageAttributeNameTpmSupport         ImageAttributeName = "tpmSupport"
-	ImageAttributeNameUefiData           ImageAttributeName = "uefiData"
-	ImageAttributeNameLastLaunchedTime   ImageAttributeName = "lastLaunchedTime"
-	ImageAttributeNameImdsSupport        ImageAttributeName = "imdsSupport"
+	ImageAttributeNameDescription              ImageAttributeName = "description"
+	ImageAttributeNameKernel                   ImageAttributeName = "kernel"
+	ImageAttributeNameRamdisk                  ImageAttributeName = "ramdisk"
+	ImageAttributeNameLaunchPermission         ImageAttributeName = "launchPermission"
+	ImageAttributeNameProductCodes             ImageAttributeName = "productCodes"
+	ImageAttributeNameBlockDeviceMapping       ImageAttributeName = "blockDeviceMapping"
+	ImageAttributeNameSriovNetSupport          ImageAttributeName = "sriovNetSupport"
+	ImageAttributeNameBootMode                 ImageAttributeName = "bootMode"
+	ImageAttributeNameTpmSupport               ImageAttributeName = "tpmSupport"
+	ImageAttributeNameUefiData                 ImageAttributeName = "uefiData"
+	ImageAttributeNameLastLaunchedTime         ImageAttributeName = "lastLaunchedTime"
+	ImageAttributeNameImdsSupport              ImageAttributeName = "imdsSupport"
+	ImageAttributeNameDeregistrationProtection ImageAttributeName = "deregistrationProtection"
 )
 
 // Values returns all known values for ImageAttributeName. Note that this can be
@@ -2464,6 +2517,7 @@ func (ImageAttributeName) Values() []ImageAttributeName {
 		"uefiData",
 		"lastLaunchedTime",
 		"imdsSupport",
+		"deregistrationProtection",
 	}
 }
 
@@ -3680,6 +3734,30 @@ const (
 	InstanceTypeR7i24xlarge     InstanceType = "r7i.24xlarge"
 	InstanceTypeR7i48xlarge     InstanceType = "r7i.48xlarge"
 	InstanceTypeDl2q24xlarge    InstanceType = "dl2q.24xlarge"
+	InstanceTypeMac2M2Metal     InstanceType = "mac2-m2.metal"
+	InstanceTypeI4i12xlarge     InstanceType = "i4i.12xlarge"
+	InstanceTypeI4i24xlarge     InstanceType = "i4i.24xlarge"
+	InstanceTypeC7iMetal24xl    InstanceType = "c7i.metal-24xl"
+	InstanceTypeC7iMetal48xl    InstanceType = "c7i.metal-48xl"
+	InstanceTypeM7iMetal24xl    InstanceType = "m7i.metal-24xl"
+	InstanceTypeM7iMetal48xl    InstanceType = "m7i.metal-48xl"
+	InstanceTypeR7iMetal24xl    InstanceType = "r7i.metal-24xl"
+	InstanceTypeR7iMetal48xl    InstanceType = "r7i.metal-48xl"
+	InstanceTypeR7izMetal16xl   InstanceType = "r7iz.metal-16xl"
+	InstanceTypeR7izMetal32xl   InstanceType = "r7iz.metal-32xl"
+	InstanceTypeC7gdMetal       InstanceType = "c7gd.metal"
+	InstanceTypeM7gdMetal       InstanceType = "m7gd.metal"
+	InstanceTypeR7gdMetal       InstanceType = "r7gd.metal"
+	InstanceTypeG6Xlarge        InstanceType = "g6.xlarge"
+	InstanceTypeG62xlarge       InstanceType = "g6.2xlarge"
+	InstanceTypeG64xlarge       InstanceType = "g6.4xlarge"
+	InstanceTypeG68xlarge       InstanceType = "g6.8xlarge"
+	InstanceTypeG612xlarge      InstanceType = "g6.12xlarge"
+	InstanceTypeG616xlarge      InstanceType = "g6.16xlarge"
+	InstanceTypeG624xlarge      InstanceType = "g6.24xlarge"
+	InstanceTypeG648xlarge      InstanceType = "g6.48xlarge"
+	InstanceTypeGr64xlarge      InstanceType = "gr6.4xlarge"
+	InstanceTypeGr68xlarge      InstanceType = "gr6.8xlarge"
 )
 
 // Values returns all known values for InstanceType. Note that this can be
@@ -4459,6 +4537,30 @@ func (InstanceType) Values() []InstanceType {
 		"r7i.24xlarge",
 		"r7i.48xlarge",
 		"dl2q.24xlarge",
+		"mac2-m2.metal",
+		"i4i.12xlarge",
+		"i4i.24xlarge",
+		"c7i.metal-24xl",
+		"c7i.metal-48xl",
+		"m7i.metal-24xl",
+		"m7i.metal-48xl",
+		"r7i.metal-24xl",
+		"r7i.metal-48xl",
+		"r7iz.metal-16xl",
+		"r7iz.metal-32xl",
+		"c7gd.metal",
+		"m7gd.metal",
+		"r7gd.metal",
+		"g6.xlarge",
+		"g6.2xlarge",
+		"g6.4xlarge",
+		"g6.8xlarge",
+		"g6.12xlarge",
+		"g6.16xlarge",
+		"g6.24xlarge",
+		"g6.48xlarge",
+		"gr6.4xlarge",
+		"gr6.8xlarge",
 	}
 }
 
@@ -5561,6 +5663,27 @@ func (MembershipType) Values() []MembershipType {
 	}
 }
 
+type MetadataDefaultHttpTokensState string
+
+// Enum values for MetadataDefaultHttpTokensState
+const (
+	MetadataDefaultHttpTokensStateOptional     MetadataDefaultHttpTokensState = "optional"
+	MetadataDefaultHttpTokensStateRequired     MetadataDefaultHttpTokensState = "required"
+	MetadataDefaultHttpTokensStateNoPreference MetadataDefaultHttpTokensState = "no-preference"
+)
+
+// Values returns all known values for MetadataDefaultHttpTokensState. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client. The ordering of this slice is not guaranteed to be stable across
+// updates.
+func (MetadataDefaultHttpTokensState) Values() []MetadataDefaultHttpTokensState {
+	return []MetadataDefaultHttpTokensState{
+		"optional",
+		"required",
+		"no-preference",
+	}
+}
+
 type MetricType string
 
 // Enum values for MetricType
@@ -5708,10 +5831,11 @@ type NetworkInterfaceAttribute string
 
 // Enum values for NetworkInterfaceAttribute
 const (
-	NetworkInterfaceAttributeDescription     NetworkInterfaceAttribute = "description"
-	NetworkInterfaceAttributeGroupSet        NetworkInterfaceAttribute = "groupSet"
-	NetworkInterfaceAttributeSourceDestCheck NetworkInterfaceAttribute = "sourceDestCheck"
-	NetworkInterfaceAttributeAttachment      NetworkInterfaceAttribute = "attachment"
+	NetworkInterfaceAttributeDescription              NetworkInterfaceAttribute = "description"
+	NetworkInterfaceAttributeGroupSet                 NetworkInterfaceAttribute = "groupSet"
+	NetworkInterfaceAttributeSourceDestCheck          NetworkInterfaceAttribute = "sourceDestCheck"
+	NetworkInterfaceAttributeAttachment               NetworkInterfaceAttribute = "attachment"
+	NetworkInterfaceAttributeAssociatePublicIpAddress NetworkInterfaceAttribute = "associatePublicIpAddress"
 )
 
 // Values returns all known values for NetworkInterfaceAttribute. Note that this
@@ -5723,6 +5847,7 @@ func (NetworkInterfaceAttribute) Values() []NetworkInterfaceAttribute {
 		"groupSet",
 		"sourceDestCheck",
 		"attachment",
+		"associatePublicIpAddress",
 	}
 }
 
@@ -7262,8 +7387,9 @@ type SubnetState string
 
 // Enum values for SubnetState
 const (
-	SubnetStatePending   SubnetState = "pending"
-	SubnetStateAvailable SubnetState = "available"
+	SubnetStatePending     SubnetState = "pending"
+	SubnetStateAvailable   SubnetState = "available"
+	SubnetStateUnavailable SubnetState = "unavailable"
 )
 
 // Values returns all known values for SubnetState. Note that this can be expanded
@@ -7273,6 +7399,7 @@ func (SubnetState) Values() []SubnetState {
 	return []SubnetState{
 		"pending",
 		"available",
+		"unavailable",
 	}
 }
 

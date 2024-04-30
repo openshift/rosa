@@ -6,15 +6,15 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"time"
 )
 
 // Retrieves the contents of the encrypted fields SecretString or SecretBinary
-// from the specified version of a secret, whichever contains content. We recommend
-// that you cache your secret values by using client-side caching. Caching secrets
+// from the specified version of a secret, whichever contains content. To retrieve
+// the values for a group of secrets, call BatchGetSecretValue . We recommend that
+// you cache your secret values by using client-side caching. Caching secrets
 // improves speed and reduces your costs. For more information, see Cache secrets
 // for your applications (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieving-secrets.html)
 // . To retrieve the previous version of a secret, use VersionStage and specify
@@ -86,11 +86,12 @@ type GetSecretValueOutput struct {
 	Name *string
 
 	// The decrypted secret value, if the secret value was originally provided as
-	// binary data in the form of a byte array. The response parameter represents the
-	// binary data as a base64-encoded (https://tools.ietf.org/html/rfc4648#section-4)
-	// string. If the secret was created by using the Secrets Manager console, or if
-	// the secret value was originally provided as a string, then this field is
-	// omitted. The secret value appears in SecretString instead.
+	// binary data in the form of a byte array. When you retrieve a SecretBinary using
+	// the HTTP API, the Python SDK, or the Amazon Web Services CLI, the value is
+	// Base64-encoded. Otherwise, it is not encoded. If the secret was created by using
+	// the Secrets Manager console, or if the secret value was originally provided as a
+	// string, then this field is omitted. The secret value appears in SecretString
+	// instead.
 	SecretBinary []byte
 
 	// The decrypted secret value, if the secret value was originally provided as a
@@ -134,25 +135,25 @@ func (c *Client) addOperationGetSecretValueMiddlewares(stack *middleware.Stack, 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -173,7 +174,7 @@ func (c *Client) addOperationGetSecretValueMiddlewares(stack *middleware.Stack, 
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetSecretValue(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
