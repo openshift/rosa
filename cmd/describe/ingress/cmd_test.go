@@ -129,12 +129,13 @@ Wildcard Policy:            WildcardsAllowed
 		})
 
 		It("Fails if ingress ID/alias is invalid", func() {
-			args := NewDescribeIngressUserOptions()
-			args.ingress = "A1b2"
-			runner := DescribeIngressRunner(args)
+			runner := DescribeIngressRunner(NewDescribeIngressUserOptions())
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
-			err = runner(context.Background(), t.RosaRuntime, NewDescribeIngressCommand(), []string{})
+			cmd := NewDescribeIngressCommand()
+			cmd.Flag("ingress").Value.Set("A1b2")
+			cmd.Flag("cluster").Value.Set(mockReadyCluster.ID())
+			err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 			Expect(err).ToNot(BeNil())
 			Expect(
 				err.Error(),
@@ -143,14 +144,13 @@ Wildcard Policy:            WildcardsAllowed
 
 		It("Cluster not ready", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterNotReady))
-			args := NewDescribeIngressUserOptions()
-			args.ingress = "apps"
-			runner := DescribeIngressRunner(args)
+			runner := DescribeIngressRunner(NewDescribeIngressUserOptions())
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
-			err = runner(context.Background(), t.RosaRuntime, NewDescribeIngressCommand(), []string{
-				"-c", mockReadyCluster.ID(),
-			})
+			cmd := NewDescribeIngressCommand()
+			cmd.Flag("ingress").Value.Set("apps")
+			cmd.Flag("cluster").Value.Set(mockReadyCluster.ID())
+			err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("cluster '123' is not yet ready"))
 		})
@@ -158,14 +158,13 @@ Wildcard Policy:            WildcardsAllowed
 		It("Ingress not found", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
-			args := NewDescribeIngressUserOptions()
-			args.ingress = "apps"
-			runner := DescribeIngressRunner(args)
+			runner := DescribeIngressRunner(NewDescribeIngressUserOptions())
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
-			err = runner(context.Background(), t.RosaRuntime, NewDescribeIngressCommand(), []string{
-				"-c", mockReadyCluster.ID(),
-			})
+			cmd := NewDescribeIngressCommand()
+			cmd.Flag("ingress").Value.Set("apps")
+			cmd.Flag("cluster").Value.Set(mockReadyCluster.ID())
+			err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("Failed to get ingress 'apps' for cluster '123'"))
 		})
@@ -173,14 +172,13 @@ Wildcard Policy:            WildcardsAllowed
 		It("Ingress found", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ingressResponse))
-			args := NewDescribeIngressUserOptions()
-			args.ingress = "apps"
-			runner := DescribeIngressRunner(args)
+			runner := DescribeIngressRunner(NewDescribeIngressUserOptions())
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
-			err = runner(context.Background(), t.RosaRuntime, NewDescribeIngressCommand(), []string{
-				"-c", mockReadyCluster.ID(),
-			})
+			cmd := NewDescribeIngressCommand()
+			cmd.Flag("ingress").Value.Set("apps")
+			cmd.Flag("cluster").Value.Set(mockReadyCluster.ID())
+			err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 			Expect(err).ToNot(HaveOccurred())
 			stdout, err := t.StdOutReader.Read()
 			Expect(err).ToNot(HaveOccurred())
@@ -209,16 +207,13 @@ Wildcard Policy:            WildcardsAllowed
 		It("Ingress found json output", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ingressResponse))
-			args := NewDescribeIngressUserOptions()
-			args.ingress = "apps"
-			runner := DescribeIngressRunner(args)
-			cmd := NewDescribeIngressCommand()
-			cmd.Flag("output").Value.Set("json")
+			runner := DescribeIngressRunner(NewDescribeIngressUserOptions())
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
-			err = runner(context.Background(), t.RosaRuntime, cmd, []string{
-				"-c", mockReadyCluster.ID(),
-			})
+			cmd := NewDescribeIngressCommand()
+			cmd.Flag("cluster").Value.Set(mockReadyCluster.ID())
+			cmd.Flag("output").Value.Set("json")
+			err = runner(context.Background(), t.RosaRuntime, cmd, []string{"apps"})
 			Expect(err).ToNot(HaveOccurred())
 			stdout, err := t.StdOutReader.Read()
 			Expect(err).ToNot(HaveOccurred())
@@ -230,14 +225,12 @@ Wildcard Policy:            WildcardsAllowed
 		It("Private Ingress found", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, privateIngressResponse))
-			args := NewDescribeIngressUserOptions()
-			args.ingress = "apps"
-			runner := DescribeIngressRunner(args)
+			runner := DescribeIngressRunner(NewDescribeIngressUserOptions())
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
-			err = runner(context.Background(), t.RosaRuntime, NewDescribeIngressCommand(), []string{
-				"-c", mockReadyCluster.ID(),
-			})
+			cmd := NewDescribeIngressCommand()
+			cmd.Flag("cluster").Value.Set(mockReadyCluster.ID())
+			err = runner(context.Background(), t.RosaRuntime, cmd, []string{"apps"})
 			Expect(err).ToNot(HaveOccurred())
 			stdout, err := t.StdOutReader.Read()
 			Expect(err).ToNot(HaveOccurred())

@@ -31,7 +31,7 @@ func NewDescribeIngressCommand() *cobra.Command {
 		Short:   short,
 		Example: example,
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeIngressRunner(options)),
-		Args:    cobra.NoArgs,
+		Args:    cobra.MaximumNArgs(1),
 	}
 
 	flags := cmd.Flags()
@@ -57,6 +57,7 @@ func DescribeIngressRunner(userOptions DescribeIngressUserOptions) rosa.CommandR
 			if err != nil {
 				return fmt.Errorf("unable to parse flags: %v", err)
 			}
+			userOptions.ingress = cmd.Flag("ingress").Value.String()
 		}
 		err := options.Bind(userOptions)
 		if err != nil {
