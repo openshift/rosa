@@ -35,8 +35,7 @@ var Cmd = &cobra.Command{
 	Long:    "Delete an external authentication provider from a cluster.",
 	Example: `  # Delete an external authentication provider named exauth-1
   rosa delete external-auth-provider exauth-1  --cluster=mycluster`,
-	Run:    run,
-	Hidden: true,
+	Run: run,
 	Args: func(_ *cobra.Command, argv []string) error {
 		if len(argv) != 1 {
 			return fmt.Errorf(

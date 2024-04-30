@@ -20,9 +20,8 @@ var Cmd = &cobra.Command{
 	Long:    "List break glass credential for a cluster.",
 	Example: `  # List all break glass credentials for a cluster named 'mycluster'"
   rosa list break-glass-credentials -c mycluster`,
-	Run:    run,
-	Args:   cobra.NoArgs,
-	Hidden: true,
+	Run:  run,
+	Args: cobra.NoArgs,
 }
 
 func init() {

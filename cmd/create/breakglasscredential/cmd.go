@@ -25,9 +25,8 @@ func makeCmd() *cobra.Command {
 		Long:    "Create a break glass credential for a hosted control plane cluster with external authentication enabled.",
 		Example: `  # Interactively create a break glass credential to a cluster named "mycluster"
   rosa create break-glass-credential --cluster=mycluster --interactive`,
-		Run:    run,
-		Hidden: true,
-		Args:   cobra.NoArgs,
+		Run:  run,
+		Args: cobra.NoArgs,
 	}
 }
 
