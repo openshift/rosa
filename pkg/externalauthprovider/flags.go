@@ -25,6 +25,8 @@ const (
 	claimValidationRuleFlag       = "claim-validation-rule"
 	consoleClientIdFlag           = "console-client-id"
 	consoleClientSecretFlag       = "console-client-secret"
+	defaultClaimMappingUsername   = "email"
+	defaultClaimMappingGroups     = "groups"
 )
 
 type ExternalAuthServiceImpl struct {
@@ -256,7 +258,7 @@ func GetExternalAuthOptions(
 	if interactive.Enabled() && !cmd.Changed(claimMappingUsernameClaimFlag) {
 		result.claimMappingUsernameClaim, err = interactive.GetString(interactive.Input{
 			Question: "Claim mapping username",
-			Default:  result.claimMappingUsernameClaim,
+			Default:  defaultClaimMappingUsername,
 			Help:     cmd.Lookup(claimMappingUsernameClaimFlag).Usage,
 			Required: true,
 		})
@@ -268,7 +270,7 @@ func GetExternalAuthOptions(
 	if interactive.Enabled() && !cmd.Changed(claimMappingGroupsClaimFlag) {
 		result.claimMappingGroupsClaim, err = interactive.GetString(interactive.Input{
 			Question: "Claim mapping groups",
-			Default:  result.claimMappingGroupsClaim,
+			Default:  defaultClaimMappingGroups,
 			Help:     cmd.Lookup(claimMappingGroupsClaimFlag).Usage,
 			Required: true,
 		})
