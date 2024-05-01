@@ -122,7 +122,7 @@ var _ = Describe("Policy Service", func() {
 				"sample-account-id", "sample-org-id")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(output).To(Equal(fmt.Sprintf("Attached policy '%s' to role '%s'\n"+
-				"Attached policy '%s' to role '%s'\n",
+				"Attached policy '%s' to role '%s'",
 				policyArn1, roleName, policyArn2, roleName)))
 		})
 		It("Test ManualAttachArbitraryPolicy", func() {
@@ -147,16 +147,20 @@ var _ = Describe("Policy Service", func() {
 				"sample-account-id", "sample-org-id")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(output).To(Equal(fmt.Sprintf("Detached policy '%s' from role '%s'\n"+
-				"The policy '%s' is currently not attached to role '%s'\n",
+				"The policy '%s' is currently not attached to role '%s'",
 				policyArn1, roleName, policyArn2, roleName)))
 		})
 		It("Test ManualDetachArbitraryPolicy", func() {
-			output := policySvc.ManualDetachArbitraryPolicy(roleName, policyArns,
+			awsClient.EXPECT().ListAttachedRolePolicies(roleName).Return([]string{policyArn1}, nil)
+			output, warn, err := policySvc.ManualDetachArbitraryPolicy(roleName, policyArns,
 				"sample-account-id", "sample-org-id")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(warn).To(Equal(fmt.Sprintf(
+				"The policy '%s' is currently not attached to role '%s'\n",
+				policyArn2, roleName)))
 			Expect(output).To(Equal(fmt.Sprintf(
-				"aws iam detach-role-policy --role-name %s --policy-arn %s\n"+
-					"aws iam detach-role-policy --role-name %s --policy-arn %s\n",
-				roleName, policyArn1, roleName, policyArn2)))
+				"aws iam detach-role-policy --role-name %s --policy-arn %s\n",
+				roleName, policyArn1)))
 		})
 	})
 })

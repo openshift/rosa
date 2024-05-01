@@ -138,6 +138,7 @@ type Client interface {
 	ListOCMRoles() ([]Role, error)
 	ListAccountRoles(version string) ([]Role, error)
 	ListOperatorRoles(version string, clusterID string) (map[string][]OperatorRoleDetail, error)
+	ListAttachedRolePolicies(roleName string) ([]string, error)
 	ListOidcProviders(targetClusterId string, config *cmv1.OidcConfig) ([]OidcProviderOutput, error)
 	GetRoleByARN(roleARN string) (iamtypes.Role, error)
 	GetRoleByName(roleName string) (iamtypes.Role, error)

@@ -1927,6 +1927,20 @@ func (c *awsClient) ValidateHCPAccountRolesManagedPolicies(prefix string,
 	return nil
 }
 
+func (c *awsClient) ListAttachedRolePolicies(roleName string) ([]string, error) {
+	policies := []string{}
+	listPolicies, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return policies, err
+	}
+	for _, policy := range listPolicies.AttachedPolicies {
+		policies = append(policies, *policy.PolicyArn)
+	}
+	return policies, nil
+}
+
 func (c *awsClient) validateManagedPolicy(policies map[string]*cmv1.AWSSTSPolicy, policyKey string,
 	roleName string) error {
 	managedPolicyARN, err := GetManagedPolicyARN(policies, policyKey)

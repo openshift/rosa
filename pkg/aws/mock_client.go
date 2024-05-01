@@ -1170,6 +1170,21 @@ func (mr *MockClientMockRecorder) ListAccountRoles(version any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAccountRoles", reflect.TypeOf((*MockClient)(nil).ListAccountRoles), version)
 }
 
+// ListAttachedRolePolicies mocks base method.
+func (m *MockClient) ListAttachedRolePolicies(roleName string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAttachedRolePolicies", roleName)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAttachedRolePolicies indicates an expected call of ListAttachedRolePolicies.
+func (mr *MockClientMockRecorder) ListAttachedRolePolicies(roleName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAttachedRolePolicies", reflect.TypeOf((*MockClient)(nil).ListAttachedRolePolicies), roleName)
+}
+
 // ListOCMRoles mocks base method.
 func (m *MockClient) ListOCMRoles() ([]Role, error) {
 	m.ctrl.T.Helper()
