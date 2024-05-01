@@ -91,7 +91,7 @@ type ClusterDescription struct {
 	LimitedSupport           []map[string]string `yaml:"Limited Support,omitempty"`
 	AuditLogRoleARN          string              `yaml:"Audit Log Role ARN,omitempty"`
 	FailedInflightChecks     string              `yaml:"Failed Inflight Checks,omitempty"`
-	ExternalAuthentication   string              `yaml:"External Authentication, omitempty"`
+	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
 }
 
 func (c *clusterService) DescribeCluster(clusterID string) (bytes.Buffer, error) {
