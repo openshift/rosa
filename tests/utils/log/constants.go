@@ -7,6 +7,13 @@ import (
 const (
 	RedactValue = "*************"
 )
+const (
+	info  = "INFO"
+	debug = "DEBUG"
+	fatal = "FATAL"
+	warn  = "WARN"
+	err   = "ERROR"
+)
 
 var RedactKeyList = []*regexp.Regexp{
 	regexp.MustCompile(`(\\?"password\\?":\\?")([^"]*)(\\?")`),
