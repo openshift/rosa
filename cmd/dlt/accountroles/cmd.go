@@ -220,7 +220,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 				continue
 			}
 			r.Reporter.Infof("Deleting account role '%s'", role)
-			err := r.AWSClient.DeleteAccountRole(role, managedPolicies)
+			err := r.AWSClient.DeleteAccountRole(role, prefix, managedPolicies)
 			if err != nil {
 				r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
 				continue
@@ -229,7 +229,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		r.Reporter.Infof(fmt.Sprintf("Successfully deleted the %saccount roles", roleTypeString))
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
-		policyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList)
+		policyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList, prefix)
 		if err != nil {
 			return fmt.Errorf("There was an error getting the policy: %v", err)
 		}

@@ -32,6 +32,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
+	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 )
@@ -111,6 +112,8 @@ const (
 	HCPSuffixPattern = "HCP-ROSA"
 
 	IngressOperatorCloudCredentialsRoleType = "ingress_operator_cloud_credentials"
+
+	TrueString = "true"
 )
 
 const (
@@ -999,7 +1002,11 @@ func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSO
 
 func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) error {
 	role := aws.String(roleName)
-	policies, err := c.GetPolicies([]string{*role})
+	tagFilter, err := getOperatorRolePolicyTags(c.iamClient, roleName)
+	if err != nil {
+		return err
+	}
+	policies, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
 	if err != nil {
 		return err
 	}
@@ -1022,7 +1029,7 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 		return err
 	}
 	if !managedPolicies {
-		_, err = c.deletePolicies(policies[*role])
+		_, err = c.deletePolicies(policies)
 	}
 	return err
 }
@@ -1060,13 +1067,13 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 	return instanceProfiles, nil
 }
 
-func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) error {
+func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPolicies bool) error {
 	role := aws.String(roleName)
 	err := c.DeleteInlineRolePolicies(aws.ToString(role))
 	if err != nil {
 		return err
 	}
-	policyMap, err := c.GetPolicies([]string{*role})
+	policyMap, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
 	if err != nil {
 		return err
 	}
@@ -1092,7 +1099,7 @@ func (c *awsClient) DeleteAccountRole(roleName string, managedPolicies bool) err
 		return err
 	}
 	if !managedPolicies {
-		_, err = c.deletePolicies(policyMap[*role])
+		_, err = c.deletePolicies(policyMap)
 	}
 	return err
 }
@@ -1249,7 +1256,7 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 	return nil
 }
 
-func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
+func (c *awsClient) GetAttachedPolicyWithTags(role *string, tagFilter map[string]string) ([]PolicyDetail, error) {
 	policies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(
 		context.Background(),
@@ -1260,12 +1267,18 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	}
 
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
-		policyDetail := PolicyDetail{
-			PolicyName: aws.ToString(policy.PolicyName),
-			PolicyArn:  aws.ToString(policy.PolicyArn),
-			PolicyType: Attached,
+		hasTags, err := isPolicyHasTags(c.iamClient, policy.PolicyArn, tagFilter)
+		if err != nil {
+			return policies, err
 		}
-		policies = append(policies, policyDetail)
+		if hasTags {
+			policyDetail := PolicyDetail{
+				PolicyName: aws.ToString(policy.PolicyName),
+				PolicyArn:  aws.ToString(policy.PolicyArn),
+				PolicyType: Attached,
+			}
+			policies = append(policies, policyDetail)
+		}
 	}
 
 	rolePolicyOutput, err := c.iamClient.ListRolePolicies(context.Background(),
@@ -1282,6 +1295,10 @@ func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
 	}
 
 	return policies, nil
+}
+
+func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
+	return c.GetAttachedPolicyWithTags(role, map[string]string{})
 }
 
 func (c *awsClient) detachOperatorRolePolicies(role *string) error {
@@ -1355,25 +1372,6 @@ func (c *awsClient) GetOperatorRolesFromAccountByPrefix(prefix string,
 		}
 	}
 	return roleList, nil
-}
-
-func (c *awsClient) GetPolicies(roles []string) (map[string][]string, error) {
-	roleMap := make(map[string][]string)
-	for _, role := range roles {
-		policyArr := []string{}
-		policiesOutput, err := c.iamClient.ListAttachedRolePolicies(context.Background(),
-			&iam.ListAttachedRolePoliciesInput{
-				RoleName: aws.String(role),
-			})
-		if err != nil && !awserr.IsNoSuchEntityException(err) {
-			return roleMap, err
-		}
-		for _, policy := range policiesOutput.AttachedPolicies {
-			policyArr = append(policyArr, aws.ToString(policy.PolicyArn))
-		}
-		roleMap[role] = policyArr
-	}
-	return roleMap, nil
 }
 
 func (c *awsClient) GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error) {
@@ -1532,11 +1530,27 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 	return roles, nil
 }
 
-func (c *awsClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error) {
+func (c *awsClient) GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail, error) {
 	roleMap := make(map[string][]PolicyDetail)
 	for _, role := range roles {
-		policies, err := c.GetAttachedPolicy(aws.String(role))
+		policies, err := c.GetAttachedPolicyWithTags(aws.String(role), getAcctRolePolicyTags(prefix))
 		if err != nil && !awserr.IsNoSuchEntityException(err) {
+			return roleMap, err
+		}
+		roleMap[role] = policies
+	}
+	return roleMap, nil
+}
+
+func (c *awsClient) GetOperatorRolePolicies(roles []string) (map[string][]string, error) {
+	roleMap := map[string][]string{}
+	for _, role := range roles {
+		tagFilter, err := getOperatorRolePolicyTags(c.iamClient, role)
+		if err != nil {
+			return roleMap, err
+		}
+		policies, err := getAttachedPolicies(c.iamClient, role, tagFilter)
+		if err != nil {
 			return roleMap, err
 		}
 		roleMap[role] = policies
@@ -1852,7 +1866,7 @@ func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
 	}
 
 	for _, tag := range role.Role.Tags {
-		if aws.ToString(tag.Key) == tags.AdminRole && aws.ToString(tag.Value) == "true" {
+		if aws.ToString(tag.Key) == tags.AdminRole && aws.ToString(tag.Value) == TrueString {
 			return true, nil
 		}
 	}
@@ -1974,4 +1988,78 @@ func (c *awsClient) listRoleAttachedPolicies(roleName string) ([]iamtypes.Attach
 	}
 
 	return attachedPoliciesOutput.AttachedPolicies, nil
+}
+
+// check whether the policy contains specified tags
+func isPolicyHasTags(c client.IamApiClient, poilcyArn *string, tagFilter map[string]string) (bool, error) {
+	if len(tagFilter) != 0 {
+		tags, err := c.ListPolicyTags(context.Background(),
+			&iam.ListPolicyTagsInput{
+				PolicyArn: poilcyArn,
+			},
+		)
+		if err != nil {
+			return false, err
+		}
+		fitTagSize := 0
+		for _, tag := range tags.Tags {
+			value, ok := tagFilter[aws.ToString(tag.Key)]
+			if ok && value != aws.ToString(tag.Value) {
+				return false, nil
+			}
+			fitTagSize++
+		}
+		if fitTagSize < len(tagFilter) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func getAttachedPolicies(c client.IamApiClient, role string,
+	tagFilter map[string]string) ([]string, error) {
+	policyArr := []string{}
+	policiesOutput, err := c.ListAttachedRolePolicies(context.Background(),
+		&iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(role),
+		})
+	if err != nil {
+		return policyArr, err
+	}
+	for _, policy := range policiesOutput.AttachedPolicies {
+		hasTags, err := isPolicyHasTags(c, policy.PolicyArn, tagFilter)
+		if err != nil {
+			return policyArr, err
+		}
+		if hasTags {
+			policyArr = append(policyArr, aws.ToString(policy.PolicyArn))
+		}
+	}
+	return policyArr, nil
+}
+
+func getAcctRolePolicyTags(prefix string) map[string]string {
+	tagmap := map[string]string{}
+	tagmap[tags.RedHatManaged] = TrueString
+	tagmap[tags.RolePrefix] = prefix
+	return tagmap
+}
+
+func getOperatorRolePolicyTags(c client.IamApiClient, roleName string) (map[string]string, error) {
+	tagmap := map[string]string{}
+	tagmap[tags.RedHatManaged] = TrueString
+	roleTags, err := c.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return tagmap, err
+	}
+	for _, tag := range roleTags.Tags {
+		key := aws.ToString(tag.Key)
+		switch key {
+		case tags.OperatorName, tags.OperatorNamespace:
+			tagmap[key] = aws.ToString(tag.Value)
+		}
+	}
+	return tagmap, nil
 }

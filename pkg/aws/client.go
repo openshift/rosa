@@ -147,15 +147,15 @@ type Client interface {
 		credRequests map[string]*cmv1.STSOperator,
 	) ([]string, error)
 	GetOperatorRolesFromAccountByPrefix(prefix string, credRequest map[string]*cmv1.STSOperator) ([]string, error)
-	GetPolicies(roles []string) (map[string][]string, error)
+	GetOperatorRolePolicies(roles []string) (map[string][]string, error)
 	GetAccountRolesForCurrentEnv(env string, accountID string) ([]Role, error)
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
 	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string,
 		accountRolesMap map[string]AccountRole) ([]Role, error)
-	DeleteAccountRole(roleName string, managedPolicies bool) error
+	DeleteAccountRole(roleName string, prefix string, managedPolicies bool) error
 	DeleteOCMRole(roleARN string, managedPolicies bool) error
 	DeleteUserRole(roleName string) error
-	GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error)
+	GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail, error)
 	GetAttachedPolicy(role *string) ([]PolicyDetail, error)
 	HasPermissionsBoundary(roleName string) (bool, error)
 	GetOpenIDConnectProviderByClusterIdTag(clusterID string) (string, error)
