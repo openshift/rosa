@@ -64,6 +64,7 @@ type OCMResourceService interface {
 	ReflectOperatorRoleList(result bytes.Buffer) (opl OperatorRoleList, err error)
 
 	CreateOIDCProvider(flags ...string) (bytes.Buffer, error)
+	DeleteOIDCProvider(flags ...string) (bytes.Buffer, error)
 }
 
 type ocmResourceService struct {
@@ -581,9 +582,16 @@ func (ors *ocmResourceService) ReflectOperatorRoleList(result bytes.Buffer) (opl
 
 // run `rosa create oidc-provider` command
 func (ors *ocmResourceService) CreateOIDCProvider(flags ...string) (bytes.Buffer, error) {
-	createODICProvider := ors.client.Runner
-	createODICProvider = createODICProvider.Cmd("create", "oidc-provider").CmdFlags(flags...)
-	return createODICProvider.Run()
+	createOIDCProvider := ors.client.Runner
+	createOIDCProvider = createOIDCProvider.Cmd("create", "oidc-provider").CmdFlags(flags...)
+	return createOIDCProvider.Run()
+}
+
+// run `rosa delete oidc-provider` command
+func (ors *ocmResourceService) DeleteOIDCProvider(flags ...string) (bytes.Buffer, error) {
+	deleteOIDCProvider := ors.client.Runner
+	deleteOIDCProvider = deleteOIDCProvider.Cmd("delete", "oidc-provider").CmdFlags(flags...)
+	return deleteOIDCProvider.Run()
 }
 
 func (ors *ocmResourceService) CleanResources(clusterID string) (errors []error) {
