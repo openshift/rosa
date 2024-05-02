@@ -19,7 +19,7 @@ import (
 var fetchMessage string = "Fetching %s '%s' for cluster '%s'"
 var notFoundMessage string = "Machine pool '%s' not found"
 
-//go:generate mockgen -source=machinepool.go -package=mocks -destination=machinepool_mock.go
+//go:generate mockgen -source=machinepool.go -package=machinepool -destination=machinepool_mock.go
 type MachinePoolService interface {
 	DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, machinePoolId string) error
 	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) error

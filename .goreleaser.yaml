@@ -1,0 +1,43 @@
+version: 1
+
+before:
+  hooks:
+    - go generate ./...
+
+builds:
+  - main: ./cmd/rosa
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+release:
+  prerelease: auto
+  mode: append
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?(?:[a-zA-Z]+-\d+ \| )?feat(?:\([[:word:]]+\))??!?:.+'
+      order: 0
+    - title: "Bug fixes"
+      regexp: '^.*?(?:[a-zA-Z]+-\d+ \| )?fix(?:\([[:word:]]+\))??!?:.+'
+      order: 1
+    - title: Others
+      order: 999

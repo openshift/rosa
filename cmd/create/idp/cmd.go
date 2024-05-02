@@ -33,6 +33,7 @@ import (
 
 const HTPasswdIDPName = "htpasswd"
 
+//go:generate mockgen -source=cmd.go -package=mocks -destination=./mocks/identityprovider.go
 type IdentityProvider interface {
 	Name() string
 }
