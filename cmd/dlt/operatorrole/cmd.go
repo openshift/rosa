@@ -246,7 +246,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
-		policyMap, err := r.AWSClient.GetPolicies(foundOperatorRoles)
+		policyMap, err := r.AWSClient.GetOperatorRolePolicies(foundOperatorRoles)
 		if err != nil {
 			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)

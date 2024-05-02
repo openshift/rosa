@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
+	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
 var _ = Describe("Is Account Role Version Compatible", func() {
@@ -58,7 +59,7 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 				},
 				{
 					Key:   aws.String("rosa_managed_policies"),
-					Value: aws.String("true"),
+					Value: aws.String(TrueString),
 				},
 			}
 			isCompatible, err := isAccountRoleVersionCompatible(tagsList, InstallerAccountRole, "4.14")
@@ -75,11 +76,11 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 				},
 				{
 					Key:   aws.String("rosa_managed_policies"),
-					Value: aws.String("true"),
+					Value: aws.String(TrueString),
 				},
 				{
 					Key:   aws.String("rosa_hcp_policies"),
-					Value: aws.String("true"),
+					Value: aws.String(TrueString),
 				},
 			}
 			isCompatible, err := validateAccountRoleVersionCompatibilityClassic(InstallerAccountRole, "4.12",
@@ -97,7 +98,7 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 				},
 				{
 					Key:   aws.String("rosa_managed_policies"),
-					Value: aws.String("true"),
+					Value: aws.String(TrueString),
 				},
 			}
 			isCompatible, err := validateAccountRoleVersionCompatibilityHostedCp(InstallerAccountRole, "4.12",
@@ -149,5 +150,198 @@ var _ = Describe("DeleteRole Validation", func() {
 			err := client.DeleteRole(role)
 			Expect(err).NotTo(HaveOccurred())
 		})
+	})
+})
+
+var _ = Describe("Cluster Roles/Policies", func() {
+
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+
+		accountRole           = "sample-Installer-Role"
+		rolePrefix            = "acct-prefix"
+		operatorRole          = "sample-operator-role"
+		operatorName          = "sample-operator-name"
+		operatorNameSpace     = "sample-operator-ns"
+		accountRolePolicyArn  = "sample-account-role-policy-arn"
+		operatorRolePolicyArn = "sample-operator-role-policy-arn"
+		customPolicyArn       = "sample-custom-policy-arn"
+
+		accountRoleAttachedPolicies = &iam.ListAttachedRolePoliciesOutput{
+			AttachedPolicies: []iamtypes.AttachedPolicy{
+				{
+					PolicyArn: aws.String(accountRolePolicyArn),
+				},
+				{
+					PolicyArn: aws.String(customPolicyArn),
+				},
+			},
+		}
+		operatorRoleAttachedPolicies = &iam.ListAttachedRolePoliciesOutput{
+			AttachedPolicies: []iamtypes.AttachedPolicy{
+				{
+					PolicyArn: aws.String(operatorRolePolicyArn),
+				},
+				{
+					PolicyArn: aws.String(customPolicyArn),
+				},
+			},
+		}
+
+		accountRolePolicyTags = &iam.ListPolicyTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(tags.RedHatManaged),
+					Value: aws.String(TrueString),
+				},
+				{
+					Key:   aws.String(tags.RolePrefix),
+					Value: aws.String(rolePrefix),
+				},
+			},
+		}
+		operatorTagArr = []iamtypes.Tag{
+			{
+				Key:   aws.String(tags.RedHatManaged),
+				Value: aws.String(TrueString),
+			},
+			{
+				Key:   aws.String(tags.OperatorName),
+				Value: aws.String(operatorName),
+			},
+			{
+				Key:   aws.String(tags.OperatorNamespace),
+				Value: aws.String(operatorNameSpace),
+			},
+		}
+		operatorRoleTags = &iam.ListRoleTagsOutput{
+			Tags: operatorTagArr,
+		}
+		operatorRolePolicyTags = &iam.ListPolicyTagsOutput{
+			Tags: operatorTagArr,
+		}
+		customPolicyTags = &iam.ListPolicyTagsOutput{
+			Tags: []iamtypes.Tag{},
+		}
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{
+			iamClient: mockIamAPI,
+		}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+	It("Test getAttachedPolicies", func() {
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), &iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(accountRole),
+		}).Return(accountRoleAttachedPolicies, nil)
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), &iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(operatorRole),
+		}).Return(operatorRoleAttachedPolicies, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), &iam.ListPolicyTagsInput{
+			PolicyArn: aws.String(accountRolePolicyArn),
+		}).Return(accountRolePolicyTags, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), &iam.ListPolicyTagsInput{
+			PolicyArn: aws.String(operatorRolePolicyArn),
+		}).Return(operatorRolePolicyTags, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), &iam.ListPolicyTagsInput{
+			PolicyArn: aws.String(customPolicyArn),
+		}).Return(customPolicyTags, nil).MaxTimes(2)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+			RoleName: aws.String(operatorName),
+		}).Return(operatorRoleTags, nil)
+
+		policies, err := getAttachedPolicies(mockIamAPI, accountRole, getAcctRolePolicyTags(rolePrefix))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(policies).To(HaveLen(1))
+		Expect(policies[0]).To(Equal(accountRolePolicyArn))
+
+		tagFilter, err := getOperatorRolePolicyTags(mockIamAPI, operatorName)
+		Expect(err).NotTo(HaveOccurred())
+		policies, err = getAttachedPolicies(mockIamAPI, operatorRole, tagFilter)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(policies).To(HaveLen(1))
+		Expect(policies[0]).To(Equal(operatorRolePolicyArn))
+	})
+	It("Test DeleteAccountRole", func() {
+		mockIamAPI.EXPECT().ListRolePolicies(gomock.Any(), gomock.Any()).Return(&iam.ListRolePoliciesOutput{}, nil)
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), &iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(accountRole),
+		}).Return(accountRoleAttachedPolicies, nil).MaxTimes(2)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), &iam.ListPolicyTagsInput{
+			PolicyArn: aws.String(accountRolePolicyArn),
+		}).Return(accountRolePolicyTags, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), &iam.ListPolicyTagsInput{
+			PolicyArn: aws.String(customPolicyArn),
+		}).Return(customPolicyTags, nil)
+		mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), &iam.DetachRolePolicyInput{
+			RoleName:  aws.String(accountRole),
+			PolicyArn: aws.String(accountRolePolicyArn),
+		}).Return(&iam.DetachRolePolicyOutput{}, nil)
+		mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), &iam.DetachRolePolicyInput{
+			RoleName:  aws.String(accountRole),
+			PolicyArn: aws.String(customPolicyArn),
+		}).Return(&iam.DetachRolePolicyOutput{}, nil)
+		mockIamAPI.EXPECT().DeleteRole(gomock.Any(), &iam.DeleteRoleInput{
+			RoleName: aws.String(accountRole),
+		}).Return(&iam.DeleteRoleOutput{}, nil)
+		attachCount := int32(0)
+		mockIamAPI.EXPECT().GetPolicy(gomock.Any(), &iam.GetPolicyInput{
+			PolicyArn: aws.String(accountRolePolicyArn),
+		}).Return(&iam.GetPolicyOutput{
+			Policy: &iamtypes.Policy{
+				AttachmentCount: &attachCount,
+			},
+		}, nil)
+		mockIamAPI.EXPECT().ListPolicyVersions(gomock.Any(), gomock.Any()).Return(&iam.ListPolicyVersionsOutput{
+			Versions: []iamtypes.PolicyVersion{},
+		}, nil)
+		mockIamAPI.EXPECT().DeletePolicy(gomock.Any(), &iam.DeletePolicyInput{
+			PolicyArn: aws.String(accountRolePolicyArn),
+		}).Return(&iam.DeletePolicyOutput{}, nil)
+		err := client.DeleteAccountRole(accountRole, rolePrefix, false)
+		Expect(err).NotTo(HaveOccurred())
+	})
+	It("Test DeleteOperatorRole", func() {
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), &iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(operatorRole),
+		}).Return(operatorRoleAttachedPolicies, nil).MaxTimes(2)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+			RoleName: aws.String(operatorRole),
+		}).Return(operatorRoleTags, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), &iam.ListPolicyTagsInput{
+			PolicyArn: aws.String(operatorRolePolicyArn),
+		}).Return(operatorRolePolicyTags, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), &iam.ListPolicyTagsInput{
+			PolicyArn: aws.String(customPolicyArn),
+		}).Return(customPolicyTags, nil)
+		mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), &iam.DetachRolePolicyInput{
+			RoleName:  aws.String(operatorRole),
+			PolicyArn: aws.String(operatorRolePolicyArn),
+		}).Return(&iam.DetachRolePolicyOutput{}, nil)
+		mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), &iam.DetachRolePolicyInput{
+			RoleName:  aws.String(operatorRole),
+			PolicyArn: aws.String(customPolicyArn),
+		}).Return(&iam.DetachRolePolicyOutput{}, nil)
+		mockIamAPI.EXPECT().DeleteRole(gomock.Any(), &iam.DeleteRoleInput{
+			RoleName: aws.String(operatorRole),
+		}).Return(&iam.DeleteRoleOutput{}, nil)
+		attachCount := int32(1)
+		mockIamAPI.EXPECT().GetPolicy(gomock.Any(), &iam.GetPolicyInput{
+			PolicyArn: aws.String(operatorRolePolicyArn),
+		}).Return(&iam.GetPolicyOutput{
+			Policy: &iamtypes.Policy{
+				AttachmentCount: &attachCount,
+			},
+		}, nil)
+		err := client.DeleteOperatorRole(operatorRole, false)
+		Expect(err).NotTo(HaveOccurred())
 	})
 })

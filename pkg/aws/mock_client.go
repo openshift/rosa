@@ -178,17 +178,17 @@ func (mr *MockClientMockRecorder) CreateSecretInSecretsManager(name, secret any)
 }
 
 // DeleteAccountRole mocks base method.
-func (m *MockClient) DeleteAccountRole(roleName string, managedPolicies bool) error {
+func (m *MockClient) DeleteAccountRole(roleName, prefix string, managedPolicies bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteAccountRole", roleName, managedPolicies)
+	ret := m.ctrl.Call(m, "DeleteAccountRole", roleName, prefix, managedPolicies)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteAccountRole indicates an expected call of DeleteAccountRole.
-func (mr *MockClientMockRecorder) DeleteAccountRole(roleName, managedPolicies any) *gomock.Call {
+func (mr *MockClientMockRecorder) DeleteAccountRole(roleName, prefix, managedPolicies any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAccountRole", reflect.TypeOf((*MockClient)(nil).DeleteAccountRole), roleName, managedPolicies)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAccountRole", reflect.TypeOf((*MockClient)(nil).DeleteAccountRole), roleName, prefix, managedPolicies)
 }
 
 // DeleteInlineRolePolicies mocks base method.
@@ -572,18 +572,18 @@ func (mr *MockClientMockRecorder) GetAccountRoleForCurrentEnvWithPrefix(env, rol
 }
 
 // GetAccountRolePolicies mocks base method.
-func (m *MockClient) GetAccountRolePolicies(roles []string) (map[string][]PolicyDetail, error) {
+func (m *MockClient) GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAccountRolePolicies", roles)
+	ret := m.ctrl.Call(m, "GetAccountRolePolicies", roles, prefix)
 	ret0, _ := ret[0].(map[string][]PolicyDetail)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAccountRolePolicies indicates an expected call of GetAccountRolePolicies.
-func (mr *MockClientMockRecorder) GetAccountRolePolicies(roles any) *gomock.Call {
+func (mr *MockClientMockRecorder) GetAccountRolePolicies(roles, prefix any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountRolePolicies", reflect.TypeOf((*MockClient)(nil).GetAccountRolePolicies), roles)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountRolePolicies", reflect.TypeOf((*MockClient)(nil).GetAccountRolePolicies), roles, prefix)
 }
 
 // GetAccountRoleVersion mocks base method.
@@ -781,6 +781,21 @@ func (mr *MockClientMockRecorder) GetOpenIDConnectProviderByOidcEndpointUrl(oidc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOpenIDConnectProviderByOidcEndpointUrl", reflect.TypeOf((*MockClient)(nil).GetOpenIDConnectProviderByOidcEndpointUrl), oidcEndpointUrl)
 }
 
+// GetOperatorRolePolicies mocks base method.
+func (m *MockClient) GetOperatorRolePolicies(roles []string) (map[string][]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOperatorRolePolicies", roles)
+	ret0, _ := ret[0].(map[string][]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOperatorRolePolicies indicates an expected call of GetOperatorRolePolicies.
+func (mr *MockClientMockRecorder) GetOperatorRolePolicies(roles any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOperatorRolePolicies", reflect.TypeOf((*MockClient)(nil).GetOperatorRolePolicies), roles)
+}
+
 // GetOperatorRolesFromAccountByClusterID mocks base method.
 func (m *MockClient) GetOperatorRolesFromAccountByClusterID(clusterID string, credRequests map[string]*v1.STSOperator) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -809,21 +824,6 @@ func (m *MockClient) GetOperatorRolesFromAccountByPrefix(prefix string, credRequ
 func (mr *MockClientMockRecorder) GetOperatorRolesFromAccountByPrefix(prefix, credRequest any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOperatorRolesFromAccountByPrefix", reflect.TypeOf((*MockClient)(nil).GetOperatorRolesFromAccountByPrefix), prefix, credRequest)
-}
-
-// GetPolicies mocks base method.
-func (m *MockClient) GetPolicies(roles []string) (map[string][]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPolicies", roles)
-	ret0, _ := ret[0].(map[string][]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPolicies indicates an expected call of GetPolicies.
-func (mr *MockClientMockRecorder) GetPolicies(roles any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPolicies", reflect.TypeOf((*MockClient)(nil).GetPolicies), roles)
 }
 
 // GetRegion mocks base method.
