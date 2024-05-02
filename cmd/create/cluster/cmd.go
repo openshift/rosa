@@ -3218,7 +3218,7 @@ func run(cmd *cobra.Command, _ []string) {
 		" print for cluster describe called inside cluster create, but there is a use for a lone describe."
 	var disableRegionDeprecation bool
 	clusterdescribe.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-		false, disableUsage)
+		true, disableUsage)
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{cluster.ID()})
 	disableRegionDeprecation = false // No longer disable
 
@@ -3229,13 +3229,13 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			disableRegionDeprecation = true // disable again
 			operatorroles.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-				false, disableUsage)
+				true, disableUsage)
 			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
 			oidcprovider.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-				false, disableUsage)
+				true, disableUsage)
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
 			disableRegionDeprecation = false // No longer disable
 		} else {
@@ -3274,7 +3274,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if args.watch {
 		disableRegionDeprecation = true // Disable region deprecation
 		clusterdescribe.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-			false, disableUsage)
+			true, disableUsage)
 		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
 		disableRegionDeprecation = false // No longer disable
 	} else if !output.HasFlag() || r.Reporter.IsTerminal() {
