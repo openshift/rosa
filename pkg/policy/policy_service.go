@@ -40,7 +40,7 @@ type PolicyService interface {
 	ManualAttachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) string
 	ValidateDetachOptions(roleName string, policyArns []string) error
 	AutoDetachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) (string, error)
-	ManualDetachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) string
+	ManualDetachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) (string, string, error)
 }
 
 type policyService struct {
@@ -92,7 +92,7 @@ func (p *policyService) AutoAttachArbitraryPolicy(roleName string, policyArns []
 			ocm.PolicyArn:    policyArn,
 		})
 	}
-	return output, nil
+	return output[:len(output)-1], nil
 }
 
 func (p *policyService) ManualAttachArbitraryPolicy(roleName string, policyArns []string,
@@ -134,23 +134,33 @@ func (p *policyService) AutoDetachArbitraryPolicy(roleName string, policyArns []
 			})
 		}
 	}
-	return output, nil
+	return output[:len(output)-1], nil
 }
 
 func (p *policyService) ManualDetachArbitraryPolicy(roleName string, policyArns []string,
-	accountID, orgID string) string {
+	accountID, orgID string) (string, string, error) {
 	cmd := ""
-	for _, policyArn := range policyArns {
-		cmd = cmd + fmt.Sprintf("aws iam detach-role-policy --role-name %s --policy-arn %s\n",
-			roleName, policyArn)
-		p.OCMClient.LogEvent("ROSADetachPolicyManual", map[string]string{
-			ocm.Account:      accountID,
-			ocm.Organization: orgID,
-			ocm.RoleName:     roleName,
-			ocm.PolicyArn:    policyArn,
-		})
+	warn := ""
+	policies, err := p.AWSClient.ListAttachedRolePolicies(roleName)
+	if err != nil {
+		return cmd, warn, err
 	}
-	return cmd
+	for _, policyArn := range policyArns {
+		if slices.Contains(policies, policyArn) {
+			cmd = cmd + fmt.Sprintf("aws iam detach-role-policy --role-name %s --policy-arn %s\n",
+				roleName, policyArn)
+			p.OCMClient.LogEvent("ROSADetachPolicyManual", map[string]string{
+				ocm.Account:      accountID,
+				ocm.Organization: orgID,
+				ocm.RoleName:     roleName,
+				ocm.PolicyArn:    policyArn,
+			})
+		} else {
+			warn = warn + fmt.Sprintf("The policy '%s' is currently not attached to role '%s'\n",
+				policyArn, roleName)
+		}
+	}
+	return cmd, warn, nil
 }
 
 func validatePolicyQuota(c aws.Client, roleName string, policyArns []string) error {

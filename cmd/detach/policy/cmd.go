@@ -122,9 +122,18 @@ func DetachPolicyRunner(userOptions *RosaDetachPolicyOptions) rosa.CommandRunner
 				return err
 			}
 		case interactive.ModeManual:
-			r.Reporter.Infof("Run the following command to detach the policy:")
-			fmt.Print(policySvc.ManualDetachArbitraryPolicy(options.roleName, policyArns,
-				r.Creator.AccountID, orgID))
+			output, warn, err := policySvc.ManualDetachArbitraryPolicy(options.roleName, policyArns,
+				r.Creator.AccountID, orgID)
+			if err != nil {
+				return err
+			}
+			if len(warn) > 0 {
+				fmt.Print(warn)
+			}
+			if len(output) > 0 {
+				r.Reporter.Infof("Run the following command to detach the policy:")
+				fmt.Print(output)
+			}
 		default:
 			return fmt.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		}
