@@ -117,7 +117,9 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	oidcConfigStrategy.execute(r)
+	arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.IssuerUrl})
+	arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	r.OCMClient.DeleteOidcConfig(args.oidcConfigId)
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Registered OIDC Config ID '%s'"+

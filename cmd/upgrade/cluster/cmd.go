@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/upgrade/roles"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -479,7 +480,9 @@ func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode str
 	version string, clusterKey string) {
 	r.Reporter.Infof("Ensuring account and operator role policies for cluster '%s'"+
 		" are compatible with upgrade.", cluster.ID())
+	arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 	roles.Cmd.Run(roles.Cmd, []string{mode, cluster.ID(), version, cluster.Version().ChannelGroup()})
+	arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 	}

@@ -218,5 +218,7 @@ func run(cmd *cobra.Command, _ []string) {
 		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
+	arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, args.issuerUrl})
+	arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 }
