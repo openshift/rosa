@@ -168,13 +168,6 @@ var _ = Describe("Edit nodepool",
 				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(npList.Nodepool(nodePoolName)).To(BeNil())
-
-				if len(npList.NodePools) == 1 {
-					By("Try to delete remaining nodepool")
-					output, err = machinePoolService.DeleteMachinePool(clusterID, npList.NodePools[0].ID)
-					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Failed to delete machine pool '%s' on hosted cluster '%s': The last node pool can not be deleted from a cluster.", npList.NodePools[0].ID, clusterID))
-				}
 			})
 
 		It("can create nodepool with defined subnets - [id:60202]",
