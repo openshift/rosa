@@ -24,6 +24,7 @@ type ClusterService interface {
 	CreateDryRun(clusterName string, flags ...string) (bytes.Buffer, error)
 	EditCluster(clusterID string, flags ...string) (bytes.Buffer, error)
 	DeleteUpgrade(flags ...string) (bytes.Buffer, error)
+	Upgrade(flags ...string) (bytes.Buffer, error)
 	InstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
 	UnInstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
 
@@ -183,6 +184,14 @@ func (c *clusterService) DeleteUpgrade(flags ...string) (bytes.Buffer, error) {
 		CmdFlags(flags...)
 	return DeleteUpgrade.Run()
 }
+
+func (c *clusterService) Upgrade(flags ...string) (bytes.Buffer, error) {
+	upgrade := c.client.Runner.
+		Cmd("upgrade", "cluster").
+		CmdFlags(flags...)
+	return upgrade.Run()
+}
+
 func (c *clusterService) InstallLog(clusterID string, flags ...string) (bytes.Buffer, error) {
 	installLog := c.client.Runner.
 		Cmd("logs", "install", "-c", clusterID).
