@@ -53,6 +53,7 @@ type OCMResourceService interface {
 	ReflectOCMRoleList(result bytes.Buffer) (orl OCMRoleList, err error)
 
 	ListOIDCConfig() (OIDCConfigList, bytes.Buffer, error)
+	ListInstanceTypes() (InstanceTypesList, bytes.Buffer, error)
 	DeleteOIDCConfig(flags ...string) (bytes.Buffer, error)
 	CreateOIDCConfig(flags ...string) (bytes.Buffer, error)
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
@@ -77,6 +78,17 @@ func NewOCMResourceService(client *Client) OCMResourceService {
 			client: client,
 		},
 	}
+}
+
+// Struct for the 'rosa list instance-types' output
+type InstanceTypes struct {
+	ID        string `json:"ID,omitempty"`
+	CATEGORY  string `json:"CATEGORY,omitempty"`
+	CPU_CORES string `json:"CPU_CORES,omitempty"`
+	MEMORY    string `json:"MEMORY,omitempty"`
+}
+type InstanceTypesList struct {
+	InstanceTypesList []InstanceTypes `json:"InstanceTypesList,omitempty"`
 }
 
 // Struct for the 'rosa list region' output
@@ -157,6 +169,34 @@ type OIDCConfig struct {
 }
 type OIDCConfigList struct {
 	OIDCConfigList []OIDCConfig `json:"OIDCConfigList,omitempty"`
+}
+
+// Pasrse the result of 'rosa list instance-types' to InstanceTypes struct
+func (ors *ocmResourceService) ReflectInstanceTypesList(result bytes.Buffer) (url InstanceTypesList, err error) {
+	url = InstanceTypesList{}
+	theMap := ors.client.Parser.TableData.Input(result).Parse().Output()
+	for _, instanceTypeItem := range theMap {
+		ur := &InstanceTypes{}
+		err = MapStructure(instanceTypeItem, ur)
+		if err != nil {
+			return
+		}
+		url.InstanceTypesList = append(url.InstanceTypesList, *ur)
+	}
+	return
+}
+
+// ListInstanceTypes implements OCMResourceService.
+func (ors *ocmResourceService) ListInstanceTypes() (InstanceTypesList, bytes.Buffer, error) {
+	ors.client.Runner.cmdArgs = []string{}
+	listInstanceTypes := ors.client.Runner.
+		Cmd("list", "instance-types")
+	output, err := listInstanceTypes.Run()
+	if err != nil {
+		return InstanceTypesList{}, output, err
+	}
+	instanceList, err := ors.ReflectInstanceTypesList(output)
+	return instanceList, output, err
 }
 
 // List region
