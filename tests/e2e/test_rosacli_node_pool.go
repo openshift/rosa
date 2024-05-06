@@ -178,7 +178,8 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create nodepool with defined subnets - [id:60202]",
-			labels.Critical,
+			labels.Critical, labels.Exclude,
+			//  Exclude label must be removed after OCM-7924 bug is fixed.
 			func() {
 				var subnets []string
 				nodePoolName := common.GenerateRandomName("np-60202", 2)
