@@ -26,5 +26,25 @@ var _ = Describe("Nodepool", func() {
 			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(3).MinReplica(2)
 			Expect(builder).To(Equal(asBuilder))
 		})
+
+		It("editAutoscaling should equal the exepcted output with no min replica value", func() {
+			nodepool, err := cmv1.NewNodePool().
+				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(2).MinReplica(1)).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+			builder := editAutoscaling(nodepool, 0, 3)
+			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(3).MinReplica(1)
+			Expect(builder).To(Equal(asBuilder))
+		})
+
+		It("editAutoscaling should equal the exepcted output with no max replica value", func() {
+			nodepool, err := cmv1.NewNodePool().
+				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(1)).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+			builder := editAutoscaling(nodepool, 2, 0)
+			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(2)
+			Expect(builder).To(Equal(asBuilder))
+		})
 	})
 })
