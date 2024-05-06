@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	linkuser "github.com/openshift/rosa/cmd/link/userrole"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -215,8 +216,9 @@ func run(cmd *cobra.Command, _ []string) {
 		r.OCMClient.LogEvent("ROSACreateUserRoleModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 		})
-
+		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 		linkuser.Cmd.Run(linkuser.Cmd, []string{roleARN})
+		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateUserRoleModeManual", map[string]string{})
 		err = generateUserRolePolicyFiles(r.Reporter, env, r.Creator.Partition, currentAccount.ID(), policies)

@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	unlinkuserrole "github.com/openshift/rosa/cmd/unlink/userrole"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/helper"
@@ -176,7 +177,9 @@ func run(cmd *cobra.Command, argv []string) {
 		if isLinked {
 			r.Reporter.Warnf("Role ARN '%s' is linked to account '%s'",
 				roleARN, currentAccount.ID())
+			arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 			unlinkuserrole.Cmd.Run(unlinkuserrole.Cmd, []string{roleARN})
+			arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 		}
 		err := r.AWSClient.DeleteUserRole(roleName)
 		if err != nil {

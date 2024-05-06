@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	linkocmrole "github.com/openshift/rosa/cmd/link/ocmrole"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -279,7 +280,9 @@ func run(cmd *cobra.Command, _ []string) {
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
 		})
+		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 		linkocmrole.Cmd.Run(linkocmrole.Cmd, []string{roleARN})
+		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
 		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, interactive.ModeManual)
