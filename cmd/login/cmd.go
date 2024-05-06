@@ -346,9 +346,16 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 			if !ok {
 				tokenURL = args.tokenURL
 			}
-			clientID, ok = fedramp.ClientIDs[env]
-			if !ok {
+
+			// if client-id is provided, we don't want to just override it
+			// with Keycloak flow
+			if args.clientID != "" {
 				clientID = args.clientID
+			} else {
+				clientID, ok = fedramp.ClientIDs[env]
+				if !ok {
+					clientID = args.clientID
+				}
 			}
 		}
 	}
