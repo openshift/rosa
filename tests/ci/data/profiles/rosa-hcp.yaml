@@ -92,7 +92,7 @@ profiles:
   cluster:
     multi_az: true
     instance_type: "m5.2xlarge"
-    hypershift: true
+    hcp: true
     cloud_provider: "aws"
     sts: true
     byo_vpc: true
@@ -120,7 +120,7 @@ profiles:
   cluster:
     multi_az: true
     instance_type: "m5.xlarge"
-    hypershift: true
+    hcp: true
     cloud_provider: "aws"
     sts: true
     byo_vpc: true
