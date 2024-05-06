@@ -38,6 +38,7 @@ type OCMResourceService interface {
 
 	Whoami() (bytes.Buffer, error)
 	ReflectAccountsInfo(result bytes.Buffer) *AccountsInfo
+	UserInfo() (res *AccountsInfo, err error)
 
 	CreateAccountRole(flags ...string) (bytes.Buffer, error)
 	ReflectAccountRoleList(result bytes.Buffer) (arl AccountRoleList, err error)
@@ -192,6 +193,14 @@ func (ors *ocmResourceService) ReflectAccountsInfo(result bytes.Buffer) *Account
 	data, _ := json.Marshal(&theMap)
 	json.Unmarshal(data, res)
 	return res
+}
+
+func (ors *ocmResourceService) UserInfo() (res *AccountsInfo, err error) {
+	output, err := ors.Whoami()
+	if err != nil {
+		return
+	}
+	return ors.ReflectAccountsInfo(output), err
 }
 
 // Pasrse the result of 'rosa list user-roles' to NodePoolList struct

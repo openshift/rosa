@@ -110,6 +110,7 @@ type NodePoolDescription struct {
 	CurrentReplicas            string `yaml:"Current replicas,omitempty"`
 	InstanceType               string `yaml:"Instance type,omitempty"`
 	Labels                     string `yaml:"Labels,omitempty"`
+	Tags                       string `yaml:"Tags,omitempty"`
 	Taints                     string `yaml:"Taints,omitempty"`
 	AvalaiblityZones           string `yaml:"Availability zone,omitempty"`
 	Subnet                     string `yaml:"Subnet,omitempty"`
