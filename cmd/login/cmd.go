@@ -324,6 +324,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 	// Override configuration details for FedRAMP:
 	if fedramp.Enabled() {
+		clientID = fedramp.ClientID
+		if args.clientID != "" {
+			clientID = args.clientID
+		}
 		if fedramp.HasAdminFlag(cmd) {
 			gatewayURL, ok = fedramp.AdminURLAliases[env]
 			if !ok {
@@ -345,17 +349,6 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 			tokenURL, ok = fedramp.TokenURLs[env]
 			if !ok {
 				tokenURL = args.tokenURL
-			}
-
-			// if client-id is provided, we don't want to just override it
-			// with Keycloak flow
-			if args.clientID != "" {
-				clientID = args.clientID
-			} else {
-				clientID, ok = fedramp.ClientIDs[env]
-				if !ok {
-					clientID = args.clientID
-				}
 			}
 		}
 	}
