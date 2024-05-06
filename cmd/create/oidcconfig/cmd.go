@@ -296,7 +296,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	oidcConfigStrategy.execute(r)
 	if !args.rawFiles {
+		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 		oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.IssuerUrl})
+		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	}
 }
 

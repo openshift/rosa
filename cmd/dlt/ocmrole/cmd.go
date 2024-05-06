@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	unlinkocmrole "github.com/openshift/rosa/cmd/unlink/ocmrole"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/helper"
@@ -177,7 +178,9 @@ func run(cmd *cobra.Command, argv []string) {
 		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeAuto", nil)
 		if isLinked {
 			r.Reporter.Warnf("Role ARN '%s' is linked to organization '%s'", roleARN, orgID)
+			arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 			unlinkocmrole.Cmd.Run(unlinkocmrole.Cmd, []string{roleARN})
+			arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 		}
 		if roleExistOnAWS {
 			err := r.AWSClient.DeleteOCMRole(roleName, managedPolicies)
