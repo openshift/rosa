@@ -77,8 +77,7 @@ func init() {
 		userrole.Cmd, ocmrole.Cmd,
 		oidcprovider.Cmd, breakglasscredential.Cmd,
 		admin.Cmd, autoscaler.Cmd, dnsdomains.Cmd,
-		externalauthprovider.Cmd, idp.Cmd, kubeletconfig.Cmd,
-		oidcprovider.Cmd, tuningconfigs.Cmd,
+		externalauthprovider.Cmd, idp.Cmd, kubeletconfig.Cmd, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }
