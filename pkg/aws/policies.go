@@ -399,6 +399,10 @@ func (c *awsClient) createPolicy(policyArn string, document string, tagList map[
 }
 
 func (c *awsClient) IsPolicyCompatible(policyArn string, version string) (bool, error) {
+	// Ignore if there is no version
+	if version == "" {
+		return true, nil
+	}
 	output, err := c.iamClient.ListPolicyTags(context.Background(), &iam.ListPolicyTagsInput{
 		PolicyArn: aws.String(policyArn),
 	})

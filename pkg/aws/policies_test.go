@@ -7,14 +7,66 @@ import (
 	gomock "go.uber.org/mock/gomock"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	"github.com/openshift/rosa/pkg/aws/tags"
 )
+
+var _ = Describe("Is Policy Compatible", func() {
+	var (
+		client   Client
+		mockCtrl *gomock.Controller
+
+		mockEC2API            *mocks.MockEc2ApiClient
+		mockCfAPI             *mocks.MockCloudFormationApiClient
+		mockIamAPI            *mocks.MockIamApiClient
+		mockS3API             *mocks.MockS3ApiClient
+		mockSecretsManagerAPI *mocks.MockSecretsManagerApiClient
+		mockSTSApi            *mocks.MockStsApiClient
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockCfAPI = mocks.NewMockCloudFormationApiClient(mockCtrl)
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		mockEC2API = mocks.NewMockEc2ApiClient(mockCtrl)
+		mockS3API = mocks.NewMockS3ApiClient(mockCtrl)
+		mockSTSApi = mocks.NewMockStsApiClient(mockCtrl)
+		mockSecretsManagerAPI = mocks.NewMockSecretsManagerApiClient(mockCtrl)
+		client = New(
+			awsSdk.Config{},
+			logrus.New(),
+			mockIamAPI,
+			mockEC2API,
+			mocks.NewMockOrganizationsApiClient(mockCtrl),
+			mockS3API,
+			mockSecretsManagerAPI,
+			mockSTSApi,
+			mockCfAPI,
+			mocks.NewMockServiceQuotasApiClient(mockCtrl),
+			mocks.NewMockServiceQuotasApiClient(mockCtrl),
+			&AccessKey{},
+			false,
+		)
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+	When("Version is empty", func() {
+		It("Should be compatible", func() {
+			isCompatible, err := client.IsPolicyCompatible("fakearn", "")
+			Expect(err).To(BeNil())
+			Expect(isCompatible).To(BeTrue())
+		})
+	})
+})
 
 var _ = Describe("Is Account Role Version Compatible", func() {
 	When("Role isn't an account role", func() {
