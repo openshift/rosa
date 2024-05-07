@@ -35,7 +35,9 @@ func PrintNodePoolAutoscaling(autoscaling *cmv1.NodePoolAutoscaling) string {
 
 func PrintNodePoolReplicas(autoscaling *cmv1.NodePoolAutoscaling, replicas int) string {
 	if autoscaling != nil {
-		return fmt.Sprintf("%d-%d",
+		return fmt.Sprintf(`
+ - Min replicas: %d
+ - Max replicas: %d`,
 			autoscaling.MinReplica(),
 			autoscaling.MaxReplica())
 	}
