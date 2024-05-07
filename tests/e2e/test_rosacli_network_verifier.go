@@ -141,7 +141,6 @@ var _ = Describe("Network verifier",
 					"--hosted-cp",
 				)
 				Expect(err).ToNot(HaveOccurred())
-
 			})
 
 	})

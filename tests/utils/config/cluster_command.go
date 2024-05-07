@@ -80,6 +80,7 @@ func (c *command) GetFlagValue(flag string, flagWithVaue bool) string {
 // Add flags to the command
 func (c *command) AddFlags(flags ...string) {
 	for _, flag := range flags {
+		c.cmd = strings.TrimSpace(c.cmd)
 		// combine the command with space
 		c.cmd += " " + flag
 	}

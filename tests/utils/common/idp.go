@@ -2,22 +2,22 @@ package common
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
 // Generate htpasspwd key value pair, return with a string
 func GenerateHtpasswdPair(user string, pass string) (string, string, string, error) {
-	generateCMD := fmt.Sprintf("htpasswd -Bbn %s %s", user, pass)
-	output, err := exec.Command("bash", "-c", generateCMD).Output()
-	htpasswdPair := strings.TrimSpace(string(output))
-	parts := strings.SplitN(htpasswdPair, ":", 2)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 	if err != nil {
 		Logger.Errorf("Fail to generate htpasswd file: %v", err)
 		return "", "", "", err
 	}
+	htpasswdPair := fmt.Sprintf("%s:%s", user, string(hashedPassword))
+	parts := strings.SplitN(htpasswdPair, ":", 2)
 	return htpasswdPair, parts[0], parts[1], nil
 }
 
