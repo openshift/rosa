@@ -85,10 +85,9 @@ func DescribeMachinePoolRunner(userOptions DescribeMachinepoolUserOptions) rosa.
 		if cluster.State() != cmv1.ClusterStateReady {
 			return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 		}
-		isHypershift := cluster.Hypershift().Enabled()
 
 		service := machinepool.NewMachinePoolService()
 
-		return service.DescribeMachinePool(runtime, cluster, clusterKey, isHypershift, options.Machinepool())
+		return service.DescribeMachinePool(runtime, cluster, clusterKey, options.Machinepool())
 	}
 }
