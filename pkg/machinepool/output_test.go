@@ -101,8 +101,8 @@ var _ = Describe("Output", Ordered, func() {
 			Expect(out).To(Equal(result))
 		})
 		It("nodepool output with autoscaling", func() {
-			nodePoolBuilder := *cmv1.NewNodePool().ID("test-mp").Autoscaling(cmv1.NewNodePoolAutoscaling().
-				ID("test-as").MinReplica(2).MaxReplica(8)).Replicas(4).
+			npAutoscaling := cmv1.NewNodePoolAutoscaling().ID("test-as").MinReplica(2).MaxReplica(8)
+			nodePoolBuilder := *cmv1.NewNodePool().ID("test-mp").Autoscaling(npAutoscaling).Replicas(4).
 				AvailabilityZone("test-az").Subnet("test-subnets").Version(cmv1.NewVersion().
 				ID("1")).AutoRepair(false).TuningConfigs("test-tc").Labels(labels).
 				Taints(taintsBuilder)
@@ -110,9 +110,10 @@ var _ = Describe("Output", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			labelsOutput := ocmOutput.PrintLabels(labels)
 			taintsOutput := ocmOutput.PrintTaints([]*cmv1.Taint{taint})
+			replicasOutput := ocmOutput.PrintNodePoolReplicas((*cmv1.NodePoolAutoscaling)(npAutoscaling), 4)
 
 			out := fmt.Sprintf(nodePoolOutputString,
-				"test-mp", "test-cluster", "Yes", "2-8", "", "", labelsOutput, "", taintsOutput, "test-az",
+				"test-mp", "test-cluster", "Yes", replicasOutput, "", "", labelsOutput, "", taintsOutput, "test-az",
 				"test-subnets", "1", "No", "test-tc", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
