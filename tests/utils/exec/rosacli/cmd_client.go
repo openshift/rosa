@@ -70,12 +70,6 @@ func NewClient() *Client {
 	return client
 }
 
-func NewSensitiveClient() *Client {
-	client := NewClient()
-	client.Runner.Sensitive(true)
-	return client
-}
-
 func (c *Client) CleanResources(clusterID string) error {
 	var errorList []error
 

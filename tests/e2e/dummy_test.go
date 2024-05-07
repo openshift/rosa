@@ -58,4 +58,18 @@ var _ = Describe("ROSA CLI Test", func() {
 		})
 
 	})
+	Describe("logstreamtest", func() {
+		It("", func() {
+			funcA := func(causeError bool) error {
+				rosacli.NewClient().OCMResource.ListRegion()
+				log.Logger.Debugf("I am debug message with caseuError %v", causeError)
+				if causeError {
+					return fmt.Errorf("test")
+				}
+				return nil
+			}
+			// Expect(funcA(true)).ToNot(HaveOccurred())
+			Expect(funcA(false)).ToNot(HaveOccurred())
+		})
+	})
 })

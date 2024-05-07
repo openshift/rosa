@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 const (
@@ -20,7 +20,6 @@ type runner struct {
 	cmds      []string
 	cmdArgs   []string
 	runnerCfg *runnerConfig
-	sensitive bool
 }
 
 type runnerConfig struct {
@@ -43,7 +42,6 @@ func NewRunner() *runner {
 func (r *runner) Copy() *runner {
 	return &runner{
 		runnerCfg: r.runnerCfg.Copy(),
-		sensitive: r.sensitive,
 	}
 }
 
@@ -53,11 +51,6 @@ func (rc *runnerConfig) Copy() *runnerConfig {
 		color:  rc.color,
 		debug:  rc.debug,
 	}
-}
-
-func (r *runner) Sensitive(sensitive bool) *runner {
-	r.sensitive = sensitive
-	return r
 }
 
 func (r *runner) format(format string) *runner {
@@ -183,11 +176,8 @@ func (r *runner) Run() (bytes.Buffer, error) {
 			err = fmt.Errorf("executing failed: %s", output.String())
 			return output, err
 		}
-		if r.sensitive {
-			Logger.Infof("Running command: rosa %s", strings.Join(cmdElements[:2], " "))
-		} else {
-			Logger.Infof("Running command: rosa %s", strings.Join(cmdElements, " "))
-		}
+
+		log.Logger.Infof("Running command: rosa %s", strings.Join(cmdElements, " "))
 
 		output.Reset()
 		cmd := exec.Command(rosacmd, cmdElements...)
@@ -195,13 +185,12 @@ func (r *runner) Run() (bytes.Buffer, error) {
 		cmd.Stderr = cmd.Stdout
 
 		err = cmd.Run()
-		if !r.sensitive {
-			Logger.Infof("Get Combining Stdout and Stder is :\n%s", output.String())
-		}
+
+		log.Logger.Debugf("Get Combining Stdout and Stder is :\n%s", output.String())
 
 		if strings.Contains(output.String(), "Not able to get authentication token") {
 			retry = retry + 1
-			Logger.Warnf("[Retry] Not able to get authentication token!! Wait and sleep 5s to do the %d retry", retry)
+			log.Logger.Warnf("[Retry] Not able to get authentication token!! Wait and sleep 5s to do the %d retry", retry)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -212,19 +201,14 @@ func (r *runner) Run() (bytes.Buffer, error) {
 func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	var output bytes.Buffer
 	var err error
-
-	if !r.sensitive {
-		Logger.Infof("Running command: %s", strings.Join(command, " "))
-	} else {
-		Logger.Infof("%s command is running", command[0])
-	}
+	log.Logger.Infof("%s command is running", command[0])
 	output.Reset()
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Stdout = &output
 	cmd.Stderr = cmd.Stdout
 
 	err = cmd.Run()
-	Logger.Infof("Get Combining Stdout and Stder is : %s", output.String())
+	log.Logger.Debugf("Get Combining Stdout and Stder is : %s", output.String())
 
 	return output, err
 
