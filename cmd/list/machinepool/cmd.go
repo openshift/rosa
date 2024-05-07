@@ -58,5 +58,8 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	service := machinepool.NewMachinePoolService()
-	service.ListMachinePools(r, clusterKey, cluster, cluster.Hypershift().Enabled())
+	err := service.ListMachinePools(r, clusterKey, cluster)
+	if err != nil {
+		r.Reporter.Errorf("Failed to list machinepools: %s", err)
+	}
 }

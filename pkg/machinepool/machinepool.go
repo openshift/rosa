@@ -19,9 +19,8 @@ var notFoundMessage string = "Machine pool '%s' not found"
 
 //go:generate mockgen -source=machinepool.go -package=mocks -destination=machinepool_mock.go
 type MachinePoolService interface {
-	DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, isHypershift bool,
-		machinePoolId string) error
-	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, isHypershift bool)
+	DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, machinePoolId string) error
+	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) error
 }
 
 type machinePool struct {
@@ -34,52 +33,48 @@ func NewMachinePoolService() MachinePoolService {
 }
 
 // ListMachinePools lists all machinepools (or, nodepools if hypershift) in a cluster
-func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, isHypershift bool) {
+func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) error {
 	// Load any existing machine pools for this cluster
 	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
+	isHypershift := cluster.Hypershift().Enabled()
 	var err error
 	var machinePools []*cmv1.MachinePool
 	var nodePools []*cmv1.NodePool
-	if !isHypershift {
-		machinePools, err = r.OCMClient.GetMachinePools(cluster.ID())
-	} else {
+	if isHypershift {
 		nodePools, err = r.OCMClient.GetNodePools(cluster.ID())
-	}
-	if err != nil {
-		r.Reporter.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		if err != nil {
+			return err
+		}
+	} else {
+		machinePools, err = r.OCMClient.GetMachinePools(cluster.ID())
+		if err != nil {
+			return err
+		}
 	}
 
 	if output.HasFlag() {
-		if !isHypershift {
-			err = output.Print(machinePools)
-		} else {
-			err = output.Print(nodePools)
+		if isHypershift {
+			return output.Print(nodePools)
 		}
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+		return output.Print(machinePools)
 	}
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	var finalStringToOutput string
-	if !isHypershift {
-		finalStringToOutput = printMachinePools(machinePools)
-	} else {
-		finalStringToOutput = printNodePools(nodePools)
+	finalStringToOutput := getMachinePoolsString(machinePools)
+	if isHypershift {
+		finalStringToOutput = getNodePoolsString(nodePools)
 	}
-	fmt.Fprintf(writer, finalStringToOutput)
+	fmt.Fprint(writer, finalStringToOutput)
 	writer.Flush()
+	return nil
 }
 
 // DescribeMachinePool describes either a machinepool, or, a nodepool (if hypershift)
-func (m machinePool) DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, isHypershift bool,
+func (m *machinePool) DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 	machinePoolId string) error {
-	if isHypershift {
+	if cluster.Hypershift().Enabled() {
 		return m.describeNodePool(r, cluster, clusterKey, machinePoolId)
 	}
 
@@ -101,7 +96,7 @@ func (m machinePool) DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster,
 	return nil
 }
 
-func (m machinePool) describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
+func (m *machinePool) describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string,
 	nodePoolId string) error {
 	r.Reporter.Debugf(fetchMessage, "node pool", nodePoolId, clusterKey)
 	nodePool, exists, err := r.OCMClient.GetNodePool(cluster.ID(), nodePoolId)
@@ -172,7 +167,7 @@ func appendUpgradesIfExist(scheduledUpgrade *cmv1.NodePoolUpgradePolicy, output 
 	return output
 }
 
-func printMachinePools(machinePools []*cmv1.MachinePool) string {
+func getMachinePoolsString(machinePools []*cmv1.MachinePool) string {
 	outputString := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t" +
 		"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\tSG IDs\n"
 	for _, machinePool := range machinePools {
@@ -193,7 +188,7 @@ func printMachinePools(machinePools []*cmv1.MachinePool) string {
 	return outputString
 }
 
-func printNodePools(nodePools []*cmv1.NodePool) string {
+func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 	outputString := "ID\tAUTOSCALING\tREPLICAS\t" +
 		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\t\n"
 	for _, nodePool := range nodePools {

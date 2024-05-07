@@ -33,8 +33,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 					Subnet("sn").Version(cmv1.NewVersion().ID("1")).AutoRepair(false)))
 			cluster, err := clusterBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(err).ToNot(HaveOccurred())
-			out := printNodePools(cluster.NodePools().Slice())
+			out := getNodePoolsString(cluster.NodePools().Slice())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out).To(Equal(fmt.Sprintf("ID\tAUTOSCALING\tREPLICAS\t"+
 				"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\t\n"+
@@ -103,8 +102,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 						Key("taint"))))
 			cluster, err := clusterBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(err).ToNot(HaveOccurred())
-			out := printMachinePools(cluster.MachinePools().Slice())
+			out := getMachinePoolsString(cluster.MachinePools().Slice())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out).To(Equal(fmt.Sprintf("ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t"+
 				"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\tSG IDs\n"+
