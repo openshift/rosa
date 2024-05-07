@@ -304,20 +304,24 @@ func getNodePoolReplicas(cmd *cobra.Command,
 }
 
 func editAutoscaling(nodePool *cmv1.NodePool, minReplicas int, maxReplicas int) *cmv1.NodePoolAutoscalingBuilder {
-	asBuilder := cmv1.NewNodePoolAutoscaling()
-	changed := false
+	existingMinReplica := nodePool.Autoscaling().MinReplica()
+	existingMaxReplica := nodePool.Autoscaling().MaxReplica()
 
-	if nodePool.Autoscaling().MinReplica() != minReplicas && minReplicas >= 1 {
-		asBuilder = asBuilder.MinReplica(minReplicas)
-		changed = true
+	min := existingMinReplica
+	max := existingMaxReplica
+
+	if minReplicas != 0 {
+		min = minReplicas
 	}
-	if nodePool.Autoscaling().MaxReplica() != maxReplicas && maxReplicas >= 1 {
-		asBuilder = asBuilder.MaxReplica(maxReplicas)
-		changed = true
+	if maxReplicas != 0 {
+		max = maxReplicas
 	}
 
-	if changed {
-		return asBuilder
+	if existingMinReplica != minReplicas || existingMaxReplica != maxReplicas {
+		if min >= 1 && max >= 1 {
+			return cmv1.NewNodePoolAutoscaling().MinReplica(min).MaxReplica(max)
+		}
 	}
+
 	return nil
 }
