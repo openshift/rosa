@@ -405,6 +405,20 @@ var _ = Describe("Filtering", func() {
 	)
 })
 
+var _ = Describe("hostPrefixValidator()", func() {
+	It("KO: invalid format", func() {
+		err := hostPrefixValidator("abc")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("strconv.Atoi: parsing \"abc\": invalid syntax"))
+	})
+
+	It("KO: short format", func() {
+		err := hostPrefixValidator("123456")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Invalid Network Host Prefix /123456: Subnet length should be between 23 and 26"))
+	})
+})
+
 var _ = Describe("validateBillingAccount()", func() {
 
 	It("OK: valid billing account", func() {
