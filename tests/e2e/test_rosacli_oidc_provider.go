@@ -47,7 +47,6 @@ var _ = Describe("OIDC provider",
 				Expect(err).To(BeNil())
 
 				By("Check if cluster is using reusable oidc config")
-				UsingReusableOIDCConfig, err := clusterService.IsUsingReusableOIDCConfig(clusterID)
 				Expect(err).To(BeNil())
 
 				notExistedClusterID := "notexistedclusterid111"
@@ -61,11 +60,7 @@ var _ = Describe("OIDC provider",
 						"-y")
 					Expect(err).To(BeNil())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					if UsingReusableOIDCConfig {
-						Expect(textData).To(ContainSubstring("OIDC provider already exists"))
-					} else {
-						Expect(textData).To(ContainSubstring("is ready and does not need additional configuration"))
-					}
+					Expect(textData).To(ContainSubstring("OIDC provider already exists"))
 				case false:
 					By("Create oidc-provider on classic non-sts cluster")
 					output, err := ocmResourceService.CreateOIDCProvider(

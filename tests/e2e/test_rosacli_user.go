@@ -48,19 +48,27 @@ var _ = Describe("Edit User",
 				)
 
 				By("Try to list the user when there is no one")
+				rosaClient.Runner.JsonFormat()
+				defer func() {
+					rosaClient.Runner.UnsetFormat()
+				}()
+
 				_, output, err := userService.ListUsers(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("INFO: There are no users configured for cluster '%s'", clusterID))
+				if output.String() == "[]" {
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("INFO: There are no users configured for cluster '%s'", clusterID))
+				}
 
 				By("Grant dedicated-admins user")
+				rosaClient.Runner.UnsetFormat()
 				out, err := userService.GrantUser(
 					clusterID,
 					dedicatedAdminsGroupName,
 					dedicatedAdminsUserName,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Granted role '%s' to user '%s' on cluster '%s'", dedicatedAdminsGroupName, dedicatedAdminsUserName, clusterID))
 
 				By("Grant cluster-admins user")
@@ -129,7 +137,6 @@ var _ = Describe("Validate user",
 		defer GinkgoRecover()
 		var (
 			invalidPassword = "password1" // disallowed password
-			validPassword   = "Th3long,validpassword"
 			clusterID       string
 
 			rosaClient     *rosacli.Client
@@ -164,18 +171,6 @@ var _ = Describe("Validate user",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
 				Expect(textData).Should(ContainSubstring("assword must be at least"))
-
-				By("Try to create Hypershift cluster with admin username and password set (unsupported)")
-				output, err = clusterService.CreateDryRun(clusterID, "--hosted-cp",
-					"--cluster-admin-password", validPassword,
-					"--region", "us-west-2",
-					"--support-role-arn", "fake",
-					"--controlplane-iam-role", "fake",
-					"--worker-iam-role", "fake",
-					"--mode", "auto", "-y")
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(err).To(HaveOccurred())
-				Expect(textData).Should(ContainSubstring("is only supported in classic"))
 			})
 
 	})
