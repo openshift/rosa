@@ -3271,7 +3271,11 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if args.watch {
+		disableRegionDeprecation = true // Disable region deprecation
+		clusterdescribe.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
+			true, disableUsage)
 		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
+		disableRegionDeprecation = false // No longer disable
 	} else if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof(
 			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
