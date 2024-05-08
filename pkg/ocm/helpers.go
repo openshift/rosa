@@ -860,7 +860,8 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 	if err != nil {
 		return err
 	}
-	if reporter.IsTerminal() && !output.HasFlag() {
+	printInfo := reporter.IsTerminal() && !output.HasFlag()
+	if printInfo {
 		reporter.Infof("Reusable OIDC Configuration detected. Validating trusted relationships to operator roles: ")
 	}
 	for _, operatorIAMRole := range operatorIAMRoles {
@@ -894,6 +895,9 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 			return errors.Errorf("Operator role '%s' has unmanaged policies and is not compatible with the account "+
 				"role's managed policies.", roleARN)
 		}
+		if printInfo {
+			reporter.Infof("Using '%s'", roleARN)
+		}
 		if hasManagedPolicies {
 			// Managed policies should be compatible with all versions
 			continue
@@ -913,9 +917,6 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 			if !isCompatible {
 				return errors.Errorf("Operator role '%s' is not compatible with cluster version '%s'", roleARN, clusterVersion)
 			}
-		}
-		if reporter.IsTerminal() && !output.HasFlag() {
-			reporter.Infof("Using '%s'", *roleObject.Arn)
 		}
 	}
 	return nil

@@ -276,6 +276,21 @@ var _ = Describe("ParseDiskSizeToGigibyte", func() {
 
 })
 
+var _ = Describe("ParseVersion", func() {
+	It("returns proper value", func() {
+		output, err := ParseVersion("4.12")
+		Expect(err).To(BeNil())
+		Expect(output).To(Equal("4.12"))
+	})
+
+	It("fails with malformed version", func() {
+		output, err := ParseVersion("3$%TRD")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Malformed version: 3$%TRD"))
+		Expect(output).To(Equal(""))
+	})
+})
+
 var _ = Describe("ValidateBalancingIgnoredLabels", func() {
 	It("returns an error if didn't got a string", func() {
 		var val interface{} = 1
