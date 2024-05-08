@@ -3213,10 +3213,11 @@ func run(cmd *cobra.Command, _ []string) {
 				"for more information.")
 	}
 
+	disableUsage := "Temporarily used for disabling a warning message ran from other commands (no reason to" +
+		" print for cluster describe called inside cluster create, but there is a use for a lone describe."
 	var disableRegionDeprecation bool
 	clusterdescribe.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-		true, "Temporarily used for disabling a warning message ran from other commands (no reason to"+
-			" print for cluster describe called inside cluster create, but there is a use for a lone describe.")
+		true, disableUsage)
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{cluster.ID()})
 	disableRegionDeprecation = false // No longer disable
 
@@ -3225,11 +3226,17 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create operator roles.")
 			}
+			disableRegionDeprecation = true // disable again
+			operatorroles.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
+				true, disableUsage)
 			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
+			oidcprovider.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
+				true, disableUsage)
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
+			disableRegionDeprecation = false // No longer disable
 		} else {
 			output := ""
 			if len(operatorRoles) == 0 {
