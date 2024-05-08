@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	"github.com/openshift/rosa/cmd/dlt/operatorrole"
 	uninstallLogs "github.com/openshift/rosa/cmd/logs/uninstall"
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -120,7 +121,9 @@ func run(_ *cobra.Command, _ []string) {
 		fmt.Print(commands, "\n")
 	}
 	if args.watch {
+		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 		uninstallLogs.Cmd.Run(uninstallLogs.Cmd, []string{clusterKey})
+		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	} else {
 		r.Reporter.Infof("To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
 			clusterKey,

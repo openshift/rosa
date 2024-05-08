@@ -21,6 +21,7 @@ package arguments
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -37,7 +38,9 @@ const regionFlagName = "region"
 const regionDeprecationMessage = "Region flag will be removed from this command in future versions"
 
 var hasUnknownFlags bool
-var DisableRegionDeprecationFlagName = "disable-region-deprecation"
+
+var DisableRegionDeprecationFlagName = "disable-region-deprecation" // Temporary for region deprecation
+var DisableRegionDeprecationWarning = false                         // Temporary for region deprecation
 
 // ParseUnknownFlags parses all flags from the CLI, including
 // unknown ones, and adds them to the current command tree
@@ -332,15 +335,24 @@ func MarkRegionDeprecated(parentCmd *cobra.Command, childrenCmds []*cobra.Comman
 			deprecateRegion(parentCmd)
 			command.Parent().HelpFunc()(command, strings)
 		})
+
+		disableUsage := "Temporarily used for disabling a warning message ran from other commands (no reason to" +
+			" print for cluster describe called inside cluster create, but there is a use for a lone describe."
+		if cmd.LocalFlags().Lookup(DisableRegionDeprecationFlagName) == nil {
+			cmd.LocalFlags().BoolVar(&DisableRegionDeprecationWarning, DisableRegionDeprecationFlagName,
+				false, disableUsage)
+			cmd.LocalFlags().Lookup(DisableRegionDeprecationFlagName).Hidden = true
+		}
+
 		currentRun := cmd.Run
 		cmd.Run = func(c *cobra.Command, args []string) {
 			outputFlag := cmd.Flag("output")
 			regionFlag := cmd.Flag("region")
-			disableDeprecationFlag := cmd.Flag(DisableRegionDeprecationFlagName)
+			disableDeprecationFlag := cmd.LocalFlags().Lookup(DisableRegionDeprecationFlagName)
 			hasChangedOutputFlag := outputFlag != nil && outputFlag.Value.String() != outputFlag.DefValue
 			hasChangedRegionFlag := regionFlag != nil && regionFlag.Value.String() != regionFlag.DefValue
 			isRegionDeprecationDisabled := disableDeprecationFlag != nil &&
-				disableDeprecationFlag.Value.String() != disableDeprecationFlag.DefValue
+				disableDeprecationFlag.Value.String() == strconv.FormatBool(true)
 			if hasChangedRegionFlag && !hasChangedOutputFlag && !isRegionDeprecationDisabled {
 				_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", "\u001B[0;33mW:\u001B[m ", regionDeprecationMessage)
 			}

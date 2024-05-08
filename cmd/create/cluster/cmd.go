@@ -3213,30 +3213,19 @@ func run(cmd *cobra.Command, _ []string) {
 				"for more information.")
 	}
 
-	disableUsage := "Temporarily used for disabling a warning message ran from other commands (no reason to" +
-		" print for cluster describe called inside cluster create, but there is a use for a lone describe."
-	var disableRegionDeprecation bool
-	clusterdescribe.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-		true, disableUsage)
+	arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 	clusterdescribe.Cmd.Run(clusterdescribe.Cmd, []string{cluster.ID()})
-	disableRegionDeprecation = false // No longer disable
 
 	if isSTS {
 		if mode != "" {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create operator roles.")
 			}
-			disableRegionDeprecation = true // disable again
-			operatorroles.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-				true, disableUsage)
 			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			oidcprovider.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-				true, disableUsage)
 			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
-			disableRegionDeprecation = false // No longer disable
 		} else {
 			output := ""
 			if len(operatorRoles) == 0 {
@@ -3271,11 +3260,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if args.watch {
-		disableRegionDeprecation = true // Disable region deprecation
-		clusterdescribe.Cmd.LocalFlags().BoolVar(&disableRegionDeprecation, arguments.DisableRegionDeprecationFlagName,
-			true, disableUsage)
 		installLogs.Cmd.Run(installLogs.Cmd, []string{clusterName})
-		disableRegionDeprecation = false // No longer disable
+		arguments.DisableRegionDeprecationWarning = false // no longer disable deprecation warning
 	} else if !output.HasFlag() || r.Reporter.IsTerminal() {
 		r.Reporter.Infof(
 			"To determine when your cluster is Ready, run 'rosa describe cluster -c %s'.",
