@@ -20,6 +20,18 @@ func CreateTempFileWithPrefixAndContent(prefix string, fileContent string) (stri
 	return CreateFileWithContent(f.Name(), fileContent)
 }
 
+func CreateTempOCMConfig() (string, error) {
+	// Create a tmp file
+	tmpFile, err := os.CreateTemp("", "rosacli")
+	if err != nil {
+		return "", err
+	}
+	// Delete the tmp file, so that rosa will act as though it's logged out
+	tmpFile.Close()
+	os.Remove(tmpFile.Name())
+	return tmpFile.Name(), nil
+}
+
 // Write string to a file
 func CreateFileWithContent(fileAbsPath string, content interface{}) (string, error) {
 	var err error
