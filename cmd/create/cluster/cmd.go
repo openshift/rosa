@@ -374,7 +374,6 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Enable external authentication configuration for a Hosted Control Plane cluster.",
 	)
-	flags.MarkHidden(ExternalAuthProvidersEnabledFlag)
 
 	flags.StringSliceVar(
 		&args.tags,
