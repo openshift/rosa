@@ -2184,7 +2184,7 @@ func run(cmd *cobra.Command, _ []string) {
 			interactive.Enable()
 		}
 		if ((privateLink && !subnetsProvided) || interactive.Enabled()) &&
-			len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3) {
+			len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3 || isHostedCP) {
 			subnetIDs, err = interactive.GetMultipleOptions(interactive.Input{
 				Question: "Subnet IDs",
 				Help:     cmd.Flags().Lookup("subnet-ids").Usage,
