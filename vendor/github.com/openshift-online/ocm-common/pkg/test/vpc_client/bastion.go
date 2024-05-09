@@ -33,7 +33,13 @@ func (vpc *VPC) LaunchBastion(imageID string, zone string) (*types.Instance, err
 		return inst, err
 	}
 
-	instOut, err := vpc.AWSClient.LaunchInstance(pubSubnet.ID, imageID, 1, "t3.medium", CON.InstanceKeyName, []string{SGID}, true)
+	key, err := vpc.CreateKeyPair(fmt.Sprintf("%s-bastion", CON.InstanceKeyNamePrefix))
+	if err != nil {
+		log.LogError("Create key pair failed %s", err)
+		return inst, err
+	}
+	instOut, err := vpc.AWSClient.LaunchInstance(pubSubnet.ID, imageID, 1, "t3.medium", *key.KeyName, []string{SGID}, true)
+
 	if err != nil {
 		log.LogError("Launch bastion instance failed %s", err)
 		return inst, err

@@ -2,7 +2,7 @@ profiles:
 - as: rosa-advanced
   version: "latest"
   channel_group: "candidate"
-  region: "us-east-1"
+  region: "us-west-2"
   cluster:
     multi_az: true
     instance_type: "r5.xlarge"

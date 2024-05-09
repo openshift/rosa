@@ -117,8 +117,8 @@ func PrepareSubnets(vpcClient *vpc_client.VPC, region string, zones []string, mu
 	return resultMap, nil
 }
 
-func PrepareProxy(vpcClient *vpc_client.VPC, zone string, sshPemFile string, caFile string) (*ProxyDetail, error) {
-	_, privateIP, caContent, err := vpcClient.LaunchProxyInstance("", zone, sshPemFile)
+func PrepareProxy(vpcClient *vpc_client.VPC, zone string, sshPemFileName string, sshPemFileRecordDir string, caFile string) (*ProxyDetail, error) {
+	_, privateIP, caContent, err := vpcClient.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
 	if err != nil {
 		return nil, err
 	}

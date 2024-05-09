@@ -412,7 +412,11 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			}
 		}
 		if profile.ClusterConfig.ProxyEnabled {
-			proxy, err := PrepareProxy(vpc, profile.Region, config.Test.ProxySSHPemFile, config.Test.ProxyCABundleFile)
+			proxyName := vpc.VPCName
+			if proxyName == "" {
+				proxyName = clusterName
+			}
+			proxy, err := PrepareProxy(vpc, profile.Region, proxyName, config.Test.OutputDir, config.Test.ProxyCABundleFile)
 			if err != nil {
 				return flags, err
 			}
