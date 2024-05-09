@@ -88,10 +88,11 @@ var _ = Describe("Break glass credential", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 				test.FormatResource(revokedCredential)))
-			_, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{})
-			Expect(err.Error()).To(Equal("Break glass credential 'test-id' for cluster 'cluster1' has been revoked."))
-			Expect(stderr).To(Equal(""))
+			Expect(err).To(BeNil())
+			Expect(stderr).To(Equal("WARN: Break glass credential 'test-id' for cluster 'cluster1' has been revoked.\n"))
+			Expect(stdout).To(Equal(""))
 		})
 	})
 })
