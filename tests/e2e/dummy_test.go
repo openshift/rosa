@@ -9,6 +9,7 @@ import (
 
 	TC "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
@@ -57,6 +58,23 @@ var _ = Describe("ROSA CLI Test", func() {
 			Expect(len(subnets)).To(Equal(2))
 		})
 
+	})
+	Describe("ROSAClientServiceTestingCode testing", func() {
+		var rosaClient *rosacli.Client
+		var clusterID string
+		BeforeEach(func() {
+			rosaClient = rosacli.NewClient()
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(BeEmpty())
+		})
+		It("IngressServiceTesting", func() {
+			output, err := rosaClient.Ingress.ListIngress(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ingressList.Ingresses).ToNot(BeEmpty())
+			Expect(ingressList.Ingresses[0].LBType).ToNot(BeEmpty())
+		})
 	})
 	Describe("logstreamtest", func() {
 		It("", func() {
