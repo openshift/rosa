@@ -34,6 +34,7 @@ import (
 	awscbRoles "github.com/openshift/rosa/pkg/aws/commandbuilder/helper/roles"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/rolepolicybindings"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -264,6 +265,18 @@ func run(cmd *cobra.Command, argv []string) {
 		spin.Stop()
 	}
 
+	rolePolicyBindings, err := ocmClient.ListRolePolicyBindings(cluster.ID(), true)
+	if err != nil {
+		reporter.Errorf("Failed to get rolePolicyBinding: %s", err)
+		os.Exit(1)
+	}
+	err = rolepolicybindings.CheckRolePolicyBindingStatus(rolePolicyBindings)
+	if err != nil {
+		reporter.Errorf("Error in rolePolicyBinding: %s", err)
+		os.Exit(1)
+	}
+	rolePolicyDetails := rolepolicybindings.TransformToRolePolicyDetails(rolePolicyBindings)
+
 	if !isUpgradeNeedForAccountRolePolicies {
 		reporter.Infof("Account roles/policies for cluster '%s' are already up-to-date.", r.ClusterKey)
 	} else {
@@ -287,6 +300,7 @@ func run(cmd *cobra.Command, argv []string) {
 					accountRolePolicies,
 					policyVersion,
 					isPolicyVersionChosen,
+					rolePolicyDetails,
 				)
 				if err != nil {
 					LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
@@ -323,6 +337,7 @@ func run(cmd *cobra.Command, argv []string) {
 				isUpgradeNeedForAccountRolePolicies,
 				awsClient,
 				policyVersion,
+				rolePolicyDetails,
 			)
 			if err != nil {
 				reporter.Errorf("%s", err)
@@ -410,6 +425,7 @@ func run(cmd *cobra.Command, argv []string) {
 			credRequests,
 			cluster,
 			operatorRolePolicyPrefix,
+			rolePolicyDetails,
 		)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
@@ -458,6 +474,21 @@ func run(cmd *cobra.Command, argv []string) {
 			)
 		}
 	}
+
+	if isUpgradeNeedForAccountRolePolicies && mode == interactive.ModeAuto || isOperatorPolicyUpgradeNeeded {
+		newRolePolicyBindings, err := ocmClient.ListRolePolicyBindings(cluster.ID(), true)
+		if err != nil {
+			reporter.Warnf("Failed to get rolePolicyBindings after upgrade." +
+				" Please ensure that the required policies are attached to the upgraded roles.")
+		} else {
+			output, isPolicyMissed := rolepolicybindings.CheckMissingRolePolicyBindings(rolePolicyBindings,
+				newRolePolicyBindings)
+			if isPolicyMissed {
+				reporter.Infof(output)
+			}
+		}
+	}
+
 	if r.Reporter.IsTerminal() &&
 		args.isInvokedFromClusterUpgrade &&
 		mode == interactive.ModeManual &&
@@ -485,69 +516,32 @@ func handleAccountRolePolicyARN(
 	mode string,
 	awsClient aws.Client,
 	roleName string,
+	prefix string,
 	rolePath string,
 	partition string,
 	accountID string,
-) (string, []string, error) {
-	policiesDetails, err := awsClient.GetAttachedPolicy(&roleName)
-	if err != nil {
-		return "", nil, err
-	}
-
+	policiesDetails []aws.PolicyDetail,
+) (string, error) {
 	attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
 
 	generatedPolicyARN := aws.GetPolicyARN(partition, accountID, roleName, rolePath)
 	if len(attachedPoliciesDetail) == 0 {
-		return generatedPolicyARN, nil, nil
+		return generatedPolicyARN, nil
 	}
 
 	if len(attachedPoliciesDetail) == 1 {
 		policyDetail := attachedPoliciesDetail[0]
-		return policyDetail.PolicyArn, nil, nil
+		return policyDetail.PolicyArn, nil
 	}
 
-	promptString := fmt.Sprintf("More than one policy attached to account role '%s'.\n"+
-		"\tWould you like to detach current policies and setup a new one ?", roleName)
-	if !confirm.Prompt(true, promptString) {
-
-		attachedPoliciesArns := make([]string, len(attachedPoliciesDetail))
-		for _, attachedPolicyDetail := range attachedPoliciesDetail {
-			attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
-		}
-		chosenPolicyARN, err := interactive.GetOption(interactive.Input{
-			Question: "Choose Policy ARN to upgrade",
-			Options:  attachedPoliciesArns,
-			Default:  attachedPoliciesArns[0],
-			Required: true,
-		})
-		if err != nil {
-			return "", nil, err
-		}
-		return chosenPolicyARN, nil, nil
+	policyArn, err := awsClient.GetAccountRoleDefaultPolicy(roleName, prefix)
+	if err != nil {
+		return "", err
 	}
-
-	switch mode {
-	case interactive.ModeAuto:
-		err := awsClient.DetachRolePolicies(roleName)
-		if err != nil {
-			return "", nil, err
-		}
-		return generatedPolicyARN, nil, nil
-	case interactive.ModeManual:
-		commands := make([]string, 0)
-		for _, policyDetail := range attachedPoliciesDetail {
-			detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
-				awscbRoles.ManualCommandsForDetachRolePolicyInput{
-					RoleName:  roleName,
-					PolicyARN: policyDetail.PolicyArn,
-				},
-			)
-			commands = append(commands, detachManagedPoliciesCommand)
-		}
-		return generatedPolicyARN, commands, nil
-	default:
-		return "", nil, weberr.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
+	if policyArn == "" {
+		return generatedPolicyARN, nil
 	}
+	return policyArn, nil
 }
 
 func upgradeAccountRolePoliciesFromCluster(
@@ -560,6 +554,7 @@ func upgradeAccountRolePoliciesFromCluster(
 	policies map[string]*v1.AWSSTSPolicy,
 	policyVersion string,
 	isVersionChosen bool,
+	rolePolicyDetails map[string][]aws.PolicyDetail,
 ) error {
 	for file, role := range aws.AccountRoles {
 		roleName, err := aws.GetAccountRoleName(cluster, role.Name)
@@ -590,7 +585,8 @@ func upgradeAccountRolePoliciesFromCluster(
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
 
-		policyARN, _, err := handleAccountRolePolicyARN(mode, awsClient, roleName, rolePath, partition, accountID)
+		policyARN, err := handleAccountRolePolicyARN(mode, awsClient, roleName, prefix, rolePath,
+			partition, accountID, rolePolicyDetails[roleName])
 		if err != nil {
 			return err
 		}
@@ -616,11 +612,6 @@ func upgradeAccountRolePoliciesFromCluster(
 		if err != nil {
 			return err
 		}
-		//Delete if present else continue
-		err = awsClient.DeleteInlineRolePolicies(roleName)
-		if err != nil {
-			reporter.Debugf("Error deleting inline role policy %s : %s", policyARN, err)
-		}
 		reporterString := fmt.Sprintf("Upgraded policy with ARN '%s' to version '%s'", policyARN, policyVersion)
 		reporter.Infof(reporterString)
 		err = awsClient.UpdateTag(roleName, policyVersion)
@@ -639,6 +630,7 @@ func buildAccountRoleCommandsFromCluster(
 	isUpgradeNeedForAccountRolePolicies bool,
 	awsClient aws.Client,
 	defaultPolicyVersion string,
+	rolePolicyDetails map[string][]aws.PolicyDetail,
 ) (string, error) {
 	commands := []string{}
 	if isUpgradeNeedForAccountRolePolicies {
@@ -656,19 +648,19 @@ func buildAccountRoleCommandsFromCluster(
 				return "", err
 			}
 
-			policyARN, detachPoliciesCommands, err := handleAccountRolePolicyARN(
+			policyARN, err := handleAccountRolePolicyARN(
 				mode,
 				awsClient,
 				accRoleName,
+				prefix,
 				rolePath,
 				partition,
 				accountID,
+				rolePolicyDetails[accRoleName],
 			)
 			if err != nil {
 				return "", err
 			}
-
-			commands = append(commands, detachPoliciesCommands...)
 
 			accountPolicyPath, err := aws.GetPathFromARN(policyARN)
 			if err != nil {
@@ -677,39 +669,22 @@ func buildAccountRoleCommandsFromCluster(
 			_, err = awsClient.IsPolicyExists(policyARN)
 			hasPolicy := err == nil
 			policyName := aws.GetPolicyName(accRoleName)
-			_, err = awsClient.IsRolePolicyExists(accRoleName, policyName)
-			hasInlinePolicy := err == nil
-			hasDetachPolicyCommandsForExpectedPolicy := checkHasDetachPolicyCommandsForExpectedPolicy(
-				detachPoliciesCommands,
-				policyARN,
-			)
 			upgradeAccountPolicyCommands := awscbRoles.ManualCommandsForUpgradeAccountRolePolicy(
 				awscbRoles.ManualCommandsForUpgradeAccountRolePolicyInput{
-					DefaultPolicyVersion:                     defaultPolicyVersion,
-					RoleName:                                 accRoleName,
-					HasPolicy:                                hasPolicy,
-					Prefix:                                   prefix,
-					File:                                     file,
-					PolicyName:                               policyName,
-					AccountPolicyPath:                        accountPolicyPath,
-					PolicyARN:                                policyARN,
-					HasInlinePolicy:                          hasInlinePolicy,
-					HasDetachPolicyCommandsForExpectedPolicy: hasDetachPolicyCommandsForExpectedPolicy,
+					DefaultPolicyVersion: defaultPolicyVersion,
+					RoleName:             accRoleName,
+					HasPolicy:            hasPolicy,
+					Prefix:               prefix,
+					File:                 file,
+					PolicyName:           policyName,
+					AccountPolicyPath:    accountPolicyPath,
+					PolicyARN:            policyARN,
 				},
 			)
 			commands = append(commands, upgradeAccountPolicyCommands...)
 		}
 	}
 	return awscb.JoinCommands(commands), nil
-}
-
-func checkHasDetachPolicyCommandsForExpectedPolicy(detachedPoliciesCommands []string, policyARN string) bool {
-	for _, command := range detachedPoliciesCommands {
-		if strings.Contains(command, policyARN) {
-			return true
-		}
-	}
-	return false
 }
 
 func upgradeOperatorPolicies(
@@ -722,6 +697,7 @@ func upgradeOperatorPolicies(
 	credRequests map[string]*v1.STSOperator,
 	cluster *v1.Cluster,
 	operatorRolePolicyPrefix string,
+	rolePolicyDetails map[string][]aws.PolicyDetail,
 ) error {
 	switch mode {
 	case interactive.ModeAuto:
@@ -742,6 +718,7 @@ func upgradeOperatorPolicies(
 			credRequests,
 			cluster,
 			operatorRolePolicyPrefix,
+			rolePolicyDetails,
 		)
 		if err != nil {
 			if strings.Contains(err.Error(), "Throttling") {
@@ -778,6 +755,7 @@ func upgradeOperatorPolicies(
 			defaultPolicyVersion,
 			credRequests,
 			cluster,
+			rolePolicyDetails,
 		)
 		if err != nil {
 			return fmt.Errorf("there was an error generating the commands: %s", err)
@@ -800,6 +778,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 	credRequests map[string]*v1.STSOperator,
 	cluster *v1.Cluster,
 	operatorRolePolicyPrefix string,
+	rolePolicyDetails map[string][]aws.PolicyDetail,
 ) error {
 	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
 	isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
@@ -827,7 +806,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 			if err != nil {
 				return err
 			}
-			policyARN, _, err = handleOperatorRolePolicyARN(
+			policyARN, err = handleOperatorRolePolicyARN(
 				mode,
 				awsClient,
 				operatorRoleName,
@@ -836,6 +815,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 				operator,
 				partition,
 				accountID,
+				rolePolicyDetails[operatorRoleName],
 			)
 			if err != nil {
 				return err
@@ -869,11 +849,6 @@ func upgradeOperatorRolePoliciesFromCluster(
 			if err != nil {
 				return err
 			}
-			//Delete if present else continue
-			err = awsClient.DeleteInlineRolePolicies(operatorRoleName)
-			if err != nil {
-				reporter.Debugf("Error deleting inline role policy %s : %s", policyARN, err)
-			}
 		}
 		reporter.Infof("Upgraded policy with ARN '%s' to version '%s'", policyARN, defaultPolicyVersion)
 	}
@@ -889,6 +864,7 @@ func buildOperatorRoleCommandsFromCluster(
 	defaultPolicyVersion string,
 	credRequests map[string]*v1.STSOperator,
 	cluster *v1.Cluster,
+	rolePolicyDetails map[string][]aws.PolicyDetail,
 ) (string, error) {
 	operatorRoles := cluster.AWS().STS().OperatorIAMRoles()
 	commands := []string{}
@@ -899,7 +875,6 @@ func buildOperatorRoleCommandsFromCluster(
 	for credrequest, operator := range credRequests {
 		policyARN := ""
 		operatorPolicyPath := generalPath
-		hasDetachPolicyCommandsForExpectedPolicy := false
 		operatorRoleARN := aws.FindOperatorRoleBySTSOperator(operatorRoles, operator)
 		operatorRoleName := ""
 		if operatorRoleARN == "" {
@@ -916,7 +891,7 @@ func buildOperatorRoleCommandsFromCluster(
 			if err != nil {
 				return "", err
 			}
-			foundPolicyARN, detachPoliciesCommands, err := handleOperatorRolePolicyARN(
+			foundPolicyARN, err := handleOperatorRolePolicyARN(
 				mode,
 				awsClient,
 				operatorRoleName,
@@ -925,16 +900,12 @@ func buildOperatorRoleCommandsFromCluster(
 				operator,
 				partition,
 				accountID,
+				rolePolicyDetails[operatorRoleName],
 			)
 			if err != nil {
 				return "", err
 			}
-			hasDetachPolicyCommandsForExpectedPolicy = checkHasDetachPolicyCommandsForExpectedPolicy(
-				detachPoliciesCommands,
-				foundPolicyARN,
-			)
 
-			commands = append(commands, detachPoliciesCommands...)
 			operatorPolicyPath, err = aws.GetPathFromARN(foundPolicyARN)
 			if err != nil {
 				return "", err
@@ -955,17 +926,16 @@ func buildOperatorRoleCommandsFromCluster(
 
 		upgradePoliciesCommands := awscbRoles.ManualCommandsForUpgradeOperatorRolePolicy(
 			awscbRoles.ManualCommandsForUpgradeOperatorRolePolicyInput{
-				HasPolicy:                                hasPolicy,
-				OperatorRolePolicyPrefix:                 operatorRolePolicyPrefix,
-				Operator:                                 operator,
-				CredRequest:                              credrequest,
-				OperatorPolicyPath:                       operatorPolicyPath,
-				PolicyARN:                                policyARN,
-				DefaultPolicyVersion:                     defaultPolicyVersion,
-				PolicyName:                               policyName,
-				HasDetachPolicyCommandsForExpectedPolicy: hasDetachPolicyCommandsForExpectedPolicy,
-				OperatorRoleName:                         operatorRoleName,
-				FileName:                                 fileName,
+				HasPolicy:                hasPolicy,
+				OperatorRolePolicyPrefix: operatorRolePolicyPrefix,
+				Operator:                 operator,
+				CredRequest:              credrequest,
+				OperatorPolicyPath:       operatorPolicyPath,
+				PolicyARN:                policyARN,
+				DefaultPolicyVersion:     defaultPolicyVersion,
+				PolicyName:               policyName,
+				OperatorRoleName:         operatorRoleName,
+				FileName:                 fileName,
 			},
 		)
 		commands = append(commands, upgradePoliciesCommands...)
@@ -982,12 +952,8 @@ func handleOperatorRolePolicyARN(
 	operator *v1.STSOperator,
 	partition string,
 	accountID string,
-) (string, []string, error) {
-	policiesDetails, err := awsClient.GetAttachedPolicy(&operatorRoleName)
-	if err != nil {
-		return "", nil, err
-	}
-
+	policiesDetails []aws.PolicyDetail,
+) (string, error) {
 	generatedPolicyARN := aws.GetOperatorPolicyARN(
 		partition,
 		accountID,
@@ -999,54 +965,22 @@ func handleOperatorRolePolicyARN(
 	attachedPoliciesDetails := aws.FindAllAttachedPolicyDetails(policiesDetails)
 
 	if len(attachedPoliciesDetails) == 0 {
-		return generatedPolicyARN, nil, nil
+		return generatedPolicyARN, nil
 	}
 
 	if len(attachedPoliciesDetails) == 1 {
 		policyDetail := attachedPoliciesDetails[0]
-		return policyDetail.PolicyArn, nil, nil
+		return policyDetail.PolicyArn, nil
 	}
 
-	promptString := fmt.Sprintf("More than one policy attached to operator role '%s'.\n"+
-		"\tWould you like to detach current policies and setup a new one ?", operatorRoleName)
-	if !confirm.Prompt(true, promptString) {
-		attachedPoliciesArns := make([]string, len(attachedPoliciesDetails))
-		for _, attachedPolicyDetail := range attachedPoliciesDetails {
-			attachedPoliciesArns = append(attachedPoliciesArns, attachedPolicyDetail.PolicyArn)
-		}
-		chosenPolicyARN, err := interactive.GetOption(interactive.Input{
-			Question: "Choose Policy ARN to upgrade",
-			Options:  attachedPoliciesArns,
-			Default:  attachedPoliciesArns[0],
-			Required: true,
-		})
-		if err != nil {
-			return "", nil, err
-		}
-		return chosenPolicyARN, nil, nil
+	policyArn, err := awsClient.GetOperatorRoleDefaultPolicy(operatorRoleName)
+	if err != nil {
+		return "", err
 	}
-	switch mode {
-	case interactive.ModeAuto:
-		err := awsClient.DetachRolePolicies(operatorRoleName)
-		if err != nil {
-			return "", nil, err
-		}
-		return generatedPolicyARN, nil, nil
-	case interactive.ModeManual:
-		commands := make([]string, 0)
-		for _, policyDetail := range policiesDetails {
-			detachManagedPoliciesCommand := awscbRoles.ManualCommandsForDetachRolePolicy(
-				awscbRoles.ManualCommandsForDetachRolePolicyInput{
-					RoleName:  operatorRoleName,
-					PolicyARN: policyDetail.PolicyArn,
-				},
-			)
-			commands = append(commands, detachManagedPoliciesCommand)
-		}
-		return generatedPolicyARN, commands, nil
-	default:
-		return "", nil, weberr.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
+	if policyArn == "" {
+		return generatedPolicyARN, nil
 	}
+	return policyArn, nil
 }
 
 func createOperatorRole(

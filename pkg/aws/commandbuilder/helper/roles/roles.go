@@ -51,17 +51,16 @@ func ManualCommandsForMissingOperatorRole(input ManualCommandsForMissingOperator
 }
 
 type ManualCommandsForUpgradeOperatorRolePolicyInput struct {
-	HasPolicy                                bool
-	OperatorRolePolicyPrefix                 string
-	Operator                                 *cmv1.STSOperator
-	CredRequest                              string
-	OperatorPolicyPath                       string
-	PolicyARN                                string
-	DefaultPolicyVersion                     string
-	PolicyName                               string
-	HasDetachPolicyCommandsForExpectedPolicy bool
-	OperatorRoleName                         string
-	FileName                                 string
+	HasPolicy                bool
+	OperatorRolePolicyPrefix string
+	Operator                 *cmv1.STSOperator
+	CredRequest              string
+	OperatorPolicyPath       string
+	PolicyARN                string
+	DefaultPolicyVersion     string
+	PolicyName               string
+	OperatorRoleName         string
+	FileName                 string
 }
 
 func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOperatorRolePolicyInput) []string {
@@ -83,14 +82,6 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 			Build()
 		commands = append(commands, createPolicy)
 	} else {
-		if input.HasDetachPolicyCommandsForExpectedPolicy {
-			attachRolePolicy := awscb.NewIAMCommandBuilder().
-				SetCommand(awscb.AttachRolePolicy).
-				AddParam(awscb.RoleName, input.OperatorRoleName).
-				AddParam(awscb.PolicyArn, input.PolicyARN).
-				Build()
-			commands = append(commands, attachRolePolicy)
-		}
 		policyTags := map[string]string{
 			common.OpenShiftVersion: input.DefaultPolicyVersion,
 		}
@@ -113,16 +104,14 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 }
 
 type ManualCommandsForUpgradeAccountRolePolicyInput struct {
-	DefaultPolicyVersion                     string
-	RoleName                                 string
-	HasPolicy                                bool
-	Prefix                                   string
-	File                                     string
-	PolicyName                               string
-	AccountPolicyPath                        string
-	PolicyARN                                string
-	HasInlinePolicy                          bool
-	HasDetachPolicyCommandsForExpectedPolicy bool
+	DefaultPolicyVersion string
+	RoleName             string
+	HasPolicy            bool
+	Prefix               string
+	File                 string
+	PolicyName           string
+	AccountPolicyPath    string
+	PolicyARN            string
 }
 
 func ManualCommandsForUpgradeAccountRolePolicy(input ManualCommandsForUpgradeAccountRolePolicyInput) []string {
@@ -156,20 +145,8 @@ func ManualCommandsForUpgradeAccountRolePolicy(input ManualCommandsForUpgradeAcc
 			AddTags(iamTags).
 			AddParam(awscb.Path, input.AccountPolicyPath).
 			Build()
-
-		if input.HasInlinePolicy {
-			deletePolicy := awscb.NewIAMCommandBuilder().
-				SetCommand(awscb.DeleteRolePolicy).
-				AddParam(awscb.RoleName, input.RoleName).
-				AddParam(awscb.PolicyName, input.PolicyName).
-				Build()
-			commands = append(commands, deletePolicy)
-		}
 		commands = append(commands, createPolicy, attachRolePolicy, tagRole)
 	} else {
-		if input.HasDetachPolicyCommandsForExpectedPolicy {
-			commands = append(commands, attachRolePolicy)
-		}
 		createPolicyVersion := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicyVersion).
 			AddParam(awscb.PolicyArn, input.PolicyARN).
