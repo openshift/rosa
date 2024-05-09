@@ -172,10 +172,15 @@ var _ = Describe("Edit cluster",
 				clusterDetail, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).ToNot(HaveOccurred())
 				expectedUWMValue := "Enabled"
+				recoverUWMStatus := false
 				if clusterConfig.DisableWorkloadMonitoring {
 					expectedUWMValue = "Disabled"
+					recoverUWMStatus = true
 				}
 				Expect(clusterDetail.UserWorkloadMonitoring).To(Equal(expectedUWMValue))
+				defer clusterService.EditCluster(clusterID,
+					fmt.Sprintf("--disable-workload-monitoring=%v", recoverUWMStatus),
+					"-y")
 
 				By("Disable the UWM")
 				expectedUWMValue = "Disabled"
