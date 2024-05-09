@@ -50,12 +50,16 @@ type IngressList struct {
 	Ingresses []Ingress `json:"Ingresses,omitempty"`
 }
 type Ingress struct {
-	ID                string `yaml:"ID,omitempty"`
-	ApplicationRouter string `yaml:"APPLICATION ROUTER,omitempty"`
-	Private           string `yaml:"PRIVATE,omitempty"`
-	Default           string `yaml:"DEFAULT,omitempty"`
-	RouteSelectors    string `yaml:"ROUTE SELECTORS,omitempty"`
-	LBType            string `yaml:"LB-TYPE,omitempty"`
+	ClusterID                string `yaml:"Cluster ID,omitempty"`
+	ID                       string `yaml:"ID,omitempty" json:"ID,omitempty"`
+	ApplicationRouter        string `yaml:"APPLICATION ROUTER,omitempty" json:"APPLICATION ROUTER,omitempty"`
+	Private                  string `yaml:"Private,omitempty" json:"PRIVATE,omitempty"`
+	Default                  string `yaml:"Default,omitempty" json:"DEFAULT,omitempty"`
+	RouteSelectors           string `yaml:"ROUTE SELECTORS,omitempty" json:"ROUTE SELECTORS,omitempty"`
+	LBType                   string `yaml:"LB-Type,omitempty" json:"LB-TYPE,omitempty"`
+	ExcludeNamespace         string `yaml:"Exclude Namespce,omitempty" json:"EXCLUDED NAMESPACE,omitempty"`
+	WildcardPolicy           string `yaml:"Wildcard Policy,omitempty" json:"WILDCARD POLICY,omitempty"`
+	NamespaceOwnershipPolicy string `yaml:"Namespace Ownership Policy,omitempty" json:"NAMESPACE OWNERSHIP,omitempty"`
 }
 
 // Get specified ingress by ingress id
