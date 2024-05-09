@@ -197,7 +197,7 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 			ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
 			ocmOutput.PrintNodePoolReplicasShort(
 				ocmOutput.PrintNodePoolCurrentReplicas(nodePool.Status()),
-				ocmOutput.PrintNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
+				ocmOutput.PrintNodePoolReplicasInline(nodePool.Autoscaling(), nodePool.Replicas()),
 			),
 			ocmOutput.PrintNodePoolInstanceType(nodePool.AWSNodePool()),
 			ocmOutput.PrintLabels(nodePool.Labels()),
