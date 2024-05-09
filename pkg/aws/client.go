@@ -212,6 +212,8 @@ type Client interface {
 	GetSecurityGroupIds(vpcId string) ([]ec2types.SecurityGroup, error)
 	FetchPublicSubnetMap(subnets []ec2types.Subnet) (map[string]bool, error)
 	GetIAMServiceQuota(quotaCode string) (*servicequotas.GetServiceQuotaOutput, error)
+	GetAccountRoleDefaultPolicy(roleName string, prefix string) (string, error)
+	GetOperatorRoleDefaultPolicy(roleName string) (string, error)
 }
 
 type AccessKeyGetter interface {

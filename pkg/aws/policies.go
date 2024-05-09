@@ -1955,6 +1955,40 @@ func (c *awsClient) ListAttachedRolePolicies(roleName string) ([]string, error) 
 	return policies, nil
 }
 
+func (c *awsClient) GetAccountRoleDefaultPolicy(roleName string, prefix string) (string, error) {
+	policies, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
+	if err != nil {
+		return "", err
+	}
+	if len(policies) == 0 {
+		return "", nil
+	}
+	if len(policies) > 1 {
+		return "", fmt.Errorf("There are more than one Red Hat managed account role policy attached to the role %s",
+			roleName)
+	}
+	return policies[0], nil
+}
+
+func (c *awsClient) GetOperatorRoleDefaultPolicy(roleName string) (string, error) {
+	tagfilter, err := getOperatorRolePolicyTags(c.iamClient, roleName)
+	if err != nil {
+		return "", nil
+	}
+	policies, err := getAttachedPolicies(c.iamClient, roleName, tagfilter)
+	if err != nil {
+		return "", err
+	}
+	if len(policies) == 0 {
+		return "", nil
+	}
+	if len(policies) > 1 {
+		return "", fmt.Errorf("There are more than one Red Hat managed operator role policy attached to the role %s",
+			roleName)
+	}
+	return policies[0], nil
+}
+
 func (c *awsClient) validateManagedPolicy(policies map[string]*cmv1.AWSSTSPolicy, policyKey string,
 	roleName string) error {
 	managedPolicyARN, err := GetManagedPolicyARN(policies, policyKey)

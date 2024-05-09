@@ -541,6 +541,21 @@ func (mr *MockClientMockRecorder) GetAccountRoleByArn(roleArn any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountRoleByArn", reflect.TypeOf((*MockClient)(nil).GetAccountRoleByArn), roleArn)
 }
 
+// GetAccountRoleDefaultPolicy mocks base method.
+func (m *MockClient) GetAccountRoleDefaultPolicy(roleName, prefix string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAccountRoleDefaultPolicy", roleName, prefix)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAccountRoleDefaultPolicy indicates an expected call of GetAccountRoleDefaultPolicy.
+func (mr *MockClientMockRecorder) GetAccountRoleDefaultPolicy(roleName, prefix any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountRoleDefaultPolicy", reflect.TypeOf((*MockClient)(nil).GetAccountRoleDefaultPolicy), roleName, prefix)
+}
+
 // GetAccountRoleForCurrentEnv mocks base method.
 func (m *MockClient) GetAccountRoleForCurrentEnv(env, roleName string) (Role, error) {
 	m.ctrl.T.Helper()
@@ -779,6 +794,21 @@ func (m *MockClient) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl s
 func (mr *MockClientMockRecorder) GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOpenIDConnectProviderByOidcEndpointUrl", reflect.TypeOf((*MockClient)(nil).GetOpenIDConnectProviderByOidcEndpointUrl), oidcEndpointUrl)
+}
+
+// GetOperatorRoleDefaultPolicy mocks base method.
+func (m *MockClient) GetOperatorRoleDefaultPolicy(roleName string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOperatorRoleDefaultPolicy", roleName)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOperatorRoleDefaultPolicy indicates an expected call of GetOperatorRoleDefaultPolicy.
+func (mr *MockClientMockRecorder) GetOperatorRoleDefaultPolicy(roleName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOperatorRoleDefaultPolicy", reflect.TypeOf((*MockClient)(nil).GetOperatorRoleDefaultPolicy), roleName)
 }
 
 // GetOperatorRolePolicies mocks base method.

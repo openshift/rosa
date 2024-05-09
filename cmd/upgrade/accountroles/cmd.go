@@ -337,8 +337,6 @@ func buildCommands(prefix string, partition string, accountID string, isUpgradeN
 			_, err := awsClient.IsPolicyExists(policyARN)
 			hasPolicy := err == nil
 			policyName := aws.GetPolicyName(accRoleName)
-			_, err = awsClient.IsRolePolicyExists(accRoleName, policyName)
-			hasInlinePolicy := err == nil
 			upgradeAccountPolicyCommands := awscbRoles.ManualCommandsForUpgradeAccountRolePolicy(
 				awscbRoles.ManualCommandsForUpgradeAccountRolePolicyInput{
 					DefaultPolicyVersion: defaultPolicyVersion,
@@ -349,7 +347,6 @@ func buildCommands(prefix string, partition string, accountID string, isUpgradeN
 					PolicyName:           policyName,
 					AccountPolicyPath:    policyPath,
 					PolicyARN:            policyARN,
-					HasInlinePolicy:      hasInlinePolicy,
 				},
 			)
 			commands = append(commands, upgradeAccountPolicyCommands...)
