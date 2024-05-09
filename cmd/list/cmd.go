@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/idp"
 	"github.com/openshift/rosa/cmd/list/ingress"
 	"github.com/openshift/rosa/cmd/list/instancetypes"
+	"github.com/openshift/rosa/cmd/list/kubeletconfig"
 	"github.com/openshift/rosa/cmd/list/machinepool"
 	"github.com/openshift/rosa/cmd/list/ocmroles"
 	"github.com/openshift/rosa/cmd/list/oidcconfig"
@@ -76,6 +77,8 @@ func init() {
 	Cmd.AddCommand(rhRegion.Cmd)
 	Cmd.AddCommand(externalauthprovider.Cmd)
 	Cmd.AddCommand(breakglasscredential.Cmd)
+	kubeletconfig := kubeletconfig.NewListKubeletConfigsCommand()
+	Cmd.AddCommand(kubeletconfig)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
@@ -89,7 +92,7 @@ func init() {
 		gates.Cmd, idp.Cmd, ingress.Cmd, machinepool.Cmd,
 		operatorroles.Cmd, region.Cmd, rhRegion.Cmd,
 		service.Cmd, tuningconfigs.Cmd, upgrade.Cmd,
-		user.Cmd, version.Cmd,
+		user.Cmd, version.Cmd, kubeletconfig,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

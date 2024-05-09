@@ -140,6 +140,10 @@ func Print(resource interface{}) error {
 		if kubeletConfig, ok := resource.(*cmv1.KubeletConfig); ok {
 			cmv1.MarshalKubeletConfig(kubeletConfig, &b)
 		}
+	case "[]*v1.KubeletConfig":
+		if kubeletConfigs, ok := resource.([]*cmv1.KubeletConfig); ok {
+			cmv1.MarshalKubeletConfigList(kubeletConfigs, &b)
+		}
 	case "*v1.ClusterAutoscaler":
 		if autoscaler, ok := resource.(*cmv1.ClusterAutoscaler); ok {
 			cmv1.MarshalClusterAutoscaler(autoscaler, &b)

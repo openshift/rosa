@@ -2,6 +2,8 @@ package ocm
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -21,7 +23,8 @@ const (
 
 	kubeletId = "bar"
 
-	clusterId = "foo"
+	clusterId   = "foo"
+	kubeletName = "test"
 )
 
 var _ = Describe("KubeletConfig", Ordered, func() {
@@ -177,11 +180,47 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	Context("List KubeletConfigs", func() {
+
+		It("Lists all kubeletconfigs", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(false)))
+
+			response, err := ocmClient.ListKubeletConfigs(context.Background(), clusterId)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(HaveLen(1))
+
+			config := response[0]
+			Expect(config.Name()).To(Equal(kubeletName))
+			Expect(config.ID()).To(Equal(kubeletId))
+			Expect(config.PodPidsLimit()).To(Equal(podPidsLimit))
+		})
+
+		It("Returns an empty list if no KubeletConfigs", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(true)))
+
+			response, err := ocmClient.ListKubeletConfigs(context.Background(), clusterId)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(HaveLen(0))
+		})
+
+		It("Returns an error if failing to list KubeletConfigs", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusInternalServerError, createKubeletConfigList(true)))
+			_, err := ocmClient.ListKubeletConfigs(context.Background(), clusterId)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 })
 
 func createKubeletConfig() (string, error) {
 	builder := &cmv1.KubeletConfigBuilder{}
-	kubeletConfig, err := builder.PodPidsLimit(podPidsLimit).ID(kubeletId).HREF(kubeletHref).Build()
+	kubeletConfig, err := builder.PodPidsLimit(podPidsLimit).ID(kubeletId).HREF(kubeletHref).Name(kubeletName).Build()
 	if err != nil {
 		return "", err
 	}
@@ -193,4 +232,27 @@ func createKubeletConfig() (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func createKubeletConfigList(empty bool) string {
+	var json bytes.Buffer
+	var configs []*cmv1.KubeletConfig
+
+	if !empty {
+		builder := &cmv1.KubeletConfigBuilder{}
+		kubeletConfig, err := builder.PodPidsLimit(podPidsLimit).ID(kubeletId).HREF(kubeletHref).Name(kubeletName).Build()
+		Expect(err).NotTo(HaveOccurred())
+		configs = []*cmv1.KubeletConfig{kubeletConfig}
+	}
+
+	cmv1.MarshalKubeletConfigList(configs, &json)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "KubeletConfigList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(configs), len(configs), json.String())
 }
