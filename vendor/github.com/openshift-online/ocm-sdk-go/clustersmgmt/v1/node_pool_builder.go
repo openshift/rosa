@@ -29,6 +29,7 @@ type NodePoolBuilder struct {
 	awsNodePool          *AWSNodePoolBuilder
 	autoscaling          *NodePoolAutoscalingBuilder
 	availabilityZone     string
+	kubeletConfigs       []string
 	labels               map[string]string
 	nodeDrainGracePeriod *ValueBuilder
 	replicas             int
@@ -110,13 +111,21 @@ func (b *NodePoolBuilder) AvailabilityZone(value string) *NodePoolBuilder {
 	return b
 }
 
+// KubeletConfigs sets the value of the 'kubelet_configs' attribute to the given values.
+func (b *NodePoolBuilder) KubeletConfigs(values ...string) *NodePoolBuilder {
+	b.kubeletConfigs = make([]string, len(values))
+	copy(b.kubeletConfigs, values)
+	b.bitmap_ |= 128
+	return b
+}
+
 // Labels sets the value of the 'labels' attribute to the given value.
 func (b *NodePoolBuilder) Labels(value map[string]string) *NodePoolBuilder {
 	b.labels = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -144,9 +153,9 @@ func (b *NodePoolBuilder) Labels(value map[string]string) *NodePoolBuilder {
 func (b *NodePoolBuilder) NodeDrainGracePeriod(value *ValueBuilder) *NodePoolBuilder {
 	b.nodeDrainGracePeriod = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -154,7 +163,7 @@ func (b *NodePoolBuilder) NodeDrainGracePeriod(value *ValueBuilder) *NodePoolBui
 // Replicas sets the value of the 'replicas' attribute to the given value.
 func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 	b.replicas = value
-	b.bitmap_ |= 512
+	b.bitmap_ |= 1024
 	return b
 }
 
@@ -164,9 +173,9 @@ func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 func (b *NodePoolBuilder) Status(value *NodePoolStatusBuilder) *NodePoolBuilder {
 	b.status = value
 	if value != nil {
-		b.bitmap_ |= 1024
+		b.bitmap_ |= 2048
 	} else {
-		b.bitmap_ &^= 1024
+		b.bitmap_ &^= 2048
 	}
 	return b
 }
@@ -174,7 +183,7 @@ func (b *NodePoolBuilder) Status(value *NodePoolStatusBuilder) *NodePoolBuilder 
 // Subnet sets the value of the 'subnet' attribute to the given value.
 func (b *NodePoolBuilder) Subnet(value string) *NodePoolBuilder {
 	b.subnet = value
-	b.bitmap_ |= 2048
+	b.bitmap_ |= 4096
 	return b
 }
 
@@ -182,7 +191,7 @@ func (b *NodePoolBuilder) Subnet(value string) *NodePoolBuilder {
 func (b *NodePoolBuilder) Taints(values ...*TaintBuilder) *NodePoolBuilder {
 	b.taints = make([]*TaintBuilder, len(values))
 	copy(b.taints, values)
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -190,7 +199,7 @@ func (b *NodePoolBuilder) Taints(values ...*TaintBuilder) *NodePoolBuilder {
 func (b *NodePoolBuilder) TuningConfigs(values ...string) *NodePoolBuilder {
 	b.tuningConfigs = make([]string, len(values))
 	copy(b.tuningConfigs, values)
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -200,9 +209,9 @@ func (b *NodePoolBuilder) TuningConfigs(values ...string) *NodePoolBuilder {
 func (b *NodePoolBuilder) Version(value *VersionBuilder) *NodePoolBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 16384
+		b.bitmap_ |= 32768
 	} else {
-		b.bitmap_ &^= 16384
+		b.bitmap_ &^= 32768
 	}
 	return b
 }
@@ -227,6 +236,12 @@ func (b *NodePoolBuilder) Copy(object *NodePool) *NodePoolBuilder {
 		b.autoscaling = nil
 	}
 	b.availabilityZone = object.availabilityZone
+	if object.kubeletConfigs != nil {
+		b.kubeletConfigs = make([]string, len(object.kubeletConfigs))
+		copy(b.kubeletConfigs, object.kubeletConfigs)
+	} else {
+		b.kubeletConfigs = nil
+	}
 	if len(object.labels) > 0 {
 		b.labels = map[string]string{}
 		for k, v := range object.labels {
@@ -289,6 +304,10 @@ func (b *NodePoolBuilder) Build() (object *NodePool, err error) {
 		}
 	}
 	object.availabilityZone = b.availabilityZone
+	if b.kubeletConfigs != nil {
+		object.kubeletConfigs = make([]string, len(b.kubeletConfigs))
+		copy(object.kubeletConfigs, b.kubeletConfigs)
+	}
 	if b.labels != nil {
 		object.labels = make(map[string]string)
 		for k, v := range b.labels {

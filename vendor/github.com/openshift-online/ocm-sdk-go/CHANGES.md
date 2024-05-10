@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.419
+- Update model version v0.0.372
+  - Exposed the `/api/clusters_mgmt/v1/clusters/{id}/kubelet_configs` endpoint
+  - Added `name` field to `KubeletConfig`
+  - Added `kubelet_configs` field to `NodePool`
+
 ## 0.1.418
 - Update model version v0.0.371
   - Add Tags to the AWSMachinePool model to support custom AWS tags for day 2 creation of machine pools
