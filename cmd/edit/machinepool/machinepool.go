@@ -222,16 +222,20 @@ func editMachinePoolAutoscaling(machinePool *cmv1.MachinePool,
 	asBuilder := cmv1.NewMachinePoolAutoscaling()
 	changed := false
 
-	if machinePool.Autoscaling().MinReplicas() != minReplicas && minReplicas >= 1 {
-		asBuilder = asBuilder.MinReplicas(minReplicas)
+	newMin := machinePool.Autoscaling().MinReplicas()
+	newMax := machinePool.Autoscaling().MaxReplicas()
+
+	if machinePool.Autoscaling().MinReplicas() != minReplicas && minReplicas >= 0 {
+		newMin = minReplicas
 		changed = true
 	}
-	if machinePool.Autoscaling().MaxReplicas() != maxReplicas && maxReplicas >= 1 {
-		asBuilder = asBuilder.MaxReplicas(maxReplicas)
+	if machinePool.Autoscaling().MaxReplicas() != maxReplicas && maxReplicas >= 0 {
+		newMax = maxReplicas
 		changed = true
 	}
 
 	if changed {
+		asBuilder = asBuilder.MinReplicas(newMin).MaxReplicas(newMax)
 		return asBuilder
 	}
 	return nil
