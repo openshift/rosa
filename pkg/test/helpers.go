@@ -108,6 +108,17 @@ func BuildExternalAuth() *v1.ExternalAuth {
 	return externalAuth
 }
 
+func MockKubeletConfig(modifyFn func(k *v1.KubeletConfigBuilder)) *v1.KubeletConfig {
+	build := &v1.KubeletConfigBuilder{}
+	if modifyFn != nil {
+		modifyFn(build)
+	}
+
+	kubeletConfig, err := build.Build()
+	Expect(err).NotTo(HaveOccurred())
+	return kubeletConfig
+}
+
 func MockAutoscaler(modifyFn func(a *v1.ClusterAutoscalerBuilder)) *v1.ClusterAutoscaler {
 	build := &v1.ClusterAutoscalerBuilder{}
 	if modifyFn != nil {
@@ -132,6 +143,21 @@ func MockCluster(modifyFn func(c *v1.ClusterBuilder)) *v1.Cluster {
 	cluster, err := mock.Build()
 	Expect(err).NotTo(HaveOccurred())
 	return cluster
+}
+
+func FormatKubeletConfigList(configs []*v1.KubeletConfig) string {
+	var json bytes.Buffer
+
+	v1.MarshalKubeletConfigList(configs, &json)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "KubeletConfigList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(configs), len(configs), json.String())
 }
 
 func FormatClusterList(clusters []*v1.Cluster) string {
@@ -207,19 +233,6 @@ func FormatHtpasswdUserList(htpasswdUsers []*v1.HTPasswdUser) string {
 		"total": %d,
 		"items": %s
 	}`, len(htpasswdUsers), len(htpasswdUsers), htpasswdUserJson.String())
-}
-
-func FormatBreakGlassCredentialList(credentials []*v1.BreakGlassCredential) string {
-	var outputJson bytes.Buffer
-	v1.MarshalBreakGlassCredentialList(credentials, &outputJson)
-	return fmt.Sprintf(`
-	{
-		"kind": "BreakGlassCredentialsList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(credentials), len(credentials), outputJson.String())
 }
 
 func FormatExternalAuthList(externalAuths []*v1.ExternalAuth) string {

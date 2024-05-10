@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"context"
 	"net/http"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -53,7 +54,7 @@ func (c *Client) CreateKubeletConfig(clusterID string, args KubeletConfigArgs) (
 		KubeletConfig().Post().Body(kubeletConfig).Send()
 
 	if err != nil {
-		return nil, err
+		return nil, handleErr(response.Error(), err)
 	}
 
 	return response.Body(), nil
@@ -69,8 +70,17 @@ func (c *Client) UpdateKubeletConfig(clusterID string, args KubeletConfigArgs) (
 		KubeletConfig().Update().Body(kubeletConfig).Send()
 
 	if err != nil {
-		return nil, err
+		return nil, handleErr(response.Error(), err)
 	}
 
 	return response.Body(), nil
+}
+
+func (c *Client) ListKubeletConfigs(ctx context.Context, clusterId string) ([]*cmv1.KubeletConfig, error) {
+	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterId).KubeletConfigs().List().SendContext(ctx)
+	if err != nil {
+		return []*cmv1.KubeletConfig{}, handleErr(response.Error(), err)
+	}
+
+	return response.Items().Slice(), nil
 }
