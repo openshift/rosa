@@ -949,7 +949,7 @@ var _ = Describe("Edit IAM",
 				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Support-Role'", rolePrefixCandidate)))
 				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Worker-Role'", rolePrefixCandidate)))
 
-				By("List the acount roles ")
+				By("List the account roles ")
 				accountRoleList, _, err := ocmResourceService.ListAccountRole()
 				Expect(err).To(BeNil())
 
