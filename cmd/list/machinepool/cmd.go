@@ -17,7 +17,8 @@ limitations under the License.
 package machinepool
 
 import (
-	"os"
+	"context"
+	"fmt"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -28,38 +29,49 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:     "machinepools",
-	Aliases: []string{"machinepool", "machine-pools", "machine-pool"},
-	Short:   "List cluster machine pools",
-	Long:    "List machine pools configured on a cluster.",
-	Example: `  # List all machine pools on a cluster named "mycluster"
-  rosa list machinepools --cluster=mycluster`,
-	Run:  run,
-	Args: cobra.NoArgs,
-}
+const (
+	use     = "machinepools"
+	short   = "List cluster machine pools"
+	long    = "List machine pools configured on a cluster."
+	example = `  # List all machine pools on a cluster named "mycluster"
+  rosa list machinepools --cluster=mycluster`
+)
 
-func init() {
-	ocm.AddClusterFlag(Cmd)
-	output.AddFlag(Cmd)
-}
+var (
+	aliases = []string{"machinepool", "machine-pools", "machine-pool"}
+)
 
-func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
-
-	clusterKey := r.GetClusterKey()
-
-	cluster := r.FetchCluster()
-	if cluster.State() != cmv1.ClusterStateReady &&
-		cluster.State() != cmv1.ClusterStateHibernating {
-		r.Reporter.Errorf("Cluster '%s' is not yet ready", clusterKey)
-		os.Exit(1)
+func NewListMachinePoolCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     use,
+		Short:   short,
+		Long:    long,
+		Aliases: aliases,
+		Example: example,
+		Args:    cobra.NoArgs,
+		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), ListMachinePoolRunner()),
 	}
 
-	service := machinepool.NewMachinePoolService()
-	err := service.ListMachinePools(r, clusterKey, cluster)
-	if err != nil {
-		r.Reporter.Errorf("Failed to list machinepools: %s", err)
+	output.AddFlag(cmd)
+	ocm.AddClusterFlag(cmd)
+	return cmd
+}
+
+func ListMachinePoolRunner() rosa.CommandRunner {
+	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, _ []string) error {
+		clusterKey := runtime.GetClusterKey()
+
+		cluster := runtime.FetchCluster()
+		if cluster.State() != cmv1.ClusterStateReady &&
+			cluster.State() != cmv1.ClusterStateHibernating {
+			return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		}
+
+		service := machinepool.NewMachinePoolService()
+		err := service.ListMachinePools(runtime, clusterKey, cluster)
+		if err != nil {
+			return fmt.Errorf("Failed to list machinepools: %s", err)
+		}
+		return nil
 	}
 }

@@ -73,7 +73,7 @@ func DescribeMachinePoolRunner(userOptions DescribeMachinepoolUserOptions) rosa.
 			err := cmd.ParseFlags(argv)
 			userOptions.machinepool = cmd.Flag("machinepool").Value.String()
 			if err != nil {
-				return fmt.Errorf("unable to parse flags: %s", err)
+				return fmt.Errorf("Unable to parse flags: %s", err)
 			}
 		}
 		err := options.Bind(userOptions)
@@ -83,7 +83,7 @@ func DescribeMachinePoolRunner(userOptions DescribeMachinepoolUserOptions) rosa.
 		clusterKey := runtime.GetClusterKey()
 		cluster := runtime.FetchCluster()
 		if cluster.State() != cmv1.ClusterStateReady {
-			return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
+			return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
 		}
 
 		service := machinepool.NewMachinePoolService()

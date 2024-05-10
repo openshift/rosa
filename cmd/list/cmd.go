@@ -58,7 +58,8 @@ func init() {
 	Cmd.AddCommand(gates.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
-	Cmd.AddCommand(machinepool.Cmd)
+	machinePoolCommand := machinepool.NewListMachinePoolCommand()
+	Cmd.AddCommand(machinePoolCommand)
 	Cmd.AddCommand(region.Cmd)
 	Cmd.AddCommand(upgrade.Cmd)
 	Cmd.AddCommand(user.Cmd)
@@ -86,7 +87,7 @@ func init() {
 		oidcprovider.Cmd, cluster.Cmd,
 		breakglasscredential.Cmd, addon.Cmd,
 		externalauthprovider.Cmd, dnsdomains.Cmd,
-		gates.Cmd, idp.Cmd, ingress.Cmd, machinepool.Cmd,
+		gates.Cmd, idp.Cmd, ingress.Cmd, machinePoolCommand,
 		operatorroles.Cmd, region.Cmd, rhRegion.Cmd,
 		service.Cmd, tuningconfigs.Cmd, upgrade.Cmd,
 		user.Cmd, version.Cmd,
