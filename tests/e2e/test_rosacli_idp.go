@@ -43,7 +43,6 @@ var _ = Describe("Edit IDP",
 			By("Clean remaining resources")
 			var errorList []error
 			errorList = append(errorList, rosaClient.CleanResources(clusterID))
-			errorList = append(errorList, rosaClient.CleanResources(clusterID))
 			Expect(errors.Join(errorList...)).ToNot(HaveOccurred())
 
 		})
