@@ -270,6 +270,10 @@ func FormatResource(resource interface{}) string {
 	var outputJson bytes.Buffer
 	var err error
 	switch reflect.TypeOf(resource).String() {
+	case "*v1.KubeletConfig":
+		if res, ok := resource.(*v1.KubeletConfig); ok {
+			err = v1.MarshalKubeletConfig(res, &outputJson)
+		}
 	case "*v1.Version":
 		if res, ok := resource.(*v1.Version); ok {
 			err = v1.MarshalVersion(res, &outputJson)

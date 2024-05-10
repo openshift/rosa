@@ -131,8 +131,9 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			),
 		)
 
-		args := KubeletConfigArgs{podPidsLimit}
+		args := KubeletConfigArgs{podPidsLimit, kubeletName}
 		kubeletConfig, err := ocmClient.CreateKubeletConfig(clusterId, args)
+		Expect(kubeletConfig.Name()).To(Equal(kubeletName))
 
 		Expect(kubeletConfig).NotTo(BeNil())
 		Expect(err).NotTo(HaveOccurred())
@@ -147,7 +148,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			),
 		)
 
-		args := KubeletConfigArgs{podPidsLimit}
+		args := KubeletConfigArgs{podPidsLimit, kubeletName}
 		_, err := ocmClient.CreateKubeletConfig(clusterId, args)
 		Expect(err).To(HaveOccurred())
 	})
@@ -160,7 +161,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			),
 		)
 
-		args := KubeletConfigArgs{podPidsLimit}
+		args := KubeletConfigArgs{podPidsLimit, kubeletName}
 		kubeletConfig, err := ocmClient.UpdateKubeletConfig(clusterId, args)
 
 		Expect(kubeletConfig).NotTo(BeNil())
@@ -175,7 +176,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			),
 		)
 
-		args := KubeletConfigArgs{podPidsLimit}
+		args := KubeletConfigArgs{podPidsLimit, kubeletName}
 		_, err := ocmClient.UpdateKubeletConfig(clusterId, args)
 		Expect(err).To(HaveOccurred())
 	})

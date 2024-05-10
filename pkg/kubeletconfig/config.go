@@ -53,6 +53,21 @@ func GetInteractiveInput(maxPidsLimit int, kubeletConfig *v1.KubeletConfig) inte
 	}
 }
 
+func ValidateOrPromptForName(requestedName string) (string, error) {
+
+	if interactive.Enabled() {
+		return interactive.GetString(interactive.Input{
+			Question: InteractiveNameHelpPrompt,
+			Help:     InteractiveNameHelp,
+			Options:  nil,
+			Default:  requestedName,
+			Required: false,
+		})
+	}
+
+	return requestedName, nil
+}
+
 // ValidateOrPromptForRequestedPidsLimit validates user provided limits or prompts via interactive mode
 // if the user hasn't specified any limit on the command line.
 func ValidateOrPromptForRequestedPidsLimit(
@@ -66,10 +81,16 @@ func ValidateOrPromptForRequestedPidsLimit(
 		r.Reporter.Infof("Enabling interactive mode")
 	}
 
+	// If the user has provided a fully supported podPidsLimit, then no need to check the org capabilities.
+	if requestedPids >= MinPodPidsLimit && requestedPids <= MaxPodPidsLimit {
+		return requestedPids, nil
+	}
+
+	// The user is trying to exceed the default ranges. This requires a capability check at the org-level
 	maxPidsLimit, err := GetMaxPidsLimit(r.OCMClient)
 	if err != nil {
 		return PodPidsLimitOptionDefaultValue,
-			r.Reporter.Errorf("Failed to check maximum allowed Pids limit for cluster '%s'",
+			fmt.Errorf("Failed to check maximum allowed Pids limit for cluster '%s'",
 				clusterKey)
 	}
 
@@ -78,20 +99,20 @@ func ValidateOrPromptForRequestedPidsLimit(
 
 		if err != nil {
 			return PodPidsLimitOptionDefaultValue,
-				r.Reporter.Errorf("Failed reading requested Pids limit for cluster '%s': '%s'",
+				fmt.Errorf("Failed reading requested Pids limit for cluster '%s': '%s'",
 					clusterKey, err)
 		}
 	}
 
 	if requestedPids < MinPodPidsLimit {
 		return PodPidsLimitOptionDefaultValue,
-			r.Reporter.Errorf("The minimum value for --pod-pids-limit is '%d'. You have supplied '%d'",
+			fmt.Errorf("The minimum value for --pod-pids-limit is '%d'. You have supplied '%d'",
 				MinPodPidsLimit, requestedPids)
 	}
 
 	if requestedPids > maxPidsLimit {
 		return PodPidsLimitOptionDefaultValue,
-			r.Reporter.Errorf("The maximum value for --pod-pids-limit is '%d'. You have supplied '%d'",
+			fmt.Errorf("The maximum value for --pod-pids-limit is '%d'. You have supplied '%d'",
 				maxPidsLimit, requestedPids)
 	}
 
