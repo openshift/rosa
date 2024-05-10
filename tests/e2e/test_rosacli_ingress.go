@@ -116,11 +116,107 @@ var _ = Describe("Edit default ingress",
 					Expect(textData).Should(ContainSubstring("Updated ingress '%s' on cluster '%s'", defaultID, clusterID))
 				}
 
-				By("Run command to edit an default ingress with --label-match")
+				By("Run command to edit a default ingress with --label-match")
 				output, err = ingressService.EditIngress(clusterID, defaultID,
 					"--label-match", "aaa=bbb,ccc=ddd")
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("ERR: Updating route selectors is not supported for Hosted Control Plane clusters"))
+			})
+
+		It("change load balancer type - [id:64767]",
+			labels.Critical,
+			labels.Day2,
+			labels.NonHCPCluster,
+			func() {
+				if isHosted {
+					Skip("This case is for standard ROSA clusters only")
+				}
+
+				output, err := ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err := ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+
+				defaultIngress := func(ingressList rosacli.IngressList) (*rosacli.Ingress, bool) {
+					for _, ingress := range ingressList.Ingresses {
+						if ingress.Default == "yes" {
+							return &ingress, true
+						}
+					}
+					return nil, false
+				}
+				ingress, exists := defaultIngress(*ingressList)
+				Expect(exists).To(BeTrue())
+				defaultID := ingress.ID
+				Expect(defaultID).ToNot(BeNil())
+				output, err = ingressService.EditIngress(clusterID, defaultID, "--lb-type", "nlb")
+				Expect(err).ToNot(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Updated ingress '%s'", defaultID))
+
+				output, err = ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err = ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				ingress, _ = defaultIngress(*ingressList)
+				Expect(ingress.LBType).Should(ContainSubstring("nlb"))
+
+				output, err = ingressService.EditIngress(clusterID, defaultID, "--lb-type", "classic")
+				Expect(err).ToNot(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Updated ingress '%s'", defaultID))
+
+				output, err = ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err = ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				ingress, _ = defaultIngress(*ingressList)
+				Expect(ingress.LBType).Should(ContainSubstring("classic"))
+			})
+		It("Update Ingress Controller attributes [id:65799]",
+			labels.Critical,
+			labels.Day2,
+			labels.NonHCPCluster,
+			func() {
+				if isHosted {
+					Skip("This case is for standard ROSA clusters only")
+				}
+				output, err := ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				ingressList, err := ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				defaultIngress := func(ingressList rosacli.IngressList) (*rosacli.Ingress, bool) {
+					for _, ingress := range ingressList.Ingresses {
+						if ingress.Default == "yes" {
+							return &ingress, true
+						}
+					}
+					return nil, false
+				}
+
+				ingress, exists := defaultIngress(*ingressList)
+				Expect(exists).To(BeTrue())
+				defaultID := ingress.ID
+				output, err = ingressService.EditIngress(clusterID, defaultID, "--excluded-namespaces", "test-ns1,test-ns2", "--route-selector",
+					"app1=test1,app2=test2", "--namespace-ownership-policy", "Strict", "--wildcard-policy", "WildcardsDisallowed")
+				Expect(err).ToNot(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Updated ingress '%s'", defaultID))
+
+				output, err = ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				ingressList, err = ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+
+				ingress, _ = defaultIngress(*ingressList)
+				Expect(ingress.ExcludeNamespace).Should(ContainSubstring("test-ns1"))
+				Expect(ingress.ExcludeNamespace).Should(ContainSubstring("test-ns2"))
+				Expect(ingress.RouteSelectors).Should(ContainSubstring("app1=test1"))
+				Expect(ingress.RouteSelectors).Should(ContainSubstring("app2=test2"))
+				Expect(ingress.NamespaceOwnershipPolicy).Should(ContainSubstring("Strict"))
+				Expect(ingress.WildcardPolicy).Should(ContainSubstring("WildcardsDisallowed"))
 			})
 	})

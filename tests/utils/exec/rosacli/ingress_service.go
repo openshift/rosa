@@ -91,7 +91,7 @@ func (i *ingressService) ListIngress(clusterID string, flags ...string) (bytes.B
 	return listIngress.Run()
 }
 
-// Pasrse the result of 'rosa list ingress' to Ingress struct
+// Parse the result of 'rosa list ingress' to Ingress struct
 func (i *ingressService) ReflectIngressList(result bytes.Buffer) (res *IngressList, err error) {
 	res = &IngressList{}
 	theMap := i.client.Parser.TableData.Input(result).Parse().Output()
