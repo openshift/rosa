@@ -104,8 +104,8 @@ var _ = Describe("Output", Ordered, func() {
 			npAutoscaling := cmv1.NewNodePoolAutoscaling().ID("test-as").MinReplica(2).MaxReplica(8)
 			nodePoolBuilder := *cmv1.NewNodePool().ID("test-mp").Autoscaling(npAutoscaling).Replicas(4).
 				AvailabilityZone("test-az").Subnet("test-subnets").Version(cmv1.NewVersion().
-				ID("1")).AutoRepair(false).TuningConfigs("test-tc").Labels(labels).
-				Taints(taintsBuilder)
+				ID("1")).AutoRepair(false).TuningConfigs("test-tc").
+				KubeletConfigs("test-kc").Labels(labels).Taints(taintsBuilder)
 			nodePool, err := nodePoolBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			labelsOutput := ocmOutput.PrintLabels(labels)
@@ -114,7 +114,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "Yes", replicasOutput, "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "1", "No", "test-tc", "", "", "")
+				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
@@ -123,7 +123,7 @@ var _ = Describe("Output", Ordered, func() {
 			nodePoolBuilder := *cmv1.NewNodePool().ID("test-mp").Replicas(4).
 				AvailabilityZone("test-az").Subnet("test-subnets").Version(cmv1.NewVersion().
 				ID("1")).AutoRepair(false).TuningConfigs("test-tc").
-				Labels(labels).Taints(taintsBuilder)
+				KubeletConfigs("test-kc").Labels(labels).Taints(taintsBuilder)
 			nodePool, err := nodePoolBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			labelsOutput := ocmOutput.PrintLabels(labels)
@@ -131,7 +131,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "No", "4", "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "1", "No", "test-tc", "", "", "")
+				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
