@@ -261,6 +261,9 @@ var pathTreeData = `{
               "-": null
             },
             "kubelet_config": null,
+            "kubelet_configs": {
+              "-": null
+            },
             "limited_support_reasons": {
               "-": null
             },
