@@ -109,8 +109,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 
 	if breakGlassCredentialConfig.Status() == cmv1.BreakGlassCredentialStatusRevoked {
-		return fmt.Errorf("Break glass credential '%s' for cluster '%s' has been revoked.",
+		r.Reporter.Warnf("Break glass credential '%s' for cluster '%s' has been revoked.",
 			breakGlassCredentialId, clusterKey)
+		return nil
 	}
 
 	if output.HasFlag() {
