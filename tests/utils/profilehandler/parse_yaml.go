@@ -40,6 +40,28 @@ func ParseProfiles(profilesDir string) map[string]*Profile {
 	return profileMap
 }
 
+func ParseProfilesByFile(profileLocation string) map[string]*Profile {
+
+	profileMap := make(map[string]*Profile)
+
+	yfile, err := os.ReadFile(profileLocation)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	p := new(profiles)
+	err = yaml.Unmarshal(yfile, &p)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, theProfile := range p.Profiles {
+		profileMap[theProfile.Name] = theProfile
+	}
+
+	return profileMap
+}
+
 func GetProfile(profileName string, profilesDir string) *Profile {
 	profileMap := ParseProfiles(profilesDir)
 

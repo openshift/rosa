@@ -12,10 +12,17 @@ type Command interface {
 	AddFlags(flags ...string)
 	ReplaceFlagValue(flags map[string]string)
 	DeleteFlag(flag string, flagWithVaue bool) error
+	CheckFlagExist(flag string) bool
 }
 
 type command struct {
 	cmd string
+}
+
+func GenerateCommand(cmdString string) Command {
+	return &command{
+		cmd: cmdString,
+	}
 }
 
 // Get the rosa command for creating cluster from ${SHARED_DIR}/create_cluster.sh
@@ -84,4 +91,15 @@ func (c *command) AddFlags(flags ...string) {
 		// combine the command with space
 		c.cmd += " " + flag
 	}
+}
+
+// Check flag exist
+func (c *command) CheckFlagExist(flag string) bool {
+	elements := strings.Split(c.cmd, " ")
+	for _, e := range elements {
+		if e == flag {
+			return true
+		}
+	}
+	return false
 }
