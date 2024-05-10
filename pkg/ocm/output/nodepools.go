@@ -88,11 +88,11 @@ func PrintNodePoolAutorepair(autorepair bool) string {
 	return output.No
 }
 
-func PrintNodePoolTuningConfigs(tuningConfigs []string) string {
-	if len(tuningConfigs) == 0 {
+func PrintNodePoolConfigs(configs []string) string {
+	if len(configs) == 0 {
 		return ""
 	}
-	return strings.Join(tuningConfigs, ",")
+	return strings.Join(configs, ",")
 }
 
 func PrintNodeDrainGracePeriod(period *cmv1.Value) string {

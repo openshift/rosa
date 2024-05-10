@@ -35,6 +35,7 @@ Subnet:
 Version:                               4.12.24
 Autorepair:                            No
 Tuning configs:                        
+Kubelet configs:                       
 Additional security group IDs:         
 Node drain grace period:               1 minute
 Message:                               
@@ -54,6 +55,7 @@ Subnet:
 Version:                               4.12.24
 Autorepair:                            No
 Tuning configs:                        
+Kubelet configs:                       
 Additional security group IDs:         
 Node drain grace period:               1 minute
 Message:                               
@@ -74,6 +76,7 @@ Subnet:
 Version:                               4.12.24
 Autorepair:                            No
 Tuning configs:                        
+Kubelet configs:                       
 Additional security group IDs:         
 Node drain grace period:               1 minute
 Message:                               
