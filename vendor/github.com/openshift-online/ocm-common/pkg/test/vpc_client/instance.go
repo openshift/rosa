@@ -30,14 +30,20 @@ func (vpc *VPC) TerminateVPCInstances(nonClusterOnly bool) error {
 		return err
 	}
 	needTermination := []string{}
+	keyPairNames := []string{}
 	for _, inst := range insts {
 		needTermination = append(needTermination, *inst.InstanceId)
+		keyPairNames = append(keyPairNames, *inst.KeyName)
 	}
 	err = vpc.AWSClient.TerminateInstances(needTermination, true, 20)
 	if err != nil {
 		log.LogError("Terminating instances %s meet error: %s", strings.Join(needTermination, ","), err)
 	} else {
 		log.LogInfo("Terminating instances %s successfully", strings.Join(needTermination, ","))
+	}
+	err = vpc.DeleteKeyPair(keyPairNames)
+	if err != nil {
+		log.LogError("Delete key pair %s meet error: %s", strings.Join(keyPairNames, ","), err)
 	}
 	return err
 

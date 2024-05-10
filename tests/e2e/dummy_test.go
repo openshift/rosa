@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 	PH "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -50,12 +49,19 @@ var _ = Describe("ROSA CLI Test", func() {
 	})
 	Describe("ocm-common test", func() {
 		It("VPCClientTesting", func() {
-			vpcClient, err := profilehandler.PrepareVPC("us-east-1", "xueli-test", "10.0.0.0/16")
+			vpcClient, err := PH.PrepareVPC("us-east-1", "xueli-test", "10.0.0.0/16")
 			Expect(err).ToNot(HaveOccurred())
 			defer vpcClient.DeleteVPCChain(true)
-			subnets, err := profilehandler.PrepareSubnets(vpcClient, "us-east-1", []string{}, true)
+			subnets, err := PH.PrepareSubnets(vpcClient, "us-east-1", []string{}, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(subnets)).To(Equal(2))
+			_, ip, ca, err := vpcClient.LaunchProxyInstance("us-east-1a", "xueli-test", TC.Test.OutputDir)
+
+			Expect(err).ToNot(HaveOccurred())
+			fmt.Println(ip)
+			fmt.Println(ca)
+			log.Logger.Infof("Got configured proxy ip: %v", ip)
+			log.Logger.Infof("Got configured proxy ca: %v", ca)
 		})
 
 	})

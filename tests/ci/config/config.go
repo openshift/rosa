@@ -75,7 +75,7 @@ func init() {
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
-	Test.ProxySSHPemFile = path.Join(Test.OutputDir, "openshift-qe.pem")
+	Test.ProxySSHPemFile = "ocm-test-proxy"
 	Test.ProxyCABundleFile = path.Join(Test.OutputDir, "proxy-bundle.ca")
 
 	waitingTime, err := strconv.Atoi(common.ReadENVWithDefaultValue("CLUSTER_TIMEOUT", "60"))
