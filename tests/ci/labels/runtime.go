@@ -6,6 +6,7 @@ import (
 
 // Pre check
 var E2ECommit = Label("e2e-commit")
+var E2EReport = Label("e2e-report")
 
 // day1/day1-post and day2
 var Day1 = Label("day1")
