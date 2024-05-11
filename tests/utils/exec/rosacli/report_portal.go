@@ -133,7 +133,7 @@ func GenerateReportXMLFile() (int, int, map[string][]Testcase, map[string][]Test
 	passedNum := 0
 	issuedNum := 0
 
-	xmlFileList := ListFiles(config.Test.OutputDir, ".xml")
+	xmlFileList := ListFiles(config.Test.ArtifactDir, ".xml")
 	for _, xmlFile := range xmlFileList {
 		xmlFilename := path.Base(xmlFile)
 		xmlFilePrefix := strings.TrimSuffix(xmlFilename, ".xml")
@@ -183,18 +183,18 @@ func GenerateReportXMLFile() (int, int, map[string][]Testcase, map[string][]Test
 	return passedNum, issuedNum, issuedTCList, successedTCList
 }
 
-func ListFiles(outputDir string, subfix string) []string {
+func ListFiles(dir string, subfix string) []string {
 	var Files []string
-	fs, err := os.ReadDir(outputDir)
+	fs, err := os.ReadDir(dir)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to open the directory %s: %v\n", outputDir, err))
+		panic(fmt.Sprintf("Failed to open the directory %s: %v\n", dir, err))
 	}
 	for _, f := range fs {
 		if path.Ext(f.Name()) != subfix {
 			continue
 		}
 
-		filename := path.Join(outputDir, f.Name())
+		filename := path.Join(dir, f.Name())
 		Files = append(Files, filename)
 	}
 
