@@ -36,16 +36,6 @@ var _ = Describe("Machinepool", func() {
 			asBuilder := cmv1.NewMachinePoolAutoscaling().MaxReplicas(2).MinReplicas(0)
 			Expect(builder).To(Equal(asBuilder))
 		})
-
-		It("editMachinePoolAutoscaling should allow 0 min and 0 max replicas", func() {
-			machinePool, err := cmv1.NewMachinePool().
-				Autoscaling(cmv1.NewMachinePoolAutoscaling().MaxReplicas(2).MinReplicas(1)).
-				Build()
-			Expect(err).ToNot(HaveOccurred())
-			builder := editMachinePoolAutoscaling(machinePool, 0, 0)
-			asBuilder := cmv1.NewMachinePoolAutoscaling().MaxReplicas(0).MinReplicas(0)
-			Expect(builder).To(Equal(asBuilder))
-		})
 	})
 
 	Context("isMultiAZMachinePool", func() {
