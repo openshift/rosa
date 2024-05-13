@@ -587,12 +587,13 @@ func (mr *MockClientMockRecorder) GetAccountRoleForCurrentEnvWithPrefix(env, rol
 }
 
 // GetAccountRolePolicies mocks base method.
-func (m *MockClient) GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail, error) {
+func (m *MockClient) GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail, map[string][]PolicyDetail, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAccountRolePolicies", roles, prefix)
 	ret0, _ := ret[0].(map[string][]PolicyDetail)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(map[string][]PolicyDetail)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // GetAccountRolePolicies indicates an expected call of GetAccountRolePolicies.
@@ -812,12 +813,13 @@ func (mr *MockClientMockRecorder) GetOperatorRoleDefaultPolicy(roleName any) *go
 }
 
 // GetOperatorRolePolicies mocks base method.
-func (m *MockClient) GetOperatorRolePolicies(roles []string) (map[string][]string, error) {
+func (m *MockClient) GetOperatorRolePolicies(roles []string) (map[string][]string, map[string][]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOperatorRolePolicies", roles)
 	ret0, _ := ret[0].(map[string][]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(map[string][]string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // GetOperatorRolePolicies indicates an expected call of GetOperatorRolePolicies.

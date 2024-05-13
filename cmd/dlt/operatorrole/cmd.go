@@ -246,12 +246,12 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
-		policyMap, err := r.AWSClient.GetOperatorRolePolicies(foundOperatorRoles)
+		policyMap, arbitraryPolicyMap, err := r.AWSClient.GetOperatorRolePolicies(foundOperatorRoles)
 		if err != nil {
 			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(foundOperatorRoles, policyMap, managedPolicies)
+		commands := buildCommand(foundOperatorRoles, policyMap, arbitraryPolicyMap, managedPolicies)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the Operator roles and policies:\n")
 		}
@@ -262,12 +262,15 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func buildCommand(roleNames []string, policyMap map[string][]string, managedPolicies bool) string {
+func buildCommand(roleNames []string, policyMap map[string][]string,
+	arbitraryPolicyMap map[string][]string, managedPolicies bool) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
 		policyARN := policyMap[roleName]
+		arbitraryPolicyARN := arbitraryPolicyMap[roleName]
 		detachPolicy := ""
 		deletePolicy := ""
+		detachArbitraryPolicy := []string{}
 		if len(policyARN) > 0 {
 			detachPolicy = awscb.NewIAMCommandBuilder().
 				SetCommand(awscb.DetachRolePolicy).
@@ -281,11 +284,20 @@ func buildCommand(roleNames []string, policyMap map[string][]string, managedPoli
 					Build()
 			}
 		}
+		for _, policy := range arbitraryPolicyARN {
+			detachPolicy = awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DetachRolePolicy).
+				AddParam(awscb.RoleName, roleName).
+				AddParam(awscb.PolicyArn, policy).Build()
+			detachArbitraryPolicy = append(detachArbitraryPolicy, detachPolicy)
+		}
 		deleteRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.DeleteRole).
 			AddParam(awscb.RoleName, roleName).
 			Build()
-		commands = append(commands, detachPolicy, deleteRole, deletePolicy)
+		commands = append(commands, detachPolicy)
+		commands = append(commands, detachArbitraryPolicy...)
+		commands = append(commands, deleteRole, deletePolicy)
 	}
 	return strings.Join(commands, "\n")
 }
