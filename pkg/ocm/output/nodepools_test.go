@@ -16,17 +16,31 @@ var _ = Describe("Create node drain grace period builder validations", func() {
 			output := PrintNodeDrainGracePeriod(period)
 			Expect(output).To(Equal(expectedOutput))
 		},
-		Entry(nil,
+		Entry("Should return empty string", nil,
 			"",
 		),
-		Entry(zeroValue,
+		Entry("Should return empty string", zeroValue,
 			"",
 		),
-		Entry(oneValue,
+		Entry("Should return 1 minute", oneValue,
 			"1 minute",
 		),
-		Entry(twoValue,
+		Entry("Should return 2 minutes", twoValue,
 			"2 minutes",
 		),
 	)
+})
+
+var _ = Describe("PrintNodePoolReplicasInline", func() {
+	It("Should print the correct output if autoscaling exists", func() {
+		autoscaling := cmv1.NewNodePoolAutoscaling().MinReplica(2).MaxReplica(6)
+		output := PrintNodePoolReplicasInline((*cmv1.NodePoolAutoscaling)(autoscaling), 2)
+		Expect(output).To(Equal("2-6"))
+	})
+
+	It("Should print the correct output if autoscaling is nill", func() {
+		output := PrintNodePoolReplicasInline(nil, 2)
+		Expect(output).To(Equal("2"))
+	})
+
 })
