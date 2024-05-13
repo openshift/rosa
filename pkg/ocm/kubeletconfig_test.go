@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"slices"
+
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/gomega"
@@ -313,6 +315,39 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			Expect(kubeletConfig.Name()).To(BeEmpty())
 			Expect(kubeletConfig.PodPidsLimit()).To(Equal(10000))
 		})
+	})
+
+	Context("Get KubeletConfig names", func() {
+		It("Gets the name of available KubeletConfigs", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(false)))
+
+			names, err := ocmClient.ListKubeletConfigNames(clusterId)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(slices.Contains(names, kubeletName)).To(BeTrue())
+		})
+
+		It("Returns an empty list if no kubeletconfigs available", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(true)))
+
+			names, err := ocmClient.ListKubeletConfigNames(clusterId)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(names).To(BeEmpty())
+		})
+
+		It("Returns an error if failing to list KubeletConfig names", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusInternalServerError, createKubeletConfigList(false)))
+
+			names, err := ocmClient.ListKubeletConfigNames(clusterId)
+			Expect(err).To(HaveOccurred())
+			Expect(names).To(BeEmpty())
+		})
+
 	})
 })
 

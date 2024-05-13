@@ -386,6 +386,44 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
+	var inputKubeletConfigs []string
+	kubeletConfigs := args.kubeletConfigs
+	// Get the list of available kubelet configs
+	availableKubeletConfigs, err := r.OCMClient.ListKubeletConfigNames(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if kubeletConfigs != "" {
+		if len(availableKubeletConfigs) > 0 {
+			inputKubeletConfigs = strings.Split(kubeletConfigs, ",")
+		} else {
+			// Parameter will be ignored
+			r.Reporter.Warnf("No kubelet config available for cluster '%s'. "+
+				"Any kubelet config in input will be ignored", cluster.ID())
+		}
+	}
+	if interactive.Enabled() {
+		// Skip if no kubelet configs are available
+		if len(availableKubeletConfigs) > 0 {
+			inputKubeletConfigs, err = interactive.GetMultipleOptions(interactive.Input{
+				Question: "Kubelet configs",
+				Help:     cmd.Flags().Lookup("kubelet-configs").Usage,
+				Options:  availableKubeletConfigs,
+				Default:  inputKubeletConfigs,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value for kubelet configs: %s", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if len(inputKubeletConfigs) != 0 {
+		npBuilder.KubeletConfigs(inputKubeletConfigs...)
+	}
+
 	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, awsTags))
 
 	nodeDrainGracePeriod := args.nodeDrainGracePeriod
