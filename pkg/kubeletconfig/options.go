@@ -1,6 +1,10 @@
 package kubeletconfig
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
 
 type KubeletConfigOptions struct {
 	Name         string
@@ -24,4 +28,11 @@ func (k *KubeletConfigOptions) AddFlagsToCommand(cmd *cobra.Command) {
 		NameOption,
 		NameOptionDefaultValue,
 		NameOptionUsage)
+}
+
+func (k *KubeletConfigOptions) ValidateForHypershift() error {
+	if k.Name == "" {
+		return fmt.Errorf("The --name flag is required for Hosted Control Plane clusters.")
+	}
+	return nil
 }

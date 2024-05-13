@@ -72,7 +72,7 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 
 		if !cluster.Hypershift().Enabled() {
 			// Classic clusters can only have a single KubeletConfig
-			kubeletConfig, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
+			kubeletConfig, _, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
 			if err != nil {
 				return fmt.Errorf("Failed getting KubeletConfig for cluster '%s': %s",
 					r.ClusterKey, err)
@@ -84,7 +84,7 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 			}
 		}
 
-		name, err := ValidateOrPromptForName(options.Name)
+		name, err := PromptForName(options.Name)
 		if err != nil {
 			return nil
 		}
@@ -115,7 +115,6 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 				clusterKey, err)
 		}
 		r.Reporter.Infof("Successfully created KubeletConfig for cluster '%s'", clusterKey)
-
 		return nil
 	}
 }
