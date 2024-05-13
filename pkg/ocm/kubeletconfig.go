@@ -9,6 +9,7 @@ import (
 
 type KubeletConfigArgs struct {
 	PodPidsLimit int
+	Name         string
 }
 
 func (c *Client) GetClusterKubeletConfig(clusterID string) (*cmv1.KubeletConfig, error) {
@@ -35,7 +36,7 @@ func (c *Client) DeleteKubeletConfig(clusterID string) error {
 
 func toOCMKubeletConfig(args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
 	builder := &cmv1.KubeletConfigBuilder{}
-	kubeletConfig, err := builder.PodPidsLimit(args.PodPidsLimit).Build()
+	kubeletConfig, err := builder.PodPidsLimit(args.PodPidsLimit).Name(args.Name).Build()
 	if err != nil {
 		return nil, err
 	}
