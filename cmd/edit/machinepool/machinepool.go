@@ -164,12 +164,21 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 	}
 
 	if autoscaling {
+
+		// set default values from previous autoscaling values
+		if !isMinReplicasSet {
+			minReplicas = existingAutoscaling.MinReplicas()
+		}
+		if !isMaxReplicasSet {
+			maxReplicas = existingAutoscaling.MaxReplicas()
+		}
+
 		// Prompt for min replicas if neither min or max is set or interactive mode
 		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet && askForScalingParams) {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
-				Default:  existingAutoscaling.MinReplicas(),
+				Default:  minReplicas,
 				Required: replicasRequired,
 			})
 			if err != nil {
@@ -183,7 +192,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 			maxReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Max replicas",
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
-				Default:  existingAutoscaling.MaxReplicas(),
+				Default:  maxReplicas,
 				Required: replicasRequired,
 			})
 			if err != nil {
@@ -222,20 +231,15 @@ func editMachinePoolAutoscaling(machinePool *cmv1.MachinePool,
 	asBuilder := cmv1.NewMachinePoolAutoscaling()
 	changed := false
 
-	newMin := machinePool.Autoscaling().MinReplicas()
-	newMax := machinePool.Autoscaling().MaxReplicas()
-
 	if machinePool.Autoscaling().MinReplicas() != minReplicas && minReplicas >= 0 {
-		newMin = minReplicas
 		changed = true
 	}
 	if machinePool.Autoscaling().MaxReplicas() != maxReplicas && maxReplicas >= 0 {
-		newMax = maxReplicas
 		changed = true
 	}
 
 	if changed {
-		asBuilder = asBuilder.MinReplicas(newMin).MaxReplicas(newMax)
+		asBuilder = asBuilder.MinReplicas(minReplicas).MaxReplicas(maxReplicas)
 		return asBuilder
 	}
 	return nil
