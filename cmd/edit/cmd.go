@@ -48,7 +48,8 @@ func init() {
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
-	Cmd.AddCommand(kubeletconfig.Cmd)
+	kubeletConfig := kubeletconfig.NewEditKubeletConfigCommand()
+	Cmd.AddCommand(kubeletConfig)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -59,7 +60,7 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		autoscaler.Cmd, addon.Cmd,
 		service.Cmd, cluster.Cmd,
-		ingress.Cmd, kubeletconfig.Cmd,
+		ingress.Cmd, kubeletConfig,
 		machinepool.Cmd, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)

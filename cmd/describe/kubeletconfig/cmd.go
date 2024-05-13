@@ -51,13 +51,13 @@ func run(_ *cobra.Command, _ []string) {
 	cluster := r.FetchCluster()
 
 	r.Reporter.Debugf("Loading KubeletConfig for cluster '%s'", clusterKey)
-	kubeletConfig, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
+	kubeletConfig, exists, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		os.Exit(1)
 	}
 
-	if kubeletConfig == nil {
+	if !exists {
 		r.Reporter.Infof("No custom KubeletConfig exists for cluster '%s'", clusterKey)
 		os.Exit(0)
 	}

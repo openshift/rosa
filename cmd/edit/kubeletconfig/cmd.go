@@ -17,8 +17,8 @@ limitations under the License.
 package kubeletconfig
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -30,89 +30,104 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:     "kubeletconfig",
-	Aliases: []string{"kubelet-config"},
-	Short:   "Edit the custom kubeletconfig for a cluster",
-	Long:    "Edit the custom kubeletconfig for a cluster.",
-	Example: `  # Edit a custom kubeletconfig to have a pod-pids-limit of 10000
+const (
+	use     = "kubeletconfig"
+	short   = "Edit a kubeletconfig for a cluster"
+	long    = short
+	example = `  # Edit a KubeletConfig to have a pod-pids-limit of 10000
   rosa edit kubeletconfig --cluster=mycluster --pod-pids-limit=10000
-  `,
-	Run:  run,
-	Args: cobra.NoArgs,
-}
+  # Edit a KubeletConfig named 'bar' to have a pod-pids-limit of 10000
+  rosa edit kubeletconfig --cluster=mycluster --name=bar --pod-pids-limit=10000
+  `
+	kubeletNotExistingMessage = "The specified KubeletConfig does not exist for cluster '%s'." +
+		" You should first create it via 'rosa create kubeletconfig'"
+)
 
-var args struct {
-	podPidsLimit int
-}
+var aliases = []string{"kubelet-config"}
 
-func init() {
-	flags := Cmd.Flags()
+func NewEditKubeletConfigCommand() *cobra.Command {
+
+	options := NewKubeletConfigOptions()
+	cmd := &cobra.Command{
+		Use:     use,
+		Aliases: aliases,
+		Short:   short,
+		Long:    long,
+		Example: example,
+		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), EditKubeletConfigRunner(options)),
+		Args:    cobra.NoArgs,
+	}
+
+	flags := cmd.Flags()
 	flags.SortFlags = false
 
-	ocm.AddClusterFlag(Cmd)
+	ocm.AddClusterFlag(cmd)
 	interactive.AddFlag(flags)
-
-	flags.IntVar(
-		&args.podPidsLimit,
-		PodPidsLimitOption,
-		PodPidsLimitOptionDefaultValue,
-		PodPidsLimitOptionUsage)
-
+	options.AddFlagsToCommand(cmd)
+	return cmd
 }
 
-func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
-	defer r.Cleanup()
-
-	clusterKey := r.GetClusterKey()
-	cluster := r.FetchCluster()
-
-	if cluster.Hypershift().Enabled() {
-		r.Reporter.Errorf("Hosted Control Plane clusters do not support KubeletConfig configuration")
-		os.Exit(1)
-	}
-
-	if cluster.State() != cmv1.ClusterStateReady {
-		r.Reporter.Errorf("Cluster '%s' is not yet ready. Current state is '%s'", clusterKey, cluster.State())
-		os.Exit(1)
-	}
-
-	kubeletconfig, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to fetch existing KubeletConfig configuration for cluster '%s': %s",
-			clusterKey, err)
-		os.Exit(1)
-	}
-
-	if kubeletconfig == nil {
-		r.Reporter.Errorf("No KubeletConfig for cluster '%s' has been found. "+
-			"You should first create it via 'rosa create kubeletconfig'", clusterKey)
-		os.Exit(1)
-	}
-
-	r.Reporter.Debugf("Updating KubeletConfig for cluster '%s'", clusterKey)
-
-	requestedPids, err := ValidateOrPromptForRequestedPidsLimit(args.podPidsLimit, clusterKey, kubeletconfig, r)
-	if err != nil {
-		os.Exit(1)
-	}
-
-	prompt := fmt.Sprintf("Updating the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
-		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", clusterKey)
-
-	if confirm.ConfirmRaw(prompt) {
-		r.Reporter.Debugf("Updating KubeletConfig for cluster '%s'", clusterKey)
-		_, err = r.OCMClient.UpdateKubeletConfig(cluster.ID(), ocm.KubeletConfigArgs{PodPidsLimit: requestedPids})
+func EditKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+		cluster, err := r.OCMClient.GetCluster(r.GetClusterKey(), r.Creator)
 		if err != nil {
-			r.Reporter.Errorf("Failed creating custom KubeletConfig for cluster '%s': %s",
-				cluster.ID(), err)
-			os.Exit(1)
+			return err
 		}
 
-		r.Reporter.Infof("Successfully updated custom KubeletConfig for cluster '%s'", clusterKey)
-		os.Exit(0)
-	}
+		if cluster.State() != cmv1.ClusterStateReady {
+			return fmt.Errorf("Cluster '%s' is not yet ready. Current state is '%s'", r.GetClusterKey(), cluster.State())
+		}
 
-	r.Reporter.Infof("Update of custom KubeletConfig for cluster '%s' aborted.", clusterKey)
+		var kubeletconfig *cmv1.KubeletConfig
+		var exists bool
+
+		if cluster.Hypershift().Enabled() {
+			options.Name, err = PromptForName(options.Name)
+			if err != nil {
+				return err
+			}
+
+			options.ValidateForHypershift()
+			kubeletconfig, exists, err = r.OCMClient.FindKubeletConfigByName(ctx, cluster.ID(), options.Name)
+		} else {
+			kubeletconfig, exists, err = r.OCMClient.GetClusterKubeletConfig(cluster.ID())
+		}
+
+		if err != nil {
+			return fmt.Errorf("Failed to fetch KubeletConfig configuration for cluster '%s': %s",
+				r.GetClusterKey(), err)
+		}
+
+		if !exists {
+			return fmt.Errorf(kubeletNotExistingMessage, r.GetClusterKey())
+		}
+
+		requestedPids, err := ValidateOrPromptForRequestedPidsLimit(options.PodPidsLimit, r.GetClusterKey(), kubeletconfig, r)
+		if err != nil {
+			return err
+		}
+
+		if !cluster.Hypershift().Enabled() {
+			// Classic clusters must prompt the user as edit will cause all worker nodes to reboot
+			prompt := fmt.Sprintf("Updating the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
+				"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", r.GetClusterKey())
+
+			if !confirm.ConfirmRaw(prompt) {
+				r.Reporter.Infof("Update of custom KubeletConfig for cluster '%s' aborted.", r.GetClusterKey())
+				return nil
+			}
+		}
+
+		r.Reporter.Debugf("Updating KubeletConfig '%s' for cluster '%s'", kubeletconfig.ID(), r.GetClusterKey())
+		_, err = r.OCMClient.UpdateKubeletConfig(
+			ctx, cluster.ID(), kubeletconfig.ID(), ocm.KubeletConfigArgs{PodPidsLimit: requestedPids, Name: options.Name})
+
+		if err != nil {
+			return fmt.Errorf("Failed to update KubeletConfig for cluster '%s': %s",
+				r.GetClusterKey(), err)
+		}
+
+		r.Reporter.Infof("Successfully updated KubeletConfig for cluster '%s'", r.GetClusterKey())
+		return nil
+	}
 }

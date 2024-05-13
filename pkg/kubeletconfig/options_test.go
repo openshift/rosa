@@ -25,6 +25,20 @@ var _ = Describe("KubeletConfigOptions", func() {
 		flag = flags.Lookup(NameOption)
 		assertFlag(flag, NameOption, NameOptionUsage)
 	})
+
+	It("Fails HCP validation if no name supplied", func() {
+		options := NewKubeletConfigOptions()
+		err := options.ValidateForHypershift()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("The --name flag is required for Hosted Control Plane clusters."))
+	})
+
+	It("Passes HCP validation if the name is supplied", func() {
+		options := NewKubeletConfigOptions()
+		options.Name = "foo"
+		err := options.ValidateForHypershift()
+		Expect(err).NotTo(HaveOccurred())
+	})
 })
 
 func assertFlag(flag *flag.Flag, name string, usage string) {

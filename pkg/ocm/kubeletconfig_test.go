@@ -81,12 +81,13 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			),
 		)
 
-		kubeletConfig, err := ocmClient.GetClusterKubeletConfig(clusterId)
+		kubeletConfig, exists, err := ocmClient.GetClusterKubeletConfig(clusterId)
 
 		Expect(err).To(BeNil())
 		Expect(kubeletConfig).To(Not(BeNil()))
 		Expect(kubeletConfig.HREF()).To(Equal(kubeletHref))
 		Expect(kubeletConfig.PodPidsLimit()).To(Equal(podPidsLimit))
+		Expect(exists).To(BeTrue())
 	})
 
 	It("Returns nil when KubeletConfig does not exist", func() {
@@ -96,9 +97,10 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 				body,
 			),
 		)
-		kubeletConfig, err := ocmClient.GetClusterKubeletConfig(clusterId)
+		kubeletConfig, exists, err := ocmClient.GetClusterKubeletConfig(clusterId)
 		Expect(err).To(BeNil())
 		Expect(kubeletConfig).To(BeNil())
+		Expect(exists).To(BeFalse())
 	})
 
 	It("Deletes KubeletConfig", func() {
@@ -162,7 +164,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		)
 
 		args := KubeletConfigArgs{podPidsLimit, kubeletName}
-		kubeletConfig, err := ocmClient.UpdateKubeletConfig(clusterId, args)
+		kubeletConfig, err := ocmClient.UpdateKubeletConfig(context.Background(), clusterId, kubeletId, args)
 
 		Expect(kubeletConfig).NotTo(BeNil())
 		Expect(err).NotTo(HaveOccurred())
@@ -177,7 +179,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		)
 
 		args := KubeletConfigArgs{podPidsLimit, kubeletName}
-		_, err := ocmClient.UpdateKubeletConfig(clusterId, args)
+		_, err := ocmClient.UpdateKubeletConfig(context.Background(), clusterId, kubeletId, args)
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -214,6 +216,51 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 					http.StatusInternalServerError, createKubeletConfigList(true)))
 			_, err := ocmClient.ListKubeletConfigs(context.Background(), clusterId)
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Context("Find KubeletConfig By Name", func() {
+		It("Returns the KubeletConfig when it exists", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(false)))
+
+			response, exists, err := ocmClient.FindKubeletConfigByName(context.Background(), clusterId, kubeletName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).NotTo(BeNil())
+			Expect(exists).To(BeTrue())
+
+			Expect(response.Name()).To(Equal(kubeletName))
+			Expect(response.ID()).To(Equal(kubeletId))
+			Expect(response.PodPidsLimit()).To(Equal(podPidsLimit))
+		})
+
+		It("Returns nil KubeletConfig if it doesn't exist", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(false)))
+
+			response, exists, err := ocmClient.FindKubeletConfigByName(context.Background(), clusterId, "notExisting")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(BeNil())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("Returns an error if failing to list KubeletConfigs", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusInternalServerError, createKubeletConfigList(true)))
+			response, exists, err := ocmClient.FindKubeletConfigByName(context.Background(), clusterId, kubeletName)
+			Expect(response).To(BeNil())
+			Expect(err).To(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("Returns an error if the name specified is empty", func() {
+			response, exists, err := ocmClient.FindKubeletConfigByName(context.Background(), clusterId, "")
+			Expect(response).To(BeNil())
+			Expect(err).To(HaveOccurred())
+			Expect(exists).To(BeFalse())
 		})
 	})
 
