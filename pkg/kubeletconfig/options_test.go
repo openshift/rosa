@@ -9,7 +9,7 @@ import (
 
 var _ = Describe("KubeletConfigOptions", func() {
 
-	It("Adds flags to command", func() {
+	It("Add all flags to command", func() {
 		cmd := &cobra.Command{}
 		flags := cmd.Flags()
 		Expect(flags).NotTo(BeNil())
@@ -17,10 +17,26 @@ var _ = Describe("KubeletConfigOptions", func() {
 		Expect(flags.Lookup(NameOption)).To(BeNil())
 
 		options := NewKubeletConfigOptions()
-		options.AddFlagsToCommand(cmd)
+		options.AddAllFlags(cmd)
 
 		flag := flags.Lookup(PodPidsLimitOption)
 		assertFlag(flag, PodPidsLimitOption, PodPidsLimitOptionUsage)
+
+		flag = flags.Lookup(NameOption)
+		assertFlag(flag, NameOption, NameOptionUsage)
+	})
+
+	It("Adds name flag to command", func() {
+		cmd := &cobra.Command{}
+		flags := cmd.Flags()
+		Expect(flags).NotTo(BeNil())
+		Expect(flags.Lookup(NameOption)).To(BeNil())
+
+		options := NewKubeletConfigOptions()
+		options.AddNameFlag(cmd)
+
+		flag := flags.Lookup(PodPidsLimitOption)
+		Expect(flag).To(BeNil())
 
 		flag = flags.Lookup(NameOption)
 		assertFlag(flag, NameOption, NameOptionUsage)

@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/interactive/confirm"
 	. "github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -63,7 +62,7 @@ func NewEditKubeletConfigCommand() *cobra.Command {
 
 	ocm.AddClusterFlag(cmd)
 	interactive.AddFlag(flags)
-	options.AddFlagsToCommand(cmd)
+	options.AddAllFlags(cmd)
 	return cmd
 }
 
@@ -109,11 +108,7 @@ func EditKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner {
 
 		if !cluster.Hypershift().Enabled() {
 			// Classic clusters must prompt the user as edit will cause all worker nodes to reboot
-			prompt := fmt.Sprintf("Updating the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
-				"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", r.GetClusterKey())
-
-			if !confirm.ConfirmRaw(prompt) {
-				r.Reporter.Infof("Update of custom KubeletConfig for cluster '%s' aborted.", r.GetClusterKey())
+			if !PromptUserToAcceptWorkerNodeReboot(OperationEdit, r) {
 				return nil
 			}
 		}

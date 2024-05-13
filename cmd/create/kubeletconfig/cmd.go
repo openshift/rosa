@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/interactive/confirm"
 	. "github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -52,7 +51,7 @@ func NewCreateKubeletConfigCommand() *cobra.Command {
 		Args:    cobra.NoArgs,
 	}
 
-	options.AddFlagsToCommand(cmd)
+	options.AddAllFlags(cmd)
 	ocm.AddClusterFlag(cmd)
 	interactive.AddFlag(cmd.Flags())
 	return cmd
@@ -97,11 +96,7 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 		if !cluster.Hypershift().Enabled() {
 			// Creating a KubeletConfig for a classic cluster must prompt the user, as the changes apply
 			// immediately and cause reboots of the worker nodes in their cluster
-			prompt := fmt.Sprintf("Creating a KubeletConfig for cluster '%s' will cause all non-Control Plane "+
-				"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", clusterKey)
-
-			if !confirm.ConfirmRaw(prompt) {
-				r.Reporter.Infof("Creation of KubeletConfig for cluster '%s' aborted.", clusterKey)
+			if !PromptUserToAcceptWorkerNodeReboot(OperationCreate, r) {
 				return nil
 			}
 		}

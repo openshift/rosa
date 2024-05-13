@@ -17,55 +17,80 @@ limitations under the License.
 package kubeletconfig
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	. "github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:     "kubeletconfig",
-	Aliases: []string{"kubelet-config"},
-	Short:   "Delete the custom kubeletconfig for a cluster",
-	Long:    "Delete the custom kubeletconfig for a cluster",
-	Example: `  # Delete the custom kubeletconfig for cluster 'foo'
-  rosa delete kubeletconfig --cluster foo`,
-	Run:  run,
-	Args: cobra.NoArgs,
-}
+const (
+	use     = "kubeletconfig"
+	short   = "Delete a kubeletconfig from a cluster"
+	long    = short
+	example = `  # Delete the KubeletConfig for ROSA Classic cluster 'foo'
+  rosa delete kubeletconfig --cluster foo
+  # Delete the KubeletConfig named 'bar' from cluster 'foo'
+  rosa delete kubeletconfig --cluster foo --name bar
+`
+)
 
-func init() {
-	ocm.AddClusterFlag(Cmd)
-	confirm.AddFlag(Cmd.Flags())
-}
+var aliases = []string{"kubelet-config"}
 
-func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
-	defer r.Cleanup()
+func NewDeleteKubeletConfigCommand() *cobra.Command {
 
-	clusterKey := r.GetClusterKey()
-	cluster := r.FetchCluster()
+	options := NewKubeletConfigOptions()
 
-	r.Reporter.Debugf("Deleting KubeletConfig for cluster '%s'", clusterKey)
-
-	prompt := fmt.Sprintf("Deleting the custom KubeletConfig for cluster '%s' will cause all non-Control Plane "+
-		"nodes to reboot. This may cause outages to your applications. Do you wish to continue?", clusterKey)
-
-	if confirm.ConfirmRaw(prompt) {
-
-		err := r.OCMClient.DeleteKubeletConfig(cluster.ID())
-		if err != nil {
-			r.Reporter.Errorf("Failed to delete custom KubeletConfig for cluster '%s': '%s'",
-				clusterKey, err)
-			os.Exit(1)
-		}
-		r.Reporter.Infof("Successfully deleted custom KubeletConfig for cluster '%s'", clusterKey)
-		os.Exit(0)
+	var cmd = &cobra.Command{
+		Use:     use,
+		Aliases: aliases,
+		Short:   short,
+		Long:    long,
+		Example: example,
+		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DeleteKubeletConfigRunner(options)),
+		Args:    cobra.NoArgs,
 	}
+	ocm.AddClusterFlag(cmd)
+	confirm.AddFlag(cmd.Flags())
+	options.AddNameFlag(cmd)
+	return cmd
+}
 
-	r.Reporter.Infof("Delete of custom KubeletConfig for cluster '%s' aborted.", clusterKey)
+func DeleteKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+
+		cluster, err := r.OCMClient.GetCluster(r.GetClusterKey(), r.Creator)
+		if err != nil {
+			return err
+		}
+
+		if !cluster.Hypershift().Enabled() {
+			if !PromptUserToAcceptWorkerNodeReboot(OperationDelete, r) {
+				return nil
+			}
+		}
+
+		if cluster.Hypershift().Enabled() {
+			options.Name, err = PromptForName(options.Name)
+			if err != nil {
+				return err
+			}
+			options.ValidateForHypershift()
+			err = r.OCMClient.DeleteKubeletConfigByName(ctx, cluster.ID(), options.Name)
+		} else {
+			err = r.OCMClient.DeleteKubeletConfig(ctx, cluster.ID())
+		}
+
+		if err != nil {
+			return fmt.Errorf("Failed to delete KubeletConfig for cluster '%s': '%s'",
+				r.GetClusterKey(), err)
+		}
+
+		r.Reporter.Infof("Successfully deleted KubeletConfig for cluster '%s'", r.GetClusterKey())
+		return nil
+	}
 }
