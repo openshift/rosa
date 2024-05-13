@@ -73,6 +73,7 @@ var _ = Describe("Edit nodepool",
 		It("can create/edit/list/delete nodepool - [id:56782]",
 			labels.Critical,
 			func() {
+				fmt.Printf("[Debug] I am doing PR pre-check testing")
 				nodePoolName := common.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
 				taints := "t1=v1:NoSchedule,l2=:NoSchedule"
