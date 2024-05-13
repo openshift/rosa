@@ -69,7 +69,7 @@ profiles:
   account-role:
     path: "/test/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
-- as: rosa-shared-vpc
+- as: rosa-shared-vpc # TODO it is not supported right now.
   version: latest
   channel_group: candidate
   region: "us-east-1"
