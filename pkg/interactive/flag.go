@@ -43,5 +43,9 @@ func Enable() {
 	enabled = true
 }
 
+func SetEnabled(setEnabled bool) {
+	enabled = setEnabled
+}
+
 // enabled is a boolean flag that indicates that the interactive mode is enabled.
 var enabled bool

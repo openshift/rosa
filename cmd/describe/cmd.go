@@ -45,10 +45,11 @@ var Cmd = &cobra.Command{
 func init() {
 	machinePoolCommand := machinepool.NewDescribeMachinePoolCommand()
 	ingressCommand := ingress.NewDescribeIngressCommand()
+	kubeletconfig := kubeletconfig.NewDescribeKubeletConfigCommand()
 	cmds := []*cobra.Command{
 		addon.Cmd, admin.Cmd, cluster.Cmd, service.Cmd,
 		installation.Cmd, upgrade.Cmd, tuningconfigs.Cmd,
-		machinePoolCommand, kubeletconfig.Cmd,
+		machinePoolCommand, kubeletconfig,
 		autoscaler.NewDescribeAutoscalerCommand(), ingressCommand,
 		externalauthprovider.Cmd, breakglasscredential.Cmd,
 	}
@@ -65,7 +66,7 @@ func init() {
 		machinePoolCommand, addon.Cmd, upgrade.Cmd,
 		admin.Cmd, breakglasscredential.Cmd,
 		externalauthprovider.Cmd, installation.Cmd,
-		kubeletconfig.Cmd, upgrade.Cmd, ingressCommand,
+		kubeletconfig, upgrade.Cmd, ingressCommand,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

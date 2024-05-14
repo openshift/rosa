@@ -108,6 +108,17 @@ func BuildExternalAuth() *v1.ExternalAuth {
 	return externalAuth
 }
 
+func MockNodePool(modifyFn func(n *v1.NodePoolBuilder)) *v1.NodePool {
+	build := &v1.NodePoolBuilder{}
+	if modifyFn != nil {
+		modifyFn(build)
+	}
+
+	nodePool, err := build.Build()
+	Expect(err).NotTo(HaveOccurred())
+	return nodePool
+}
+
 func MockKubeletConfig(modifyFn func(k *v1.KubeletConfigBuilder)) *v1.KubeletConfig {
 	build := &v1.KubeletConfigBuilder{}
 	if modifyFn != nil {
@@ -143,6 +154,21 @@ func MockCluster(modifyFn func(c *v1.ClusterBuilder)) *v1.Cluster {
 	cluster, err := mock.Build()
 	Expect(err).NotTo(HaveOccurred())
 	return cluster
+}
+
+func FormatNodePoolList(nodePools []*v1.NodePool) string {
+	var json bytes.Buffer
+
+	v1.MarshalNodePoolList(nodePools, &json)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "NodePoolList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(nodePools), len(nodePools), json.String())
 }
 
 func FormatKubeletConfigList(configs []*v1.KubeletConfig) string {
