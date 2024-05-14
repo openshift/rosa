@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -53,13 +54,16 @@ func run(_ *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	machinePoolID := argv[0]
+	machinePoolId := argv[0]
+	if !machinepool.MachinePoolKeyRE.MatchString(machinePoolId) {
+		r.Reporter.Errorf("Expected a valid identifier for the machine pool")
+	}
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
 
-	if cluster.Hypershift().Enabled() {
-		deleteNodePool(r, machinePoolID, clusterKey, cluster)
-	} else {
-		deleteMachinePool(r, machinePoolID, clusterKey, cluster)
+	service := machinepool.NewMachinePoolService()
+	err := service.DeleteMachinePool(r, machinePoolId, clusterKey, cluster)
+	if err != nil {
+		r.Reporter.Errorf("Error deleting machinepool: %v", err)
 	}
 }

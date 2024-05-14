@@ -120,5 +120,13 @@ var _ = Describe("Machinepool and nodepool", func() {
 				ocmOutput.PrintMachinePoolDiskSize(cluster.MachinePools().Get(0)),
 				output.PrintStringSlice(cluster.MachinePools().Get(0).AWS().AdditionalSecurityGroupIds()))))
 		})
+		It("Validate invalid regex", func() {
+			Expect(MachinePoolKeyRE.MatchString("$%%$%$%^$%^$%^$%^")).To(BeFalse())
+			Expect(MachinePoolKeyRE.MatchString("machinepool1")).To(BeTrue())
+			Expect(MachinePoolKeyRE.MatchString("1machinepool")).To(BeFalse())
+			Expect(MachinePoolKeyRE.MatchString("#1machinepool")).To(BeFalse())
+			Expect(MachinePoolKeyRE.MatchString("m123123123123123123123123123")).To(BeTrue())
+			Expect(MachinePoolKeyRE.MatchString("m#123")).To(BeFalse())
+		})
 	})
 })

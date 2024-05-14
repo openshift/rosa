@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -21,6 +23,7 @@ var notFoundMessage string = "Machine pool '%s' not found"
 type MachinePoolService interface {
 	DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, machinePoolId string) error
 	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) error
+	DeleteMachinePool(r *rosa.Runtime, machinePoolId string, clusterKey string, cluster *cmv1.Cluster) error
 }
 
 type machinePool struct {
@@ -124,6 +127,73 @@ func (m *machinePool) describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, c
 	// Attach and print scheduledUpgrades if they exist, otherwise, print output normally
 	fmt.Print(appendUpgradesIfExist(scheduledUpgrade, nodePoolOutput(cluster.ID(), nodePool)))
 
+	return nil
+}
+
+// Regular expression to used to make sure that the identifier given by the
+// user is safe and that it there is no risk of SQL injection:
+var MachinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
+
+// DeleteMachinePool deletes a machinepool from a cluster if it is possible- this function also calls the hypershift
+// equivalent, deleteNodePool if it is a hypershift cluster
+func (m *machinePool) DeleteMachinePool(r *rosa.Runtime, machinePoolId string, clusterKey string,
+	cluster *cmv1.Cluster) error {
+	if cluster.Hypershift().Enabled() {
+		return deleteNodePool(r, machinePoolId, clusterKey, cluster)
+	}
+
+	// Try to find the machine pool:
+	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
+	machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
+	if err != nil {
+		return fmt.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+	}
+
+	var machinePool *cmv1.MachinePool
+	for _, item := range machinePools {
+		if item.ID() == machinePoolId {
+			machinePool = item
+		}
+	}
+	if machinePool == nil {
+		return fmt.Errorf("Failed to get machine pool '%s' for cluster '%s'", machinePoolId, clusterKey)
+	}
+
+	if confirm.Confirm("delete machine pool '%s' on cluster '%s'", machinePoolId, clusterKey) {
+		r.Reporter.Debugf("Deleting machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
+		err = r.OCMClient.DeleteMachinePool(cluster.ID(), machinePool.ID())
+		if err != nil {
+			return fmt.Errorf("Failed to delete machine pool '%s' on cluster '%s': %s",
+				machinePool.ID(), clusterKey, err)
+		}
+		r.Reporter.Infof("Successfully deleted machine pool '%s' from cluster '%s'", machinePoolId, clusterKey)
+	}
+	return nil
+}
+
+// deleteNodePool is the hypershift version of DeleteMachinePool - deleteNodePool is called in DeleteMachinePool
+// if the cluster is hypershift
+func deleteNodePool(r *rosa.Runtime, nodePoolID string, clusterKey string, cluster *cmv1.Cluster) error {
+	// Try to find the machine pool:
+	r.Reporter.Debugf("Loading machine pools for hosted cluster '%s'", clusterKey)
+	nodePool, exists, err := r.OCMClient.GetNodePool(cluster.ID(), nodePoolID)
+	if err != nil {
+		return fmt.Errorf("Failed to get machine pools for hosted cluster '%s': %v", clusterKey, err)
+	}
+	if !exists {
+		return fmt.Errorf("Machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID, clusterKey)
+	}
+
+	if confirm.Confirm("delete machine pool '%s' on hosted cluster '%s'", nodePoolID, clusterKey) {
+		r.Reporter.Debugf("Deleting machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
+		err = r.OCMClient.DeleteNodePool(cluster.ID(), nodePool.ID())
+		if err != nil {
+			return fmt.Errorf("Failed to delete machine pool '%s' on hosted cluster '%s': %s",
+				nodePool.ID(), clusterKey, err)
+		}
+		r.Reporter.Infof("Successfully deleted machine pool '%s' from hosted cluster '%s'", nodePoolID,
+			clusterKey)
+	}
 	return nil
 }
 
