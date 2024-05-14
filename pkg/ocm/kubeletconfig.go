@@ -80,6 +80,22 @@ func toOCMKubeletConfig(args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
 	return kubeletConfig, nil
 }
 
+func (c *Client) ListKubeletConfigNames(clusterId string) ([]string, error) {
+	configs, err := c.ListKubeletConfigs(context.Background(), clusterId)
+	if err != nil {
+		return make([]string, 0), err
+	}
+
+	var names []string
+
+	if len(configs) > 0 {
+		for _, c := range configs {
+			names = append(names, c.Name())
+		}
+	}
+	return names, nil
+}
+
 func (c *Client) CreateKubeletConfig(clusterID string, args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
 
 	kubeletConfig, err := toOCMKubeletConfig(args)
