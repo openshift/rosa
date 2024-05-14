@@ -81,7 +81,7 @@ func EditKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner {
 		var exists bool
 
 		if cluster.Hypershift().Enabled() {
-			options.Name, err = PromptForName(options.Name)
+			options.Name, err = PromptForName(options.Name, true)
 			if err != nil {
 				return err
 			}

@@ -17,65 +17,98 @@ limitations under the License.
 package kubeletconfig
 
 import (
+	"context"
 	"fmt"
-	"os"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	. "github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:     "kubeletconfig",
-	Aliases: []string{"kubelet-config"},
-	Short:   "Show details of the custom kubeletconfig for a cluster",
-	Long:    "Show details of the custom kubeletconfig for a cluster.",
-	Example: `  # Describe the custom kubeletconfig for cluster 'foo'
-  rosa describe kubeletconfig --cluster foo`,
-	Run:  run,
-	Args: cobra.NoArgs,
-}
+const (
+	use     = "kubeletconfig"
+	short   = "Show details of a kubeletconfig for a cluster"
+	long    = short
+	example = `  # Describe the custom kubeletconfig for ROSA Classic cluster 'foo'
+  rosa describe kubeletconfig --cluster foo
+  # Describe the custom kubeletconfig named 'bar' for cluster 'foo'
+  rosa describe kubeletconfig --cluster foo --name bar
+`
+)
 
-func init() {
-	ocm.AddClusterFlag(Cmd)
-	output.AddFlag(Cmd)
-}
+func NewDescribeKubeletConfigCommand() *cobra.Command {
+	options := NewKubeletConfigOptions()
 
-func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
-	defer r.Cleanup()
-
-	clusterKey := r.GetClusterKey()
-	cluster := r.FetchCluster()
-
-	r.Reporter.Debugf("Loading KubeletConfig for cluster '%s'", clusterKey)
-	kubeletConfig, exists, err := r.OCMClient.GetClusterKubeletConfig(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
+	cmd := &cobra.Command{
+		Use:     use,
+		Aliases: []string{"kubelet-config"},
+		Short:   short,
+		Long:    long,
+		Example: example,
+		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeKubeletConfigRunner(options)),
+		Args:    cobra.NoArgs,
 	}
 
-	if !exists {
-		r.Reporter.Infof("No custom KubeletConfig exists for cluster '%s'", clusterKey)
-		os.Exit(0)
-	}
+	ocm.AddClusterFlag(cmd)
+	output.AddFlag(cmd)
+	options.AddNameFlag(cmd)
 
-	if output.HasFlag() {
-		err = output.Print(kubeletConfig)
+	return cmd
+}
+
+func DescribeKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+
+		cluster, err := r.OCMClient.GetCluster(r.GetClusterKey(), r.Creator)
 		if err != nil {
-			r.Reporter.Errorf("%v", err)
-			os.Exit(1)
+			return err
 		}
-		os.Exit(0)
-	}
 
-	r.Reporter.Debugf("Printing KubeletConfig for cluster '%s'", clusterKey)
-	// Prepare string
-	kubeletConfigOutput := fmt.Sprintf("\n"+
-		"Pod Pids Limit:                       %d\n",
-		kubeletConfig.PodPidsLimit(),
-	)
-	fmt.Print(kubeletConfigOutput)
+		r.Reporter.Debugf("Loading KubeletConfig for cluster '%s'", r.GetClusterKey())
+		var kubeletconfig *cmv1.KubeletConfig
+		var exists bool
+
+		if cluster.Hypershift().Enabled() {
+			options.Name, err = PromptForName(options.Name, true)
+			if err != nil {
+				return err
+			}
+
+			err = options.ValidateForHypershift()
+			if err != nil {
+				return err
+			}
+			kubeletconfig, exists, err = r.OCMClient.FindKubeletConfigByName(ctx, cluster.ID(), options.Name)
+		} else {
+			kubeletconfig, exists, err = r.OCMClient.GetClusterKubeletConfig(cluster.ID())
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return fmt.Errorf("The KubeletConfig specified does not exist for cluster '%s'", r.GetClusterKey())
+		}
+
+		if output.HasFlag() {
+			return output.Print(kubeletconfig)
+		}
+
+		if cluster.Hypershift().Enabled() {
+			nodePools, err := r.OCMClient.FindNodePoolsUsingKubeletConfig(cluster.ID(), options.Name)
+			if err != nil {
+				return err
+			}
+			fmt.Print(PrintKubeletConfigForHcp(kubeletconfig, nodePools))
+
+		} else {
+			fmt.Print(PrintKubeletConfigForClassic(kubeletconfig))
+		}
+		return nil
+	}
 }

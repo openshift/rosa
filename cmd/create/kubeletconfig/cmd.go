@@ -83,7 +83,7 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 			}
 		}
 
-		name, err := PromptForName(options.Name)
+		name, err := PromptForName(options.Name, false)
 		if err != nil {
 			return nil
 		}
