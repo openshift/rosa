@@ -37,6 +37,7 @@ var args struct {
 	version              string
 	autorepair           bool
 	tuningConfigs        string
+	kubeletConfigs       string
 	nodeDrainGracePeriod string
 }
 
@@ -133,6 +134,15 @@ func init() {
 		"Name of the tuning configs to be applied to the machine pool. Format should be a comma-separated list. "+
 			"Tuning config must already exist. "+
 			"This list will overwrite any modifications made to node tuning configs on an ongoing basis.",
+	)
+
+	flags.StringVar(
+		&args.kubeletConfigs,
+		"kubelet-configs",
+		"",
+		"Name of the kubelet configs to be applied to the machine pool. Format should be a comma-separated list. "+
+			"Kubelet config must already exist. "+
+			"This list will overwrite any modifications made to node kubelet configs on an ongoing basis.",
 	)
 
 	flags.StringVar(&args.nodeDrainGracePeriod,

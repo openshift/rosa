@@ -26,6 +26,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	isVersionSet := cmd.Flags().Changed("version")
 	isAutorepairSet := cmd.Flags().Changed("autorepair")
 	isTuningsConfigSet := cmd.Flags().Changed("tuning-configs")
+	isKubeletConfigSet := cmd.Flags().Changed("kubelet-configs")
 	isNodeDrainGracePeriodSet := cmd.Flags().Changed("node-drain-grace-period")
 
 	// we don't support anymore the version parameter
@@ -35,7 +36,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	}
 
 	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
-	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet
+	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet ||
+		isKubeletConfigSet
 	isAnyParameterSet := isMinReplicasSet || isMaxReplicasSet || isReplicasSet ||
 		isAutoscalingSet || isAnyAdditionalParameterSet
 
@@ -150,6 +152,48 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		}
 
 		npBuilder.TuningConfigs(inputTuningConfig...)
+	}
+
+	if isKubeletConfigSet || interactive.Enabled() {
+		var inputKubeletConfig []string
+		kubeletConfigs := args.kubeletConfigs
+		// Get the list of available tuning configs
+		availableKubeletConfigs, err := r.OCMClient.ListKubeletConfigNames(cluster.ID())
+		if err != nil {
+			return fmt.Errorf("%s", err)
+		}
+		if kubeletConfigs != "" {
+			if len(availableKubeletConfigs) > 0 {
+				inputKubeletConfig = strings.Split(kubeletConfigs, ",")
+			} else {
+				// Parameter will be ignored
+				r.Reporter.Warnf("No kubelet config available for cluster '%s'. "+
+					"Any kubelet config in input will be ignored", cluster.ID())
+			}
+		}
+
+		if interactive.Enabled() {
+			if !isKubeletConfigSet {
+				// Interactive mode without explicit input parameter. Take the existing value
+				inputKubeletConfig = nodePool.KubeletConfigs()
+			}
+
+			// Skip if no tuning configs are available
+			if len(availableKubeletConfigs) > 0 {
+				inputKubeletConfig, err = interactive.GetMultipleOptions(interactive.Input{
+					Question: "Kubelet configs",
+					Help:     cmd.Flags().Lookup("kubelet-configs").Usage,
+					Options:  availableKubeletConfigs,
+					Default:  inputKubeletConfig,
+					Required: false,
+				})
+				if err != nil {
+					return fmt.Errorf("Expected a valid value for kubelet configs: %s", err)
+				}
+			}
+		}
+
+		npBuilder.KubeletConfigs(inputKubeletConfig...)
 	}
 
 	if isNodeDrainGracePeriodSet || interactive.Enabled() {
