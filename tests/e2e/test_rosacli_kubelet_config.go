@@ -49,7 +49,7 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 
 				Expect(output.String()).To(ContainSubstring("Creating the KubeletConfig for cluster '%s' "+
 					"will cause all non-Control Plane nodes to reboot. "+
-					"This may cause outages to your applications. Do you wish to continue", clusterID))
+					"This may cause outages to your applications. Do you wish to continue? (y/N)", clusterID))
 
 				By("Run the command to ignore the warning")
 				output, err := kubeletService.CreateKubeletConfig(clusterID, "-y",
@@ -72,7 +72,6 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring("A KubeletConfig for cluster '%s' already exists. You should edit it via 'rosa edit kubeletconfig'", clusterID))
-
 			})
 
 		It("can update podPidLimit via rosacli will work well - [id:68835]",
