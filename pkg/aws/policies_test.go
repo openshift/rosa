@@ -310,14 +310,14 @@ var _ = Describe("Cluster Roles/Policies", func() {
 			RoleName: aws.String(operatorName),
 		}).Return(operatorRoleTags, nil)
 
-		policies, err := getAttachedPolicies(mockIamAPI, accountRole, getAcctRolePolicyTags(rolePrefix))
+		policies, _, err := getAttachedPolicies(mockIamAPI, accountRole, getAcctRolePolicyTags(rolePrefix))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(policies).To(HaveLen(1))
 		Expect(policies[0]).To(Equal(accountRolePolicyArn))
 
 		tagFilter, err := getOperatorRolePolicyTags(mockIamAPI, operatorName)
 		Expect(err).NotTo(HaveOccurred())
-		policies, err = getAttachedPolicies(mockIamAPI, operatorRole, tagFilter)
+		policies, _, err = getAttachedPolicies(mockIamAPI, operatorRole, tagFilter)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(policies).To(HaveLen(1))
 		Expect(policies[0]).To(Equal(operatorRolePolicyArn))

@@ -1010,7 +1010,7 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 	if err != nil {
 		return err
 	}
-	policies, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
+	policies, _, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
 	if err != nil {
 		return err
 	}
@@ -1077,7 +1077,7 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 	if err != nil {
 		return err
 	}
-	policyMap, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
+	policyMap, _, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
 	if err != nil {
 		return err
 	}
@@ -1260,35 +1260,39 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 	return nil
 }
 
-func (c *awsClient) GetAttachedPolicyWithTags(role *string, tagFilter map[string]string) ([]PolicyDetail, error) {
+func (c *awsClient) GetAttachedPolicyWithTags(role *string,
+	tagFilter map[string]string) ([]PolicyDetail, []PolicyDetail, error) {
 	policies := []PolicyDetail{}
+	excludedPolicies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(
 		context.Background(),
 		&iam.ListAttachedRolePoliciesInput{RoleName: role},
 	)
 	if err != nil && !awserr.IsNoSuchEntityException(err) {
-		return policies, err
+		return policies, excludedPolicies, err
 	}
 
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
 		hasTags, err := isPolicyHasTags(c.iamClient, policy.PolicyArn, tagFilter)
 		if err != nil {
-			return policies, err
+			return policies, excludedPolicies, err
+		}
+		policyDetail := PolicyDetail{
+			PolicyName: aws.ToString(policy.PolicyName),
+			PolicyArn:  aws.ToString(policy.PolicyArn),
+			PolicyType: Attached,
 		}
 		if hasTags {
-			policyDetail := PolicyDetail{
-				PolicyName: aws.ToString(policy.PolicyName),
-				PolicyArn:  aws.ToString(policy.PolicyArn),
-				PolicyType: Attached,
-			}
 			policies = append(policies, policyDetail)
+		} else {
+			excludedPolicies = append(excludedPolicies, policyDetail)
 		}
 	}
 
 	rolePolicyOutput, err := c.iamClient.ListRolePolicies(context.Background(),
 		&iam.ListRolePoliciesInput{RoleName: role})
 	if err != nil && !awserr.IsNoSuchEntityException(err) {
-		return policies, err
+		return policies, excludedPolicies, err
 	}
 	for _, policy := range rolePolicyOutput.PolicyNames {
 		policyDetail := PolicyDetail{
@@ -1298,11 +1302,12 @@ func (c *awsClient) GetAttachedPolicyWithTags(role *string, tagFilter map[string
 		policies = append(policies, policyDetail)
 	}
 
-	return policies, nil
+	return policies, excludedPolicies, nil
 }
 
 func (c *awsClient) GetAttachedPolicy(role *string) ([]PolicyDetail, error) {
-	return c.GetAttachedPolicyWithTags(role, map[string]string{})
+	policies, _, err := c.GetAttachedPolicyWithTags(role, map[string]string{})
+	return policies, err
 }
 
 func (c *awsClient) detachOperatorRolePolicies(role *string) error {
@@ -1534,32 +1539,37 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 	return roles, nil
 }
 
-func (c *awsClient) GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail, error) {
-	roleMap := make(map[string][]PolicyDetail)
+func (c *awsClient) GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail,
+	map[string][]PolicyDetail, error) {
+	rolePolicies := make(map[string][]PolicyDetail)
+	roleExcludedPolicies := make(map[string][]PolicyDetail)
 	for _, role := range roles {
-		policies, err := c.GetAttachedPolicyWithTags(aws.String(role), getAcctRolePolicyTags(prefix))
+		policies, excludedPolicies, err := c.GetAttachedPolicyWithTags(aws.String(role), getAcctRolePolicyTags(prefix))
 		if err != nil && !awserr.IsNoSuchEntityException(err) {
-			return roleMap, err
+			return rolePolicies, roleExcludedPolicies, err
 		}
-		roleMap[role] = policies
+		rolePolicies[role] = policies
+		roleExcludedPolicies[role] = excludedPolicies
 	}
-	return roleMap, nil
+	return rolePolicies, roleExcludedPolicies, nil
 }
 
-func (c *awsClient) GetOperatorRolePolicies(roles []string) (map[string][]string, error) {
-	roleMap := map[string][]string{}
+func (c *awsClient) GetOperatorRolePolicies(roles []string) (map[string][]string, map[string][]string, error) {
+	rolePolicies := map[string][]string{}
+	roleExcludedPolicies := map[string][]string{}
 	for _, role := range roles {
 		tagFilter, err := getOperatorRolePolicyTags(c.iamClient, role)
 		if err != nil {
-			return roleMap, err
+			return rolePolicies, roleExcludedPolicies, err
 		}
-		policies, err := getAttachedPolicies(c.iamClient, role, tagFilter)
+		policies, excludedPolicies, err := getAttachedPolicies(c.iamClient, role, tagFilter)
 		if err != nil {
-			return roleMap, err
+			return rolePolicies, roleExcludedPolicies, err
 		}
-		roleMap[role] = policies
+		rolePolicies[role] = policies
+		roleExcludedPolicies[role] = excludedPolicies
 	}
-	return roleMap, nil
+	return rolePolicies, roleExcludedPolicies, nil
 }
 
 func (c *awsClient) GetOpenIDConnectProviderByClusterIdTag(clusterID string) (string, error) {
@@ -1960,7 +1970,7 @@ func (c *awsClient) ListAttachedRolePolicies(roleName string) ([]string, error) 
 }
 
 func (c *awsClient) GetAccountRoleDefaultPolicy(roleName string, prefix string) (string, error) {
-	policies, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
+	policies, _, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
 	if err != nil {
 		return "", err
 	}
@@ -1979,7 +1989,7 @@ func (c *awsClient) GetOperatorRoleDefaultPolicy(roleName string) (string, error
 	if err != nil {
 		return "", nil
 	}
-	policies, err := getAttachedPolicies(c.iamClient, roleName, tagfilter)
+	policies, _, err := getAttachedPolicies(c.iamClient, roleName, tagfilter)
 	if err != nil {
 		return "", err
 	}
@@ -2069,25 +2079,28 @@ func isPolicyHasTags(c client.IamApiClient, poilcyArn *string, tagFilter map[str
 }
 
 func getAttachedPolicies(c client.IamApiClient, role string,
-	tagFilter map[string]string) ([]string, error) {
+	tagFilter map[string]string) ([]string, []string, error) {
 	policyArr := []string{}
+	excludedPolicyArr := []string{}
 	policiesOutput, err := c.ListAttachedRolePolicies(context.Background(),
 		&iam.ListAttachedRolePoliciesInput{
 			RoleName: aws.String(role),
 		})
 	if err != nil {
-		return policyArr, err
+		return policyArr, excludedPolicyArr, err
 	}
 	for _, policy := range policiesOutput.AttachedPolicies {
 		hasTags, err := isPolicyHasTags(c, policy.PolicyArn, tagFilter)
 		if err != nil {
-			return policyArr, err
+			return policyArr, excludedPolicyArr, err
 		}
 		if hasTags {
 			policyArr = append(policyArr, aws.ToString(policy.PolicyArn))
+		} else {
+			excludedPolicyArr = append(excludedPolicyArr, aws.ToString(policy.PolicyArn))
 		}
 	}
-	return policyArr, nil
+	return policyArr, excludedPolicyArr, nil
 }
 
 func getAcctRolePolicyTags(prefix string) map[string]string {

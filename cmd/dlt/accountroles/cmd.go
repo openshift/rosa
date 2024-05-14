@@ -229,11 +229,11 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		r.Reporter.Infof(fmt.Sprintf("Successfully deleted the %saccount roles", roleTypeString))
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
-		policyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList, prefix)
+		policyMap, arbitraryPolicyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList, prefix)
 		if err != nil {
 			return fmt.Errorf("There was an error getting the policy: %v", err)
 		}
-		commands := buildCommand(finalRoleList, policyMap, managedPolicies)
+		commands := buildCommand(finalRoleList, policyMap, arbitraryPolicyMap, managedPolicies)
 
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the account roles and policies:\n")
@@ -303,10 +303,22 @@ func checkIfRoleAssociated(clusters []*cmv1.Cluster, role aws.Role) string {
 	return ""
 }
 
-func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail, managedPolicies bool) string {
+func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail,
+	arbitraryPolicyMap map[string][]aws.PolicyDetail, managedPolicies bool) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
 		policyDetails := policyMap[roleName]
+		excludedPolicyDetails := arbitraryPolicyMap[roleName]
+		for _, policyDetail := range excludedPolicyDetails {
+			if policyDetail.PolicyArn != "" {
+				detachPolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DetachRolePolicy).
+					AddParam(awscb.RoleName, roleName).
+					AddParam(awscb.PolicyArn, policyDetail.PolicyArn).
+					Build()
+				commands = append(commands, detachPolicy)
+			}
+		}
 		for _, policyDetail := range policyDetails {
 			if policyDetail.PolicyType == aws.Attached && policyDetail.PolicyArn != "" {
 				detachPolicy := awscb.NewIAMCommandBuilder().
