@@ -140,3 +140,26 @@ This feature allows for running tests through a case filter to simulate CI. Anyo
 > ```golang
 > Logger.logger.SetLevel()
 > ```
+
+## Running with presubmit jobs
+The [presubmit jobs](https://github.com/openshift/release/blob/master/ci-operator/config/openshift/rosa/openshift-rosa-master__e2e-presubmits.yaml) are used for validating the changes in the pull request before merging. The lifecycle of a presubmit job is `create a cluster` -> `do testing` -> `release resources`. The tester needs to select the corresponding configuration to trigger the job manually. These jobs are set to `optional: true` which means even if it is failed, it is not considered as a merging blocker.
+
+Regularly, `do testing` focuses on the test case IDs that are gotten from the commit title in the format `<card id> | test: automated cases id:123456,123457`. If there is no test case ID, it will pick up the `Critical` ones. The testing results will be recorded in a junit.xml under `rosa-test-e2e-pull-request/${ARTIFACT_DIR}`. 
+
+### Help
+Type `/test ?` to list the defined jobs.
+```
+The following commands are available to trigger optional jobs:
+
+    /test e2e-presubmits-pr-rosa-hcp
+    /test e2e-presubmits-pr-rosa-hcp-byo-kms-oidc-auditlog
+    /test e2e-presubmits-pr-rosa-hcp-private-proxy
+    /test e2e-presubmits-pr-rosa-hcp-security-group
+    /test e2e-presubmits-pr-rosa-non-sts
+    /test e2e-presubmits-pr-rosa-sts
+    /test e2e-presubmits-pr-rosa-sts-byo-kms-oidc-fips
+    /test e2e-presubmits-pr-rosa-sts-localzone
+    /test e2e-presubmits-pr-rosa-sts-private-proxy
+    /test e2e-presubmits-pr-rosa-sts-security-group
+    /test e2e-presubmits-pr-rosa-sts-shared-vpc-auto
+```
