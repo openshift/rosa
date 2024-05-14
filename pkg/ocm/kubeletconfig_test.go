@@ -108,7 +108,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			RespondWithJSON(http.StatusNoContent, ""),
 		)
 
-		err := ocmClient.DeleteKubeletConfig(clusterId)
+		err := ocmClient.DeleteKubeletConfig(context.Background(), clusterId)
 		Expect(err).To(BeNil())
 	})
 
@@ -121,7 +121,7 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 			),
 		)
 
-		err := ocmClient.DeleteKubeletConfig(clusterId)
+		err := ocmClient.DeleteKubeletConfig(context.Background(), clusterId)
 		Expect(err).NotTo(BeNil())
 	})
 
@@ -264,6 +264,33 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 		})
 	})
 
+	Context("Delete KubeletConfig by Name", func() {
+
+		It("Deletes the kubeletconfig by name", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(false)))
+			apiServer.RouteToHandler(http.MethodDelete,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/kubelet_configs/%s", clusterId, kubeletId),
+				RespondWithJSON(http.StatusNoContent, body))
+
+			err := ocmClient.DeleteKubeletConfigByName(context.Background(), clusterId, kubeletName)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Fails to delete if the kubeletconfig does not exist", func() {
+			apiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, createKubeletConfigList(false)))
+
+			err := ocmClient.DeleteKubeletConfigByName(context.Background(), clusterId, "notExisting")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(
+				ContainSubstring(
+					fmt.Sprintf(
+						"The KubeletConfig with name 'notExisting' does not exist on cluster '%s'", clusterId)))
+		})
+	})
 })
 
 func createKubeletConfig() (string, error) {

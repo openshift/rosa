@@ -15,7 +15,17 @@ func NewKubeletConfigOptions() *KubeletConfigOptions {
 	return &KubeletConfigOptions{}
 }
 
-func (k *KubeletConfigOptions) AddFlagsToCommand(cmd *cobra.Command) {
+func (k *KubeletConfigOptions) AddNameFlag(cmd *cobra.Command) {
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	flags.StringVar(
+		&k.Name,
+		NameOption,
+		NameOptionDefaultValue,
+		NameOptionUsage)
+}
+
+func (k *KubeletConfigOptions) AddAllFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
 	flags.SortFlags = false
 	flags.IntVar(
@@ -23,11 +33,7 @@ func (k *KubeletConfigOptions) AddFlagsToCommand(cmd *cobra.Command) {
 		PodPidsLimitOption,
 		PodPidsLimitOptionDefaultValue,
 		PodPidsLimitOptionUsage)
-	flags.StringVar(
-		&k.Name,
-		NameOption,
-		NameOptionDefaultValue,
-		NameOptionUsage)
+	k.AddNameFlag(cmd)
 }
 
 func (k *KubeletConfigOptions) ValidateForHypershift() error {

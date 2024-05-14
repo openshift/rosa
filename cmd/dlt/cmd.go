@@ -66,7 +66,8 @@ func init() {
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
-	Cmd.AddCommand(kubeletconfig.Cmd)
+	kubeletconfig := kubeletconfig.NewDeleteKubeletConfigCommand()
+	Cmd.AddCommand(kubeletconfig)
 	Cmd.AddCommand(externalauthprovider.Cmd)
 
 	flags := Cmd.PersistentFlags()
@@ -80,7 +81,7 @@ func init() {
 		oidcprovider.Cmd, upgrade.Cmd, admin.Cmd,
 		service.Cmd, autoscaler.Cmd, idp.Cmd,
 		cluster.Cmd, dnsdomains.Cmd, externalauthprovider.Cmd,
-		kubeletconfig.Cmd, machinepool.Cmd, tuningconfigs.Cmd,
+		kubeletconfig, machinepool.Cmd, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

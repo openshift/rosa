@@ -27,8 +27,38 @@ func (c *Client) GetClusterKubeletConfig(clusterID string) (*cmv1.KubeletConfig,
 	return response.Body(), true, nil
 }
 
-func (c *Client) DeleteKubeletConfig(clusterID string) error {
-	response, err := c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).KubeletConfig().Delete().Send()
+func (c *Client) DeleteKubeletConfigByName(ctx context.Context, clusterId string, name string) error {
+	kubeletConfig, exists, err := c.FindKubeletConfigByName(ctx, clusterId, name)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return fmt.Errorf("The KubeletConfig with name '%s' does not exist on cluster '%s'", name, clusterId)
+	}
+
+	response, err := c.ocm.ClustersMgmt().
+		V1().
+		Clusters().
+		Cluster(clusterId).
+		KubeletConfigs().
+		KubeletConfig(kubeletConfig.ID()).
+		Delete().
+		SendContext(ctx)
+
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
+func (c *Client) DeleteKubeletConfig(ctx context.Context, clusterID string) error {
+	response, err := c.ocm.ClustersMgmt().
+		V1().
+		Clusters().
+		Cluster(clusterID).
+		KubeletConfig().
+		Delete().SendContext(ctx)
 	if err != nil {
 		return handleErr(response.Error(), err)
 	}
