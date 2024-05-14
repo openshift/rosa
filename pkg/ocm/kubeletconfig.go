@@ -67,7 +67,12 @@ func (c *Client) DeleteKubeletConfig(ctx context.Context, clusterID string) erro
 
 func toOCMKubeletConfig(args KubeletConfigArgs) (*cmv1.KubeletConfig, error) {
 	builder := &cmv1.KubeletConfigBuilder{}
-	kubeletConfig, err := builder.PodPidsLimit(args.PodPidsLimit).Name(args.Name).Build()
+	builder.PodPidsLimit(args.PodPidsLimit)
+	if args.Name != "" {
+		builder.Name(args.Name)
+	}
+
+	kubeletConfig, err := builder.Build()
 	if err != nil {
 		return nil, err
 	}

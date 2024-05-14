@@ -291,6 +291,29 @@ var _ = Describe("KubeletConfig", Ordered, func() {
 						"The KubeletConfig with name 'notExisting' does not exist on cluster '%s'", clusterId)))
 		})
 	})
+
+	Context("toOcmConfig", func() {
+		It("Sets the name if it has been supplied", func() {
+			kubeletConfig, err := toOCMKubeletConfig(KubeletConfigArgs{
+				Name:         "testing",
+				PodPidsLimit: 10000,
+			})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(kubeletConfig.Name()).To(Equal("testing"))
+			Expect(kubeletConfig.PodPidsLimit()).To(Equal(10000))
+		})
+
+		It("Does not set the name if it has not been supplied", func() {
+			kubeletConfig, err := toOCMKubeletConfig(KubeletConfigArgs{
+				PodPidsLimit: 10000,
+			})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(kubeletConfig.Name()).To(BeEmpty())
+			Expect(kubeletConfig.PodPidsLimit()).To(Equal(10000))
+		})
+	})
 })
 
 func createKubeletConfig() (string, error) {
