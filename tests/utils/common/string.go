@@ -97,3 +97,7 @@ func ReplaceCommaWithCommaSpace(sourceValue string) string {
 	splited := ParseCommaSeparatedStrings(sourceValue)
 	return strings.Join(splited, ", ")
 }
+func ReplaceCommaSpaceWithComma(sourceValue string) string {
+	splited := ParseCommaSeparatedStrings(sourceValue)
+	return strings.Join(splited, ",")
+}
