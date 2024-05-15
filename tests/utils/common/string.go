@@ -30,6 +30,22 @@ func ParseCommaSeparatedStrings(input string) (output []string) {
 	}
 	return
 }
+
+func ParseTagsFronJsonOutput(tags string) map[string]interface{} {
+	output := make(map[string]interface{})
+	rawMap := tags[strings.Index(tags, "map[")+4 : strings.LastIndex(tags, "]")]
+	pairs := strings.Split(rawMap, " ")
+	for _, pair := range pairs {
+		kvp := strings.SplitN(pair, ":", 2)
+		if len(kvp) != 2 {
+			fmt.Printf("Bad key-value pair, ignoring...")
+			continue
+		}
+		output[kvp[0]] = kvp[1]
+	}
+	return output
+}
+
 func GenerateRandomStringWithSymbols(length int) string {
 	b := make([]byte, length)
 	_, err := r.Read(b)

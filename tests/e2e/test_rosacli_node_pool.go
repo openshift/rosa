@@ -178,8 +178,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create nodepool with defined subnets - [id:60202]",
-			labels.Critical, labels.Exclude,
-			//  Exclude label must be removed after OCM-7924 bug is fixed.
+			labels.Critical,
 			func() {
 				var subnets []string
 				nodePoolName := common.GenerateRandomName("np-60202", 2)
@@ -808,7 +807,7 @@ var _ = Describe("Edit nodepool",
 				}
 			})
 
-		It("Validations will work for editing machinepool via rosa cli - [id:73391]",
+		It("validations will work for editing machinepool via rosa cli - [id:73391]",
 			labels.Medium, labels.NonClassicCluster,
 			func() {
 				nonExistingMachinepoolName := common.GenerateRandomName("mp-fake", 2)
@@ -858,5 +857,116 @@ var _ = Describe("Edit nodepool",
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "3")
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Failed to get autoscaling or replicas: 'Autoscaling enabled on machine pool '%s'. can't set replicas'", machinepoolName))
+			})
+
+		It("create/describe machinepool with user tags for HCP - [id:73492]",
+			labels.High, labels.Day2, labels.NonClassicCluster,
+			func() {
+				By("Get the Organization Id")
+				rosaClient.Runner.JsonFormat()
+				userInfo, err := rosaClient.OCMResource.UserInfo()
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				organizationID := userInfo.OCMOrganizationID
+
+				By("Get OCM Env")
+				OCMEnv := common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "")
+
+				By("Get the cluster informations")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				clusterName := jsonData.DigString("display_name")
+				clusterProductID := jsonData.DigString("product", "id")
+				var clusterNamePrefix string
+				if jsonData.DigString("domain_prefix") != "" {
+					clusterNamePrefix = jsonData.DigString("domain_prefix")
+				} else {
+					clusterNamePrefix = clusterName
+				}
+				clusterTagsString := jsonData.DigString("aws", "tags")
+				clusterTags := common.ParseTagsFronJsonOutput(clusterTagsString)
+
+				By("Get the managed tags for the nodepool")
+				var managedTags = func(npID string) map[string]interface{} {
+					npLabelName := clusterNamePrefix + "-" + npID
+					managedTags := map[string]interface{}{
+						"api.openshift.com/environment":         OCMEnv,
+						"api.openshift.com/id":                  clusterID,
+						"api.openshift.com/legal-entity-id":     organizationID,
+						"api.openshift.com/name":                clusterName,
+						"api.openshift.com/nodepool-hypershift": npLabelName,
+						"api.openshift.com/nodepool-ocm":        npID,
+						"red-hat-clustertype":                   clusterProductID,
+						"red-hat-managed":                       "true",
+					}
+					return managedTags
+				}
+
+				By("Create a machinepool without tags to the cluster")
+				machinePoolName_1 := common.GenerateRandomName("np-73492", 2)
+				requiredTags := managedTags(machinePoolName_1)
+				if len(clusterTags) > 0 {
+					By("Attach cluster AWS tags")
+					for k, v := range clusterTags {
+						requiredTags[k] = v
+					}
+				}
+				output, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName_1, "--replicas", "3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", machinePoolName_1, clusterID))
+
+				By("Describe the machinepool in json format")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_1)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				tagsString := jsonData.DigString("aws_node_pool", "tags")
+				tags := common.ParseTagsFronJsonOutput(tagsString)
+				for k, v := range requiredTags {
+					Expect(tags[k]).To(Equal(v))
+				}
+
+				By("Create a machinepool with tags to the cluster")
+				machinePoolName_2 := common.GenerateRandomName("mp-73492-1", 2)
+				tagsReq := "foo:bar, testKey:testValue"
+				tagsRequestMap := map[string]interface{}{
+					"foo":     "bar",
+					"testKey": "testValue",
+				}
+				requiredTags = managedTags(machinePoolName_2)
+				if len(clusterTags) > 0 {
+					By("Attach cluster AWS tags")
+					for k, v := range clusterTags {
+						requiredTags[k] = v
+					}
+				}
+				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName_2, "--replicas", "3", "--tags", tagsReq)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", machinePoolName_2, clusterID))
+
+				By("Describe the machinepool in json format")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_2)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				tagsString = jsonData.DigString("aws_node_pool", "tags")
+				tags = common.ParseTagsFronJsonOutput(tagsString)
+				for k, v := range requiredTags {
+					Expect(tags[k]).To(Equal(v))
+				}
+				for k, v := range tagsRequestMap {
+					Expect(tags[k]).To(Equal(v))
+				}
+
+				By("Create machinepool with invalid tags")
+				machinePoolName_3 := common.GenerateRandomName("mp-73492-2", 2)
+				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName_3, "--replicas", "3", "--tags", "#.bar")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key:value'"))
 			})
 	})
