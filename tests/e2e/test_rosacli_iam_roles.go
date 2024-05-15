@@ -1049,4 +1049,91 @@ var _ = Describe("Edit IAM",
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("OIDC provider already exists"))
 				}
 			})
+
+		It("Validation for account-role creation by user - [id:43067]",
+			labels.Medium,
+			func() {
+				var (
+					validRolePrefix                          = "valid"
+					invalidRolePrefix                        = "^^^^"
+					longRolePrefix                           = "accountroleprefixlongerthan32characters"
+					validModeAuto                            = "auto"
+					validModeManual                          = "manual"
+					invalidMode                              = "invalid"
+					invalidPermissionsBoundaryArn     string = "invalid"
+					nonExistingPermissionsBoundaryArn string = "arn:aws:iam::aws:policy/non-existing"
+				)
+
+				By("Try to create account-roles with invalid prefix")
+				output, err := ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+					"--prefix", invalidRolePrefix,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"-y")
+				Expect(err).NotTo(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, invalidRolePrefix)
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Expected a valid role prefix matching ^[\\w+=,.@-]+$"))
+
+				By("Try to create account-roles with longer than 32 chars prefix")
+				output, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+					"--prefix", longRolePrefix,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"--hosted-cp",
+					"-y")
+				Expect(err).NotTo(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, longRolePrefix)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Expected a prefix with no more than 32 characters"))
+
+				By("Try to create account-roles with invalid mode")
+				output, err = ocmResourceService.CreateAccountRole("--mode", invalidMode,
+					"--prefix", validRolePrefix,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"-y")
+				Expect(err).NotTo(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Invalid mode. Allowed values are [auto manual]"))
+
+				By("Try to create account-roles with force-policy-creation and manual mode")
+				output, err = ocmResourceService.CreateAccountRole("--mode", validModeManual,
+					"--prefix", validRolePrefix,
+					"-f",
+					"--hosted-cp",
+					"--permissions-boundary", permissionsBoundaryArn,
+				)
+				Expect(err).NotTo(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Forcing creation of policies only works in auto mode"))
+
+				By("Try to create account-roles with invalid permission boundary")
+				output, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+					"--prefix", validRolePrefix,
+					"--permissions-boundary", invalidPermissionsBoundaryArn,
+					"-y",
+				)
+				Expect(err).NotTo(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Expected a valid policy ARN for permissions boundary: Invalid ARN: arn: invalid prefix"))
+
+				By("Try to create account-roles with non-existing permission boundary")
+				output, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+					"--prefix", validRolePrefix,
+					"--hosted-cp",
+					"--permissions-boundary", nonExistingPermissionsBoundaryArn,
+					"-y",
+				)
+				Expect(err).NotTo(BeNil())
+
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("There was an error creating the account roles: NoSuchEntity"))
+			})
 	})
