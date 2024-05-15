@@ -20,8 +20,9 @@ const (
 	long    = short
 	example = ` # List the kubeletconfigs for cluster 'foo'
 rosa list kubeletconfig --cluster foo`
-	alias = "kubelet-configs"
 )
+
+var aliases = []string{"kubelet-configs", "kubeletconfig", "kubelet-config"}
 
 func NewListKubeletConfigsCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -29,7 +30,7 @@ func NewListKubeletConfigsCommand() *cobra.Command {
 		Short:   short,
 		Long:    long,
 		Example: example,
-		Aliases: []string{alias},
+		Aliases: aliases,
 		Args:    cobra.NoArgs,
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), ListKubeletConfigRunner()),
 	}
