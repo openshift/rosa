@@ -29,7 +29,7 @@ var _ = Describe("List KubeletConfig Command", func() {
 			Expect(cmd.Use).To(Equal(use))
 			Expect(cmd.Short).To(Equal(short))
 			Expect(cmd.Long).To(Equal(long))
-			Expect(cmd.Aliases).To(ContainElements(alias))
+			Expect(cmd.Aliases).To(ContainElements(aliases))
 			Expect(cmd.Args).NotTo(BeNil())
 			Expect(cmd.Run).NotTo(BeNil())
 			Expect(cmd.RunE).To(BeNil())
