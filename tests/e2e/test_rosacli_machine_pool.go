@@ -167,6 +167,26 @@ var _ = Describe("Create machinepool",
 
 			})
 
+		It("validate inputs for create spot machinepool - [id:43252]",
+			labels.Medium,
+			labels.Day2,
+			func() {
+				By("Create a spot machinepool with negative price")
+				machinePoolName := "spotmp"
+				output, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--spot-max-price", "-10.2", "--use-spot-instances",
+					"--replicas", "3")
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Spot max price must be positive"))
+
+				By("Create a machinepool without spot instances, but with spot price")
+				machinePoolName = "nospotmp"
+				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "3", "--spot-max-price", "10.2", "--use-spot-instances=false")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Can't set max price when not using spot instances"))
+			})
+
 		It("can create machinepool with tags - [id:73469]",
 			labels.NonHCPCluster,
 			labels.Day2,
