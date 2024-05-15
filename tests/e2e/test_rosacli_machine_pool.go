@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 var _ = Describe("Create machinepool",
@@ -22,6 +23,7 @@ var _ = Describe("Create machinepool",
 			clusterID          string
 			rosaClient         *rosacli.Client
 			machinePoolService rosacli.MachinePoolService
+			ocmResourceService rosacli.OCMResourceService
 		)
 
 		BeforeEach(func() {
@@ -32,7 +34,7 @@ var _ = Describe("Create machinepool",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			machinePoolService = rosaClient.MachinePool
-
+			ocmResourceService = rosaClient.OCMResource
 		})
 
 		AfterEach(func() {
@@ -100,6 +102,24 @@ var _ = Describe("Create machinepool",
 				Expect(mp.DiskSize).To(Equal(expectedDiskSize))
 				Expect(mp.InstanceType).To(Equal(machineType))
 
+			})
+
+		It("List newly added instance-types - [id:73308]",
+			labels.Medium,
+			func() {
+				By("List the available instance-types and verify the presence of newly added instance-types")
+				newlyAddedTypes := []string{"c7a.xlarge", "c7a.48xlarge", "c7a.metal-48xl", "r7a.xlarge", "r7a.48xlarge", "r7a.metal-48xl", "hpc6a.48xlarge", "hpc6id.32xlarge", "hpc7a.96xlarge", "c7i.48xlarge", "c7i.metal-24xl", "c7i.metal-48xl", "r7i.xlarge", "r7i.48xlarge"}
+				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypes()
+
+				if err != nil {
+					log.Logger.Errorf("Failed to fetch instance types: %v", err)
+				} else {
+					var availableMachineTypesIDs []string
+					for _, it := range availableMachineTypes.InstanceTypesList {
+						availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
+					}
+					Expect(availableMachineTypesIDs).To(ContainElements(newlyAddedTypes))
+				}
 			})
 
 		It("can create spot machinepool - [id:43251]",
