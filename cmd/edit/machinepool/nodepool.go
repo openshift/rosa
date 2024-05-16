@@ -5,11 +5,14 @@ import (
 	"os"
 	"strings"
 
+	"slices"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
+	. "github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/machinepool"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -233,19 +236,42 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		}
 	}
 
-	nodePool, err = npBuilder.Build()
+	update, err := npBuilder.Build()
 	if err != nil {
 		return fmt.Errorf("Failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
+	if !promptForNodePoolNodeRecreate(nodePool, update, PromptToAcceptNodePoolNodeRecreate, r) {
+		return nil
+	}
+
 	r.Reporter.Debugf("Updating machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
-	_, err = r.OCMClient.UpdateNodePool(cluster.ID(), nodePool)
+	_, err = r.OCMClient.UpdateNodePool(cluster.ID(), update)
 	if err != nil {
 		return fmt.Errorf("Failed to update machine pool '%s' on hosted cluster '%s': %s",
 			nodePool.ID(), clusterKey, err)
 	}
 	r.Reporter.Infof("Updated machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
 	return nil
+}
+
+// promptForNodePoolNodeRecreate - prompts the user to accept that their changes will cause the nodes
+// in their nodepool to be recreated. This primarily applies to KubeletConfig modifications.
+func promptForNodePoolNodeRecreate(
+	original *cmv1.NodePool,
+	update *cmv1.NodePool,
+	promptFunc func(r *rosa.Runtime) bool, r *rosa.Runtime) bool {
+	if len(original.KubeletConfigs()) != len(update.KubeletConfigs()) {
+		return promptFunc(r)
+	}
+
+	for _, s := range update.KubeletConfigs() {
+		if !slices.Contains(original.KubeletConfigs(), s) {
+			return promptFunc(r)
+		}
+	}
+
+	return true
 }
 
 func getNodePoolReplicas(cmd *cobra.Command,

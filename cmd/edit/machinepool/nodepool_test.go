@@ -4,6 +4,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	"github.com/openshift/rosa/pkg/rosa"
+	. "github.com/openshift/rosa/pkg/test"
 )
 
 var _ = Describe("Nodepool", func() {
@@ -45,6 +48,77 @@ var _ = Describe("Nodepool", func() {
 			builder := editAutoscaling(nodepool, 2, 0)
 			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(2)
 			Expect(builder).To(Equal(asBuilder))
+		})
+	})
+
+	Context("Prompt For NodePoolNodeRecreate", func() {
+
+		var t *TestingRuntime
+		BeforeEach(func() {
+			t = NewTestRuntime()
+		})
+
+		It("Prompts when the user has deleted a kubelet-config", func() {
+
+			invoked := false
+
+			f := func(r *rosa.Runtime) bool {
+				invoked = true
+				return invoked
+			}
+
+			original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				n.KubeletConfigs("test")
+			})
+
+			update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				n.KubeletConfigs("")
+			})
+
+			Expect(promptForNodePoolNodeRecreate(original, update, f, t.RosaRuntime)).To(BeTrue())
+			Expect(invoked).To(BeTrue())
+		})
+
+		It("Prompts when the user has changed a kubelet-config", func() {
+
+			invoked := false
+
+			f := func(r *rosa.Runtime) bool {
+				invoked = true
+				return invoked
+			}
+
+			original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				n.KubeletConfigs("test")
+			})
+
+			update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				n.KubeletConfigs("bar")
+			})
+
+			Expect(promptForNodePoolNodeRecreate(original, update, f, t.RosaRuntime)).To(BeTrue())
+			Expect(invoked).To(BeTrue())
+		})
+
+		It("Does not prompts when the user has not changed a kubelet-config", func() {
+
+			invoked := false
+
+			f := func(r *rosa.Runtime) bool {
+				invoked = true
+				return invoked
+			}
+
+			original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				n.KubeletConfigs("test")
+			})
+
+			update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				n.KubeletConfigs("test")
+			})
+
+			Expect(promptForNodePoolNodeRecreate(original, update, f, t.RosaRuntime)).To(BeTrue())
+			Expect(invoked).To(BeFalse())
 		})
 	})
 })
