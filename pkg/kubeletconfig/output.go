@@ -38,8 +38,10 @@ func PrintKubeletConfigForHcp(config *cmv1.KubeletConfig, nodePools []*cmv1.Node
 
 func PrintKubeletConfigForClassic(config *cmv1.KubeletConfig) string {
 	return fmt.Sprintf("\n"+
+		"ID:                                   %s\n"+
 		"Name:                                 %s\n"+
 		"Pod Pids Limit:                       %d\n",
+		config.ID(),
 		getName(config),
 		config.PodPidsLimit(),
 	)
