@@ -835,7 +835,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		// delete oidc config id
 		if ud.OIDCConfigID != "" {
 			log.Logger.Infof("Find prepared oidc config id: %s", ud.OIDCConfigID)
-			_, err := ocmResourceService.DeleteOIDCConfig("--oidc-config-id", ud.OIDCConfigID, "--mode", "auto", "-y")
+			_, err := ocmResourceService.DeleteOIDCConfig("--oidc-config-id", ud.OIDCConfigID, "--region", region, "--mode", "auto", "-y")
 			if err != nil {
 				log.Logger.Errorf("Error happened when delete oidc config id: %s", err.Error())
 				errors = append(errors, err)
