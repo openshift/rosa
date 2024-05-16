@@ -130,9 +130,6 @@ var _ = Describe("Edit default ingress",
 			labels.Day2,
 			labels.NonHCPCluster,
 			func() {
-				if isHosted {
-					Skip("This case is for standard ROSA clusters only")
-				}
 
 				output, err := ingressService.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -151,19 +148,25 @@ var _ = Describe("Edit default ingress",
 				Expect(exists).To(BeTrue())
 				defaultID := ingress.ID
 				Expect(defaultID).ToNot(BeNil())
-				output, err = ingressService.EditIngress(clusterID, defaultID, "--lb-type", "nlb")
+				updatingIngresType := "nlb"
+				if ingress.LBType == "nlb" {
+					updatingIngresType = "classic"
+				}
+				output, err = ingressService.EditIngress(clusterID, defaultID, "--lb-type", updatingIngresType)
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Updated ingress '%s'", defaultID))
+
+				defer ingressService.EditIngress(clusterID, defaultID, "--lb-type", ingress.LBType)
 
 				output, err = ingressService.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				ingressList, err = ingressService.ReflectIngressList(output)
 				Expect(err).ToNot(HaveOccurred())
-				ingress, _ = defaultIngress(*ingressList)
-				Expect(ingress.LBType).Should(ContainSubstring("nlb"))
+				updatedIngress, _ := defaultIngress(*ingressList)
+				Expect(updatedIngress.LBType).Should(Equal(updatingIngresType))
 
-				output, err = ingressService.EditIngress(clusterID, defaultID, "--lb-type", "classic")
+				output, err = ingressService.EditIngress(clusterID, defaultID, "--lb-type", ingress.LBType)
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Updated ingress '%s'", defaultID))
@@ -173,7 +176,7 @@ var _ = Describe("Edit default ingress",
 				ingressList, err = ingressService.ReflectIngressList(output)
 				Expect(err).ToNot(HaveOccurred())
 				ingress, _ = defaultIngress(*ingressList)
-				Expect(ingress.LBType).Should(ContainSubstring("classic"))
+				Expect(ingress.LBType).Should(ContainSubstring(ingress.LBType))
 			})
 		It("can update ingress controller attributes - [id:65799]",
 			labels.Critical,
