@@ -65,6 +65,16 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		return err
 	}
 
+	breakGlassCredentials, err := r.OCMClient.GetBreakGlassCredentials(cluster.ID())
+	if err != nil {
+		return fmt.Errorf("failed to get break glass credentials for cluster '%s': %v", clusterKey, err)
+	}
+
+	if len(breakGlassCredentials) == 0 {
+		r.Reporter.Infof("There are no break glass credentials for cluster '%s'", clusterKey)
+		return nil
+	}
+
 	if confirm.Confirm("revoke all the break glass credentials on cluster '%s'", clusterKey) {
 		r.Reporter.Debugf("Revoking break glass credentials on cluster '%s'", clusterKey)
 		err := r.OCMClient.DeleteBreakGlassCredentials(cluster.ID())
