@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -407,17 +408,26 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		// Skip if no kubelet configs are available
 		if len(availableKubeletConfigs) > 0 {
 			inputKubeletConfigs, err = interactive.GetMultipleOptions(interactive.Input{
-				Question: "Kubelet configs",
+				Question: "Kubelet config",
 				Help:     cmd.Flags().Lookup("kubelet-configs").Usage,
 				Options:  availableKubeletConfigs,
 				Default:  inputKubeletConfigs,
 				Required: false,
+				Validators: []interactive.Validator{
+					machinepool.ValidateKubeletConfig,
+				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid value for kubelet configs: %s", err)
+				r.Reporter.Errorf("Expected a valid value for kubelet config: %s", err)
 				os.Exit(1)
 			}
 		}
+	}
+
+	err = machinepool.ValidateKubeletConfig(inputKubeletConfigs)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
 	}
 
 	if len(inputKubeletConfigs) != 0 {

@@ -2,6 +2,7 @@ package machinepool
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/machinepool"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -181,18 +183,25 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 			// Skip if no tuning configs are available
 			if len(availableKubeletConfigs) > 0 {
 				inputKubeletConfig, err = interactive.GetMultipleOptions(interactive.Input{
-					Question: "Kubelet configs",
+					Question: "Kubelet config",
 					Help:     cmd.Flags().Lookup("kubelet-configs").Usage,
 					Options:  availableKubeletConfigs,
 					Default:  inputKubeletConfig,
 					Required: false,
+					Validators: []interactive.Validator{
+						machinepool.ValidateKubeletConfig,
+					},
 				})
 				if err != nil {
-					return fmt.Errorf("Expected a valid value for kubelet configs: %s", err)
+					return fmt.Errorf("Expected a valid value for kubelet config: %s", err)
 				}
 			}
 		}
-
+		err = machinepool.ValidateKubeletConfig(inputKubeletConfig)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
 		npBuilder.KubeletConfigs(inputKubeletConfig...)
 	}
 
