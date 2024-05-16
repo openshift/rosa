@@ -95,6 +95,7 @@ func addMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "version")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")
 
 	// Machine pool name:
 	name := strings.Trim(args.name, " \t")
