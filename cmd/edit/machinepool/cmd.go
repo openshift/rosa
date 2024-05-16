@@ -140,9 +140,9 @@ func init() {
 		&args.kubeletConfigs,
 		"kubelet-configs",
 		"",
-		"Name of the kubelet configs to be applied to the machine pool. Format should be a comma-separated list. "+
+		"Name of the kubelet config to be applied to the machine pool.  A single kubelet config is allowed. "+
 			"Kubelet config must already exist. "+
-			"This list will overwrite any modifications made to node kubelet configs on an ongoing basis.",
+			"This will overwrite any modifications made to node kubelet configs on an ongoing basis.",
 	)
 
 	flags.StringVar(&args.nodeDrainGracePeriod,
