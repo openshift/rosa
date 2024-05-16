@@ -26,6 +26,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "version")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
