@@ -153,6 +153,29 @@ var _ = Describe("Describe KubeletConfig", func() {
 			Expect(err.Error()).To(Equal("The --name flag is required for Hosted Control Plane clusters."))
 		})
 
+		It("Returns an error if no kubeletconfig exists for classic cluster when using --name", func() {
+			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+			})
+
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK, FormatKubeletConfigList([]*cmv1.KubeletConfig{})))
+			t.SetCluster("cluster", cluster)
+
+			options := NewKubeletConfigOptions()
+			options.Name = "test"
+
+			runner := DescribeKubeletConfigRunner(options)
+			err := runner(context.Background(), t.RosaRuntime, nil, nil)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(
+				Equal("The KubeletConfig specified does not exist for cluster 'cluster'"))
+		})
+
 		It("Returns an error if failing to read HCP KubeletConfig", func() {
 			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateReady)
