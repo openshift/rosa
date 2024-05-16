@@ -125,6 +125,30 @@ var _ = Describe("edit kubeletconfig", func() {
 					"You should first create it via 'rosa create kubeletconfig'"))
 		})
 
+		It("Returns an error if no kubeletconfig exists for classic cluster when using --name", func() {
+			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+			})
+
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(
+					http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK, FormatKubeletConfigList([]*cmv1.KubeletConfig{})))
+			t.SetCluster("cluster", cluster)
+
+			options := NewKubeletConfigOptions()
+			options.Name = "test"
+
+			runner := EditKubeletConfigRunner(options)
+			err := runner(context.Background(), t.RosaRuntime, nil, nil)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(
+				Equal("The specified KubeletConfig does not exist for cluster 'cluster'. " +
+					"You should first create it via 'rosa create kubeletconfig'"))
+		})
+
 		It("Returns an error if it fails to read the kubeletconfig from OCM for classic cluster", func() {
 
 			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {

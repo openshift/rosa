@@ -84,7 +84,12 @@ func DescribeKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunn
 			}
 			kubeletconfig, exists, err = r.OCMClient.FindKubeletConfigByName(ctx, cluster.ID(), options.Name)
 		} else {
-			kubeletconfig, exists, err = r.OCMClient.GetClusterKubeletConfig(cluster.ID())
+			// Name isn't required for Classic clusters, but for correctness, if the user has set it, lets check things
+			if options.Name != "" {
+				kubeletconfig, exists, err = r.OCMClient.FindKubeletConfigByName(ctx, cluster.ID(), options.Name)
+			} else {
+				kubeletconfig, exists, err = r.OCMClient.GetClusterKubeletConfig(cluster.ID())
+			}
 		}
 
 		if err != nil {

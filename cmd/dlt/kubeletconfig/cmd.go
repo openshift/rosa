@@ -85,7 +85,11 @@ func DeleteKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 			}
 			err = r.OCMClient.DeleteKubeletConfigByName(ctx, cluster.ID(), options.Name)
 		} else {
-			err = r.OCMClient.DeleteKubeletConfig(ctx, cluster.ID())
+			if options.Name != "" {
+				err = r.OCMClient.DeleteKubeletConfigByName(ctx, cluster.ID(), options.Name)
+			} else {
+				err = r.OCMClient.DeleteKubeletConfig(ctx, cluster.ID())
+			}
 		}
 
 		if err != nil {
