@@ -211,5 +211,34 @@ func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	log.Logger.Debugf("Get Combining Stdout and Stder is : %s", output.String())
 
 	return output, err
+}
 
+// RunPipeline runs a pipeline of commands, each specified as a slice of strings.
+func (r *runner) RunPipeline(commands ...[]string) (bytes.Buffer, error) {
+	var output bytes.Buffer
+	var err error
+
+	cmds := make([]*exec.Cmd, len(commands))
+	for i, command := range commands {
+		cmds[i] = exec.Command(command[0], command[1:]...)
+		if i > 0 {
+			cmds[i].Stdin, _ = cmds[i-1].StdoutPipe()
+		}
+		cmds[i].Stderr = &output
+	}
+
+	cmds[len(cmds)-1].Stdout = &output
+
+	for _, cmd := range cmds {
+		if err = cmd.Start(); err != nil {
+			return output, fmt.Errorf("starting %v: %v", cmd.Args, err)
+		}
+	}
+
+	for _, cmd := range cmds {
+		if err = cmd.Wait(); err != nil {
+			return output, fmt.Errorf("waiting for %v: %v", cmd.Args, err)
+		}
+	}
+	return output, nil
 }

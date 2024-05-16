@@ -67,6 +67,8 @@ type OCMResourceService interface {
 
 	CreateOIDCProvider(flags ...string) (bytes.Buffer, error)
 	DeleteOIDCProvider(flags ...string) (bytes.Buffer, error)
+
+	Token(flags ...string) (bytes.Buffer, error)
 }
 
 type ocmResourceService struct {
@@ -646,4 +648,10 @@ func (ors *ocmResourceService) DeleteOIDCProvider(flags ...string) (bytes.Buffer
 func (ors *ocmResourceService) CleanResources(clusterID string) (errors []error) {
 	Logger.Debugf("Nothing releated to cluster was done there")
 	return
+}
+
+func (ors *ocmResourceService) Token(flags ...string) (bytes.Buffer, error) {
+	token := ors.client.Runner
+	token = token.Cmd("token").CmdFlags(flags...)
+	return token.Run()
 }

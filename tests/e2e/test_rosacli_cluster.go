@@ -2,16 +2,21 @@ package e2e
 
 import (
 	"fmt"
+	"math/rand"
+	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
+	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	profileHanddler "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit cluster",
@@ -302,4 +307,231 @@ var _ = Describe("Edit cluster",
 				Expect(err).To(BeNil())
 				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Creating cluster '%s' should succeed", clusterName)))
 			})
+	})
+
+var _ = Describe("Classic cluster creation validation",
+	labels.Day1Validation,
+	labels.FeatureCluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient  *rosacli.Client
+			profilesMap map[string]*profileHanddler.Profile
+			profile     *profileHanddler.Profile
+		)
+
+		BeforeEach(func() {
+			// Init the client
+			rosaClient = rosacli.NewClient()
+			// Get a random profile
+			profilesMap = profileHanddler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
+			rand.New(rand.NewSource(time.Now().UnixNano()))
+			profilesNames := make([]string, 0, len(profilesMap))
+			for k := range profilesMap {
+				profilesNames = append(profilesNames, k)
+			}
+			profile = profilesMap[profilesNames[rand.Intn(len(profilesNames))]]
+			profile.NamePrefix = con.DefaultNamePrefix
+
+		})
+
+		AfterEach(func() {
+			errs := profileHanddler.DestroyResourceByProfile(profile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		It("To check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]", labels.Medium, labels.Day1Validation, labels.NonHCPCluster, func() {
+			var command string
+			var rosalCommand config.Command
+			By("Prepare creation command")
+			flags, err := profileHanddler.GenerateClusterCreateFlags(profile, rosaClient)
+			Expect(err).To(BeNil())
+
+			command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
+			rosalCommand = config.GenerateCommand(command)
+
+			rosalCommand.AddFlags("--dry-run")
+			originalClusterName := rosalCommand.GetFlagValue("--cluster-name", true)
+			originalMachineType := rosalCommand.GetFlagValue("--compute-machine-type", true)
+			originalRegion := rosalCommand.GetFlagValue("--region", true)
+			if !rosalCommand.CheckFlagExist("--replicas") {
+				rosalCommand.AddFlags("--replicas", "3")
+			}
+			originalReplicas := rosalCommand.GetFlagValue("--replicas", true)
+
+			invalidClusterNames := []string{
+				"1-test-1",
+				"-test-cluster",
+				"test-cluster-",
+			}
+			for _, cn := range invalidClusterNames {
+				By("Check the validation for cluster-name")
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--cluster-name": cn,
+				})
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).NotTo(BeNil())
+				Expect(stdout.String()).To(ContainSubstring("Cluster name must consist of no more than 54 lowercase alphanumeric characters or '-', start with a letter, and end with an alphanumeric character"))
+			}
+
+			By("Check the validation for compute-machine-type")
+			invalidMachineType := "not-exist-machine-type"
+			rosalCommand.ReplaceFlagValue(map[string]string{
+				"--compute-machine-type": invalidMachineType,
+				"--cluster-name":         originalClusterName,
+			})
+			stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+			Expect(err).NotTo(BeNil())
+			Expect(stdout.String()).To(ContainSubstring("Expected a valid machine type"))
+
+			By("Check the validation for replicas")
+
+			invalidReplicasTypeErrorMap := map[string]string{
+				"4.5":  "invalid argument \"4.5\" for \"--replicas\" flag",
+				"five": "invalid argument \"five\" for \"--replicas\" flag",
+			}
+			for k, v := range invalidReplicasTypeErrorMap {
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--compute-machine-type": originalMachineType,
+					"--replicas":             k,
+				})
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).NotTo(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(v))
+			}
+			if rosalCommand.CheckFlagExist("--multi-az") {
+				invalidReplicasErrorMapMultiAZ := map[string]string{
+					"2":  "Multi AZ cluster requires at least 3 compute nodes",
+					"0":  "Multi AZ cluster requires at least 3 compute nodes",
+					"-3": "must be non-negative",
+					"5":  "Multi AZ clusters require that the number of compute nodes be a multiple of 3",
+				}
+				for k, v := range invalidReplicasErrorMapMultiAZ {
+					rosalCommand.ReplaceFlagValue(map[string]string{
+						"--replicas": k,
+					})
+					stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					Expect(err).NotTo(BeNil())
+					Expect(stdout.String()).To(ContainSubstring(v))
+				}
+			} else {
+				invalidReplicasErrorMapSingeAZ := map[string]string{
+					"1":  "requires at least 2 compute nodes",
+					"0":  "requires at least 2 compute nodes",
+					"-1": "must be non-negative",
+				}
+				for k, v := range invalidReplicasErrorMapSingeAZ {
+					rosalCommand.ReplaceFlagValue(map[string]string{
+						"--replicas": k,
+					})
+					stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					Expect(err).NotTo(BeNil())
+					Expect(stdout.String()).To(ContainSubstring(v))
+				}
+			}
+
+			By("Check the validation for region")
+			invalidRegion := "not-exist-region"
+			rosalCommand.ReplaceFlagValue(map[string]string{
+				"--region":   invalidRegion,
+				"--replicas": originalReplicas,
+			})
+			stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+			Expect(err).NotTo(BeNil())
+			Expect(stdout.String()).To(ContainSubstring("Unsupported region"))
+
+			By("Check the validation for billing-account for classic sts cluster")
+			rosalCommand.ReplaceFlagValue(map[string]string{
+				"--region": originalRegion,
+			})
+			rosalCommand.AddFlags("--billing-account", "123456789")
+			stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+			Expect(err).NotTo(BeNil())
+			Expect(stdout.String()).To(ContainSubstring("Billing accounts are only supported for Hosted Control Plane clusters"))
+		})
+
+		It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]", labels.Medium, func() {
+			clusterService := rosaClient.Cluster
+			accrolePrefix := "testAr45176"
+			path := "/a/b/"
+			ocmResourceService := rosaClient.OCMResource
+			clusterName := "cluster45176"
+			operatorRolePrefix := "cluster45176-xvfa"
+			By("Create account-roles in low version 4.14")
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"--version", "4.14",
+				"-y")
+			Expect(err).To(BeNil())
+			defer func() {
+				By("Delete the account-roles")
+				output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", accrolePrefix,
+					"-y")
+
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Successfully deleted"))
+			}()
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Created role"))
+
+			arl, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			ar := arl.DigAccountRoles(accrolePrefix, false)
+			fmt.Println(ar)
+
+			By("Create cluster with latest version and use the low version account-roles")
+			out, err, _ := clusterService.Create(
+				clusterName, "--sts",
+				"--mode", "auto",
+				"--role-arn", ar.InstallerRole,
+				"--support-role-arn", ar.SupportRole,
+				"--controlplane-iam-role", ar.ControlPlaneRole,
+				"--worker-iam-role", ar.WorkerRole,
+				"--operator-roles-prefix", operatorRolePrefix,
+				"-y", "--dry-run",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("is not compatible with version"))
+			Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
+		})
+	})
+
+var _ = Describe("Classic cluster deletion validation",
+	labels.Day3,
+	labels.FeatureCluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient *rosacli.Client
+		)
+
+		BeforeEach(func() {
+			// Init the client
+			rosaClient = rosacli.NewClient()
+		})
+
+		It("To validate the ROSA cluster deletion will work via rosacli	- [id:38778]", labels.Medium, labels.Day3, func() {
+			clusterService := rosaClient.Cluster
+			notExistID := "no-exist-cluster-id"
+			By("Delete the cluster without indicated cluster Name or ID")
+			cmd := []string{"rosa", "delete", "cluster"}
+			out, err := rosaClient.Runner.RunCMD(cmd)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("\"cluster\" not set"))
+
+			By("Delete a non-existed cluster")
+			out, err = clusterService.DeleteCluster(notExistID, "-y")
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("There is no cluster with identifier or name"))
+
+			By("Delete with unknown flag --interactive")
+			out, err = clusterService.DeleteCluster(notExistID, "-y", "--interactive")
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("unknown flag: --interactive"))
+		})
 	})

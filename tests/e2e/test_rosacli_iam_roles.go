@@ -3,10 +3,12 @@ package e2e
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
@@ -807,6 +809,28 @@ var _ = Describe("Edit IAM",
 				Expect(err).NotTo(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Expected a valid ocm role ARN to link to a current organization"))
+
+				By("Delete the role and keep the attached policy then create again")
+				awsClient, err := aws_client.CreateAWSClient("", "")
+				Expect(err).To(BeNil())
+				err = awsClient.DetachRolePolicies(foundOcmrole.RoleName)
+				Expect(err).To(BeNil())
+				err = awsClient.DeleteRole(foundOcmrole.RoleName)
+				Expect(err).To(BeNil())
+
+				output, err = ocmResourceService.CreateOCMRole("--mode", "auto",
+					"--prefix", ocmrolePrefix,
+					"--path", path,
+					"--admin",
+					"-y")
+				Expect(err).To(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Created role"))
+				Expect(textData).Should(ContainSubstring("Successfully linked role"))
+
+				attachedPolicies, err := awsClient.ListAttachedRolePolicies(foundOcmrole.RoleName)
+				Expect(err).To(BeNil())
+				Expect(len(attachedPolicies)).To(Equal(2))
 			})
 
 		It("can create/link/unlink/delete user-role in auto mode - [id:52419]",
@@ -1136,4 +1160,66 @@ var _ = Describe("Edit IAM",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("There was an error creating the account roles: NoSuchEntity"))
 			})
+	})
+
+var _ = Describe("List IAM",
+	labels.Day1,
+	labels.FeatureRoles,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient         *rosacli.Client
+			ocmResourceService rosacli.OCMResourceService
+		)
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+		})
+
+		It("to list account-roles by rosa-cli - [id:44511]", labels.High, func() {
+			accrolePrefix := "arPrefix44511"
+			path := "/a/b/"
+			version := "4.15"
+
+			By("Create account-roles")
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"--version", version,
+				"-y")
+			Expect(err).To(BeNil())
+			defer func() {
+				By("Delete the account-roles")
+				output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", accrolePrefix,
+					"-y")
+
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Successfully deleted"))
+			}()
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Created role"))
+
+			By("List account-roles")
+			arl, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+
+			ars := arl.AccountRoles(accrolePrefix)
+			fmt.Println(ars)
+
+			Expect(len(ars)).To(Equal(7))
+
+			for _, v := range ars {
+				Expect(v.OpenshiftVersion).To(Equal(version))
+				Expect(v.RoleArn).NotTo(BeEmpty())
+				if strings.Contains(v.RoleName, "HCP-ROSA") {
+					Expect(v.AWSManaged).To(Equal("Yes"))
+				} else {
+					Expect(v.AWSManaged).To(Equal("No"))
+				}
+			}
+		})
 	})
