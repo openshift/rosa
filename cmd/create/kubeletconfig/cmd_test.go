@@ -9,6 +9,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/testing"
 
+	"github.com/openshift/rosa/pkg/interactive"
 	. "github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
@@ -39,10 +40,12 @@ var _ = Describe("create kubeletconfig", func() {
 		BeforeEach(func() {
 			t = NewTestRuntime()
 			output.SetOutput("")
+			interactive.SetEnabled(false)
 		})
 
 		AfterEach(func() {
 			output.SetOutput("")
+			interactive.SetEnabled(false)
 		})
 
 		It("Returns an error if the cluster does not exist", func() {
@@ -121,6 +124,30 @@ var _ = Describe("create kubeletconfig", func() {
 				ContainSubstring("Failed getting KubeletConfig for cluster 'cluster'"))
 		})
 
+		It("Returns an error if no name specified for HCP KubeletConfig", func() {
+			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+				b := cmv1.HypershiftBuilder{}
+				b.Enabled(true)
+				c.Hypershift(&b)
+
+			})
+
+			t.ApiServer.AppendHandlers(
+				testing.RespondWithJSON(
+					http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
+			t.SetCluster("cluster", cluster)
+
+			options := NewKubeletConfigOptions()
+			options.PodPidsLimit = 10000
+
+			runner := CreateKubeletConfigRunner(options)
+
+			err := runner(context.Background(), t.RosaRuntime, nil, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("The --name flag is required for Hosted Control Plane clusters."))
+		})
+
 		It("Creates the KubeletConfig for HCP clusters", func() {
 			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateReady)
@@ -143,6 +170,7 @@ var _ = Describe("create kubeletconfig", func() {
 
 			options := NewKubeletConfigOptions()
 			options.PodPidsLimit = 10000
+			options.Name = "test"
 
 			runner := CreateKubeletConfigRunner(options)
 			t.StdOutReader.Record()
@@ -176,6 +204,7 @@ var _ = Describe("create kubeletconfig", func() {
 
 			options := NewKubeletConfigOptions()
 			options.PodPidsLimit = 10000
+			options.Name = "test"
 
 			runner := CreateKubeletConfigRunner(options)
 

@@ -81,14 +81,19 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 				return fmt.Errorf("A KubeletConfig for cluster '%s' already exists. "+
 					"You should edit it via 'rosa edit kubeletconfig'", clusterKey)
 			}
+		} else {
+			options.Name, err = PromptForName(options.Name)
+			if err != nil {
+				return err
+			}
+
+			err = options.ValidateForHypershift()
+			if err != nil {
+				return err
+			}
 		}
 
-		name, err := PromptForName(options.Name, false)
-		if err != nil {
-			return nil
-		}
-
-		requestedPids, err := ValidateOrPromptForRequestedPidsLimit(options.PodPidsLimit, clusterKey, nil, r)
+		options.PodPidsLimit, err = ValidateOrPromptForRequestedPidsLimit(options.PodPidsLimit, clusterKey, nil, r)
 		if err != nil {
 			return err
 		}
@@ -102,7 +107,7 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 		}
 
 		r.Reporter.Debugf("Creating KubeletConfig for cluster '%s'", clusterKey)
-		kubeletConfigArgs := ocm.KubeletConfigArgs{PodPidsLimit: requestedPids, Name: name}
+		kubeletConfigArgs := ocm.KubeletConfigArgs{PodPidsLimit: options.PodPidsLimit, Name: options.Name}
 
 		_, err = r.OCMClient.CreateKubeletConfig(cluster.ID(), kubeletConfigArgs)
 		if err != nil {
