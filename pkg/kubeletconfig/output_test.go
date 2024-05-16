@@ -1,8 +1,6 @@
 package kubeletconfig
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -11,16 +9,19 @@ import (
 )
 
 var classicOutputWithName = `
+ID:                                   bar
 Name:                                 foo
 Pod Pids Limit:                       10000
 `
 
 var classicOutPutNoName = `
+ID:                                   bar
 Name:                                 -
 Pod Pids Limit:                       10000
 `
 
 var hcpOutputWithName = `
+ID:                                   bar
 Name:                                 foo
 Pod Pids Limit:                       10000
 MachinePools Using This KubeletConfig:
@@ -28,6 +29,7 @@ MachinePools Using This KubeletConfig:
 `
 
 var hcpOutputNoName = `
+ID:                                   bar
 Name:                                 -
 Pod Pids Limit:                       10000
 MachinePools Using This KubeletConfig:
@@ -55,7 +57,6 @@ var _ = Describe("KubeletConfig Output", func() {
 		})
 
 		output := PrintKubeletConfigForClassic(kubeletConfig)
-		fmt.Print(output)
 		Expect(output).To(Equal(classicOutputWithName))
 	})
 
@@ -65,7 +66,6 @@ var _ = Describe("KubeletConfig Output", func() {
 		})
 
 		output := PrintKubeletConfigForClassic(kubeletConfig)
-		fmt.Print(output)
 		Expect(output).To(Equal(classicOutPutNoName))
 	})
 
