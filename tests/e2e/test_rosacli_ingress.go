@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
@@ -174,7 +175,7 @@ var _ = Describe("Edit default ingress",
 				ingress, _ = defaultIngress(*ingressList)
 				Expect(ingress.LBType).Should(ContainSubstring("classic"))
 			})
-		It("Update Ingress Controller attributes [id:65799]",
+		It("can update ingress controller attributes - [id:65799]",
 			labels.Critical,
 			labels.Day2,
 			labels.NonHCPCluster,
@@ -218,5 +219,58 @@ var _ = Describe("Edit default ingress",
 				Expect(ingress.RouteSelectors).Should(ContainSubstring("app2=test2"))
 				Expect(ingress.NamespaceOwnershipPolicy).Should(ContainSubstring("Strict"))
 				Expect(ingress.WildcardPolicy).Should(ContainSubstring("WildcardsDisallowed"))
+			})
+		It("can change labels and private - [id:38835]",
+			labels.Critical,
+			labels.Day2,
+			labels.NonHCPCluster,
+			func() {
+				By("Record ingress default value")
+				output, err := rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				defaultIngress := ingressList.Ingresses[0]
+				originalPrivate := defaultIngress.Private == "yes"
+				originalRouteSelectors := defaultIngress.RouteSelectors
+
+				By("Check edit ingress help message")
+				output, err = rosaClient.Ingress.EditIngress(clusterID, "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("--label-match string"))
+
+				By("Edit ingress with --label-match and --private")
+				labelMatch := "label-38835=label-value-38835,label-38835-2=label-value-38835-2"
+				output, err = rosaClient.Ingress.EditIngress(clusterID,
+					"apps",
+					"--label-match", labelMatch,
+					fmt.Sprintf("--private=%v", !originalPrivate),
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.Ingress.EditIngress(clusterID,
+					"apps",
+					"--label-match", common.ReplaceCommaSpaceWithComma(originalRouteSelectors),
+					fmt.Sprintf("--private=%v", originalPrivate),
+					"-y",
+				)
+
+				By("List ingress to check")
+				output, err = rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err = rosaClient.Ingress.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+
+				defaultIngress = ingressList.Ingresses[0]
+				Expect(defaultIngress.Private == "yes").To(Equal(!originalPrivate))
+
+				ingressRouteSelectors := common.ParseCommaSeparatedStrings(defaultIngress.RouteSelectors)
+				expectedRouteSelectors := common.ParseCommaSeparatedStrings(labelMatch)
+
+				Expect(len(ingressRouteSelectors)).To(Equal(len(expectedRouteSelectors)))
+
+				for _, expectLabel := range expectedRouteSelectors {
+					Expect(expectLabel).To(BeElementOf(ingressRouteSelectors))
+				}
 			})
 	})
