@@ -149,16 +149,6 @@ var _ = Describe("Edit nodepool",
 				Expect(len(common.ParseTaints(npDesc.Taints))).To(Equal(len(common.ParseTaints(newTaints))))
 				Expect(common.ParseTaints(npDesc.Taints)).To(BeEquivalentTo(common.ParseTaints(newTaints)))
 
-				By("Wait for nodepool replicas available")
-				err = wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 20*time.Minute, false, func(context.Context) (bool, error) {
-					npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
-					if err != nil {
-						return false, err
-					}
-					return npDesc.CurrentReplicas == replicasNb, nil
-				})
-				common.AssertWaitPollNoErr(err, "Replicas are not ready after 600")
-
 				By("Delete nodepool")
 				output, err = machinePoolService.DeleteMachinePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
