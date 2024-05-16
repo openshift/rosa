@@ -75,11 +75,14 @@ func DeleteKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 		}
 
 		if cluster.Hypershift().Enabled() {
-			options.Name, err = PromptForName(options.Name, true)
+			options.Name, err = PromptForName(options.Name)
 			if err != nil {
 				return err
 			}
-			options.ValidateForHypershift()
+			err = options.ValidateForHypershift()
+			if err != nil {
+				return err
+			}
 			err = r.OCMClient.DeleteKubeletConfigByName(ctx, cluster.ID(), options.Name)
 		} else {
 			err = r.OCMClient.DeleteKubeletConfig(ctx, cluster.ID())

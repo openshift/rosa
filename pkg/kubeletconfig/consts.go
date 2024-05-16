@@ -6,7 +6,7 @@ const (
 	MaxUnsafePodPidsLimit          = 3694303
 	NameOption                     = "name"
 	NameOptionDefaultValue         = ""
-	NameOptionUsage                = "Name of the KubeletConfig"
+	NameOptionUsage                = "Name of the KubeletConfig (required for Hosted Control Plane clusters)"
 	PodPidsLimitOption             = "pod-pids-limit"
 	PodPidsLimitOptionUsage        = "Sets the requested pod_pids_limit for this KubeletConfig."
 	PodPidsLimitOptionDefaultValue = 0
