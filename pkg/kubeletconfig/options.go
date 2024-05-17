@@ -36,6 +36,16 @@ func (k *KubeletConfigOptions) AddAllFlags(cmd *cobra.Command) {
 	k.AddNameFlag(cmd)
 }
 
+// BindFromArgs allows the user to use positional args for the name. The --name flag
+// will take precedence
+func (k *KubeletConfigOptions) BindFromArgs(args []string) {
+	if k.Name == "" {
+		if len(args) > 0 {
+			k.Name = args[0]
+		}
+	}
+}
+
 func (k *KubeletConfigOptions) ValidateForHypershift() error {
 	if k.Name == "" {
 		return fmt.Errorf("The --name flag is required for Hosted Control Plane clusters.")
