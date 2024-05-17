@@ -114,6 +114,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		return nil
 	}
 
+	if breakGlassCredentialConfig.Status() == cmv1.BreakGlassCredentialStatusExpired {
+		r.Reporter.Warnf("Break glass credential '%s' for cluster '%s' is now expired.",
+			breakGlassCredentialId, clusterKey)
+		return nil
+	}
+
 	if output.HasFlag() {
 		var formattedOutput map[string]interface{}
 		formattedOutput, err = breakglasscredential.FormatBreakGlassCredentialOutput(breakGlassCredentialConfig)
