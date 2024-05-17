@@ -54,7 +54,7 @@ func NewEditKubeletConfigCommand() *cobra.Command {
 		Long:    long,
 		Example: example,
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), EditKubeletConfigRunner(options)),
-		Args:    cobra.NoArgs,
+		Args:    cobra.MaximumNArgs(1),
 	}
 
 	flags := cmd.Flags()
@@ -68,6 +68,7 @@ func NewEditKubeletConfigCommand() *cobra.Command {
 
 func EditKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner {
 	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, args []string) error {
+		options.BindFromArgs(args)
 		cluster, err := r.OCMClient.GetCluster(r.GetClusterKey(), r.Creator)
 		if err != nil {
 			return err

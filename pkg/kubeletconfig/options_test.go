@@ -55,6 +55,19 @@ var _ = Describe("KubeletConfigOptions", func() {
 		err := options.ValidateForHypershift()
 		Expect(err).NotTo(HaveOccurred())
 	})
+
+	It("Binds name from args if name not set by flag", func() {
+		options := NewKubeletConfigOptions()
+		options.BindFromArgs([]string{"bob"})
+		Expect(options.Name).To(Equal("bob"))
+	})
+
+	It("Does not bind name from args if set by --name flag", func() {
+		options := NewKubeletConfigOptions()
+		options.Name = "foo"
+		options.BindFromArgs([]string{"bob"})
+		Expect(options.Name).To(Equal("foo"))
+	})
 })
 
 func assertFlag(flag *flag.Flag, name string, usage string) {
