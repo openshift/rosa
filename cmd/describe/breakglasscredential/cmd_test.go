@@ -94,5 +94,22 @@ var _ = Describe("Break glass credential", func() {
 			Expect(stderr).To(Equal("WARN: Break glass credential 'test-id' for cluster 'cluster1' has been revoked.\n"))
 			Expect(stdout).To(Equal(""))
 		})
+
+		It("Pass a break glass credential id through parameter and it is found, but it is now expired", func() {
+			args.id = breakGlassCredentialId
+			const breakGlassCredentialId = "test-id-1"
+			revokedCredential, err := cmv1.NewBreakGlassCredential().
+				ID(breakGlassCredentialId).Username("username").Status(cmv1.BreakGlassCredentialStatusExpired).
+				Build()
+			Expect(err).To(BeNil())
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatResource(revokedCredential)))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{})
+			Expect(err).To(BeNil())
+			Expect(stderr).To(Equal("WARN: Break glass credential 'test-id' for cluster 'cluster1' is now expired.\n"))
+			Expect(stdout).To(Equal(""))
+		})
 	})
 })
