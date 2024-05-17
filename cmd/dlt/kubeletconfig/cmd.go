@@ -75,7 +75,7 @@ func DeleteKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 		}
 
 		if cluster.Hypershift().Enabled() {
-			options.Name, err = PromptForName(options.Name)
+			options.Name, err = PromptForName(options.Name, false)
 			if err != nil {
 				return err
 			}

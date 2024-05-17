@@ -82,7 +82,7 @@ func CreateKubeletConfigRunner(options *KubeletConfigOptions) rosa.CommandRunner
 					"You should edit it via 'rosa edit kubeletconfig'", clusterKey)
 			}
 		} else {
-			options.Name, err = PromptForName(options.Name)
+			options.Name, err = PromptForName(options.Name, true)
 			if err != nil {
 				return err
 			}

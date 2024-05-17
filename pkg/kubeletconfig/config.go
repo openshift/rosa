@@ -53,9 +53,10 @@ func GetInteractiveInput(maxPidsLimit int, kubeletConfig *v1.KubeletConfig) inte
 	}
 }
 
-func PromptForName(requestedName string) (string, error) {
+func PromptForName(requestedName string, forceInteractive bool) (string, error) {
 
-	if requestedName == "" && interactive.Enabled() {
+	if requestedName == "" && forceInteractive {
+		interactive.Enable()
 		return interactive.GetString(interactive.Input{
 			Question: InteractiveNameHelpPrompt,
 			Help:     InteractiveNameHelp,

@@ -124,30 +124,6 @@ var _ = Describe("create kubeletconfig", func() {
 				ContainSubstring("Failed getting KubeletConfig for cluster 'cluster'"))
 		})
 
-		It("Returns an error if no name specified for HCP KubeletConfig", func() {
-			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
-				c.State(cmv1.ClusterStateReady)
-				b := cmv1.HypershiftBuilder{}
-				b.Enabled(true)
-				c.Hypershift(&b)
-
-			})
-
-			t.ApiServer.AppendHandlers(
-				testing.RespondWithJSON(
-					http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
-			t.SetCluster("cluster", cluster)
-
-			options := NewKubeletConfigOptions()
-			options.PodPidsLimit = 10000
-
-			runner := CreateKubeletConfigRunner(options)
-
-			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("The --name flag is required for Hosted Control Plane clusters."))
-		})
-
 		It("Creates the KubeletConfig for HCP clusters", func() {
 			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateReady)
