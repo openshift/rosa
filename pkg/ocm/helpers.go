@@ -854,13 +854,14 @@ func (c *Client) GetVersionsList(channelGroup string, defaultFirst bool) ([]stri
 
 func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient aws.Client,
 	operatorIAMRoleList []OperatorIAMRole, oidcEndpointUrl string,
-	clusterVersion string, expectedOperatorRolePath string, accountRolesHasManagedPolicies bool) error {
+	clusterVersion string, expectedOperatorRolePath string,
+	accountRolesHasManagedPolicies bool, logOperatorRoles bool) error {
 	operatorIAMRoles := operatorIAMRoleList
 	parsedUrl, err := url.Parse(oidcEndpointUrl)
 	if err != nil {
 		return err
 	}
-	printInfo := reporter.IsTerminal() && !output.HasFlag()
+	printInfo := reporter.IsTerminal() && !output.HasFlag() && logOperatorRoles
 	if printInfo {
 		reporter.Infof("Reusable OIDC Configuration detected. Validating trusted relationships to operator roles: ")
 	}

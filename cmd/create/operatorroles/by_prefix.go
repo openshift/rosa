@@ -165,7 +165,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 		os.Exit(1)
 	}
 	err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, r.AWSClient,
-		operatorRolesList, oidcConfig.IssuerUrl(), "4.0", path, managedPolicies)
+		operatorRolesList, oidcConfig.IssuerUrl(), "4.0", path, managedPolicies, true)
 	if err != nil && !awserr.IsNoSuchEntityException(err) {
 		r.Reporter.Errorf("%v", err)
 		os.Exit(1)
