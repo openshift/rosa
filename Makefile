@@ -84,23 +84,23 @@ clean:
 		$(NULL)
 
 .PHONY: generate
-generate: $(GO_BINDATA)
+generate: $(GO_BINDATA) mocks
 	$(GO_BINDATA) -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
+	go generate ./...
 
 .PHONY: codecov
 codecov: coverage
 	@./hack/codecov.sh
 
 mocks: $(MOCKGEN)
-	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=cmd/create/idp/mocks/identityprovider.go -source=cmd/create/idp/cmd.go IdentityProvider
-	$(MOCKGEN) -source=pkg/aws/api_interface/iam_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_iam_api_client.go
-	$(MOCKGEN) -source=pkg/aws/api_interface/organizations_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_organizations_api_client.go
-	$(MOCKGEN) -source=pkg/aws/api_interface/sts_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_sts_api_client.go
-	$(MOCKGEN) -source=pkg/aws/api_interface/cloudformation_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_cloudformation_api_client.go
-	$(MOCKGEN) -source=pkg/aws/api_interface/servicequotas_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_servicequotas_api_client.go
-	$(MOCKGEN) -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_ec2_api_client.go
-	$(MOCKGEN) -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_s3_api_client.go
-	$(MOCKGEN) -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/mock_secretsmanager_api_client.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/iam_api_client.go -package=mocks -destination=pkg/aws/mocks/iam_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/organizations_api_client.go -package=mocks -destination=pkg/aws/mocks/organizations_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/sts_api_client.go -package=mocks -destination=pkg/aws/mocks/sts_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/cloudformation_api_client.go -package=mocks -destination=pkg/aws/mocks/cloudformation_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/servicequotas_api_client.go -package=mocks -destination=pkg/aws/mocks/servicequotas_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/ec2_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/s3_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/secretsmanager_api_client_mock.go
 
 
 .PHONY: e2e_test
@@ -111,3 +111,37 @@ e2e_test: install
         -r \
         --focus-file tests/e2e/.* \
 		$(NULL)
+
+# verifies changes to .goreleaser.yaml
+.PHONY: check-release-config
+check-release-config:
+	$(GORELEASER) check
+
+# builds a snap shot release in /dist
+.PHONY: local-release
+local-release:
+	$(GORELEASER) release --snapshot --clean
+
+# builds and publishes a pre-release of changes from the last release tag
+.PHONY: pre-release
+prerelease:
+	$(GORELEASER) release --clean
+
+# builds and publishes a latest release from tag set as env-ver GORELEASER_PREVIOUS_TAG
+# leave GORELEASER_PREVIOUS_TAG empty to build from last release tag
+.PHONY: release
+release:
+	@if [ -n "$(GORELEASER_PREVIOUS_TAG)" ]; then \
+		read -p "GORELEASER_PREVIOUS_TAG is set to '$(GORELEASER_PREVIOUS_TAG)'. Is this the correct tag for the last release? (y/N) " confirm; \
+		if [ "$$confirm" != "y" ]; then \
+			echo "Aborting release."; \
+			exit 1; \
+		fi \
+	else \
+		read -p "GORELEASER_PREVIOUS_TAG is not set. Do you want to proceed with building and publishing the release from the last release tag? (y/N) " confirm; \
+		if [ "$$confirm" != "y" ]; then \
+			echo "Aborting release."; \
+			exit 1; \
+		fi \
+	fi; \
+	$(GORELEASER) release --snapshot --clean

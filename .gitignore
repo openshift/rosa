@@ -18,3 +18,4 @@ docs/
 .env
 cover.out
 /temp
+dist/
