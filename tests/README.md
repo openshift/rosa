@@ -132,6 +132,18 @@ This feature allows for running tests through a case filter to simulate CI. Anyo
       * `$ ginkgo run -focus <case id> tests/e2e`
 
 ### Resources destroy
+1. Export the profile name as an environment variable
+* `$ export TEST_PROFILE=<PROFILE NAME>`
+
+2. Destroy cluster and prepared user data based on the profile and the information recorded in the creation of the cluster
+* `$ ginkgo run --label-filter destroy tests/e2e`
+
+3. Wait for the resources destroy finished
+
+> [!NOTE]
+> Environment variables setting
+> * **SHARED_DIR** if you have the env variable setting, resource destroy will read information from cluster-detail.json and resources.json under it, otherwise it will read the two files from _output/${TEST_PROFILE}_
+
 
 ## Additional configuration
 > [!TIP]
