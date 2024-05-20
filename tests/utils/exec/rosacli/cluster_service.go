@@ -18,7 +18,7 @@ type ClusterService interface {
 	DescribeCluster(clusterID string) (bytes.Buffer, error)
 	ReflectClusterDescription(result bytes.Buffer) (*ClusterDescription, error)
 	DescribeClusterAndReflect(clusterID string) (*ClusterDescription, error)
-	List() (bytes.Buffer, error)
+	ListCluster(flags ...string) (ListCluster, bytes.Buffer, error)
 	Create(clusterName string, flags ...string) (bytes.Buffer, error, string)
 	DeleteCluster(clusterID string, flags ...string) (bytes.Buffer, error)
 	CreateDryRun(clusterName string, flags ...string) (bytes.Buffer, error)
@@ -47,6 +47,17 @@ func NewClusterService(client *Client) ClusterService {
 			client: client,
 		},
 	}
+}
+
+// Struct for the 'rosa list cluster' output
+type Clusters struct {
+	ID       string `json:"ID,omitempty"`
+	NAME     string `json:"NAME,omitempty"`
+	STATE    string `json:"STATE,omitempty"`
+	TOPOLOGY string `json:"TOPOLOGY,omitempty"`
+}
+type ListCluster struct {
+	ListCluster []Clusters `json:"ListCluster,omitempty"`
 }
 
 // Struct for the 'rosa describe cluster' output
@@ -95,6 +106,34 @@ type ClusterDescription struct {
 	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
 }
 
+// Pasrse the result of 'rosa list clusters' to Clusters struct
+func (c *clusterService) ReflectClusterList(result bytes.Buffer) (url ListCluster, err error) {
+	url = ListCluster{}
+	theMap := c.client.Parser.TableData.Input(result).Parse().Output()
+	for _, ClusterItem := range theMap {
+		ur := &Clusters{}
+		err = MapStructure(ClusterItem, ur)
+		if err != nil {
+			return
+		}
+		url.ListCluster = append(url.ListCluster, *ur)
+	}
+	return
+}
+
+// ListClusters implements OCMResourceService.
+func (c *clusterService) ListCluster(flags ...string) (ListCluster, bytes.Buffer, error) {
+	c.client.Runner.cmdArgs = []string{}
+	listClusters := c.client.Runner.
+		Cmd("list", "clusters").CmdFlags(flags...)
+	output, err := listClusters.Run()
+	if err != nil {
+		return ListCluster{}, output, err
+	}
+	clusterList, err := c.ReflectClusterList(output)
+	return clusterList, output, err
+}
+
 func (c *clusterService) DescribeCluster(clusterID string) (bytes.Buffer, error) {
 	describe := c.client.Runner.
 		Cmd("describe", "cluster").
@@ -139,8 +178,8 @@ func (c *clusterService) ReflectClusterDescription(result bytes.Buffer) (res *Cl
 	return res, err
 }
 
-func (c *clusterService) List() (bytes.Buffer, error) {
-	list := c.client.Runner.Cmd("list", "cluster")
+func (c *clusterService) List(flags ...string) (bytes.Buffer, error) {
+	list := c.client.Runner.Cmd("list", "cluster").CmdFlags(flags...)
 	return list.Run()
 }
 
