@@ -529,11 +529,6 @@ func handleAccountRolePolicyARN(
 		return generatedPolicyARN, nil
 	}
 
-	if len(attachedPoliciesDetail) == 1 {
-		policyDetail := attachedPoliciesDetail[0]
-		return policyDetail.PolicyArn, nil
-	}
-
 	policyArn, err := awsClient.GetAccountRoleDefaultPolicy(roleName, prefix)
 	if err != nil {
 		return "", err
@@ -667,13 +662,22 @@ func buildAccountRoleCommandsFromCluster(
 				return "", err
 			}
 			_, err = awsClient.IsPolicyExists(policyARN)
-			hasPolicy := err == nil
+			policyExists := err == nil
+			policyAttached := false
+			if policyExists {
+				for _, policy := range rolePolicyDetails[accRoleName] {
+					if policy.PolicyArn == policyARN {
+						policyAttached = true
+					}
+				}
+			}
 			policyName := aws.GetPolicyName(accRoleName)
 			upgradeAccountPolicyCommands := awscbRoles.ManualCommandsForUpgradeAccountRolePolicy(
 				awscbRoles.ManualCommandsForUpgradeAccountRolePolicyInput{
 					DefaultPolicyVersion: defaultPolicyVersion,
 					RoleName:             accRoleName,
-					HasPolicy:            hasPolicy,
+					PolicyExists:         policyExists,
+					PolicyAttached:       policyAttached,
 					Prefix:               prefix,
 					File:                 file,
 					PolicyName:           policyName,
@@ -918,7 +922,15 @@ func buildOperatorRoleCommandsFromCluster(
 			operator.Name(),
 		)
 		_, err = awsClient.IsPolicyExists(policyARN)
-		hasPolicy := err == nil
+		policyExists := err == nil
+		policyAttached := false
+		if policyExists && operatorRoleName != "" {
+			for _, policy := range rolePolicyDetails[operatorRoleName] {
+				if policy.PolicyArn == policyARN {
+					policyAttached = true
+				}
+			}
+		}
 
 		isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
 		fileName := aws.GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
@@ -926,7 +938,8 @@ func buildOperatorRoleCommandsFromCluster(
 
 		upgradePoliciesCommands := awscbRoles.ManualCommandsForUpgradeOperatorRolePolicy(
 			awscbRoles.ManualCommandsForUpgradeOperatorRolePolicyInput{
-				HasPolicy:                hasPolicy,
+				PolicyExists:             policyExists,
+				PolicyAttached:           policyAttached,
 				OperatorRolePolicyPrefix: operatorRolePolicyPrefix,
 				Operator:                 operator,
 				CredRequest:              credrequest,
@@ -966,11 +979,6 @@ func handleOperatorRolePolicyARN(
 
 	if len(attachedPoliciesDetails) == 0 {
 		return generatedPolicyARN, nil
-	}
-
-	if len(attachedPoliciesDetails) == 1 {
-		policyDetail := attachedPoliciesDetails[0]
-		return policyDetail.PolicyArn, nil
 	}
 
 	policyArn, err := awsClient.GetOperatorRoleDefaultPolicy(operatorRoleName)

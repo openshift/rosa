@@ -190,13 +190,13 @@ func BuildOperatorRoleCommands(prefix string, partition string, accountID string
 			operator.Name(),
 		)
 		_, err := awsClient.IsPolicyExists(policyARN)
-		hasPolicy := err == nil
+		policyExists := err == nil
 		isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
 		fileName := GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
 		fileName = GetFormattedFileName(fileName)
 		upgradePoliciesCommands := awscbRoles.ManualCommandsForUpgradeOperatorRolePolicy(
 			awscbRoles.ManualCommandsForUpgradeOperatorRolePolicyInput{
-				HasPolicy:                hasPolicy,
+				PolicyExists:             policyExists,
 				OperatorRolePolicyPrefix: prefix,
 				Operator:                 operator,
 				CredRequest:              credrequest,
