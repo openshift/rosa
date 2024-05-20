@@ -109,6 +109,7 @@ type NodePoolDescription struct {
 	DesiredReplicas            string `yaml:"Desired replicas,omitempty"`
 	CurrentReplicas            string `yaml:"Current replicas,omitempty"`
 	InstanceType               string `yaml:"Instance type,omitempty"`
+	KubeletConfigs             string `yaml:"Kubelet configs,omitempty"`
 	Labels                     string `yaml:"Labels,omitempty"`
 	Tags                       string `yaml:"Tags,omitempty"`
 	Taints                     string `yaml:"Taints,omitempty"`

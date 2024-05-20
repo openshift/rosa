@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -178,9 +179,10 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 	labels.FeatureKubeletConfig,
 	func() {
 		var (
-			clusterID      string
-			rosaClient     *rosacli.Client
-			kubeletService rosacli.KubeletConfigService
+			clusterID          string
+			rosaClient         *rosacli.Client
+			kubeletService     rosacli.KubeletConfigService
+			machinePoolService rosacli.MachinePoolService
 		)
 
 		BeforeEach(func() {
@@ -191,6 +193,8 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			kubeletService = rosaClient.KubeletConfig
+
+			machinePoolService = rosaClient.MachinePool
 		})
 
 		AfterEach(func() {
@@ -337,5 +341,153 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).Should(ContainSubstring("The KubeletConfig with name 'notexisting' does not exist on cluster"))
+			})
+
+		It("can be attach to machinepool successfully - [id:73765]",
+			labels.High,
+			func() {
+				By("Prepare kubeletconfigs")
+				kubeName1, kubeName2 := "kube-73765", "kube-73765-2"
+				for name, pidValue := range map[string]string{
+					kubeName1: "4096",
+					kubeName2: "16384",
+				} {
+					_, err := kubeletService.CreateKubeletConfig(clusterID,
+						"--name", name,
+						"--pod-pids-limit", pidValue,
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+				By("Check the help message")
+				out, err := machinePoolService.CreateMachinePool(clusterID, "fake", "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("--kubelet-configs"))
+
+				By("Create a machinepool with  --kubelet-configs set")
+				mpName := "mp-73765"
+				_, err = machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--replicas", "0",
+					"--kubelet-configs", kubeName1,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+				By("Describe the machinepool")
+				mpD, err := machinePoolService.DescribeAndReflectNodePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpD.KubeletConfigs).Should(Equal(kubeName1))
+
+				By("Check the machinepool edit command")
+				out, err = machinePoolService.EditMachinePool(clusterID, "fake", "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("--kubelet-configs"))
+
+				By("Edit above machinepool with another kubeletconfig")
+				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
+					"--kubelet-configs", kubeName2,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Describe the machinepool and check the output")
+				mpD, err = machinePoolService.DescribeAndReflectNodePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpD.KubeletConfigs).Should(Equal(kubeName2))
+
+				By("Update to no kubeletconfig")
+				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
+					"--kubelet-configs", "",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Check the machinepool description")
+				mpD, err = machinePoolService.DescribeAndReflectNodePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpD.KubeletConfigs).Should(BeEmpty())
+
+				By("Attach the kubeletconfig again")
+				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
+					"--kubelet-configs", kubeName2,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Describe the machinepool and check the output")
+				mpD, err = machinePoolService.DescribeAndReflectNodePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpD.KubeletConfigs).Should(Equal(kubeName2))
+
+			})
+
+		It("can validate well when attach to machinepool - [id:73766]",
+			labels.Medium,
+			func() {
+				By("Prepare kubeletconfigs")
+				kubeName1, kubeName2 := "kube-73766", "kube-73766-2"
+				for name, pidValue := range map[string]string{
+					kubeName1: "4096",
+					kubeName2: "16384",
+				} {
+					_, err := kubeletService.CreateKubeletConfig(clusterID,
+						"--name", name,
+						"--pod-pids-limit", pidValue,
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+				By("Create machinepool with multiple kubelet config ids")
+				out, err := machinePoolService.CreateMachinePool(clusterID, "multi-kubes-2",
+					"--replicas", "0",
+					"--kubelet-configs", strings.Join([]string{kubeName1, kubeName2}, ","),
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("Only a single kubelet config is supported for Machine Pools"))
+
+				By("Create machinepool with not existing kubeletconfig name")
+				out, err = machinePoolService.CreateMachinePool(clusterID, "unknown",
+					"--replicas", "0",
+					"--kubelet-configs", "notexisting",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("KubeletConfig with name '%s' does not exist for cluster", "notexisting"))
+
+				By("Create a machinepool with existing kubeletconfig")
+				mpName := "mp-73766"
+				out, err = machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--replicas", "0",
+					"--kubelet-configs", kubeName1,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+				By("Delete the kubeletconfig")
+				out, err = kubeletService.DeleteKubeletConfig(clusterID,
+					"--name", kubeName1)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("cannot be updated or deleted. It is referenced in the following node pools"))
+
+				By("Edit the kubeletconfig")
+				out, err = kubeletService.EditKubeletConfig(clusterID,
+					"--name", kubeName1,
+					"--pod-pids-limit", "12345")
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("cannot be updated or deleted. It is referenced in the following node pools"))
+
+				By("Edit machinepool with multiple kubelet config ids")
+				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
+					"--kubelet-configs", strings.Join([]string{kubeName1, kubeName2}, ","),
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("Only a single kubelet config is supported for Machine Pools"))
+
+				By("Edit machinepool with not existing kubeletconfig name")
+				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
+					"--kubelet-configs", "nonexisting",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("KubeletConfig with name '%s' does not exist for cluster", "nonexisting"))
 			})
 	})
