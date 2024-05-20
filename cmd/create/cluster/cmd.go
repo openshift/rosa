@@ -1790,7 +1790,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			} else {
 				err = ocm.ValidateOperatorRolesMatchOidcProvider(r.Reporter, awsClient, computedOperatorIamRoleList,
-					oidcConfig.IssuerUrl(), ocm.GetVersionMinor(version), expectedOperatorRolePath, managedPolicies)
+					oidcConfig.IssuerUrl(), ocm.GetVersionMinor(version), expectedOperatorRolePath, managedPolicies, true)
 				if err != nil {
 					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
