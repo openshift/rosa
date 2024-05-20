@@ -51,7 +51,8 @@ func ManualCommandsForMissingOperatorRole(input ManualCommandsForMissingOperator
 }
 
 type ManualCommandsForUpgradeOperatorRolePolicyInput struct {
-	HasPolicy                bool
+	PolicyExists             bool
+	PolicyAttached           bool
 	OperatorRolePolicyPrefix string
 	Operator                 *cmv1.STSOperator
 	CredRequest              string
@@ -65,7 +66,12 @@ type ManualCommandsForUpgradeOperatorRolePolicyInput struct {
 
 func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOperatorRolePolicyInput) []string {
 	commands := make([]string, 0)
-	if !input.HasPolicy {
+	attachRolePolicy := awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.AttachRolePolicy).
+		AddParam(awscb.RoleName, input.OperatorRoleName).
+		AddParam(awscb.PolicyArn, input.PolicyARN).
+		Build()
+	if !input.PolicyExists {
 		iamTags := map[string]string{
 			common.OpenShiftVersion: input.DefaultPolicyVersion,
 			tags.RolePrefix:         input.OperatorRolePolicyPrefix,
@@ -81,6 +87,9 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 			AddParam(awscb.Path, input.OperatorPolicyPath).
 			Build()
 		commands = append(commands, createPolicy)
+		if input.OperatorRoleName != "" {
+			commands = append(commands, attachRolePolicy)
+		}
 	} else {
 		policyTags := map[string]string{
 			common.OpenShiftVersion: input.DefaultPolicyVersion,
@@ -98,6 +107,9 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 			AddTags(policyTags).
 			AddParam(awscb.PolicyArn, input.PolicyARN).
 			Build()
+		if !input.PolicyAttached && input.OperatorRoleName != "" {
+			commands = append(commands, attachRolePolicy)
+		}
 		commands = append(commands, createPolicyVersion, tagPolicy)
 	}
 	return commands
@@ -106,7 +118,8 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 type ManualCommandsForUpgradeAccountRolePolicyInput struct {
 	DefaultPolicyVersion string
 	RoleName             string
-	HasPolicy            bool
+	PolicyExists         bool
+	PolicyAttached       bool
 	Prefix               string
 	File                 string
 	PolicyName           string
@@ -131,7 +144,7 @@ func ManualCommandsForUpgradeAccountRolePolicy(input ManualCommandsForUpgradeAcc
 		AddParam(awscb.RoleName, input.RoleName).
 		AddParam(awscb.PolicyArn, input.PolicyARN).
 		Build()
-	if !input.HasPolicy {
+	if !input.PolicyExists {
 		iamTags := map[string]string{
 			common.OpenShiftVersion: input.DefaultPolicyVersion,
 			tags.RolePrefix:         input.Prefix,
@@ -159,6 +172,9 @@ func ManualCommandsForUpgradeAccountRolePolicy(input ManualCommandsForUpgradeAcc
 			AddTags(iamRoleTags).
 			AddParam(awscb.PolicyArn, input.PolicyARN).
 			Build()
+		if !input.PolicyAttached {
+			commands = append(commands, attachRolePolicy)
+		}
 		commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
 	}
 	return commands
