@@ -18,7 +18,7 @@ var _ = Describe("PreCheck", func() {
 		focus, err := rosacli.GetCommitFoucs()
 		Expect(err).ToNot(HaveOccurred())
 		if focus != "" {
-			fmt.Printf("The latest commit updates the test: %s\n", focus)
+			fmt.Printf("\nThe latest commit updates the test: %s ...\n", focus)
 		}
 	})
 })

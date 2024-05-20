@@ -87,6 +87,7 @@ type IngressConfig struct {
 	DefaultIngressNamespaceOwnershipPolicy string `json:"default_ingress_namespace_ownership_policy,omitempty"`
 }
 type Networking struct {
+	Type        string `json:"type,omitempty"`
 	MachineCIDR string `json:"machine_cidr,omitempty"`
 	ServiceCIDR string `json:"service_cidr,omitempty"`
 	PodCIDR     string `json:"pod_cidr,omitempty"`
@@ -130,6 +131,7 @@ type ClusterConfig struct {
 	Proxy                     *Proxy                    `json:"proxy,omitempty"`
 	Subnets                   *Subnets                  `json:"subnets,omitempty"`
 	Version                   *Version                  `json:"version,omitempty"`
+	ExternalAuthentication    bool                      `json:"external_authentication,omitempty"`
 }
 
 func ParseClusterProfile() (*ClusterConfig, error) {

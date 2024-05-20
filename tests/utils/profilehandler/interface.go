@@ -55,6 +55,7 @@ type ClusterConfig struct {
 	STS                           bool   `yaml:"sts,omitempty" json:"sts,omitempty"`
 	SharedVPC                     bool   `yaml:"shared_vpc,omitempty" json:"shared_vpc,omitempty"`
 	TagEnabled                    bool   `yaml:"tag_enabled,omitempty" json:"tag_enabled,omitempty"`
+	NetworkType                   string `yaml:"network_type,omitempty" json:"network_type,omitempty"`
 }
 
 // UserData will record the user data prepared for resource clean up

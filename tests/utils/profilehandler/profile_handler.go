@@ -477,7 +477,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 	}
 	if profile.ClusterConfig.ExternalAuthConfig {
-		PrepareExternalAuthConfigDummy()
+		flags = append(flags, "--external-auth-providers-enabled")
+		clusterConfiguration.ExternalAuthentication = profile.ClusterConfig.ExternalAuthConfig
 	}
 
 	if profile.ClusterConfig.FIPS {
@@ -492,9 +493,6 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	if profile.ClusterConfig.KMSKey {
 		kmsKeyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP)
 		userData.KMSKey = kmsKeyArn
-		clusterConfiguration.Encryption = &ClusterConfigure.Encryption{
-			KmsKeyArn: kmsKeyArn, // placeHolder
-		}
 		if err != nil {
 			return flags, err
 		}
@@ -505,6 +503,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		if clusterConfiguration.Encryption == nil {
 			clusterConfiguration.Encryption = &ClusterConfigure.Encryption{}
 		}
+		clusterConfiguration.EnableCustomerManagedKey = profile.ClusterConfig.EtcdKMS
 		clusterConfiguration.Encryption.KmsKeyArn = kmsKeyArn
 	}
 	if profile.ClusterConfig.LabelEnabled {
