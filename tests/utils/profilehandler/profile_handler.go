@@ -27,7 +27,10 @@ func LoadProfileYamlFile(profileName string) *Profile {
 	p := GetProfile(profileName, GetYAMLProfilesDir())
 	log.Logger.Infof("Loaded cluster profile configuration from origional profile %s : %v", profileName, *p)
 	log.Logger.Infof("Loaded cluster profile configuration from origional cluster %s : %v", profileName, *p.ClusterConfig)
-	log.Logger.Infof("Loaded cluster profile configuration from origional account-roles %s : %v", profileName, *p.AccountRoleConfig)
+	if p.AccountRoleConfig != nil {
+		log.Logger.Infof("Loaded cluster profile configuration from origional account-roles %s : %v", profileName, *p.AccountRoleConfig)
+	}
+
 	if p.NamePrefix == "" {
 		p.NamePrefix = con.DefaultNamePrefix
 	}
@@ -131,7 +134,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			panic(fmt.Errorf("cannot record cluster configuration: %s", err.Error()))
 		}
 	}()
-	flags := []string{}
+	flags := []string{"-y"}
 	clusterConfiguration.Name = clusterName
 
 	if profile.Version != "" {
@@ -647,7 +650,7 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClu
 	clusterDetail.ClusterType = "rosa"
 
 	// Need to do the post step when cluster has no oidcconfig enabled
-	if profile.ClusterConfig.OIDCConfig == "" {
+	if profile.ClusterConfig.OIDCConfig == "" && profile.ClusterConfig.STS {
 		err = PrepareOIDCProviderByCluster(client, description.ID)
 		if err != nil {
 			return description, err
@@ -659,22 +662,22 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClu
 
 	}
 	// Need to decorate the KMS key
-	if profile.ClusterConfig.KMSKey {
+	if profile.ClusterConfig.KMSKey && profile.ClusterConfig.STS {
 		err = ElaborateKMSKeyForSTSCluster(client, description.ID, false)
 		if err != nil {
 			return description, err
 		}
 	}
-	if profile.ClusterConfig.EtcdKMS {
+	if profile.ClusterConfig.EtcdKMS && profile.ClusterConfig.STS {
 		err = ElaborateKMSKeyForSTSCluster(client, description.ID, true)
 		if err != nil {
 			return description, err
 		}
 	}
-	// if profile.ClusterConfig.BYOVPC {
-	// log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", description.ID)
-	// 	ReverifyClusterNetwork(client, description.ID)
-	// }
+	if profile.ClusterConfig.BYOVPC {
+		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", description.ID)
+		ReverifyClusterNetwork(client, description.ID)
+	}
 	if waitForClusterReady {
 		log.Logger.Infof("Waiting for the cluster %s to ready", description.ID)
 		err = WaitForClusterReady(client, description.ID, config.Test.GlobalENV.ClusterWaitingTime)
