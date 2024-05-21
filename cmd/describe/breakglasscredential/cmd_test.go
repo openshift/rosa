@@ -111,5 +111,29 @@ var _ = Describe("Break glass credential", func() {
 			Expect(stderr).To(Equal("WARN: Break glass credential 'test-id' for cluster 'cluster1' is now expired.\n"))
 			Expect(stdout).To(Equal(""))
 		})
+
+		It("Fails if the cluster is not enabled with external auth", func() {
+			mockCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
+				c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+				c.State(cmv1.ClusterStateReady)
+				c.Hypershift(cmv1.NewHypershift().Enabled(true))
+				c.ExternalAuthConfig(cmv1.NewExternalAuthConfig().Enabled(false))
+			})
+			clusterReady := test.FormatClusterList([]*cmv1.Cluster{mockCluster})
+
+			args.id = breakGlassCredentialId
+			args.kubeconfig = true
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, clusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound,
+				test.FormatResource(credential)))
+			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"External authentication configuration is not enabled for cluster 'cluster1'\n" +
+					"Create a hosted control plane with '--external-auth-providers-enabled' parameter to enabled the configuration"))
+
+		})
 	})
 })
