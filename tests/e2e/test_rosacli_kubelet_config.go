@@ -121,7 +121,7 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--name", "notexisting",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("Update me if bug fixed"))
+				Expect(output.String()).Should(ContainSubstring("ERR: The specified KubeletConfig does not exist for cluster '%s'", clusterID))
 			})
 
 		It("can delete podPidLimit via rosacli will work well - [id:68836]",
@@ -153,8 +153,8 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 
 				By("Describe the kubeletconfig")
 				output, err = rosaClient.KubeletConfig.DescribeKubeletConfig(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("No custom KubeletConfig exists for cluster '%s'", clusterID))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("The KubeletConfig specified does not exist for cluster '%s'", clusterID))
 
 				By("Create the kubeletconfig again")
 				_, err = rosaClient.KubeletConfig.CreateKubeletConfig(clusterID,
@@ -169,7 +169,8 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--name", "notexisting",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("Update me if bug fixed"))
+				Expect(output.String()).Should(
+					ContainSubstring("The KubeletConfig with name 'notexisting' does not exist on cluster '%s'", clusterID))
 
 			})
 	})
