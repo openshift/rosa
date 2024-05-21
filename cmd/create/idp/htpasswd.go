@@ -162,6 +162,11 @@ func getUserList(cmd *cobra.Command, r *rosa.Runtime) (userList map[string]strin
 				os.Exit(1)
 
 			}
+			err := validateHtUsernameAndPassword(u, p)
+			if err != nil {
+				r.Reporter.Errorf(err.Error())
+				os.Exit(1)
+			}
 			userList[u] = p
 		}
 		return
@@ -171,6 +176,11 @@ func getUserList(cmd *cobra.Command, r *rosa.Runtime) (userList map[string]strin
 		//if userlist or htpasswdfile are not provided
 		//continue support for single username/password for backcompatibility
 		//so as not to break any existing automation
+		err := validateHtUsernameAndPassword(args.htpasswdUsername, args.htpasswdPassword)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
 		userList[args.htpasswdUsername] = args.htpasswdPassword
 		return
 	}
@@ -302,5 +312,21 @@ func parseHtpasswordFile(usersList *map[string]string, filePath string) error {
 		return err
 	}
 
+	return nil
+}
+
+func validateHtUsernameAndPassword(username, password string) error {
+	err := UsernameValidator(username)
+	if err != nil {
+		return err
+	}
+	err = clusterAdminValidator(username)
+	if err != nil {
+		return err
+	}
+	err = passwordValidator.PasswordValidator(password)
+	if err != nil {
+		return err
+	}
 	return nil
 }
