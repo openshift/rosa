@@ -335,4 +335,68 @@ var _ = Describe("Edit IDP",
 					Expect(idpTab.Idp(v).AuthURL).To(Equal(""))
 				}
 			})
+
+		It("Validation for Create/Delete the HTPasswd IDPs by the rosacli command - [id:53031]",
+			labels.Critical,
+			func() {
+				var (
+					idpType         = "htpasswd"
+					idpNames        = []string{"htpasswdn1", "htpasswdn2", "htpasswd3"}
+					validUserName   = "user1"
+					validUserPasswd = "Pass1@htpasswd"
+					invalidUserName = "user:2"
+				)
+
+				By("Create one htpasswd idp with single user")
+				_, validUserName, validUserPasswd, err := common.GenerateHtpasswdPair(validUserName, validUserPasswd)
+				Expect(err).To(BeNil())
+				output, err := idpService.CreateIDP(
+					clusterID, idpNames[0],
+					"--type", idpType,
+					"--username", validUserName,
+					"--password", validUserPasswd,
+					"-y")
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
+				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
+				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[0]))
+
+				By("Try to create another htpasswd idp with single user")
+				_, validUserName, validUserPasswd, err = common.GenerateHtpasswdPair(validUserName, validUserPasswd)
+				Expect(err).To(BeNil())
+				output, err = idpService.CreateIDP(
+					clusterID, idpNames[1],
+					"--type", idpType,
+					"--username", validUserName,
+					"--password", validUserPasswd,
+					"-y")
+				Expect(err).To(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
+				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
+				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[1]))
+
+				By("Delete htpasswd idp")
+				output, err = idpService.DeleteIDP(
+					clusterID,
+					idpNames[0],
+				)
+				Expect(err).To(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Successfully deleted identity provider '%s' from cluster '%s'", idpNames[0], clusterID))
+
+				By("Try to create htpasswd idp with invalid username")
+				output, err = idpService.CreateIDP(
+					clusterID, idpNames[2],
+					"--type", idpType,
+					"--username", invalidUserName,
+					"--password", validUserPasswd,
+					"-y")
+				Expect(err).NotTo(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				textData = strings.TrimSuffix(textData, "\n")
+				textData += "!(NOVERB)"
+				Expect(textData).Should(ContainSubstring("Failed to add IDP to cluster '%s': Invalid username '%s': Username must not contain /, :, or %", clusterID, invalidUserName))
+			})
 	})
