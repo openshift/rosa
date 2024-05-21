@@ -22,8 +22,6 @@ func editMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string
 	if !machinePoolKeyRE.MatchString(machinePoolID) {
 		return fmt.Errorf("Expected a valid identifier for the machine pool")
 	}
-
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "version")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")

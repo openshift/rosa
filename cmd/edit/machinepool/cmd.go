@@ -34,7 +34,6 @@ var args struct {
 	maxReplicas          int
 	labels               string
 	taints               string
-	version              string
 	autorepair           bool
 	tuningConfigs        string
 	kubeletConfigs       string
@@ -112,14 +111,6 @@ func init() {
 			"This list will overwrite any modifications made to node taints on an ongoing basis.",
 	)
 
-	flags.StringVar(
-		&args.version,
-		"version",
-		"",
-		"Version of OpenShift that will be used to install a machine pool for a hosted cluster,"+
-			" for example \"4.12.4\"",
-	)
-
 	flags.BoolVar(
 		&args.autorepair,
 		"autorepair",
@@ -155,8 +146,6 @@ func init() {
 			"'hour|hours'. 0 or empty value means that the NodePool can be drained without any time limitations.\n"+
 			"This flag is only supported for Hosted Control Planes.",
 	)
-
-	flags.MarkHidden("version")
 }
 
 func run(cmd *cobra.Command, argv []string) {
