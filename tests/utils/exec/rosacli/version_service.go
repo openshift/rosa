@@ -2,6 +2,7 @@ package rosacli
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 
 	"github.com/Masterminds/semver"
@@ -239,6 +240,26 @@ func (vl *OpenShiftVersionTableList) FilterVersionsLowerThan(version string) (nv
 		OpenShiftVersions: filteredVersions,
 	}
 
+	return
+}
+
+func (vl *OpenShiftVersionTableList) DefaultVersion() (defaultVersion *OpenShiftVersionTableOutput) {
+	for _, version := range vl.OpenShiftVersions {
+		if version.Default == "yes" {
+			return version
+		}
+	}
+	return vl.OpenShiftVersions[0]
+}
+
+func (vl *OpenShiftVersionTableOutput) MajorMinor() (major int64, minor int64, majorMinorVersion string, err error) {
+	var semverVersion *semver.Version
+	if semverVersion, err = semver.NewVersion(vl.Version); err != nil {
+		return
+	}
+	major = semverVersion.Major()
+	minor = semverVersion.Minor()
+	majorMinorVersion = fmt.Sprintf("%d.%d", major, minor)
 	return
 }
 
