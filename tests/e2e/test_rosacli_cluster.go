@@ -452,6 +452,54 @@ var _ = Describe("Classic cluster creation validation",
 			Expect(err).NotTo(BeNil())
 			Expect(stdout.String()).To(ContainSubstring("Billing accounts are only supported for Hosted Control Plane clusters"))
 		})
+
+		It("to validate to create the sts cluster with invalid tag - [id:56440]", labels.Medium, labels.Day1Validation, func() {
+			clusterService := rosaClient.Cluster
+			clusterName := "ocp-56440"
+
+			By("Create cluster with invalid tag key")
+			out, err := clusterService.CreateDryRun(
+				clusterName, "--tags=~~~:cluster",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("expected a valid user tag key '~~~' matching ^[\\pL\\pZ\\pN_.:/=+\\-@]{1,128}$"))
+
+			By("Create cluster with invalid tag value")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--tags=name:****",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("expected a valid user tag value '****' matching ^[\\pL\\pZ\\pN_.:/=+\\-@]{0,256}$"))
+
+			By("Create cluster with duplicate tag key")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--tags=name:test1,op:clound,name:test2",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("invalid tags, user tag keys must be unique, duplicate key 'name' found"))
+
+			By("Create cluster with invalid tag format")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--tags=test1,test2,test4",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("invalid tag format for tag '[test1]'. Expected tag format: 'key:value'"))
+
+			By("Create cluster with empty tag value")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--tags", "foo:",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("invalid tag format, tag key or tag value can not be empty"))
+
+			By("Create cluster with invalid tag format")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--tags=name:gender:age",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("invalid tag format for tag '[name gender age]'. Expected tag format: 'key:value'"))
+
+		})
 	})
 
 var _ = Describe("Classic cluster deletion validation",
