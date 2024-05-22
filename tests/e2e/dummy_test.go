@@ -26,8 +26,8 @@ var _ = Describe("ROSA CLI Test", func() {
 	Describe("Profile test", func() {
 		It("ProfileParserTest", func() {
 			profile := PH.LoadProfileYamlFileByENV()
-			log.Logger.Infof("Got configured profile prefix: %v", *profile)
-			log.Logger.Infof("Got configured profile: %v", profile.NamePrefix)
+			log.Logger.Infof("Got configured profile: %v", *profile)
+			log.Logger.Infof("Got configured profile prefix: %v", profile.NamePrefix)
 			log.Logger.Infof("Got configured cluster profile: %v", *profile.ClusterConfig)
 			log.Logger.Infof("Got configured account role profile: %v", *profile.AccountRoleConfig)
 		})
