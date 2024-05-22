@@ -101,6 +101,7 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/ec2_api_client_mock.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/s3_api_client_mock.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/secretsmanager_api_client_mock.go
+	$(MOCKGEN) --build_flags=--mod=mod -package mocks -destination=pkg/rosa/mocks/mock_cmd.go -source=pkg/rosa/runner.go CommandInterface
 
 
 .PHONY: e2e_test
