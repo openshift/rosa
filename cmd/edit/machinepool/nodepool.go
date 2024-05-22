@@ -28,17 +28,10 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
 	isLabelsSet := cmd.Flags().Changed("labels")
 	isTaintsSet := cmd.Flags().Changed("taints")
-	isVersionSet := cmd.Flags().Changed("version")
 	isAutorepairSet := cmd.Flags().Changed("autorepair")
 	isTuningsConfigSet := cmd.Flags().Changed("tuning-configs")
 	isKubeletConfigSet := cmd.Flags().Changed("kubelet-configs")
 	isNodeDrainGracePeriodSet := cmd.Flags().Changed("node-drain-grace-period")
-
-	// we don't support anymore the version parameter
-	if isVersionSet {
-		return fmt.Errorf("Editing versions is not supported, for upgrades please use " +
-			"'rosa upgrade machinepool'")
-	}
 
 	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
 	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet ||
