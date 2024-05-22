@@ -46,8 +46,10 @@ func init() {
 	machinePoolCommand := machinepool.NewDescribeMachinePoolCommand()
 	ingressCommand := ingress.NewDescribeIngressCommand()
 	kubeletconfig := kubeletconfig.NewDescribeKubeletConfigCommand()
+
+	describeAddonCommand := addon.NewDescribeAddonCommand()
 	cmds := []*cobra.Command{
-		addon.Cmd, admin.Cmd, cluster.Cmd, service.Cmd,
+		describeAddonCommand, admin.Cmd, cluster.Cmd, service.Cmd,
 		installation.Cmd, upgrade.Cmd, tuningconfigs.Cmd,
 		machinePoolCommand, kubeletconfig,
 		autoscaler.NewDescribeAutoscalerCommand(), ingressCommand,
@@ -63,7 +65,7 @@ func init() {
 
 	globallyAvailableCommands := []*cobra.Command{
 		tuningconfigs.Cmd, cluster.Cmd, service.Cmd,
-		machinePoolCommand, addon.Cmd, upgrade.Cmd,
+		machinePoolCommand, describeAddonCommand, upgrade.Cmd,
 		admin.Cmd, breakglasscredential.Cmd,
 		externalauthprovider.Cmd, installation.Cmd,
 		kubeletconfig, upgrade.Cmd, ingressCommand,
