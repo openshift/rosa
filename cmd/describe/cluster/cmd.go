@@ -28,6 +28,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper/rolepolicybindings"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -53,9 +55,20 @@ var Cmd = &cobra.Command{
 	Args: cobra.MaximumNArgs(1),
 }
 
+var args struct {
+	getRolePolicyBindings bool
+}
+
 func init() {
 	output.AddFlag(Cmd)
 	ocm.AddClusterFlag(Cmd)
+
+	Cmd.Flags().BoolVar(
+		&args.getRolePolicyBindings,
+		"get-role-policy-bindings",
+		false,
+		"List the attached policies for the sts roles",
+	)
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -286,9 +299,27 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if cluster.AWS().STS().RoleARN() != "" {
+		rolePolicyDetails := map[string][]aws.PolicyDetail{}
+		if args.getRolePolicyBindings {
+			rolePolicyBindings, err := r.OCMClient.ListRolePolicyBindings(cluster.ID(), true)
+			if err != nil {
+				r.Reporter.Errorf("Failed to get rolePolicyBinding: %s", err)
+				os.Exit(1)
+			}
+			rolePolicyDetails = rolepolicybindings.TransformToRolePolicyDetails(rolePolicyBindings)
+		}
 		str = fmt.Sprintf("%s"+
 			"Role (STS) ARN:             %s\n", str,
 			cluster.AWS().STS().RoleARN())
+		if args.getRolePolicyBindings {
+			policyStr, err := getRolePolicyBindings(cluster.AWS().STS().RoleARN(), rolePolicyDetails,
+				"                            -")
+			if err != nil {
+				r.Reporter.Errorf(err.Error())
+				os.Exit(1)
+			}
+			str = str + policyStr
+		}
 		if cluster.AWS().STS().ExternalID() != "" {
 			str = fmt.Sprintf("%s"+
 				"STS External ID:            %s\n", str,
@@ -298,6 +329,15 @@ func run(cmd *cobra.Command, argv []string) {
 			str = fmt.Sprintf("%s"+
 				"Support Role ARN:           %s\n", str,
 				cluster.AWS().STS().SupportRoleARN())
+			if args.getRolePolicyBindings {
+				policyStr, err := getRolePolicyBindings(cluster.AWS().STS().SupportRoleARN(), rolePolicyDetails,
+					"                            -")
+				if err != nil {
+					r.Reporter.Errorf(err.Error())
+					os.Exit(1)
+				}
+				str = str + policyStr
+			}
 		}
 		if cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN() != "" ||
 			cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN() != "" {
@@ -306,11 +346,31 @@ func run(cmd *cobra.Command, argv []string) {
 				str = fmt.Sprintf("%s"+
 					" - Control plane:           %s\n", str,
 					cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN())
+				if args.getRolePolicyBindings {
+					policyStr, err := getRolePolicyBindings(cluster.AWS().STS().InstanceIAMRoles().MasterRoleARN(),
+						rolePolicyDetails,
+						"                            -")
+					if err != nil {
+						r.Reporter.Errorf(err.Error())
+						os.Exit(1)
+					}
+					str = str + policyStr
+				}
 			}
 			if cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN() != "" {
 				str = fmt.Sprintf("%s"+
 					" - Worker:                  %s\n", str,
 					cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN())
+				if args.getRolePolicyBindings {
+					policyStr, err := getRolePolicyBindings(cluster.AWS().STS().InstanceIAMRoles().WorkerRoleARN(),
+						rolePolicyDetails,
+						"                            -")
+					if err != nil {
+						r.Reporter.Errorf(err.Error())
+						os.Exit(1)
+					}
+					str = str + policyStr
+				}
 			}
 		}
 		if len(cluster.AWS().STS().OperatorIAMRoles()) > 0 {
@@ -319,6 +379,16 @@ func run(cmd *cobra.Command, argv []string) {
 				str = fmt.Sprintf("%s"+
 					" - %s\n", str,
 					operatorIAMRole.RoleARN())
+				if args.getRolePolicyBindings {
+					policyStr, err := getRolePolicyBindings(operatorIAMRole.RoleARN(),
+						rolePolicyDetails,
+						"   -")
+					if err != nil {
+						r.Reporter.Errorf(err.Error())
+						os.Exit(1)
+					}
+					str = str + policyStr
+				}
 			}
 		}
 
@@ -761,4 +831,20 @@ func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {
 		externalAuthConfigStatus = EnabledOutput
 	}
 	return externalAuthConfigStatus
+}
+
+func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.PolicyDetail,
+	prefix string) (string, error) {
+	roleName, err := aws.GetResourceIdFromARN(roleARN)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get role name from arn %s: %v", roleARN, err)
+	}
+	str := ""
+	if rolePolicyDetails[roleName] != nil {
+		for _, policy := range rolePolicyDetails[roleName] {
+			str = fmt.Sprintf("%s"+
+				"%s %s\n", str, prefix, policy.PolicyArn)
+		}
+	}
+	return str, nil
 }
