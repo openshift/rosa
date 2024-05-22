@@ -387,51 +387,54 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
-	var inputKubeletConfigs []string
 	kubeletConfigs := args.kubeletConfigs
-	// Get the list of available kubelet configs
-	availableKubeletConfigs, err := r.OCMClient.ListKubeletConfigNames(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-	if kubeletConfigs != "" {
+
+	if kubeletConfigs != "" || interactive.Enabled() {
+		var inputKubeletConfigs []string
+		// Get the list of available kubelet configs
+		availableKubeletConfigs, err := r.OCMClient.ListKubeletConfigNames(cluster.ID())
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
 		if len(availableKubeletConfigs) > 0 {
 			inputKubeletConfigs = strings.Split(kubeletConfigs, ",")
 		} else {
 			// Parameter will be ignored
-			r.Reporter.Warnf("No kubelet config available for cluster '%s'. "+
+			r.Reporter.Warnf("No kubelet configs available for cluster '%s'. "+
 				"Any kubelet config in input will be ignored", cluster.ID())
 		}
-	}
-	if interactive.Enabled() {
-		// Skip if no kubelet configs are available
-		if len(availableKubeletConfigs) > 0 {
-			inputKubeletConfigs, err = interactive.GetMultipleOptions(interactive.Input{
-				Question: "Kubelet config",
-				Help:     cmd.Flags().Lookup("kubelet-configs").Usage,
-				Options:  availableKubeletConfigs,
-				Default:  inputKubeletConfigs,
-				Required: false,
-				Validators: []interactive.Validator{
-					machinepool.ValidateKubeletConfig,
-				},
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid value for kubelet config: %s", err)
-				os.Exit(1)
+
+		if interactive.Enabled() {
+			// Skip if no kubelet configs are available
+			if len(availableKubeletConfigs) > 0 {
+				inputKubeletConfigs, err = interactive.GetMultipleOptions(interactive.Input{
+					Question: "Kubelet config",
+					Help:     cmd.Flags().Lookup("kubelet-configs").Usage,
+					Options:  availableKubeletConfigs,
+					Default:  inputKubeletConfigs,
+					Required: false,
+					Validators: []interactive.Validator{
+						machinepool.ValidateKubeletConfig,
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid value for kubelet config: %s", err)
+					os.Exit(1)
+				}
 			}
 		}
-	}
 
-	err = machinepool.ValidateKubeletConfig(inputKubeletConfigs)
-	if err != nil {
-		r.Reporter.Errorf(err.Error())
-		os.Exit(1)
-	}
+		err = machinepool.ValidateKubeletConfig(inputKubeletConfigs)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
 
-	if len(inputKubeletConfigs) != 0 {
-		npBuilder.KubeletConfigs(inputKubeletConfigs...)
+		if len(inputKubeletConfigs) != 0 {
+			npBuilder.KubeletConfigs(inputKubeletConfigs...)
+		}
 	}
 
 	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, awsTags))
