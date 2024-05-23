@@ -309,7 +309,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			AutoscalerIgnoreDaemonsetsUtilization: true,
 			AutoscalerMaxNodeProvisionTime:        "10m",
 			AutoscalerBalancingIgnoredLabels:      "aaa",
-			AutoscalerMaxNodesTotal:               "1000",
+			AutoscalerMaxNodesTotal:               "10",
 			AutoscalerMinCores:                    "0",
 			AutoscalerMaxCores:                    "100",
 			AutoscalerMinMemory:                   "0",
@@ -453,7 +453,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.DisableWorkloadMonitoring = true
 	}
 	if profile.ClusterConfig.EtcdKMS {
-		keyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP)
+		keyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP, true)
 		userData.EtcdKMSKey = keyArn
 		if err != nil {
 			return flags, err
@@ -490,7 +490,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags, "--compute-machine-type", profile.ClusterConfig.InstanceType)
 	}
 	if profile.ClusterConfig.KMSKey {
-		kmsKeyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP)
+		kmsKeyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP, false)
 		userData.KMSKey = kmsKeyArn
 		clusterConfiguration.Encryption = &ClusterConfigure.Encryption{
 			KmsKeyArn: kmsKeyArn, // placeHolder
@@ -556,15 +556,31 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	return flags, nil
 }
 func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int) error {
-
+	var description *rosacli.ClusterDescription
+	var clusterDetail *ClusterDetail
+	var err error
+	clusterDetail, err = ParserClusterDetail()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		log.Logger.Info("Going to record the necessary information")
+		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
+		common.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)         // Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL) // Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)       // Temporary recoding file to make it compatible to existing jobs
+	}()
 	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
 	sleepTime := 0
 	for time.Now().Before(endTime) {
-		output, err := client.Cluster.DescribeClusterAndReflect(cluster)
+		description, err = client.Cluster.DescribeClusterAndReflect(cluster)
 		if err != nil {
 			return err
 		}
-		switch output.State {
+		clusterDetail.APIURL = description.APIURL
+		clusterDetail.ConsoleURL = description.ConsoleURL
+		clusterDetail.InfraID = description.InfraID
+		switch description.State {
 		case con.Ready:
 			log.Logger.Infof("Cluster %s is ready now.", cluster)
 			return nil
@@ -572,28 +588,28 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready",
 				cluster, con.Uninstalling)
 		default:
-			if strings.Contains(output.State, con.Error) {
+			if strings.Contains(description.State, con.Error) {
 				log.Logger.Errorf("Cluster is in %s status now. Recording the installation log", con.Error)
 				RecordClusterInstallationLog(client, cluster)
 				return fmt.Errorf("cluster %s is in %s state with reason: %s",
-					cluster, con.Error, output.State)
+					cluster, con.Error, description.State)
 			}
-			if strings.Contains(output.State, con.Pending) ||
-				strings.Contains(output.State, con.Installing) ||
-				strings.Contains(output.State, con.Validating) {
+			if strings.Contains(description.State, con.Pending) ||
+				strings.Contains(description.State, con.Installing) ||
+				strings.Contains(description.State, con.Validating) {
 				time.Sleep(2 * time.Minute)
 				continue
 			}
-			if strings.Contains(output.State, con.Waiting) {
+			if strings.Contains(description.State, con.Waiting) {
 				log.Logger.Infof("Cluster is in status of %v, wait for ready", con.Waiting)
 				if sleepTime >= 6 {
-					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. Check the user data preparation for roles", output.State)
+					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. Check the user data preparation for roles", description.State)
 				}
 				sleepTime += 2
 				time.Sleep(2 * time.Minute)
 				continue
 			}
-			return fmt.Errorf("unknown cluster state %s", output.State)
+			return fmt.Errorf("unknown cluster state %s", description.State)
 		}
 
 	}
@@ -616,7 +632,7 @@ func RecordClusterInstallationLog(client *rosacli.Client, cluster string) error 
 	return err
 }
 
-func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
+func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
 	clusterDetail := new(ClusterDetail)
 
 	flags, err := GenerateClusterCreateFlags(profile, client)
@@ -638,12 +654,9 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClu
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
 		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
-		common.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)          // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ClusterNameFile, description.Name)      // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)         // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL) // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)       // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")                // Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)     // Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.ClusterNameFile, description.Name) // Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")           // Temporary recoding file to make it compatible to existing jobs
 	}()
 	clusterDetail.ClusterID = description.ID
 	clusterDetail.ClusterName = description.Name
@@ -674,6 +687,10 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClu
 			return description, err
 		}
 	}
+	return description, err
+}
+func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
+	description, err := CreateClusterByProfileWithoutWaiting(profile, client, waitForClusterReady)
 	if profile.ClusterConfig.BYOVPC {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", description.ID)
 		ReverifyClusterNetwork(client, description.ID)
@@ -690,24 +707,23 @@ func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClu
 }
 
 func WaitForClusterUninstalled(client *rosacli.Client, cluster string, timeoutMin int) error {
-
 	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
 	for time.Now().Before(endTime) {
 		output, err := client.Cluster.DescribeCluster(cluster)
+		if err != nil && strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", cluster)) {
+			log.Logger.Infof("Cluster %s has been deleted.", cluster)
+			return nil
+		}
 		desc, err := client.Cluster.ReflectClusterDescription(output)
 
 		if err != nil {
 			return err
 		}
-		if strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", cluster)) {
-			log.Logger.Infof("Cluster %s has been deleted.", cluster)
-			return nil
-		}
 		if strings.Contains(desc.State, con.Uninstalling) {
 			time.Sleep(2 * time.Minute)
 			continue
 		}
-		return fmt.Errorf("Cluster %s is in status of %s which won't be deleted, stop waiting", cluster, desc.State)
+		return fmt.Errorf("cluster %s is in status of %s which won't be deleted, stop waiting", cluster, desc.State)
 	}
 	return fmt.Errorf("timeout for waiting for cluster deletion finished after %d mins", timeoutMin)
 }

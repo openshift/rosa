@@ -186,7 +186,7 @@ func (r *runner) Run() (bytes.Buffer, error) {
 
 		err = cmd.Run()
 
-		log.Logger.Debugf("Get Combining Stdout and Stder is :\n%s", output.String())
+		log.Logger.Infof("Get Combining Stdout and Stder is :\n%s", output.String())
 
 		if strings.Contains(output.String(), "Not able to get authentication token") {
 			retry = retry + 1
