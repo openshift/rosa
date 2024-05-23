@@ -16,7 +16,7 @@ import (
 	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	profileHanddler "github.com/openshift/rosa/tests/utils/profilehandler"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit cluster",
@@ -300,6 +300,9 @@ var _ = Describe("Edit cluster",
 					err = rosalCommand.DeleteFlag("--http-proxy", true)
 					Expect(err).To(BeNil())
 				}
+				if rosalCommand.CheckFlagExist("--base-domain") {
+					rosalCommand.DeleteFlag("--base-domain", true)
+				}
 
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run")
@@ -317,15 +320,15 @@ var _ = Describe("Classic cluster creation validation",
 
 		var (
 			rosaClient  *rosacli.Client
-			profilesMap map[string]*profileHanddler.Profile
-			profile     *profileHanddler.Profile
+			profilesMap map[string]*profilehandler.Profile
+			profile     *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
 			// Init the client
 			rosaClient = rosacli.NewClient()
 			// Get a random profile
-			profilesMap = profileHanddler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
+			profilesMap = profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
 			rand.New(rand.NewSource(time.Now().UnixNano()))
 			profilesNames := make([]string, 0, len(profilesMap))
 			for k := range profilesMap {
@@ -337,15 +340,15 @@ var _ = Describe("Classic cluster creation validation",
 		})
 
 		AfterEach(func() {
-			errs := profileHanddler.DestroyResourceByProfile(profile, rosaClient)
+			errs := profilehandler.DestroyResourceByProfile(profile, rosaClient)
 			Expect(len(errs)).To(Equal(0))
 		})
 
-		It("To check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]", labels.Medium, labels.Day1Validation, labels.NonHCPCluster, func() {
+		It("to check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]", labels.Medium, labels.Day1Validation, labels.NonHCPCluster, func() {
 			var command string
 			var rosalCommand config.Command
 			By("Prepare creation command")
-			flags, err := profileHanddler.GenerateClusterCreateFlags(profile, rosaClient)
+			flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 			Expect(err).To(BeNil())
 
 			command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
@@ -386,7 +389,6 @@ var _ = Describe("Classic cluster creation validation",
 			Expect(stdout.String()).To(ContainSubstring("Expected a valid machine type"))
 
 			By("Check the validation for replicas")
-
 			invalidReplicasTypeErrorMap := map[string]string{
 				"4.5":  "invalid argument \"4.5\" for \"--replicas\" flag",
 				"five": "invalid argument \"five\" for \"--replicas\" flag",
@@ -450,54 +452,6 @@ var _ = Describe("Classic cluster creation validation",
 			Expect(err).NotTo(BeNil())
 			Expect(stdout.String()).To(ContainSubstring("Billing accounts are only supported for Hosted Control Plane clusters"))
 		})
-
-		It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]", labels.Medium, func() {
-			clusterService := rosaClient.Cluster
-			accrolePrefix := "testAr45176"
-			path := "/a/b/"
-			ocmResourceService := rosaClient.OCMResource
-			clusterName := "cluster45176"
-			operatorRolePrefix := "cluster45176-xvfa"
-			By("Create account-roles in low version 4.14")
-			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
-				"--prefix", accrolePrefix,
-				"--path", path,
-				"--version", "4.14",
-				"-y")
-			Expect(err).To(BeNil())
-			defer func() {
-				By("Delete the account-roles")
-				output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
-					"--prefix", accrolePrefix,
-					"-y")
-
-				Expect(err).To(BeNil())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Successfully deleted"))
-			}()
-			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("Created role"))
-
-			arl, _, err := ocmResourceService.ListAccountRole()
-			Expect(err).To(BeNil())
-			ar := arl.DigAccountRoles(accrolePrefix, false)
-			fmt.Println(ar)
-
-			By("Create cluster with latest version and use the low version account-roles")
-			out, err, _ := clusterService.Create(
-				clusterName, "--sts",
-				"--mode", "auto",
-				"--role-arn", ar.InstallerRole,
-				"--support-role-arn", ar.SupportRole,
-				"--controlplane-iam-role", ar.ControlPlaneRole,
-				"--worker-iam-role", ar.WorkerRole,
-				"--operator-roles-prefix", operatorRolePrefix,
-				"-y", "--dry-run",
-			)
-			Expect(err).NotTo(BeNil())
-			Expect(out.String()).To(ContainSubstring("is not compatible with version"))
-			Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
-		})
 	})
 
 var _ = Describe("Classic cluster deletion validation",
@@ -533,5 +487,85 @@ var _ = Describe("Classic cluster deletion validation",
 			out, err = clusterService.DeleteCluster(notExistID, "-y", "--interactive")
 			Expect(err).NotTo(BeNil())
 			Expect(out.String()).To(ContainSubstring("unknown flag: --interactive"))
+		})
+	})
+var _ = Describe("Classic cluster creation negavite testing",
+	labels.Day1Negative,
+	labels.FeatureCluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+		)
+		BeforeEach(func() {
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+		})
+
+		It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]", labels.Medium, func() {
+			clusterService = rosaClient.Cluster
+			ocmResourceService := rosaClient.OCMResource
+
+			By("Porepare version for testing")
+			var accRoleversion string
+			versionService := rosaClient.Version
+			versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, false)
+			Expect(err).To(BeNil())
+			defaultVersion := versionList.DefaultVersion()
+			Expect(defaultVersion).ToNot(BeNil())
+			lowerVersion, err := versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
+			Expect(err).To(BeNil())
+			Expect(lowerVersion).NotTo(BeNil())
+
+			_, _, accRoleversion, err = lowerVersion.MajorMinor()
+			Expect(err).To(BeNil())
+
+			By("Create account-roles in low version 4.14")
+			accrolePrefix := "testAr45176"
+			path := "/a/b/"
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"--version", accRoleversion,
+				"-y")
+			Expect(err).To(BeNil())
+			defer func() {
+				By("Delete the account-roles")
+				output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", accrolePrefix,
+					"-y")
+
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Successfully deleted"))
+			}()
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Created role"))
+
+			arl, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			ar := arl.DigAccountRoles(accrolePrefix, false)
+			fmt.Println(ar)
+
+			By("Create cluster with latest version and use the low version account-roles")
+			clusterName := "cluster45176"
+			operatorRolePrefix := "cluster45176-xvfa"
+			out, err, _ := clusterService.Create(
+				clusterName, "--sts",
+				"--mode", "auto",
+				"--role-arn", ar.InstallerRole,
+				"--support-role-arn", ar.SupportRole,
+				"--controlplane-iam-role", ar.ControlPlaneRole,
+				"--worker-iam-role", ar.WorkerRole,
+				"--operator-roles-prefix", operatorRolePrefix,
+				"-y", "--dry-run",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("is not compatible with version"))
+			Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
 		})
 	})

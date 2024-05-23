@@ -74,9 +74,25 @@ var _ = Describe("Edit IAM",
 					userRolePrefixH = "prefixH"
 					userRolePrefixC = "prefixC"
 					path            = "/fd/sd/"
-					versionH        = "4.13"
-					versionC        = "4.12"
+					versionH        string
+					versionC        string
 				)
+
+				By("Get the testing version")
+				versionService := rosaClient.Version
+				versionListC, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, false)
+				Expect(err).To(BeNil())
+				defaultVersionC := versionListC.DefaultVersion()
+				Expect(defaultVersionC).ToNot(BeNil())
+				_, _, versionC, err = defaultVersionC.MajorMinor()
+				Expect(err).To(BeNil())
+
+				versionListH, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+				Expect(err).To(BeNil())
+				defaultVersionH := versionListH.DefaultVersion()
+				Expect(defaultVersionH).ToNot(BeNil())
+				_, _, versionH, err = defaultVersionH.MajorMinor()
+				Expect(err).To(BeNil())
 
 				By("Create boundary policy")
 				rosaClient.Runner.JsonFormat()
@@ -919,14 +935,34 @@ var _ = Describe("Edit IAM",
 					rolePrefixStable    = "prefixS"
 					rolePrefixCandidate = "prefixC"
 					rolePrefixClassic   = "prefixClassic"
-					versionStable       = "4.13"
-					versionCandidate    = "4.14"
+					versionStable       string
+					versionCandidate    string
 					path                = "/fd/sd/"
 				)
+				By("Prepare verson for testing")
+				versionService := rosaClient.Version
+				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+				Expect(err).To(BeNil())
+				defaultVersion := versionList.DefaultVersion()
+				Expect(defaultVersion).ToNot(BeNil())
+				version, err := versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
+				Expect(err).To(BeNil())
+				Expect(version).NotTo(BeNil())
+				_, _, versionStable, err = version.MajorMinor()
+				Expect(err).To(BeNil())
+
+				versionList, err = versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, true)
+				Expect(err).To(BeNil())
+				defaultVersion = versionList.DefaultVersion()
+				Expect(defaultVersion).ToNot(BeNil())
+				version, err = versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
+				Expect(err).To(BeNil())
+				Expect(version).NotTo(BeNil())
+				_, _, versionCandidate, err = version.MajorMinor()
+				Expect(err).To(BeNil())
 
 				By("Get the AWS Account Id")
 				rosaClient.Runner.JsonFormat()
-
 				whoamiOutput, err := ocmResourceService.Whoami()
 				Expect(err).To(BeNil())
 				rosaClient.Runner.UnsetFormat()
@@ -1032,7 +1068,11 @@ var _ = Describe("Edit IAM",
 				isSTS, err := clusterService.IsSTSCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
-				if isSTS {
+				By("Check the cluster is using reusable oIDCConfig")
+				IsUsingReusableOIDCConfig, err := clusterService.IsUsingReusableOIDCConfig(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				if isSTS && IsUsingReusableOIDCConfig {
 					By("Create operator roles to the cluster again")
 					output, err := ocmResourceService.CreateOperatorRoles("-c", clusterID, "-y", "--mode", "auto")
 					Expect(err).ToNot(HaveOccurred())
@@ -1158,7 +1198,8 @@ var _ = Describe("Edit IAM",
 
 				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("There was an error creating the account roles: NoSuchEntity"))
+				Expect(textData).To(ContainSubstring("There was an error creating the account roles"))
+				Expect(textData).To(ContainSubstring("policy/non-existing does not exist or is not attachable"))
 			})
 	})
 
@@ -1179,9 +1220,21 @@ var _ = Describe("List IAM",
 		})
 
 		It("to list account-roles by rosa-cli - [id:44511]", labels.High, func() {
+
 			accrolePrefix := "arPrefix44511"
 			path := "/a/b/"
-			version := "4.15"
+
+			By("Prepare a version for testing")
+			var version string
+			versionService := rosaClient.Version
+			versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, false)
+			Expect(err).To(BeNil())
+
+			defaultVersion := versionList.DefaultVersion()
+			Expect(defaultVersion).ToNot(BeNil())
+
+			_, _, version, err = defaultVersion.MajorMinor()
+			Expect(err).To(BeNil())
 
 			By("Create account-roles")
 			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
