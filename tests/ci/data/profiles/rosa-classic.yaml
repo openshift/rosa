@@ -111,7 +111,7 @@ profiles:
     instance_type: "r5.xlarge"
     hcp: false
     sts: false
-    byo_vpc: true
+    byo_vpc: false
     private_link: false
     private: false
     etcd_encryption: true
