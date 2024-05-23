@@ -18,6 +18,7 @@ package machinepool
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -65,5 +66,6 @@ func run(_ *cobra.Command, argv []string) {
 	err := service.DeleteMachinePool(r, machinePoolId, clusterKey, cluster)
 	if err != nil {
 		r.Reporter.Errorf("Error deleting machinepool: %v", err)
+		os.Exit(1)
 	}
 }
