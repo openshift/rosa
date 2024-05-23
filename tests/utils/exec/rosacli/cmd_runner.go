@@ -3,6 +3,7 @@ package rosacli
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ const (
 type runner struct {
 	cmds      []string
 	cmdArgs   []string
+	envs      []string
 	runnerCfg *runnerConfig
 }
 
@@ -35,6 +37,7 @@ func NewRunner() *runner {
 			debug:  false,
 			color:  "auto",
 		},
+		envs: os.Environ(),
 	}
 	return runner
 }
@@ -140,6 +143,12 @@ func (r *runner) ReplaceFlag(flag string, value string) *runner {
 	return r
 }
 
+func (r *runner) AddEnvVar(key string, value string) *runner {
+	env := fmt.Sprintf("%s=%s", key, value)
+	r.envs = append(r.envs, env)
+	return r
+}
+
 func (rc *runnerConfig) GenerateCmdFlags() (flags []string) {
 	if rc.format == jsonRunnerFormat || rc.format == yamlRunnerFormat {
 		flags = append(flags, "--output", rc.format)
@@ -181,6 +190,7 @@ func (r *runner) Run() (bytes.Buffer, error) {
 
 		output.Reset()
 		cmd := exec.Command(rosacmd, cmdElements...)
+		cmd.Env = append(cmd.Env, r.envs...)
 		cmd.Stdout = &output
 		cmd.Stderr = cmd.Stdout
 
