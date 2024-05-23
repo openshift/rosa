@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Verify",
@@ -197,5 +198,46 @@ var _ = Describe("Verify",
 					Expect(mp.SecurityGroupIDs).To(Equal(common.ReplaceCommaWithCommaSpace(clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
 				}
 
+			})
+		It("bring your own kms key functionality works on cluster creation - [id:60082]",
+			labels.Day1Post,
+			labels.Critical,
+			func() {
+				By("Confirm current cluster profile uses kms keys")
+				curProfile := profilehandler.LoadProfileYamlFileByENV()
+				if !curProfile.ClusterConfig.KMSKey {
+					Skip("No KMS key defined. Skipping...")
+				}
+				By("Check the help message of 'rosa create cluster -h'")
+				output, err := clusterService.CreateDryRun(clusterID, "-h")
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("--kms-key-arn"))
+				Expect(output.String()).To(ContainSubstring("--enable-customer-managed-key"))
+
+				By("Confirm KMS key is present")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				kmsKey := jsonData.DigString("aws", "kms_key_arn")
+				Expect(kmsKey).ToNot(BeEmpty())
+			})
+		It("etcd encryption works on cluster creation - [id:42188]",
+			labels.Day1Post,
+			labels.Critical,
+			func() {
+				By("Confirm current cluster profile uses etcd encryption")
+				curProfile := profilehandler.LoadProfileYamlFileByENV()
+				if !curProfile.ClusterConfig.EtcdEncryption {
+					Skip("No etcd encryption defined. Skipping...")
+				}
+				By("Check the help message of 'rosa create cluster -h'")
+				output, err := clusterService.CreateDryRun(clusterID, "-h")
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("--etcd-encryption"))
+
+				By("Confirm etcd encryption is enabled")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				etcdEncryption := jsonData.DigBool("etcd_encryption")
+				Expect(etcdEncryption).To(BeTrue())
 			})
 	})
