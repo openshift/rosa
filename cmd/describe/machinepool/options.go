@@ -13,17 +13,17 @@ type DescribeMachinepoolUserOptions struct {
 type DescribeMachinepoolOptions struct {
 	reporter *reporter.Object
 
-	args DescribeMachinepoolUserOptions
+	args *DescribeMachinepoolUserOptions
 }
 
-func NewDescribeMachinepoolUserOptions() DescribeMachinepoolUserOptions {
-	return DescribeMachinepoolUserOptions{machinepool: ""}
+func NewDescribeMachinepoolUserOptions() *DescribeMachinepoolUserOptions {
+	return &DescribeMachinepoolUserOptions{machinepool: ""}
 }
 
 func NewDescribeMachinepoolOptions() *DescribeMachinepoolOptions {
 	return &DescribeMachinepoolOptions{
 		reporter: reporter.CreateReporter(),
-		args:     DescribeMachinepoolUserOptions{},
+		args:     &DescribeMachinepoolUserOptions{},
 	}
 }
 
@@ -31,10 +31,17 @@ func (m *DescribeMachinepoolOptions) Machinepool() string {
 	return m.args.machinepool
 }
 
-func (m *DescribeMachinepoolOptions) Bind(args DescribeMachinepoolUserOptions) error {
-	if args.machinepool == "" {
+func (m *DescribeMachinepoolOptions) Bind(args *DescribeMachinepoolUserOptions, argv []string) error {
+	m.args = args
+	if m.args.machinepool == "" {
+		if len(argv) > 0 {
+			m.args.machinepool = argv[0]
+		}
+	}
+
+	if m.args.machinepool == "" {
 		return fmt.Errorf("you need to specify a machine pool name")
 	}
-	m.args.machinepool = args.machinepool
+
 	return nil
 }

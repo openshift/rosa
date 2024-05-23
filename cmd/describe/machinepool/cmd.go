@@ -63,23 +63,15 @@ func NewDescribeMachinePoolCommand() *cobra.Command {
 	return cmd
 }
 
-func DescribeMachinePoolRunner(userOptions DescribeMachinepoolUserOptions) rosa.CommandRunner {
+func DescribeMachinePoolRunner(userOptions *DescribeMachinepoolUserOptions) rosa.CommandRunner {
 	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		options := NewDescribeMachinepoolOptions()
-		// Allow the use also directly the machine pool id as positional parameter
-		if len(argv) == 1 && !cmd.Flag("machinepool").Changed {
-			userOptions.machinepool = argv[0]
-		} else {
-			err := cmd.ParseFlags(argv)
-			userOptions.machinepool = cmd.Flag("machinepool").Value.String()
-			if err != nil {
-				return fmt.Errorf("Unable to parse flags: %s", err)
-			}
-		}
-		err := options.Bind(userOptions)
+
+		err := options.Bind(userOptions, argv)
 		if err != nil {
 			return err
 		}
+
 		clusterKey := runtime.GetClusterKey()
 		cluster := runtime.FetchCluster()
 		if cluster.State() != cmv1.ClusterStateReady {
