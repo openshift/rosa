@@ -17,8 +17,8 @@ limitations under the License.
 package machinepool
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -28,44 +28,59 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:     "machinepool ID",
-	Aliases: []string{"machinepools", "machine-pool", "machine-pools"},
-	Short:   "Delete machine pool",
-	Long:    "Delete the additional machine pool from a cluster.",
-	Example: `  # Delete machine pool with ID mp-1 from a cluster named 'mycluster'
-  rosa delete machinepool --cluster=mycluster mp-1`,
-	Run: run,
-	Args: func(_ *cobra.Command, argv []string) error {
-		if len(argv) != 1 {
-			return fmt.Errorf(
-				"Expected exactly one command line parameter containing the id of the machine pool",
-			)
+const (
+	use     = "machinepool ID"
+	short   = "Delete machine pool"
+	long    = "Delete the additional machine pool from a cluster."
+	example = `  # Delete machine pool with ID mp-1 from a cluster named 'mycluster'
+  rosa delete machinepool --cluster=mycluster mp-1`
+)
+
+var (
+	aliases = []string{"machinepools", "machine-pool", "machine-pools"}
+)
+
+func NewDeleteMachinePoolCommand() *cobra.Command {
+	options := NewDeleteMachinepoolUserOptions()
+	var cmd = &cobra.Command{
+		Use:     use,
+		Aliases: aliases,
+		Short:   short,
+		Long:    long,
+		Example: example,
+		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DeleteMachinePoolRunner(options)),
+		Args:    cobra.MaximumNArgs(1),
+	}
+	flags := cmd.Flags()
+	flags.StringVar(
+		&options.machinepool,
+		"machinepool",
+		"",
+		"Machine pool of the cluster to target",
+	)
+
+	ocm.AddClusterFlag(cmd)
+	confirm.AddFlag(cmd.Flags())
+	return cmd
+}
+
+func DeleteMachinePoolRunner(userOptions *DeleteMachinepoolUserOptions) rosa.CommandRunner {
+	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, argv []string) error {
+		options := NewDeleteMachinepoolOptions()
+
+		err := options.Bind(userOptions, argv)
+		if err != nil {
+			return err
+		}
+
+		clusterKey := runtime.GetClusterKey()
+		cluster := runtime.FetchCluster()
+
+		service := machinepool.NewMachinePoolService()
+		err = service.DeleteMachinePool(runtime, options.Machinepool(), clusterKey, cluster)
+		if err != nil {
+			return fmt.Errorf("Error deleting machinepool: %v", err)
 		}
 		return nil
-	},
-}
-
-func init() {
-	ocm.AddClusterFlag(Cmd)
-	confirm.AddFlag(Cmd.Flags())
-}
-
-func run(_ *cobra.Command, argv []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
-
-	machinePoolId := argv[0]
-	if !machinepool.MachinePoolKeyRE.MatchString(machinePoolId) {
-		r.Reporter.Errorf("Expected a valid identifier for the machine pool")
-	}
-	clusterKey := r.GetClusterKey()
-	cluster := r.FetchCluster()
-
-	service := machinepool.NewMachinePoolService()
-	err := service.DeleteMachinePool(r, machinePoolId, clusterKey, cluster)
-	if err != nil {
-		r.Reporter.Errorf("Error deleting machinepool: %v", err)
-		os.Exit(1)
 	}
 }

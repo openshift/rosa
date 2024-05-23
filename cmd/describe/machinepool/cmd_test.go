@@ -189,7 +189,8 @@ var _ = Describe("Upgrade machine pool", func() {
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
 				cmd := NewDescribeMachinePoolCommand()
-				cmd.Flag("cluster").Value.Set(clusterId)
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{nodePoolName})
 				Expect(err).To(BeNil())
@@ -205,8 +206,11 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
 				stdout, err := t.StdOutReader.Read()
@@ -225,8 +229,10 @@ var _ = Describe("Upgrade machine pool", func() {
 				args := NewDescribeMachinepoolUserOptions()
 				args.machinepool = nodePoolName
 				runner := DescribeMachinePoolRunner(args)
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				cmd.Flag("cluster").Value.Set(clusterId)
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).To(BeNil())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
@@ -244,8 +250,11 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).To(BeNil())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
@@ -263,8 +272,13 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--output", "yaml", "--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = cmd.Flag("output").Value.Set("yaml")
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).To(BeNil())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
@@ -282,8 +296,11 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).To(BeNil())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
@@ -299,8 +316,11 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
 				stdout, err := t.StdOutReader.Read()
@@ -315,8 +335,11 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
 				stdout, err := t.StdOutReader.Read()
@@ -331,8 +354,11 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).To(BeNil())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
@@ -361,8 +387,13 @@ var _ = Describe("Upgrade machine pool", func() {
 				runner := DescribeMachinePoolRunner(args)
 				err := t.StdOutReader.Record()
 				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(),
-					[]string{"--machinepool", nodePoolName, "--output", "yaml", "-c", clusterId})
+				cmd := NewDescribeMachinePoolCommand()
+				err = cmd.Flag("cluster").Value.Set(clusterId)
+				Expect(err).ToNot(HaveOccurred())
+				err = cmd.Flag("output").Value.Set("yaml")
+				Expect(err).ToNot(HaveOccurred())
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
 				Expect(err).To(BeNil())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
