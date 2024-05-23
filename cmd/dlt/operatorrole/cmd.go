@@ -270,18 +270,18 @@ func buildCommand(roleNames []string, policyMap map[string][]string,
 		arbitraryPolicyARN := arbitraryPolicyMap[roleName]
 		detachPolicy := ""
 		deletePolicy := ""
-		detachArbitraryPolicies := []string{}
 		if len(policyARN) > 0 {
 			detachPolicy = awscb.NewIAMCommandBuilder().
 				SetCommand(awscb.DetachRolePolicy).
 				AddParam(awscb.RoleName, roleName).
 				AddParam(awscb.PolicyArn, policyARN[0]).Build()
-
+			commands = append(commands, detachPolicy)
 			if !managedPolicies {
 				deletePolicy = awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.DeletePolicy).
 					AddParam(awscb.PolicyArn, policyARN[0]).
 					Build()
+				commands = append(commands, deletePolicy)
 			}
 		}
 		for _, policy := range arbitraryPolicyARN {
@@ -289,15 +289,13 @@ func buildCommand(roleNames []string, policyMap map[string][]string,
 				SetCommand(awscb.DetachRolePolicy).
 				AddParam(awscb.RoleName, roleName).
 				AddParam(awscb.PolicyArn, policy).Build()
-			detachArbitraryPolicies = append(detachArbitraryPolicies, detachArbitraryPolicy)
+			commands = append(commands, detachArbitraryPolicy)
 		}
 		deleteRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.DeleteRole).
 			AddParam(awscb.RoleName, roleName).
 			Build()
-		commands = append(commands, detachPolicy)
-		commands = append(commands, detachArbitraryPolicies...)
-		commands = append(commands, deleteRole, deletePolicy)
+		commands = append(commands, deleteRole)
 	}
 	return strings.Join(commands, "\n")
 }
