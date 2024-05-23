@@ -839,7 +839,7 @@ func (c *awsClient) mapToAccountRole(version string, role iamtypes.Role) (Role, 
 }
 
 func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]Role, error) {
-
+	emptyRole := Role{}
 	var accountRoles []Role
 	for _, role := range roles {
 		if !checkIfAccountRole(role.RoleName) {
@@ -848,6 +848,9 @@ func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]
 		accountRole, err := c.mapToAccountRole(version, role)
 		if err != nil {
 			return accountRoles, err
+		}
+		if accountRole == emptyRole {
+			continue
 		}
 		accountRoles = append(accountRoles, accountRole)
 	}

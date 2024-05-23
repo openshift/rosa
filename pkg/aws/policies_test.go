@@ -12,11 +12,87 @@ import (
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	"github.com/openshift/rosa/pkg/aws/tags"
 )
+
+var _ = Describe("mapToAccountRoles", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{
+			iamClient: mockIamAPI,
+		}
+	})
+
+	It("Skips roles that don't match version", func() {
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(common.OpenShiftVersion),
+					Value: aws.String("4.13"),
+				},
+			},
+		}, nil)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(common.OpenShiftVersion),
+					Value: aws.String("4.15"),
+				},
+			},
+		}, nil)
+		roles, err := client.mapToAccountRoles("4.13", []iamtypes.Role{
+			{
+				RoleName: aws.String("prefix-Installer-Role"),
+			},
+			{
+				RoleName: aws.String("prefix2-Installer-Role"),
+			},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(roles).To(HaveLen(1))
+	})
+
+	It("Retrieves all roles", func() {
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(common.OpenShiftVersion),
+					Value: aws.String("4.13"),
+				},
+			},
+		}, nil)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(common.OpenShiftVersion),
+					Value: aws.String("4.15"),
+				},
+			},
+		}, nil)
+		roles, err := client.mapToAccountRoles("", []iamtypes.Role{
+			{
+				RoleName: aws.String("prefix-Installer-Role"),
+			},
+			{
+				RoleName: aws.String("prefix2-Installer-Role"),
+			},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(roles).To(HaveLen(2))
+	})
+
+})
 
 var _ = Describe("Is Policy Compatible", func() {
 	var (
