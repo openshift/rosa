@@ -663,21 +663,12 @@ func buildAccountRoleCommandsFromCluster(
 			}
 			_, err = awsClient.IsPolicyExists(policyARN)
 			policyExists := err == nil
-			policyAttached := false
-			if policyExists {
-				for _, policy := range rolePolicyDetails[accRoleName] {
-					if policy.PolicyArn == policyARN {
-						policyAttached = true
-					}
-				}
-			}
 			policyName := aws.GetPolicyName(accRoleName)
 			upgradeAccountPolicyCommands := awscbRoles.ManualCommandsForUpgradeAccountRolePolicy(
 				awscbRoles.ManualCommandsForUpgradeAccountRolePolicyInput{
 					DefaultPolicyVersion: defaultPolicyVersion,
 					RoleName:             accRoleName,
 					PolicyExists:         policyExists,
-					PolicyAttached:       policyAttached,
 					Prefix:               prefix,
 					File:                 file,
 					PolicyName:           policyName,
@@ -923,14 +914,6 @@ func buildOperatorRoleCommandsFromCluster(
 		)
 		_, err = awsClient.IsPolicyExists(policyARN)
 		policyExists := err == nil
-		policyAttached := false
-		if policyExists && operatorRoleName != "" {
-			for _, policy := range rolePolicyDetails[operatorRoleName] {
-				if policy.PolicyArn == policyARN {
-					policyAttached = true
-				}
-			}
-		}
 
 		isSharedVpc := cluster.AWS().PrivateHostedZoneRoleARN() != ""
 		fileName := aws.GetOperatorPolicyKey(credrequest, cluster.Hypershift().Enabled(), isSharedVpc)
@@ -939,7 +922,6 @@ func buildOperatorRoleCommandsFromCluster(
 		upgradePoliciesCommands := awscbRoles.ManualCommandsForUpgradeOperatorRolePolicy(
 			awscbRoles.ManualCommandsForUpgradeOperatorRolePolicyInput{
 				PolicyExists:             policyExists,
-				PolicyAttached:           policyAttached,
 				OperatorRolePolicyPrefix: operatorRolePolicyPrefix,
 				Operator:                 operator,
 				CredRequest:              credrequest,

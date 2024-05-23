@@ -52,7 +52,6 @@ func ManualCommandsForMissingOperatorRole(input ManualCommandsForMissingOperator
 
 type ManualCommandsForUpgradeOperatorRolePolicyInput struct {
 	PolicyExists             bool
-	PolicyAttached           bool
 	OperatorRolePolicyPrefix string
 	Operator                 *cmv1.STSOperator
 	CredRequest              string
@@ -107,7 +106,7 @@ func ManualCommandsForUpgradeOperatorRolePolicy(input ManualCommandsForUpgradeOp
 			AddTags(policyTags).
 			AddParam(awscb.PolicyArn, input.PolicyARN).
 			Build()
-		if !input.PolicyAttached && input.OperatorRoleName != "" {
+		if input.OperatorRoleName != "" {
 			commands = append(commands, attachRolePolicy)
 		}
 		commands = append(commands, createPolicyVersion, tagPolicy)
@@ -119,7 +118,6 @@ type ManualCommandsForUpgradeAccountRolePolicyInput struct {
 	DefaultPolicyVersion string
 	RoleName             string
 	PolicyExists         bool
-	PolicyAttached       bool
 	Prefix               string
 	File                 string
 	PolicyName           string
@@ -172,10 +170,7 @@ func ManualCommandsForUpgradeAccountRolePolicy(input ManualCommandsForUpgradeAcc
 			AddTags(iamRoleTags).
 			AddParam(awscb.PolicyArn, input.PolicyARN).
 			Build()
-		if !input.PolicyAttached {
-			commands = append(commands, attachRolePolicy)
-		}
-		commands = append(commands, createPolicyVersion, tagPolicies, tagRole)
+		commands = append(commands, attachRolePolicy, createPolicyVersion, tagPolicies, tagRole)
 	}
 	return commands
 }
