@@ -1,13 +1,16 @@
 package e2e
 
 import (
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
@@ -242,6 +245,66 @@ var _ = Describe("Rosacli Testing", func() {
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("ERR: Listing identity providers is not supported for clusters with external authentication configured."))
+			})
+
+		It("validation should work when create cluster with external_auth_config via ROSA client - [id:73755]",
+			labels.Medium, labels.Day1Validation,
+			func() {
+				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+				isExternalAuthEnabled, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
+				Expect(err).To(BeNil())
+
+				if !isHostedCP {
+					By("Create non-HCP cluster with --external-auth-providers-enabled")
+					clusterName := common.GenerateRandomName("classic-71946", 2)
+					operatorPrefix := common.GenerateRandomName("classic-oper", 2)
+					replacingFlags := map[string]string{
+						"-c":                     clusterName,
+						"--cluster-name":         clusterName,
+						"--domain-prefix":        clusterName,
+						"--operator-role-prefix": operatorPrefix,
+					}
+					rosalCommand.ReplaceFlagValue(replacingFlags)
+					rosalCommand.AddFlags("--dry-run", "--external-auth-providers-enabled", "-y")
+					output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring("ERR: External authentication configuration is only supported for a Hosted Control Plane cluster."))
+				} else {
+					By("Create HCP cluster with --external-auth-providers-enabled and cluster version lower than 4.15")
+					clusterName := common.GenerateRandomName("cluster-71946", 2)
+					operatorPrefix := common.GenerateRandomName("cluster-oper", 2)
+
+					cg := rosalCommand.GetFlagValue("--channel-group", true)
+					if cg == "" {
+						cg = rosacli.VersionChannelGroupStable
+					}
+					versionList, err := rosaClient.Version.ListAndReflectVersions(cg, isHostedCP)
+					Expect(err).To(BeNil())
+					Expect(versionList).ToNot(BeNil())
+					previousVersionsList, err := versionList.FindNearestBackwardMinorVersion("4.14", 0, true)
+					Expect(err).ToNot(HaveOccurred())
+					foundVersion := previousVersionsList.Version
+					replacingFlags := map[string]string{
+						"-c":                     clusterName,
+						"--cluster-name":         clusterName,
+						"--domain-prefix":        clusterName,
+						"--operator-role-prefix": operatorPrefix,
+						"--version":              foundVersion,
+					}
+					rosalCommand.ReplaceFlagValue(replacingFlags)
+					if !isExternalAuthEnabled {
+						rosalCommand.AddFlags("--dry-run", "--external-auth-providers-enabled", "-y")
+					} else {
+						rosalCommand.AddFlags("--dry-run", "-y")
+					}
+					output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring("External authentication is only supported in version '4.15.0' or greater, current cluster version is '%s'", foundVersion))
+				}
 			})
 	})
 })
