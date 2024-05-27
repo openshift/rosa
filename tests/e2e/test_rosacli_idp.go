@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -395,8 +396,6 @@ var _ = Describe("Edit IDP",
 					"-y")
 				Expect(err).NotTo(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				textData = strings.TrimSuffix(textData, "\n")
-				textData += "!(NOVERB)"
-				Expect(textData).Should(ContainSubstring("invalid username '%s': Username must not contain /, :, or %", clusterID, invalidUserName))
+				Expect(textData).Should(ContainSubstring(fmt.Sprintf("Failed to add IDP to cluster '%s': Invalid username '%s': Username must not contain /, :, or %%", clusterID, invalidUserName)))
 			})
 	})
