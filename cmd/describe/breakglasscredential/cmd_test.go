@@ -78,6 +78,28 @@ var _ = Describe("Break glass credential", func() {
 				"INFO: The credential is not ready yet. Please wait a few minutes for it to be fully ready.\n"))
 		})
 
+		It("Pass a break glass credential id through parameter and it is found, but it is awaiting revocation", func() {
+			args.id = breakGlassCredentialId
+			args.kubeconfig = false
+			const breakGlassCredentialId = "test-id-1"
+			revokedCredential, err := cmv1.NewBreakGlassCredential().
+				ID(breakGlassCredentialId).Username("username").
+				Status(cmv1.BreakGlassCredentialStatusAwaitingRevocation).Kubeconfig("testkubeconfig").
+				Build()
+			Expect(err).To(BeNil())
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatResource(revokedCredential)))
+			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
+				Cmd, &[]string{})
+			Expect(err).To(BeNil())
+			Expect(stderr).To(Equal(""))
+			Expect(stdout).To(Equal("\nID:                                    test-id-1" +
+				"\nUsername:                              username\n" +
+				"Expire at:                             Jan  1 0001 00:00:00 UTC" +
+				"\nStatus:                                awaiting_revocation\n"))
+		})
+
 		It("Pass a break glass credential id through parameter and it is found, but it has been revoked", func() {
 			args.id = breakGlassCredentialId
 			const breakGlassCredentialId = "test-id-1"
