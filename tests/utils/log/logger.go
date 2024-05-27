@@ -16,7 +16,7 @@ func GetLogger() *Log {
 	logger, _ := logging.
 		NewStdLoggerBuilder().
 		Streams(g.GinkgoWriter, g.GinkgoWriter).
-		Debug(true).
+		Debug(false).
 		Build()
 	return &Log{
 		logger:          logger,

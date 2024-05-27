@@ -3,6 +3,7 @@ package profilehandler
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -12,12 +13,25 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/utils/common"
 	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
+func RecordUserDataInfo(filePath string, key string, value string) error {
+	userData, _ := ParseUserData()
+
+	if userData == nil {
+		userData = &UserData{}
+	}
+	valueOfUserData := reflect.ValueOf(userData).Elem()
+	valueOfUserData.FieldByName(key).SetString(value)
+	_, err := common.CreateFileWithContent(filePath, userData)
+	return err
+
+}
 func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGroup string, hcp bool) (
 	*rosacli.OpenShiftVersionTableOutput, error) {
 	log.Logger.Infof("Got version requirement %s going to prepare accordingly", versionRequirement)
@@ -81,6 +95,10 @@ func PreparePrefix(profilePrefix string, nameLength int) string {
 func PrepareVPC(region string, vpcName string, cidrValue string) (*vpc_client.VPC, error) {
 	log.Logger.Info("Starting vpc preparation")
 	vpc, err := vpc_client.PrepareVPC(vpcName, region, cidrValue, false)
+	if err != nil {
+		return vpc, err
+	}
+	err = RecordUserDataInfo(config.Test.UserDataFile, "VpcID", vpc.VpcID)
 	log.Logger.Info("VPC preparation finished")
 	return vpc, err
 
@@ -134,8 +152,16 @@ func PrepareProxy(vpcClient *vpc_client.VPC, zone string, sshPemFileName string,
 	}, nil
 }
 
-func PrepareKMSKey(region string, multiRegion bool, testClient string, hcp bool) (string, error) {
+func PrepareKMSKey(region string, multiRegion bool, testClient string, hcp bool, etcdKMS bool) (string, error) {
 	keyArn, err := kms_key.CreateOCMTestKMSKey(region, multiRegion, testClient)
+	if err != nil {
+		return keyArn, err
+	}
+	userDataKey := "KMSKey"
+	if etcdKMS {
+		userDataKey = "EtcdKMSKey"
+	}
+	err = RecordUserDataInfo(config.Test.UserDataFile, userDataKey, keyArn)
 	if err != nil {
 		return keyArn, err
 	}
@@ -207,6 +233,10 @@ func PrepareAccountRoles(client *rosacli.Client,
 		err = fmt.Errorf("error happens when create account-roles, %s", output.String())
 		return
 	}
+	err = RecordUserDataInfo(config.Test.UserDataFile, "AccountRolesPrefix", namePrefix)
+	if err != nil {
+		return
+	}
 	accRoleList, output, err := client.OCMResource.ListAccountRole()
 	if err != nil {
 		err = fmt.Errorf("error happens when list account-roles, %s", output.String())
@@ -243,6 +273,10 @@ func PrepareOperatorRolesByOIDCConfig(client *rosacli.Client,
 	_, err := client.OCMResource.CreateOperatorRoles(
 		flags...,
 	)
+	if err != nil {
+		return err
+	}
+	err = RecordUserDataInfo(config.Test.UserDataFile, "OperatorRolesPrefix", namePrefix)
 	return err
 }
 
@@ -257,7 +291,12 @@ func PrepareAuditlogRoleArnByOIDCConfig(client *rosacli.Client, auditLogRoleName
 	if err != nil {
 		return "", err
 	}
-	return PrepareAuditlogRoleArnByIssuer(auditLogRoleName, oidcConfig.IssuerUrl, region)
+	logRoleArn, err := PrepareAuditlogRoleArnByIssuer(auditLogRoleName, oidcConfig.IssuerUrl, region)
+	if err != nil {
+		return logRoleArn, err
+	}
+	err = RecordUserDataInfo(config.Test.UserDataFile, "AuditLogArn", logRoleArn)
+	return logRoleArn, err
 
 }
 
@@ -281,7 +320,11 @@ func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL strin
 		return auditLogRoleArn, err
 	}
 	log.Logger.Infof("Create a new role for audit log forwarding: %s", auditLogRoleArn)
-
+	err = RecordUserDataInfo(config.Test.UserDataFile, "AuditLogArn", auditLogRoleArn)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record audit log role: %s", err.Error())
+		return auditLogRoleArn, err
+	}
 	err = awsClient.AttachIAMPolicy(auditLogRoleName, policyArn)
 	if err != nil {
 		log.Logger.Errorf("Error happens when attach audit log policy %s to role %s: %s", policyArn, auditLogRoleName, err.Error())
@@ -339,7 +382,8 @@ func PrepareOIDCConfig(client *rosacli.Client,
 	}
 	parser := rosacli.NewParser()
 	oidcConfigID = parser.JsonData.Input(output).Parse().DigString("id")
-	return oidcConfigID, nil
+	err = RecordUserDataInfo(config.Test.UserDataFile, "OIDCConfigID", oidcConfigID)
+	return oidcConfigID, err
 }
 
 func PrepareOIDCProvider(client *rosacli.Client, oidcConfigID string) error {

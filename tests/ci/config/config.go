@@ -40,12 +40,13 @@ type TestConfig struct {
 	GlobalENV                     *GlobalENVVariables
 }
 type GlobalENVVariables struct {
-	ChannelGroup       string `env:"CHANNEL_GROUP" default:""`
-	Version            string `env:"VERSION" default:""`
-	Region             string `env:"REGION" default:""`
-	ProvisionShard     string `env:"PROVISION_SHARD" default:""`
-	NamePrefix         string `env:"NAME_PREFIX"`
-	ClusterWaitingTime int    `env:"CLUSTER_TIMEOUT" default:"60"`
+	ChannelGroup          string `env:"CHANNEL_GROUP" default:""`
+	Version               string `env:"VERSION" default:""`
+	Region                string `env:"REGION" default:""`
+	ProvisionShard        string `env:"PROVISION_SHARD" default:""`
+	NamePrefix            string `env:"NAME_PREFIX"`
+	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"60"`
+	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
 }
 
 func init() {
@@ -82,13 +83,15 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("env variable CLUSTER_TIMEOUT must be set to an integer"))
 	}
+	waitSetupClusterReady, _ := strconv.ParseBool(common.ReadENVWithDefaultValue("WAIT_SETUP_CLUSTER_READY", "true"))
 	Test.GlobalENV = &GlobalENVVariables{
-		ChannelGroup:       os.Getenv("CHANNEL_GROUP"),
-		Version:            os.Getenv("VERSION"),
-		Region:             os.Getenv("REGION"),
-		ProvisionShard:     os.Getenv("PROVISION_SHARD"),
-		NamePrefix:         os.Getenv("NAME_PREFIX"),
-		ClusterWaitingTime: waitingTime,
+		ChannelGroup:          os.Getenv("CHANNEL_GROUP"),
+		Version:               os.Getenv("VERSION"),
+		Region:                os.Getenv("REGION"),
+		ProvisionShard:        os.Getenv("PROVISION_SHARD"),
+		NamePrefix:            os.Getenv("NAME_PREFIX"),
+		ClusterWaitingTime:    waitingTime,
+		WaitSetupClusterReady: waitSetupClusterReady,
 	}
 
 }
