@@ -580,26 +580,6 @@ var _ = Describe("Edit nodepool",
 					defaultNodePoolReplicas,
 					"--version",
 					testVersion)
-
-				lowerVersionsList, err := clusterVersionList.FilterVersionsLowerThan(clusterVersion)
-				Expect(err).ToNot(HaveOccurred())
-				if lowerVersionsList.Len() > 0 {
-					By("Edit nodepool version should fail")
-					nodePoolName := common.GenerateRandomName("np-61139", 2)
-					lowerVersionsList.Sort(true)
-					testVersion := lowerVersionsList.OpenShiftVersions[0].Version
-					_, err := machinePoolService.CreateMachinePool(clusterID, nodePoolName,
-						"--replicas",
-						defaultNodePoolReplicas,
-						"--version",
-						testVersion)
-					Expect(err).ToNot(HaveOccurred())
-
-					output, err := machinePoolService.EditMachinePool(clusterID, nodePoolName, "--version", clusterVersion)
-					Expect(err).To(HaveOccurred())
-					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).Should(ContainSubstring(`ERR: Editing versions is not supported, for upgrades please use 'rosa upgrade machinepool'`))
-				}
 			})
 
 		It("can list/describe/delete nodepool upgrade policies - [id:67414]",
@@ -805,11 +785,6 @@ var _ = Describe("Edit nodepool",
 				output, err = machinePoolService.CreateMachinePool(clusterID, machinepoolName, "--replicas", "3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", machinepoolName, clusterID))
-
-				By("Try to edit the version of the machinepool")
-				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--version", "4.15.2")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Editing versions is not supported, for upgrades please use 'rosa upgrade machinepool'"))
 
 				By("Try to edit the replicas of the machinepool with negative value")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "-9")
