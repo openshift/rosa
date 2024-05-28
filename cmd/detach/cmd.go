@@ -24,11 +24,10 @@ import (
 
 func NewRosaDetachCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "detach",
-		Short:  "Detach AWS resource",
-		Long:   "Detach AWS resource",
-		Hidden: true,
-		Args:   cobra.NoArgs,
+		Use:   "detach",
+		Short: "Detach AWS resource",
+		Long:  "Detach AWS resource",
+		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(policy.NewDetachPolicyCommand())
 	return cmd
