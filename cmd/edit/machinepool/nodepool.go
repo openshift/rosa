@@ -183,7 +183,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 				inputKubeletConfig = nodePool.KubeletConfigs()
 			}
 
-			// Skip if no tuning configs are available
+			// Skip if no kubelet configs are available
 			if len(availableKubeletConfigs) > 0 {
 				inputKubeletConfig, err = interactive.GetMultipleOptions(interactive.Input{
 					Question: "Kubelet config",
@@ -206,6 +206,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 			os.Exit(1)
 		}
 		npBuilder.KubeletConfigs(inputKubeletConfig...)
+		isKubeletConfigSet = true
 	}
 
 	if isNodeDrainGracePeriodSet || interactive.Enabled() {
@@ -241,7 +242,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		return fmt.Errorf("Failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
-	if !promptForNodePoolNodeRecreate(nodePool, update, PromptToAcceptNodePoolNodeRecreate, r) {
+	if isKubeletConfigSet && !promptForNodePoolNodeRecreate(nodePool, update, PromptToAcceptNodePoolNodeRecreate, r) {
 		return nil
 	}
 
