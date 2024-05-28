@@ -13,6 +13,7 @@ import (
 
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
+	"github.com/openshift/rosa/tests/utils/common"
 	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -239,6 +240,52 @@ var _ = Describe("Edit cluster",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Error: unknown flag: --interactive"))
 
+			})
+
+		It("validation for create/delete upgrade policies for hypershift clusters via rosacli should work well - [id:73814]",
+			labels.Medium, labels.NonClassicCluster,
+			func() {
+				defer func() {
+					_, err := clusterService.DeleteUpgrade("-c", clusterID, "-y")
+					Expect(err).ToNot(HaveOccurred())
+				}()
+
+				By("Upgrade cluster without --control-plane flag")
+				output, err := clusterService.Upgrade("-c", clusterID)
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("ERR: The '--control-plane' option is currently mandatory for Hosted Control Planes"))
+
+				By("Upgrade cluster with invalid cluster id")
+				invalidClusterID := common.GenerateRandomString(30)
+				output, err = clusterService.Upgrade("-c", invalidClusterID)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("ERR: Failed to get cluster '%s': There is no cluster with identifier or name '%s'", invalidClusterID, invalidClusterID))
+
+				By("Upgrade cluster with incorrect format of the date and time")
+				output, err = clusterService.Upgrade("-c", clusterID, "--control-plane", "--mode=auto", "--schedule-date=\"2024-06\"", "--schedule-time=\"09:00:12\"", "-y")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("ERR: schedule date should use the format 'yyyy-mm-dd'"))
+
+				By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
+				output, err = clusterService.Upgrade("-c", clusterID, "--control-plane", "--mode=auto", "--schedule-date=\"2024-06-24\"", "--schedule-time=\"09:00\"", "--schedule=\"5 5 * * *\"", "-y")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("ERR: The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+
+				By("Upgrade cluster using --schedule and --version flags at the same time")
+				output, err = clusterService.Upgrade("-c", clusterID, "--control-plane", "--mode=auto", "--schedule=\"5 5 * * *\"", "--version=4.15.10", "-y")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("ERR: The '--schedule' option is mutually exclusive with '--version'"))
+
+				By("Upgrade cluster with value not match the cron epression")
+				output, err = clusterService.Upgrade("-c", clusterID, "--control-plane", "--mode=auto", "--schedule=\"5 5\"", "-y")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("ERR: Schedule '\"5 5\"' is not a valid cron expression"))
 			})
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
@@ -615,5 +662,83 @@ var _ = Describe("Classic cluster creation negavite testing",
 			Expect(err).NotTo(BeNil())
 			Expect(out.String()).To(ContainSubstring("is not compatible with version"))
 			Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
+		})
+	})
+
+var _ = Describe("HCP cluster creation negative testing",
+	labels.Day1Negative,
+	labels.FeatureCluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			clusterID      string
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+		)
+		BeforeEach(func() {
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+		})
+
+		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]", labels.Medium, func() {
+			isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).To(BeNil())
+
+			rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
+			Expect(err).To(BeNil())
+
+			if !isHostedCP {
+				By("Create non-HCP cluster with --no-cni flag")
+				clusterName := common.GenerateRandomName("classic-73725", 2)
+				operatorPrefix := common.GenerateRandomName("classic-oper", 2)
+				replacingFlags := map[string]string{
+					"-c":                     clusterName,
+					"--cluster-name":         clusterName,
+					"--domain-prefix":        clusterName,
+					"--operator-role-prefix": operatorPrefix,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--no-cni", "-y")
+				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
+			} else {
+				By("Create HCP cluster with --no-cni and \"--network-type={OVNKubernetes, OpenshiftSDN}\" at the same time")
+				clusterName := common.GenerateRandomName("cluster-71946", 2)
+				operatorPrefix := common.GenerateRandomName("cluster-oper", 2)
+
+				replacingFlags := map[string]string{
+					"-c":                     clusterName,
+					"--cluster-name":         clusterName,
+					"--domain-prefix":        clusterName,
+					"--operator-role-prefix": operatorPrefix,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--no-cni", "--network-type='{OVNKubernetes,OpenshiftSDN}'", "-y")
+				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: Expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
+
+				By("Create hcp cluster with invalid --no-cni value")
+				rosalCommand.DeleteFlag("--network-type", true)
+				rosalCommand.DeleteFlag("--no-cni", true)
+				rosalCommand.AddFlags("--no-cni=ui")
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring(`Failed to execute root command: invalid argument "ui" for "--no-cni" flag: strconv.ParseBool: parsing "ui": invalid syntax`))
+
+				By("Create hcp cluster with --no-cni and --network-type=OVNKubernetes at the same time")
+				rosalCommand.DeleteFlag("--no-cni=ui", false)
+				rosalCommand.AddFlags("--no-cni", "--network-type=OVNKubernetes")
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: --no-cni and --network-type are mutually exclusive parameters"))
+			}
 		})
 	})
