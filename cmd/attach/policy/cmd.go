@@ -54,7 +54,6 @@ func NewAttachPolicyCommand() *cobra.Command {
 		Short:   short,
 		Long:    long,
 		Example: example,
-		Hidden:  true,
 		Args:    cobra.NoArgs,
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCMAndAWS(), AttachPolicyRunner(&options)),
 	}
