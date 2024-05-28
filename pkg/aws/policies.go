@@ -1802,7 +1802,8 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 
 func (c *awsClient) validateRolePolicyUpgradeVersionCompatibility(roleName string,
 	version string) (bool, error) {
-	attachedPolicies, err := c.GetAttachedPolicy(aws.String(roleName))
+	attachedPolicies, _, err := c.GetAttachedPolicyWithTags(aws.String(roleName),
+		map[string]string{tags.RedHatManaged: TrueString})
 	if err != nil {
 		return false, err
 	}
