@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
@@ -353,9 +354,7 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (aws
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithSharedConfigProfile(profile.Profile()),
 		config.WithRegion(*b.region),
-		config.WithHTTPClient(&http.Client{
-			Transport: http.DefaultTransport,
-		}),
+		config.WithHTTPClient(awshttp.NewBuildableClient().WithTransportOptions()),
 		config.WithClientLogMode(logLevel),
 		config.WithAPIOptions([]func(stack *middleware.Stack) error{
 			smithyhttp.AddHeaderValue("User-Agent",
@@ -543,7 +542,10 @@ func (c *awsClient) ListSubnets(subnetIds ...string) ([]ec2types.Subnet, error) 
 }
 
 func (c *awsClient) GetSubnetAvailabilityZone(subnetID string) (string, error) {
-	res, err := c.ec2Client.DescribeSubnets(context.Background(), &ec2.DescribeSubnetsInput{SubnetIds: []string{subnetID}})
+	res, err := c.ec2Client.DescribeSubnets(
+		context.Background(),
+		&ec2.DescribeSubnetsInput{SubnetIds: []string{subnetID}},
+	)
 	if err != nil {
 		return "", err
 	}
@@ -606,14 +608,17 @@ func (c *awsClient) GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error) {
 func (c *awsClient) FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2types.Subnet, error) {
 	// Fetch VPC route tables
 	vpcID := subnets[0].VpcId
-	describeRouteTablesOutput, err := c.ec2Client.DescribeRouteTables(context.Background(), &ec2.DescribeRouteTablesInput{
-		Filters: []ec2types.Filter{
-			{
-				Name:   aws.String("vpc-id"),
-				Values: []string{*vpcID},
+	describeRouteTablesOutput, err := c.ec2Client.DescribeRouteTables(
+		context.Background(),
+		&ec2.DescribeRouteTablesInput{
+			Filters: []ec2types.Filter{
+				{
+					Name:   aws.String("vpc-id"),
+					Values: []string{*vpcID},
+				},
 			},
 		},
-	})
+	)
 	if err != nil {
 		return nil, err
 	}
