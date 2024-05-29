@@ -402,5 +402,3 @@ func PrepareOIDCProviderByCluster(client *rosacli.Client, cluster string) error 
 	)
 	return err
 }
-
-func PrepareExternalAuthConfigDummy() {}

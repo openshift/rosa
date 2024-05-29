@@ -1,6 +1,7 @@
 package rosacli
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -28,6 +29,7 @@ func GetCommitFoucs() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Printf("\nThe last commit is: %s\n", output.String())
 	theStrSlice := strings.Split(output.String(), " ")
 
 	var tcIDs []string
