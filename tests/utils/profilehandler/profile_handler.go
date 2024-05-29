@@ -768,7 +768,7 @@ func DestroyCluster(client *rosacli.Client) (*ClusterDetail, []error) {
 	return cd, errors
 }
 
-func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region string, isSTS bool) []error {
+func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region string, isSTS bool, oidcConfig string) []error {
 	var (
 		ud                 *UserData
 		ocmResourceService rosacli.OCMResourceService
@@ -788,29 +788,33 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		_, err = common.CreateFileWithContent(config.Test.UserDataFile, ud)
 	}()
 
+	destroyLog := func(err error, errors []error, resource string) bool {
+		if err != nil {
+			log.Logger.Errorf("Error happened when delete %s: %s", resource, err.Error())
+			errors = append(errors, err)
+			return false
+		}
+		log.Logger.Infof("Delete %s successfully", resource)
+		return true
+	}
+
 	if ud != nil {
 		// schedule KMS key
 		if ud.KMSKey != "" {
 			log.Logger.Infof("Find prepared kms key: %s. Going to schedule the deletion.", ud.KMSKey)
 			err = ScheduleKMSDesiable(ud.KMSKey, region)
-			if err != nil {
-				log.Logger.Errorf("Error happened when schedule kms key: %s", err.Error())
-				errors = append(errors, err)
-			} else {
+			success := destroyLog(err, errors, "kms key")
+			if success {
 				ud.KMSKey = ""
-				log.Logger.Info("Schedule kms key deletion successfully")
 			}
 		}
 		// schedule Etcd KMS key
 		if ud.EtcdKMSKey != "" {
 			log.Logger.Infof("Find prepared etcd kms key: %s. Going to schedule the deletion", ud.EtcdKMSKey)
 			err = ScheduleKMSDesiable(ud.EtcdKMSKey, region)
-			if err != nil {
-				log.Logger.Errorf("Error happened when schedule etcd kms key deletion: %s", err.Error())
-				errors = append(errors, err)
-			} else {
+			success := destroyLog(err, errors, "etcd kms key")
+			if success {
 				ud.EtcdKMSKey = ""
-				log.Logger.Infof("Schedule etcd kms key deletion successfully for cluster: %s", clusterID)
 			}
 		}
 		// delete audit log arn
@@ -818,70 +822,53 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 			log.Logger.Infof("Find prepared audit log arn: %s", ud.AuditLogArn)
 			roleName := strings.Split(ud.AuditLogArn, "/")[1]
 			err = DeleteAuditLogRoleArn(roleName, region)
-			if err != nil {
-				log.Logger.Errorf("Error happened when delete audit log arn: %s", err.Error())
-				errors = append(errors, err)
-			} else {
+			success := destroyLog(err, errors, "audit log arn")
+			if success {
 				ud.AuditLogArn = ""
-				log.Logger.Infof("Delete audit log arn successfully for cluster: %s", clusterID)
 			}
 		}
 		// delete vpc chain
 		if ud.VpcID != "" {
 			log.Logger.Infof("Find prepared vpc id: %s", ud.VpcID)
 			err = DeleteVPCChain(ud.VpcID, region)
-			if err != nil {
-				log.Logger.Errorf("Error happened when delete vpc chain: %s", err.Error())
-				errors = append(errors, err)
-			} else {
+			success := destroyLog(err, errors, "vpc chain")
+			if success {
 				ud.VpcID = ""
-				log.Logger.Infof("Delete vpc chain successfully for cluster: %s", clusterID)
 			}
 		}
 		// delete operator roles
 		if ud.OperatorRolesPrefix != "" {
 			log.Logger.Infof("Find prepared operator roles with prefix: %s", ud.OperatorRolesPrefix)
 			_, err := ocmResourceService.DeleteOperatorRoles("--prefix", ud.OperatorRolesPrefix, "--mode", "auto", "-y")
-			if err != nil {
-				log.Logger.Errorf("Error happened when delete operator role: %s", err.Error())
-				errors = append(errors, err)
-			} else {
+			success := destroyLog(err, errors, "operator roles")
+			if success {
 				ud.OperatorRolesPrefix = ""
-				log.Logger.Info("Delete operator roles successfully")
 			}
 		}
-		// delete oidc config id
-		if ud.OIDCConfigID != "" {
+		// delete oidc config
+		if oidcConfig != "" {
 			log.Logger.Infof("Find prepared oidc config id: %s", ud.OIDCConfigID)
 			_, err := ocmResourceService.DeleteOIDCConfig("--oidc-config-id", ud.OIDCConfigID, "--region", region, "--mode", "auto", "-y")
-			if err != nil {
-				log.Logger.Errorf("Error happened when delete oidc config id: %s", err.Error())
-				errors = append(errors, err)
-			} else {
+			success := destroyLog(err, errors, "oidc config")
+			if success {
 				ud.OIDCConfigID = ""
-				log.Logger.Info("Delete oidc config id successfully ")
 			}
-		}
-		// delete oidc provider of sts cluster
-		if clusterID != "" && isSTS && ud.OIDCConfigID == "" {
-			_, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
-			if err != nil {
-				log.Logger.Errorf("Error happened when delete oidc provider: %s", err.Error())
-				errors = append(errors, err)
-			} else {
-				log.Logger.Info("Delete oidc provider successfully ")
+		} else {
+			if clusterID != "" && isSTS {
+				_, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
+				success := destroyLog(err, errors, "oidc provider")
+				if success {
+					ud.OIDCConfigID = ""
+				}
 			}
 		}
 		// delete account roles
 		if ud.AccountRolesPrefix != "" {
 			log.Logger.Infof("Find prepared accout roles with prefix: %s", ud.AccountRolesPrefix)
 			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto", "--prefix", ud.AccountRolesPrefix, "-y")
-			if err != nil {
-				log.Logger.Errorf("Error happened when delete account roles: %s", err.Error())
-				errors = append(errors, err)
-			} else {
+			success := destroyLog(err, errors, "account roles")
+			if success {
 				ud.AccountRolesPrefix = ""
-				log.Logger.Info("Delete account roles successfully ")
 			}
 		}
 	}
@@ -903,7 +890,8 @@ func DestroyResourceByProfile(profile *Profile, client *rosacli.Client) (errors 
 	}
 	region := profile.Region
 	isSTS := profile.ClusterConfig.STS
-	errDestroyUserData := DestroyPreparedUserData(client, clusterId, region, isSTS)
+	oidcConfig := profile.ClusterConfig.OIDCConfig
+	errDestroyUserData := DestroyPreparedUserData(client, clusterId, region, isSTS, oidcConfig)
 	if len(errDestroyUserData) > 0 {
 		errors = append(errors, errDestroyUserData)
 	}
