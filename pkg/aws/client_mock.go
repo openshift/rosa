@@ -5,7 +5,6 @@
 //
 //	mockgen -source=client.go -package=aws -destination=client_mock.go
 //
-
 // Package aws is a generated GoMock package.
 package aws
 
@@ -1248,18 +1247,18 @@ func (mr *MockClientMockRecorder) ListOidcProviders(targetClusterId, config any)
 }
 
 // ListOperatorRoles mocks base method.
-func (m *MockClient) ListOperatorRoles(version, clusterID string) (map[string][]OperatorRoleDetail, error) {
+func (m *MockClient) ListOperatorRoles(version, clusterID, prefix string) (map[string][]OperatorRoleDetail, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListOperatorRoles", version, clusterID)
+	ret := m.ctrl.Call(m, "ListOperatorRoles", version, clusterID, prefix)
 	ret0, _ := ret[0].(map[string][]OperatorRoleDetail)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListOperatorRoles indicates an expected call of ListOperatorRoles.
-func (mr *MockClientMockRecorder) ListOperatorRoles(version, clusterID any) *gomock.Call {
+func (mr *MockClientMockRecorder) ListOperatorRoles(version, clusterID, prefix any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOperatorRoles", reflect.TypeOf((*MockClient)(nil).ListOperatorRoles), version, clusterID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOperatorRoles", reflect.TypeOf((*MockClient)(nil).ListOperatorRoles), version, clusterID, prefix)
 }
 
 // ListSubnets mocks base method.
