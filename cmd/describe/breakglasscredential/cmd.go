@@ -96,16 +96,17 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 
 	r.Reporter.Debugf("Fetching the break glass credential '%s' for cluster '%s'", breakGlassCredentialId, clusterKey)
-	if !getKubeconfig {
-		r.Reporter.Infof(
-			"To retrieve only the kubeconfig for this credential "+
-				"use: 'rosa describe break-glass-credential %s -c %s --kubeconfig'",
-			breakGlassCredentialId, clusterKey)
-	}
 
 	breakGlassCredentialConfig, err := r.OCMClient.GetBreakGlassCredential(cluster.ID(), breakGlassCredentialId)
 	if err != nil {
 		return err
+	}
+
+	if !getKubeconfig && breakGlassCredentialConfig.Status() == cmv1.BreakGlassCredentialStatusIssued {
+		r.Reporter.Infof(
+			"To retrieve only the kubeconfig for this credential "+
+				"use: 'rosa describe break-glass-credential %s -c %s --kubeconfig'",
+			breakGlassCredentialId, clusterKey)
 	}
 
 	if breakGlassCredentialConfig.Status() == cmv1.BreakGlassCredentialStatusRevoked {
