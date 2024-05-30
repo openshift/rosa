@@ -21,6 +21,7 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-sdk-go/helpers"
@@ -56,11 +57,29 @@ func writeRolePolicyBinding(object *RolePolicyBinding, stream *jsoniter.Stream) 
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("creation_timestamp")
+		stream.WriteString((object.creationTimestamp).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&4 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("last_update_timestamp")
+		stream.WriteString((object.lastUpdateTimestamp).Format(time.RFC3339))
+		count++
+	}
+	present_ = object.bitmap_&8 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("name")
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0 && object.policies != nil
+	present_ = object.bitmap_&16 != 0 && object.policies != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -69,7 +88,7 @@ func writeRolePolicyBinding(object *RolePolicyBinding, stream *jsoniter.Stream) 
 		writeRolePolicyList(object.policies, stream)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0 && object.status != nil
+	present_ = object.bitmap_&32 != 0 && object.status != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -78,7 +97,7 @@ func writeRolePolicyBinding(object *RolePolicyBinding, stream *jsoniter.Stream) 
 		writeRolePolicyBindingStatus(object.status, stream)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -114,22 +133,38 @@ func readRolePolicyBinding(iterator *jsoniter.Iterator) *RolePolicyBinding {
 			value := iterator.ReadString()
 			object.arn = value
 			object.bitmap_ |= 1
+		case "creation_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.creationTimestamp = value
+			object.bitmap_ |= 2
+		case "last_update_timestamp":
+			text := iterator.ReadString()
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.lastUpdateTimestamp = value
+			object.bitmap_ |= 4
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 8
 		case "policies":
 			value := readRolePolicyList(iterator)
 			object.policies = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 16
 		case "status":
 			value := readRolePolicyBindingStatus(iterator)
 			object.status = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 32
 		case "type":
 			value := iterator.ReadString()
 			object.type_ = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

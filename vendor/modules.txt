@@ -425,9 +425,11 @@ github.com/openshift-online/ocm-common/pkg/rosa/oidcconfigs
 github.com/openshift-online/ocm-common/pkg/test/kms_key
 github.com/openshift-online/ocm-common/pkg/test/vpc_client
 github.com/openshift-online/ocm-common/pkg/utils
-# github.com/openshift-online/ocm-sdk-go v0.1.419
+# github.com/openshift-online/ocm-sdk-go v0.1.422
 ## explicit; go 1.21
 github.com/openshift-online/ocm-sdk-go
+github.com/openshift-online/ocm-sdk-go/accesstransparency
+github.com/openshift-online/ocm-sdk-go/accesstransparency/v1
 github.com/openshift-online/ocm-sdk-go/accountsmgmt
 github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1
 github.com/openshift-online/ocm-sdk-go/addonsmgmt

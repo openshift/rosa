@@ -56,11 +56,20 @@ func writeAzure(object *Azure, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("network_security_group_resource_id")
+		stream.WriteString(object.networkSecurityGroupResourceID)
+		count++
+	}
+	present_ = object.bitmap_&4 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("resource_group_name")
 		stream.WriteString(object.resourceGroupName)
 		count++
 	}
-	present_ = object.bitmap_&4 != 0
+	present_ = object.bitmap_&8 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -69,7 +78,16 @@ func writeAzure(object *Azure, stream *jsoniter.Stream) {
 		stream.WriteString(object.resourceName)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&16 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("subnet_resource_id")
+		stream.WriteString(object.subnetResourceID)
+		count++
+	}
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -78,7 +96,7 @@ func writeAzure(object *Azure, stream *jsoniter.Stream) {
 		stream.WriteString(object.subscriptionID)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -114,22 +132,30 @@ func readAzure(iterator *jsoniter.Iterator) *Azure {
 			value := iterator.ReadString()
 			object.managedResourceGroupName = value
 			object.bitmap_ |= 1
+		case "network_security_group_resource_id":
+			value := iterator.ReadString()
+			object.networkSecurityGroupResourceID = value
+			object.bitmap_ |= 2
 		case "resource_group_name":
 			value := iterator.ReadString()
 			object.resourceGroupName = value
-			object.bitmap_ |= 2
+			object.bitmap_ |= 4
 		case "resource_name":
 			value := iterator.ReadString()
 			object.resourceName = value
-			object.bitmap_ |= 4
+			object.bitmap_ |= 8
+		case "subnet_resource_id":
+			value := iterator.ReadString()
+			object.subnetResourceID = value
+			object.bitmap_ |= 16
 		case "subscription_id":
 			value := iterator.ReadString()
 			object.subscriptionID = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 32
 		case "tenant_id":
 			value := iterator.ReadString()
 			object.tenantID = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

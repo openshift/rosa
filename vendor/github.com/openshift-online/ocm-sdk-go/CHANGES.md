@@ -3,6 +3,22 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.422
+- Update model version v0.0.375
+  - Add `ManagementUpgrade` parameters to the `NodePool` model to support additional upgrade configuration.
+  - Support server name inference for regionalized OCM redirects
+  - Add `AdditionalAllowedPrincipals` to `AWS` type to support additional allowed principal ARNs to be added to the hosted control plane's VPC Endpoint Service.
+
+## 0.1.421
+- Update model version v0.0.374
+  - Add `CreationTimestamp` and `LastUpdateTimestamp` to `RolePolicyBinding` type
+  - Add `access_transparency` service
+
+## 0.1.420
+- Update model version v0.0.373
+  - Add `subnet_resource_id` to `Azure` resource
+  - Add `network_security_group_resource_id to `Azure` resource
+
 ## 0.1.419
 - Update model version v0.0.372
   - Exposed the `/api/clusters_mgmt/v1/clusters/{id}/kubelet_configs` endpoint

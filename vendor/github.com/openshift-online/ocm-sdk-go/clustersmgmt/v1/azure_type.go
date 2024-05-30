@@ -23,12 +23,14 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Microsoft Azure settings of a cluster.
 type Azure struct {
-	bitmap_                  uint32
-	managedResourceGroupName string
-	resourceGroupName        string
-	resourceName             string
-	subscriptionID           string
-	tenantID                 string
+	bitmap_                        uint32
+	managedResourceGroupName       string
+	networkSecurityGroupResourceID string
+	resourceGroupName              string
+	resourceName                   string
+	subnetResourceID               string
+	subscriptionID                 string
+	tenantID                       string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -73,6 +75,67 @@ func (o *Azure) GetManagedResourceGroupName() (value string, ok bool) {
 	return
 }
 
+// NetworkSecurityGroupResourceID returns the value of the 'network_security_group_resource_ID' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// [Required] The Azure Resource ID of a pre-existing
+// Azure Network Security Group.
+// The Network Security Group specified in network_security_group_resource_id
+// must already be associated to the Azure Subnet `subnet_resource_id`.
+// It is the Azure Network Security Group associated to the cluster's subnet
+// specified in `subnet_resource_id`.
+// `network_security_group_resource_id` must be located in the same Azure
+// location as the cluster's region.
+// The Azure Subscription specified as part of
+// `network_security_group_resource_id` must be located in the same Azure
+// Subscription as `subscription_id`.
+// The Azure Resource Group Name specified as part of `network_security_group_resource_id`
+// must belong to the Azure Subscription `subscription_id`, and in the same
+// Azure location as the cluster's region.
+// The Azure Resource Group Name specified as part of `network_security_group_resource_id`
+// must be a different Resource Group Name than the one specified in
+// `managed_resource_group_name`.
+// The Azure Resource Group Name specified as part of `network_security_group_resource_id`
+// can be the same, or a different one than the one specified in
+// `resource_group_name`.
+func (o *Azure) NetworkSecurityGroupResourceID() string {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.networkSecurityGroupResourceID
+	}
+	return ""
+}
+
+// GetNetworkSecurityGroupResourceID returns the value of the 'network_security_group_resource_ID' attribute and
+// a flag indicating if the attribute has a value.
+//
+// [Required] The Azure Resource ID of a pre-existing
+// Azure Network Security Group.
+// The Network Security Group specified in network_security_group_resource_id
+// must already be associated to the Azure Subnet `subnet_resource_id`.
+// It is the Azure Network Security Group associated to the cluster's subnet
+// specified in `subnet_resource_id`.
+// `network_security_group_resource_id` must be located in the same Azure
+// location as the cluster's region.
+// The Azure Subscription specified as part of
+// `network_security_group_resource_id` must be located in the same Azure
+// Subscription as `subscription_id`.
+// The Azure Resource Group Name specified as part of `network_security_group_resource_id`
+// must belong to the Azure Subscription `subscription_id`, and in the same
+// Azure location as the cluster's region.
+// The Azure Resource Group Name specified as part of `network_security_group_resource_id`
+// must be a different Resource Group Name than the one specified in
+// `managed_resource_group_name`.
+// The Azure Resource Group Name specified as part of `network_security_group_resource_id`
+// can be the same, or a different one than the one specified in
+// `resource_group_name`.
+func (o *Azure) GetNetworkSecurityGroupResourceID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.networkSecurityGroupResourceID
+	}
+	return
+}
+
 // ResourceGroupName returns the value of the 'resource_group_name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
@@ -80,7 +143,7 @@ func (o *Azure) GetManagedResourceGroupName() (value string, ok bool) {
 // of the cluster. `resource_group_name` is located in the same Azure location
 // as the cluster's region.
 func (o *Azure) ResourceGroupName() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&4 != 0 {
 		return o.resourceGroupName
 	}
 	return ""
@@ -93,7 +156,7 @@ func (o *Azure) ResourceGroupName() string {
 // of the cluster. `resource_group_name` is located in the same Azure location
 // as the cluster's region.
 func (o *Azure) GetResourceGroupName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&4 != 0
 	if ok {
 		value = o.resourceGroupName
 	}
@@ -107,7 +170,7 @@ func (o *Azure) GetResourceGroupName() (value string, ok bool) {
 // Azure Resource Group Name `resource_group_name`.
 // `resource_name` is located in the same Azure location as the cluster's region.
 func (o *Azure) ResourceName() string {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.resourceName
 	}
 	return ""
@@ -120,9 +183,60 @@ func (o *Azure) ResourceName() string {
 // Azure Resource Group Name `resource_group_name`.
 // `resource_name` is located in the same Azure location as the cluster's region.
 func (o *Azure) GetResourceName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.resourceName
+	}
+	return
+}
+
+// SubnetResourceID returns the value of the 'subnet_resource_ID' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// [Required] The Azure Resource ID of a pre-existing Azure
+// Subnet. It is an Azure Subnet used for the Data Plane of the cluster.
+// `subnet_resource_id` must be located in the same Azure location as the
+// cluster's region.
+// The Azure Subscription specified as part of the `subnet_resource_id`
+// must be located in the same Azure Subscription as `subscription_id`.
+// The Azure Resource Group Name specified as part of `subnet_resource_id`
+// must belong to the Azure Subscription `subscription_id`, and in the same
+// Azure location as the cluster's region.
+// The Azure Resource Group Name specified as part of `subnet_resource_id`
+// must be a different Resource Group Name than the one specified in
+// `managed_resource_group_name`.
+// The Azure Resource Group Name specified as part of the `subnet_resource_id`
+// can be the same, or a different one than the one specified in
+// `resource_group_name`.
+func (o *Azure) SubnetResourceID() string {
+	if o != nil && o.bitmap_&16 != 0 {
+		return o.subnetResourceID
+	}
+	return ""
+}
+
+// GetSubnetResourceID returns the value of the 'subnet_resource_ID' attribute and
+// a flag indicating if the attribute has a value.
+//
+// [Required] The Azure Resource ID of a pre-existing Azure
+// Subnet. It is an Azure Subnet used for the Data Plane of the cluster.
+// `subnet_resource_id` must be located in the same Azure location as the
+// cluster's region.
+// The Azure Subscription specified as part of the `subnet_resource_id`
+// must be located in the same Azure Subscription as `subscription_id`.
+// The Azure Resource Group Name specified as part of `subnet_resource_id`
+// must belong to the Azure Subscription `subscription_id`, and in the same
+// Azure location as the cluster's region.
+// The Azure Resource Group Name specified as part of `subnet_resource_id`
+// must be a different Resource Group Name than the one specified in
+// `managed_resource_group_name`.
+// The Azure Resource Group Name specified as part of the `subnet_resource_id`
+// can be the same, or a different one than the one specified in
+// `resource_group_name`.
+func (o *Azure) GetSubnetResourceID() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&16 != 0
+	if ok {
+		value = o.subnetResourceID
 	}
 	return
 }
@@ -133,7 +247,7 @@ func (o *Azure) GetResourceName() (value string, ok bool) {
 // [Required] The Azure Subscription ID associated with the cluster. It must belong to
 // the Microsoft Entra Tenant ID `tenant_id`.
 func (o *Azure) SubscriptionID() string {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.subscriptionID
 	}
 	return ""
@@ -145,7 +259,7 @@ func (o *Azure) SubscriptionID() string {
 // [Required] The Azure Subscription ID associated with the cluster. It must belong to
 // the Microsoft Entra Tenant ID `tenant_id`.
 func (o *Azure) GetSubscriptionID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.subscriptionID
 	}
@@ -157,7 +271,7 @@ func (o *Azure) GetSubscriptionID() (value string, ok bool) {
 //
 // [Required] The Microsoft Entra Tenant ID where the cluster belongs.
 func (o *Azure) TenantID() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.tenantID
 	}
 	return ""
@@ -168,7 +282,7 @@ func (o *Azure) TenantID() string {
 //
 // [Required] The Microsoft Entra Tenant ID where the cluster belongs.
 func (o *Azure) GetTenantID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.tenantID
 	}
