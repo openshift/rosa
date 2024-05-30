@@ -47,6 +47,8 @@ require (
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 )
 
+require github.com/golang/mock v1.6.0 // indirect
+
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.2 // indirect
