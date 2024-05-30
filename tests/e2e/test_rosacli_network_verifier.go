@@ -40,7 +40,7 @@ var _ = Describe("Network verifier",
 			clusterService = rosaClient.Cluster
 		})
 
-		//OCP-64917 - [OCM-152] Verify network via the rosa cli
+		// Verify network via the rosa cli
 		It("can verify network - [id:64917]",
 			labels.High,
 			func() {
@@ -143,4 +143,58 @@ var _ = Describe("Network verifier",
 				Expect(err).ToNot(HaveOccurred())
 			})
 
+		It("validation should work well - [id:68751]",
+			labels.Medium,
+			func() {
+				By("Get cluster description")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				By("Get the cluster subnets")
+				var subnetsNetworkInfo string
+				for _, networkLine := range clusterDetail.Network {
+					if value, containsKey := networkLine["Subnets"]; containsKey {
+						subnetsNetworkInfo = value
+						break
+					}
+				}
+				subnets := strings.Replace(subnetsNetworkInfo, " ", "", -1)
+				region := clusterDetail.Region
+				isBYOVPC, err := clusterService.IsBYOVPCCluster(clusterID)
+				Expect(err).To(BeNil())
+
+				if !isBYOVPC {
+					By("Run network verifier with non BYO VPC cluster")
+					output, err = networkService.CreateNetworkVerifierWithCluster(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring("ERR: Running the network verifier is only supported for BYO VPC clusters"))
+					return
+				}
+				By("Run network verifier without clusterID")
+				output, err = networkService.CreateNetworkVerifierWithCluster("non-existing")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: Failed to get cluster 'non-existing': There is no cluster with identifier or name 'non-existing'"))
+
+				By("Run network verifier with --hosted-cp")
+				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID, "--hosted-cp")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: '--hosted-cp' flag is not required when running the network verifier with cluster"))
+
+				By("Check the network for cluster with invalid tags")
+				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID,
+					"--tags", "t1=v1")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: invalid tag format for tag '[t1=v1]'. Expected tag format: 'key:value'"))
+
+				By("Run the network verified without role")
+				output, err = networkService.CreateNetworkVerifierWithSubnets(
+					"--region", region,
+					"--subnet-ids", subnets,
+					"--hosted-cp",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: role-arn is required"))
+			})
 	})
