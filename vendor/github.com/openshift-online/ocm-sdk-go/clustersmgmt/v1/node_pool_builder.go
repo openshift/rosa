@@ -31,6 +31,7 @@ type NodePoolBuilder struct {
 	availabilityZone     string
 	kubeletConfigs       []string
 	labels               map[string]string
+	managementUpgrade    *NodePoolManagementUpgradeBuilder
 	nodeDrainGracePeriod *ValueBuilder
 	replicas             int
 	status               *NodePoolStatusBuilder
@@ -130,6 +131,19 @@ func (b *NodePoolBuilder) Labels(value map[string]string) *NodePoolBuilder {
 	return b
 }
 
+// ManagementUpgrade sets the value of the 'management_upgrade' attribute to the given value.
+//
+// Representation of node pool management.
+func (b *NodePoolBuilder) ManagementUpgrade(value *NodePoolManagementUpgradeBuilder) *NodePoolBuilder {
+	b.managementUpgrade = value
+	if value != nil {
+		b.bitmap_ |= 512
+	} else {
+		b.bitmap_ &^= 512
+	}
+	return b
+}
+
 // NodeDrainGracePeriod sets the value of the 'node_drain_grace_period' attribute to the given value.
 //
 // Numeric value and the unit used to measure it.
@@ -153,9 +167,9 @@ func (b *NodePoolBuilder) Labels(value map[string]string) *NodePoolBuilder {
 func (b *NodePoolBuilder) NodeDrainGracePeriod(value *ValueBuilder) *NodePoolBuilder {
 	b.nodeDrainGracePeriod = value
 	if value != nil {
-		b.bitmap_ |= 512
+		b.bitmap_ |= 1024
 	} else {
-		b.bitmap_ &^= 512
+		b.bitmap_ &^= 1024
 	}
 	return b
 }
@@ -163,7 +177,7 @@ func (b *NodePoolBuilder) NodeDrainGracePeriod(value *ValueBuilder) *NodePoolBui
 // Replicas sets the value of the 'replicas' attribute to the given value.
 func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 	b.replicas = value
-	b.bitmap_ |= 1024
+	b.bitmap_ |= 2048
 	return b
 }
 
@@ -173,9 +187,9 @@ func (b *NodePoolBuilder) Replicas(value int) *NodePoolBuilder {
 func (b *NodePoolBuilder) Status(value *NodePoolStatusBuilder) *NodePoolBuilder {
 	b.status = value
 	if value != nil {
-		b.bitmap_ |= 2048
+		b.bitmap_ |= 4096
 	} else {
-		b.bitmap_ &^= 2048
+		b.bitmap_ &^= 4096
 	}
 	return b
 }
@@ -183,7 +197,7 @@ func (b *NodePoolBuilder) Status(value *NodePoolStatusBuilder) *NodePoolBuilder 
 // Subnet sets the value of the 'subnet' attribute to the given value.
 func (b *NodePoolBuilder) Subnet(value string) *NodePoolBuilder {
 	b.subnet = value
-	b.bitmap_ |= 4096
+	b.bitmap_ |= 8192
 	return b
 }
 
@@ -191,7 +205,7 @@ func (b *NodePoolBuilder) Subnet(value string) *NodePoolBuilder {
 func (b *NodePoolBuilder) Taints(values ...*TaintBuilder) *NodePoolBuilder {
 	b.taints = make([]*TaintBuilder, len(values))
 	copy(b.taints, values)
-	b.bitmap_ |= 8192
+	b.bitmap_ |= 16384
 	return b
 }
 
@@ -199,7 +213,7 @@ func (b *NodePoolBuilder) Taints(values ...*TaintBuilder) *NodePoolBuilder {
 func (b *NodePoolBuilder) TuningConfigs(values ...string) *NodePoolBuilder {
 	b.tuningConfigs = make([]string, len(values))
 	copy(b.tuningConfigs, values)
-	b.bitmap_ |= 16384
+	b.bitmap_ |= 32768
 	return b
 }
 
@@ -209,9 +223,9 @@ func (b *NodePoolBuilder) TuningConfigs(values ...string) *NodePoolBuilder {
 func (b *NodePoolBuilder) Version(value *VersionBuilder) *NodePoolBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 32768
+		b.bitmap_ |= 65536
 	} else {
-		b.bitmap_ &^= 32768
+		b.bitmap_ &^= 65536
 	}
 	return b
 }
@@ -249,6 +263,11 @@ func (b *NodePoolBuilder) Copy(object *NodePool) *NodePoolBuilder {
 		}
 	} else {
 		b.labels = nil
+	}
+	if object.managementUpgrade != nil {
+		b.managementUpgrade = NewNodePoolManagementUpgrade().Copy(object.managementUpgrade)
+	} else {
+		b.managementUpgrade = nil
 	}
 	if object.nodeDrainGracePeriod != nil {
 		b.nodeDrainGracePeriod = NewValue().Copy(object.nodeDrainGracePeriod)
@@ -312,6 +331,12 @@ func (b *NodePoolBuilder) Build() (object *NodePool, err error) {
 		object.labels = make(map[string]string)
 		for k, v := range b.labels {
 			object.labels[k] = v
+		}
+	}
+	if b.managementUpgrade != nil {
+		object.managementUpgrade, err = b.managementUpgrade.Build()
+		if err != nil {
+			return
 		}
 	}
 	if b.nodeDrainGracePeriod != nil {

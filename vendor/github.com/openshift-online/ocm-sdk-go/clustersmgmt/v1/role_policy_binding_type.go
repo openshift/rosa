@@ -19,14 +19,20 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
+import (
+	time "time"
+)
+
 // RolePolicyBinding represents the values of the 'role_policy_binding' type.
 type RolePolicyBinding struct {
-	bitmap_  uint32
-	arn      string
-	name     string
-	policies []*RolePolicy
-	status   *RolePolicyBindingStatus
-	type_    string
+	bitmap_             uint32
+	arn                 string
+	creationTimestamp   time.Time
+	lastUpdateTimestamp time.Time
+	name                string
+	policies            []*RolePolicy
+	status              *RolePolicyBindingStatus
+	type_               string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -53,10 +59,48 @@ func (o *RolePolicyBinding) GetArn() (value string, ok bool) {
 	return
 }
 
+// CreationTimestamp returns the value of the 'creation_timestamp' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+func (o *RolePolicyBinding) CreationTimestamp() time.Time {
+	if o != nil && o.bitmap_&2 != 0 {
+		return o.creationTimestamp
+	}
+	return time.Time{}
+}
+
+// GetCreationTimestamp returns the value of the 'creation_timestamp' attribute and
+// a flag indicating if the attribute has a value.
+func (o *RolePolicyBinding) GetCreationTimestamp() (value time.Time, ok bool) {
+	ok = o != nil && o.bitmap_&2 != 0
+	if ok {
+		value = o.creationTimestamp
+	}
+	return
+}
+
+// LastUpdateTimestamp returns the value of the 'last_update_timestamp' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+func (o *RolePolicyBinding) LastUpdateTimestamp() time.Time {
+	if o != nil && o.bitmap_&4 != 0 {
+		return o.lastUpdateTimestamp
+	}
+	return time.Time{}
+}
+
+// GetLastUpdateTimestamp returns the value of the 'last_update_timestamp' attribute and
+// a flag indicating if the attribute has a value.
+func (o *RolePolicyBinding) GetLastUpdateTimestamp() (value time.Time, ok bool) {
+	ok = o != nil && o.bitmap_&4 != 0
+	if ok {
+		value = o.lastUpdateTimestamp
+	}
+	return
+}
+
 // Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 func (o *RolePolicyBinding) Name() string {
-	if o != nil && o.bitmap_&2 != 0 {
+	if o != nil && o.bitmap_&8 != 0 {
 		return o.name
 	}
 	return ""
@@ -65,7 +109,7 @@ func (o *RolePolicyBinding) Name() string {
 // GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
 func (o *RolePolicyBinding) GetName() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&2 != 0
+	ok = o != nil && o.bitmap_&8 != 0
 	if ok {
 		value = o.name
 	}
@@ -75,7 +119,7 @@ func (o *RolePolicyBinding) GetName() (value string, ok bool) {
 // Policies returns the value of the 'policies' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 func (o *RolePolicyBinding) Policies() []*RolePolicy {
-	if o != nil && o.bitmap_&4 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.policies
 	}
 	return nil
@@ -84,7 +128,7 @@ func (o *RolePolicyBinding) Policies() []*RolePolicy {
 // GetPolicies returns the value of the 'policies' attribute and
 // a flag indicating if the attribute has a value.
 func (o *RolePolicyBinding) GetPolicies() (value []*RolePolicy, ok bool) {
-	ok = o != nil && o.bitmap_&4 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.policies
 	}
@@ -94,7 +138,7 @@ func (o *RolePolicyBinding) GetPolicies() (value []*RolePolicy, ok bool) {
 // Status returns the value of the 'status' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 func (o *RolePolicyBinding) Status() *RolePolicyBindingStatus {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.status
 	}
 	return nil
@@ -103,7 +147,7 @@ func (o *RolePolicyBinding) Status() *RolePolicyBindingStatus {
 // GetStatus returns the value of the 'status' attribute and
 // a flag indicating if the attribute has a value.
 func (o *RolePolicyBinding) GetStatus() (value *RolePolicyBindingStatus, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.status
 	}
@@ -113,7 +157,7 @@ func (o *RolePolicyBinding) GetStatus() (value *RolePolicyBindingStatus, ok bool
 // Type returns the value of the 'type' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 func (o *RolePolicyBinding) Type() string {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.type_
 	}
 	return ""
@@ -122,7 +166,7 @@ func (o *RolePolicyBinding) Type() string {
 // GetType returns the value of the 'type' attribute and
 // a flag indicating if the attribute has a value.
 func (o *RolePolicyBinding) GetType() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.type_
 	}

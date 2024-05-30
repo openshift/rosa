@@ -23,12 +23,14 @@ package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 //
 // Microsoft Azure settings of a cluster.
 type AzureBuilder struct {
-	bitmap_                  uint32
-	managedResourceGroupName string
-	resourceGroupName        string
-	resourceName             string
-	subscriptionID           string
-	tenantID                 string
+	bitmap_                        uint32
+	managedResourceGroupName       string
+	networkSecurityGroupResourceID string
+	resourceGroupName              string
+	resourceName                   string
+	subnetResourceID               string
+	subscriptionID                 string
+	tenantID                       string
 }
 
 // NewAzure creates a new builder of 'azure' objects.
@@ -48,31 +50,45 @@ func (b *AzureBuilder) ManagedResourceGroupName(value string) *AzureBuilder {
 	return b
 }
 
+// NetworkSecurityGroupResourceID sets the value of the 'network_security_group_resource_ID' attribute to the given value.
+func (b *AzureBuilder) NetworkSecurityGroupResourceID(value string) *AzureBuilder {
+	b.networkSecurityGroupResourceID = value
+	b.bitmap_ |= 2
+	return b
+}
+
 // ResourceGroupName sets the value of the 'resource_group_name' attribute to the given value.
 func (b *AzureBuilder) ResourceGroupName(value string) *AzureBuilder {
 	b.resourceGroupName = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 4
 	return b
 }
 
 // ResourceName sets the value of the 'resource_name' attribute to the given value.
 func (b *AzureBuilder) ResourceName(value string) *AzureBuilder {
 	b.resourceName = value
-	b.bitmap_ |= 4
+	b.bitmap_ |= 8
+	return b
+}
+
+// SubnetResourceID sets the value of the 'subnet_resource_ID' attribute to the given value.
+func (b *AzureBuilder) SubnetResourceID(value string) *AzureBuilder {
+	b.subnetResourceID = value
+	b.bitmap_ |= 16
 	return b
 }
 
 // SubscriptionID sets the value of the 'subscription_ID' attribute to the given value.
 func (b *AzureBuilder) SubscriptionID(value string) *AzureBuilder {
 	b.subscriptionID = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 32
 	return b
 }
 
 // TenantID sets the value of the 'tenant_ID' attribute to the given value.
 func (b *AzureBuilder) TenantID(value string) *AzureBuilder {
 	b.tenantID = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -83,8 +99,10 @@ func (b *AzureBuilder) Copy(object *Azure) *AzureBuilder {
 	}
 	b.bitmap_ = object.bitmap_
 	b.managedResourceGroupName = object.managedResourceGroupName
+	b.networkSecurityGroupResourceID = object.networkSecurityGroupResourceID
 	b.resourceGroupName = object.resourceGroupName
 	b.resourceName = object.resourceName
+	b.subnetResourceID = object.subnetResourceID
 	b.subscriptionID = object.subscriptionID
 	b.tenantID = object.tenantID
 	return b
@@ -95,8 +113,10 @@ func (b *AzureBuilder) Build() (object *Azure, err error) {
 	object = new(Azure)
 	object.bitmap_ = b.bitmap_
 	object.managedResourceGroupName = b.managedResourceGroupName
+	object.networkSecurityGroupResourceID = b.networkSecurityGroupResourceID
 	object.resourceGroupName = b.resourceGroupName
 	object.resourceName = b.resourceName
+	object.subnetResourceID = b.subnetResourceID
 	object.subscriptionID = b.subscriptionID
 	object.tenantID = b.tenantID
 	return

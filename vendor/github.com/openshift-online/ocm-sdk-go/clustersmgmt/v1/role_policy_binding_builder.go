@@ -19,14 +19,20 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
+import (
+	time "time"
+)
+
 // RolePolicyBindingBuilder contains the data and logic needed to build 'role_policy_binding' objects.
 type RolePolicyBindingBuilder struct {
-	bitmap_  uint32
-	arn      string
-	name     string
-	policies []*RolePolicyBuilder
-	status   *RolePolicyBindingStatusBuilder
-	type_    string
+	bitmap_             uint32
+	arn                 string
+	creationTimestamp   time.Time
+	lastUpdateTimestamp time.Time
+	name                string
+	policies            []*RolePolicyBuilder
+	status              *RolePolicyBindingStatusBuilder
+	type_               string
 }
 
 // NewRolePolicyBinding creates a new builder of 'role_policy_binding' objects.
@@ -46,10 +52,24 @@ func (b *RolePolicyBindingBuilder) Arn(value string) *RolePolicyBindingBuilder {
 	return b
 }
 
+// CreationTimestamp sets the value of the 'creation_timestamp' attribute to the given value.
+func (b *RolePolicyBindingBuilder) CreationTimestamp(value time.Time) *RolePolicyBindingBuilder {
+	b.creationTimestamp = value
+	b.bitmap_ |= 2
+	return b
+}
+
+// LastUpdateTimestamp sets the value of the 'last_update_timestamp' attribute to the given value.
+func (b *RolePolicyBindingBuilder) LastUpdateTimestamp(value time.Time) *RolePolicyBindingBuilder {
+	b.lastUpdateTimestamp = value
+	b.bitmap_ |= 4
+	return b
+}
+
 // Name sets the value of the 'name' attribute to the given value.
 func (b *RolePolicyBindingBuilder) Name(value string) *RolePolicyBindingBuilder {
 	b.name = value
-	b.bitmap_ |= 2
+	b.bitmap_ |= 8
 	return b
 }
 
@@ -57,7 +77,7 @@ func (b *RolePolicyBindingBuilder) Name(value string) *RolePolicyBindingBuilder 
 func (b *RolePolicyBindingBuilder) Policies(values ...*RolePolicyBuilder) *RolePolicyBindingBuilder {
 	b.policies = make([]*RolePolicyBuilder, len(values))
 	copy(b.policies, values)
-	b.bitmap_ |= 4
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -65,9 +85,9 @@ func (b *RolePolicyBindingBuilder) Policies(values ...*RolePolicyBuilder) *RoleP
 func (b *RolePolicyBindingBuilder) Status(value *RolePolicyBindingStatusBuilder) *RolePolicyBindingBuilder {
 	b.status = value
 	if value != nil {
-		b.bitmap_ |= 8
+		b.bitmap_ |= 32
 	} else {
-		b.bitmap_ &^= 8
+		b.bitmap_ &^= 32
 	}
 	return b
 }
@@ -75,7 +95,7 @@ func (b *RolePolicyBindingBuilder) Status(value *RolePolicyBindingStatusBuilder)
 // Type sets the value of the 'type' attribute to the given value.
 func (b *RolePolicyBindingBuilder) Type(value string) *RolePolicyBindingBuilder {
 	b.type_ = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 64
 	return b
 }
 
@@ -86,6 +106,8 @@ func (b *RolePolicyBindingBuilder) Copy(object *RolePolicyBinding) *RolePolicyBi
 	}
 	b.bitmap_ = object.bitmap_
 	b.arn = object.arn
+	b.creationTimestamp = object.creationTimestamp
+	b.lastUpdateTimestamp = object.lastUpdateTimestamp
 	b.name = object.name
 	if object.policies != nil {
 		b.policies = make([]*RolePolicyBuilder, len(object.policies))
@@ -109,6 +131,8 @@ func (b *RolePolicyBindingBuilder) Build() (object *RolePolicyBinding, err error
 	object = new(RolePolicyBinding)
 	object.bitmap_ = b.bitmap_
 	object.arn = b.arn
+	object.creationTimestamp = b.creationTimestamp
+	object.lastUpdateTimestamp = b.lastUpdateTimestamp
 	object.name = b.name
 	if b.policies != nil {
 		object.policies = make([]*RolePolicy, len(b.policies))

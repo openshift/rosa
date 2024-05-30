@@ -22,6 +22,18 @@ package metrics // github.com/openshift-online/ocm-sdk-go/metrics
 // pathTreeData is the JSON representation of the tree of URL paths.
 var pathTreeData = `{
   "api": {
+    "access_transparency": {
+      "v1": {
+        "access_protection": null,
+        "access_requests": {
+          "-": {
+            "decisions": {
+              "-": null
+            }
+          }
+        }
+      }
+    },
     "accounts_mgmt": {
       "v1": {
         "access_token": null,
