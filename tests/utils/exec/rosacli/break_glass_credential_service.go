@@ -13,7 +13,7 @@ import (
 type BreakGlassCredentialService interface {
 	ResourcesCleaner
 
-	CreateBreakGlassCredential(clusterID string, userName string, flags ...string) (bytes.Buffer, error)
+	CreateBreakGlassCredential(clusterID string, flags ...string) (bytes.Buffer, error)
 	DeleteBreakGlassCredential(clusterID string) (bytes.Buffer, error)
 	ListBreakGlassCredentials(clusterID string) (bytes.Buffer, error)
 	ReflectBreakGlassCredentialLists(result bytes.Buffer) (bgcl *BreakGlassCredentialList, err error)
@@ -63,10 +63,10 @@ func NewBreakGlassCredentialService(client *Client) BreakGlassCredentialService 
 }
 
 // Create BreakGlassCredential
-func (b *breakglasscredentialService) CreateBreakGlassCredential(clusterID string, userName string, flags ...string) (output bytes.Buffer, err error) {
+func (b *breakglasscredentialService) CreateBreakGlassCredential(clusterID string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = b.client.Runner.
 		Cmd("create", "break-glass-credential").
-		CmdFlags(append(flags, "-c", clusterID, "--username", userName)...).
+		CmdFlags(append(flags, "-c", clusterID)...).
 		Run()
 	if err == nil {
 		b.created[clusterID] = true
