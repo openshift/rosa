@@ -16,9 +16,17 @@ import (
 var _ = Describe("Create Machine Pool", func() {
 
 	var client *rosacli.Client
+
 	BeforeEach(func() {
 		Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
 		client = rosacli.NewClient()
+		clusterService := client.Cluster
+		hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+		Expect(err).ToNot(HaveOccurred())
+
+		if !hostedCluster {
+			Skip("This case applies only on hosted cluster")
+		}
 	})
 	It("to hosted cluster with additional security group IDs will work [id:72195]", func() {
 		By("Prepare security groups")

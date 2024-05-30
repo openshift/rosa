@@ -15,7 +15,6 @@ import (
 var _ = Describe("Kubeletconfig on Classic cluster",
 	labels.Day2,
 	labels.FeatureKubeletConfig,
-	labels.NonHCPCluster,
 	func() {
 		defer GinkgoRecover()
 
@@ -33,6 +32,13 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			kubeletService = rosaClient.KubeletConfig
+
+			By("Get cluster hosted information")
+			hostedCluster, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if hostedCluster {
+				Skip("This case applies to classic cluster")
+			}
 
 		})
 
@@ -176,7 +182,6 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 	})
 var _ = Describe("Kubeletconfig on HCP cluster",
 	labels.Day2,
-	labels.NonClassicCluster,
 	labels.FeatureKubeletConfig,
 	func() {
 		var (
@@ -194,8 +199,14 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			kubeletService = rosaClient.KubeletConfig
-
 			machinePoolService = rosaClient.MachinePool
+
+			By("Get cluster hosted information")
+			hostedCluster, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !hostedCluster {
+				Skip("This case applies to hosted cluster")
+			}
 		})
 
 		AfterEach(func() {

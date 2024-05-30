@@ -16,7 +16,6 @@ import (
 var _ = Describe("Create machinepool",
 	labels.Day2,
 	labels.FeatureMachinepool,
-	labels.NonHCPCluster,
 	func() {
 		defer GinkgoRecover()
 		var (
@@ -35,6 +34,13 @@ var _ = Describe("Create machinepool",
 			rosaClient = rosacli.NewClient()
 			machinePoolService = rosaClient.MachinePool
 			ocmResourceService = rosaClient.OCMResource
+
+			By("Get cluster hosted information")
+			hostedCluster, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if hostedCluster {
+				Skip("This case applies to classic cluster")
+			}
 		})
 
 		AfterEach(func() {
@@ -188,7 +194,6 @@ var _ = Describe("Create machinepool",
 			})
 
 		It("can create machinepool with tags - [id:73469]",
-			labels.NonHCPCluster,
 			labels.Day2,
 			func() {
 				By("Check the help message of machinepool creation")
@@ -245,7 +250,6 @@ var _ = Describe("Create machinepool",
 var _ = Describe("Edit machinepool",
 	labels.Day2,
 	labels.FeatureMachinepool,
-	labels.NonHCPCluster,
 	func() {
 		defer GinkgoRecover()
 		var (
@@ -263,6 +267,12 @@ var _ = Describe("Edit machinepool",
 			rosaClient = rosacli.NewClient()
 			machinePoolService = rosaClient.MachinePool
 
+			By("Get cluster hosted information")
+			hostedCluster, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if hostedCluster {
+				Skip("This case applies to classic cluster")
+			}
 		})
 
 		AfterEach(func() {

@@ -24,9 +24,9 @@ var _ = Describe("Create Tuning Config", func() {
 		clusterService = rosaClient.Cluster
 
 		By("Check hosted cluster")
-		hosted, err := clusterService.IsHostedCPCluster(clusterID)
+		hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 		Expect(err).ToNot(HaveOccurred())
-		if !hosted {
+		if !hostedCluster {
 			Skip("Tuning Configs are only supported on Hosted clusters")
 		}
 	})
@@ -38,7 +38,7 @@ var _ = Describe("Create Tuning Config", func() {
 	})
 
 	It("tuning config can be created/updated/deleted to hosted cluster - [id:63164]",
-		labels.Critical, labels.NonClassicCluster,
+		labels.Critical,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
 			tuningConfigName_1 := common.GenerateRandomName("tuned01", 2)

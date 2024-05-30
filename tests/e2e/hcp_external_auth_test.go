@@ -18,31 +18,38 @@ var _ = Describe("Rosacli Testing", func() {
 
 	var rosaClient *rosacli.Client
 	var clusterService rosacli.ClusterService
+	var hostedCluster bool
+
+	BeforeEach(func() {
+		Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
+
+		rosaClient = rosacli.NewClient()
+		clusterService = rosaClient.Cluster
+
+		By("Retrieve Cluster hosted information")
+		var err error
+		hostedCluster, err = clusterService.IsHostedCPCluster(clusterID)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		By("Clean remaining resources")
+		err := rosaClient.CleanResources(clusterID)
+		Expect(err).ToNot(HaveOccurred())
+	})
 
 	Describe("Hypershift external auth creation testing", func() {
 		BeforeEach(func() {
-			Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
-			rosaClient = rosacli.NewClient()
-			clusterService = rosaClient.Cluster
-
 			By("Check cluster is hosted cluster and external auth config is enabled")
-			hosted, err := clusterService.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
 			externalAuthProvider, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			if !hosted || !externalAuthProvider {
+			if !hostedCluster || !externalAuthProvider {
 				Skip("This is only for external_auth_config enabled hypershift cluster")
 			}
 		})
 
-		AfterEach(func() {
-			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
 		It("create/list/describe/delete HCP cluster with break_glass_credentials via Rosa client can work well - [id:72899]",
-			labels.High, labels.NonClassicCluster,
+			labels.High,
 			func() {
 				By("Retrieve help for create/list/describe/delete break-glass-credential")
 				_, err := rosaClient.BreakGlassCredential.RetrieveHelpForCreate()
@@ -101,26 +108,13 @@ var _ = Describe("Rosacli Testing", func() {
 	})
 
 	Describe("Hypershift external auth validation testing", func() {
-		BeforeEach(func() {
-			Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
-			rosaClient = rosacli.NewClient()
-			clusterService = rosaClient.Cluster
-		})
-
-		AfterEach(func() {
-			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-		})
 
 		It("validation for HCP cluster break_glass_credentials create/list/describe/delete can work well via ROSA client - [id:73018]",
 			labels.Medium,
 			func() {
 				By("Create/list/revoke break-glass-credential to non-HCP cluster")
-				hosted, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
 
-				if !hosted {
+				if !hostedCluster {
 					By("Create a break-glass-credential to the cluster")
 					userName := common.GenerateRandomName("bgc-user-classic", 2)
 
@@ -140,9 +134,7 @@ var _ = Describe("Rosacli Testing", func() {
 					Expect(err).To(HaveOccurred())
 					textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 					Expect(textData).To(ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
-				}
-
-				if hosted {
+				} else {
 					By("Create/list/revoke break-glass-credential to external-auth-providers-enabled not enable")
 					externalAuthProvider, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
 					Expect(err).ToNot(HaveOccurred())
@@ -198,8 +190,11 @@ var _ = Describe("Rosacli Testing", func() {
 			})
 
 		It("validation should work when create/list/delete idp and user/admin to external_auth_config cluster via ROSA client - [id:71946]",
-			labels.Medium, labels.NonClassicCluster,
+			labels.Medium,
 			func() {
+				if !hostedCluster {
+					Skip("Case apply only on hosted cluster")
+				}
 
 				By("Check if hcp cluster external_auth_providers is enabled")
 				isExternalAuthEnabled, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
@@ -250,15 +245,13 @@ var _ = Describe("Rosacli Testing", func() {
 		It("validation should work when create cluster with external_auth_config via ROSA client - [id:73755]",
 			labels.Medium, labels.Day1Validation,
 			func() {
-				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).To(BeNil())
 				isExternalAuthEnabled, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
 				rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
 				Expect(err).To(BeNil())
 
-				if !isHostedCP {
+				if !hostedCluster {
 					By("Create non-HCP cluster with --external-auth-providers-enabled")
 					clusterName := common.GenerateRandomName("classic-71946", 2)
 					operatorPrefix := common.GenerateRandomName("classic-oper", 2)
@@ -282,7 +275,7 @@ var _ = Describe("Rosacli Testing", func() {
 					if cg == "" {
 						cg = rosacli.VersionChannelGroupStable
 					}
-					versionList, err := rosaClient.Version.ListAndReflectVersions(cg, isHostedCP)
+					versionList, err := rosaClient.Version.ListAndReflectVersions(cg, hostedCluster)
 					Expect(err).To(BeNil())
 					Expect(versionList).ToNot(BeNil())
 					previousVersionsList, err := versionList.FindNearestBackwardMinorVersion("4.14", 0, true)

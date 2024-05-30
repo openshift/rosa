@@ -25,7 +25,6 @@ import (
 var _ = Describe("Edit nodepool",
 	labels.Day2,
 	labels.FeatureNodePool,
-	labels.NonClassicCluster,
 	func() {
 		defer GinkgoRecover()
 
@@ -349,7 +348,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create nodepool with tuning config will validate well - [id:63179]",
-			labels.Medium, labels.NonClassicCluster,
+			labels.Medium,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63179", 2)
@@ -695,7 +694,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/edit nodepool with node_drain_grace_period to HCP cluster via ROSA cli can work well - [id:72715]",
-			labels.High, labels.NonClassicCluster,
+			labels.High,
 			func() {
 				By("check help message for create/edit machinepool")
 				help, err := machinePoolService.RetrieveHelpForCreate()
@@ -771,7 +770,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("validations will work for editing machinepool via rosa cli - [id:73391]",
-			labels.Medium, labels.NonClassicCluster,
+			labels.Medium,
 			func() {
 				nonExistingMachinepoolName := common.GenerateRandomName("mp-fake", 2)
 				machinepoolName := common.GenerateRandomName("mp-73391", 2)
@@ -818,7 +817,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/describe machinepool with user tags for HCP - [id:73492]",
-			labels.High, labels.Day2, labels.NonClassicCluster,
+			labels.High, labels.Day2,
 			func() {
 				By("Get the Organization Id")
 				rosaClient.Runner.JsonFormat()

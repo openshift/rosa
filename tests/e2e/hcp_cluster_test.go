@@ -32,6 +32,13 @@ var _ = Describe("HCP cluster testing",
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
+
+			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+
+			if !hostedCluster {
+				Skip("Case apply only on hosted cluster")
+			}
 		})
 
 		AfterEach(func() {
@@ -40,7 +47,7 @@ var _ = Describe("HCP cluster testing",
 		})
 
 		It("create and edit hosted-cp cluster with AuditLog Forwarding enabled/disabled via rosacli - [id:64491]",
-			labels.High, labels.NonClassicCluster,
+			labels.High,
 			func() {
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -88,7 +95,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create cluster with the KMS and etcd encryption for hypershift clusters by rosa-cli - [id:60083]",
-			labels.High, labels.NonClassicCluster,
+			labels.High,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				output, err, _ := clusterService.Create("", "-h")
@@ -114,7 +121,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create HCP cluster with network type can work well via rosa cli - [id:71050]",
-			labels.High, labels.NonClassicCluster,
+			labels.High,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				//It is hiddened now
@@ -142,7 +149,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create ROSA HCP cluster with external_auth_config config should work well via rosa client - [id:71945]",
-			labels.High, labels.NonClassicCluster,
+			labels.High,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				helpOutput, err, _ := clusterService.Create("", "-h")
