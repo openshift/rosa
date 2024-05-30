@@ -6,6 +6,7 @@ import (
 
 // Cluster Type
 var NonClassicCluster = Label("NonClassicCluster")
+
 var NonHCPCluster = Label("NonHCPCluster")
 
 // exclude
