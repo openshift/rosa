@@ -145,4 +145,30 @@ var _ = Describe("Nodepool", func() {
 		})
 
 	})
+
+	Context("fillAutoScalingAndReplicas", func() {
+		var npBuilder *cmv1.NodePoolBuilder
+		existingNodepool, err := cmv1.NewNodePool().
+			Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(1)).
+			Build()
+		Expect(err).To(BeNil())
+		It("Autoscaling set", func() {
+			npBuilder = cmv1.NewNodePool()
+			fillAutoScalingAndReplicas(npBuilder, true, existingNodepool, 1, 3, 2)
+			npPatch, err := npBuilder.Build()
+			Expect(err).To(BeNil())
+			Expect(npPatch.Autoscaling()).ToNot(BeNil())
+			// Default (zero) value
+			Expect(npPatch.Replicas()).To(Equal(0))
+		})
+		It("Replicas set", func() {
+			npBuilder = cmv1.NewNodePool()
+			fillAutoScalingAndReplicas(npBuilder, false, existingNodepool, 0, 0, 2)
+			npPatch, err := npBuilder.Build()
+			Expect(err).To(BeNil())
+			Expect(npPatch.Autoscaling()).To(BeNil())
+			Expect(npPatch.Replicas()).To(Equal(2))
+		})
+
+	})
 })
