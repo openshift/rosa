@@ -547,6 +547,39 @@ var _ = Describe("Classic cluster creation validation",
 			Expect(out.String()).To(ContainSubstring("invalid tag format for tag '[name gender age]'. Expected tag format: 'key:value'"))
 
 		})
+
+		It("to validate to create cluster with availability zones - [id:52692]", labels.Medium, labels.Day1Validation, func() {
+			clusterService := rosaClient.Cluster
+			clusterName := "ocp-52692"
+
+			By("Create cluster with the zone not available in the region")
+			out, err := clusterService.CreateDryRun(
+				clusterName, "--availability-zones", "us-east-2e", "--region", "us-east-2",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("Expected a valid availability zone, 'us-east-2e' doesn't belong to region 'us-east-2' availability zones"))
+
+			By("Create cluster with zones not match region")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--availability-zones", "us-west-2b", "--region", "us-east-2",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("Expected a valid availability zone, 'us-west-2b' doesn't belong to region 'us-east-2' availability zones"))
+
+			By("Create cluster with dup zones set")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--availability-zones", "us-west-2b,us-west-2b,us-west-2b", "--region", "us-west-2",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("Found duplicate Availability Zone: us-west-2b"))
+
+			By("Create cluster with both zone and subnet set")
+			out, err = clusterService.CreateDryRun(
+				clusterName, "--availability-zones", "us-west-2b", "--subnet-ids", "subnet-039f2a2a2d2d83e7f",
+			)
+			Expect(err).NotTo(BeNil())
+			Expect(out.String()).To(ContainSubstring("Setting availability zones is not supported for BYO VPC. ROSA autodetects availability zones from subnet IDs provided"))
+		})
 	})
 
 var _ = Describe("Classic cluster deletion validation",
