@@ -3,7 +3,6 @@ package version
 import (
 	"fmt"
 	"net/http"
-
 	"slices"
 
 	goVer "github.com/hashicorp/go-version"

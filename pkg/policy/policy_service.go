@@ -18,7 +18,6 @@ package policy
 
 import (
 	"fmt"
-
 	"slices"
 
 	awsutil "github.com/aws/aws-sdk-go-v2/aws"

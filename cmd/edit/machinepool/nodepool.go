@@ -3,9 +3,8 @@ package machinepool
 import (
 	"fmt"
 	"os"
-	"strings"
-
 	"slices"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"

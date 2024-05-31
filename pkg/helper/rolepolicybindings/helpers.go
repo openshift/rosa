@@ -18,9 +18,8 @@ package rolepolicybindings
 
 import (
 	"fmt"
-	"strings"
-
 	"slices"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
