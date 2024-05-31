@@ -503,7 +503,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		if clusterConfiguration.Encryption == nil {
 			clusterConfiguration.Encryption = &ClusterConfigure.Encryption{}
 		}
-		clusterConfiguration.EnableCustomerManagedKey = profile.ClusterConfig.EtcdKMS
+		clusterConfiguration.EnableCustomerManagedKey = profile.ClusterConfig.KMSKey
 		clusterConfiguration.Encryption.KmsKeyArn = kmsKeyArn
 	}
 	if profile.ClusterConfig.LabelEnabled {
