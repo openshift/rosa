@@ -24,7 +24,7 @@ import (
 
 var _ = Describe("Edit nodepool",
 	labels.Day2,
-	labels.FeatureNodePool,
+	labels.FeatureMachinepool,
 	labels.NonClassicCluster,
 	func() {
 		defer GinkgoRecover()
