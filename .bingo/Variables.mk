@@ -23,11 +23,11 @@ $(BINGO): $(BINGO_DIR)/bingo.mod
 	@echo "(re)installing $(GOBIN)/bingo-v0.9.0"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=bingo.mod -o=$(GOBIN)/bingo-v0.9.0 "github.com/bwplotka/bingo"
 
-GCI := $(GOBIN)/gci-v0.10.1
+GCI := $(GOBIN)/gci-v0.13.4
 $(GCI): $(BINGO_DIR)/gci.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/gci-v0.10.1"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=gci.mod -o=$(GOBIN)/gci-v0.10.1 "github.com/daixiang0/gci"
+	@echo "(re)installing $(GOBIN)/gci-v0.13.4"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=gci.mod -o=$(GOBIN)/gci-v0.13.4 "github.com/daixiang0/gci"
 
 GO_BINDATA := $(GOBIN)/go-bindata-v3.1.2+incompatible
 $(GO_BINDATA): $(BINGO_DIR)/go-bindata.mod

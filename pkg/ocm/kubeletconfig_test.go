@@ -5,9 +5,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
-
 	"slices"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"

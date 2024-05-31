@@ -19,9 +19,8 @@ package policy
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 

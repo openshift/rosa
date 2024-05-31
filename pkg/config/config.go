@@ -25,10 +25,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
-
-	"slices"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/golang/glog"
