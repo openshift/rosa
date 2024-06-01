@@ -13,9 +13,7 @@ import (
 )
 
 var _ = Describe("Kubeletconfig on Classic cluster",
-	labels.Day2,
-	labels.FeatureKubeletConfig,
-	labels.NonHCPCluster,
+	labels.Feature.KubeletConfig,
 	func() {
 		defer GinkgoRecover()
 
@@ -34,6 +32,12 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 			rosaClient = rosacli.NewClient()
 			kubeletService = rosaClient.KubeletConfig
 
+			By("Skip testing if the cluster is a HCP cluster")
+			isClassic, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !isClassic {
+				SkipNotClassic()
+			}
 		})
 
 		AfterEach(func() {
@@ -42,7 +46,7 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 		})
 
 		It("can create podPidLimit via rosacli will work well - [id:68828]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				By("Run the command to create a kubeletconfig to the cluster")
 				output, _ := kubeletService.CreateKubeletConfig(clusterID,
@@ -77,7 +81,7 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 			})
 
 		It("can update podPidLimit via rosacli will work well - [id:68835]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				By("Edit the kubeletconfig to the cluster before it is created")
 				output, _ := rosaClient.KubeletConfig.EditKubeletConfig(clusterID,
@@ -125,9 +129,8 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 			})
 
 		It("can delete podPidLimit via rosacli will work well - [id:68836]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
-
 				By("Delete the kubeletconfig from the cluster before it is created")
 				output, _ := rosaClient.KubeletConfig.DeleteKubeletConfig(clusterID, "-y")
 				Expect(output.String()).To(ContainSubstring("Failed to delete KubeletConfig for cluster '%s'",
@@ -175,9 +178,7 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 			})
 	})
 var _ = Describe("Kubeletconfig on HCP cluster",
-	labels.Day2,
-	labels.NonClassicCluster,
-	labels.FeatureKubeletConfig,
+	labels.Feature.KubeletConfig,
 	func() {
 		var (
 			clusterID          string
@@ -194,8 +195,14 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			kubeletService = rosaClient.KubeletConfig
-
 			machinePoolService = rosaClient.MachinePool
+
+			By("Skip testing if the cluster is not a HCP cluster")
+			hosted, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !hosted {
+				SkipNotHosted()
+			}
 		})
 
 		AfterEach(func() {
@@ -210,7 +217,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 
 		})
 		It("can be created/updated/deleted successfully - [id:73753]",
-			labels.High,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("List the kubeletconfig with not existing cluster")
 				out, err := kubeletService.ListKubeletConfigs(clusterID)
@@ -276,7 +283,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 
 			})
 		It("can validate when create/edit/delete/describe - [id:73754]",
-			labels.Medium,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("List the kubeletconfig with not existing cluster")
 				out, err := kubeletService.ListKubeletConfigs("notexisting")
@@ -345,7 +352,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 			})
 
 		It("can be attach to machinepool successfully - [id:73765]",
-			labels.High,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Prepare kubeletconfigs")
 				kubeName1, kubeName2 := "kube-73765", "kube-73765-2"
@@ -423,7 +430,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 			})
 
 		It("can validate well when attach to machinepool - [id:73766]",
-			labels.Medium,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Prepare kubeletconfigs")
 				kubeName1, kubeName2 := "kube-73766", "kube-73766-2"

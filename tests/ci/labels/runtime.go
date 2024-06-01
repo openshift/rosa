@@ -6,22 +6,43 @@ import (
 
 // Pre check
 var E2ECommit = Label("e2e-commit")
+
+// Report portal
 var E2EReport = Label("e2e-report")
 
-// day1/day1-post and day2
-var Day1 = Label("day1")
-var Day1Prepare = Label("day1-prepare")
-var Day1Negative = Label("day1-negative")
-var Day1Post = Label("day1-post")
-var Day2 = Label("day2")
-var Upgrade = Label("upgrade")
-var Day1Validation = Label("day1-validation")
+// Test
+// The lables is always defined on each test case.
+type runtimeLabels struct {
+	// Test cases based on a cluster created by profiles.
+	Day1        Labels
+	Day1Post    Labels
+	Day2        Labels
+	Upgrade     Labels
+	Destructive Labels
+	Destroy     Labels
+	DestroyPost Labels
 
-// day3 : the test cases will destroy default resource
-var Day3 = Label("day3")
+	// Test cases beyond the cluster created by profiles.
+	Day1Supplemental Labels
+	Day1Negative     Labels
+	OCMResources     Labels
+}
 
-// destroy
-var Destroy = Label("destroy")
+var Runtime = initRuntime()
 
-// post check
-var DeprovisionPost = Label("deprovision-post")
+func initRuntime() *runtimeLabels {
+	var rLabels = new(runtimeLabels)
+	rLabels.Day1 = Label("day1")
+	rLabels.Day1Post = Label("day1-post")
+	rLabels.Day2 = Label("day2")
+	rLabels.Upgrade = Label("upgrade")
+	rLabels.Destructive = Label("destructive")
+	rLabels.Destroy = Label("feature-destroy")
+	rLabels.DestroyPost = Label("feature-destroy-post")
+
+	rLabels.Day1Supplemental = Label("feature-day1-supplemental")
+	rLabels.OCMResources = Label("feature-ocm-resources")
+	rLabels.Day1Negative = Label("feature-day1-negative")
+
+	return rLabels
+}

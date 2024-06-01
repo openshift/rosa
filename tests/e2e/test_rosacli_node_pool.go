@@ -23,9 +23,7 @@ import (
 )
 
 var _ = Describe("Edit nodepool",
-	labels.Day2,
-	labels.FeatureMachinepool,
-	labels.NonClassicCluster,
+	labels.Feature.Machinepool,
 	func() {
 		defer GinkgoRecover()
 
@@ -56,11 +54,11 @@ var _ = Describe("Edit nodepool",
 			machinePoolUpgradeService = rosaClient.MachinePoolUpgrade
 			versionService = rosaClient.Version
 
-			By("Check hosted cluster")
+			By("Skip testing if the cluster is not a HCP cluster")
 			hosted, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 			if !hosted {
-				Skip("Node pools are only supported on Hosted clusters")
+				SkipNotHosted()
 			}
 		})
 
@@ -71,7 +69,7 @@ var _ = Describe("Edit nodepool",
 		})
 
 		It("can create/edit/list/delete nodepool - [id:56782]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				nodePoolName := common.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
@@ -161,7 +159,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create nodepool with defined subnets - [id:60202]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				var subnets []string
 				nodePoolName := common.GenerateRandomName("np-60202", 2)
@@ -281,7 +279,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create nodepool with tuning config - [id:63178]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63178", 2)
@@ -349,7 +347,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create nodepool with tuning config will validate well - [id:63179]",
-			labels.Medium, labels.NonClassicCluster,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63179", 2)
@@ -411,7 +409,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("does support 'version' parameter on nodepool - [id:61138]",
-			labels.High,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				nodePoolName := common.GenerateRandomName("np-61138", 2)
 
@@ -511,7 +509,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can validate the version parameter on nodepool creation/editing - [id:61139]",
-			labels.Medium,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				testVersionFailFunc := func(flags ...string) {
 					Logger.Infof("Creating nodepool with flags %v", flags)
@@ -583,7 +581,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can list/describe/delete nodepool upgrade policies - [id:67414]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				currentDateTimeUTC := time.Now().UTC()
 
@@ -695,7 +693,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/edit nodepool with node_drain_grace_period to HCP cluster via ROSA cli can work well - [id:72715]",
-			labels.High, labels.NonClassicCluster,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("check help message for create/edit machinepool")
 				help, err := machinePoolService.RetrieveHelpForCreate()
@@ -771,7 +769,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("validations will work for editing machinepool via rosa cli - [id:73391]",
-			labels.Medium, labels.NonClassicCluster,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				nonExistingMachinepoolName := common.GenerateRandomName("mp-fake", 2)
 				machinepoolName := common.GenerateRandomName("mp-73391", 2)
@@ -818,7 +816,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/describe machinepool with user tags for HCP - [id:73492]",
-			labels.High, labels.Day2, labels.NonClassicCluster,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Get the Organization Id")
 				rosaClient.Runner.JsonFormat()

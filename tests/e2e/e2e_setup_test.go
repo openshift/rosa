@@ -11,9 +11,9 @@ import (
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
-var _ = Describe("ROSA CLI Test", func() {
-	It("PrepareClusterByProfile",
-		labels.Day1Prepare,
+var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
+	It("by profile",
+		labels.Runtime.Day1,
 		func() {
 			client := rosacli.NewClient()
 			profile := profilehandler.LoadProfileYamlFileByENV()
@@ -22,10 +22,12 @@ var _ = Describe("ROSA CLI Test", func() {
 			log.Logger.Infof("Cluster prepared successfully with id %s", cluster.ID)
 		})
 
-	It("WaitClusterReady", func() {
-		clusterDetail, err := profilehandler.ParserClusterDetail()
-		Expect(err).ToNot(HaveOccurred())
-		client := rosacli.NewClient()
-		profilehandler.WaitForClusterReady(client, clusterDetail.ClusterID, config.Test.GlobalENV.ClusterWaitingTime)
-	})
+	It("to wait for cluster ready",
+		labels.Runtime.Day1,
+		func() {
+			clusterDetail, err := profilehandler.ParserClusterDetail()
+			Expect(err).ToNot(HaveOccurred())
+			client := rosacli.NewClient()
+			profilehandler.WaitForClusterReady(client, clusterDetail.ClusterID, config.Test.GlobalENV.ClusterWaitingTime)
+		})
 })

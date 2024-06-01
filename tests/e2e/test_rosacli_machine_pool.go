@@ -14,9 +14,7 @@ import (
 )
 
 var _ = Describe("Create machinepool",
-	labels.Day2,
-	labels.FeatureMachinepool,
-	labels.NonHCPCluster,
+	labels.Feature.Machinepool,
 	func() {
 		defer GinkgoRecover()
 		var (
@@ -35,6 +33,13 @@ var _ = Describe("Create machinepool",
 			rosaClient = rosacli.NewClient()
 			machinePoolService = rosaClient.MachinePool
 			ocmResourceService = rosaClient.OCMResource
+
+			By("Skip testing if the cluster is not a Classic cluster")
+			isClassic, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !isClassic {
+				SkipNotClassic()
+			}
 		})
 
 		AfterEach(func() {
@@ -44,7 +49,7 @@ var _ = Describe("Create machinepool",
 		})
 
 		It("can create machinepool with volume size set - [id:66872]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				mpID := "mp-66359"
 				expectedDiskSize := "186 GiB" // it is 200GB
@@ -105,7 +110,7 @@ var _ = Describe("Create machinepool",
 			})
 
 		It("List newly added instance-types - [id:73308]",
-			labels.Medium,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("List the available instance-types and verify the presence of newly added instance-types")
 				newlyAddedTypes := []string{"c7a.xlarge", "c7a.48xlarge", "c7a.metal-48xl", "r7a.xlarge", "r7a.48xlarge", "r7a.metal-48xl", "hpc6a.48xlarge", "hpc6id.32xlarge", "hpc7a.96xlarge", "c7i.48xlarge", "c7i.metal-24xl", "c7i.metal-48xl", "r7i.xlarge", "r7i.48xlarge"}
@@ -123,7 +128,7 @@ var _ = Describe("Create machinepool",
 			})
 
 		It("can create spot machinepool - [id:43251]",
-			labels.High,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Create a spot machinepool on the cluster")
 				machinePoolName := "spotmp"
@@ -168,8 +173,7 @@ var _ = Describe("Create machinepool",
 			})
 
 		It("validate inputs for create spot machinepool - [id:43252]",
-			labels.Medium,
-			labels.Day2,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Create a spot machinepool with negative price")
 				machinePoolName := "spotmp"
@@ -188,8 +192,7 @@ var _ = Describe("Create machinepool",
 			})
 
 		It("can create machinepool with tags - [id:73469]",
-			labels.NonHCPCluster,
-			labels.Day2,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Check the help message of machinepool creation")
 				out, err := machinePoolService.CreateMachinePool(clusterID, "mp-73469", "-h")
@@ -243,9 +246,7 @@ var _ = Describe("Create machinepool",
 	})
 
 var _ = Describe("Edit machinepool",
-	labels.Day2,
-	labels.FeatureMachinepool,
-	labels.NonHCPCluster,
+	labels.Feature.Machinepool,
 	func() {
 		defer GinkgoRecover()
 		var (
@@ -263,6 +264,13 @@ var _ = Describe("Edit machinepool",
 			rosaClient = rosacli.NewClient()
 			machinePoolService = rosaClient.MachinePool
 
+			By("Skip testing if the cluster is not a Classic cluster")
+			isClassic, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !isClassic {
+				SkipNotClassic()
+			}
+
 		})
 
 		AfterEach(func() {
@@ -271,46 +279,48 @@ var _ = Describe("Edit machinepool",
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("will succeed - [id:38838]", func() {
-			By("Check help message")
-			output, err := machinePoolService.EditMachinePool(clusterID, "", "-h")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring("machinepool, machinepools, machine-pool, machine-pools"))
+		It("will succeed - [id:38838]",
+			labels.High, labels.Runtime.Day2,
+			func() {
+				By("Check help message")
+				output, err := machinePoolService.EditMachinePool(clusterID, "", "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("machinepool, machinepools, machine-pool, machine-pools"))
 
-			By("Create an additional machinepool")
-			machinePoolName := "mp-38838"
-			_, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName,
-				"--replicas", "3")
-			Expect(err).ToNot(HaveOccurred())
+				By("Create an additional machinepool")
+				machinePoolName := "mp-38838"
+				_, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName,
+					"--replicas", "3")
+				Expect(err).ToNot(HaveOccurred())
 
-			By("Edit the additional machinepool to autoscaling")
-			_, err = machinePoolService.EditMachinePool(clusterID, machinePoolName,
-				"--enable-autoscaling",
-				"--min-replicas", "3",
-				"--max-replicas", "3",
-			)
-			Expect(err).ToNot(HaveOccurred())
+				By("Edit the additional machinepool to autoscaling")
+				_, err = machinePoolService.EditMachinePool(clusterID, machinePoolName,
+					"--enable-autoscaling",
+					"--min-replicas", "3",
+					"--max-replicas", "3",
+				)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("Check the edited machinePool")
-			mp, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, machinePoolName)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(mp.AutoScaling).To(Equal("Yes"))
-			Expect(mp.Replicas).To(Equal("3-3"))
+				By("Check the edited machinePool")
+				mp, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, machinePoolName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mp.AutoScaling).To(Equal("Yes"))
+				Expect(mp.Replicas).To(Equal("3-3"))
 
-			By("Edit the the machinepool to min-replicas 0, taints and labels")
-			taints := "k38838=v:NoSchedule,k38838-2=:NoExecute"
-			labels := "test38838="
-			_, err = machinePoolService.EditMachinePool(clusterID, machinePoolName,
-				"--min-replicas", "0",
-				"--taints", taints,
-				"--labels", labels,
-			)
-			Expect(err).ToNot(HaveOccurred())
-			mp, err = machinePoolService.DescribeAndReflectMachinePool(clusterID, machinePoolName)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(mp.AutoScaling).To(Equal("Yes"))
-			Expect(mp.Replicas).To(Equal("0-3"))
-			Expect(mp.Labels).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(labels), ", ")))
-			Expect(mp.Taints).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(taints), ", ")))
-		})
+				By("Edit the the machinepool to min-replicas 0, taints and labels")
+				taints := "k38838=v:NoSchedule,k38838-2=:NoExecute"
+				labels := "test38838="
+				_, err = machinePoolService.EditMachinePool(clusterID, machinePoolName,
+					"--min-replicas", "0",
+					"--taints", taints,
+					"--labels", labels,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				mp, err = machinePoolService.DescribeAndReflectMachinePool(clusterID, machinePoolName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mp.AutoScaling).To(Equal("Yes"))
+				Expect(mp.Replicas).To(Equal("0-3"))
+				Expect(mp.Labels).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(labels), ", ")))
+				Expect(mp.Taints).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(taints), ", ")))
+			})
 	})

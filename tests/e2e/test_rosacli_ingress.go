@@ -13,8 +13,7 @@ import (
 )
 
 var _ = Describe("Edit default ingress",
-	labels.Day2,
-	labels.FeatureIngress,
+	labels.Feature.Ingress,
 	func() {
 		defer GinkgoRecover()
 
@@ -38,16 +37,17 @@ var _ = Describe("Edit default ingress",
 			var err error
 			isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-
 		})
 
 		It("can update on rosa HCP cluster - [id:63323]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
-				By("Retrieve cluster and get default ingress id")
+				By("Skip testing if the cluster is not a HCP cluster")
 				if !isHosted {
-					Skip("This case is for HCP cluster")
+					SkipNotHosted()
 				}
+
+				By("Retrieve cluster and get default ingress id")
 				output, err := ingressService.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -127,9 +127,12 @@ var _ = Describe("Edit default ingress",
 
 		It("change load balancer type - [id:64767]",
 			labels.Critical,
-			labels.Day2,
-			labels.NonHCPCluster,
+			labels.Runtime.Day2,
 			func() {
+				By("Skip testing if the cluster is not a Classic cluster")
+				if isHosted {
+					SkipNotClassic()
+				}
 
 				output, err := ingressService.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -180,12 +183,13 @@ var _ = Describe("Edit default ingress",
 			})
 		It("can update ingress controller attributes - [id:65799]",
 			labels.Critical,
-			labels.Day2,
-			labels.NonHCPCluster,
+			labels.Runtime.Day2,
 			func() {
+				By("Skip testing if the cluster is not a Classic cluster")
 				if isHosted {
-					Skip("This case is for standard ROSA clusters only")
+					SkipNotClassic()
 				}
+
 				output, err := ingressService.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -225,9 +229,13 @@ var _ = Describe("Edit default ingress",
 			})
 		It("can change labels and private - [id:38835]",
 			labels.Critical,
-			labels.Day2,
-			labels.NonHCPCluster,
+			labels.Runtime.Day2,
 			func() {
+				By("Skip testing if the cluster is not a Classic cluster")
+				if isHosted {
+					SkipNotClassic()
+				}
+
 				By("Record ingress default value")
 				output, err := rosaClient.Ingress.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())

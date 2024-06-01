@@ -14,7 +14,7 @@ var clusterID string
 
 func TestROSACLIProvider(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "e2e tests suite")
+	RunSpecs(t, "ROSA CLI e2e tests suite")
 }
 
 var _ = BeforeSuite(func() {

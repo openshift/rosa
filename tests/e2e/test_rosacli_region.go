@@ -5,35 +5,27 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
 var _ = Describe("Region",
-	labels.Day2,
-	labels.FeatureRegion,
+	labels.Feature.Regions,
 	func() {
 		defer GinkgoRecover()
 
 		var (
-			clusterID          string
 			rosaClient         *rosacli.Client
 			ocmResourceService rosacli.OCMResourceService
 		)
 
 		BeforeEach(func() {
-
-			By("Get the cluster")
-			clusterID = config.GetClusterID()
-			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
-
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
 		})
 
 		It("can list regions - [id:55729]",
-			labels.High,
+			labels.High, labels.Runtime.OCMResources,
 			func() {
 
 				By("List region")

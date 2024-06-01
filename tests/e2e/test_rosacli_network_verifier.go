@@ -17,8 +17,7 @@ import (
 )
 
 var _ = Describe("Network verifier",
-	labels.Day2,
-	labels.FeatureNetworkVerifier,
+	labels.Feature.VerifyResources,
 	func() {
 		defer GinkgoRecover()
 
@@ -42,7 +41,7 @@ var _ = Describe("Network verifier",
 
 		// Verify network via the rosa cli
 		It("can verify network - [id:64917]",
-			labels.High,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -144,7 +143,7 @@ var _ = Describe("Network verifier",
 			})
 
 		It("validation should work well - [id:68751]",
-			labels.Medium,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)

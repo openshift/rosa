@@ -16,8 +16,8 @@ import (
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
-var _ = Describe("Verify",
-	labels.Day1Post,
+var _ = Describe("Healthy check",
+	labels.Feature.Cluster,
 	func() {
 		defer GinkgoRecover()
 		var (
@@ -48,13 +48,13 @@ var _ = Describe("Verify",
 		})
 
 		It("the creation of rosa cluster with volume size will work - [id:66359]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				By("Classic cluster check")
+				By("Skip testing if the cluster is not a Classic cluster")
 				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				if isHosted {
-					Skip("This case is only working for classic right now")
+					SkipTestOnFeature("volume size")
 				}
 
 				alignDiskSize := func(diskSize string) string {
@@ -89,13 +89,13 @@ var _ = Describe("Verify",
 			})
 
 		It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				By("Classic cluster check")
+				By("Skip testing if the cluster is not a Classic cluster")
 				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				if isHosted {
-					Skip("This case is only working for classic right now")
+					SkipTestOnFeature("default machinepool labels")
 				}
 
 				By("Check the cluster config")
@@ -127,7 +127,7 @@ var _ = Describe("Verify",
 			})
 
 		It("the windows certificates expiration - [id:64040]",
-			labels.Medium,
+			labels.Medium, labels.Runtime.Day1Post,
 			func() {
 				//If the case fails,please open a card to ask dev update windows certificates.
 				//Example card: https://issues.redhat.com/browse/SDA-8990
@@ -154,8 +154,7 @@ var _ = Describe("Verify",
 			})
 
 		It("the additional security groups are working well - [id:68172]",
-			labels.Day1Post,
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day1Post,
 			labels.Exclude, //Exclude it until day1 refactor support this part. It cannot be run with current day1
 			func() {
 				By("Run command to check help message of security groups")
@@ -200,13 +199,11 @@ var _ = Describe("Verify",
 			})
 
 		It("bring your own kms key functionality works on cluster creation - [id:60082]",
-			labels.Day1Post,
-			labels.Critical,
-			labels.NonHCPCluster,
+			labels.Critical, labels.Runtime.Day1Post,
 			func() {
 				By("Confirm current cluster profile uses kms keys")
 				if !clusterConfig.EnableCustomerManagedKey {
-					Skip("No KMS key defined. Skipping...")
+					SkipTestOnFeature("byo kms")
 				}
 				By("Check the help message of 'rosa create cluster -h'")
 				output, err := clusterService.CreateDryRun(clusterID, "-h")
@@ -222,13 +219,11 @@ var _ = Describe("Verify",
 			})
 
 		It("etcd encryption works on cluster creation - [id:42188]",
-			labels.Day1Post,
-			labels.Critical,
-			labels.NonHCPCluster,
+			labels.Critical, labels.Runtime.Day1Post,
 			func() {
 				By("Confirm current cluster profile uses etcd encryption")
 				if !clusterConfig.EtcdEncryption {
-					Skip("No etcd encryption defined. Skipping...")
+					SkipTestOnFeature("etcd encryption")
 				}
 				By("Check the help message of 'rosa create cluster -h'")
 				output, err := clusterService.CreateDryRun(clusterID, "-h")

@@ -9,10 +9,9 @@ import (
 	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
-var _ = Describe("ROSA CLI Test", func() {
-	It("DestroyClusterByProfile",
-		labels.Critical,
-		labels.Destroy,
+var _ = Describe("Cluster destroy", labels.Feature.Cluster, func() {
+	It("by profile",
+		labels.Runtime.Destroy,
 		func() {
 			client := rosacli.NewClient()
 			profile := ph.LoadProfileYamlFileByENV()
