@@ -42,6 +42,7 @@ type Client struct {
 	User                 UserService
 	Version              VersionService
 	BreakGlassCredential BreakGlassCredentialService
+	ExternalAuthProvider ExternalAuthProviderService
 }
 
 func NewClient() *Client {
@@ -66,6 +67,7 @@ func NewClient() *Client {
 	client.User = NewUserService(client)
 	client.Version = NewVersionService(client)
 	client.BreakGlassCredential = NewBreakGlassCredentialService(client)
+	client.ExternalAuthProvider = NewExternalAuthProviderService(client)
 
 	return client
 }
@@ -86,6 +88,7 @@ func (c *Client) CleanResources(clusterID string) error {
 	errorList = append(errorList, c.OCMResource.CleanResources(clusterID)...)
 	errorList = append(errorList, c.Cluster.CleanResources(clusterID)...)
 	errorList = append(errorList, c.BreakGlassCredential.CleanResources(clusterID)...)
+	errorList = append(errorList, c.ExternalAuthProvider.CleanResources(clusterID)...)
 
 	return errors.Join(errorList...)
 
