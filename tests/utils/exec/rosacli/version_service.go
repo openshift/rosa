@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver"
 
@@ -131,7 +132,7 @@ func (v *versionService) CleanResources(clusterID string) (errors []error) {
 
 // This function will find the nearest lower OCP version which version is under `Major.{minor-sub}`.
 // `strict` will find only the `Major.{minor-sub}` ones
-func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version string, minorSub int64, strict bool) (vs *OpenShiftVersionTableOutput, err error) {
+func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version string, minorSub int64, strict bool, upgradable ...bool) (vs *OpenShiftVersionTableOutput, err error) {
 	var baseVersionSemVer *semver.Version
 	baseVersionSemVer, err = semver.NewVersion(version)
 	if err != nil {
@@ -142,7 +143,16 @@ func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version str
 		return
 	}
 	if nvl, err = nvl.Sort(true); err == nil && nvl.Len() > 0 {
-		vs = nvl.OpenShiftVersions[0]
+		if len(upgradable) == 1 && upgradable[0] {
+			for _, nv := range nvl.OpenShiftVersions {
+				if strings.Contains(nv.AvailableUpgrades, version) {
+					vs = nv
+				}
+			}
+		} else {
+			vs = nvl.OpenShiftVersions[0]
+		}
+
 	}
 	return
 
