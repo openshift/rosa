@@ -120,11 +120,16 @@ var _ = Describe("Edit IDP",
 				Expect(idpTab.IsExist("cluster-admin")).To(BeTrue())
 				Expect(idpTab.IsExist(idpName)).To(BeTrue())
 
-				By("login the cluster with the created cluster admin")
-				time.Sleep(3 * time.Minute)
-				stdout, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				isPrivate, err := rosaClient.Cluster.IsPrivateCluster(clusterID)
 				Expect(err).To(BeNil())
-				Expect(stdout.String()).Should(ContainSubstring("Login successful"))
+
+				if !isPrivate {
+					By("login the cluster with the created cluster admin")
+					time.Sleep(3 * time.Minute)
+					stdout, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+					Expect(stdout.String()).Should(ContainSubstring("Login successful"))
+				}
 			})
 
 		It("can create/List/Delete IDPs for rosa clusters - [id:35896]",
