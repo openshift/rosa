@@ -6,7 +6,7 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	ph "github.com/openshift/rosa/tests/utils/profilehandler"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Cluster destroy", labels.Feature.Cluster, func() {
@@ -14,8 +14,8 @@ var _ = Describe("Cluster destroy", labels.Feature.Cluster, func() {
 		labels.Runtime.Destroy,
 		func() {
 			client := rosacli.NewClient()
-			profile := ph.LoadProfileYamlFileByENV()
-			var errs = ph.DestroyResourceByProfile(profile, client)
+			profile := profilehandler.LoadProfileYamlFileByENV()
+			var errs = profilehandler.DestroyResourceByProfile(profile, client)
 			Expect(len(errs)).To(Equal(0))
 		})
 })

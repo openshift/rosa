@@ -1,8 +1,10 @@
 # ROSA CLI Function Verification Testing
-This package is the automation package for Function Verification Testing on the ROSA CLI. 
+
+This package is the automation package for Function Verification Testing on the ROSA CLI.
 
 ## Structure of tests
-```sh
+
+```bash
 tests
 |____e2e      
     |____e2e_suite_test.go                        ---- test suite for all the e2e tests
@@ -22,7 +24,9 @@ tests
 ## Contibute to ROSA CLI tests
 
 Please read the structure and contribute code to the correct place
+
 ### Contribute to day1
+
 1. Enable the configuration in _[profiles](./ci/data/profiles)_
 2. Mapping the configuration in _[ClusterConfig](./utils/profilehandler/interface.go)_
 3. Define the userdata preparation function in _[data_preparation](./utils/profilehandler/data_preparation.go)_
@@ -38,9 +42,10 @@ Please read the structure and contribute code to the correct place
 * Every case need to recover the cluster after the case run finished unless it's un-recoverable
 * Case format should follow 
   * _main feature description in Describe level_ at the same time _testing purpose in It level_.
-  * `id` of the case is included which will follow the fmt of _[id:<id>]_
+  * `id` of the case is included which will follow the fmt of _[id:\<id\>]_
   * Use `By("")` to describe the steps
   * An example as below
+
 ```golang
 var _ = Describe("Create Machine Pool", func() {
   It("to hosted cluster with additional security group IDs will work - [id:72195]",func(){
@@ -55,8 +60,9 @@ var _ = Describe("Create Machine Pool", func() {
   })
 }
 ```
+
   * The commit and PR should follow
-    * Only one commit is allowed per PR, if multiple commits created please squash them with command 
+    * Only one commit is allowed per PR, if multiple commits created please squash them with command
     `git rebase -i HEAD~N`(_N_ is the commits number you would squashed)
     * The commit and PR title should follow rule of [contributing-to-rosa](../CONTRIBUTING.md#contributing-to-rosa)
     * Case id must be included in the PR/commit title if new automated or updated. Comma-separated if multiple included in same PR/commit. For example
@@ -120,6 +126,7 @@ For the test cases, we need `$ make install` to make the rosa command line insta
 > * **CLUSTER_TIMEOUT** if it is set, the process will exit if cluster cannot be ready in setting time. Unit is minute
 
 ### Running a local CI test simulation
+
 This feature allows for running tests through a case filter to simulate CI. Anyone can customize the case label filter to select the specific cases that would be run. 
 
 1. To declare the cluster id, use the below variable
@@ -132,6 +139,7 @@ This feature allows for running tests through a case filter to simulate CI. Anyo
       * `$ ginkgo run -focus <case id> tests/e2e`
 
 ### Resources destroy
+
 1. Export the profile name as an environment variable
 * `$ export TEST_PROFILE=<PROFILE NAME>`
 
@@ -144,8 +152,8 @@ This feature allows for running tests through a case filter to simulate CI. Anyo
 > Environment variables setting
 > * **SHARED_DIR** if you have the env variable setting, resource destroy will read information from cluster-detail.json and resources.json under it, otherwise it will read the two files from _output/${TEST_PROFILE}_
 
-
 ## Additional configuration
+
 > [!TIP]
 > Set log level
 > Log level defined in rosa/tests/utils/log/logger.go
@@ -154,13 +162,16 @@ This feature allows for running tests through a case filter to simulate CI. Anyo
 > ```
 
 ## Running with presubmit jobs
+
 The [presubmit jobs](https://github.com/openshift/release/blob/master/ci-operator/config/openshift/rosa/openshift-rosa-master__e2e-presubmits.yaml) are used for validating the changes in the pull request before merging. The lifecycle of a presubmit job is `create a cluster` -> `do testing` -> `release resources`. The tester needs to select the corresponding configuration to trigger the job manually. These jobs are set to `optional: true` which means even if it is failed, it is not considered as a merging blocker.
 
 Regularly, `do testing` focuses on the test case IDs that are gotten from the commit title in the format `<card id> | test: automated cases id:123456,123457`. If there is no test case ID, it will pick up the `Critical` ones. The testing results will be recorded in a junit.xml under `rosa-test-e2e-pull-request/${ARTIFACT_DIR}`. 
 
 ### Help
+
 Type `/test ?` to list the defined jobs.
-```
+
+```text
 The following commands are available to trigger optional jobs:
 
     /test e2e-presubmits-pr-rosa-hcp
