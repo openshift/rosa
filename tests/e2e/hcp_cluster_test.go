@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("HCP cluster testing",
-	labels.Day2,
+	labels.Feature.Cluster,
 	func() {
 		defer GinkgoRecover()
 
@@ -32,6 +32,13 @@ var _ = Describe("HCP cluster testing",
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
+
+			By("Skip testing if the cluster is not a HCP cluster")
+			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !hostedCluster {
+				SkipNotHosted()
+			}
 		})
 
 		AfterEach(func() {
@@ -40,7 +47,7 @@ var _ = Describe("HCP cluster testing",
 		})
 
 		It("create and edit hosted-cp cluster with AuditLog Forwarding enabled/disabled via rosacli - [id:64491]",
-			labels.High, labels.NonClassicCluster,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -49,7 +56,7 @@ var _ = Describe("HCP cluster testing",
 				Expect(err).To(BeNil())
 
 				if clusterConfig.AuditLogArn == "" {
-					Skip("It doesn't support for non-HCP cluster - cannot run this test")
+					SkipTestOnFeature("audit log")
 				}
 				role := clusterDetail.AuditLogRoleARN
 				Expect(clusterConfig.AuditLogArn).To(Equal(role))
@@ -66,7 +73,7 @@ var _ = Describe("HCP cluster testing",
 				By("Get cluster description")
 				output, err = clusterService.DescribeCluster(clusterID)
 				Expect(err).To(BeNil())
-				clusterDetail, err = clusterService.ReflectClusterDescription(output)
+				_, err = clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 
 				By("Edit the cluster to enable audit log forwarding")
@@ -88,7 +95,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create cluster with the KMS and etcd encryption for hypershift clusters by rosa-cli - [id:60083]",
-			labels.High, labels.NonClassicCluster,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				output, err, _ := clusterService.Create("", "-h")
@@ -114,7 +121,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create HCP cluster with network type can work well via rosa cli - [id:71050]",
-			labels.High, labels.NonClassicCluster,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				//It is hiddened now
@@ -142,7 +149,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create ROSA HCP cluster with external_auth_config config should work well via rosa client - [id:71945]",
-			labels.High, labels.NonClassicCluster,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				helpOutput, err, _ := clusterService.Create("", "-h")

@@ -9,9 +9,8 @@ import (
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
-var _ = Describe("Edit User",
-	labels.Day2,
-	labels.FeatureUser,
+var _ = Describe("Edit IDP User",
+	labels.Feature.IDP,
 	func() {
 		defer GinkgoRecover()
 
@@ -38,7 +37,7 @@ var _ = Describe("Edit User",
 		})
 
 		It("can grant/list/revoke users - [id:36128]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				var (
 					dedicatedAdminsGroupName = "dedicated-admins"
@@ -130,9 +129,8 @@ var _ = Describe("Edit User",
 			})
 	})
 
-var _ = Describe("Validate user",
-	labels.Day2, // TODO could be transformed as day1 negative
-	labels.FeatureUser,
+var _ = Describe("Validate user", // TODO could be transformed as day1 negative
+	labels.Feature.IDP,
 	func() {
 		defer GinkgoRecover()
 		var (
@@ -154,7 +152,7 @@ var _ = Describe("Validate user",
 		})
 
 		It("try to create cluster with invalid usernames, passwords or unsupported configurations - [id:66362]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				clusterID = "fake-cluster" // these tests do not create or use a real cluster so no need to address an existing one.
 

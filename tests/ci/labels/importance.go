@@ -9,5 +9,3 @@ var Critical = Label("Critical")
 var High = Label("High")
 var Medium = Label("Medium")
 var Low = Label("Low")
-
-var NonPreRelease = Label("NonPreRelease")

@@ -19,35 +19,41 @@ import (
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
-var _ = Describe("Rosacli Testing", func() {
+var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, func() {
 
 	var rosaClient *rosacli.Client
 	var clusterService rosacli.ClusterService
 
-	Describe("Hypershift break glass credential creation testing", func() {
-		BeforeEach(func() {
-			Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
-			rosaClient = rosacli.NewClient()
-			clusterService = rosaClient.Cluster
+	BeforeEach(func() {
+		Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
+		rosaClient = rosacli.NewClient()
+		clusterService = rosaClient.Cluster
+	})
+	AfterEach(func() {
+		By("Clean remaining resources")
+		err := rosaClient.CleanResources(clusterID)
+		Expect(err).ToNot(HaveOccurred())
+	})
 
-			By("Check cluster is hosted cluster and external auth config is enabled")
-			hosted, err := clusterService.IsHostedCPCluster(clusterID)
+	Describe("creation testing", func() {
+		BeforeEach(func() {
+			By("Skip testing if the cluster is not a HCP cluster")
+			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
+			if !hostedCluster {
+				SkipNotHosted()
+			}
+
+			By("Check if hcp cluster external_auth_providers is enabled")
 			externalAuthProvider, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			if !hosted || !externalAuthProvider {
-				Skip("This is only for external_auth_config enabled hypershift cluster")
+			if !externalAuthProvider {
+				SkipTestOnFeature("external auth provider")
 			}
 		})
 
-		AfterEach(func() {
-			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("create/list/describe/delete HCP cluster with break_glass_credentials via Rosa client can work well - [id:72899]",
-			labels.High, labels.NonClassicCluster,
+		It("to create/list/describe/delete HCP cluster with break_glass_credentials can work well - [id:72899]",
+			labels.High, labels.Runtime.Day2,
 			func() {
 				var resp bytes.Buffer
 				var err error
@@ -57,10 +63,10 @@ var _ = Describe("Rosacli Testing", func() {
 				userNameList := []string{}
 
 				reqBody := map[string][]string{
-					"full":            []string{"--username", common.GenerateRandomName("userName1", 2), "--expiration", "15m"},
-					"emptyUsername":   []string{"--expiration", "15m"},
-					"emptyExpiration": []string{"--username", common.GenerateRandomName("userName2", 2)},
-					"empty":           []string{},
+					"full":            {"--username", common.GenerateRandomName("userName1", 2), "--expiration", "15m"},
+					"emptyUsername":   {"--expiration", "15m"},
+					"emptyExpiration": {"--username", common.GenerateRandomName("userName2", 2)},
+					"empty":           {},
 				}
 
 				By("Retrieve help for create/list/describe/delete break-glass-credential")
@@ -124,23 +130,100 @@ var _ = Describe("Rosacli Testing", func() {
 					Eventually(rosaClient.BreakGlassCredential.WaitForBreakGlassCredentialToStatus(clusterID, "revoked", userName), time.Minute*4, time.Second*10).Should(BeTrue())
 				}
 			})
+
+		It("create/list/describe/delete external_auth for a HCP cluster can work well via rosa client - [id:72536]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				var (
+					consoleClientID          = "abc"
+					consoleClientSecrect     = "efgh"
+					issuerURL                = "https://local.com"
+					issuerAudience           = "abc"
+					ca                       = "----BEGIN CERTIFICATE-----MIIDNTCCAh2gAwIBAgIUAegBu2L2aoOizuGxf/fxBCU10oswDQYJKoZIhvcNAQELS3nCXMvI8q0E-----END CERTIFICATE-----"
+					groupClaim               = "groups"
+					userNameClaim            = "email"
+					claimValidationRuleClaim = "claim1:rule1"
+				)
+
+				claimRule := strings.Split(claimValidationRuleClaim, ":")
+				providerNameList := []string{}
+				var providerName string
+
+				caPath, err := common.CreateTempFileWithContent(ca)
+				defer os.Remove(caPath)
+				Expect(err).ToNot(HaveOccurred())
+
+				reqBody := map[string][]string{
+					"simple": {"--name", common.GenerateRandomName("provider1", 2), "--issuer-url", issuerURL, "--issuer-audiences", issuerAudience, "--claim-mapping-username-claim",
+						userNameClaim, "--claim-mapping-groups-claim", groupClaim, "--claim-validation-rule", claimValidationRuleClaim},
+					"with_ca": {"--name", common.GenerateRandomName("provider2", 2), "--issuer-url", issuerURL, "--issuer-audiences", issuerAudience, "--claim-mapping-username-claim",
+						userNameClaim, "--claim-mapping-groups-claim", groupClaim, "--issuer-ca-file", caPath},
+					"with_client_parameters": {"--name", common.GenerateRandomName("provider3", 2), "--issuer-url", issuerURL, "--issuer-audiences", issuerAudience, "--claim-mapping-username-claim",
+						userNameClaim, "--claim-mapping-groups-claim", groupClaim, "--console-client-id", consoleClientID, "--console-client-secret", consoleClientSecrect},
+				}
+
+				By("Check help message for create/list/describe/delete external_auth_provider")
+				_, err = rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID, "-h")
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = rosaClient.ExternalAuthProvider.RetrieveHelpForList()
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = rosaClient.ExternalAuthProvider.RetrieveHelpForDescribe()
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = rosaClient.ExternalAuthProvider.RetrieveHelpForDelete()
+				Expect(err).ToNot(HaveOccurred())
+
+				for key, value := range reqBody {
+					By("Create external auth provider to the cluster")
+					output, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID, value...)
+					Expect(err).ToNot(HaveOccurred())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("INFO: Successfully created an external authentication provider for cluster '%s'. It can take a few minutes for the creation of an external authentication provider to become fully effective.", clusterID))
+
+					By("List external auth providers of the cluster")
+					externalAuthProviderList, err := rosaClient.ExternalAuthProvider.ListExternalAuthProviderAndReflect(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+
+					for _, externalAuthProvider := range externalAuthProviderList.ExternalAuthProviders {
+						if !slices.Contains(providerNameList, externalAuthProvider.Name) {
+							providerName = externalAuthProvider.Name
+							Expect(providerName).ToNot(BeEmpty())
+							Expect(externalAuthProvider.IssuerUrl).To(Equal(issuerURL))
+							providerNameList = append(providerNameList, providerName)
+						}
+					}
+
+					By("Describe external auth provider of the cluster")
+					externalAuthProviderDesc, err := rosaClient.ExternalAuthProvider.DescribeExternalAuthProviderAndReflect(clusterID, providerName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(externalAuthProviderDesc.ID).To(Equal(providerName))
+					Expect(externalAuthProviderDesc.ClusterID).To(Equal(clusterID))
+					Expect(externalAuthProviderDesc.IssuerAudiences[0]).To(Equal(issuerAudience))
+					Expect(externalAuthProviderDesc.IssuerUrl).To(Equal(issuerURL))
+					Expect(externalAuthProviderDesc.ClaimMappingsGroup).To(Equal(groupClaim))
+					Expect(externalAuthProviderDesc.ClaimMappingsUserName).To(Equal(userNameClaim))
+					if key == "simple" {
+						Expect(externalAuthProviderDesc.ClaimValidationRules[0]).To(Equal(fmt.Sprintf("Claim:%s", claimRule[0])))
+						Expect(externalAuthProviderDesc.ClaimValidationRules[1]).To(Equal(fmt.Sprintf("Value:%s", claimRule[1])))
+					}
+					if key == "with_client_parameters" {
+						Expect(externalAuthProviderDesc.ConsoleClientID).To(Equal(consoleClientID))
+					}
+
+					By("Delete external auth provider of the cluster")
+					output, err = rosaClient.ExternalAuthProvider.DeleteExternalAuthProvider(clusterID, providerName)
+					Expect(err).ToNot(HaveOccurred())
+					textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("INFO: Successfully deleted external authentication provider '%s' from cluster '%s'", providerName, clusterID))
+				}
+			})
 	})
 
-	Describe("Hypershift break glass credential validation testing", func() {
-		BeforeEach(func() {
-			Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
-			rosaClient = rosacli.NewClient()
-			clusterService = rosaClient.Cluster
-		})
-
-		AfterEach(func() {
-			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("validation for HCP cluster break_glass_credentials create/list/describe/delete can work well via ROSA client - [id:73018]",
-			labels.Medium,
+	Describe("validation testing", func() {
+		It("to validate create/list/describe/delete break_glass_credentials can work well - [id:73018]",
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Create/list/revoke break-glass-credential to non-HCP cluster")
 				hosted, err := clusterService.IsHostedCPCluster(clusterID)
@@ -223,16 +306,21 @@ var _ = Describe("Rosacli Testing", func() {
 				}
 			})
 
-		It("validation should work when create/list/delete idp and user/admin to external_auth_config cluster via ROSA client - [id:71946]",
-			labels.Medium, labels.NonClassicCluster,
+		It("to validate create/list/delete idp and user/admin to external_auth_config cluster can work well - [id:71946]",
+			labels.Medium, labels.Runtime.Day2,
 			func() {
+				By("Skip testing if the cluster is not a HCP cluster")
+				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !hostedCluster {
+					SkipNotHosted()
+				}
 
 				By("Check if hcp cluster external_auth_providers is enabled")
 				isExternalAuthEnabled, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-
 				if !isExternalAuthEnabled {
-					Skip("This case is for HCP clusters with External Auth")
+					SkipTestOnFeature("external auth provider")
 				}
 
 				By("Create admin on --external-auth-providers-enabled cluster")
@@ -273,8 +361,8 @@ var _ = Describe("Rosacli Testing", func() {
 				Expect(textData).To(ContainSubstring("ERR: Listing identity providers is not supported for clusters with external authentication configured."))
 			})
 
-		It("validation should work when create cluster with external_auth_config via ROSA client - [id:73755]",
-			labels.Medium, labels.Day1Validation,
+		It("to validate create cluster with external_auth_config can work well - [id:73755]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).To(BeNil())
@@ -330,118 +418,6 @@ var _ = Describe("Rosacli Testing", func() {
 					output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring("External authentication is only supported in version '4.15.0' or greater, current cluster version is '%s'", foundVersion))
-				}
-			})
-	})
-
-	Describe("Hypershift external auth provider creation testing", func() {
-		BeforeEach(func() {
-			Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
-			rosaClient = rosacli.NewClient()
-			clusterService = rosaClient.Cluster
-
-			By("Check cluster is hosted cluster and external auth config is enabled")
-			hosted, err := clusterService.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-			externalAuthProvider, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-			if !hosted || !externalAuthProvider {
-				Skip("This is only for external_auth_config enabled hypershift cluster")
-			}
-		})
-
-		AfterEach(func() {
-			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("create/list/describe/delete external_auth for a HCP cluster can work well via rosa client - [id:72536]",
-			labels.Critical, labels.NonClassicCluster,
-			func() {
-				var (
-					consoleClientID          = "abc"
-					consoleClientSecrect     = "efgh"
-					issuerURL                = "https://local.com"
-					issuerAudience           = "abc"
-					ca                       = "----BEGIN CERTIFICATE-----MIIDNTCCAh2gAwIBAgIUAegBu2L2aoOizuGxf/fxBCU10oswDQYJKoZIhvcNAQELS3nCXMvI8q0E-----END CERTIFICATE-----"
-					groupClaim               = "groups"
-					userNameClaim            = "email"
-					claimValidationRuleClaim = "claim1:rule1"
-				)
-
-				claimRule := strings.Split(claimValidationRuleClaim, ":")
-				providerNameList := []string{}
-				var providerName string
-
-				caPath, err := common.CreateTempFileWithContent(ca)
-				defer os.Remove(caPath)
-				Expect(err).ToNot(HaveOccurred())
-
-				reqBody := map[string][]string{
-					"simple": []string{"--name", common.GenerateRandomName("provider1", 2), "--issuer-url", issuerURL, "--issuer-audiences", issuerAudience, "--claim-mapping-username-claim",
-						userNameClaim, "--claim-mapping-groups-claim", groupClaim, "--claim-validation-rule", claimValidationRuleClaim},
-					"with_ca": []string{"--name", common.GenerateRandomName("provider2", 2), "--issuer-url", issuerURL, "--issuer-audiences", issuerAudience, "--claim-mapping-username-claim",
-						userNameClaim, "--claim-mapping-groups-claim", groupClaim, "--issuer-ca-file", caPath},
-					"with_client_parameters": []string{"--name", common.GenerateRandomName("provider3", 2), "--issuer-url", issuerURL, "--issuer-audiences", issuerAudience, "--claim-mapping-username-claim",
-						userNameClaim, "--claim-mapping-groups-claim", groupClaim, "--console-client-id", consoleClientID, "--console-client-secret", consoleClientSecrect},
-				}
-
-				By("Check help message for create/list/describe/delete external_auth_provider")
-				_, err = rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID, "-h")
-				Expect(err).ToNot(HaveOccurred())
-
-				_, err = rosaClient.ExternalAuthProvider.RetrieveHelpForList()
-				Expect(err).ToNot(HaveOccurred())
-
-				_, err = rosaClient.ExternalAuthProvider.RetrieveHelpForDescribe()
-				Expect(err).ToNot(HaveOccurred())
-
-				_, err = rosaClient.ExternalAuthProvider.RetrieveHelpForDelete()
-				Expect(err).ToNot(HaveOccurred())
-
-				for key, value := range reqBody {
-					By("Create external auth provider to the cluster")
-					output, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID, value...)
-					Expect(err).ToNot(HaveOccurred())
-					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("INFO: Successfully created an external authentication provider for cluster '%s'. It can take a few minutes for the creation of an external authentication provider to become fully effective.", clusterID))
-
-					By("List external auth providers of the cluster")
-					externalAuthProviderList, err := rosaClient.ExternalAuthProvider.ListExternalAuthProviderAndReflect(clusterID)
-					Expect(err).ToNot(HaveOccurred())
-
-					for _, externalAuthProvider := range externalAuthProviderList.ExternalAuthProviders {
-						if !slices.Contains(providerNameList, externalAuthProvider.Name) {
-							providerName = externalAuthProvider.Name
-							Expect(providerName).ToNot(BeEmpty())
-							Expect(externalAuthProvider.IssuerUrl).To(Equal(issuerURL))
-							providerNameList = append(providerNameList, providerName)
-						}
-					}
-
-					By("Describe external auth provider of the cluster")
-					externalAuthProviderDesc, err := rosaClient.ExternalAuthProvider.DescribeExternalAuthProviderAndReflect(clusterID, providerName)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(externalAuthProviderDesc.ID).To(Equal(providerName))
-					Expect(externalAuthProviderDesc.ClusterID).To(Equal(clusterID))
-					Expect(externalAuthProviderDesc.IssuerAudiences[0]).To(Equal(issuerAudience))
-					Expect(externalAuthProviderDesc.IssuerUrl).To(Equal(issuerURL))
-					Expect(externalAuthProviderDesc.ClaimMappingsGroup).To(Equal(groupClaim))
-					Expect(externalAuthProviderDesc.ClaimMappingsUserName).To(Equal(userNameClaim))
-					if key == "simple" {
-						Expect(externalAuthProviderDesc.ClaimValidationRules[0]).To(Equal(fmt.Sprintf("Claim:%s", claimRule[0])))
-						Expect(externalAuthProviderDesc.ClaimValidationRules[1]).To(Equal(fmt.Sprintf("Value:%s", claimRule[1])))
-					}
-					if key == "with_client_parameters" {
-						Expect(externalAuthProviderDesc.ConsoleClientID).To(Equal(consoleClientID))
-					}
-
-					By("Delete external auth provider of the cluster")
-					output, err = rosaClient.ExternalAuthProvider.DeleteExternalAuthProvider(clusterID, providerName)
-					Expect(err).ToNot(HaveOccurred())
-					textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("INFO: Successfully deleted external authentication provider '%s' from cluster '%s'", providerName, clusterID))
 				}
 			})
 	})

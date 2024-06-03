@@ -10,49 +10,31 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
 var _ = Describe("Edit OIDC config",
-	labels.Day2,
-	labels.FeatureOidcConfig,
+	labels.Feature.OIDCConfig,
 	func() {
 		defer GinkgoRecover()
 
 		var (
-			clusterID                string
 			oidcConfigIDsNeedToClean []string
 			installerRoleArn         string
 			hostedCP                 bool
-			err                      error
 
 			rosaClient         *rosacli.Client
 			ocmResourceService rosacli.OCMResourceService
 		)
 
 		BeforeEach(func() {
-			By("Get the cluster ID")
-			clusterID = config.GetClusterID()
-			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
-
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
-
-			By("Get if hosted")
-			hostedCP, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
-			Expect(err).To(BeNil())
-		})
-
-		AfterEach(func() {
-			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("can create/list/delete BYO oidc config in auto mode - [id:57570]",
-			labels.High,
+			labels.High, labels.Runtime.OCMResources,
 			func() {
 				defer func() {
 					By("make sure that all oidc configs created during the testing")

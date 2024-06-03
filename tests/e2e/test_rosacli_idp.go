@@ -17,8 +17,7 @@ import (
 )
 
 var _ = Describe("Edit IDP",
-	labels.Day2,
-	labels.FeatureIDP,
+	labels.Feature.IDP,
 	func() {
 		defer GinkgoRecover()
 
@@ -48,7 +47,7 @@ var _ = Describe("Edit IDP",
 		})
 
 		It("can create/describe/delete admin user - [id:35878]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				var (
 					idpType    = "htpasswd"
@@ -129,7 +128,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("can create/List/Delete IDPs for rosa clusters - [id:35896]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				// common IDP variables
 				var (
@@ -264,7 +263,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("can create/delete the HTPasswd IDPs - [id:49137]",
-			labels.Critical,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				var (
 					idpType            = "htpasswd"
@@ -337,7 +336,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("Validation for Create/Delete the HTPasswd IDPs by the rosacli command - [id:53031]",
-			labels.Critical, labels.Day2,
+			labels.Critical, labels.Runtime.Day2,
 			func() {
 				var (
 					idpType         = "htpasswd"

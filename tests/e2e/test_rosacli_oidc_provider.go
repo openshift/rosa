@@ -10,8 +10,7 @@ import (
 )
 
 var _ = Describe("OIDC provider",
-	labels.Day2,
-	labels.FeatureOidcProvider,
+	labels.Feature.OIDCProvider,
 	func() {
 		defer GinkgoRecover()
 
@@ -40,7 +39,7 @@ var _ = Describe("OIDC provider",
 		})
 
 		It("validate when user create oidc-provider to cluster - [id:43046]",
-			labels.High,
+			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Check if cluster is sts cluster")
 				StsCluster, err := clusterService.IsSTSCluster(clusterID)

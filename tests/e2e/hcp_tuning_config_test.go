@@ -13,7 +13,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
-var _ = Describe("Create Tuning Config", func() {
+var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 
 	var rosaClient *rosacli.Client
 	var clusterService rosacli.ClusterService
@@ -23,11 +23,11 @@ var _ = Describe("Create Tuning Config", func() {
 		rosaClient = rosacli.NewClient()
 		clusterService = rosaClient.Cluster
 
-		By("Check hosted cluster")
+		By("Skip testing if the cluster is not a HCP cluster")
 		hosted, err := clusterService.IsHostedCPCluster(clusterID)
 		Expect(err).ToNot(HaveOccurred())
 		if !hosted {
-			Skip("Tuning Configs are only supported on Hosted clusters")
+			SkipNotHosted()
 		}
 	})
 
@@ -38,7 +38,7 @@ var _ = Describe("Create Tuning Config", func() {
 	})
 
 	It("tuning config can be created/updated/deleted to hosted cluster - [id:63164]",
-		labels.Critical, labels.NonClassicCluster,
+		labels.Critical, labels.Runtime.Day2,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
 			tuningConfigName_1 := common.GenerateRandomName("tuned01", 2)

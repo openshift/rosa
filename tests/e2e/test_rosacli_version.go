@@ -11,8 +11,7 @@ import (
 )
 
 var _ = Describe("Get CLI version",
-	labels.Day2,
-	labels.FeatureVersion,
+	labels.Feature.Version,
 	func() {
 		defer GinkgoRecover()
 
@@ -29,7 +28,7 @@ var _ = Describe("Get CLI version",
 		})
 
 		It("can get the version of rosa CLI while logged out - [id:73743]",
-			labels.Medium,
+			labels.Medium, labels.Runtime.OCMResources,
 			func() {
 				By("Make sure the CLI is logged out")
 				buf, err := rosaClient.Runner.Cmd("whoami").Run()
