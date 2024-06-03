@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -338,7 +337,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("Validation for Create/Delete the HTPasswd IDPs by the rosacli command - [id:53031]",
-			labels.Critical,
+			labels.Critical, labels.Day2,
 			func() {
 				var (
 					idpType         = "htpasswd"
@@ -396,6 +395,6 @@ var _ = Describe("Edit IDP",
 					"-y")
 				Expect(err).NotTo(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(fmt.Sprintf("Failed to add IDP to cluster '%s': Invalid username '%s': Username must not contain /, :, or %%", clusterID, invalidUserName)))
+				Expect(textData).Should(ContainSubstring("invalid username '%s': username must not contain /, :, or %", invalidUserName))
 			})
 	})
