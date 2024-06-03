@@ -36,6 +36,11 @@ var _ = Describe("UserTagValidator", func() {
 				Expect(err).To(MatchError("invalid tag format for tag '[tag2=value2]'. Expected tag format: 'key value'"))
 			})
 
+			It("should return an error if the tag has too many elements", func() {
+				err := UserTagValidator("a:b:c")
+				Expect(err).To(MatchError("invalid tag format for tag '[a b c]'. Expected tag format: 'key value'"))
+			})
+
 			It("should return an error if a tag is missing a key", func() {
 				err := UserTagValidator(":value1,tag2:value2")
 				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))

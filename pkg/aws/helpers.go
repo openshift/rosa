@@ -302,7 +302,7 @@ func UserTagValidator(input interface{}) error {
 	for _, t := range inputTags {
 		tag := strings.Split(t, delimiter)
 		if len(tag) != 2 {
-			return fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key%svalue'", tag, delimiter)
+			return fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", tag)
 		}
 
 		if tag[0] == "" || tag[1] == "" {
