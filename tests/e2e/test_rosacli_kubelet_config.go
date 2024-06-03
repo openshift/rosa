@@ -33,9 +33,9 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 			kubeletService = rosaClient.KubeletConfig
 
 			By("Skip testing if the cluster is a HCP cluster")
-			isClassic, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			isHosted, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			if !isClassic {
+			if isHosted {
 				SkipNotClassic()
 			}
 		})
