@@ -126,6 +126,7 @@ func (c *clusterService) ReflectClusterDescription(result bytes.Buffer) (res *Cl
 			// It will consider
 			newStr = strings.Replace(str, "Failed Inflight Checks:", "Failed Inflight Checks: |", 1)
 			newStr = strings.ReplaceAll(newStr, "\t", "  ")
+			newStr = strings.ReplaceAll(newStr, "not found: Role name", "not found:Role name")
 			return
 		}).
 		YamlToMap()

@@ -64,7 +64,7 @@ func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGr
 		log.Logger.Infof("Going to prepare version for %s stream %v versions lower", stream, versionStep)
 		switch stream {
 		case "y":
-			version, err := versionList.FindNearestBackwardMinorVersion(latestVersion.Version, int64(versionStep), true)
+			version, err := versionList.FindNearestBackwardMinorVersion(latestVersion.Version, int64(versionStep), true, true)
 			return version, err
 		case "z":
 			version, err := versionList.FindNearestBackwardOptionalVersion(latestVersion.Version, versionStep, true)

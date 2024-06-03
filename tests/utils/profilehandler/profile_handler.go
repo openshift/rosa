@@ -545,7 +545,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.WorkerDiskSize = diskSize
 	}
 	if profile.ClusterConfig.Zones != "" && !profile.ClusterConfig.BYOVPC {
-		flags = append(flags, " --availability-zones", profile.ClusterConfig.Zones)
+		flags = append(flags, "--availability-zones", profile.ClusterConfig.Zones)
 		clusterConfiguration.AvailabilityZones = profile.ClusterConfig.Zones
 	}
 	if profile.ClusterConfig.ExternalAuthConfig {
@@ -554,6 +554,22 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 	return flags, nil
 }
+func WaitForClusterPassWaiting(client *rosacli.Client, cluster string, timeoutMin int) error {
+	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
+	for time.Now().Before(endTime) {
+		output, err := client.Cluster.DescribeClusterAndReflect(cluster)
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(output.State, con.Waiting) {
+			log.Logger.Infof("Cluster %s is not in waiting state anymore", cluster)
+			return nil
+		}
+		time.Sleep(time.Minute)
+	}
+	return fmt.Errorf("timeout for cluster stuck waiting after %d mins", timeoutMin)
+}
+
 func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int) error {
 	var description *rosacli.ClusterDescription
 	var clusterDetail *ClusterDetail
@@ -569,6 +585,10 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL) // Temporary recoding file to make it compatible to existing jobs
 		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)       // Temporary recoding file to make it compatible to existing jobs
 	}()
+	err = WaitForClusterPassWaiting(client, cluster, 2)
+	if err != nil {
+		return err
+	}
 	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
 	sleepTime := 0
 	for time.Now().Before(endTime) {
@@ -631,7 +651,7 @@ func RecordClusterInstallationLog(client *rosacli.Client, cluster string) error 
 	return err
 }
 
-func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
+func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Client) (*rosacli.ClusterDescription, error) {
 	clusterDetail := new(ClusterDetail)
 
 	flags, err := GenerateClusterCreateFlags(profile, client)
@@ -648,7 +668,7 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 	log.Logger.Info("Cluster created succesfully")
 	description, err := client.Cluster.DescribeClusterAndReflect(profile.ClusterConfig.Name)
 	if err != nil {
-		return nil, err
+		return description, err
 	}
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
@@ -671,7 +691,6 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 		if err != nil {
 			return description, err
 		}
-
 	}
 	// Need to decorate the KMS key
 	if profile.ClusterConfig.KMSKey && profile.ClusterConfig.STS {
@@ -689,7 +708,7 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 	return description, err
 }
 func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
-	description, err := CreateClusterByProfileWithoutWaiting(profile, client, waitForClusterReady)
+	description, err := CreateClusterByProfileWithoutWaiting(profile, client)
 	if profile.ClusterConfig.BYOVPC {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", description.ID)
 		ReverifyClusterNetwork(client, description.ID)
