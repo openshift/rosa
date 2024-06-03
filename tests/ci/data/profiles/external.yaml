@@ -32,3 +32,35 @@ profiles:
   account-role:
     path: ""
     permission_boundary: ""
+- as: rosa-hcp-pl-kms-proxy
+  version: latest
+  channel_group: stable
+  region: "us-west-2"
+  cluster:
+    multi_az: true
+    instance_type: ""
+    hcp: true
+    sts: true
+    byo_vpc: true
+    private_link: true
+    private: true
+    etcd_encryption: true
+    fips: false
+    autoscale: false
+    kms_key: true
+    etcd_kms: true
+    networking: true
+    proxy_enabled: true
+    label_enabled: false
+    tag_enabled: false
+    zones: ""
+    imdsv2: ""
+    shared_vpc: false
+    oidc_config: unmanaged
+    audit_log: false
+    admin_enabled: false
+    autoscaler_enabled: false
+    disable_uwm: false
+  account-role:
+    path: ""
+    permission_boundary: ""
