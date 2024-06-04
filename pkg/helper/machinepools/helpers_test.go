@@ -330,3 +330,57 @@ var _ = Describe("Validate node drain grace period", func() {
 		),
 	)
 })
+
+var _ = Describe("Validate MaxSurge and MaxUnavailable", func() {
+	DescribeTable("Validate MaxSurge and MaxUnavailable",
+		func(value interface{}, errMsg string) {
+			err := ValidateUpgradeMaxSurgeUnavailable(value)
+			if errMsg != "" {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errMsg))
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Should not error with empty value",
+			"",
+			"",
+		),
+		Entry("Should not error with 0 percent",
+			"0%",
+			"",
+		),
+		Entry("Should not error with 100 percent",
+			"100%",
+			"",
+		),
+		Entry("Should error with negative percentage",
+			"-1%",
+			"Percentage value -1 must be between 0 and 100",
+		),
+		Entry("Should error with 101% percent",
+			"101%",
+			"Percentage value 101 must be between 0 and 100",
+		),
+		Entry("Should error with non-integer percent",
+			"1.1%",
+			"Percentage value '1.1' must be an integer",
+		),
+		Entry("Should not error with 0",
+			"0",
+			"",
+		),
+		Entry("Should not error with positive integer",
+			"1",
+			"",
+		),
+		Entry("Should error with negative number",
+			"-1",
+			"Value -1 cannot be negative",
+		),
+		Entry("Should error with non-integer",
+			"1.1",
+			"Value '1.1' must be an integer",
+		),
+	)
+})

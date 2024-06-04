@@ -59,6 +59,8 @@ var args struct {
 	securityGroupIds      []string
 	nodeDrainGracePeriod  string
 	tags                  []string
+	maxSurge              string
+	maxUnavailable        string
 }
 
 var Cmd = &cobra.Command{
@@ -247,6 +249,20 @@ func init() {
 		nil,
 		"Apply user defined tags to all resources created by ROSA in AWS. "+
 			"Tags are comma separated, for example: 'key value, foo bar'",
+	)
+
+	flags.StringVar(&args.maxSurge,
+		"max-surge",
+		"1",
+		"The maximum number of nodes that can be provisioned above the desired number of nodes in the machinepool during "+
+			"the upgrade. It can be an absolute number i.e. 1, or a percentage i.e. '20%'.",
+	)
+
+	flags.StringVar(&args.maxUnavailable,
+		"max-unavailable",
+		"0",
+		"The maximum number of nodes in the machinepool that can be unavailable during the upgrade. It can be an "+
+			"absolute number i.e. 1, or a percentage i.e. '20%'.",
 	)
 
 	interactive.AddFlag(flags)
