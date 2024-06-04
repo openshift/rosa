@@ -84,13 +84,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		npBuilder = npBuilder.Taints(taintBuilders...)
 	}
 
-	if autoscaling {
-		npBuilder.Autoscaling(editAutoscaling(nodePool, minReplicas, maxReplicas))
-	} else {
-		if nodePool.Replicas() != replicas {
-			npBuilder.Replicas(replicas)
-		}
-	}
+	fillAutoScalingAndReplicas(npBuilder, autoscaling, nodePool, minReplicas, maxReplicas, replicas)
 
 	if isAutorepairSet || interactive.Enabled() {
 		autorepair := args.autorepair
@@ -246,6 +240,16 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	}
 	r.Reporter.Infof("Updated machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
 	return nil
+}
+
+// fillAutoScalingAndReplicas is filling either autoscaling or replicas value in the builder
+func fillAutoScalingAndReplicas(npBuilder *cmv1.NodePoolBuilder, autoscaling bool, existingNodepool *cmv1.NodePool,
+	minReplicas int, maxReplicas int, replicas int) {
+	if autoscaling {
+		npBuilder.Autoscaling(editAutoscaling(existingNodepool, minReplicas, maxReplicas))
+	} else {
+		npBuilder.Replicas(replicas)
+	}
 }
 
 // promptForNodePoolNodeRecreate - prompts the user to accept that their changes will cause the nodes
