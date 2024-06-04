@@ -35,9 +35,9 @@ var _ = Describe("Create machinepool",
 			ocmResourceService = rosaClient.OCMResource
 
 			By("Skip testing if the cluster is not a Classic cluster")
-			isClassic, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			isHostedCP, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			if !isClassic {
+			if isHostedCP {
 				SkipNotClassic()
 			}
 		})
@@ -265,9 +265,9 @@ var _ = Describe("Edit machinepool",
 			machinePoolService = rosaClient.MachinePool
 
 			By("Skip testing if the cluster is not a Classic cluster")
-			isClassic, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			isHostedCP, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			if !isClassic {
+			if isHostedCP {
 				SkipNotClassic()
 			}
 
