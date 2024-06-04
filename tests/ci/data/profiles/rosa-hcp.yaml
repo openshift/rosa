@@ -51,7 +51,7 @@ profiles:
     tag_enabled: false
     zones: ""
   account-role:
-    path: "/test-hcp/"
+    path: "/test/hcp/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
 - as: rosa-hcp-upgrade-z-stream
   version: "z-1"
