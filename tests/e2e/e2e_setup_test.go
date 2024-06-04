@@ -23,7 +23,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 		})
 
 	It("to wait for cluster ready",
-		labels.Runtime.Day1,
+		labels.Runtime.Day1Readiness,
 		func() {
 			clusterDetail, err := profilehandler.ParserClusterDetail()
 			Expect(err).ToNot(HaveOccurred())
