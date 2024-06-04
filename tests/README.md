@@ -102,7 +102,7 @@ For the test cases, we need `$ make install` to make the rosa command line insta
   * `$ export TEST_PROFILE=<PROFILE NAME>`
 
 3. Create cluster according to the profile configuration
-  * `$ ginkgo run --label-filter day1-prepare tests/rosa --timeout 2h`
+  * `$ ginkgo run --label-filter day1 tests/rosa --timeout 2h`
 
 4. Wait for the cluster preparation finished
 
@@ -144,7 +144,7 @@ This feature allows for running tests through a case filter to simulate CI. Anyo
 * `$ export TEST_PROFILE=<PROFILE NAME>`
 
 2. Destroy cluster and prepared user data based on the profile and the information recorded in the creation of the cluster
-* `$ ginkgo run --label-filter destroy tests/e2e`
+* `$ ginkgo -label-filter feature-destroy tests/e2e`
 
 3. Wait for the resources destroy finished
 
