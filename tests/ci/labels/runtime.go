@@ -39,12 +39,12 @@ func initRuntime() *runtimeLabels {
 	rLabels.Day2 = Label("day2")
 	rLabels.Upgrade = Label("upgrade")
 	rLabels.Destructive = Label("destructive")
-	rLabels.Destroy = Label("feature-destroy")
-	rLabels.DestroyPost = Label("feature-destroy-post")
+	rLabels.Destroy = Label("destroy")
+	rLabels.DestroyPost = Label("destroy-post")
 
-	rLabels.Day1Supplemental = Label("feature-day1-supplemental")
-	rLabels.OCMResources = Label("feature-ocm-resources")
-	rLabels.Day1Negative = Label("feature-day1-negative")
+	rLabels.Day1Supplemental = Label("day1-supplemental")
+	rLabels.OCMResources = Label("ocm-resources")
+	rLabels.Day1Negative = Label("day1-negative")
 
 	return rLabels
 }

@@ -35,8 +35,8 @@ Please read the structure and contribute code to the correct place
 ### Contribute to day2
 
 * Create the case in _rosa/tests/e2e/{feature name}_test.go_
-* Label the case with ***CI.Day2***
-* Label the case with importance ***CI.Critical*** or ***CI.High***
+* Label the case with ***Day2***
+* Label the case with importance ***Critical*** or ***High***
 * Don't need to run creation step, just in BeforeEach step call function  ***config.GetClusterID()*** it will load the clusterID prepared from env or cluster_id file
 * Code for day2 actions and check step
 * Every case need to recover the cluster after the case run finished unless it's un-recoverable
@@ -69,12 +69,14 @@ var _ = Describe("Create Machine Pool", func() {
     `<card id> | test: automated cases id:123456,123457`
 
 ### Labels
+Label Design Doc: [ROSA CLI Automation labels](./ci/labels/labels.md).
 
-* Label your case with the ***CI.Feature{feature name}*** defined in rosa/tests/ci/labels/features.go
-* Label your case with importance defined in rosa/tests/ci/labels/importance.go
-* Label your case with ***CI.Day1Post/CI.Day2/CI.Day3*** defined in rosa/tests/ci/labels/runtime.go, according to the case runtime
-* Label your case with ***CI.Exclude*** if it fails CI all  the time and you can't fix it in time
-* Label you case with ***CI.NonClassicCluster/CI.NonHCPCluster*** if it does not fit a type of cluster
+* Label your case with the feature defined in [features.go](./ci/labels/features.go). The feature label is always defined at the top `Description`.
+* Label your case with the importance defined in [importance.go](./ci/labels/importance.go). The importance lable is always defined on each test case.
+* Label your case with the runtime defined in [runtime.go](./ci/labels/runtime.go). The runtime lable is always defined on each test case.
+
+If we meet the case fails CI all the time and we can't fix it in time, we can label the case with ***Exclude*** defined in [category.go](./ci/labels/category.go) to exclude it from the CI list.
+
 
 ## Running
 
@@ -144,7 +146,7 @@ This feature allows for running tests through a case filter to simulate CI. Anyo
 * `$ export TEST_PROFILE=<PROFILE NAME>`
 
 2. Destroy cluster and prepared user data based on the profile and the information recorded in the creation of the cluster
-* `$ ginkgo -label-filter feature-destroy tests/e2e`
+* `$ ginkgo -label-filter destroy tests/e2e`
 
 3. Wait for the resources destroy finished
 

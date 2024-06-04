@@ -4,11 +4,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-/* The feature labels define which group the test case belongs to.
-The feature label is always defined at the first `Description`.
-We treat the major subcommands in rosa CLI as features. The label items are from `rosa create -h` -> `rosa list -h` -> `rosa -h`.
-*/
 // feature labels
+// The feature label is always defined at the first `Description`.
 type featureLabels struct {
 	AccountRoles         Labels
 	Addon                Labels
