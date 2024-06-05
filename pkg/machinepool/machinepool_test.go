@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
+	"github.com/openshift/rosa/pkg/interactive"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -306,6 +307,184 @@ var _ = Describe("Machinepool and nodepool", func() {
 			Expect(MachinePoolKeyRE.MatchString("#1machinepool")).To(BeFalse())
 			Expect(MachinePoolKeyRE.MatchString("m123123123123123123123123123")).To(BeTrue())
 			Expect(MachinePoolKeyRE.MatchString("m#123")).To(BeFalse())
+		})
+	})
+
+	Describe("Testing getMachinePoolAvailabilityZones function", func() {
+		var (
+			r                         *rosa.Runtime
+			cluster                   *cmv1.Cluster
+			availabilityZoneUserInput string
+			subnetUserInput           string
+		)
+
+		BeforeEach(func() {
+			r = &rosa.Runtime{}
+			var err error
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MultiAZ(true).Nodes(cmv1.NewClusterNodes().
+				AvailabilityZones("us-east-1a", "us-east-1b"))
+			cluster, err = clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cluster.MultiAZ()).To(Equal(true))
+
+			availabilityZoneUserInput = "us-east-1a"
+			subnetUserInput = ""
+		})
+
+		Context("When the machine pool is not multi-AZ", func() {
+			It("Should only include the specified availability zone", func() {
+				multiAZMachinePool := false
+				azs, err := getMachinePoolAvailabilityZones(r, cluster,
+					multiAZMachinePool, availabilityZoneUserInput, subnetUserInput)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(azs).To(Equal([]string{"us-east-1a"}))
+			})
+		})
+
+		Context("When the machine pool is multi-AZ", func() {
+			When("No specific availability zone is preferred", func() {
+				It("Should include all available zones for the cluster", func() {
+					multiAZMachinePool := true
+					azs, err := getMachinePoolAvailabilityZones(r, cluster, multiAZMachinePool, "", subnetUserInput)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(azs).To(Equal([]string{"us-east-1a", "us-east-1b"}))
+				})
+			})
+
+			When("A specific availability zone is preferred", func() {
+				It("Should still include all available zones for the cluster", func() {
+					multiAZMachinePool := true
+					azs, err := getMachinePoolAvailabilityZones(r, cluster,
+						multiAZMachinePool, availabilityZoneUserInput, subnetUserInput)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(azs).To(Equal([]string{"us-east-1a", "us-east-1b"}))
+				})
+			})
+		})
+	})
+})
+
+var _ = Describe("Utility Functions", func() {
+	Describe("Split function", func() {
+		When("input is '=' rune", func() {
+			It("should return true", func() {
+				Expect(Split('=')).To(BeTrue())
+			})
+		})
+
+		When("input is ':' rune", func() {
+			It("should return true", func() {
+				Expect(Split(':')).To(BeTrue())
+			})
+		})
+
+		When("input is any other rune", func() {
+			It("should return false", func() {
+				Expect(Split('a')).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("minReplicaValidator function", func() {
+		var validator interactive.Validator
+
+		BeforeEach(func() {
+			validator = minReplicaValidator(true) // or false for non-multiAZ
+		})
+
+		When("input is non-integer", func() {
+			It("should return error", func() {
+				err := validator("non-integer")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("input is a negative integer", func() {
+			It("should return error", func() {
+				err := validator(-1)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("input is not a multiple of 3 for multiAZ", func() {
+			It("should return error", func() {
+				err := validator(2)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("input is a valid integer", func() {
+			It("should not return error", func() {
+				err := validator(3)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("maxReplicaValidator function", func() {
+		var validator interactive.Validator
+
+		BeforeEach(func() {
+			validator = maxReplicaValidator(1, true)
+		})
+
+		When("input is non-integer", func() {
+			It("should return error", func() {
+				err := validator("non-integer")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("maxReplicas is less than minReplicas", func() {
+			It("should return error", func() {
+				err := validator(0)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("input is not a multiple of 3 for multiAZ", func() {
+			It("should return error", func() {
+				err := validator(5)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("input is valid", func() {
+			It("should not return error", func() {
+				err := validator(3)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("spotMaxPriceValidator function", func() {
+		When("input is 'on-demand'", func() {
+			It("should return nil", func() {
+				err := spotMaxPriceValidator("on-demand")
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		When("input is non-numeric", func() {
+			It("should return error", func() {
+				err := spotMaxPriceValidator("not-a-number")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("input is a negative price", func() {
+			It("should return error", func() {
+				err := spotMaxPriceValidator("-1")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("input is a positive price", func() {
+			It("should not return error", func() {
+				err := spotMaxPriceValidator("0.01")
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
 	})
 })
