@@ -196,3 +196,4 @@ var _ = Describe("rosa describe autoscaler", func() {
 		})
 	})
 })
+

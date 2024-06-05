@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/output"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -48,10 +49,12 @@ type MachinePoolService interface {
 	DeleteMachinePool(r *rosa.Runtime, machinePoolId string, clusterKey string, cluster *cmv1.Cluster) error
 	EditMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string, cluster *cmv1.Cluster,
 		r *rosa.Runtime) error
-	AddMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime,
-		args *MachinePoolArgs) error
-	AddNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime,
-		args *MachinePoolArgs) error
+	CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command,
+		clusterKey string, cluster *cmv1.Cluster,
+		options *mpOpts.CreateMachinepoolUserOptions) error
+	CreateNodePools(r *rosa.Runtime, cmd *cobra.Command,
+		clusterKey string, cluster *cmv1.Cluster,
+		options *mpOpts.CreateMachinepoolUserOptions) error
 }
 
 type machinePool struct {
@@ -63,8 +66,9 @@ func NewMachinePoolService() MachinePoolService {
 	return &machinePool{}
 }
 
-func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
-	r *rosa.Runtime, args *MachinePoolArgs) error {
+func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
+	args *mpOpts.CreateMachinepoolUserOptions) error {
+
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
@@ -152,7 +156,10 @@ func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, clus
 	// Allow the user to select subnet for a single AZ BYOVPC cluster
 	var subnet string
 	if !cluster.MultiAZ() && isByoVpc {
-		subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster, *args)
+		subnet, err = getSubnetFromUser(cmd, r, isSubnetSet, cluster, args)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Single AZ machine pool for a multi-AZ cluster
@@ -182,7 +189,10 @@ func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, clus
 		if !multiAZMachinePool {
 			// Allow to create a single AZ machine pool providing the subnet
 			if isByoVpc && args.AvailabilityZone == "" {
-				subnet = getSubnetFromUser(cmd, r, isSubnetSet, cluster, *args)
+				subnet, err = getSubnetFromUser(cmd, r, isSubnetSet, cluster, args)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Select availability zone if the user didn't select subnet
@@ -211,94 +221,9 @@ func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, clus
 		}
 	}
 
-	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
-	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
-	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
-	isReplicasSet := cmd.Flags().Changed("replicas")
-
-	minReplicas := args.MinReplicas
-	maxReplicas := args.MaxReplicas
-	autoscaling := args.AutoscalingEnabled
-	replicas := args.Replicas
-
-	// Autoscaling
-	if !isReplicasSet && !autoscaling && !isAutoscalingSet && interactive.Enabled() {
-		autoscaling, err = interactive.GetBool(interactive.Input{
-			Question: "Enable autoscaling",
-			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
-			Default:  autoscaling,
-			Required: false,
-		})
-		if err != nil {
-			return fmt.Errorf("Expected a valid value for enable-autoscaling: %s", err)
-		}
-	}
-
-	if autoscaling {
-		// if the user set replicas and enabled autoscaling
-		if isReplicasSet {
-			return fmt.Errorf("Replicas can't be set when autoscaling is enabled")
-		}
-		if interactive.Enabled() || !isMinReplicasSet {
-			minReplicas, err = interactive.GetInt(interactive.Input{
-				Question: "Min replicas",
-				Help:     cmd.Flags().Lookup("min-replicas").Usage,
-				Default:  minReplicas,
-				Required: true,
-				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZMachinePool),
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("Expected a valid number of min replicas: %s", err)
-			}
-		}
-		err = minReplicaValidator(multiAZMachinePool)(minReplicas)
-		if err != nil {
-			return err
-		}
-
-		if interactive.Enabled() || !isMaxReplicasSet {
-			maxReplicas, err = interactive.GetInt(interactive.Input{
-				Question: "Max replicas",
-				Help:     cmd.Flags().Lookup("max-replicas").Usage,
-				Default:  maxReplicas,
-				Required: true,
-				Validators: []interactive.Validator{
-					maxReplicaValidator(minReplicas, multiAZMachinePool),
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("Expected a valid number of max replicas: %s", err)
-			}
-		}
-		err = maxReplicaValidator(minReplicas, multiAZMachinePool)(maxReplicas)
-		if err != nil {
-			return err
-		}
-	} else {
-		// if the user set min/max replicas and hasn't enabled autoscaling
-		if isMinReplicasSet || isMaxReplicasSet {
-			return fmt.Errorf("Autoscaling must be enabled in order to set min and max replicas")
-		}
-		if interactive.Enabled() || !isReplicasSet {
-			replicas, err = interactive.GetInt(interactive.Input{
-				Question: "Replicas",
-				Help:     cmd.Flags().Lookup("replicas").Usage,
-				Default:  replicas,
-				Required: true,
-				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZMachinePool),
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("Expected a valid number of replicas: %s", err)
-			}
-		}
-		err = minReplicaValidator(multiAZMachinePool)(replicas)
-		if err != nil {
-			return err
-		}
+	minReplicas, maxReplicas, replicas, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, true)
+	if err != nil {
+		return err
 	}
 
 	securityGroupIds := args.SecurityGroupIds
@@ -553,8 +478,78 @@ func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, clus
 	return nil
 }
 
-func (m *machinePool) AddNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
-	r *rosa.Runtime, args *MachinePoolArgs) error {
+// getMachinePoolAvailabilityZones derives the availability zone from the user input or the cluster spec
+func getMachinePoolAvailabilityZones(r *rosa.Runtime, cluster *cmv1.Cluster, multiAZMachinePool bool,
+	availabilityZoneUserInput string, subnetUserInput string) ([]string, error) {
+	// Single AZ machine pool for a multi-AZ cluster
+	if cluster.MultiAZ() && !multiAZMachinePool && availabilityZoneUserInput != "" {
+		return []string{availabilityZoneUserInput}, nil
+	}
+
+	// Single AZ machine pool for a BYOVPC cluster
+	if subnetUserInput != "" {
+		availabilityZone, err := r.AWSClient.GetSubnetAvailabilityZone(subnetUserInput)
+		if err != nil {
+			return []string{}, err
+		}
+
+		return []string{availabilityZone}, nil
+	}
+
+	// Default option of cluster's nodes availability zones
+	return cluster.Nodes().AvailabilityZones(), nil
+}
+
+func minReplicaValidator(multiAZMachinePool bool) interactive.Validator {
+	return func(val interface{}) error {
+		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return err
+		}
+		if minReplicas < 0 {
+			return fmt.Errorf("min-replicas must be a non-negative integer")
+		}
+		if multiAZMachinePool && minReplicas%3 != 0 {
+			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		}
+		return nil
+	}
+}
+
+func maxReplicaValidator(minReplicas int, multiAZMachinePool bool) interactive.Validator {
+	return func(val interface{}) error {
+		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return err
+		}
+		if minReplicas > maxReplicas {
+			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
+		}
+		if multiAZMachinePool && maxReplicas%3 != 0 {
+			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		}
+		return nil
+	}
+}
+
+func spotMaxPriceValidator(val interface{}) error {
+	spotMaxPrice := fmt.Sprintf("%v", val)
+	if spotMaxPrice == "on-demand" {
+		return nil
+	}
+	price, err := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)
+	if err != nil {
+		return fmt.Errorf("Expected a numeric value for spot max price")
+	}
+
+	if price <= 0 {
+		return fmt.Errorf("Spot max price must be positive")
+	}
+	return nil
+}
+
+func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
+	args *mpOpts.CreateMachinepoolUserOptions) error {
 
 	var err error
 	isAvailabilityZoneSet := cmd.Flags().Changed("availability-zone")
@@ -638,105 +633,22 @@ func (m *machinePool) AddNodePool(cmd *cobra.Command, clusterKey string, cluster
 	}
 
 	// Allow the user to select subnet for a single AZ BYOVPC cluster
-	subnet := getSubnetFromUser(cmd, r, isSubnetSet, cluster, *args)
+	subnet, err := getSubnetFromUser(cmd, r, isSubnetSet, cluster, args)
+	if err != nil {
+		return err
+	}
 
 	// Select availability zone if the user didn't select subnet
 	if subnet == "" {
-		subnet, err = getSubnetFromAvailabilityZone(cmd, r, isAvailabilityZoneSet, cluster, *args)
+		subnet, err = getSubnetFromAvailabilityZone(cmd, r, isAvailabilityZoneSet, cluster, args)
 		if err != nil {
 			return err
 		}
 	}
 
-	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
-	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
-	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
-	isReplicasSet := cmd.Flags().Changed("replicas")
-
-	minReplicas := args.MinReplicas
-	maxReplicas := args.MaxReplicas
-	autoscaling := args.AutoscalingEnabled
-	replicas := args.Replicas
-
-	// Autoscaling
-	if !isReplicasSet && !autoscaling && !isAutoscalingSet && interactive.Enabled() {
-		autoscaling, err = interactive.GetBool(interactive.Input{
-			Question: "Enable autoscaling",
-			Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
-			Default:  autoscaling,
-			Required: false,
-		})
-		if err != nil {
-			return fmt.Errorf("Expected a valid value for enable-autoscaling: %s", err)
-		}
-	}
-
-	// TODO Update the autoscaling input validator when multi-AZ is implemented
-	if autoscaling {
-		// if the user set replicas and enabled autoscaling
-		if isReplicasSet {
-			return fmt.Errorf("Replicas can't be set when autoscaling is enabled")
-		}
-		if interactive.Enabled() || !isMinReplicasSet {
-			minReplicas, err = interactive.GetInt(interactive.Input{
-				Question: "Min replicas",
-				Help:     cmd.Flags().Lookup("min-replicas").Usage,
-				Default:  minReplicas,
-				Required: true,
-				Validators: []interactive.Validator{
-					machinepools.MinNodePoolReplicaValidator(true),
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("Expected a valid number of min replicas: %s", err)
-			}
-		}
-		err = machinepools.MinNodePoolReplicaValidator(true)(minReplicas)
-		if err != nil {
-			return err
-		}
-
-		if interactive.Enabled() || !isMaxReplicasSet {
-			maxReplicas, err = interactive.GetInt(interactive.Input{
-				Question: "Max replicas",
-				Help:     cmd.Flags().Lookup("max-replicas").Usage,
-				Default:  maxReplicas,
-				Required: true,
-				Validators: []interactive.Validator{
-					machinepools.MaxNodePoolReplicaValidator(minReplicas),
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("Expected a valid number of max replicas: %s", err)
-			}
-		}
-		err = machinepools.MaxNodePoolReplicaValidator(minReplicas)(maxReplicas)
-		if err != nil {
-			return err
-		}
-	} else {
-		// if the user set min/max replicas and hasn't enabled autoscaling
-		if isMinReplicasSet || isMaxReplicasSet {
-			return fmt.Errorf("Autoscaling must be enabled in order to set min and max replicas")
-		}
-		if interactive.Enabled() || !isReplicasSet {
-			replicas, err = interactive.GetInt(interactive.Input{
-				Question: "Replicas",
-				Help:     cmd.Flags().Lookup("replicas").Usage,
-				Default:  replicas,
-				Required: true,
-				Validators: []interactive.Validator{
-					machinepools.MinNodePoolReplicaValidator(false),
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("Expected a valid number of replicas: %s", err)
-			}
-		}
-		err = machinepools.MinNodePoolReplicaValidator(false)(replicas)
-		if err != nil {
-			return err
-		}
+	minReplicas, maxReplicas, replicas, autoscaling, err := manageReplicas(cmd, args, false, false)
+	if err != nil {
+		return err
 	}
 
 	existingLabels := make(map[string]string, 0)
@@ -1060,6 +972,62 @@ func (m *machinePool) AddNodePool(cmd *cobra.Command, clusterKey string, cluster
 	}
 
 	return nil
+}
+
+func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvailabilityZoneSet bool,
+	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
+
+	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	if err != nil {
+		return "", err
+	}
+
+	// Fetching the availability zones from the VPC private subnets
+	subnetsMap := make(map[string][]string)
+	for _, privateSubnet := range privateSubnets {
+		subnetsPerAZ, exist := subnetsMap[*privateSubnet.AvailabilityZone]
+		if !exist {
+			subnetsPerAZ = []string{*privateSubnet.SubnetId}
+		} else {
+			subnetsPerAZ = append(subnetsPerAZ, *privateSubnet.SubnetId)
+		}
+		subnetsMap[*privateSubnet.AvailabilityZone] = subnetsPerAZ
+	}
+	availabilityZones := make([]string, 0)
+	for availabilizyZone := range subnetsMap {
+		availabilityZones = append(availabilityZones, availabilizyZone)
+	}
+
+	availabilityZone := cluster.Nodes().AvailabilityZones()[0]
+	if !isAvailabilityZoneSet && interactive.Enabled() {
+		availabilityZone, err = interactive.GetOption(interactive.Input{
+			Question: "AWS availability zone",
+			Help:     cmd.Flags().Lookup("availability-zone").Usage,
+			Options:  availabilityZones,
+			Default:  availabilityZone,
+			Required: true,
+		})
+		if err != nil {
+			return "", fmt.Errorf("Expected a valid AWS availability zone: %s", err)
+		}
+	} else if isAvailabilityZoneSet {
+		availabilityZone = args.AvailabilityZone
+	}
+
+	if subnets, ok := subnetsMap[availabilityZone]; ok {
+		if len(subnets) == 1 {
+			return subnets[0], nil
+		}
+		r.Reporter.Infof("There are several subnets for availability zone '%s'", availabilityZone)
+		interactive.Enable()
+		subnet, err := getSubnetFromUser(cmd, r, false, cluster, args)
+		if err != nil {
+			return "", err
+		}
+		return subnet, nil
+	}
+
+	return "", fmt.Errorf("Failed to find a private subnet for '%s' availability zone", availabilityZone)
 }
 
 // ListMachinePools lists all machinepools (or, nodepools if hypershift) in a cluster
@@ -2048,3 +2016,119 @@ func editAutoscaling(nodePool *cmv1.NodePool, minReplicas int, maxReplicas int) 
 
 	return nil
 }
+func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions, multiAZMachinePool bool, 
+	isMachinePool bool) (minReplicas, maxReplicas, replicas int, autoscaling bool, err error) {
+    isMinReplicasSet := cmd.Flags().Changed("min-replicas")
+    isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
+    isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
+    isReplicasSet := cmd.Flags().Changed("replicas")
+
+    minReplicas = args.MinReplicas
+    maxReplicas = args.MaxReplicas
+    autoscaling = args.AutoscalingEnabled
+    replicas = args.Replicas
+
+    getMinValidator := func(multiAZ bool) interactive.Validator {
+        if isMachinePool {
+            return minReplicaValidator(multiAZMachinePool)
+        } else {
+            return machinepools.MinNodePoolReplicaValidator(multiAZ)
+        }
+    }
+
+    getMaxValidator := func(minReplicas int, multiAZ bool) interactive.Validator {
+        if isMachinePool {
+            return maxReplicaValidator(minReplicas, multiAZMachinePool)
+        } else {
+            return machinepools.MaxNodePoolReplicaValidator(minReplicas)
+        }
+    }
+
+    // Autoscaling
+    if !isReplicasSet && !autoscaling && !isAutoscalingSet && interactive.Enabled() {
+        _, err := interactive.GetBool(interactive.Input{
+            Question: "Enable autoscaling",
+            Help:     cmd.Flags().Lookup("enable-autoscaling").Usage,
+            Default:  autoscaling,
+            Required: false,
+        })
+        if err != nil {
+            return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+        }
+    }
+
+    if autoscaling {
+        // if the user set replicas and enabled autoscaling
+        if isReplicasSet {
+            return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Replicas can't be set when autoscaling is enabled")
+        }
+
+        // Min replicas
+        if interactive.Enabled() || !isMinReplicasSet {
+            _, err := interactive.GetInt(interactive.Input{
+                Question: "Min replicas",
+                Help:     cmd.Flags().Lookup("min-replicas").Usage,
+                Default:  minReplicas,
+                Required: true,
+                Validators: []interactive.Validator{
+                    getMinValidator(multiAZMachinePool),
+                },
+            })
+            if err != nil {
+                return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Expected a valid number of min replicas: %s", err)
+            }
+        }
+        err := getMinValidator(multiAZMachinePool)(minReplicas)
+        if err != nil {
+            return minReplicas, maxReplicas, replicas, autoscaling, err
+        }
+
+        // Max replicas
+        if interactive.Enabled() || !isMaxReplicasSet {
+            _, err := interactive.GetInt(interactive.Input{
+                Question: "Max replicas",
+                Help:     cmd.Flags().Lookup("max-replicas").Usage,
+                Default:  maxReplicas,
+                Required: true,
+                Validators: []interactive.Validator{
+                    getMaxValidator(minReplicas, multiAZMachinePool),
+                },
+            })
+            if err != nil {
+                return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Expected a valid number of max replicas: %s", err)
+            }
+        }
+        err = getMaxValidator(minReplicas, multiAZMachinePool)(maxReplicas)
+        if err != nil {
+            return minReplicas, maxReplicas, replicas, autoscaling, err
+        }
+    } else {
+        // if the user set min/max replicas and hasn't enabled autoscaling
+        if isMinReplicasSet || isMaxReplicasSet {
+            return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Autoscaling must be enabled in order to set min and max replicas")
+        }
+
+        // Replicas
+        if interactive.Enabled() || !isReplicasSet {
+            _, err := interactive.GetInt(interactive.Input{
+                Question: "Replicas",
+                Help:     cmd.Flags().Lookup("replicas").Usage,
+                Default:  replicas,
+                Required: true,
+                Validators: []interactive.Validator{
+                    getMinValidator(multiAZMachinePool),
+                },
+            })
+            if err != nil {
+                return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Expected a valid number of replicas: %s", err)
+            }
+        }
+        err := getMinValidator(multiAZMachinePool)(replicas)
+        if err != nil {
+            return minReplicas, maxReplicas, replicas, autoscaling, err
+        }
+    }
+    return minReplicas, maxReplicas, replicas, autoscaling, nil
+}
+
+
