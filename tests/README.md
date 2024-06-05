@@ -102,7 +102,7 @@ For the test cases, we need `$ make install` to make the rosa command line insta
   * `$ export TEST_PROFILE=<PROFILE NAME>`
 
 3. Create cluster according to the profile configuration
-  * `$ ginkgo run --label-filter day1 tests/rosa --timeout 2h`
+  * `$ ginkgo run --label-filter day1 tests/e2e --timeout 2h`
 
 4. Wait for the cluster preparation finished
 
