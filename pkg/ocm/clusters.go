@@ -141,9 +141,10 @@ type Spec struct {
 	AdditionalTrustBundle     *string
 
 	// HyperShift options:
-	Hypershift     Hypershift
-	BillingAccount string
-	NoCni          bool
+	Hypershift                  Hypershift
+	BillingAccount              string
+	NoCni                       bool
+	AdditionalAllowedPrincipals []string
 
 	// Audit Log Forwarding
 	AuditLogRoleARN *string
@@ -628,11 +629,16 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 
-	// Edit audit log role arn
-	if config.AuditLogRoleARN != nil {
+	if config.AuditLogRoleARN != nil || config.AdditionalAllowedPrincipals != nil {
 		awsBuilder := cmv1.NewAWS()
-		auditLogBuiler := cmv1.NewAuditLog().RoleArn(*config.AuditLogRoleARN)
-		awsBuilder = awsBuilder.AuditLog(auditLogBuiler)
+		if config.AdditionalAllowedPrincipals != nil {
+			awsBuilder = awsBuilder.AdditionalAllowedPrincipals(config.AdditionalAllowedPrincipals...)
+		}
+		// Edit audit log role arn
+		if config.AuditLogRoleARN != nil {
+			auditLogBuiler := cmv1.NewAuditLog().RoleArn(*config.AuditLogRoleARN)
+			awsBuilder = awsBuilder.AuditLog(auditLogBuiler)
+		}
 		clusterBuilder.AWS(awsBuilder)
 	}
 
@@ -885,6 +891,10 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	if len(config.AdditionalControlPlaneSecurityGroupIds) > 0 {
 		awsBuilder = awsBuilder.AdditionalControlPlaneSecurityGroupIds(config.AdditionalControlPlaneSecurityGroupIds...)
+	}
+
+	if len(config.AdditionalAllowedPrincipals) > 0 {
+		awsBuilder = awsBuilder.AdditionalAllowedPrincipals(config.AdditionalAllowedPrincipals...)
 	}
 
 	if config.SubnetIds != nil {
