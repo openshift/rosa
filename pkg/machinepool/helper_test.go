@@ -1,11 +1,6 @@
 package machinepool
 
 import (
-	"fmt"
-
-	"go.uber.org/mock/gomock"
-
-	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,6 +12,7 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 	. "github.com/openshift/rosa/pkg/test"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 )
 
 var _ = Describe("Machine pool helper", func() {
@@ -119,9 +115,9 @@ var _ = Describe("Machine pool helper", func() {
 	})
 
 	Context("getSubnetFromUser", func() {
-		var r *rosa.Runtime
+		r := &rosa.Runtime{}
+		args := &mpOpts.CreateMachinepoolUserOptions{}
 		cmd := &cobra.Command{}
-		args := MachinePoolArgs{}
 		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
@@ -132,7 +128,8 @@ var _ = Describe("Machine pool helper", func() {
 		It("Should return the subnet if it's set", func() {
 			cmd.Flags().StringVar(&args.Subnet, "subnet", "", "")
 			cmd.Flags().Set("subnet", "test-subnet")
-			output := getSubnetFromUser(cmd, r, true, mockClusterReady, args)
+			output, err := getSubnetFromUser(cmd, r, true, mockClusterReady, args)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal("test-subnet"))
 		})
 	})
