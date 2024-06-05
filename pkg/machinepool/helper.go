@@ -2,7 +2,6 @@ package machinepool
 
 import (
 	"fmt"
-	"os"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -12,10 +11,12 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cluster *cmv1.Cluster) string {
+func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
+	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
 	var selectSubnet bool
 	var subnet string
 	var err error
@@ -36,18 +37,16 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cl
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf(questionError)
-			os.Exit(1)
+			return "", fmt.Errorf(questionError)
 		}
 	} else {
-		subnet = args.subnet
+		subnet = args.Subnet
 	}
 
 	if selectSubnet {
 		subnetOptions, err := getSubnetOptions(r, cluster)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return "", err
 		}
 
 		subnetOption, err := interactive.GetOption(interactive.Input{
@@ -58,13 +57,12 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool, cl
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid AWS subnet: %s", err)
-			os.Exit(1)
+			return "", fmt.Errorf("Expected a valid AWS subnet: %s", err)
 		}
 		subnet = aws.ParseOption(subnetOption)
 	}
 
-	return subnet
+	return subnet, nil
 }
 
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
@@ -107,6 +105,24 @@ func getSecurityGroupsOption(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.
 	}
 
 	return interactiveSgs.GetSecurityGroupIds(r, cmd, vpcId, interactiveSgs.MachinePoolKind, id), nil
+}
+
+func createAwsNodePoolBuilder(
+	instanceType string,
+	securityGroupIds []string,
+	awsTags map[string]string,
+) *cmv1.AWSNodePoolBuilder {
+	awsNpBuilder := cmv1.NewAWSNodePool().InstanceType(instanceType)
+
+	if len(securityGroupIds) > 0 {
+		awsNpBuilder.AdditionalSecurityGroupIds(securityGroupIds...)
+	}
+
+	if len(awsTags) > 0 {
+		awsNpBuilder.Tags(awsTags)
+	}
+
+	return awsNpBuilder
 }
 
 func getVpcIdFromSubnet(subnet ec2types.Subnet) (string, error) {

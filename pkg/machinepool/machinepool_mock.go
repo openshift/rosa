@@ -5,7 +5,6 @@
 //
 //	mockgen -source=machinepool.go -package=machinepool -destination=machinepool_mock.go
 //
-
 // Package machinepool is a generated GoMock package.
 package machinepool
 
@@ -13,7 +12,9 @@ import (
 	reflect "reflect"
 
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	machinepool "github.com/openshift/rosa/pkg/options/machinepool"
 	rosa "github.com/openshift/rosa/pkg/rosa"
+	cobra "github.com/spf13/cobra"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,16 +41,72 @@ func (m *MockMachinePoolService) EXPECT() *MockMachinePoolServiceMockRecorder {
 	return m.recorder
 }
 
-// DescribeMachinePool mocks base method.
-func (m *MockMachinePoolService) DescribeMachinePool(r *rosa.Runtime, cluster *v1.Cluster, clusterKey string, isHypershift bool, machinePoolId string) error {
+// CreateMachinePool mocks base method.
+func (m *MockMachinePoolService) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *v1.Cluster, options *machinepool.CreateMachinepoolUserOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DescribeMachinePool", r, cluster, clusterKey, isHypershift, machinePoolId)
+	ret := m.ctrl.Call(m, "CreateMachinePool", r, cmd, clusterKey, cluster, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateMachinePool indicates an expected call of CreateMachinePool.
+func (mr *MockMachinePoolServiceMockRecorder) CreateMachinePool(r, cmd, clusterKey, cluster, options any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMachinePool", reflect.TypeOf((*MockMachinePoolService)(nil).CreateMachinePool), r, cmd, clusterKey, cluster, options)
+}
+
+// CreateNodePools mocks base method.
+func (m *MockMachinePoolService) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *v1.Cluster, options *machinepool.CreateMachinepoolUserOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateNodePools", r, cmd, clusterKey, cluster, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateNodePools indicates an expected call of CreateNodePools.
+func (mr *MockMachinePoolServiceMockRecorder) CreateNodePools(r, cmd, clusterKey, cluster, options any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNodePools", reflect.TypeOf((*MockMachinePoolService)(nil).CreateNodePools), r, cmd, clusterKey, cluster, options)
+}
+
+// DeleteMachinePool mocks base method.
+func (m *MockMachinePoolService) DeleteMachinePool(r *rosa.Runtime, machinePoolId, clusterKey string, cluster *v1.Cluster) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMachinePool", r, machinePoolId, clusterKey, cluster)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMachinePool indicates an expected call of DeleteMachinePool.
+func (mr *MockMachinePoolServiceMockRecorder) DeleteMachinePool(r, machinePoolId, clusterKey, cluster any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMachinePool", reflect.TypeOf((*MockMachinePoolService)(nil).DeleteMachinePool), r, machinePoolId, clusterKey, cluster)
+}
+
+// DescribeMachinePool mocks base method.
+func (m *MockMachinePoolService) DescribeMachinePool(r *rosa.Runtime, cluster *v1.Cluster, clusterKey, machinePoolId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DescribeMachinePool", r, cluster, clusterKey, machinePoolId)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DescribeMachinePool indicates an expected call of DescribeMachinePool.
-func (mr *MockMachinePoolServiceMockRecorder) DescribeMachinePool(r, cluster, clusterKey, isHypershift, machinePoolId any) *gomock.Call {
+func (mr *MockMachinePoolServiceMockRecorder) DescribeMachinePool(r, cluster, clusterKey, machinePoolId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeMachinePool", reflect.TypeOf((*MockMachinePoolService)(nil).DescribeMachinePool), r, cluster, clusterKey, isHypershift, machinePoolId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeMachinePool", reflect.TypeOf((*MockMachinePoolService)(nil).DescribeMachinePool), r, cluster, clusterKey, machinePoolId)
+}
+
+// ListMachinePools mocks base method.
+func (m *MockMachinePoolService) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *v1.Cluster) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMachinePools", r, clusterKey, cluster)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ListMachinePools indicates an expected call of ListMachinePools.
+func (mr *MockMachinePoolServiceMockRecorder) ListMachinePools(r, clusterKey, cluster any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMachinePools", reflect.TypeOf((*MockMachinePoolService)(nil).ListMachinePools), r, clusterKey, cluster)
 }
