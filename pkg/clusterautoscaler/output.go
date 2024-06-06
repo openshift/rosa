@@ -13,7 +13,7 @@ func PrintAutoscaler(a *cmv1.ClusterAutoscaler) string {
 	out := "\n"
 	out += fmt.Sprintf("Balance Similar Node Groups:               %s\n",
 		output.PrintBool(a.BalanceSimilarNodeGroups()))
-	out += fmt.Sprintf("Skip Nodes With Local Storage              %s\n",
+	out += fmt.Sprintf("Skip Nodes With Local Storage:             %s\n",
 		output.PrintBool(a.SkipNodesWithLocalStorage()))
 	out += fmt.Sprintf("Log Verbosity:                             %d\n",
 		a.LogVerbosity())
@@ -60,7 +60,7 @@ func PrintAutoscaler(a *cmv1.ClusterAutoscaler) string {
 
 	//Scale Down
 	out += "Scale Down:\n"
-	out += fmt.Sprintf(" - Enabled                                 %s\n",
+	out += fmt.Sprintf(" - Enabled:                                %s\n",
 		output.PrintBool(a.ScaleDown().Enabled()))
 
 	if a.ScaleDown().UnneededTime() != "" {
