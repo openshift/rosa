@@ -708,6 +708,21 @@ var _ = Describe("Classic cluster creation negavite testing",
 				Expect(out.String()).To(ContainSubstring("is not compatible with version"))
 				Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
 			})
+
+		It("to validate creating a cluster with invalid subnets - [id:72657]",
+			labels.Low, labels.Runtime.Day1Negative,
+			func() {
+				clusterService := rosaClient.Cluster
+				clusterName := "ocp-72657"
+
+				By("Create cluster with invalid subnets")
+				out, err := clusterService.CreateDryRun(
+					clusterName, "--subnet-ids", "subnet-xxx",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+
+			})
 	})
 
 var _ = Describe("HCP cluster creation negative testing",
@@ -786,5 +801,57 @@ var _ = Describe("HCP cluster creation negative testing",
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring("ERR: --no-cni and --network-type are mutually exclusive parameters"))
 				}
+			})
+
+		It("to validate creating a hosted cluster with invalid subnets - [id:72657]",
+			labels.Low, labels.Runtime.Day1Negative,
+			func() {
+				rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
+				Expect(err).To(BeNil())
+
+				clusterName := "ocp-72657"
+				operatorPrefix := common.GenerateRandomName("cluster-oper", 2)
+
+				replacingFlags := map[string]string{
+					"-c":                     clusterName,
+					"--cluster-name":         clusterName,
+					"--domain-prefix":        clusterName,
+					"--operator-role-prefix": operatorPrefix,
+				}
+
+				By("Create cluster with invalid subnets")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--subnet-ids", "subnet-xxx", "-y")
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+
+			})
+
+		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
+			labels.Low, labels.Runtime.Day1Negative,
+			func() {
+				rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
+				Expect(err).To(BeNil())
+
+				clusterName := "ocp-70970"
+				operatorPrefix := common.GenerateRandomName("cluster-oper", 2)
+
+				replacingFlags := map[string]string{
+					"-c":                     clusterName,
+					"--cluster-name":         clusterName,
+					"--domain-prefix":        clusterName,
+					"--operator-role-prefix": operatorPrefix,
+				}
+
+				By("Create cluster with a CIDR that doesn't exist")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--machine-cidr", "192.168.1.0/23", "-y")
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("ERR: All Hosted Control Plane clusters need a pre-configured VPC. Please check: https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"))
+
 			})
 	})
