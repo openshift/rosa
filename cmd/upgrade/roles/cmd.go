@@ -66,6 +66,8 @@ const (
 	clusterVersionFlag = "cluster-version"
 	policyVersionFlag  = "policy-version"
 	channelGroupFlag   = "channel-group"
+
+	ArbitraryPolicyNotAvail = "STS arbitrary policies feature is currently not available"
 )
 
 func init() {
@@ -267,15 +269,24 @@ func run(cmd *cobra.Command, argv []string) {
 
 	rolePolicyBindings, err := ocmClient.ListRolePolicyBindings(cluster.ID(), true)
 	if err != nil {
-		reporter.Errorf("Failed to get rolePolicyBinding: %s", err)
-		os.Exit(1)
+		if strings.Contains(err.Error(), ArbitraryPolicyNotAvail) {
+			reporter.Debugf(err.Error())
+		} else {
+			reporter.Errorf("Failed to get rolePolicyBinding: %s", err)
+			os.Exit(1)
+		}
+	} else {
+		err = rolepolicybindings.CheckRolePolicyBindingStatus(rolePolicyBindings)
+		if err != nil {
+			reporter.Errorf("Error in rolePolicyBinding: %s", err)
+			os.Exit(1)
+		}
 	}
-	err = rolepolicybindings.CheckRolePolicyBindingStatus(rolePolicyBindings)
-	if err != nil {
-		reporter.Errorf("Error in rolePolicyBinding: %s", err)
-		os.Exit(1)
+
+	rolePolicyDetails := map[string][]aws.PolicyDetail{}
+	if rolePolicyBindings != nil {
+		rolePolicyDetails = rolepolicybindings.TransformToRolePolicyDetails(rolePolicyBindings)
 	}
-	rolePolicyDetails := rolepolicybindings.TransformToRolePolicyDetails(rolePolicyBindings)
 
 	if !isUpgradeNeedForAccountRolePolicies {
 		reporter.Infof("Account roles/policies for cluster '%s' are already up-to-date.", r.ClusterKey)
@@ -475,11 +486,18 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if isUpgradeNeedForAccountRolePolicies && mode == interactive.ModeAuto || isOperatorPolicyUpgradeNeeded {
+	if rolePolicyBindings != nil && isUpgradeNeedForAccountRolePolicies &&
+		mode == interactive.ModeAuto || isOperatorPolicyUpgradeNeeded {
 		newRolePolicyBindings, err := ocmClient.ListRolePolicyBindings(cluster.ID(), true)
 		if err != nil {
-			reporter.Warnf("Failed to get rolePolicyBindings after upgrade." +
-				" Please ensure that the required policies are attached to the upgraded roles.")
+			if strings.Contains(err.Error(), ArbitraryPolicyNotAvail) {
+				reporter.Warnf(
+					"%s. Please ensure that the required policies are attached to the upgraded roles.",
+					ArbitraryPolicyNotAvail)
+			} else {
+				reporter.Warnf("Failed to get rolePolicyBindings after upgrade." +
+					" Please ensure that the required policies are attached to the upgraded roles.")
+			}
 		} else {
 			output, isPolicyMissed := rolepolicybindings.CheckMissingRolePolicyBindings(rolePolicyBindings,
 				newRolePolicyBindings)
@@ -522,6 +540,14 @@ func handleAccountRolePolicyARN(
 	accountID string,
 	policiesDetails []aws.PolicyDetail,
 ) (string, error) {
+	var err error
+	if policiesDetails == nil {
+		policiesDetails, err = awsClient.GetAttachedPolicy(&roleName)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
 
 	generatedPolicyARN := aws.GetPolicyARN(partition, accountID, roleName, rolePath)
@@ -949,6 +975,13 @@ func handleOperatorRolePolicyARN(
 	accountID string,
 	policiesDetails []aws.PolicyDetail,
 ) (string, error) {
+	var err error
+	if policiesDetails == nil {
+		policiesDetails, err = awsClient.GetAttachedPolicy(&operatorRoleName)
+		if err != nil {
+			return "", err
+		}
+	}
 	generatedPolicyARN := aws.GetOperatorPolicyARN(
 		partition,
 		accountID,
