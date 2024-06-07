@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/openshift/rosa/tests/ci/config"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -135,7 +136,7 @@ type ClusterConfig struct {
 }
 
 func ParseClusterProfile() (*ClusterConfig, error) {
-	filePath := getClusterConfigFile()
+	filePath := config.Test.ClusterConfigFile
 	// Load the JSON file
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -150,12 +151,6 @@ func ParseClusterProfile() (*ClusterConfig, error) {
 	}
 
 	return &config, nil
-}
-
-// Get the cluster config file
-func getClusterConfigFile() string {
-	sharedDir := os.Getenv("SHARED_DIR")
-	return path.Join(sharedDir, "cluster-config")
 }
 
 func GetClusterID() (clusterID string) {

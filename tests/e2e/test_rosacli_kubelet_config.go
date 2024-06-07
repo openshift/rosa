@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -219,6 +218,11 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 		It("can be created/updated/deleted successfully - [id:73753]",
 			labels.High, labels.Runtime.Day2,
 			func() {
+				isHosted, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !isHosted {
+					Skip("Classic kubelet config is covered by 68828")
+				}
 				By("List the kubeletconfig with not existing cluster")
 				out, err := kubeletService.ListKubeletConfigs(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -228,30 +232,31 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				out, err = kubeletService.CreateKubeletConfig(clusterID,
 					"--pod-pids-limit", "4096",
 				)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("Successfully created KubeletConfig for cluster '%s'", clusterID))
 
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("Name?"))
+
+				By("Create kubeletconfigs with name specified with flag --name")
+				name := "kubeletconfig-73753"
+				kubeMap := map[string]string{
+					name:                    "12345",
+					"kubeletconfig-73753-2": "12346",
+				}
+				for kubename, podPidValue := range kubeMap {
+					_, err = kubeletService.CreateKubeletConfig(clusterID,
+						"--pod-pids-limit", podPidValue,
+						"--name", kubename,
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}
 				By("List the kubeletconfig")
 				kubes, err := kubeletService.ListKubeletConfigsAndReflect(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(kubes.KubeletConfigs)).To(Equal(1))
-				Expect(kubes.KubeletConfigs[0].Name).To(Equal(fmt.Sprintf("kubelet-%s", kubes.KubeletConfigs[0].ID)))
-				Expect(kubes.KubeletConfigs[0].PodPidsLimit).To(Equal("4096"))
-
-				By("Create kubeletconfig with name specified with flag --name")
-				name := "kubeletconfig-73753"
-				_, err = kubeletService.CreateKubeletConfig(clusterID,
-					"--pod-pids-limit", "12345",
-					"--name", name,
-				)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("List the kubeletconfig")
-				kubes, err = kubeletService.ListKubeletConfigsAndReflect(clusterID)
-				Expect(err).ToNot(HaveOccurred())
 				Expect(len(kubes.KubeletConfigs)).To(Equal(2))
-				Expect(kubes.KubeletConfig(name).Name).To(Equal(name))
-				Expect(kubes.KubeletConfig(name).PodPidsLimit).To(Equal("12345"))
+				for kubename, podPidValue := range kubeMap {
+					Expect(kubes.KubeletConfig(kubename).Name).To(Equal(kubename))
+					Expect(kubes.KubeletConfig(kubename).PodPidsLimit).To(Equal(podPidValue))
+				}
 
 				By("Edit the kubeletconfig will succeed")
 				_, err = kubeletService.EditKubeletConfig(clusterID,
