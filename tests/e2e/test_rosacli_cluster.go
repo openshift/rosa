@@ -294,7 +294,8 @@ var _ = Describe("Edit cluster",
 			})
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day1Supplemental,
+			labels.Runtime.Day2, // day2 is still labeled to make sure it can be covered in the CI. we need to remove it with day1 supplemental job setup
 			func() {
 				By("Check the cluster is STS cluster or skip")
 				isSTSCluster, err := clusterService.IsSTSCluster(clusterID)
@@ -346,6 +347,8 @@ var _ = Describe("Edit cluster",
 
 				if rosalCommand.GetFlagValue("--https-proxy", true) != "" {
 					err = rosalCommand.DeleteFlag("--https-proxy", true)
+					Expect(err).To(BeNil())
+					err = rosalCommand.DeleteFlag("--no-proxy", true)
 					Expect(err).To(BeNil())
 				}
 				if rosalCommand.GetFlagValue("--http-proxy", true) != "" {
