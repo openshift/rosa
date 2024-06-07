@@ -24,10 +24,11 @@ import (
 
 func NewRosaAttachCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "attach",
-		Short: "Attach AWS resource",
-		Long:  "Attach AWS resource",
-		Args:  cobra.NoArgs,
+		Use:    "attach",
+		Short:  "Attach AWS resource",
+		Long:   "Attach AWS resource",
+		Args:   cobra.NoArgs,
+		Hidden: true,
 	}
 	cmd.AddCommand(policy.NewAttachPolicyCommand())
 	return cmd
