@@ -71,6 +71,7 @@ func init() {
 		"List only operator-roles that are associated with the given prefix."+
 			" The prefix must match up to openshift|kube-system",
 	)
+	interactive.AddFlag(flags)
 	ocm.AddOptionalClusterFlag(Cmd)
 	output.AddFlag(Cmd)
 }
@@ -171,6 +172,9 @@ func run(cmd *cobra.Command, _ []string) {
 			)
 		}
 		writer.Flush()
+		if !interactive.Enabled() {
+			os.Exit(0)
+		}
 		if !confirm.Prompt(true, "Would you like to detail a specific prefix") {
 			os.Exit(0)
 		}
