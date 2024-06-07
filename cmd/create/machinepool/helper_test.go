@@ -9,6 +9,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/helper/features"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 var _ = Describe("Machine pool helper", func() {
@@ -106,6 +107,22 @@ var _ = Describe("Machine pool helper", func() {
 			isCompatible, err := features.IsFeatureSupported(features.AdditionalDay2SecurityGroupsHcpFeature, version)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(isCompatible).To(BeTrue())
+		})
+	})
+
+	Context("getSubnetFromUser", func() {
+		var r *rosa.Runtime
+		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
+			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+			c.State(cmv1.ClusterStateReady)
+			c.Hypershift(cmv1.NewHypershift().Enabled(true))
+			c.ExternalAuthConfig(cmv1.NewExternalAuthConfig().Enabled(true))
+		})
+		It("Should return the subnet if it's set", func() {
+			Cmd.Flags().Set("subnet", "test-subnet")
+			output := getSubnetFromUser(Cmd, r, true, mockClusterReady)
+			Expect(output).To(Equal("test-subnet"))
 		})
 	})
 })
