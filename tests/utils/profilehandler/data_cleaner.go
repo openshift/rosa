@@ -11,7 +11,7 @@ func DeleteVPCChain(vpcID string, region string) error {
 	if err != nil {
 		return err
 	}
-	return vpcClient.DeleteVPCChain()
+	return vpcClient.DeleteVPCChain(true)
 }
 
 func ScheduleKMSDesiable(kmsKey string, region string) error {
