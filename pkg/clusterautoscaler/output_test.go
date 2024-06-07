@@ -12,7 +12,7 @@ import (
 
 var optionalFieldOutput = `
 Balance Similar Node Groups:               No
-Skip Nodes With Local Storage              Yes
+Skip Nodes With Local Storage:             Yes
 Log Verbosity:                             2
 Labels Ignored For Node Balancing:         foo, bar
 Ignore DaemonSets Utilization:             Yes
@@ -30,7 +30,7 @@ Resource Limits:
    - Min:  10
    - Max:  20
 Scale Down:
- - Enabled                                 Yes
+ - Enabled:                                Yes
  - Node Unneeded Time:                     25m
  - Node Utilization Threshold:             20
  - Delay After Node Added:                 5m
@@ -40,7 +40,7 @@ Scale Down:
 
 var mandatoryFieldOutput = `
 Balance Similar Node Groups:               No
-Skip Nodes With Local Storage              Yes
+Skip Nodes With Local Storage:             Yes
 Log Verbosity:                             2
 Ignore DaemonSets Utilization:             Yes
 Maximum Pod Grace Period:                  10
@@ -52,7 +52,7 @@ Resource Limits:
  - Minimum Memory (GiB):                   5
  - Maximum Memory (GiB):                   10
 Scale Down:
- - Enabled                                 Yes
+ - Enabled:                                Yes
  - Node Utilization Threshold:             20
 `
 
