@@ -102,19 +102,24 @@ var _ = Describe("Output", Ordered, func() {
 		})
 		It("nodepool output with autoscaling", func() {
 			npAutoscaling := cmv1.NewNodePoolAutoscaling().ID("test-as").MinReplica(2).MaxReplica(8)
+			mgmtUpgradeBuilder := cmv1.NewNodePoolManagementUpgrade().MaxSurge("1").MaxUnavailable("0")
 			nodePoolBuilder := *cmv1.NewNodePool().ID("test-mp").Autoscaling(npAutoscaling).Replicas(4).
 				AvailabilityZone("test-az").Subnet("test-subnets").Version(cmv1.NewVersion().
 				ID("1")).AutoRepair(false).TuningConfigs("test-tc").
-				KubeletConfigs("test-kc").Labels(labels).Taints(taintsBuilder)
+				KubeletConfigs("test-kc").Labels(labels).Taints(taintsBuilder).
+				ManagementUpgrade(mgmtUpgradeBuilder)
 			nodePool, err := nodePoolBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			labelsOutput := ocmOutput.PrintLabels(labels)
 			taintsOutput := ocmOutput.PrintTaints([]*cmv1.Taint{taint})
 			replicasOutput := ocmOutput.PrintNodePoolReplicas((*cmv1.NodePoolAutoscaling)(npAutoscaling), 4)
+			mgmtUpgrade, err := mgmtUpgradeBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			managementUpgradeOutput := ocmOutput.PrintNodePoolManagementUpgrade(mgmtUpgrade)
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "Yes", replicasOutput, "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", "")
+				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", managementUpgradeOutput, "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
@@ -131,7 +136,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "No", "4", "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", "")
+				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
