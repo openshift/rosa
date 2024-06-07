@@ -54,6 +54,7 @@ func NewDetachPolicyCommand() *cobra.Command {
 		Long:    long,
 		Example: example,
 		Args:    cobra.NoArgs,
+		Hidden:  true,
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCMAndAWS(), DetachPolicyRunner(&options)),
 	}
 
