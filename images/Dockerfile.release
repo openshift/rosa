@@ -11,7 +11,9 @@ RUN curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscl
     ./aws/install && \
     rm -rf awscliv2.zip aws &&\
     aws --version
-RUN curl -sL $(curl -s https://api.github.com/repos/openshift/rosa/releases/latest | jq -r '.assets[] | select(.name == "rosa-linux-amd64") | .browser_download_url') --output /usr/bin/rosa && \
+RUN curl -sL $(curl -s https://api.github.com/repos/openshift/rosa/releases/latest | jq -r '.assets[] | select(.name == "rosa_Linux_x86_64.tar.gz") | .browser_download_url') --output /usr/bin/rosa.tar.gz && \
+    tar -xzvf /usr/bin/rosa.tar.gz -C /usr/bin && \
+    rm /usr/bin/rosa.tar.gz && \
     chmod +x /usr/bin/rosa
 RUN rosa verify openshift-client
 WORKDIR /rosa
