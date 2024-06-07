@@ -201,7 +201,7 @@ func GetExternalAuthOptions(
 		}
 	}
 
-	if interactive.Enabled() && !cmd.Changed(nameFlag) {
+	if !cmd.Changed(nameFlag) {
 		result.name, err = interactive.GetString(interactive.Input{
 			Question: "Name",
 			Default:  result.name,
@@ -214,7 +214,7 @@ func GetExternalAuthOptions(
 
 	}
 
-	if interactive.Enabled() && !cmd.Changed(issuerAudiencesFlag) {
+	if !cmd.Changed(issuerAudiencesFlag) {
 		issuerAudiencesInput, err := interactive.GetString(interactive.Input{
 			Question: "Issuer audiences",
 			Default:  strings.Join(issuerAudiencesSlice, ","),
@@ -229,7 +229,7 @@ func GetExternalAuthOptions(
 		result.issuerAudiences = issuerAudiencesSlice
 	}
 
-	if interactive.Enabled() && !cmd.Changed(issuerUrlFlag) {
+	if !cmd.Changed(issuerUrlFlag) {
 		result.issuerUrl, err = interactive.GetString(interactive.Input{
 			Question: "The serving url of the token issuer",
 			Default:  result.issuerUrl,
@@ -255,7 +255,7 @@ func GetExternalAuthOptions(
 		}
 	}
 
-	if interactive.Enabled() && !cmd.Changed(claimMappingUsernameClaimFlag) {
+	if !cmd.Changed(claimMappingUsernameClaimFlag) {
 		result.claimMappingUsernameClaim, err = interactive.GetString(interactive.Input{
 			Question: "Claim mapping username",
 			Default:  defaultClaimMappingUsername,
@@ -267,7 +267,7 @@ func GetExternalAuthOptions(
 		}
 	}
 
-	if interactive.Enabled() && !cmd.Changed(claimMappingGroupsClaimFlag) {
+	if !cmd.Changed(claimMappingGroupsClaimFlag) {
 		result.claimMappingGroupsClaim, err = interactive.GetString(interactive.Input{
 			Question: "Claim mapping groups",
 			Default:  defaultClaimMappingGroups,
