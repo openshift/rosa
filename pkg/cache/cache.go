@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -124,9 +125,13 @@ func (c *rosaCache) Dir() (string, error) {
 }
 
 func getAndEnsureOCMDirectoryExists() (string, error) {
-	ocmDir := "/tmp/ocm"
+	curUser, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	ocmDir := fmt.Sprintf("%s/%s/ocm", os.TempDir(), curUser.Username)
 
-	_, err := os.Stat(ocmDir)
+	_, err = os.Stat(ocmDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(ocmDir, 0755); err != nil {
