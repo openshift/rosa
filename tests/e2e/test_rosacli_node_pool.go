@@ -923,6 +923,6 @@ var _ = Describe("Edit nodepool",
 				machinePoolName_3 := common.GenerateRandomName("mp-73492-2", 2)
 				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName_3, "--replicas", "3", "--tags", "#.bar")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key:value'"))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key value'"))
 			})
 	})

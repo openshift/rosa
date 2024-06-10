@@ -348,6 +348,8 @@ var _ = Describe("Edit cluster",
 				if rosalCommand.GetFlagValue("--https-proxy", true) != "" {
 					err = rosalCommand.DeleteFlag("--https-proxy", true)
 					Expect(err).To(BeNil())
+				}
+				if rosalCommand.GetFlagValue("--no-proxy", true) != "" {
 					err = rosalCommand.DeleteFlag("--no-proxy", true)
 					Expect(err).To(BeNil())
 				}

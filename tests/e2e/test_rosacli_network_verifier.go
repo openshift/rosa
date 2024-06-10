@@ -185,7 +185,7 @@ var _ = Describe("Network verifier",
 				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID,
 					"--tags", "t1=v1")
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: invalid tag format for tag '[t1=v1]'. Expected tag format: 'key:value'"))
+				Expect(output.String()).To(ContainSubstring("ERR: invalid tag format for tag '[t1=v1]'. Expected tag format: 'key value'"))
 
 				By("Run the network verified without role")
 				output, err = networkService.CreateNetworkVerifierWithSubnets(
