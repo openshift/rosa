@@ -38,10 +38,6 @@ Tuning configs:
 Kubelet configs:                       
 Additional security group IDs:         
 Node drain grace period:               1 minute
-Management upgrade:                    
- - Type:                               Replace
- - Max surge:                          1
- - Max unavailable:                    0
 Message:                               
 `
 	describeStringWithUpgradeOutput = `
@@ -62,10 +58,6 @@ Tuning configs:
 Kubelet configs:                       
 Additional security group IDs:         
 Node drain grace period:               1 minute
-Management upgrade:                    
- - Type:                               Replace
- - Max surge:                          1
- - Max unavailable:                    0
 Message:                               
 Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
@@ -87,10 +79,6 @@ Tuning configs:
 Kubelet configs:                       
 Additional security group IDs:         
 Node drain grace period:               1 minute
-Management upgrade:                    
- - Type:                               Replace
- - Max surge:                          1
- - Max unavailable:                    0
 Message:                               
 Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
@@ -101,11 +89,6 @@ aws_node_pool:
   kind: AWSNodePool
 id: nodepool85
 kind: NodePool
-management_upgrade:
-  kind: NodePoolManagementUpgrade
-  max_surge: "1"
-  max_unavailable: "0"
-  type: Replace
 node_drain_grace_period:
   unit: minute
   value: 1
@@ -425,10 +408,8 @@ func formatNodePool() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge")
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
-	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
-		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).
-		ManagementUpgrade(mgmtUpgrade).Build()
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).Build()
 	Expect(err).To(BeNil())
 	return test.FormatResource(np)
 }
@@ -438,10 +419,8 @@ func formatNodePoolWithTags() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").Tags(map[string]string{"foo": "bar"})
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
-	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
-		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).
-		ManagementUpgrade(mgmtUpgrade).Build()
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).Build()
 	Expect(err).To(BeNil())
 	return test.FormatResource(np)
 }

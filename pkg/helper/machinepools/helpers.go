@@ -341,30 +341,3 @@ func ValidateNodeDrainGracePeriod(val interface{}) error {
 	}
 	return nil
 }
-
-func ValidateUpgradeMaxSurgeUnavailable(val interface{}) error {
-	maxSurgeOrUnavail := strings.TrimSpace(val.(string))
-	if maxSurgeOrUnavail == "" {
-		return nil
-	}
-
-	if strings.HasSuffix(maxSurgeOrUnavail, "%") {
-		percent, err := strconv.Atoi(strings.TrimSuffix(maxSurgeOrUnavail, "%"))
-		if err != nil {
-			return fmt.Errorf("Percentage value '%s' must be an integer", strings.TrimSuffix(maxSurgeOrUnavail, "%"))
-		}
-		if percent < 0 || percent > 100 {
-			return fmt.Errorf("Percentage value %d must be between 0 and 100", percent)
-		}
-	} else {
-		intMaxSurgeOrUnavail, err := strconv.Atoi(maxSurgeOrUnavail)
-		if err != nil {
-			return fmt.Errorf("Value '%s' must be an integer", maxSurgeOrUnavail)
-		}
-		if intMaxSurgeOrUnavail < 0 {
-			return fmt.Errorf("Value %d cannot be negative", intMaxSurgeOrUnavail)
-		}
-	}
-
-	return nil
-}
