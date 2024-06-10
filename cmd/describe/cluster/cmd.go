@@ -483,6 +483,12 @@ func run(cmd *cobra.Command, argv []string) {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
 		}
+		if len(cluster.AWS().AdditionalAllowedPrincipals()) > 0 {
+			// Omitted the 'Allowed' due to formatting
+			str = fmt.Sprintf("%s"+
+				"Additional Principals:      %s\n", str,
+				strings.Join(cluster.AWS().AdditionalAllowedPrincipals(), ","))
+		}
 	}
 
 	if cluster.Status().State() == cmv1.ClusterStateError {

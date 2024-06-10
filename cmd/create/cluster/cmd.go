@@ -180,9 +180,10 @@ var args struct {
 	tags []string
 
 	// Hypershift options:
-	hostedClusterEnabled bool
-	billingAccount       string
-	noCni                bool
+	hostedClusterEnabled        bool
+	billingAccount              string
+	noCni                       bool
+	additionalAllowedPrincipals []string
 
 	// Cluster Admin
 	createAdminUser      bool
@@ -454,6 +455,15 @@ func initFlags(cmd *cobra.Command) {
 		"",
 		"A file contains a PEM-encoded X.509 certificate bundle that will be "+
 			"added to the nodes' trusted certificate store.")
+
+	flags.StringSliceVar(
+		&args.additionalAllowedPrincipals,
+		"additional-allowed-principals",
+		nil,
+		"A comma-separated list of additional allowed principal ARNs "+
+			"to be added to the Hosted Control Plane's VPC Endpoint Service to enable additional "+
+			"VPC Endpoint connection requests to be automatically accepted.",
+	)
 
 	flags.BoolVar(&args.enableCustomerManagedKey,
 		"enable-customer-managed-key",
@@ -2852,6 +2862,31 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Additional Allowed Principals
+	if cmd.Flags().Changed("additional-allowed-principals") && !isHostedCP {
+		r.Reporter.Errorf("Additional Allowed Principals is supported only for Hosted Control Planes")
+		os.Exit(1)
+	}
+	additionalAllowedPrincipals := args.additionalAllowedPrincipals
+	if isHostedCP && interactive.Enabled() {
+		aapInputs, err := interactive.GetString(interactive.Input{
+			Question: "Additional Allowed Principal ARNs",
+			Help:     cmd.Flags().Lookup("additional-allowed-principals").Usage,
+			Default:  strings.Join(additionalAllowedPrincipals, ","),
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for Additional Allowed Principal ARNs: %s", err)
+			os.Exit(1)
+		}
+		additionalAllowedPrincipals = helper.HandleEmptyStringOnSlice(strings.Split(aapInputs, ","))
+	}
+	if len(additionalAllowedPrincipals) > 0 {
+		if err := roles.ValidateAdditionalAllowedPrincipals(additionalAllowedPrincipals); err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
+		}
+	}
+
 	// Audit Log Forwarding
 	auditLogRoleARN := args.AuditLogRoleARN
 
@@ -3100,6 +3135,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AdditionalComputeSecurityGroupIds:      additionalComputeSecurityGroupIds,
 		AdditionalInfraSecurityGroupIds:        additionalInfraSecurityGroupIds,
 		AdditionalControlPlaneSecurityGroupIds: additionalControlPlaneSecurityGroupIds,
+		AdditionalAllowedPrincipals:            additionalAllowedPrincipals,
 	}
 
 	if httpTokens != "" {
@@ -3894,6 +3930,11 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 	if spec.NoCni {
 		command += " --no-cni"
+	}
+
+	if len(spec.AdditionalAllowedPrincipals) > 0 {
+		command += fmt.Sprintf(" --additional-allowed-principals %s",
+			strings.Join(spec.AdditionalAllowedPrincipals, ","))
 	}
 
 	for _, p := range properties {
