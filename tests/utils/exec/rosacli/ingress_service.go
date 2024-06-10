@@ -60,6 +60,7 @@ type Ingress struct {
 	ExcludeNamespace         string `yaml:"Exclude Namespce,omitempty" json:"EXCLUDED NAMESPACE,omitempty"`
 	WildcardPolicy           string `yaml:"Wildcard Policy,omitempty" json:"WILDCARD POLICY,omitempty"`
 	NamespaceOwnershipPolicy string `yaml:"Namespace Ownership Policy,omitempty" json:"NAMESPACE OWNERSHIP,omitempty"`
+	ComponentRoutes          string `yaml:"Component Routes,omitempty" json:"COMPONENT ROUTES,omitempty"`
 }
 
 // Get specified ingress by ingress id

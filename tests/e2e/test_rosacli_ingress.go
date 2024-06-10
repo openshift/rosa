@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
+
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
@@ -283,5 +284,84 @@ var _ = Describe("Edit default ingress",
 				for _, expectLabel := range expectedRouteSelectors {
 					Expect(expectLabel).To(BeElementOf(ingressRouteSelectors))
 				}
+			})
+		It("can update ingress components (oauth, downloads, console) - [id:72868]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			func() {
+
+				By("Record ingress default value")
+				output, err := rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				defaultIngress := ingressList.Ingresses[0]
+
+				By("Check edit ingress help message")
+				output, err = rosaClient.Ingress.EditIngress(clusterID, "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("--component-routes"))
+
+				By("Edit ingress with --component-routes")
+				componentRoutes := "oauth: hostname=oauth.hostname.com;tlsSecretRef=oauth-secret,downloads: hostname=downloads.hostname.com;tlsSecretRef=downloads-secret,console: hostname=console.hostname.com;tlsSecretRef=console-secret"
+				output, err = rosaClient.Ingress.EditIngress(clusterID,
+					defaultIngress.ID,
+					"--component-routes", componentRoutes,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.Ingress.EditIngress(clusterID,
+					defaultIngress.ID,
+					"--component-routes", "oauth: hostname=oauth.hostname.com;tlsSecretRef=oauth-secret,downloads: hostname=downloads.hostname.com;tlsSecretRef=downloads-secret,console: hostname=console.hostname.com;tlsSecretRef=console-secret",
+				)
+
+				By("List ingress to check")
+				output, err = rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		It("cannot update ingress components with incorrect syntax - [id:72868]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			func() {
+				By("Record ingress default value")
+				output, err := rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				defaultIngress := ingressList.Ingresses[0]
+
+				By("Edit ingress with --component-routes")
+				componentRoutes := "oauth: hostname:custom1;tlsSecretRef=custom1,downloads: hostname=custom2;tlsSecretRef=custom2,console: hostname=custom3;tlsSecretRef=custom3"
+				output, err = rosaClient.Ingress.EditIngress(clusterID,
+					defaultIngress.ID,
+					"--component-routes", componentRoutes,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("An error occurred whilst parsing the supplied component routes: only the name of the component should be followed by ':'"))
+				By("List ingress to check")
+				output, err = rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		It("cannot update ingress components with incorrect number of components - [id:72868]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			func() {
+				By("Record ingress default value")
+				output, err := rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				defaultIngress := ingressList.Ingresses[0]
+
+				By("Edit ingress with --component-routes")
+				componentRoutes := "oauth: hostname=custom1;tlsSecretRef=custom1"
+				output, err = rosaClient.Ingress.EditIngress(clusterID,
+					defaultIngress.ID,
+					"--component-routes", componentRoutes,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("An error occurred whilst parsing the supplied component routes: the expected amount of component routes is 3, but 1 have been supplied"))
+				By("List ingress to check")
+				_, err = rosaClient.Ingress.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
 			})
 	})
