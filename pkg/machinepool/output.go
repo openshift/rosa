@@ -27,7 +27,6 @@ var nodePoolOutputString string = "\n" +
 	"Kubelet configs:                       %s\n" +
 	"Additional security group IDs:         %s\n" +
 	"Node drain grace period:               %s\n" +
-	"Management upgrade:                    %s\n" +
 	"Message:                               %s\n"
 
 var machinePoolOutputString = "\n" +
@@ -82,8 +81,6 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		ocmOutput.PrintNodePoolConfigs(nodePool.KubeletConfigs()),
 		ocmOutput.PrintNodePoolAdditionalSecurityGroups(nodePool.AWSNodePool()),
 		ocmOutput.PrintNodeDrainGracePeriod(nodePool.NodeDrainGracePeriod()),
-		ocmOutput.PrintNodePoolManagementUpgrade(nodePool.ManagementUpgrade()),
-
 		ocmOutput.PrintNodePoolMessage(nodePool.Status()),
 	)
 }

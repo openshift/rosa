@@ -464,49 +464,6 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		npBuilder.NodeDrainGracePeriod(nodeDrainBuilder)
 	}
 
-	maxSurge := args.maxSurge
-	if interactive.Enabled() {
-		maxSurge, err = interactive.GetString(interactive.Input{
-			Question: "Max surge",
-			Help:     cmd.Flags().Lookup("max-surge").Usage,
-			Default:  maxSurge,
-			Required: false,
-			Validators: []interactive.Validator{
-				machinepools.ValidateUpgradeMaxSurgeUnavailable,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for max surge: %s", err)
-			os.Exit(1)
-		}
-	}
-	maxUnavailable := args.maxUnavailable
-	if interactive.Enabled() {
-		maxUnavailable, err = interactive.GetString(interactive.Input{
-			Question: "Max unavailable",
-			Help:     cmd.Flags().Lookup("max-unavailable").Usage,
-			Default:  maxUnavailable,
-			Required: false,
-			Validators: []interactive.Validator{
-				machinepools.ValidateUpgradeMaxSurgeUnavailable,
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for max unavailable: %s", err)
-			os.Exit(1)
-		}
-	}
-	if maxSurge != "" || maxUnavailable != "" {
-		mgmtUpgradeBuilder := cmv1.NewNodePoolManagementUpgrade()
-		if maxSurge != "" {
-			mgmtUpgradeBuilder.MaxSurge(maxSurge)
-		}
-		if maxUnavailable != "" {
-			mgmtUpgradeBuilder.MaxUnavailable(maxUnavailable)
-		}
-		npBuilder.ManagementUpgrade(mgmtUpgradeBuilder)
-	}
-
 	if version != "" {
 		npBuilder.Version(cmv1.NewVersion().ID(version))
 	}

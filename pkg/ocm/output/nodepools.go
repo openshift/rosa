@@ -115,14 +115,3 @@ func PrintNodeDrainGracePeriod(period *cmv1.Value) string {
 
 	return ""
 }
-
-func PrintNodePoolManagementUpgrade(upgrade *cmv1.NodePoolManagementUpgrade) string {
-	if upgrade != nil {
-		return fmt.Sprintf("\n"+
-			" - Type:                               %s\n"+
-			" - Max surge:                          %s\n"+
-			" - Max unavailable:                    %s", upgrade.Type(), upgrade.MaxSurge(), upgrade.MaxUnavailable())
-	}
-
-	return ""
-}
