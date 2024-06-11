@@ -85,7 +85,8 @@ func PreparePrefix(profilePrefix string, nameLength int) string {
 
 	if len(profilePrefix) > nameLength {
 		newProfilePrefix := common.TrimNameByLength(profilePrefix, nameLength-4)
-		log.Logger.Warnf("Proifle name prefix %s is longer than the nameLength for random generated. Trimed it to %s", profilePrefix, newProfilePrefix)
+		log.Logger.Warnf("Profile name prefix %s is longer than "+
+			"the nameLength for random generated. Trimed it to %s", profilePrefix, newProfilePrefix)
 		profilePrefix = newProfilePrefix
 	}
 	return common.GenerateRandomName(profilePrefix, nameLength-len(profilePrefix)-1)
@@ -105,8 +106,10 @@ func PrepareVPC(region string, vpcName string, cidrValue string) (*vpc_client.VP
 }
 
 // PrepareSubnets will prepare pair of subnets according to the vpcID and zones
-// if zones are empty list it will list the zones and pick according to multi-zone parameter. when multi-zone=true, 3 zones will be pickup
-func PrepareSubnets(vpcClient *vpc_client.VPC, region string, zones []string, multiZone bool) (map[string][]string, error) {
+// if zones are empty list it will list the zones and pick according to multi-zone parameter.
+// when multi-zone=true, 3 zones will be pickup
+func PrepareSubnets(vpcClient *vpc_client.VPC, region string,
+	zones []string, multiZone bool) (map[string][]string, error) {
 	resultMap := map[string][]string{}
 	if len(zones) == 0 {
 		log.Logger.Info("Got no zones indicated. List the zones and pick from the listed zones")
@@ -135,7 +138,12 @@ func PrepareSubnets(vpcClient *vpc_client.VPC, region string, zones []string, mu
 	return resultMap, nil
 }
 
-func PrepareProxy(vpcClient *vpc_client.VPC, zone string, sshPemFileName string, sshPemFileRecordDir string, caFile string) (*ProxyDetail, error) {
+func PrepareProxy(vpcClient *vpc_client.VPC,
+	zone string,
+	sshPemFileName string,
+	sshPemFileRecordDir string,
+	caFile string) (*ProxyDetail, error) {
+
 	_, privateIP, caContent, err := vpcClient.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
 	if err != nil {
 		return nil, err
@@ -203,7 +211,10 @@ func ElaborateKMSKeyForSTSCluster(client *rosacli.Client, cluster string, etcdKM
 	return err
 }
 
-func PrepareAdditionalSecurityGroups(vpcClient *vpc_client.VPC, securityGroupCount int, namePrefix string) ([]string, error) {
+func PrepareAdditionalSecurityGroups(vpcClient *vpc_client.VPC,
+	securityGroupCount int,
+	namePrefix string) ([]string, error) {
+
 	return vpcClient.CreateAdditionalSecurityGroups(securityGroupCount, namePrefix, "")
 }
 
@@ -217,6 +228,7 @@ func PrepareAccountRoles(client *rosacli.Client,
 	path string,
 	permissionsBoundary string) (
 	accRoles *rosacli.AccountRolesUnit, err error) {
+
 	flags := GenerateAccountRoleCreationFlag(client,
 		namePrefix,
 		hcp,
@@ -256,6 +268,7 @@ func PrepareOperatorRolesByOIDCConfig(client *rosacli.Client,
 	roleArn string,
 	sharedVPCRoleArn string,
 	hcp bool, channelGroup string) error {
+
 	flags := []string{
 		"-y",
 		"--mode", "auto",
@@ -286,8 +299,12 @@ func PrepareAdminUser() (string, string) {
 	return userName, password
 }
 
-func PrepareAuditlogRoleArnByOIDCConfig(client *rosacli.Client, auditLogRoleName string, oidcCONfigID string, region string) (string, error) {
-	oidcConfig, err := client.OCMResource.GetOIDCConfigFromList(oidcCONfigID)
+func PrepareAuditlogRoleArnByOIDCConfig(client *rosacli.Client,
+	auditLogRoleName string,
+	oidcConfigID string,
+	region string) (string, error) {
+
+	oidcConfig, err := client.OCMResource.GetOIDCConfigFromList(oidcConfigID)
 	if err != nil {
 		return "", err
 	}
@@ -301,6 +318,7 @@ func PrepareAuditlogRoleArnByOIDCConfig(client *rosacli.Client, auditLogRoleName
 }
 
 func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL string, region string) (string, error) {
+	//nolint:staticcheck,all
 	oidcIssuerURL = strings.TrimLeft(oidcIssuerURL, "https://")
 	log.Logger.Infof("Preparing audit log role with name %s and oidcIssuerURL %s", auditLogRoleName, oidcIssuerURL)
 	awsClient, err := aws_client.CreateAWSClient("", region)
@@ -327,7 +345,8 @@ func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL strin
 	}
 	err = awsClient.AttachIAMPolicy(auditLogRoleName, policyArn)
 	if err != nil {
-		log.Logger.Errorf("Error happens when attach audit log policy %s to role %s: %s", policyArn, auditLogRoleName, err.Error())
+		log.Logger.Errorf("Error happens when attach audit log policy %s to role %s: %s",
+			policyArn, auditLogRoleName, err.Error())
 	}
 
 	return auditLogRoleArn, err
@@ -345,12 +364,14 @@ func PrepareOperatorRolesByCluster(client *rosacli.Client, cluster string) error
 	return err
 }
 
-// PrepareOIDCConfig will prepare the oidc config for the cluster, if the oidcConfigType="managed", roleArn and prefix won't be set
+// PrepareOIDCConfig will prepare the oidc config for the cluster,
+// if the oidcConfigType="managed", roleArn and prefix won't be set
 func PrepareOIDCConfig(client *rosacli.Client,
 	oidcConfigType string,
 	region string,
 	roleArn string,
 	prefix string) (string, error) {
+
 	var oidcConfigID string
 	var output bytes.Buffer
 	var err error

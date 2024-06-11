@@ -213,7 +213,7 @@ func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	var err error
 	log.Logger.Infof("%s command is running", command[0])
 	output.Reset()
-	cmd := exec.Command(command[0], command[1:]...)
+	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Stdout = &output
 	cmd.Stderr = cmd.Stdout
 
@@ -230,7 +230,7 @@ func (r *runner) RunPipeline(commands ...[]string) (bytes.Buffer, error) {
 
 	cmds := make([]*exec.Cmd, len(commands))
 	for i, command := range commands {
-		cmds[i] = exec.Command(command[0], command[1:]...)
+		cmds[i] = exec.Command(command[0], command[1:]...) // #nosec G204
 		if i > 0 {
 			cmds[i].Stdin, _ = cmds[i-1].StdoutPipe()
 		}

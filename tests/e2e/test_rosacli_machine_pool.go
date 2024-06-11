@@ -122,7 +122,21 @@ var _ = Describe("Create machinepool",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("List the available instance-types and verify the presence of newly added instance-types")
-				newlyAddedTypes := []string{"c7a.xlarge", "c7a.48xlarge", "c7a.metal-48xl", "r7a.xlarge", "r7a.48xlarge", "r7a.metal-48xl", "hpc6a.48xlarge", "hpc6id.32xlarge", "hpc7a.96xlarge", "c7i.48xlarge", "c7i.metal-24xl", "c7i.metal-48xl", "r7i.xlarge", "r7i.48xlarge"}
+				newlyAddedTypes := []string{
+					"c7a.xlarge",
+					"c7a.48xlarge",
+					"c7a.metal-48xl",
+					"r7a.xlarge",
+					"r7a.48xlarge",
+					"r7a.metal-48xl",
+					"hpc6a.48xlarge",
+					"hpc6id.32xlarge",
+					"hpc7a.96xlarge",
+					"c7i.48xlarge",
+					"c7i.metal-24xl",
+					"c7i.metal-48xl",
+					"r7i.xlarge",
+					"r7i.48xlarge"}
 				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypes()
 
 				if err != nil {
@@ -140,26 +154,51 @@ var _ = Describe("Create machinepool",
 			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Create a spot machinepool on the cluster")
+				// nolint:goconst
 				machinePoolName := "spotmp"
-				output, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--spot-max-price", "10.2", "--use-spot-instances",
+				output, err := machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--spot-max-price", "10.2",
+					"--use-spot-instances",
 					"--replicas", "0")
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Machine pool '%s' created successfully on cluster '%s'", machinePoolName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						machinePoolName,
+						clusterID))
 
 				By("Create another machinepool without spot instances")
+				// nolint:goconst
 				machinePoolName = "nospotmp"
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "0")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--replicas", "0")
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Machine pool '%s' created successfully on cluster '%s'", machinePoolName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						machinePoolName,
+						clusterID))
 
 				By("Create another machinepool with use-spot-instances but no spot-max-price set")
 				machinePoolName = "nopricemp"
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--use-spot-instances", "--replicas", "0")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--use-spot-instances",
+					"--replicas", "0")
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Machine pool '%s' created successfully on cluster '%s'", machinePoolName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						machinePoolName,
+						clusterID))
 
 				By("Confirm list of machinepools contains all created machinepools with SpotInstance field set appropriately")
 				output, err = machinePoolService.ListMachinePool(clusterID)
@@ -186,7 +225,11 @@ var _ = Describe("Create machinepool",
 			func() {
 				By("Create a spot machinepool with negative price")
 				machinePoolName := "spotmp"
-				output, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--spot-max-price", "-10.2", "--use-spot-instances",
+				output, err := machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--spot-max-price", "-10.2",
+					"--use-spot-instances",
 					"--replicas", "3")
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
@@ -194,10 +237,17 @@ var _ = Describe("Create machinepool",
 
 				By("Create a machinepool without spot instances, but with spot price")
 				machinePoolName = "nospotmp"
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "3", "--spot-max-price", "10.2", "--use-spot-instances=false")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--replicas", "3",
+					"--spot-max-price", "10.2",
+					"--use-spot-instances=false")
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Can't set max price when not using spot instances"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Can't set max price when not using spot instances"))
 			})
 
 		It("can create machinepool with tags - [id:73469]",
@@ -242,13 +292,21 @@ var _ = Describe("Create machinepool",
 					Expect(err).To(HaveOccurred())
 					switch errorType {
 					case "invalidFmt":
-						Expect(out.String()).Should(ContainSubstring("invalid tag format for tag"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format for tag"))
 					case "noTagValue":
-						Expect(out.String()).Should(ContainSubstring("invalid tag format, tag key or tag value can not be empty"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format, tag key or tag value can not be empty"))
 					case "noTagKey":
-						Expect(out.String()).Should(ContainSubstring("invalid tag format, tag key or tag value can not be empty"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format, tag key or tag value can not be empty"))
 					case "nonAscii":
-						Expect(out.String()).Should(ContainSubstring("Invalid Machine Pool AWS tags"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"Invalid Machine Pool AWS tags"))
 					}
 				}
 			})
@@ -490,7 +548,9 @@ var _ = Describe("Edit machinepool",
 				By("Check help message")
 				output, err := machinePoolService.EditMachinePool(clusterID, "", "-h")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("machinepool, machinepools, machine-pool, machine-pools"))
+				Expect(output.String()).
+					Should(ContainSubstring(
+						"machinepool, machinepools, machine-pool, machine-pools"))
 
 				By("Create an additional machinepool")
 				machinePoolName := "mp-38838"
@@ -558,7 +618,10 @@ var _ = Describe("Edit machinepool",
 					flags...,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				workerPoolDescription, err := rosaClient.MachinePool.DescribeAndReflectMachinePool(clusterID, con.DefaultClassicWorkerPool)
+				workerPoolDescription, err := rosaClient.MachinePool.DescribeAndReflectMachinePool(
+					clusterID,
+					con.DefaultClassicWorkerPool,
+				)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(workerPoolDescription.Replicas).To(Equal(updatedValue))
 

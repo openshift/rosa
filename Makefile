@@ -46,7 +46,7 @@ install:
 
 .PHONY: fmt
 fmt: fmt-imports
-	gofmt -s -l -w cmd pkg
+	gofmt -s -l -w cmd pkg tests
 
 .PHONY: fmt-imports
 fmt-imports: $(GCI)
@@ -54,7 +54,7 @@ fmt-imports: $(GCI)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --timeout 5m0s --skip-dirs tests ./...
+	$(GOLANGCI_LINT) run --timeout 5m0s ./...
 
 .PHONY: commits/check
 commits/check:

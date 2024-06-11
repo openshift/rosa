@@ -59,7 +59,10 @@ var _ = Describe("Network verifier",
 				By("Run network verifier vith clusterID")
 				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Run the following command to wait for verification to all subnets to complete:\n" + "rosa verify network --watch --status-only"))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Run the following command to wait for verification to all subnets to complete:\n" +
+							"rosa verify network --watch --status-only"))
 
 				By("Get the cluster subnets")
 				var subnetsNetworkInfo string
@@ -74,16 +77,21 @@ var _ = Describe("Network verifier",
 				installerRoleArn := clusterDetail.STSRoleArn
 
 				By("Check the network verifier status")
-				err = wait.PollUntilContextTimeout(context.Background(), 20*time.Second, 200*time.Second, false, func(context.Context) (bool, error) {
-					output, err = networkService.GetNetworkVerifierStatus(
-						"--region", region,
-						"--subnet-ids", subnets,
-					)
-					if strings.Contains(output.String(), "pending") {
-						return false, err
-					}
-					return true, err
-				})
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					200*time.Second,
+					false,
+					func(context.Context) (bool, error) {
+						output, err = networkService.GetNetworkVerifierStatus(
+							"--region", region,
+							"--subnet-ids", subnets,
+						)
+						if strings.Contains(output.String(), "pending") {
+							return false, err
+						}
+						return true, err
+					})
 				common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
 				output, err = networkService.GetNetworkVerifierStatus(
@@ -99,16 +107,21 @@ var _ = Describe("Network verifier",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Check the network verifier status")
-				err = wait.PollUntilContextTimeout(context.Background(), 20*time.Second, 200*time.Second, false, func(context.Context) (bool, error) {
-					output, err = networkService.GetNetworkVerifierStatus(
-						"--region", region,
-						"--subnet-ids", subnets,
-					)
-					if strings.Contains(output.String(), "pending") {
-						return false, err
-					}
-					return true, err
-				})
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					200*time.Second,
+					false,
+					func(context.Context) (bool, error) {
+						output, err = networkService.GetNetworkVerifierStatus(
+							"--region", region,
+							"--subnet-ids", subnets,
+						)
+						if strings.Contains(output.String(), "pending") {
+							return false, err
+						}
+						return true, err
+					})
 				common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
 				output, err = networkService.GetNetworkVerifierStatus(
@@ -129,7 +142,10 @@ var _ = Describe("Network verifier",
 					"--tags", "t2:v2",
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Run the following command to wait for verification to all subnets to complete:\n" + "rosa verify network --watch --status-only"))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Run the following command to wait for verification to all subnets to complete:\n" +
+							"rosa verify network --watch --status-only"))
 				Expect(output.String()).To(ContainSubstring("pending"))
 
 				By("Check the network verifier with hosted-cp attributes")
@@ -168,24 +184,31 @@ var _ = Describe("Network verifier",
 					By("Run network verifier with non BYO VPC cluster")
 					output, err = networkService.CreateNetworkVerifierWithCluster(clusterID)
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).To(ContainSubstring("ERR: Running the network verifier is only supported for BYO VPC clusters"))
+					Expect(output.String()).
+						To(ContainSubstring(
+							"ERR: Running the network verifier is only supported for BYO VPC clusters"))
 					return
 				}
 				By("Run network verifier without clusterID")
 				output, err = networkService.CreateNetworkVerifierWithCluster("non-existing")
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: Failed to get cluster 'non-existing': There is no cluster with identifier or name 'non-existing'"))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"ERR: Failed to get cluster 'non-existing': There is no cluster with identifier or name 'non-existing'"))
 
 				By("Run network verifier with --hosted-cp")
 				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID, "--hosted-cp")
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: '--hosted-cp' flag is not required when running the network verifier with cluster"))
+				Expect(output.String()).
+					To(ContainSubstring("ERR: '--hosted-cp' flag is not required when running the network verifier with cluster"))
 
 				By("Check the network for cluster with invalid tags")
 				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID,
 					"--tags", "t1=v1")
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: invalid tag format for tag '[t1=v1]'. Expected tag format: 'key value'"))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"ERR: invalid tag format for tag '[t1=v1]'. Expected tag format: 'key value'"))
 
 				By("Run the network verified without role")
 				output, err = networkService.CreateNetworkVerifierWithSubnets(

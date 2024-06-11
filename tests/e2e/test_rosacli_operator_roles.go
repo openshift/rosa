@@ -102,22 +102,32 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					By("Create operator roles to the cluster again")
 					output, err := ocmResourceService.CreateOperatorRoles("-c", clusterID, "-y", "--mode", "auto")
 					Expect(err).ToNot(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Operator Roles already exists"))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"Operator Roles already exists"))
 
 					By("Create oidc config to the cluster again")
 					output, err = ocmResourceService.CreateOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
 					Expect(err).ToNot(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("OIDC provider already exists"))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"OIDC provider already exists"))
 
 					By("Delete the oidc-provider to the cluster")
 					output, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
 					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("ERR: Cluster '%s' is in 'ready' state. OIDC provider can be deleted only for the uninstalled clusters", clusterID))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"ERR: Cluster '%s' is in 'ready' state. OIDC provider can be deleted only for the uninstalled clusters",
+							clusterID))
 
 					By("Delete the operator-roles to the cluster")
 					output, err = ocmResourceService.DeleteOperatorRoles("-c", clusterID, "-y", "--mode", "auto")
 					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("ERR: Cluster '%s' is in 'ready' state. Operator roles can be deleted only for the uninstalled clusters", clusterID))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"ERR: Cluster '%s' is in 'ready' state. Operator roles can be deleted only for the uninstalled clusters",
+							clusterID))
 
 					By("Get the --oidc-config-id from the cluster and it's issuer url")
 					rosaClient.Runner.JsonFormat()
@@ -131,12 +141,17 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					By("Try to delete oidc provider with --oidc-config-id")
 					output, err = ocmResourceService.DeleteOIDCProvider("--oidc-config-id", oidcConfigID, "-y", "--mode", "auto")
 					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("ERR: There are clusters using OIDC config '%s', can't delete the provider", issuerURL))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"ERR: There are clusters using OIDC config '%s', can't delete the provider",
+							issuerURL))
 
 					By("Try to create oidc provider with --oidc-config-id")
 					output, err = ocmResourceService.CreateOIDCProvider("--oidc-config-id", oidcConfigID, "-y", "--mode", "auto")
 					Expect(err).ToNot(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("OIDC provider already exists"))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"OIDC provider already exists"))
 				}
 			})
 	})
@@ -352,7 +367,9 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			)
 			Expect(err).To(HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("Either a cluster key for STS cluster or an operator roles prefix must be specified"))
+			Expect(textData).
+				Should(ContainSubstring(
+					"Either a cluster key for STS cluster or an operator roles prefix must be specified"))
 		})
 
 })

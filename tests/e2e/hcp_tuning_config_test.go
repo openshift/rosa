@@ -73,23 +73,36 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 			]
 		}`
 			By("Create tuning configs to the cluster")
-			resp, err := tuningConfigService.CreateTuningConfig(clusterID, tuningConfigName_1, fmt.Sprintf(tuningConfigPayload_1, tuningConfigName_1, tuningConfigName_1))
+			resp, err := tuningConfigService.CreateTuningConfig(
+				clusterID,
+				tuningConfigName_1,
+				fmt.Sprintf(tuningConfigPayload_1, tuningConfigName_1, tuningConfigName_1))
 			Expect(err).ToNot(HaveOccurred())
 			textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-			Expect(textData).To(ContainSubstring(fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tuningConfigName_1, clusterID)))
-			resp, err = tuningConfigService.CreateTuningConfig(clusterID, tuningConfigName_2, fmt.Sprintf(tuningConfigPayload_1, tuningConfigName_2, tuningConfigName_2))
+			Expect(textData).
+				To(ContainSubstring(
+					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tuningConfigName_1, clusterID)))
+			resp, err = tuningConfigService.CreateTuningConfig(
+				clusterID,
+				tuningConfigName_2,
+				fmt.Sprintf(tuningConfigPayload_1, tuningConfigName_2, tuningConfigName_2))
 			Expect(err).ToNot(HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-			Expect(textData).To(ContainSubstring(fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tuningConfigName_2, clusterID)))
+			Expect(textData).
+				To(ContainSubstring(
+					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tuningConfigName_2, clusterID)))
 
 			By("List all tuning configs")
 			tuningConfigList, err := tuningConfigService.ListTuningConfigsAndReflect(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tuningConfigList.IsPresent(tuningConfigName_1)).To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_1)
-			Expect(tuningConfigList.IsPresent(tuningConfigName_2)).To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_2)
+			Expect(tuningConfigList.IsPresent(tuningConfigName_1)).
+				To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_1)
+			Expect(tuningConfigList.IsPresent(tuningConfigName_2)).
+				To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_2)
 
 			By("Update a tuning config of the cluster")
-			specPath, err := common.CreateTempFileWithContent(fmt.Sprintf(tuningConfigPayload_2, tuningConfigName_2, tuningConfigName_2))
+			specPath, err := common.CreateTempFileWithContent(
+				fmt.Sprintf(tuningConfigPayload_2, tuningConfigName_2, tuningConfigName_2))
 			defer os.Remove(specPath)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = tuningConfigService.EditTuningConfig(clusterID, tuningConfigName_2, "--spec-path", specPath)
@@ -109,7 +122,9 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 			By("List the tuning configs and check deleted tuning config should not be present]")
 			tuningConfigList, err = tuningConfigService.ListTuningConfigsAndReflect(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tuningConfigList.IsPresent(tuningConfigName_1)).To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_1)
-			Expect(tuningConfigList.IsPresent(tuningConfigName_2)).To(BeFalse(), "the tuningconfig %s is in the output", tuningConfigName_2)
+			Expect(tuningConfigList.IsPresent(tuningConfigName_1)).
+				To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_1)
+			Expect(tuningConfigList.IsPresent(tuningConfigName_2)).
+				To(BeFalse(), "the tuningconfig %s is in the output", tuningConfigName_2)
 		})
 })

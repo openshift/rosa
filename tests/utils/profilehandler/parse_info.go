@@ -20,7 +20,7 @@ func ParseUserData() (*UserData, error) {
 	}
 	err = json.Unmarshal([]byte(udContent), &ud)
 	if err != nil {
-		log.Logger.Errorf("Error happend when parse resource file data to UserData struct: %s", err.Error())
+		log.Logger.Errorf("Error happened when parse resource file data to UserData struct: %s", err.Error())
 		return nil, err
 	}
 	return ud, err
@@ -42,7 +42,7 @@ func ParserClusterDetail() (*ClusterDetail, error) {
 	}
 	err = json.Unmarshal([]byte(cdContent), &cd)
 	if err != nil {
-		log.Logger.Errorf("Error happend when parse cluster detail file to ClusterDetail struct: %s", err.Error())
+		log.Logger.Errorf("Error happened when parse cluster detail file to ClusterDetail struct: %s", err.Error())
 		return nil, err
 	}
 	return cd, err
