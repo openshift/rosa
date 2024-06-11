@@ -23,6 +23,7 @@ type featureLabels struct {
 	OIDCConfig           Labels
 	OIDCProvider         Labels
 	OperatorRoles        Labels
+	Policy               Labels
 	Regions              Labels
 	Token                Labels
 	TuningConfigs        Labels
@@ -51,6 +52,7 @@ func initFeatureLabels() *featureLabels {
 	fLabels.OIDCConfig = Label("feature-oidc-config")
 	fLabels.OIDCProvider = Label("feature-oidc-provider")
 	fLabels.OperatorRoles = Label("feature-operator-roles")
+	fLabels.Policy = Label("feature-policy")
 	fLabels.Token = Label("feature-token")
 	fLabels.TuningConfigs = Label("feature-tuning-configs")
 	fLabels.UserRole = Label("feature-user-role")

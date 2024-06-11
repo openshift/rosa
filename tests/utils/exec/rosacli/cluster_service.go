@@ -15,7 +15,7 @@ import (
 type ClusterService interface {
 	ResourcesCleaner
 
-	DescribeCluster(clusterID string) (bytes.Buffer, error)
+	DescribeCluster(clusterID string, flags ...string) (bytes.Buffer, error)
 	ReflectClusterDescription(result bytes.Buffer) (*ClusterDescription, error)
 	DescribeClusterAndReflect(clusterID string) (*ClusterDescription, error)
 	List() (bytes.Buffer, error)
@@ -96,11 +96,11 @@ type ClusterDescription struct {
 	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
 }
 
-func (c *clusterService) DescribeCluster(clusterID string) (bytes.Buffer, error) {
+func (c *clusterService) DescribeCluster(clusterID string, flags ...string) (bytes.Buffer, error) {
+	combflags := append([]string{"-c", clusterID}, flags...)
 	describe := c.client.Runner.
 		Cmd("describe", "cluster").
-		CmdFlags("-c", clusterID)
-
+		CmdFlags(combflags...)
 	return describe.Run()
 }
 
