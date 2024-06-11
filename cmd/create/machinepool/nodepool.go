@@ -6,10 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper/features"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
@@ -502,13 +504,13 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 	}
 
 	// Fetching the availability zones from the VPC private subnets
-	subnetsMap := make(map[string][]string)
+	subnetsMap := make(map[string][]types.Subnet)
 	for _, privateSubnet := range privateSubnets {
 		subnetsPerAZ, exist := subnetsMap[*privateSubnet.AvailabilityZone]
 		if !exist {
-			subnetsPerAZ = []string{*privateSubnet.SubnetId}
+			subnetsPerAZ = []types.Subnet{privateSubnet}
 		} else {
-			subnetsPerAZ = append(subnetsPerAZ, *privateSubnet.SubnetId)
+			subnetsPerAZ = append(subnetsPerAZ, privateSubnet)
 		}
 		subnetsMap[*privateSubnet.AvailabilityZone] = subnetsPerAZ
 	}
@@ -536,11 +538,29 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 
 	if subnets, ok := subnetsMap[availabilityZone]; ok {
 		if len(subnets) == 1 {
-			return subnets[0], nil
+			return *subnets[0].SubnetId, nil
 		}
 		r.Reporter.Infof("There are several subnets for availability zone '%s'", availabilityZone)
 		interactive.Enable()
-		subnet := getSubnetFromUser(cmd, r, false, cluster)
+
+		// should only get the subnets from the selected availability zone
+		subnetOptions := make([]string, 0)
+		for _, subnet := range subnets {
+			subnetOptions = append(subnetOptions, aws.SetSubnetOption(subnet))
+		}
+
+		subnetOption, err := interactive.GetOption(interactive.Input{
+			Question: "Subnet ID",
+			Help:     cmd.Flags().Lookup("subnet").Usage,
+			Options:  subnetOptions,
+			Default:  subnetOptions[0],
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid AWS subnet: %s", err)
+			os.Exit(1)
+		}
+		subnet := aws.ParseOption(subnetOption)
 		return subnet, nil
 	}
 
