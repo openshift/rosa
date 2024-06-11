@@ -59,6 +59,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				var err error
 				var userName string
 				var breakGlassCredID string
+				breakGlassCredentialService := rosaClient.BreakGlassCredential
 
 				userNameList := []string{}
 
@@ -70,18 +71,18 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				}
 
 				By("Retrieve help for create/list/describe/delete break-glass-credential")
-				_, err = rosaClient.BreakGlassCredential.RetrieveHelpForCreate()
+				_, err = breakGlassCredentialService.Create().Help().Run()
 				Expect(err).ToNot(HaveOccurred())
-				_, err = rosaClient.BreakGlassCredential.RetrieveHelpForDescribe()
+				_, err = breakGlassCredentialService.Describe().Help().Run()
 				Expect(err).ToNot(HaveOccurred())
-				_, err = rosaClient.BreakGlassCredential.RetrieveHelpForList()
+				_, err = breakGlassCredentialService.List().Help().Run()
 				Expect(err).ToNot(HaveOccurred())
-				_, err = rosaClient.BreakGlassCredential.RetrieveHelpForDelete()
+				_, err = breakGlassCredentialService.Revoke().Help().Run()
 				Expect(err).ToNot(HaveOccurred())
 
 				for key, value := range reqBody {
 					By("Create a break-glass-credential to the cluster")
-					resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(clusterID, value...)
+					resp, err = breakGlassCredentialService.Create().Parameters(clusterID, value...).Run()
 					createTime := time.Now().UTC()
 					expiredTime := createTime.Add(15 * time.Minute).Format("Jan _2 2006 15:04 MST")
 					if key == "emptyExpiration" || key == "empty" {
@@ -92,42 +93,47 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 					Expect(textData).To(ContainSubstring("INFO: Successfully created a break glass credential for cluster '%s'", clusterID))
 
 					By("List the break-glass-credentials of the cluster")
-					breakGlassCredList, err := rosaClient.BreakGlassCredential.ListBreakGlassCredentialsAndReflect(clusterID)
+					breakGlassCredList, err := breakGlassCredentialService.List().Parameters(clusterID).ToStruct()
 					Expect(err).ToNot(HaveOccurred())
-					for _, breabreakGlassCred := range breakGlassCredList.BreakGlassCredentials {
+					for _, breabreakGlassCred := range breakGlassCredList.(rosacli.BreakGlassCredentialList) {
 						if !slices.Contains(userNameList, breabreakGlassCred.Username) && breabreakGlassCred.Status != "revoked" && breabreakGlassCred.Status != "awaiting_revocation" {
 							userName = breabreakGlassCred.Username
 							breakGlassCredID = breabreakGlassCred.ID
 							userNameList = append(userNameList, userName)
-							Eventually(rosaClient.BreakGlassCredential.WaitForBreakGlassCredentialToStatus(clusterID, "issued", userName), time.Minute*2, time.Second*10).Should(BeTrue())
+							Eventually(breakGlassCredentialService.WaitForStatus(clusterID, "issued", userName), time.Minute*2, time.Second*10).Should(BeTrue())
 						}
 					}
 
 					By("Describe the break-glass-credential")
-					output, err := rosaClient.BreakGlassCredential.DescribeBreakGlassCredentialsAndReflect(clusterID, breakGlassCredID)
+					output, err := breakGlassCredentialService.Describe(breakGlassCredID).Parameters(clusterID).ToStruct()
 					Expect(err).ToNot(HaveOccurred())
+					bgcDescription := output.(*rosacli.BreakGlassCredentialDescription)
 					// expiration timestamp changes from 4 to 5 seconds ahead, so have to remove second from time stamp
-					expirationTime, err := time.Parse("Jan _2 2006 15:04:05 MST", output.ExpireAt)
+					expirationTime, err := time.Parse("Jan _2 2006 15:04:05 MST", bgcDescription.ExpireAt)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(output.ID).To(Equal(breakGlassCredID))
+					Expect(bgcDescription.ID).To(Equal(breakGlassCredID))
 					Expect(expirationTime.Format("Jan _2 2006 15:04 MST")).To(Equal(expiredTime))
-					Expect(output.Username).To(Equal(userName))
-					Expect(output.Status).To(Equal("issued"))
+					Expect(bgcDescription.Username).To(Equal(userName))
+					Expect(bgcDescription.Status).To(Equal("issued"))
 
 					By("Get the issued credential")
-					_, err = rosaClient.BreakGlassCredential.GetIssuedCredential(clusterID, breakGlassCredID)
+					_, err = breakGlassCredentialService.Describe(breakGlassCredID).Parameters(
+						clusterID,
+						"--id", breakGlassCredID,
+						"--kubeconfig",
+					).Run()
 					Expect(err).ToNot(HaveOccurred())
 				}
 
 				By("Delete the break-glass-credential")
-				resp, err = rosaClient.BreakGlassCredential.DeleteBreakGlassCredential(clusterID)
+				resp, err = breakGlassCredentialService.Revoke().Parameters(clusterID).Run()
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 				Expect(textData).To(ContainSubstring("INFO: Successfully requested revocation for all break glass credentials from cluster '%s'", clusterID))
 
 				By("Check the break-glass-credential status is revoked")
 				for _, userName = range userNameList {
-					Eventually(rosaClient.BreakGlassCredential.WaitForBreakGlassCredentialToStatus(clusterID, "revoked", userName), time.Minute*4, time.Second*10).Should(BeTrue())
+					Eventually(breakGlassCredentialService.WaitForStatus(clusterID, "revoked", userName), time.Minute*4, time.Second*10).Should(BeTrue())
 				}
 			})
 
@@ -229,23 +235,26 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				hosted, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
+				breakGlassCredentialService := rosaClient.BreakGlassCredential
 				if !hosted {
 					By("Create a break-glass-credential to the cluster")
 					userName := common.GenerateRandomName("bgc-user-classic", 2)
 
-					resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(clusterID, "--username", userName, "--expiration", "2h")
+					resp, err := breakGlassCredentialService.Create().Parameters(
+						clusterID, "--username", userName, "--expiration", "2h",
+					).Run()
 					Expect(err).To(HaveOccurred())
 					textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 					Expect(textData).To(ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
 
 					By("List the break-glass-credentials of the cluster")
-					resp, err = rosaClient.BreakGlassCredential.ListBreakGlassCredentials(clusterID)
+					resp, err = breakGlassCredentialService.List().Parameters(clusterID).Run()
 					Expect(err).To(HaveOccurred())
 					textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 					Expect(textData).To(ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
 
 					By("Revoke the break-glass-credentials of the cluster")
-					resp, err = rosaClient.BreakGlassCredential.DeleteBreakGlassCredential(clusterID)
+					resp, err = breakGlassCredentialService.Revoke().Parameters(clusterID).Run()
 					Expect(err).To(HaveOccurred())
 					textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 					Expect(textData).To(ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
@@ -259,29 +268,31 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						By("Create a break-glass-credential to the cluster")
 						userName := common.GenerateRandomName("bgc-user-non-external", 2)
 
-						resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(clusterID, "--username", userName, "--expiration", "2h")
+						resp, err := breakGlassCredentialService.Create().Parameters(
+							clusterID, "--username", userName, "--expiration", "2h",
+						).Run()
 						Expect(err).To(HaveOccurred())
 						textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).To(ContainSubstring("ERR: External authentication configuration is not enabled for cluster '%s'", clusterID))
 
 						By("List the break-glass-credentials of the cluster")
-						resp, err = rosaClient.BreakGlassCredential.ListBreakGlassCredentials(clusterID)
+						resp, err = rosaClient.BreakGlassCredential.List().Parameters(clusterID).Run()
 						Expect(err).To(HaveOccurred())
 						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).To(ContainSubstring("ERR: External authentication configuration is not enabled for cluster '%s'", clusterID))
 
 						By("Revoke the break-glass-credentials of the cluster")
-						resp, err = rosaClient.BreakGlassCredential.DeleteBreakGlassCredential(clusterID)
+						resp, err = rosaClient.BreakGlassCredential.Revoke().Parameters(clusterID).Run()
 						Expect(err).To(HaveOccurred())
 						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).To(ContainSubstring("ERR: External authentication configuration is not enabled for cluster '%s'", clusterID))
 
 					} else if externalAuthProvider {
-
 						By("Create break-glass-credential with invalid --username")
 						userName := common.GenerateRandomName("bgc-user_", 2)
-
-						resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(clusterID, "--username", userName, "--expiration", "2h")
+						resp, err := breakGlassCredentialService.Create().Parameters(
+							clusterID, "--username", userName, "--expiration", "2h",
+						).Run()
 						Expect(err).To(HaveOccurred())
 						textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).To(ContainSubstring("ERR: failed to create a break glass credential for cluster '%s': The username '%s' must respect the regexp '^[a-zA-Z0-9-.]*$'", clusterID, userName))
@@ -289,16 +300,18 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						By("Create break-glass-credential with invalid --expiration")
 						userName = common.GenerateRandomName("bgc-user-invalid-exp", 2)
 						expirationTime := "2may"
-
-						resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(clusterID, "--username", userName, "--expiration", expirationTime)
+						resp, err = breakGlassCredentialService.Create().Parameters(
+							clusterID, "--username", userName, "--expiration", expirationTime,
+						).Run()
 						Expect(err).To(HaveOccurred())
 						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).To(ContainSubstring(`invalid argument "%s" for "--expiration" flag`, expirationTime))
 
 						By("Create break-glass-credential with invalid expiration")
 						userName = common.GenerateRandomName("bgc-user-exp-1s", 2)
-
-						resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(clusterID, "--username", userName, "--expiration", "1s")
+						resp, err = breakGlassCredentialService.Create().Parameters(
+							clusterID, "--username", userName, "--expiration", "1s",
+						).Run()
 						Expect(err).To(HaveOccurred())
 						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).To(ContainSubstring("ERR: failed to create a break glass credential for cluster '%s': Expiration needs to be at least 10 minutes from now", clusterID))
