@@ -826,7 +826,7 @@ var _ = Describe("Edit nodepool",
 				organizationID := userInfo.OCMOrganizationID
 
 				By("Get OCM Env")
-				OCMEnv := common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "")
+				OCMEnv := common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "staging")
 
 				By("Get the cluster informations")
 				rosaClient.Runner.JsonFormat()
