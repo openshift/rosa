@@ -860,3 +860,80 @@ var _ = Describe("HCP cluster creation negative testing",
 
 			})
 	})
+
+var _ = Describe("Create cluster with availability zones testing",
+	labels.Feature.Machinepool,
+	func() {
+		defer GinkgoRecover()
+		var (
+			availabilityZones  string
+			clusterID          string
+			rosaClient         *rosacli.Client
+			machinePoolService rosacli.MachinePoolService
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			var clusterDetail *profilehandler.ClusterDetail
+			var err error
+			clusterDetail, err = profilehandler.ParserClusterDetail()
+			Expect(err).ToNot(HaveOccurred())
+			clusterID = clusterDetail.ClusterID
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			machinePoolService = rosaClient.MachinePool
+
+			By("Skip testing if the cluster is not a Classic cluster")
+			isHostedCP, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if isHostedCP {
+				SkipNotClassic()
+			}
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			rosaClient.CleanResources(clusterID)
+
+		})
+
+		It("User can set availability zones - [id:52691]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				mpID := "mp-52691"
+				machineType := "m5.2xlarge"
+
+				if profile.ClusterConfig.BYOVPC || profile.ClusterConfig.Zones == "" {
+					SkipTestOnFeature("create rosa cluster with availability zones")
+				}
+
+				By("List machine pool and check the default one")
+				availabilityZones = profile.ClusterConfig.Zones
+				output, err := machinePoolService.ListMachinePool(clusterID)
+				Expect(err).To(BeNil())
+				mpList, err := machinePoolService.ReflectMachinePoolList(output)
+				Expect(err).To(BeNil())
+				mp := mpList.Machinepool(con.DefaultClassicWorkerPool)
+				Expect(err).To(BeNil())
+				Expect(common.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
+
+				By("Create another machinepool")
+				_, err = machinePoolService.CreateMachinePool(clusterID, mpID,
+					"--replicas", "3",
+					"--instance-type", machineType,
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("List machine pool and check availability zone")
+				output, err = machinePoolService.ListMachinePool(clusterID)
+				Expect(err).To(BeNil())
+				mpList, err = machinePoolService.ReflectMachinePoolList(output)
+				Expect(err).To(BeNil())
+				mp = mpList.Machinepool(mpID)
+				Expect(err).To(BeNil())
+				Expect(common.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
+			})
+	})
