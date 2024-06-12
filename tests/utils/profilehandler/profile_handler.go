@@ -246,6 +246,14 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 				"--audit-log-arn", auditRoleArn)
 		}
 	}
+	// Put this part before the BYOVPC preparation so the subnets is prepared based on PrivateLink
+	if profile.ClusterConfig.Private {
+		flags = append(flags, "--private")
+		clusterConfiguration.Private = profile.ClusterConfig.Private
+		if profile.ClusterConfig.HCP {
+			profile.ClusterConfig.PrivateLink = true
+		}
+	}
 
 	if profile.ClusterConfig.AdminEnabled {
 		// Comment below part due to OCM-7112
@@ -516,13 +524,10 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.MultiAZ = profile.ClusterConfig.MultiAZ
 	}
 
-	if profile.ClusterConfig.Private {
-		flags = append(flags, "--private")
-		clusterConfiguration.Private = profile.ClusterConfig.Private
-	}
 	if profile.ClusterConfig.PrivateLink {
 		flags = append(flags, "--private-link")
 		clusterConfiguration.PrivateLink = profile.ClusterConfig.PrivateLink
+
 	}
 	if profile.ClusterConfig.ProvisionShard != "" {
 		flags = append(flags, "--properties", fmt.Sprintf("provision_shard_id:%s", profile.ClusterConfig.ProvisionShard))
