@@ -120,7 +120,7 @@ profiles:
     networking: false
     proxy_enabled: false
     label_enabled: true
-    zones: ""
+    zones: "us-east-1a,us-east-1b,us-east-1c"
     tag_enabled: true
     etcd_kms: false
     fips: false
