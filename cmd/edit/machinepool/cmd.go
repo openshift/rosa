@@ -38,6 +38,8 @@ var args struct {
 	tuningConfigs        string
 	kubeletConfigs       string
 	nodeDrainGracePeriod string
+	maxSurge             string
+	maxUnavailable       string
 }
 
 var Cmd = &cobra.Command{
@@ -145,6 +147,20 @@ func init() {
 			"Valid value is from 0 to 1 week (10080 minutes), and the supported units are 'minute|minutes' or "+
 			"'hour|hours'. 0 or empty value means that the NodePool can be drained without any time limitations.\n"+
 			"This flag is only supported for Hosted Control Planes.",
+	)
+
+	flags.StringVar(&args.maxSurge,
+		"max-surge",
+		"",
+		"The maximum number of nodes that can be provisioned above the desired number of nodes in the machinepool during "+
+			"the upgrade. It can be an absolute number i.e. 1, or a percentage i.e. '20%'.",
+	)
+
+	flags.StringVar(&args.maxUnavailable,
+		"max-unavailable",
+		"",
+		"The maximum number of nodes in the machinepool that can be unavailable during the upgrade. It can be an "+
+			"absolute number i.e. 1, or a percentage i.e. '20%'.",
 	)
 }
 
