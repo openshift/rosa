@@ -595,6 +595,87 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("Setting availability zones is not supported for BYO VPC. ROSA autodetects availability zones from subnet IDs provided"))
 			})
+
+		It("Validate --worker-mp-labels option for ROSA cluster creation - [id:71329]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				var (
+					clusterName        = "cluster-71329"
+					operatorPrefix     = "cluster-op-prefix"
+					invalidKey         = "p*=test"
+					emptyKey           = "=test"
+					emptyWorkerMpLabel = ""
+					longKey            = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234=test"
+					longValue          = "test=abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234"
+					duplicateKey       = "test=test1,test=test2"
+					replacingFlags     = map[string]string{
+						"-c":                     clusterName,
+						"--cluster-name":         clusterName,
+						"--domain-prefix":        clusterName,
+						"--operator-role-prefix": operatorPrefix,
+					}
+				)
+
+				By("Prepare creation command")
+				var command string
+				var rosalCommand config.Command
+				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				Expect(err).To(BeNil())
+
+				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
+				rosalCommand = config.GenerateCommand(command)
+
+				By("Create ROSA cluster with the --worker-mp-labels flag and invalid key")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", invalidKey, "-y")
+				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				index := strings.Index(invalidKey, "=")
+				key := invalidKey[:index]
+				Expect(output.String()).To(ContainSubstring("Invalid label key '%s': name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character", key))
+
+				By("Create ROSA cluster with the --worker-mp-labels flag and empty key")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", emptyKey, "-y")
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Invalid label key '': name part must be non-empty; name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character"))
+
+				By("Create ROSA cluster with the --worker-mp-labels flag without any value")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", emptyWorkerMpLabel, "-y")
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Expected key=value format for labels"))
+
+				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label key")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", longKey, "-y")
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				index = strings.Index(longKey, "=")
+				longLabelKey := longKey[:index]
+				Expect(output.String()).To(ContainSubstring("Invalid label key '%s': name part must be no more than 63 characters", longLabelKey))
+
+				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label value")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", longValue, "-y")
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				index = strings.Index(longValue, "=")
+				longLabelValue := longValue[index+1:]
+				key = longValue[:index]
+				Expect(output.String()).To(ContainSubstring("Invalid label value '%s': at key: '%s': must be no more than 63 characters", longLabelValue, key))
+
+				By("Create ROSA cluster with the --worker-mp-labels flag and duplicated key")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", duplicateKey, "-y")
+				index = strings.Index(duplicateKey, "=")
+				key = duplicateKey[:index]
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Duplicated label key '%s' used", key))
+			})
 	})
 
 var _ = Describe("Classic cluster deletion validation",
