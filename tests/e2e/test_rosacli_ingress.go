@@ -207,8 +207,19 @@ var _ = Describe("Edit default ingress",
 				ingress, exists := defaultIngress(*ingressList)
 				Expect(exists).To(BeTrue())
 				defaultID := ingress.ID
+
+				// Recover the ingress
+				defer func() {
+					flags := []string{"--excluded-namespaces", ingress.ExcludeNamespace,
+						"--route-selector", common.ReplaceCommaSpaceWithComma(ingress.RouteSelectors),
+						"--namespace-ownership-policy", ingress.NamespaceOwnershipPolicy,
+						"--wildcard-policy", ingress.WildcardPolicy,
+					}
+					ingressService.EditIngress(clusterID, defaultID, flags...)
+				}()
+				updatingRouteSelector := "app-65799=test-65799-2,app2=test-65799"
 				output, err = ingressService.EditIngress(clusterID, defaultID, "--excluded-namespaces", "test-ns1,test-ns2", "--route-selector",
-					"app1=test1,app2=test2", "--namespace-ownership-policy", "Strict", "--wildcard-policy", "WildcardsDisallowed")
+					updatingRouteSelector, "--namespace-ownership-policy", "Strict", "--wildcard-policy", "WildcardsDisallowed")
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Updated ingress '%s'", defaultID))
@@ -222,8 +233,8 @@ var _ = Describe("Edit default ingress",
 				ingress, _ = defaultIngress(*ingressList)
 				Expect(ingress.ExcludeNamespace).Should(ContainSubstring("test-ns1"))
 				Expect(ingress.ExcludeNamespace).Should(ContainSubstring("test-ns2"))
-				Expect(ingress.RouteSelectors).Should(ContainSubstring("app1=test1"))
-				Expect(ingress.RouteSelectors).Should(ContainSubstring("app2=test2"))
+				Expect(ingress.RouteSelectors).Should(ContainSubstring("app-65799=test-65799"))
+				Expect(ingress.RouteSelectors).Should(ContainSubstring("app2=test-65799"))
 				Expect(ingress.NamespaceOwnershipPolicy).Should(ContainSubstring("Strict"))
 				Expect(ingress.WildcardPolicy).Should(ContainSubstring("WildcardsDisallowed"))
 			})

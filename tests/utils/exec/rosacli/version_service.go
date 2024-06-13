@@ -161,6 +161,11 @@ func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version str
 // This function will find the nearest lower OCP version which version is under `Major.minor.{optional-sub}`.
 // `strict` will find only the `Major.monior,{optional-sub}` ones
 func (vl *OpenShiftVersionTableList) FindNearestBackwardOptionalVersion(version string, optionalsub int, strict bool) (vs *OpenShiftVersionTableOutput, err error) {
+
+	if optionalsub <= 0 {
+		log.Logger.Errorf("optionsub must be equal or greater than 1")
+		return
+	}
 	var baseVersionSemVer *semver.Version
 	log.Logger.Debugf("Filter versions according to %s", version)
 	baseVersionSemVer, err = semver.NewVersion(version)
@@ -171,8 +176,22 @@ func (vl *OpenShiftVersionTableList) FindNearestBackwardOptionalVersion(version 
 	if err != nil {
 		return
 	}
+	results := []*OpenShiftVersionTableOutput{}
+	optionalVersion, err := semver.NewVersion(version)
+	if err != nil {
+		return
+	}
 	if nvl, err = nvl.Sort(true); err == nil && nvl.Len() >= optionalsub {
-		vs = nvl.OpenShiftVersions[optionalsub]
+		for _, nv := range nvl.OpenShiftVersions {
+			currentVersion, _ := semver.NewVersion(nv.Version)
+			if optionalVersion.GreaterThan(currentVersion) {
+				results = append(results, nv)
+			}
+		}
+
+	}
+	if len(results) >= optionalsub-1 {
+		vs = results[optionalsub-1]
 	}
 	return
 

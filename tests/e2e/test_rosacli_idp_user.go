@@ -7,6 +7,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit IDP User",
@@ -18,6 +19,7 @@ var _ = Describe("Edit IDP User",
 			clusterID   string
 			rosaClient  *rosacli.Client
 			userService rosacli.UserService
+			profile     *ph.Profile
 		)
 
 		BeforeEach(func() {
@@ -28,6 +30,11 @@ var _ = Describe("Edit IDP User",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			userService = rosaClient.User
+
+			profile = ph.LoadProfileYamlFileByENV()
+			if profile.ClusterConfig.ExternalAuthConfig {
+				Skip("This is not supported for external auth")
+			}
 		})
 
 		AfterEach(func() {
