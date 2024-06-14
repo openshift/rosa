@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
@@ -586,50 +587,64 @@ var _ = Describe("Edit nodepool",
 				currentDateTimeUTC := time.Now().UTC()
 
 				By("Check help(s) for node pool upgrade")
-				_, err := machinePoolUpgradeService.RetrieveHelpForCreate()
-				Expect(err).ToNot(HaveOccurred())
-				help, err := machinePoolUpgradeService.RetrieveHelpForDescribe()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(help.String()).To(ContainSubstring("--machinepool"))
-				help, err = machinePoolUpgradeService.RetrieveHelpForList()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(help.String()).To(ContainSubstring("--machinepool"))
-				help, err = machinePoolUpgradeService.RetrieveHelpForDelete()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(help.String()).To(ContainSubstring("--machinepool"))
+				helpMessageFuncs := []func() (bytes.Buffer, error){
+					machinePoolUpgradeService.RetrieveHelpForCreate,
+					machinePoolUpgradeService.RetrieveHelpForDescribe,
+					machinePoolUpgradeService.RetrieveHelpForList,
+					machinePoolUpgradeService.RetrieveHelpForDelete,
+				}
+				for index, funcName := range helpMessageFuncs {
+					help, err := funcName()
+					Expect(err).ToNot(HaveOccurred())
+					if index == 0 {
+						continue
+					}
+					Expect(help.String()).To(ContainSubstring("--machinepool"))
+				}
 
-				By("Get previous version")
+				By("Get a lower version")
 				clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				clusterVersion := clusterVersionInfo.RawID
 				clusterChannelGroup := clusterVersionInfo.ChannelGroup
-				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, true)
+				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
 				Expect(err).ToNot(HaveOccurred())
-				previousVersionsList, err := versionList.FilterVersionsLowerThan(clusterVersion)
-				Expect(err).ToNot(HaveOccurred())
-				if previousVersionsList.Len() <= 1 {
-					Skip("Skipping as no previous version is available for testing")
-				}
-				previousVersionsList.Sort(true)
-				previousVersion := previousVersionsList.OpenShiftVersions[0].Version
-				Logger.Infof("Using previous version %s", previousVersion)
 
-				By("Prepare a node pool with previous version with manual upgrade")
+				var lVersion string = clusterVersion
+				var upgradeVersion string
+				for {
+					lowerVersion, err := versionList.FindNearestBackwardOptionalVersion(lVersion, 1, false)
+					Expect(err).ToNot(HaveOccurred())
+					lVersion = lowerVersion.Version
+					if lowerVersion.AvailableUpgrades != "" {
+						upgrades := common.ParseCommaSeparatedStrings(lowerVersion.AvailableUpgrades)
+						upgradeVersion = upgrades[len(upgrades)-1]
+						break
+					}
+					Logger.Debugf("The lower version %s has no available upgrades continue to find next one\n", lVersion)
+				}
+				if upgradeVersion == "" {
+					Logger.Warn("Cannot find a version with available upgrades")
+					return
+				}
+				Logger.Infof("Using previous version %s", lVersion)
+
+				By("Prepare a node pool with optional-1 version with manual upgrade")
 				nodePoolManualName := common.GenerateRandomName("np-67414", 2)
 				output, err := machinePoolService.CreateMachinePool(clusterID, nodePoolManualName,
 					"--replicas", "2",
-					"--version", previousVersion)
+					"--version", lVersion)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", nodePoolManualName, clusterID))
 				output, err = machinePoolUpgradeService.CreateManualUpgrade(clusterID, nodePoolManualName, "", "", "")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Upgrade successfully scheduled for the machine pool '%s' on cluster '%s'", nodePoolManualName, clusterID))
 
-				By("Prepare a node pool with previous version with automatic upgrade")
+				By("Prepare a node pool with lower version with automatic upgrade")
 				nodePoolAutoName := common.GenerateRandomName("np-67414", 2)
 				output, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
 					"--replicas", "2",
-					"--version", previousVersion)
+					"--version", lVersion)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", nodePoolAutoName, clusterID))
 				output, err = machinePoolUpgradeService.CreateAutomaticUpgrade(clusterID, nodePoolAutoName, "2 5 * * *")
@@ -657,14 +672,14 @@ var _ = Describe("Edit nodepool",
 					Expect(err).ToNot(HaveOccurred())
 					Expect(nextRunDT.After(currentDateTimeUTC)).To(BeTrue())
 					Expect(npuDesc.UpgradeState).To(BeElementOf("pending", "scheduled"))
-					Expect(npuDesc.Version).To(Equal(clusterVersion))
+					Expect(npuDesc.Version).To(Equal(upgradeVersion))
 
 					nextRun := npuDesc.NextRun
 
 					By(fmt.Sprintf("Describe node pool should contain upgrade (%s upgrade)", scheduleType))
 					npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(npDesc.ScheduledUpgrade).To(ContainSubstring(clusterVersion))
+					Expect(npDesc.ScheduledUpgrade).To(ContainSubstring(upgradeVersion))
 					Expect(npDesc.ScheduledUpgrade).To(ContainSubstring(nextRun))
 					Expect(npDesc.ScheduledUpgrade).To(Or(ContainSubstring("pending"), ContainSubstring("scheduled")))
 
@@ -675,7 +690,7 @@ var _ = Describe("Edit nodepool",
 					var upgradeMPU rosacli.MachinePoolUpgrade
 					for _, mpu := range npuList.MachinePoolUpgrades {
 						Expect(mpu.Version).To(BeElementOf(npAvailableUpgrades))
-						if mpu.Version == clusterVersion {
+						if mpu.Version == upgradeVersion {
 							upgradeMPU = mpu
 						}
 					}
@@ -685,7 +700,9 @@ var _ = Describe("Edit nodepool",
 					By(fmt.Sprintf("Delete the upgrade policy (%s upgrade)", scheduleType))
 					output, err = machinePoolUpgradeService.DeleteUpgrade(clusterID, nodePoolName)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Successfully canceled scheduled upgrade for machine pool '%s' for cluster '%s'", nodePoolName, clusterID))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(
+						ContainSubstring("Successfully canceled scheduled upgrade for machine pool '%s' for cluster '%s'",
+							nodePoolName, clusterID))
 				}
 
 				analyzeUpgrade(nodePoolManualName, "manual")

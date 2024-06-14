@@ -714,6 +714,9 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 }
 func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
 	description, err := CreateClusterByProfileWithoutWaiting(profile, client)
+	if err != nil {
+		return description, err
+	}
 	if profile.ClusterConfig.BYOVPC {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", description.ID)
 		ReverifyClusterNetwork(client, description.ID)

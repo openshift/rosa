@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit IDP",
@@ -25,6 +26,7 @@ var _ = Describe("Edit IDP",
 			clusterID  string
 			rosaClient *rosacli.Client
 			idpService rosacli.IDPService
+			profile    *ph.Profile
 		)
 
 		BeforeEach(func() {
@@ -36,6 +38,8 @@ var _ = Describe("Edit IDP",
 			rosaClient = rosacli.NewClient()
 			idpService = rosaClient.IDP
 
+			By("Load the profile")
+			profile = ph.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
@@ -57,6 +61,11 @@ var _ = Describe("Edit IDP",
 
 				By("Create admin")
 				output, err := rosaClient.User.CreateAdmin(clusterID)
+				if profile.ClusterConfig.ExternalAuthConfig {
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring(`ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured`))
+					return
+				}
 				Expect(err).To(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Admin account has been added"))
@@ -201,6 +210,12 @@ var _ = Describe("Edit IDP",
 					"--hostname", idp["Github"].url,
 					"--organizations", idp["Github"].org,
 					"--type", "github")
+				if profile.ClusterConfig.ExternalAuthConfig {
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring(`ERR: Adding IDP is not supported for clusters with external authentication configured.`))
+					return
+				}
 				Expect(err).To(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idp["Github"].name))
@@ -280,6 +295,12 @@ var _ = Describe("Edit IDP",
 
 				By("Create admin")
 				output, err := rosaClient.User.CreateAdmin(clusterID)
+				if profile.ClusterConfig.ExternalAuthConfig {
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring(`ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured.`))
+					return
+				}
 				Expect(err).To(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Admin account has been added"))
@@ -343,6 +364,9 @@ var _ = Describe("Edit IDP",
 		It("Validation for Create/Delete the HTPasswd IDPs by the rosacli command - [id:53031]",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
+				if profile.ClusterConfig.ExternalAuthConfig {
+					Skip("Skip this case as IDP is not supported for external auth")
+				}
 				var (
 					idpType         = "htpasswd"
 					idpNames        = []string{"htpasswdn1", "htpasswdn2", "htpasswd3"}
@@ -405,6 +429,9 @@ var _ = Describe("Edit IDP",
 		It("Check the help message and the validation for the IDP creation commands by the rosa cli - [id:38788]",
 			labels.Medium, labels.Runtime.Day2, labels.Feature.IDP,
 			func() {
+				if profile.ClusterConfig.ExternalAuthConfig {
+					Skip("IDP is not supported for external auth")
+				}
 				var (
 					idpHtpasswd          = "htpasswd"
 					idpGitlab            = "gitlab"
