@@ -676,6 +676,20 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring("Duplicated label key '%s' used", key))
 			})
+
+		It("to validate to create the cluster with version not in the channel group - [id:74399]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterService := rosaClient.Cluster
+				clusterName := "ocp-74399"
+
+				By("Create cluster with version not in channel group")
+				errorOutput, err := clusterService.CreateDryRun(
+					clusterName, "--version=4.15.100",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(errorOutput.String()).To(ContainSubstring("Expected a valid OpenShift version: A valid version number must be specified"))
+			})
 	})
 
 var _ = Describe("Classic cluster deletion validation",

@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Healthy check",
@@ -235,5 +236,46 @@ var _ = Describe("Healthy check",
 				Expect(err).To(BeNil())
 				etcdEncryption := jsonData.DigBool("etcd_encryption")
 				Expect(etcdEncryption).To(BeTrue())
+			})
+	})
+
+var _ = Describe("Create cluster with the version in some channel group testing",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+		var (
+			clusterID      string
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			var clusterDetail *profilehandler.ClusterDetail
+			var err error
+			clusterDetail, err = profilehandler.ParserClusterDetail()
+			Expect(err).ToNot(HaveOccurred())
+			clusterID = clusterDetail.ClusterID
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			rosaClient.CleanResources(clusterID)
+		})
+
+		It("User can create cluster with channel group - [id:35420]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+
+				By("Check if the cluster using right channel group")
+				versionOutput, err := clusterService.GetClusterVersion(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(versionOutput.ChannelGroup).To(Equal(profile.ChannelGroup))
 			})
 	})
