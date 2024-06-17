@@ -304,3 +304,28 @@ func (vl *OpenShiftVersionTableList) Latest() (*OpenShiftVersionTableOutput, err
 	return vl.OpenShiftVersions[0], err
 
 }
+
+// Find version which can be used for Y stream upgrade
+func (vl *OpenShiftVersionTableList) FindYStreamUpgradeVersions(clusterVerion string) (foundVersions []string, err error) {
+	clusterBaseVersionSemVer, err := semver.NewVersion(clusterVerion)
+	if err != nil {
+		return foundVersions, err
+	}
+	for _, version := range vl.OpenShiftVersions {
+		if version.Version != clusterVerion {
+			continue
+		}
+		availableUpgradeVersions := strings.Split(version.AvailableUpgrades, ", ")
+		for _, availableUpgradeVersion := range availableUpgradeVersions {
+			baseVersionSemVer, err := semver.NewVersion(availableUpgradeVersion)
+			if err != nil {
+				return foundVersions, err
+			}
+			if baseVersionSemVer.Minor() > clusterBaseVersionSemVer.Minor() {
+				foundVersions = append(foundVersions, availableUpgradeVersion)
+			}
+		}
+		break
+	}
+	return foundVersions, err
+}

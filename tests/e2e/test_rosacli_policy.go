@@ -434,3 +434,366 @@ var _ = Describe("Validation testing",
 		})
 
 	})
+
+var _ = Describe("Account roles with attaching arbitrary policies",
+	labels.Feature.Policy,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			clusterID                string
+			rosaClient               *rosacli.Client
+			arbitraryPolicyService   rosacli.PolicyService
+			arbitraryPoliciesToClean []string
+			awsClient                *aws_client.AWSClient
+			err                      error
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			arbitraryPolicyService = rosaClient.Policy
+
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			err := rosaClient.CleanResources(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Delete arbitrary policies")
+			if len(arbitraryPoliciesToClean) > 0 {
+				for _, policyArn := range arbitraryPoliciesToClean {
+					err = awsClient.DeletePolicy(policyArn)
+					Expect(err).To(BeNil())
+				}
+			}
+		})
+
+		It("can be upgraded and deleted successfully - [id:74402]", labels.Critical, labels.Runtime.Day2, func() {
+			By("Prepare arbitray policies for testing")
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			statement := map[string]interface{}{
+				"Effect":   "Allow",
+				"Action":   "*",
+				"Resource": "*",
+			}
+			for i := 0; i < 2; i++ {
+				arn, err := awsClient.CreatePolicy(fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i), statement)
+				Expect(err).To(BeNil())
+				arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
+			}
+			By("Prepare version for testing")
+			var accountRoleLowVersion string
+			versionService := rosaClient.Version
+			versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, false)
+			Expect(err).To(BeNil())
+			defaultVersion := versionList.DefaultVersion()
+			Expect(defaultVersion).ToNot(BeNil())
+			lowerVersion, err := versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
+			Expect(err).To(BeNil())
+			Expect(lowerVersion).NotTo(BeNil())
+
+			_, _, accountRoleLowVersion, err = lowerVersion.MajorMinor()
+			Expect(err).To(BeNil())
+
+			By("Create account-roles in low version")
+			ocmResourceService := rosaClient.OCMResource
+			aRolePrefix := "aroleprefix131313"
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", aRolePrefix,
+				"--version", accountRoleLowVersion,
+				"-y")
+			Expect(err).To(BeNil())
+			defer func() {
+				By("Delete the account-roles")
+				output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", aRolePrefix,
+					"-y")
+
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Successfully deleted"))
+
+				By("Check the arbitray polcies not deleted by rosa command of deleting account-roles")
+				for _, policyArn := range arbitraryPoliciesToClean {
+					policy, err := awsClient.GetIAMPolicy(policyArn)
+					Expect(err).To(BeNil())
+					Expect(policy).ToNot(BeNil())
+				}
+			}()
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Created role"))
+
+			By("Get account-roles arns for testing")
+			arl, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			ars := arl.DigAccountRoles(aRolePrefix, false)
+			fmt.Println(ars)
+			supportRoleArn := ars.SupportRole
+			workerRoleArn := ars.WorkerRole
+
+			_, supportRoleName, err := common.ParseRoleARN(supportRoleArn)
+			Expect(err).To(BeNil())
+			_, workerRoleName, err := common.ParseRoleARN(workerRoleArn)
+			Expect(err).To(BeNil())
+
+			By("Attach two arbitrary policies to Support roles")
+			accountRolePoliciesMap1 := make(map[string][]string)
+			accountRolePoliciesMap1[supportRoleName] = arbitraryPoliciesToClean[0:2]
+			for roleName, policyArns := range accountRolePoliciesMap1 {
+				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
+				Expect(err).To(BeNil())
+				for _, policyArn := range policyArns {
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+				}
+			}
+
+			By("Detach and delete redhat managed policies from worker role")
+			attachWorkerRolePolicies, err := awsClient.ListAttachedRolePolicies(workerRoleName)
+			Expect(err).To(BeNil())
+			Expect(len(attachWorkerRolePolicies)).To(Equal(1))
+			err = awsClient.DetachRolePolicies(workerRoleName)
+			Expect(err).To(BeNil())
+			err = awsClient.DeleteIAMPolicy(*(attachWorkerRolePolicies[0].PolicyArn))
+			Expect(err).To(BeNil())
+
+			By("Attach one arbitray policy to worker role")
+			accountRolePoliciesMap2 := make(map[string][]string)
+			accountRolePoliciesMap2[workerRoleName] = append(accountRolePoliciesMap2[workerRoleName], arbitraryPoliciesToClean[1])
+			for roleName, policyArns := range accountRolePoliciesMap2 {
+				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
+				Expect(err).To(BeNil())
+				for _, policyArn := range policyArns {
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+				}
+			}
+			By("Upgrade account-roles in auto mode")
+			output, err = ocmResourceService.UpgradeAccountRole(
+				"--prefix", aRolePrefix,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(MatchRegexp(`Upgraded policy with ARN .* to latest version`))
+
+			By("Check the support and worker role policy binding")
+			attachWorkerRolePolicies, err = awsClient.ListAttachedRolePolicies(workerRoleName)
+			Expect(err).To(BeNil())
+			Expect(len(attachWorkerRolePolicies)).To(Equal(2))
+
+			attachWorkerRolePolicies, err = awsClient.ListAttachedRolePolicies(supportRoleName)
+			Expect(err).To(BeNil())
+			Expect(len(attachWorkerRolePolicies)).To(Equal(3))
+
+			By("Check the attached arbitrary policies")
+			for _, policyArn := range arbitraryPoliciesToClean {
+				policy, err := awsClient.GetIAMPolicy(policyArn)
+				Expect(err).To(BeNil())
+				Expect(len(policy.Tags)).To(Equal(0))
+			}
+		})
+	})
+
+var _ = Describe("Operator roles with attaching arbitrary policies",
+	labels.Feature.Policy,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			clusterID                string
+			rosaClient               *rosacli.Client
+			arbitraryPolicyService   rosacli.PolicyService
+			arbitraryPoliciesToClean []string
+			awsClient                *aws_client.AWSClient
+			err                      error
+			managedOIDCConfigID      string
+			ocmResourceService       rosacli.OCMResourceService
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			arbitraryPolicyService = rosaClient.Policy
+
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+
+			ocmResourceService = rosaClient.OCMResource
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			err := rosaClient.CleanResources(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Delete arbitrary policies")
+			if len(arbitraryPoliciesToClean) > 0 {
+				for _, policyArn := range arbitraryPoliciesToClean {
+					err = awsClient.DeletePolicy(policyArn)
+					Expect(err).To(BeNil())
+				}
+			}
+			By("Delete testing oidc-config")
+			output, err := ocmResourceService.DeleteOIDCConfig(
+				"--oidc-config-id", managedOIDCConfigID,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Successfully deleted the OIDC provider"))
+		})
+
+		It("can be deleted successfully - [id:74403]", labels.Critical, labels.Runtime.Day2, func() {
+			By("Prepare * arbitray policies for testing")
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			statement := map[string]interface{}{
+				"Effect":   "Allow",
+				"Action":   "*",
+				"Resource": "*",
+			}
+			for i := 0; i < 2; i++ {
+				arn, err := awsClient.CreatePolicy(fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i), statement)
+				Expect(err).To(BeNil())
+				arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
+			}
+			By("Prepare version for testing")
+			var accountRoleLowVersion string
+			versionService := rosaClient.Version
+			versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, false)
+			Expect(err).To(BeNil())
+			defaultVersion := versionList.DefaultVersion()
+			Expect(defaultVersion).ToNot(BeNil())
+			lowerVersion, err := versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
+			Expect(err).To(BeNil())
+			Expect(lowerVersion).NotTo(BeNil())
+
+			_, _, accountRoleLowVersion, err = lowerVersion.MajorMinor()
+			Expect(err).To(BeNil())
+
+			By("Create account-roles in low version")
+			aRolePrefix := "aroleprefix242424"
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", aRolePrefix,
+				"--version", accountRoleLowVersion,
+				"-y")
+			Expect(err).To(BeNil())
+			defer func() {
+				By("Delete the account-roles")
+				output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", aRolePrefix,
+					"-y")
+
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Successfully deleted"))
+
+				By("Check the arbitray polcies not deleted by rosa command of deleting account-roles")
+				for _, policyArn := range arbitraryPoliciesToClean {
+					policy, err := awsClient.GetIAMPolicy(policyArn)
+					Expect(err).To(BeNil())
+					Expect(policy).ToNot(BeNil())
+				}
+			}()
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Created role"))
+
+			By("Get installer role arn for testing")
+			arl, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			ars := arl.DigAccountRoles(aRolePrefix, false)
+			fmt.Println(ars)
+			installerRoleArn := ars.InstallerRole
+
+			By("Create managed oidc-config in auto mode")
+			output, err = ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+			Expect(err).To(BeNil())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
+			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+
+			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+			Expect(err).To(BeNil())
+
+			By("Create operator-roles pror to cluster spec")
+			operatorRolesPrefix := "oproleprefix242424"
+			output, err = ocmResourceService.CreateOperatorRoles(
+				"--oidc-config-id", oidcPrivodeIDFromOutputMessage,
+				"--installer-role-arn", installerRoleArn,
+				"--mode", "auto",
+				"--prefix", operatorRolesPrefix,
+				"-y",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			defer func() {
+				By("Delete the operator-roles")
+				output, err := ocmResourceService.DeleteOperatorRoles(
+					"--prefix", operatorRolesPrefix,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Successfully deleted the operator roles"))
+
+				By("Check the arbitray-roles not deleted by rosa command of deleting operator-roles")
+				for _, policyArn := range arbitraryPoliciesToClean {
+					policy, err := awsClient.GetIAMPolicy(policyArn)
+					Expect(err).To(BeNil())
+					Expect(policy).ToNot(BeNil())
+				}
+			}()
+
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).Should(ContainSubstring("Created role"))
+
+			output, err = ocmResourceService.ListOperatorRoles(
+				"--prefix", operatorRolesPrefix,
+			)
+			Expect(err).To(BeNil())
+			operatorRoleList, err := ocmResourceService.ReflectOperatorRoleList(output)
+			Expect(err).To(BeNil())
+
+			By("Attach two arbitrary policies to operator-roles")
+			operatorRolePoliciesMap1 := make(map[string][]string)
+			operatorRolePoliciesMap1[operatorRoleList.OperatorRoleList[1].RoleName] = arbitraryPoliciesToClean[0:2]
+			operatorRolePoliciesMap2 := make(map[string][]string)
+			operatorRolePoliciesMap2[operatorRoleList.OperatorRoleList[2].RoleName] = append(operatorRolePoliciesMap2[operatorRoleList.OperatorRoleList[2].RoleName], arbitraryPoliciesToClean[1])
+
+			for roleName, policyArns := range operatorRolePoliciesMap1 {
+				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
+				Expect(err).To(BeNil())
+				for _, policyArn := range policyArns {
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+				}
+			}
+			for roleName, policyArns := range operatorRolePoliciesMap2 {
+				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
+				Expect(err).To(BeNil())
+				for _, policyArn := range policyArns {
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+				}
+			}
+
+			By("Attach two arbitrary policies to one account role")
+			supportRoleArn := ars.SupportRole
+			_, supportRoleName, err := common.ParseRoleARN(supportRoleArn)
+			Expect(err).To(BeNil())
+
+			accountRolePoliciesMap := make(map[string][]string)
+			accountRolePoliciesMap[supportRoleName] = arbitraryPoliciesToClean[0:2]
+			for roleName, policyArns := range accountRolePoliciesMap {
+				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
+				Expect(err).To(BeNil())
+				for _, policyArn := range policyArns {
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+				}
+			}
+		})
+	})

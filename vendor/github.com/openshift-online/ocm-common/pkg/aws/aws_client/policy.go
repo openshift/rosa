@@ -161,3 +161,28 @@ func (client *AWSClient) CleanPolicies(cleanRule func(types.Policy) bool) error 
 	}
 	return nil
 }
+
+func (client *AWSClient) TagPolicy(policyArn string, tags map[string]string) error {
+	var policyTags []types.Tag
+	for tagKey, tagValue := range tags {
+		policyTags = append(policyTags, types.Tag{
+			Key:   &tagKey,
+			Value: &tagValue,
+		})
+	}
+	input := &iam.TagPolicyInput{
+		PolicyArn: &policyArn,
+		Tags:      policyTags,
+	}
+	_, err := client.IamClient.TagPolicy(context.TODO(), input)
+	return err
+}
+
+func (client *AWSClient) UntagPolicy(policyArn string, tagKeys []string) error {
+	input := &iam.UntagPolicyInput{
+		PolicyArn: &policyArn,
+		TagKeys:   tagKeys,
+	}
+	_, err := client.IamClient.UntagPolicy(context.TODO(), input)
+	return err
+}
