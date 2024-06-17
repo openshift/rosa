@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Attach and Detach arbitrary policies",
@@ -27,9 +28,16 @@ var _ = Describe("Attach and Detach arbitrary policies",
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
 			err                      error
+			profile                  *ph.Profile
 		)
 
 		BeforeEach(func() {
+			By("Load profile")
+			profile = ph.LoadProfileYamlFileByENV()
+			if !profile.ClusterConfig.STS {
+				Skip("This feature only works for STS cluster")
+			}
+
 			By("Get the cluster")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
@@ -279,9 +287,13 @@ var _ = Describe("Validation testing",
 			testingRolesToClean      []string
 			awsClient                *aws_client.AWSClient
 			err                      error
+			profile                  *ph.Profile
 		)
 
 		BeforeEach(func() {
+			By("Load profile")
+			profile = ph.LoadProfileYamlFileByENV()
+
 			By("Get the cluster")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
@@ -330,6 +342,9 @@ var _ = Describe("Validation testing",
 		})
 
 		It("to check the validations for attaching and detaching arbitrary policies - [id:74225]", labels.Critical, labels.Runtime.Day2, func() {
+			if !profile.ClusterConfig.STS {
+				Skip("This feature only works for STS cluster")
+			}
 			By("Prepare a role wihtout red-hat-managed=true label for testing")
 			notRHManagedRoleName := fmt.Sprintf("ocmqe-role-%s", common.GenerateRandomString(3))
 			_, err := awsClient.CreateRegularRole(notRHManagedRoleName)

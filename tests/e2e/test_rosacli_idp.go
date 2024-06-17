@@ -40,6 +40,11 @@ var _ = Describe("Edit IDP",
 
 			By("Load the profile")
 			profile = ph.LoadProfileYamlFileByENV()
+
+			if profile.ClusterConfig.AdminEnabled {
+				// Delete the day1 created admin. DON'T user it in day1-post case
+				idpService.DeleteIDP(clusterID, "cluster-admin")
+			}
 		})
 
 		AfterEach(func() {

@@ -2,11 +2,12 @@ package e2e
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/tests/utils/config"
 )
 
 var ctx context.Context
@@ -18,6 +19,6 @@ func TestROSACLIProvider(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	clusterID = os.Getenv("CLUSTER_ID")
+	clusterID = config.GetClusterID()
 	ctx = context.Background()
 })

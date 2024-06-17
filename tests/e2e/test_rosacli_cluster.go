@@ -300,7 +300,9 @@ var _ = Describe("Edit cluster",
 				By("Check the cluster is STS cluster or skip")
 				isSTSCluster, err := clusterService.IsSTSCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-				if !isSTSCluster {
+				isHostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !isSTSCluster || isHostedCluster {
 					SkipTestOnFeature("policy")
 				}
 

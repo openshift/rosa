@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -10,6 +11,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit default ingress",
@@ -19,6 +21,7 @@ var _ = Describe("Edit default ingress",
 
 		var (
 			clusterID      string
+			profile        ph.Profile
 			rosaClient     *rosacli.Client
 			ingressService rosacli.IngressService
 			isHosted       bool
@@ -37,6 +40,9 @@ var _ = Describe("Edit default ingress",
 			var err error
 			isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
+
+			By("Load the profile")
+			profile = *ph.LoadProfileYamlFileByENV()
 		})
 
 		It("can update on rosa HCP cluster - [id:63323]",
@@ -269,6 +275,44 @@ var _ = Describe("Edit default ingress",
 					fmt.Sprintf("--private=%v", !originalPrivate),
 					"-y",
 				)
+				if profile.ClusterConfig.PrivateLink && !isHosted {
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("Can't update listening mode on an AWS Private Link cluster"))
+
+					By("Edit label-match only")
+					output, err = rosaClient.Ingress.EditIngress(clusterID,
+						"apps",
+						"--label-match", labelMatch,
+						"-y",
+					)
+					Expect(err).ToNot(HaveOccurred())
+					defer rosaClient.Ingress.EditIngress(clusterID,
+						"apps",
+						"--label-match", common.ReplaceCommaSpaceWithComma(originalRouteSelectors),
+						"-y",
+					)
+
+					By("Describe ingress and check")
+					ingressDescription, err := rosaClient.Ingress.DescribeIngressAndReflect(clusterID, "apps")
+					Expect(err).ToNot(HaveOccurred())
+					// Below is workaround due to known issue
+					ingressRouteSelectors := strings.Split(ingressDescription.RouteSelectors, " ")
+					for index, ingressRS := range ingressRouteSelectors {
+						wgString := strings.TrimSuffix(strings.TrimPrefix(ingressRS, "map["), "]")
+						wgString = strings.ReplaceAll(wgString, ":", "=")
+						ingressRouteSelectors[index] = wgString
+					}
+					// Workaround finished
+					expectedRouteSelectors := common.ParseCommaSeparatedStrings(labelMatch)
+
+					Expect(len(ingressRouteSelectors)).To(Equal(len(expectedRouteSelectors)))
+
+					for _, expectLabel := range expectedRouteSelectors {
+						Expect(expectLabel).To(BeElementOf(ingressRouteSelectors))
+					}
+
+					return
+				}
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.Ingress.EditIngress(clusterID,
 					"apps",
