@@ -870,8 +870,8 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	return c.mapToAccountRoles(version, roles)
 }
 
-func (c *awsClient) ListOperatorRoles(version string,
-	targetClusterId string) (map[string][]OperatorRoleDetail, error) {
+func (c *awsClient) ListOperatorRoles(targetVersion string,
+	targetClusterId string, targetPrefix string) (map[string][]OperatorRoleDetail, error) {
 
 	operatorMap := map[string][]OperatorRoleDetail{}
 	roles, err := c.ListRoles()
@@ -958,7 +958,7 @@ func (c *awsClient) ListOperatorRoles(version string,
 				switch aws.ToString(tag.Key) {
 				case common.OpenShiftVersion:
 					tagValue := aws.ToString(tag.Value)
-					if version != "" && tagValue != version {
+					if targetVersion != "" && tagValue != targetVersion {
 						skip = true
 						break
 					}
@@ -977,8 +977,15 @@ func (c *awsClient) ListOperatorRoles(version string,
 	for key, list := range operatorMap {
 		if len(list) == 0 {
 			emptyListKeys = append(emptyListKeys, key)
-		} else if targetClusterId != "" && list[0].ClusterID != targetClusterId {
+			continue
+		}
+		if targetClusterId != "" && list[0].ClusterID != "" && list[0].ClusterID != targetClusterId {
 			emptyListKeys = append(emptyListKeys, key)
+			continue
+		}
+		if targetPrefix != "" && targetPrefix != key {
+			emptyListKeys = append(emptyListKeys, key)
+			continue
 		}
 	}
 	for _, key := range emptyListKeys {

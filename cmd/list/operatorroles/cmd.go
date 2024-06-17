@@ -112,9 +112,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		clusterId = cluster.ID()
+		args.prefix = cluster.AWS().STS().OperatorRolePrefix()
 	}
 
-	operatorsMap, err := r.AWSClient.ListOperatorRoles(args.version, clusterId)
+	operatorsMap, err := r.AWSClient.ListOperatorRoles(args.version, clusterId, args.prefix)
 	prefixes := helper.MapKeys(operatorsMap)
 	helper.SortStringRespectLength(prefixes)
 
@@ -132,16 +133,18 @@ func run(cmd *cobra.Command, _ []string) {
 		if args.version != "" {
 			noOperatorRolesOutput = fmt.Sprintf("%s in version '%s'", noOperatorRolesOutput, args.version)
 		}
+		if args.prefix != "" {
+			if _, ok := operatorsMap[args.prefix]; !ok {
+				r.Reporter.Infof("No operator roles available for prefix '%s'", args.prefix)
+				os.Exit(0)
+			}
+		}
 		r.Reporter.Infof(noOperatorRolesOutput)
 		os.Exit(0)
 	}
 	if output.HasFlag() {
 		var resource interface{} = operatorsMap
 		if args.prefix != "" {
-			if _, ok := operatorsMap[args.prefix]; !ok {
-				r.Reporter.Infof("No operator roles available for prefix '%s'", args.prefix)
-				os.Exit(0)
-			}
 			resource = operatorsMap[args.prefix]
 		}
 		err = output.Print(resource)
