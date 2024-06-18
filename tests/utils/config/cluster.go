@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/openshift/rosa/tests/ci/config"
 	. "github.com/openshift/rosa/tests/utils/log"
@@ -159,19 +158,13 @@ func GetClusterID() (clusterID string) {
 		return
 	}
 
-	if _, err := os.Stat(getClusterIDFile()); err != nil {
-		Logger.Errorf("Cluster id file not existing")
+	if _, err := os.Stat(config.Test.ClusterIDFile); err != nil {
+		Logger.Errorf("Cluster detail file not existing")
 		return ""
 	}
-	fileCont, _ := os.ReadFile(getClusterIDFile())
+	fileCont, _ := os.ReadFile(config.Test.ClusterIDFile)
 	clusterID = string(fileCont)
 	return
-}
-
-// Get the cluster config file, for jean chen
-func getClusterIDFile() string {
-	sharedDir := os.Getenv("SHARED_DIR")
-	return path.Join(sharedDir, "cluster_id")
 }
 
 // Get the clusterID env.
