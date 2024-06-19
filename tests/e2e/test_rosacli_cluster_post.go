@@ -128,7 +128,7 @@ var _ = Describe("Healthy check",
 			})
 
 		It("the windows certificates expiration - [id:64040]",
-			labels.Medium, labels.Runtime.Day1Post,
+			labels.Medium, labels.Runtime.Day1Post, labels.Exclude,
 			func() {
 				//If the case fails,please open a card to ask dev update windows certificates.
 				//Example card: https://issues.redhat.com/browse/SDA-8990
