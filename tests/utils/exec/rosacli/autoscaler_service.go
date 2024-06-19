@@ -110,10 +110,12 @@ func (a *autoscalerService) ReflectAutoScalerDescription(result bytes.Buffer) (a
 
 // Delete AutoScaler
 func (a *autoscalerService) DeleteAutoScaler(clusterID string) (output bytes.Buffer, err error) {
-	output, err = a.client.Runner.
-		Cmd("delete", "autoscaler").
-		CmdFlags("-c", clusterID, "-y").
-		Run()
+	if a.created[clusterID] {
+		output, err = a.client.Runner.
+			Cmd("delete", "autoscaler").
+			CmdFlags("-c", clusterID, "-y").
+			Run()
+	}
 	if err == nil {
 		a.created[clusterID] = false
 	}
