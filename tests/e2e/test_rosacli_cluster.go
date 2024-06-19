@@ -692,6 +692,20 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(errorOutput.String()).To(ContainSubstring("Expected a valid OpenShift version: A valid version number must be specified"))
 			})
+
+		It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterService := rosaClient.Cluster
+				clusterName := "ocp-74436"
+
+				By("Create cluster with fips flag but '--etcd-encryption=false")
+				errorOutput, err := clusterService.CreateDryRun(
+					clusterName, "--fips", "--etcd-encryption=false",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
+			})
 	})
 
 var _ = Describe("Classic cluster deletion validation",
