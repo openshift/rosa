@@ -18,6 +18,8 @@ import (
 
 	elb "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
+
+	CON "github.com/openshift-online/ocm-common/pkg/aws/consts"
 )
 
 type AWSClient struct {
@@ -32,6 +34,12 @@ type AWSClient struct {
 	AccountID            string
 	KmsClient            *kms.Client
 	CloudWatchLogsClient *cloudwatchlogs.Client
+	AWSConfig            *aws.Config
+}
+
+type AccessKeyMod struct {
+	AccessKeyId     string `ini:"aws_access_key_id,omitempty"`
+	SecretAccessKey string `ini:"aws_secret_access_key,omitempty"`
 }
 
 func CreateAWSClient(profileName string, region string) (*AWSClient, error) {
@@ -79,6 +87,7 @@ func CreateAWSClient(profileName string, region string) (*AWSClient, error) {
 		IamClient:            iam.NewFromConfig(cfg),
 		ClientContext:        context.TODO(),
 		KmsClient:            kms.NewFromConfig(cfg),
+		AWSConfig:            &cfg,
 	}
 	awsClient.AccountID = awsClient.GetAWSAccountID()
 	return awsClient, nil
@@ -105,4 +114,33 @@ func (client *AWSClient) CloudFormation() *cloudformation.Client {
 }
 func (client *AWSClient) ELB() *elb.Client {
 	return client.ElbClient
+}
+
+func GrantValidAccessKeys(userName string) (*AccessKeyMod, error) {
+	var cre aws.Credentials
+	var keysMod *AccessKeyMod
+	var err error
+	retryTimes := 3
+	for retryTimes > 0 {
+		if cre.AccessKeyID != "" {
+			break
+		}
+		client, err := CreateAWSClient(userName, CON.DefaultAWSRegion)
+		if err != nil {
+			return nil, err
+		}
+
+		cre, err = client.AWSConfig.Credentials.Retrieve(client.ClientContext)
+		if err != nil {
+			return nil, err
+		}
+		log.LogInfo(">>> Access key grant successfully")
+
+		keysMod = &AccessKeyMod{
+			AccessKeyId:     cre.AccessKeyID,
+			SecretAccessKey: cre.SecretAccessKey,
+		}
+		retryTimes--
+	}
+	return keysMod, err
 }

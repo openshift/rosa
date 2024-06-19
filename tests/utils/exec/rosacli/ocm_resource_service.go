@@ -60,15 +60,19 @@ type OCMResourceService interface {
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
 	GetOIDCIdFromList(providerURL string) (string, error)
 	GetOIDCConfigFromList(oidcConfigID string) (OIDCConfig, error)
+
 	ListOperatorRoles(flags ...string) (bytes.Buffer, error)
 	DeleteOperatorRoles(flags ...string) (bytes.Buffer, error)
 	CreateOperatorRoles(flags ...string) (bytes.Buffer, error)
+	UpgradeOperatorRoles(flags ...string) (bytes.Buffer, error)
 	ReflectOperatorRoleList(result bytes.Buffer) (opl OperatorRoleList, err error)
 
 	CreateOIDCProvider(flags ...string) (bytes.Buffer, error)
 	DeleteOIDCProvider(flags ...string) (bytes.Buffer, error)
 
 	Token(flags ...string) (bytes.Buffer, error)
+
+	UpgradeRoles(flags ...string) (bytes.Buffer, error)
 }
 
 type ocmResourceService struct {
@@ -609,6 +613,13 @@ func (ors *ocmResourceService) DeleteOperatorRoles(flags ...string) (bytes.Buffe
 	return deleteOperatorRoles.Run()
 }
 
+// run `rosa upgrade operator-roles` command
+func (ors *ocmResourceService) UpgradeOperatorRoles(flags ...string) (bytes.Buffer, error) {
+	createOperatorRoles := ors.client.Runner
+	createOperatorRoles = createOperatorRoles.Cmd("upgrade", "operator-roles").CmdFlags(flags...)
+	return createOperatorRoles.Run()
+}
+
 // run `rosa list operator-roles`
 func (ors *ocmResourceService) ListOperatorRoles(flags ...string) (bytes.Buffer, error) {
 	listOperatorRoles := ors.client.Runner
@@ -654,4 +665,11 @@ func (ors *ocmResourceService) Token(flags ...string) (bytes.Buffer, error) {
 	token := ors.client.Runner
 	token = token.Cmd("token").CmdFlags(flags...)
 	return token.Run()
+}
+
+// run `rosa upgrade roles` command
+func (ors *ocmResourceService) UpgradeRoles(flags ...string) (bytes.Buffer, error) {
+	upgradeAccountRole := ors.client.Runner
+	upgradeAccountRole = upgradeAccountRole.Cmd("upgrade", "roles").CmdFlags(flags...)
+	return upgradeAccountRole.Run()
 }
