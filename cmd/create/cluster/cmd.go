@@ -424,7 +424,8 @@ func initFlags(cmd *cobra.Command) {
 		&args.fips,
 		"fips",
 		false,
-		"Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries.",
+		"Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries. "+
+			"This is currently only available without the use of the --hosted-cp flag.",
 	)
 
 	flags.StringVar(
