@@ -46,6 +46,11 @@ import (
 // #nosec G101
 var uiTokenPage string = "https://console.redhat.com/openshift/token/rosa"
 
+const offlineTokenDeprecationMessage = "Deprecation Notice: We're phasing out " +
+	"login using offline tokens to enhance security and streamline authentication. " +
+	"Transition to alternative login methods such as '--use-auth-code' or '--use-device-code' " +
+	"by running 'rosa login --help' for detailed instructions."
+
 const oauthClientId = "ocm-cli"
 
 var reAttempt bool
@@ -205,6 +210,23 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	if fedramp.HasFlag(cmd) && (args.useAuthCode || args.useDeviceCode) {
 		r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
 		os.Exit(1)
+	}
+
+	// Confirm that token is not passed with auth code flags
+	if (args.useAuthCode || args.useDeviceCode) && args.token != "" {
+		r.Reporter.Errorf("Token cannot be passed with '--use-auth-code' or '--use-device-code' commands")
+		os.Exit(1)
+	}
+
+	// FedRAMP does not support oauth code flow login yet
+	if fedramp.HasFlag(cmd) && (args.useAuthCode || args.useDeviceCode) {
+		r.Reporter.Errorf("This login method is currently not supported with FedRAMP")
+		os.Exit(1)
+	}
+
+	// Show deprecation message if offline token is passed
+	if !fedramp.HasFlag(cmd) && args.token != "" {
+		r.Reporter.Warnf(offlineTokenDeprecationMessage)
 	}
 
 	if args.useAuthCode {
