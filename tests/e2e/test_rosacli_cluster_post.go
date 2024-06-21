@@ -237,6 +237,23 @@ var _ = Describe("Healthy check",
 				etcdEncryption := jsonData.DigBool("etcd_encryption")
 				Expect(etcdEncryption).To(BeTrue())
 			})
+
+		It("Rosa cluster with fips enabled can be created successfully - [id:46312]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				des, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Check if fips is enabled")
+				if !profile.ClusterConfig.FIPS {
+					Expect(des.FIPSMod).To(Equal(""))
+				} else {
+					Expect(des.FIPSMod).To(Equal("Enabled"))
+				}
+			})
 	})
 
 var _ = Describe("Create cluster with the version in some channel group testing",
