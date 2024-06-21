@@ -735,4 +735,160 @@ var _ = Describe("Edit IDP",
 						invalidCaFilePath))
 			})
 
+		Context("can Create multiple HTPasswd IDPs including creating admin flow - [id:65160]",
+			func() {
+
+				var (
+					idpNames   = []string{"htpasswdn1", "htpasswdn2"}
+					usersValue = "testuser:as65160-MSV5R-bUwmc-2506"
+					idpType    = "htpasswd"
+				)
+
+				BeforeEach(func() {
+					if profile.ClusterConfig.ExternalAuthConfig {
+						Skip("IDP is not supported for external auth")
+					}
+				})
+
+				It("Create admin first",
+					labels.Medium, labels.Runtime.Day2,
+					func() {
+
+						By("Create admin")
+						output, err := rosaClient.User.CreateAdmin(clusterID)
+						Expect(err).To(BeNil())
+						textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Admin account has been added"))
+
+						By("Create one htpasswd idp with --users flag")
+						output, err = idpService.CreateIDP(clusterID, idpNames[0],
+							"--type", idpType,
+							"--users", usersValue,
+							"-y")
+						Expect(err).To(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
+
+						By("Create one htpasswd idp with --from-file")
+						multipleuserPasswd, err := common.GenerateMultipleHtpasswdPairs(3)
+						Expect(err).To(BeNil())
+						location, err := common.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
+						Expect(err).To(BeNil())
+						defer os.RemoveAll(location)
+						output, err = idpService.CreateIDP(
+							clusterID, idpNames[1],
+							"--type", idpType,
+							"--from-file", location,
+							"-y")
+						Expect(err).To(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
+						Expect(textData).Should(ContainSubstring("To log in to the console, open"))
+						Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[1]))
+
+						By("List IDPs")
+						idpTab, _, err := idpService.ListIDP(clusterID)
+						Expect(err).To(BeNil())
+						Expect(idpTab.IsExist("cluster-admin")).To(BeTrue())
+						Expect(idpTab.IsExist(idpNames[0])).To(BeTrue())
+						Expect(idpTab.IsExist(idpNames[1])).To(BeTrue())
+
+						By("Delete admin")
+						output, err = rosaClient.User.DeleteAdmin(clusterID)
+						Expect(err).To(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Admin user 'cluster-admin' has been deleted"))
+
+						By("Delete htpasswd idp")
+						for _, idpName := range idpNames {
+							output, err = idpService.DeleteIDP(
+								clusterID,
+								idpName,
+							)
+							Expect(err).To(BeNil())
+							textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+							Expect(textData).Should(ContainSubstring("Successfully deleted identity provider"))
+						}
+
+					})
+
+				It("Create admin last",
+					labels.Medium, labels.Runtime.Day2,
+					func() {
+
+						By("Create one htpasswd idp with --from-file")
+						multipleuserPasswd, err := common.GenerateMultipleHtpasswdPairs(3)
+						Expect(err).To(BeNil())
+						location, err := common.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
+						Expect(err).To(BeNil())
+						defer os.RemoveAll(location)
+						output, err := idpService.CreateIDP(
+							clusterID, idpNames[0],
+							"--type", idpType,
+							"--from-file", location,
+							"-y")
+						Expect(err).To(BeNil())
+						textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
+						Expect(textData).Should(ContainSubstring("To log in to the console, open"))
+						Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[0]))
+
+						By("Create htpasswd idp with --users flag")
+						output, err = idpService.CreateIDP(clusterID, idpNames[1],
+							"--type", idpType,
+							"--users", usersValue,
+							"-y")
+						Expect(err).To(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
+
+						By("Create an htpasswd idp with duplicate name")
+						output, err = idpService.CreateIDP(clusterID, idpNames[1],
+							"--type", idpType,
+							"--users", usersValue,
+							"-y")
+						Expect(err).NotTo(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Failed to add IDP to cluster '%s'", clusterID))
+
+						By("Create admin")
+						output, err = rosaClient.User.CreateAdmin(clusterID)
+						Expect(err).To(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Admin account has been added"))
+
+						By("Create an htpasswd idp with duplicate name 'cluster-admin'")
+						output, err = idpService.CreateIDP(clusterID, "cluster-admin",
+							"--type", idpType,
+							"--users", usersValue,
+							"-y")
+						Expect(err).NotTo(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("The name \"cluster-admin\" is reserved for admin user IDP"))
+
+						By("List IDPs")
+						idpTab, _, err := idpService.ListIDP(clusterID)
+						Expect(err).To(BeNil())
+						Expect(idpTab.IsExist("cluster-admin")).To(BeTrue())
+						Expect(idpTab.IsExist(idpNames[0])).To(BeTrue())
+						Expect(idpTab.IsExist(idpNames[1])).To(BeTrue())
+
+						By("Delete admin")
+						output, err = rosaClient.User.DeleteAdmin(clusterID)
+						Expect(err).To(BeNil())
+						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).Should(ContainSubstring("Admin user 'cluster-admin' has been deleted"))
+
+						By("Delete htpasswd idp")
+						for _, idpName := range idpNames {
+							output, err = idpService.DeleteIDP(
+								clusterID,
+								idpName,
+							)
+							Expect(err).To(BeNil())
+							textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+							Expect(textData).Should(ContainSubstring("Successfully deleted identity provider"))
+						}
+					})
+			})
 	})
