@@ -1,0 +1,39 @@
+apiVersion: cilium.io/v1alpha1
+kind: CiliumConfig
+metadata:
+  name: cilium
+  namespace: cilium
+spec:
+  debug:
+    enabled: true
+  k8s:
+    requireIPv4PodCIDR: true
+  logSystemLoad: true
+  bpf:
+    preallocateMaps: true
+  etcd:
+    leaseTTL: 30s
+  ipv4:
+    enabled: true
+  ipv6:
+    enabled: false
+  identityChangeGracePeriod: 0s
+  ipam:
+    mode: "cluster-pool"
+    operator:
+      clusterPoolIPv4PodCIDRList:
+        - "PODCIDR"
+      clusterPoolIPv4MaskSize: "HOSTPREFIX"
+  nativeRoutingCIDR: "PODCIDR"
+  endpointRoutes: {enabled: true}
+  clusterHealthPort: 9940
+  tunnelPort: 4789
+  cni:
+    binPath: "/var/lib/cni/bin"
+    confPath: "/var/run/multus/cni/net.d"
+    chainingMode: portmap
+  prometheus:
+    serviceMonitor: {enabled: false}
+  hubble:
+    tls: {enabled: false}
+  sessionAffinity: true

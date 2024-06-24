@@ -556,6 +556,10 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	if profile.ClusterConfig.ExternalAuthConfig {
 		flags = append(flags, "--external-auth-providers-enabled")
 	}
+	if profile.ClusterConfig.NetworkType == "other" {
+		flags = append(flags, "--no-cni")
+		clusterConfiguration.Networking.Type = profile.ClusterConfig.NetworkType
+	}
 
 	return flags, nil
 }
