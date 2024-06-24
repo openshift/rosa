@@ -292,83 +292,6 @@ var _ = Describe("Edit cluster",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("ERR: Schedule '\"5 5\"' is not a valid cron expression"))
 			})
-
-		It("can allow sts cluster installation with compatible policies - [id:45161]",
-			labels.High, labels.Runtime.Day1Supplemental,
-			labels.Runtime.Day2, // day2 is still labeled to make sure it can be covered in the CI. we need to remove it with day1 supplemental job setup
-			func() {
-				By("Check the cluster is STS cluster or skip")
-				isSTSCluster, err := clusterService.IsSTSCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				isHostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				if !isSTSCluster || isHostedCluster {
-					SkipTestOnFeature("policy")
-				}
-
-				clusterName := "cluster-45161"
-				operatorPrefix := "cluster-45161-asdf"
-				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).To(BeNil())
-
-				By("Create cluster with one Y-1 version")
-				ocmResourceService := rosaClient.OCMResource
-				versionService := rosaClient.Version
-				accountRoleList, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
-				rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
-				Expect(err).To(BeNil())
-
-				installerRole := rosalCommand.GetFlagValue("--role-arn", true)
-				ar := accountRoleList.AccountRole(installerRole)
-				Expect(ar).ToNot(BeNil())
-
-				cg := rosalCommand.GetFlagValue("--channel-group", true)
-				if cg == "" {
-					cg = rosacli.VersionChannelGroupStable
-				}
-
-				versionList, err := versionService.ListAndReflectVersions(cg, isHostedCP)
-				Expect(err).To(BeNil())
-				Expect(versionList).ToNot(BeNil())
-				foundVersion, err := versionList.FindNearestBackwardMinorVersion(ar.OpenshiftVersion, 1, false)
-				Expect(err).To(BeNil())
-				var clusterVersion string
-				if foundVersion == nil {
-					Skip("No cluster version < y-1 found for compatibility testing")
-				}
-				clusterVersion = foundVersion.Version
-
-				replacingFlags := map[string]string{
-					"--version":               clusterVersion,
-					"--cluster-name":          clusterName,
-					"-c":                      clusterName,
-					"--operator-roles-prefix": operatorPrefix,
-					"--domain-prefix":         clusterName,
-				}
-
-				if rosalCommand.GetFlagValue("--https-proxy", true) != "" {
-					err = rosalCommand.DeleteFlag("--https-proxy", true)
-					Expect(err).To(BeNil())
-				}
-				if rosalCommand.GetFlagValue("--no-proxy", true) != "" {
-					err = rosalCommand.DeleteFlag("--no-proxy", true)
-					Expect(err).To(BeNil())
-				}
-				if rosalCommand.GetFlagValue("--http-proxy", true) != "" {
-					err = rosalCommand.DeleteFlag("--http-proxy", true)
-					Expect(err).To(BeNil())
-				}
-				if rosalCommand.CheckFlagExist("--base-domain") {
-					rosalCommand.DeleteFlag("--base-domain", true)
-				}
-
-				rosalCommand.ReplaceFlagValue(replacingFlags)
-				rosalCommand.AddFlags("--dry-run")
-				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Creating cluster '%s' should succeed", clusterName)))
-			})
 	})
 
 var _ = Describe("Classic cluster creation validation",
@@ -511,6 +434,82 @@ var _ = Describe("Classic cluster creation validation",
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
 				Expect(stdout.String()).To(ContainSubstring("Billing accounts are only supported for Hosted Control Plane clusters"))
+			})
+
+		It("can allow sts cluster installation with compatible policies - [id:45161]",
+			labels.High, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Prepare creation command")
+				var command string
+				var rosalCommand config.Command
+				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				Expect(err).To(BeNil())
+
+				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
+				rosalCommand = config.GenerateCommand(command)
+
+				if !profile.ClusterConfig.STS {
+					SkipTestOnFeature("policy")
+				}
+
+				clusterName := "cluster-45161"
+				operatorPrefix := "cluster-45161-asdf"
+
+				By("Create cluster with one Y-1 version")
+				ocmResourceService := rosaClient.OCMResource
+				versionService := rosaClient.Version
+				accountRoleList, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+
+				installerRole := rosalCommand.GetFlagValue("--role-arn", true)
+				ar := accountRoleList.AccountRole(installerRole)
+				Expect(ar).ToNot(BeNil())
+
+				cg := rosalCommand.GetFlagValue("--channel-group", true)
+				if cg == "" {
+					cg = rosacli.VersionChannelGroupStable
+				}
+
+				versionList, err := versionService.ListAndReflectVersions(cg, rosalCommand.CheckFlagExist("--hosted-cp"))
+				Expect(err).To(BeNil())
+				Expect(versionList).ToNot(BeNil())
+				foundVersion, err := versionList.FindNearestBackwardMinorVersion(ar.OpenshiftVersion, 1, false)
+				Expect(err).To(BeNil())
+				var clusterVersion string
+				if foundVersion == nil {
+					Skip("No cluster version < y-1 found for compatibility testing")
+				}
+				clusterVersion = foundVersion.Version
+
+				replacingFlags := map[string]string{
+					"--version":               clusterVersion,
+					"--cluster-name":          clusterName,
+					"-c":                      clusterName,
+					"--operator-roles-prefix": operatorPrefix,
+					"--domain-prefix":         clusterName,
+				}
+
+				if rosalCommand.GetFlagValue("--https-proxy", true) != "" {
+					err = rosalCommand.DeleteFlag("--https-proxy", true)
+					Expect(err).To(BeNil())
+				}
+				if rosalCommand.GetFlagValue("--no-proxy", true) != "" {
+					err = rosalCommand.DeleteFlag("--no-proxy", true)
+					Expect(err).To(BeNil())
+				}
+				if rosalCommand.GetFlagValue("--http-proxy", true) != "" {
+					err = rosalCommand.DeleteFlag("--http-proxy", true)
+					Expect(err).To(BeNil())
+				}
+				if rosalCommand.CheckFlagExist("--base-domain") {
+					rosalCommand.DeleteFlag("--base-domain", true)
+				}
+
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run")
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Creating cluster '%s' should succeed", clusterName)))
 			})
 
 		It("to validate to create the sts cluster with invalid tag - [id:56440]",
@@ -997,6 +996,43 @@ var _ = Describe("HCP cluster creation negative testing",
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("ERR: All Hosted Control Plane clusters need a pre-configured VPC. Please check: https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"))
+			})
+
+		It("to validate create cluster with external_auth_config can work well - [id:73755]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				By("Create non-HCP cluster with --external-auth-providers-enabled")
+				clusterName := common.GenerateRandomName("ocp-73755", 2)
+				output, err := clusterService.CreateDryRun(clusterName, "--external-auth-providers-enabled")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ERR: External authentication configuration is only supported for a Hosted Control Plane cluster."))
+
+				By("Create HCP cluster with --external-auth-providers-enabled and cluster version lower than 4.15")
+				cg := rosalCommand.GetFlagValue("--channel-group", true)
+				if cg == "" {
+					cg = rosacli.VersionChannelGroupStable
+				}
+				versionList, err := rosaClient.Version.ListAndReflectVersions(cg, rosalCommand.CheckFlagExist("--hosted-cp"))
+				Expect(err).To(BeNil())
+				Expect(versionList).ToNot(BeNil())
+				previousVersionsList, err := versionList.FindNearestBackwardMinorVersion("4.14", 0, true)
+				Expect(err).ToNot(HaveOccurred())
+				foundVersion := previousVersionsList.Version
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+					"--version":       foundVersion,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				if !rosalCommand.CheckFlagExist("--external-auth-providers-enabled") {
+					rosalCommand.AddFlags("--dry-run", "--external-auth-providers-enabled", "-y")
+				} else {
+					rosalCommand.AddFlags("--dry-run", "-y")
+				}
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("External authentication is only supported in version '4.15.9' or greater, current cluster version is '%s'", foundVersion))
 			})
 	})
 
