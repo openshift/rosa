@@ -88,6 +88,11 @@ func (r *runner) Cmd(commands ...string) *runner {
 	return r
 }
 
+func (r *runner) AppendCmd(command string) *runner {
+	r.cmds = append(r.cmds, command)
+	return r
+}
+
 func (r *runner) CmdFlags(cmdFlags ...string) *runner {
 	var cmdArgs []string
 	cmdArgs = append(cmdArgs, cmdFlags...)

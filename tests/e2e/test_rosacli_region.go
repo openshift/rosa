@@ -29,17 +29,17 @@ var _ = Describe("Region",
 			func() {
 
 				By("List region")
-				usersTabNonH, _, err := ocmResourceService.ListRegion()
+				regionList, err := ocmResourceService.List().Regions().ToStruct()
 				Expect(err).To(BeNil())
-				Expect(len(usersTabNonH)).NotTo(Equal(0))
+				Expect(len(regionList.([]*rosacli.CloudRegion))).NotTo(Equal(0))
 
 				By("List region --hosted-cp")
-				usersTabH, _, err := ocmResourceService.ListRegion("--hosted-cp")
+				hcpRegionList, err := ocmResourceService.List().Regions().Parameters("--hosted-cp").ToStruct()
 				Expect(err).To(BeNil())
-				Expect(len(usersTabH)).NotTo(Equal(0))
+				Expect(len(hcpRegionList.([]*rosacli.CloudRegion))).NotTo(Equal(0))
 
 				By("Check out of 'rosa list region --hosted-cp' are supported for hosted-cp clusters")
-				for _, r := range usersTabH {
+				for _, r := range hcpRegionList.([]*rosacli.CloudRegion) {
 					Expect(r.MultiAZSupported).To(Equal("true"))
 				}
 			})

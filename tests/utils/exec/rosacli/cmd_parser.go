@@ -274,7 +274,7 @@ func (jd *jsonData) Parse() *jsonData {
 	return jd
 }
 
-func (jd *jsonData) ParseList(jsonStr string) *jsonData {
+func (jd *jsonData) ParseList() *jsonData {
 	var object []map[string]interface{}
 	err := json.Unmarshal(jd.input.Bytes(), &object)
 	if err != nil {
