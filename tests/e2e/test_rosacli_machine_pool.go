@@ -23,12 +23,12 @@ var _ = Describe("Create machinepool",
 	func() {
 		defer GinkgoRecover()
 		var (
-			clusterID          string
-			rosaClient         *rosacli.Client
-			machinePoolService rosacli.MachinePoolService
-			ocmResourceService rosacli.OCMResourceService
-			clusterConfig      *config.ClusterConfig
-      permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+			clusterID              string
+			rosaClient             *rosacli.Client
+			machinePoolService     rosacli.MachinePoolService
+			ocmResourceService     rosacli.OCMResourceService
+			clusterConfig          *config.ClusterConfig
+			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
 		)
 
 		BeforeEach(func() {
@@ -167,7 +167,8 @@ var _ = Describe("Create machinepool",
 				accountRoleList, _, err := ocmResourceService.ListAccountRole()
 				Expect(err).To(BeNil())
 				classicInstallerRoleArn := accountRoleList.InstallerRole(accountRolePrefix, false).RoleArn
-				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypesByRegion("--region", region, "--role-arn", classicInstallerRoleArn)
+				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypesByRegion(
+					"--region", region, "--role-arn", classicInstallerRoleArn)
 
 				if err != nil {
 					log.Logger.Errorf("Failed to fetch instance types: %v", err)

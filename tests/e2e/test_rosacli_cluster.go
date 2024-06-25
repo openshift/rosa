@@ -1175,8 +1175,8 @@ var _ = Describe("HCP cluster creation negative testing",
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 
 				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("Updating default ingress settings is not supported for Hosted Control Plane clusters"))
-
+				Expect(out.String()).To(
+					ContainSubstring("Updating default ingress settings is not supported for Hosted Control Plane clusters"))
 			})
 
 		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
