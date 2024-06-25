@@ -41,7 +41,7 @@ func AddModeFlag(cmd *cobra.Command) {
 		"m",
 		"",
 		"How to perform the operation. Valid options are:\n"+
-			"auto: Resource changes will be automatic applied using the current AWS account\n\n"+
+			"auto: Resource changes will be automatic applied using the current AWS account\n"+
 			"manual: Commands necessary to modify AWS resources will be output to be run manually",
 	)
 	cmd.RegisterFlagCompletionFunc("mode", modeCompletion)
