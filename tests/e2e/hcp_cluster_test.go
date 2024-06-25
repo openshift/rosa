@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -181,5 +183,70 @@ var _ = Describe("HCP cluster testing",
 				Expect(textData).
 					Should(ContainSubstring(
 						"ERR: Listing identity providers is not supported for clusters with external authentication configured"))
+			})
+
+		It("can edit ROSA HCP cluster with additional allowed principals - [id:74556]",
+			labels.High, labels.Runtime.Day2,
+			func() {
+				By("Check the help message of 'rosa edit cluster -h'")
+				helpOutput, err := clusterService.EditCluster("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--additional-allowed-principals"))
+
+				By("Check if cluster profile is enabled with additional allowed principals")
+				if clusterConfig.AdditionalPrincipals == "" {
+					SkipTestOnFeature("additional allowed principals")
+				}
+
+				output, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
+
+				By("Create additional account roles")
+				accrolePrefix := "arPrefix74556"
+
+				out, err := rosaClient.OCMResource.CreateAccountRole("--mode", "auto",
+					"--prefix", accrolePrefix,
+					"--hosted-cp",
+					"-y")
+				Expect(err).To(BeNil())
+				defer func() {
+					By("Delete the account-roles")
+					output, err := rosaClient.OCMResource.DeleteAccountRole("--mode", "auto",
+						"--prefix", accrolePrefix,
+						"--hosted-cp",
+						"-y")
+
+					Expect(err).To(BeNil())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("Successfully deleted"))
+				}()
+				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Created role"))
+
+				By("Get the installer role")
+				arl, _, err := rosaClient.OCMResource.ListAccountRole()
+				Expect(err).To(BeNil())
+
+				arInstaller := arl.InstallerRole(accrolePrefix, true)
+
+				additionalPrincipalsFlag := fmt.Sprintf(
+					"%s,%s", clusterConfig.AdditionalPrincipals, arInstaller.RoleArn)
+
+				By("Edit the cluster with additional allowed principals")
+				out, err = clusterService.EditCluster(clusterID,
+					"--additional-allowed-principals",
+					additionalPrincipalsFlag)
+				Expect(err).ToNot(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+				By("Confirm additional principals is edited successfully")
+				output, err = clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+				Expect(output.AdditionalPrincipals).
+					To(
+						ContainSubstring(
+							"%s,%s", clusterConfig.AdditionalPrincipals, arInstaller.RoleArn))
 			})
 	})

@@ -1158,6 +1158,31 @@ var _ = Describe("HCP cluster creation negative testing",
 							"External authentication is only supported in version '4.15.9' or greater, current cluster version is '%s'",
 							foundVersion))
 			})
+
+		It("expose additional allowed principals for HCP negative - [id:74433]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				By("create hcp cluster using --additional-allowed-principals and invalid formatted arn")
+				clusterName := "ocp-74408"
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+
+				By("Create cluster with invalid subnets")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				if rosalCommand.CheckFlagExist("--additional-allowed-principals") {
+					rosalCommand.DeleteFlag("--additional-allowed-principals", true)
+				}
+				rosalCommand.AddFlags("--dry-run", "--additional-allowed-principals", "zzzz", "-y")
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).
+					To(
+						ContainSubstring(
+							"ERR: Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix"))
+			})
 	})
 
 var _ = Describe("Create cluster with availability zones testing",

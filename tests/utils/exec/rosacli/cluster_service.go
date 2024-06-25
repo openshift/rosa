@@ -58,6 +58,7 @@ type ClusterDescription struct {
 	OpenshiftVersion      string                   `yaml:"OpenShift Version,omitempty"`
 	ChannelGroup          string                   `yaml:"Channel Group,omitempty"`
 	DNS                   string                   `yaml:"DNS,omitempty"`
+	AdditionalPrincipals  string                   `yaml:"Additional Principals,omitempty"`
 	AWSAccount            string                   `yaml:"AWS Account,omitempty"`
 	AWSBillingAccount     string                   `yaml:"AWS Billing Account,omitempty"`
 	APIURL                string                   `yaml:"API URL,omitempty"`
