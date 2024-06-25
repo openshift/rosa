@@ -55,6 +55,7 @@ type OCMResourceService interface {
 
 	ListOIDCConfig() (OIDCConfigList, bytes.Buffer, error)
 	ListInstanceTypes() (InstanceTypesList, bytes.Buffer, error)
+	ListInstanceTypesByRegion(flags ...string) (InstanceTypesList, bytes.Buffer, error)
 	DeleteOIDCConfig(flags ...string) (bytes.Buffer, error)
 	CreateOIDCConfig(flags ...string) (bytes.Buffer, error)
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
@@ -198,6 +199,19 @@ func (ors *ocmResourceService) ListInstanceTypes() (InstanceTypesList, bytes.Buf
 	ors.client.Runner.cmdArgs = []string{}
 	listInstanceTypes := ors.client.Runner.
 		Cmd("list", "instance-types")
+	output, err := listInstanceTypes.Run()
+	if err != nil {
+		return InstanceTypesList{}, output, err
+	}
+	instanceList, err := ors.ReflectInstanceTypesList(output)
+	return instanceList, output, err
+}
+
+// List instance types by region
+func (ors *ocmResourceService) ListInstanceTypesByRegion(flags ...string) (InstanceTypesList, bytes.Buffer, error) {
+	ors.client.Runner.cmdArgs = []string{}
+	listInstanceTypes := ors.client.Runner.
+		Cmd("list", "instance-types").CmdFlags(flags...)
 	output, err := listInstanceTypes.Run()
 	if err != nil {
 		return InstanceTypesList{}, output, err

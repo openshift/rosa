@@ -94,6 +94,7 @@ type ClusterDescription struct {
 	AuditLogRoleARN          string              `yaml:"Audit Log Role ARN,omitempty"`
 	FailedInflightChecks     string              `yaml:"Failed Inflight Checks,omitempty"`
 	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
+	// EnableDeleteProtection   string              `yaml:"Delete Protection,omitempty"`
 }
 
 func (c *clusterService) DescribeCluster(clusterID string, flags ...string) (bytes.Buffer, error) {

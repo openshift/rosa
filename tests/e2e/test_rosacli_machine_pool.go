@@ -1,7 +1,9 @@
 package e2e
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,10 +20,11 @@ var _ = Describe("Create machinepool",
 	func() {
 		defer GinkgoRecover()
 		var (
-			clusterID          string
-			rosaClient         *rosacli.Client
-			machinePoolService rosacli.MachinePoolService
-			ocmResourceService rosacli.OCMResourceService
+			clusterID              string
+			rosaClient             *rosacli.Client
+			machinePoolService     rosacli.MachinePoolService
+			ocmResourceService     rosacli.OCMResourceService
+			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
 		)
 
 		BeforeEach(func() {
@@ -124,6 +127,34 @@ var _ = Describe("Create machinepool",
 						availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
 					}
 					Expect(availableMachineTypesIDs).To(ContainElements(newlyAddedTypes))
+				}
+			})
+
+		It("List instance-types with region flag - [id:72174]",
+			labels.Low, labels.Runtime.Day2,
+			func() {
+				By("List the available instance-types with the region flag")
+				typesList := []string{"dl1.24xlarge", "g4ad.16xlarge", "c5.xlarge"}
+				region := "us-east-1"
+				accountRolePrefix := fmt.Sprintf("QEAuto-accr72174-%s", time.Now().UTC().Format("20060102"))
+				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"--permissions-boundary", permissionsBoundaryArn,
+					"-y")
+				Expect(err).To(BeNil())
+				accountRoleList, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				classicInstallerRoleArn := accountRoleList.InstallerRole(accountRolePrefix, false).RoleArn
+				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypesByRegion("--region", region, "--role-arn", classicInstallerRoleArn)
+
+				if err != nil {
+					log.Logger.Errorf("Failed to fetch instance types: %v", err)
+				} else {
+					var availableMachineTypesIDs []string
+					for _, it := range availableMachineTypes.InstanceTypesList {
+						availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
+					}
+					Expect(availableMachineTypesIDs).To(ContainElements(typesList))
 				}
 			})
 
