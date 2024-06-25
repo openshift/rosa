@@ -254,6 +254,25 @@ var _ = Describe("Healthy check",
 					Expect(des.FIPSMod).To(Equal("Enabled"))
 				}
 			})
+		It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical,
+			func() {
+				private := "No"
+				ingressPrivate := "false"
+				if clusterConfig.PrivateLink {
+					private = "Yes"
+					ingressPrivate = "true"
+				}
+				By("Describe the cluster the cluster should be private")
+				clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDescription.Private).To(Equal(private))
+
+				By("Check the ingress should be private")
+				ingress, err := rosaClient.Ingress.DescribeIngressAndReflect(clusterID, "apps")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ingress.Private).To(Equal(ingressPrivate))
+
+			})
 	})
 
 var _ = Describe("Create cluster with the version in some channel group testing",
