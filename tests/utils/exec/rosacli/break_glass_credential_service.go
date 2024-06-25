@@ -43,7 +43,7 @@ type BreakGlassCredential struct {
 }
 
 type BreakGlassCredentialList struct {
-	BreakGlassCredentials []BreakGlassCredential `json:"BreakGlassCredentials,omitempty"`
+	BreakGlassCredentials []*BreakGlassCredential `json:"BreakGlassCredentials,omitempty"`
 }
 
 type BreakGlassCredentialDescription struct {
@@ -63,7 +63,8 @@ func NewBreakGlassCredentialService(client *Client) BreakGlassCredentialService 
 }
 
 // Create BreakGlassCredential
-func (b *breakglasscredentialService) CreateBreakGlassCredential(clusterID string, flags ...string) (output bytes.Buffer, err error) {
+func (b *breakglasscredentialService) CreateBreakGlassCredential(clusterID string,
+	flags ...string) (output bytes.Buffer, err error) {
 	output, err = b.client.Runner.
 		Cmd("create", "break-glass-credential").
 		CmdFlags(append(flags, "-c", clusterID)...).
@@ -84,20 +85,21 @@ func (b *breakglasscredentialService) ListBreakGlassCredentials(clusterID string
 }
 
 // Check the breakGlassCredential with the userName exists in the breakGlassCredentialsList
-func (breakglassCredList BreakGlassCredentialList) IsPresent(userName string) (existed bool, breakGlassCredential *BreakGlassCredential) {
+func (breakglassCredList BreakGlassCredentialList) IsPresent(
+	userName string) (existed bool, breakGlassCredential *BreakGlassCredential) {
 	existed = false
-	breakGlassCredential = &BreakGlassCredential{}
 	for _, breakGlassCred := range breakglassCredList.BreakGlassCredentials {
 		if breakGlassCred.Username == userName {
 			existed = true
-			breakGlassCredential = &breakGlassCred
+			breakGlassCredential = breakGlassCred
 			break
 		}
 	}
 	return
 }
 
-func (b *breakglasscredentialService) ReflectBreakGlassCredentialLists(result bytes.Buffer) (bgcl *BreakGlassCredentialList, err error) {
+func (b *breakglasscredentialService) ReflectBreakGlassCredentialLists(
+	result bytes.Buffer) (bgcl *BreakGlassCredentialList, err error) {
 	bgcl = &BreakGlassCredentialList{}
 	theMap := b.client.Parser.TableData.Input(result).Parse().Output()
 	for _, bgcItem := range theMap {
@@ -106,12 +108,13 @@ func (b *breakglasscredentialService) ReflectBreakGlassCredentialLists(result by
 		if err != nil {
 			return
 		}
-		bgcl.BreakGlassCredentials = append(bgcl.BreakGlassCredentials, *breakGlassCredential)
+		bgcl.BreakGlassCredentials = append(bgcl.BreakGlassCredentials, breakGlassCredential)
 	}
 	return
 }
 
-func (b *breakglasscredentialService) ListBreakGlassCredentialsAndReflect(clusterID string) (*BreakGlassCredentialList, error) {
+func (b *breakglasscredentialService) ListBreakGlassCredentialsAndReflect(
+	clusterID string) (*BreakGlassCredentialList, error) {
 	output, err := b.ListBreakGlassCredentials(clusterID)
 	if err != nil {
 		return nil, err
@@ -120,7 +123,8 @@ func (b *breakglasscredentialService) ListBreakGlassCredentialsAndReflect(cluste
 }
 
 // Describe BreakGlassCredential
-func (b *breakglasscredentialService) DescribeBreakGlassCredential(clusterID string, bgcID string) (bytes.Buffer, error) {
+func (b *breakglasscredentialService) DescribeBreakGlassCredential(
+	clusterID string, bgcID string) (bytes.Buffer, error) {
 	describe := b.client.Runner.
 		Cmd("describe", "break-glass-credential", bgcID).
 		CmdFlags("-c", clusterID)
@@ -128,7 +132,8 @@ func (b *breakglasscredentialService) DescribeBreakGlassCredential(clusterID str
 	return describe.Run()
 }
 
-func (b *breakglasscredentialService) DescribeBreakGlassCredentialsAndReflect(clusterID string, bgcID string) (*BreakGlassCredentialDescription, error) {
+func (b *breakglasscredentialService) DescribeBreakGlassCredentialsAndReflect(
+	clusterID string, bgcID string) (*BreakGlassCredentialDescription, error) {
 	output, err := b.DescribeBreakGlassCredential(clusterID, bgcID)
 	if err != nil {
 		return nil, err
@@ -136,7 +141,8 @@ func (b *breakglasscredentialService) DescribeBreakGlassCredentialsAndReflect(cl
 	return b.ReflectBreakGlassCredentialDescription(output)
 }
 
-func (b *breakglasscredentialService) ReflectBreakGlassCredentialDescription(result bytes.Buffer) (bgcd *BreakGlassCredentialDescription, err error) {
+func (b *breakglasscredentialService) ReflectBreakGlassCredentialDescription(
+	result bytes.Buffer) (bgcd *BreakGlassCredentialDescription, err error) {
 	var data []byte
 	res := &BreakGlassCredentialDescription{}
 	theMap, err := b.client.Parser.TextData.Input(result).Parse().YamlToMap()
@@ -168,7 +174,8 @@ func (b *breakglasscredentialService) GetIssuedCredential(clusterID string, bgcI
 	return output, err
 }
 
-func (b *breakglasscredentialService) WaitForBreakGlassCredentialToStatus(clusterID string, status string, userName string) wait.ConditionFunc {
+func (b *breakglasscredentialService) WaitForBreakGlassCredentialToStatus(
+	clusterID string, status string, userName string) wait.ConditionFunc {
 	return func() (bool, error) {
 		breakGlassCredList, err := b.ListBreakGlassCredentialsAndReflect(clusterID)
 		if err != nil {

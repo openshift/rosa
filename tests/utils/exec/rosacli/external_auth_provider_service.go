@@ -61,7 +61,8 @@ func NewExternalAuthProviderService(client *Client) ExternalAuthProviderService 
 }
 
 // Create ExternalAuthProvider
-func (e *externalauthproviderService) CreateExternalAuthProvider(clusterID string, flags ...string) (output bytes.Buffer, err error) {
+func (e *externalauthproviderService) CreateExternalAuthProvider(
+	clusterID string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = e.client.Runner.
 		Cmd("create", "external-auth-provider").
 		CmdFlags(append(flags, "-c", clusterID)...).
@@ -81,7 +82,8 @@ func (e *externalauthproviderService) ListExternalAuthProvider(clusterID string)
 	return
 }
 
-func (e *externalauthproviderService) ReflectExternalAuthProviderLists(result bytes.Buffer) (eapl *ExternalAuthProviderList, err error) {
+func (e *externalauthproviderService) ReflectExternalAuthProviderLists(
+	result bytes.Buffer) (eapl *ExternalAuthProviderList, err error) {
 	eapl = &ExternalAuthProviderList{}
 	theMap := e.client.Parser.TableData.Input(result).Parse().Output()
 	for _, eapItem := range theMap {
@@ -95,7 +97,8 @@ func (e *externalauthproviderService) ReflectExternalAuthProviderLists(result by
 	return
 }
 
-func (e *externalauthproviderService) ListExternalAuthProviderAndReflect(clusterID string) (*ExternalAuthProviderList, error) {
+func (e *externalauthproviderService) ListExternalAuthProviderAndReflect(
+	clusterID string) (*ExternalAuthProviderList, error) {
 	output, err := e.ListExternalAuthProvider(clusterID)
 	if err != nil {
 		return nil, err
@@ -104,7 +107,8 @@ func (e *externalauthproviderService) ListExternalAuthProviderAndReflect(cluster
 }
 
 // Describe ExternalAuthProvider
-func (e *externalauthproviderService) DescribeExternalAuthProvider(clusterID string, eapID string) (bytes.Buffer, error) {
+func (e *externalauthproviderService) DescribeExternalAuthProvider(
+	clusterID string, eapID string) (bytes.Buffer, error) {
 	describe := e.client.Runner.
 		Cmd("describe", "external-auth-provider", eapID).
 		CmdFlags("-c", clusterID)
@@ -112,7 +116,8 @@ func (e *externalauthproviderService) DescribeExternalAuthProvider(clusterID str
 	return describe.Run()
 }
 
-func (e *externalauthproviderService) DescribeExternalAuthProviderAndReflect(clusterID string, eapID string) (*ExternalAuthProviderDescription, error) {
+func (e *externalauthproviderService) DescribeExternalAuthProviderAndReflect(
+	clusterID string, eapID string) (*ExternalAuthProviderDescription, error) {
 	output, err := e.DescribeExternalAuthProvider(clusterID, eapID)
 	if err != nil {
 		return nil, err
@@ -120,7 +125,8 @@ func (e *externalauthproviderService) DescribeExternalAuthProviderAndReflect(clu
 	return e.ReflectExternalAuthProviderDescription(output)
 }
 
-func (e *externalauthproviderService) ReflectExternalAuthProviderDescription(result bytes.Buffer) (eapd *ExternalAuthProviderDescription, err error) {
+func (e *externalauthproviderService) ReflectExternalAuthProviderDescription(
+	result bytes.Buffer) (eapd *ExternalAuthProviderDescription, err error) {
 	var data []byte
 	res := &ExternalAuthProviderDescription{}
 	theMap, err := e.client.Parser.TextData.Input(result).Parse().YamlToMap()
@@ -136,7 +142,8 @@ func (e *externalauthproviderService) ReflectExternalAuthProviderDescription(res
 }
 
 // Delete ExternalAuthProvider
-func (e *externalauthproviderService) DeleteExternalAuthProvider(clusterID string, eapID string) (output bytes.Buffer, err error) {
+func (e *externalauthproviderService) DeleteExternalAuthProvider(
+	clusterID string, eapID string) (output bytes.Buffer, err error) {
 	output, err = e.client.Runner.
 		Cmd("delete", "external-auth-provider", eapID).
 		CmdFlags("-c", clusterID, "-y").

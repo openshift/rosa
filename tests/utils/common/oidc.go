@@ -24,21 +24,27 @@ func SplitARNResources(v string) []string {
 	return parts
 }
 
-// Extract the oidc provider ARN from the output of `rosa create oidc-config --mode auto` and also for common message containing the arn
+// Extract the oidc provider ARN from the output of `rosa create oidc-config --mode auto`
+// and also for common message containing the arn
 func ExtractOIDCProviderARN(output string) string {
 	oidcProviderArnRE := regexp.MustCompile(`arn:aws:iam::[^']+:oidc-provider/[^']+`)
 	submatchall := oidcProviderArnRE.FindAllString(output, -1)
 	if len(submatchall) < 1 {
-		Logger.Warnf("Cannot find sub string matached %s from input string %s! Please check the matching string", oidcProviderArnRE, output)
+		Logger.Warnf("Cannot find sub string matached %s from input string %s! Please check the matching string",
+			oidcProviderArnRE,
+			output)
 		return ""
 	}
 	if len(submatchall) > 1 {
-		Logger.Warnf("Find more than one sub string matached %s! Please check this unexpexted result then update the regex if needed.", oidcProviderArnRE)
+		Logger.Warnf("Find more than one sub string matached %s! "+
+			"Please check this unexpexted result then update the regex if needed.",
+			oidcProviderArnRE)
 	}
 	return submatchall[0]
 }
 
-// Extract the oidc provider ARN from the output of `rosa create oidc-config --mode auto` and also for common message containing the arn
+// Extract the oidc provider ARN from the output of `rosa create oidc-config --mode auto`
+// and also for common message containing the arn
 func ExtractOIDCProviderIDFromARN(arn string) string {
 	spliptElements := SplitARNResources(arn)
 	return spliptElements[len(spliptElements)-1]

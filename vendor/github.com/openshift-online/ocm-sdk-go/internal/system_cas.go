@@ -1,6 +1,3 @@
-//go:build !windows
-// +build !windows
-
 /*
 Copyright (c) 2021 Red Hat, Inc.
 
@@ -17,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// This file contains the function that returns the trusted CA certificates for operating systems
-// other than Windows, where Go knows how to load the system trusted CA store.
+// This file contains the function that returns the trusted CA certificates for all operating systems
 
 package internal
 

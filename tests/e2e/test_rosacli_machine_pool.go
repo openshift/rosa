@@ -2,14 +2,17 @@ package e2e
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
+	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
@@ -20,11 +23,12 @@ var _ = Describe("Create machinepool",
 	func() {
 		defer GinkgoRecover()
 		var (
-			clusterID              string
-			rosaClient             *rosacli.Client
-			machinePoolService     rosacli.MachinePoolService
-			ocmResourceService     rosacli.OCMResourceService
-			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+			clusterID          string
+			rosaClient         *rosacli.Client
+			machinePoolService rosacli.MachinePoolService
+			ocmResourceService rosacli.OCMResourceService
+			clusterConfig      *config.ClusterConfig
+      permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
 		)
 
 		BeforeEach(func() {
@@ -43,6 +47,10 @@ var _ = Describe("Create machinepool",
 			if isHostedCP {
 				SkipNotClassic()
 			}
+
+			By("Parse the cluster config")
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -116,7 +124,21 @@ var _ = Describe("Create machinepool",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("List the available instance-types and verify the presence of newly added instance-types")
-				newlyAddedTypes := []string{"c7a.xlarge", "c7a.48xlarge", "c7a.metal-48xl", "r7a.xlarge", "r7a.48xlarge", "r7a.metal-48xl", "hpc6a.48xlarge", "hpc6id.32xlarge", "hpc7a.96xlarge", "c7i.48xlarge", "c7i.metal-24xl", "c7i.metal-48xl", "r7i.xlarge", "r7i.48xlarge"}
+				newlyAddedTypes := []string{
+					"c7a.xlarge",
+					"c7a.48xlarge",
+					"c7a.metal-48xl",
+					"r7a.xlarge",
+					"r7a.48xlarge",
+					"r7a.metal-48xl",
+					"hpc6a.48xlarge",
+					"hpc6id.32xlarge",
+					"hpc7a.96xlarge",
+					"c7i.48xlarge",
+					"c7i.metal-24xl",
+					"c7i.metal-48xl",
+					"r7i.xlarge",
+					"r7i.48xlarge"}
 				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypes()
 
 				if err != nil {
@@ -162,26 +184,51 @@ var _ = Describe("Create machinepool",
 			labels.High, labels.Runtime.Day2,
 			func() {
 				By("Create a spot machinepool on the cluster")
+				// nolint:goconst
 				machinePoolName := "spotmp"
-				output, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--spot-max-price", "10.2", "--use-spot-instances",
+				output, err := machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--spot-max-price", "10.2",
+					"--use-spot-instances",
 					"--replicas", "0")
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Machine pool '%s' created successfully on cluster '%s'", machinePoolName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						machinePoolName,
+						clusterID))
 
 				By("Create another machinepool without spot instances")
+				// nolint:goconst
 				machinePoolName = "nospotmp"
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "0")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--replicas", "0")
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Machine pool '%s' created successfully on cluster '%s'", machinePoolName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						machinePoolName,
+						clusterID))
 
 				By("Create another machinepool with use-spot-instances but no spot-max-price set")
 				machinePoolName = "nopricemp"
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--use-spot-instances", "--replicas", "0")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--use-spot-instances",
+					"--replicas", "0")
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Machine pool '%s' created successfully on cluster '%s'", machinePoolName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						machinePoolName,
+						clusterID))
 
 				By("Confirm list of machinepools contains all created machinepools with SpotInstance field set appropriately")
 				output, err = machinePoolService.ListMachinePool(clusterID)
@@ -208,7 +255,11 @@ var _ = Describe("Create machinepool",
 			func() {
 				By("Create a spot machinepool with negative price")
 				machinePoolName := "spotmp"
-				output, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--spot-max-price", "-10.2", "--use-spot-instances",
+				output, err := machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--spot-max-price", "-10.2",
+					"--use-spot-instances",
 					"--replicas", "3")
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
@@ -216,10 +267,17 @@ var _ = Describe("Create machinepool",
 
 				By("Create a machinepool without spot instances, but with spot price")
 				machinePoolName = "nospotmp"
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "3", "--spot-max-price", "10.2", "--use-spot-instances=false")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName,
+					"--replicas", "3",
+					"--spot-max-price", "10.2",
+					"--use-spot-instances=false")
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Can't set max price when not using spot instances"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Can't set max price when not using spot instances"))
 			})
 
 		It("can create machinepool with tags - [id:73469]",
@@ -264,15 +322,174 @@ var _ = Describe("Create machinepool",
 					Expect(err).To(HaveOccurred())
 					switch errorType {
 					case "invalidFmt":
-						Expect(out.String()).Should(ContainSubstring("invalid tag format for tag"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format for tag"))
 					case "noTagValue":
-						Expect(out.String()).Should(ContainSubstring("invalid tag format, tag key or tag value can not be empty"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format, tag key or tag value can not be empty"))
 					case "noTagKey":
-						Expect(out.String()).Should(ContainSubstring("invalid tag format, tag key or tag value can not be empty"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format, tag key or tag value can not be empty"))
 					case "nonAscii":
-						Expect(out.String()).Should(ContainSubstring("Invalid Machine Pool AWS tags"))
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"Invalid Machine Pool AWS tags"))
 					}
 				}
+			})
+
+		It("can create machinepool with availibility zone - [id:52352]", labels.Runtime.Day2, labels.High,
+			func() {
+				By("Check the help message of create machinepool")
+				output, err := machinePoolService.CreateMachinePool(clusterID, "help", "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("--availability-zone"))
+
+				By("Create a machinepool without availibility zone set will work")
+				mpName := "naz-52352"
+				_, err = machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--replicas", "0",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				mpDescription, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+				azs := common.ParseCommaSeparatedStrings(mpDescription.AvailablityZones)
+				Expect(len(azs)).ToNot(Equal(0), "the azs of the machinepool is 0 for the cluster, it's a bug")
+				indicatedZone := azs[0]
+
+				By("Create a single AZ machinepool to the cluster")
+				mpName = "sz-52352"
+				_, err = machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--replicas", "1",
+					"--availability-zone", indicatedZone,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+				By("List the machinepool to verify")
+				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				mp := mpList.Machinepool(mpName)
+				Expect(mp).ToNot(BeNil())
+				Expect(mp.AvalaiblityZones).To(Equal(indicatedZone))
+
+				By("Scale up the machinepool replicas to 2")
+				_, err = machinePoolService.EditMachinePool(clusterID, mpName,
+					"--replicas", "2",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Create another machinepool with autoscaling enabled")
+				mpName = "szau-52352"
+				_, err = machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--enable-autoscaling",
+					"--min-replicas", "1",
+					"--max-replicas", "2",
+					"--availability-zone", indicatedZone,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+				By("Describe the machinepool to verify")
+				mpDescription, err = machinePoolService.DescribeAndReflectMachinePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpDescription.AvailablityZones).To(Equal(indicatedZone))
+				Expect(mpDescription.Replicas).To(Equal("1-2"))
+			})
+		It("can create machinepool with another subnet - [id:52764]", labels.Runtime.Day2, labels.High,
+			func() {
+				By("Check if cluster is BYOVPC cluster")
+				if clusterConfig.Subnets == nil {
+					SkipTestOnFeature("This testing only work for byovpc cluster")
+				}
+
+				By("Prepare a subnet out of the cluster creation subnet")
+				subnets := common.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
+
+				By("Create another machinepool with the subnet cluster creation used will succeed")
+				szName := "sz-52764"
+				_, err := machinePoolService.CreateMachinePool(clusterID, szName,
+					"--replicas", "2",
+					"--subnet", subnets[0],
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, szName)
+
+				By("Describe the machinepool will work")
+				mpDescription, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, szName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpDescription.Replicas).To(Equal("2"))
+				Expect(mpDescription.Subnets).To(Equal(subnets[0]))
+
+				By("Scale down the machine pool to 0/1 and check")
+				for _, newReplica := range []string{
+					"0", "1",
+				} {
+					_, err = machinePoolService.EditMachinePool(clusterID, szName,
+						"--replicas", newReplica,
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+				By("Build vpc client to find another zone for subnet preparation")
+				vpcClient, err := vpc_client.GenerateVPCBySubnet(subnets[0], clusterConfig.Region)
+				Expect(err).ToNot(HaveOccurred())
+
+				zones, err := vpcClient.AWSClient.ListAvaliableZonesForRegion(clusterConfig.Region, "availability-zone")
+				Expect(err).ToNot(HaveOccurred())
+
+				var nonClusterUsedZone string
+				for _, zone := range zones {
+					for _, subnet := range vpcClient.SubnetList {
+						if subnet.Zone == zone {
+							continue
+						}
+					}
+					nonClusterUsedZone = zone
+					break
+				}
+				if nonClusterUsedZone == "" {
+					log.Logger.Warnf("Didn't find a zone can be used for new subnet creation, skip the below steps")
+					return
+				}
+
+				By("Prepare the subnet for the picked zone")
+				subNetMap, err := vpcClient.PreparePairSubnetByZone(nonClusterUsedZone)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(subNetMap).ToNot(BeNil())
+				privateSubnet := subNetMap["private"]
+
+				By("Describe the cluster to get the infra ID for tagging")
+				clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				tagKey := fmt.Sprintf("kubernetes.io/cluster/%s", clusterDescription.InfraID)
+				vpcClient.AWSClient.TagResource(privateSubnet.ID, map[string]string{
+					tagKey: "shared",
+				})
+
+				By("Create machinepool with the subnet specified will succeed")
+				diffzName := "dissz-52764"
+				_, err = machinePoolService.CreateMachinePool(clusterID, diffzName,
+					"--enable-autoscaling",
+					"--max-replicas", "2",
+					"--min-replicas", "1",
+					"--subnet", privateSubnet.ID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, szName)
+
+				By("List the machinepools and check")
+				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				mp := mpList.Machinepool(diffzName)
+				Expect(mp.Replicas).To(Equal("1-2"))
+				Expect(mp.Subnets).To(Equal(privateSubnet.ID))
 			})
 	})
 
@@ -284,6 +501,52 @@ var _ = Describe("Edit machinepool",
 			clusterID          string
 			rosaClient         *rosacli.Client
 			machinePoolService rosacli.MachinePoolService
+
+			verifyClusterComputeNodesMatched func(clusterID string) = func(clusterID string) {
+				By("List the machinepools and calculate")
+				mpList, err := rosaClient.MachinePool.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				var autoscaling bool
+				var minReplicas int
+				var maxReplicas int
+				for _, mp := range mpList.MachinePools {
+					if mp.AutoScaling == "true" {
+						autoscaling = true
+						min, max := strings.Split(mp.Replicas, "-")[0], strings.Split(mp.Replicas, "-")[1]
+						minNum, err := strconv.Atoi(min)
+						Expect(err).ToNot(HaveOccurred())
+						maxNum, err := strconv.Atoi(max)
+						Expect(err).ToNot(HaveOccurred())
+						minReplicas += minNum
+						maxReplicas += maxNum
+
+					} else {
+						replicasNum, err := strconv.Atoi(mp.Replicas)
+						Expect(err).ToNot(HaveOccurred())
+						minReplicas += replicasNum
+						maxReplicas += replicasNum
+					}
+				}
+				expectedClusterTotalNode := strconv.Itoa(minReplicas)
+				computeKey := "Compute"
+				if autoscaling {
+					computeKey = "Compute (Autoscaled)"
+					expectedClusterTotalNode = fmt.Sprintf("%d-%d", minReplicas, maxReplicas)
+				}
+
+				By("Describe the rosa cluster and check the cluster nodes")
+				clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				var clusterTotalNumber string
+				for _, nodesMap := range clusterDescription.Nodes {
+					if computeNumber, ok := nodesMap[computeKey]; ok {
+						clusterTotalNumber = fmt.Sprintf("%v", computeNumber)
+						break
+					}
+				}
+				Expect(clusterTotalNumber).To(Equal(expectedClusterTotalNode))
+			}
 		)
 
 		BeforeEach(func() {
@@ -306,8 +569,7 @@ var _ = Describe("Edit machinepool",
 
 		AfterEach(func() {
 			By("Clean remaining resources")
-			err := rosaClient.CleanResources(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			rosaClient.CleanResources(clusterID)
 		})
 
 		It("will succeed - [id:38838]",
@@ -316,7 +578,9 @@ var _ = Describe("Edit machinepool",
 				By("Check help message")
 				output, err := machinePoolService.EditMachinePool(clusterID, "", "-h")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("machinepool, machinepools, machine-pool, machine-pools"))
+				Expect(output.String()).
+					Should(ContainSubstring(
+						"machinepool, machinepools, machine-pool, machine-pools"))
 
 				By("Create an additional machinepool")
 				machinePoolName := "mp-38838"
@@ -354,4 +618,77 @@ var _ = Describe("Edit machinepool",
 				Expect(mp.Labels).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(labels), ", ")))
 				Expect(mp.Taints).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(taints), ", ")))
 			})
+
+		It("can list/edit/delete the default worker pool - [id:66750]", labels.Runtime.Destructive, labels.High,
+			func() {
+				By("List the machinepools of the cluster")
+				mpList, err := rosaClient.MachinePool.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				workerPool := mpList.Machinepool(con.DefaultClassicWorkerPool)
+				Expect(workerPool).ToNot(BeNil())
+
+				By("Scale up the default machinepool worker")
+				var updatedValue string
+				var flags []string
+				if workerPool.AutoScaling == "Yes" {
+					flags = []string{
+						"--enable-autoscaling=false",
+						"--replicas", "6",
+					}
+					updatedValue = "6"
+				} else {
+					originalNodeNumber, err := strconv.Atoi(workerPool.Replicas)
+					Expect(err).ToNot(HaveOccurred())
+					updatedValue = fmt.Sprintf("%d", originalNodeNumber+3)
+					flags = []string{
+						"--replicas", updatedValue,
+					}
+				}
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, con.DefaultClassicWorkerPool,
+					flags...,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				workerPoolDescription, err := rosaClient.MachinePool.DescribeAndReflectMachinePool(
+					clusterID,
+					con.DefaultClassicWorkerPool,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(workerPoolDescription.Replicas).To(Equal(updatedValue))
+
+				verifyClusterComputeNodesMatched(clusterID)
+
+				By("Create an additional machinepool of the cluster")
+				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, "worker-replace",
+					"--replicas", "3",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Scale down the worker pool nodes to 0")
+
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, con.DefaultClassicWorkerPool,
+					"--replicas", "0",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Edit the cluster to UWM enabled/disabled")
+				output, err := rosaClient.Cluster.EditCluster(clusterID,
+					"--disable-workload-monitoring",
+					"-y")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Updated cluster"))
+
+				By("Delete the default machinepool")
+				_, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, con.DefaultClassicWorkerPool)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("List the machinepool again")
+				mpList, err = rosaClient.MachinePool.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				workerPool = mpList.Machinepool(con.DefaultClassicWorkerPool)
+				Expect(workerPool).To(BeNil())
+
+				By("Check the cluster nodes")
+				verifyClusterComputeNodesMatched(clusterID)
+			})
+
 	})

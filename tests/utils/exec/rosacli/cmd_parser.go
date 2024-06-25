@@ -135,7 +135,20 @@ func (td *textData) YamlToMap() (res map[string]interface{}, err error) {
 	return
 }
 
-// escapeYamlStringValues escapes yaml values if they contain any special characters: https://www.yaml.info/learn/quote.html#noplain
+func (td *textData) YamlToObj(obj interface{}) (err error) {
+	// Escape value(s) with quote due to https://github.com/go-yaml/yaml/issues/784
+	// This happens sometimes in NodePool Message like `WaitingForAvailableMachines: InstanceNotReady,WaitingForNodeRef`
+	// This would fail to unmarshal due to the `: ` in the value ...
+	escapedOutput, err := escapeYamlStringValues(td.output)
+	if err != nil {
+		return
+	}
+	err = yaml.Unmarshal([]byte(escapedOutput), obj)
+	return
+}
+
+// escapeYamlStringValues escapes yaml values if they contain any special characters:
+// https://www.yaml.info/learn/quote.html#noplain
 // Checks have to be completed on demande...
 func escapeYamlStringValues(input string) (string, error) {
 	var lines []string

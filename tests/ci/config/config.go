@@ -16,21 +16,23 @@ var Test *TestConfig
 // TestConfig contains platforms info for the rosacli testing
 type TestConfig struct {
 	// Env is the OpenShift Cluster Management environment used to provision clusters.
-	ENV                           string `env:"OCM_LOGIN_ENV" default:""`
-	TestProfile                   string `env:"TEST_PROFILE" default:""`
-	OutputDir                     string `env:"OUTPUT_DIR" default:""`
-	YAMLProfilesDir               string `env:"TEST_PROFILE_DIR" default:""`
-	RootDir                       string `env:"WORKSPACE" default:""`
-	ClusterConfigFile             string
-	ArtifactDir                   string `env:"ARTIFACT_DIR" default:""`
-	UserDataFile                  string
-	ClusterIDFile                 string // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	CreateCommandFile             string
-	APIURLFile                    string // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	ClusterNameFile               string // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	ClusterTypeFile               string // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	ConsoleUrlFile                string // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	InfraIDFile                   string // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
+	ENV               string `env:"OCM_LOGIN_ENV" default:""`
+	TestProfile       string `env:"TEST_PROFILE" default:""`
+	OutputDir         string `env:"OUTPUT_DIR" default:""`
+	YAMLProfilesDir   string `env:"TEST_PROFILE_DIR" default:""`
+	RootDir           string `env:"WORKSPACE" default:""`
+	ClusterConfigFile string
+	ArtifactDir       string `env:"ARTIFACT_DIR" default:""`
+	UserDataFile      string
+	CreateCommandFile string
+	// Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
+	ClusterIDFile   string
+	APIURLFile      string
+	ClusterNameFile string
+	ClusterTypeFile string
+	ConsoleUrlFile  string
+	InfraIDFile     string
+	// End of temporary
 	ClusterDetailFile             string
 	ClusterInstallLogArtifactFile string
 	ClusterAdminFile              string
@@ -56,8 +58,10 @@ func init() {
 
 	Test.TestProfile = common.ReadENVWithDefaultValue("TEST_PROFILE", "")
 	Test.RootDir = common.ReadENVWithDefaultValue("WORKSPACE", strings.SplitAfter(currentDir, project)[0])
-	Test.YAMLProfilesDir = common.ReadENVWithDefaultValue("TEST_PROFILE_DIR", path.Join(Test.RootDir, "tests", "ci", "data", "profiles"))
-	Test.OutputDir = common.ReadENVWithDefaultValue("SHARED_DIR", path.Join(Test.RootDir, "tests", "output", Test.TestProfile))
+	Test.YAMLProfilesDir = common.ReadENVWithDefaultValue("TEST_PROFILE_DIR",
+		path.Join(Test.RootDir, "tests", "ci", "data", "profiles"))
+	Test.OutputDir = common.ReadENVWithDefaultValue("SHARED_DIR",
+		path.Join(Test.RootDir, "tests", "output", Test.TestProfile))
 	Test.ArtifactDir = common.ReadENVWithDefaultValue("ARTIFACT_DIR", Test.OutputDir)
 	err := os.MkdirAll(Test.OutputDir, 0777)
 	if err != nil {
@@ -66,11 +70,15 @@ func init() {
 	Test.ClusterConfigFile = path.Join(Test.OutputDir, "cluster-config")
 	Test.UserDataFile = path.Join(Test.OutputDir, "resources.json")
 	Test.APIURLFile = path.Join(Test.OutputDir, "api.url")
-	Test.ClusterIDFile = path.Join(Test.OutputDir, "cluster-id")     // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	Test.ClusterNameFile = path.Join(Test.OutputDir, "cluster-name") // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	Test.ClusterTypeFile = path.Join(Test.OutputDir, "cluster-type") // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	Test.ConsoleUrlFile = path.Join(Test.OutputDir, "console.url")   // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	Test.InfraIDFile = path.Join(Test.OutputDir, "infra_id")         // Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
+
+	// Temporary files to compatible to current CI jobs. Will remove once all CI jobs migration finished
+	Test.ClusterIDFile = path.Join(Test.OutputDir, "cluster-id")
+	Test.ClusterNameFile = path.Join(Test.OutputDir, "cluster-name")
+	Test.ClusterTypeFile = path.Join(Test.OutputDir, "cluster-type")
+	Test.ConsoleUrlFile = path.Join(Test.OutputDir, "console.url")
+	Test.InfraIDFile = path.Join(Test.OutputDir, "infra_id")
+	// End of temporary
+
 	Test.CreateCommandFile = path.Join(Test.OutputDir, "create_cluster.sh")
 	Test.ClusterDetailFile = path.Join(Test.OutputDir, "cluster-detail.json")
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")

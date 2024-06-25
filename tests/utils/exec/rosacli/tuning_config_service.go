@@ -58,7 +58,8 @@ type TuningConfigDescription struct {
 	Spec string `yaml:"Spec,omitempty"`
 }
 
-func (tcs *tuningConfigService) CreateTuningConfig(clusterID string, tcName string, specContent string, flags ...string) (output bytes.Buffer, err error) {
+func (tcs *tuningConfigService) CreateTuningConfig(
+	clusterID string, tcName string, specContent string, flags ...string) (output bytes.Buffer, err error) {
 	specPath, err := common.CreateTempFileWithContent(specContent)
 	defer os.Remove(specPath)
 	if err != nil {
@@ -132,7 +133,8 @@ func (tuningConfigs TuningConfigList) IsPresent(tcName string) (existed bool) {
 	return
 }
 
-func (tcs *tuningConfigService) DescribeTuningConfig(clusterID string, tcID string) (bytes.Buffer, error) {
+func (tcs *tuningConfigService) DescribeTuningConfig(
+	clusterID string, tcID string) (bytes.Buffer, error) {
 	describe := tcs.client.Runner.
 		Cmd("describe", "tuning-configs", tcID).
 		CmdFlags("-c", clusterID)
@@ -140,7 +142,8 @@ func (tcs *tuningConfigService) DescribeTuningConfig(clusterID string, tcID stri
 	return describe.Run()
 }
 
-func (tcs *tuningConfigService) DescribeTuningConfigAndReflect(clusterID string, tcID string) (*TuningConfigDescription, error) {
+func (tcs *tuningConfigService) DescribeTuningConfigAndReflect(
+	clusterID string, tcID string) (*TuningConfigDescription, error) {
 	output, err := tcs.DescribeTuningConfig(clusterID, tcID)
 	if err != nil {
 		return nil, err
@@ -148,7 +151,8 @@ func (tcs *tuningConfigService) DescribeTuningConfigAndReflect(clusterID string,
 	return tcs.ReflectTuningConfigDescription(output)
 }
 
-func (tcs *tuningConfigService) ReflectTuningConfigDescription(result bytes.Buffer) (res *TuningConfigDescription, err error) {
+func (tcs *tuningConfigService) ReflectTuningConfigDescription(
+	result bytes.Buffer) (res *TuningConfigDescription, err error) {
 	var data []byte
 	res = &TuningConfigDescription{}
 	// Apply transformation to avoid issue with getting of Spec Content

@@ -439,13 +439,17 @@ func (arl AccountRoleList) InstallerRole(prefix string, hostedcp bool) (accountR
 		// if hostedcp && strings.Contains(lines[i], "-HCP-ROSA-Installer-Role") {
 		// 	return lines[i], nil
 		// }
-		// if !hostedcp && !strings.Contains(lines[i], "-ROSA-Installer-Role") && strings.Contains(lines[i], "-Installer-Role") {
+		// if !hostedcp && !strings.Contains(lines[i], "-ROSA-Installer-Role") &&
+		// 	strings.Contains(lines[i], "-Installer-Role") {
 		// 	return lines[i], nil
 		// }
-		if hostedcp && strings.Contains(roleItem.RoleName, prefix) && strings.Contains(roleItem.RoleName, roleType) {
+		if hostedcp && strings.Contains(roleItem.RoleName, prefix) &&
+			strings.Contains(roleItem.RoleName, roleType) {
 			return roleItem
 		}
-		if !hostedcp && strings.Contains(roleItem.RoleName, prefix) && strings.Contains(roleItem.RoleName, roleType) && !strings.Contains(roleItem.RoleName, "HCP-ROSA-") {
+		if !hostedcp && strings.Contains(roleItem.RoleName, prefix) &&
+			strings.Contains(roleItem.RoleName, roleType) &&
+			!strings.Contains(roleItem.RoleName, "HCP-ROSA-") {
 			return roleItem
 		}
 	}

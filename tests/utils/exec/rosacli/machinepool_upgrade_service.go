@@ -16,8 +16,10 @@ type MachinePoolUpgradeService interface {
 	ReflectUpgradesList(result bytes.Buffer) (*MachinePoolUpgradeList, error)
 	ListAndReflectUpgrades(clusterID string, mpID string) (*MachinePoolUpgradeList, error)
 
-	// Create a manual upgrade. `version`, `scheduleDate` and `scheduleTime` are optional. `schedule*` if provided MUST be both at the same time provided.
-	CreateManualUpgrade(clusterID string, mpID string, version string, scheduleDate string, scheduleTime string) (bytes.Buffer, error)
+	// Create a manual upgrade. `version`, `scheduleDate` and `scheduleTime` are optional.
+	// `schedule*` if provided MUST be both at the same time provided.
+	CreateManualUpgrade(clusterID string, mpID string, version string,
+		scheduleDate string, scheduleTime string) (bytes.Buffer, error)
 	// Create an automatic upgrade based on the given cron.
 	CreateAutomaticUpgrade(clusterID string, mpID string, scheduleCron string) (bytes.Buffer, error)
 
@@ -76,7 +78,8 @@ func (mpus *machinePoolUpgradeService) ListUpgrades(clusterID string, mpID strin
 }
 
 // Pasrse the result of 'rosa list upgrades --machinepool' to MachinePoolList struct
-func (mpus *machinePoolUpgradeService) ReflectUpgradesList(result bytes.Buffer) (mpul *MachinePoolUpgradeList, err error) {
+func (mpus *machinePoolUpgradeService) ReflectUpgradesList(
+	result bytes.Buffer) (mpul *MachinePoolUpgradeList, err error) {
 	mpul = &MachinePoolUpgradeList{}
 	theMap := mpus.client.Parser.TableData.Input(result).Parse().Output()
 	for _, machinepoolItem := range theMap {
@@ -90,7 +93,8 @@ func (mpus *machinePoolUpgradeService) ReflectUpgradesList(result bytes.Buffer) 
 	return mpul, err
 }
 
-func (mpus *machinePoolUpgradeService) ListAndReflectUpgrades(clusterID string, mpID string) (mpul *MachinePoolUpgradeList, err error) {
+func (mpus *machinePoolUpgradeService) ListAndReflectUpgrades(
+	clusterID string, mpID string) (mpul *MachinePoolUpgradeList, err error) {
 	output, err := mpus.ListUpgrades(clusterID, mpID)
 	if err != nil {
 		return nil, err
@@ -98,7 +102,8 @@ func (mpus *machinePoolUpgradeService) ListAndReflectUpgrades(clusterID string, 
 	return mpus.ReflectUpgradesList(output)
 }
 
-func (mpus *machinePoolUpgradeService) CreateManualUpgrade(clusterID string, mpID string, version string, scheduleDate string, scheduleTime string) (output bytes.Buffer, err error) {
+func (mpus *machinePoolUpgradeService) CreateManualUpgrade(clusterID string, mpID string,
+	version string, scheduleDate string, scheduleTime string) (output bytes.Buffer, err error) {
 	var flags []string
 	if version != "" {
 		flags = append(flags, "--version", version)
@@ -112,11 +117,13 @@ func (mpus *machinePoolUpgradeService) CreateManualUpgrade(clusterID string, mpI
 	return mpus.create(clusterID, mpID, flags...)
 }
 
-func (mpus *machinePoolUpgradeService) CreateAutomaticUpgrade(clusterID string, mpID string, scheduleCron string) (output bytes.Buffer, err error) {
+func (mpus *machinePoolUpgradeService) CreateAutomaticUpgrade(
+	clusterID string, mpID string, scheduleCron string) (output bytes.Buffer, err error) {
 	return mpus.create(clusterID, mpID, "--schedule", scheduleCron)
 }
 
-func (mpus *machinePoolUpgradeService) create(clusterID string, mpID string, flags ...string) (output bytes.Buffer, err error) {
+func (mpus *machinePoolUpgradeService) create(
+	clusterID string, mpID string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = mpus.client.Runner.
 		Cmd("upgrade", "machinepool", mpID).
 		CmdFlags(append(flags, "-c", clusterID)...).
@@ -136,7 +143,8 @@ func (mpus *machinePoolUpgradeService) DescribeUpgrade(clusterID string, mpID st
 }
 
 // Pasrse the result of 'rosa describe upgrade --machinepool' to the RosaClusterDescription struct
-func (mpus *machinePoolUpgradeService) ReflectUpgradeDescription(result bytes.Buffer) (*MachinePoolUpgradeDescription, error) {
+func (mpus *machinePoolUpgradeService) ReflectUpgradeDescription(
+	result bytes.Buffer) (*MachinePoolUpgradeDescription, error) {
 	theMap, err := mpus.client.Parser.TextData.Input(result).Parse().YamlToMap()
 	if err != nil {
 		return nil, err
@@ -150,7 +158,8 @@ func (mpus *machinePoolUpgradeService) ReflectUpgradeDescription(result bytes.Bu
 	return mpud, err
 }
 
-func (mpus *machinePoolUpgradeService) DescribeAndReflectUpgrade(clusterID string, mpID string) (*MachinePoolUpgradeDescription, error) {
+func (mpus *machinePoolUpgradeService) DescribeAndReflectUpgrade(
+	clusterID string, mpID string) (*MachinePoolUpgradeDescription, error) {
 	output, err := mpus.DescribeUpgrade(clusterID, mpID)
 	if err != nil {
 		return nil, err

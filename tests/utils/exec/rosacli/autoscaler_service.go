@@ -41,6 +41,45 @@ type AutoScalerDescription struct {
 	ScaleDown                     []map[string]interface{} `yaml:"Scale Down,omitempty"`
 }
 
+type Autoscaler struct {
+	LogVerbosity                int                       `yaml:"log_verbosity,omitempty"`
+	BalancingIgnoredLabels      string                    `yaml:"balancing_ignored_labels,omitempty"`
+	BalanceSimilarNodeGroups    bool                      `yaml:"balance_similar_node_groups,omitempty"`
+	MaxNodeProvisionTime        string                    `yaml:"max_node_provision_time,omitempty"`
+	MaxPodGracePeriod           int                       `yaml:"max_pod_grace_period,omitempty"`
+	PodPriorityThresold         int                       `yaml:"pod_priority_threshold,omitempty"`
+	ResourcesLimits             AutoscalerResourcesLimits `yaml:"resource_limits,omitempty"`
+	ScaleDown                   AutoscalerScaleDown       `yaml:"scale_down,omitempty"`
+	SkipNodesWithLocalStorage   bool                      `yaml:"skip_nodes_with_local_storage,omitempty"`
+	IgnoreDaemonSetsUtilization bool                      `yaml:"ignore_daemonsets_utilization,omitempty"`
+}
+
+type AutoscalerResourcesLimits struct {
+	Cores         AutoscalerResourcesRange `yaml:"cores,omitempty"`
+	Memory        AutoscalerResourcesRange `yaml:"memory,omitempty"`
+	GPUs          []AutoscalerGPU          `yaml:"gpus,omitempty"`
+	MaxNodesTotal int                      `yaml:"max_nodes_total,omitempty"`
+}
+
+type AutoscalerGPU struct {
+	Range AutoscalerResourcesRange `yaml:"range,omitempty"`
+	Type  string                   `yaml:"type,omitempty"`
+}
+
+type AutoscalerResourcesRange struct {
+	Max int `yaml:"max,omitempty"`
+	Min int `yaml:"min,omitempty"`
+}
+
+type AutoscalerScaleDown struct {
+	DelayAfterAdd        string `yaml:"delay_after_add,omitempty"`
+	DelayAfterDelete     string `yaml:"delay_after_delete,omitempty"`
+	DelayAfterFailure    string `yaml:"delay_after_failure,omitempty"`
+	Enabled              bool   `yaml:"enabled,omitempty"`
+	UnneededTime         string `yaml:"unneeded_time,omitempty"`
+	UtilizationThreshold string `yaml:"utilization_threshold,omitempty"`
+}
+
 func NewAutoScalerService(client *Client) AutoScalerService {
 	return &autoscalerService{
 		ResourcesService: ResourcesService{

@@ -50,7 +50,8 @@ type GroupUserList struct {
 }
 
 // Grant user
-func (us *userService) GrantUser(clusterID string, role string, user string, flags ...string) (output bytes.Buffer, err error) {
+func (us *userService) GrantUser(
+	clusterID string, role string, user string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = us.client.Runner.
 		Cmd("grant", "user", role).
 		CmdFlags(append(flags, "-c", clusterID, "--user", user)...).
@@ -66,7 +67,8 @@ func (us *userService) GrantUser(clusterID string, role string, user string, fla
 }
 
 // Revoke user
-func (us *userService) RevokeUser(clusterID string, role string, user string, flags ...string) (output bytes.Buffer, err error) {
+func (us *userService) RevokeUser(
+	clusterID string, role string, user string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = us.client.Runner.
 		Cmd("revoke", "user", role).
 		CmdFlags(append(flags, "-y", "-c", clusterID, "--user", user)...).

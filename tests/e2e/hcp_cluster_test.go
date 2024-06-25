@@ -171,11 +171,15 @@ var _ = Describe("HCP cluster testing",
 				output, err = rosaClient.User.CreateAdmin(clusterID)
 				Expect(err).ToNot(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured"))
 
 				_, output, err = rosaClient.IDP.ListIDP(clusterID)
 				Expect(err).ToNot(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("ERR: Listing identity providers is not supported for clusters with external authentication configured"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Listing identity providers is not supported for clusters with external authentication configured"))
 			})
 	})

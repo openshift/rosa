@@ -144,7 +144,9 @@ var _ = Describe("Healthy check",
 				By("Check the domains certificates if it is updated")
 				domains := []string{"api.openshift.com", "sso.redhat.com"}
 				for _, url := range domains {
-					cmd := fmt.Sprintf("openssl s_client -connect %s:443 -showcerts 2>&1  | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'", url)
+					cmd := fmt.Sprintf(
+						"openssl s_client -connect %s:443 -showcerts 2>&1  | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'",
+						url)
 					stdout, err := rosaClient.Runner.RunCMD([]string{"bash", "-c", cmd})
 					Expect(err).ToNot(HaveOccurred())
 					result := strings.Trim(stdout.String(), "\n")
@@ -180,10 +182,16 @@ var _ = Describe("Healthy check",
 					Expect(additionalMap).ToNot(BeNil())
 					for _, addSgGroups := range additionalMap {
 						if value, ok := addSgGroups.(map[string]interface{})["Control Plane"]; ok {
-							Expect(value).To(Equal(common.ReplaceCommaWithCommaSpace(clusterConfig.AdditionalSecurityGroups.ControlPlaneSecurityGroups)))
+							Expect(value).
+								To(Equal(
+									common.ReplaceCommaWithCommaSpace(
+										clusterConfig.AdditionalSecurityGroups.ControlPlaneSecurityGroups)))
 						} else {
 							value = addSgGroups.(map[string]interface{})["Infra"]
-							Expect(value).To(Equal(common.ReplaceCommaWithCommaSpace(clusterConfig.AdditionalSecurityGroups.InfraSecurityGroups)))
+							Expect(value).
+								To(Equal(
+									common.ReplaceCommaWithCommaSpace(
+										clusterConfig.AdditionalSecurityGroups.InfraSecurityGroups)))
 						}
 					}
 				}
@@ -194,7 +202,10 @@ var _ = Describe("Healthy check",
 				if clusterConfig.AdditionalSecurityGroups == nil {
 					Expect(mp.SecurityGroupIDs).To(BeEmpty())
 				} else {
-					Expect(mp.SecurityGroupIDs).To(Equal(common.ReplaceCommaWithCommaSpace(clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
+					Expect(mp.SecurityGroupIDs).
+						To(Equal(
+							common.ReplaceCommaWithCommaSpace(
+								clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
 				}
 
 			})
@@ -253,6 +264,25 @@ var _ = Describe("Healthy check",
 				} else {
 					Expect(des.FIPSMod).To(Equal("Enabled"))
 				}
+			})
+		It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical,
+			func() {
+				private := "No"
+				ingressPrivate := "false"
+				if clusterConfig.PrivateLink {
+					private = "Yes"
+					ingressPrivate = "true"
+				}
+				By("Describe the cluster the cluster should be private")
+				clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDescription.Private).To(Equal(private))
+
+				By("Check the ingress should be private")
+				ingress, err := rosaClient.Ingress.DescribeIngressAndReflect(clusterID, "apps")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ingress.Private).To(Equal(ingressPrivate))
+
 			})
 	})
 

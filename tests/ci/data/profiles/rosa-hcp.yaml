@@ -78,7 +78,7 @@ profiles:
     shared_vpc: false
     firewall: true
     imdsv2: ""
-    ingress_customized: true
+    ingress_customized: false
     auditlog_forward: false
     name_length: 54
     customize_domain_prefix: true

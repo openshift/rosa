@@ -14,21 +14,16 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-var client rosacli.Client
-
-func init() {
-	client = *rosacli.NewClient()
-}
-
 func GetYAMLProfilesDir() string {
 	return config.Test.YAMLProfilesDir
 }
 func LoadProfileYamlFile(profileName string) *Profile {
 	p := GetProfile(profileName, GetYAMLProfilesDir())
-	log.Logger.Infof("Loaded cluster profile configuration from origional profile %s : %v", profileName, *p)
-	log.Logger.Infof("Loaded cluster profile configuration from origional cluster %s : %v", profileName, *p.ClusterConfig)
+	log.Logger.Infof("Loaded cluster profile configuration from original profile %s : %v", profileName, *p)
+	log.Logger.Infof("Loaded cluster profile configuration from original cluster %s : %v", profileName, *p.ClusterConfig)
 	if p.AccountRoleConfig != nil {
-		log.Logger.Infof("Loaded cluster profile configuration from origional account-roles %s : %v", profileName, *p.AccountRoleConfig)
+		log.Logger.Infof("Loaded cluster profile configuration from original account-roles %s : %v",
+			profileName, *p.AccountRoleConfig)
 	}
 
 	if p.NamePrefix == "" {
@@ -301,10 +296,14 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			DefaultIngressNamespaceOwnershipPolicy: "Strict",
 		}
 		flags = append(flags,
-			"--default-ingress-route-selector", clusterConfiguration.IngressConfig.DefaultIngressRouteSelector,
-			"--default-ingress-excluded-namespaces", clusterConfiguration.IngressConfig.DefaultIngressExcludedNamespaces,
-			"--default-ingress-wildcard-policy", clusterConfiguration.IngressConfig.DefaultIngressWildcardPolicy,
-			"--default-ingress-namespace-ownership-policy", clusterConfiguration.IngressConfig.DefaultIngressNamespaceOwnershipPolicy,
+			"--default-ingress-route-selector",
+			clusterConfiguration.IngressConfig.DefaultIngressRouteSelector,
+			"--default-ingress-excluded-namespaces",
+			clusterConfiguration.IngressConfig.DefaultIngressExcludedNamespaces,
+			"--default-ingress-wildcard-policy",
+			clusterConfiguration.IngressConfig.DefaultIngressWildcardPolicy,
+			"--default-ingress-namespace-ownership-policy",
+			clusterConfiguration.IngressConfig.DefaultIngressNamespaceOwnershipPolicy,
 		)
 	}
 	if profile.ClusterConfig.AutoscalerEnabled {
@@ -538,6 +537,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 	if profile.ClusterConfig.SharedVPC {
 		//Placeholder for shared vpc, need to research what to be set here
+		log.Logger.Warnf("Shared VPC is not yet implemented")
 	}
 	if profile.ClusterConfig.TagEnabled {
 		tags := "test-tag:tagvalue,qe-managed:true"
@@ -586,9 +586,11 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
 		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
-		common.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)         // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL) // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)       // Temporary recoding file to make it compatible to existing jobs
+		// Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)
+		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL)
+		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)
+		// End of temporary
 	}()
 	err = WaitForClusterPassWaiting(client, cluster, 2)
 	if err != nil {
@@ -627,7 +629,8 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 			if strings.Contains(description.State, con.Waiting) {
 				log.Logger.Infof("Cluster is in status of %v, wait for ready", con.Waiting)
 				if sleepTime >= 6 {
-					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. Check the user data preparation for roles", description.State)
+					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. "+
+						"Check the user data preparation for roles", description.State)
 				}
 				sleepTime += 2
 				time.Sleep(2 * time.Minute)
@@ -656,7 +659,10 @@ func RecordClusterInstallationLog(client *rosacli.Client, cluster string) error 
 	return err
 }
 
-func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Client) (*rosacli.ClusterDescription, error) {
+func CreateClusterByProfileWithoutWaiting(
+	profile *Profile,
+	client *rosacli.Client) (*rosacli.ClusterDescription, error) {
+
 	clusterDetail := new(ClusterDetail)
 
 	flags, err := GenerateClusterCreateFlags(profile, client)
@@ -670,7 +676,7 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 		return nil, err
 	}
 	common.CreateFileWithContent(config.Test.CreateCommandFile, createCMD)
-	log.Logger.Info("Cluster created succesfully")
+	log.Logger.Info("Cluster created successfully")
 	description, err := client.Cluster.DescribeClusterAndReflect(profile.ClusterConfig.Name)
 	if err != nil {
 		return description, err
@@ -678,9 +684,11 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
 		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
-		common.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)     // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ClusterNameFile, description.Name) // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")           // Temporary recoding file to make it compatible to existing jobs
+		// Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)
+		common.CreateFileWithContent(config.Test.ClusterNameFile, description.Name)
+		common.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")
+		// End of temporary
 	}()
 	clusterDetail.ClusterID = description.ID
 	clusterDetail.ClusterName = description.Name
@@ -712,7 +720,10 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 	}
 	return description, err
 }
-func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
+func CreateClusterByProfile(profile *Profile,
+	client *rosacli.Client,
+	waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
+
 	description, err := CreateClusterByProfileWithoutWaiting(profile, client)
 	if err != nil {
 		return description, err
@@ -736,7 +747,9 @@ func WaitForClusterUninstalled(client *rosacli.Client, cluster string, timeoutMi
 	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
 	for time.Now().Before(endTime) {
 		output, err := client.Cluster.DescribeCluster(cluster)
-		if err != nil && strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", cluster)) {
+		if err != nil &&
+			strings.Contains(output.String(),
+				fmt.Sprintf("There is no cluster with identifier or name '%s'", cluster)) {
 			log.Logger.Infof("Cluster %s has been deleted.", cluster)
 			return nil
 		}
@@ -795,7 +808,12 @@ func DestroyCluster(client *rosacli.Client) (*ClusterDetail, []error) {
 	return cd, errors
 }
 
-func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region string, isSTS bool, oidcConfig string) []error {
+func DestroyPreparedUserData(client *rosacli.Client,
+	clusterID string,
+	region string,
+	isSTS bool,
+	oidcConfig string) []error {
+
 	var (
 		ud                 *UserData
 		ocmResourceService rosacli.OCMResourceService
@@ -815,7 +833,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		_, err = common.CreateFileWithContent(config.Test.UserDataFile, ud)
 	}()
 
-	destroyLog := func(err error, errors []error, resource string) bool {
+	destroyLog := func(err error, resource string) bool {
 		if err != nil {
 			log.Logger.Errorf("Error happened when delete %s: %s", resource, err.Error())
 			errors = append(errors, err)
@@ -830,7 +848,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		if ud.KMSKey != "" {
 			log.Logger.Infof("Find prepared kms key: %s. Going to schedule the deletion.", ud.KMSKey)
 			err = ScheduleKMSDesiable(ud.KMSKey, region)
-			success := destroyLog(err, errors, "kms key")
+			success := destroyLog(err, "kms key")
 			if success {
 				ud.KMSKey = ""
 			}
@@ -839,7 +857,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		if ud.EtcdKMSKey != "" {
 			log.Logger.Infof("Find prepared etcd kms key: %s. Going to schedule the deletion", ud.EtcdKMSKey)
 			err = ScheduleKMSDesiable(ud.EtcdKMSKey, region)
-			success := destroyLog(err, errors, "etcd kms key")
+			success := destroyLog(err, "etcd kms key")
 			if success {
 				ud.EtcdKMSKey = ""
 			}
@@ -849,7 +867,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 			log.Logger.Infof("Find prepared audit log arn: %s", ud.AuditLogArn)
 			roleName := strings.Split(ud.AuditLogArn, "/")[1]
 			err = DeleteAuditLogRoleArn(roleName, region)
-			success := destroyLog(err, errors, "audit log arn")
+			success := destroyLog(err, "audit log arn")
 			if success {
 				ud.AuditLogArn = ""
 			}
@@ -858,7 +876,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		if ud.VpcID != "" {
 			log.Logger.Infof("Find prepared vpc id: %s", ud.VpcID)
 			err = DeleteVPCChain(ud.VpcID, region)
-			success := destroyLog(err, errors, "vpc chain")
+			success := destroyLog(err, "vpc chain")
 			if success {
 				ud.VpcID = ""
 			}
@@ -867,7 +885,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		if ud.OperatorRolesPrefix != "" {
 			log.Logger.Infof("Find prepared operator roles with prefix: %s", ud.OperatorRolesPrefix)
 			_, err := ocmResourceService.DeleteOperatorRoles("--prefix", ud.OperatorRolesPrefix, "--mode", "auto", "-y")
-			success := destroyLog(err, errors, "operator roles")
+			success := destroyLog(err, "operator roles")
 			if success {
 				ud.OperatorRolesPrefix = ""
 			}
@@ -875,15 +893,22 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		// delete oidc config
 		if oidcConfig != "" {
 			log.Logger.Infof("Find prepared oidc config id: %s", ud.OIDCConfigID)
-			_, err := ocmResourceService.DeleteOIDCConfig("--oidc-config-id", ud.OIDCConfigID, "--region", region, "--mode", "auto", "-y")
-			success := destroyLog(err, errors, "oidc config")
+			_, err := ocmResourceService.DeleteOIDCConfig(
+				"--oidc-config-id",
+				ud.OIDCConfigID,
+				"--region",
+				region,
+				"--mode",
+				"auto",
+				"-y")
+			success := destroyLog(err, "oidc config")
 			if success {
 				ud.OIDCConfigID = ""
 			}
 		} else {
 			if clusterID != "" && isSTS {
 				_, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
-				success := destroyLog(err, errors, "oidc provider")
+				success := destroyLog(err, "oidc provider")
 				if success {
 					ud.OIDCConfigID = ""
 				}
@@ -893,7 +918,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		if ud.AccountRolesPrefix != "" {
 			log.Logger.Infof("Find prepared accout roles with prefix: %s", ud.AccountRolesPrefix)
 			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto", "--prefix", ud.AccountRolesPrefix, "-y")
-			success := destroyLog(err, errors, "account roles")
+			success := destroyLog(err, "account roles")
 			if success {
 				ud.AccountRolesPrefix = ""
 			}
