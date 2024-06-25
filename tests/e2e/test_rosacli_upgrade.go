@@ -69,7 +69,7 @@ var _ = Describe("Cluster Upgrade testing",
 			if profile.Version != "y-1" {
 				Skip("Skip this case as the version defined in profile is not y-1 for upgrading testing")
 			}
-			By("Prepare arbitray policies for testing")
+			By("Prepare arbitrary policies for testing")
 			awsClient, err = aws_client.CreateAWSClient("", "")
 			Expect(err).To(BeNil())
 			statement := map[string]interface{}{
@@ -78,7 +78,10 @@ var _ = Describe("Cluster Upgrade testing",
 				"Resource": "*",
 			}
 			for i := 0; i < 2; i++ {
-				arn, err := awsClient.CreatePolicy(fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i), statement)
+				arn, err := awsClient.CreatePolicy(
+					fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
+					statement,
+				)
 				Expect(err).To(BeNil())
 				arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
 			}
@@ -121,7 +124,10 @@ var _ = Describe("Cluster Upgrade testing",
 			_, operatorRoleName2, err := common.ParseRoleARN(operatorRolesArns[4])
 			Expect(err).To(BeNil())
 			operatorRolePoliciesMap2 := make(map[string][]string)
-			operatorRolePoliciesMap2[operatorRoleName2] = append(operatorRolePoliciesMap2[operatorRolesArns[4]], arbitraryPoliciesToClean[1])
+			operatorRolePoliciesMap2[operatorRoleName2] = append(
+				operatorRolePoliciesMap2[operatorRolesArns[4]],
+				arbitraryPoliciesToClean[1],
+			)
 
 			for roleName, policyArns := range operatorRolePoliciesMap2 {
 				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
@@ -177,7 +183,10 @@ var _ = Describe("Cluster Upgrade testing",
 
 			versions, err := clusterVersionList.FindYStreamUpgradeVersions(clusterVersion)
 			Expect(err).To(BeNil())
-			Expect(len(versions)).To(BeNumerically(">", 0), fmt.Sprintf("No available upgrade version is found for the cluster version %s", clusterVersion))
+			Expect(len(versions)).
+				To(
+					BeNumerically(">", 0),
+					fmt.Sprintf("No available upgrade version is found for the cluster version %s", clusterVersion))
 			upgradingVersion := versions[0]
 
 			By("Upgrade roles in auto mode")
@@ -226,8 +235,11 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(len(policy.Tags)).To(Equal(0))
 			}
 			By("Update cluster")
-			// TODO: Wait the upgrade ready. As upgrade profile can only be used for upgrade cluster one time, so both this case and another test case for upgrading cluster without arbitrary policies attach share this profile.
-			// It needs to add step to wait the cluster upgrade done and to check the `rosa describe/list upgrade` in both of these two case.
+			// TODO: Wait the upgrade ready. As upgrade profile can only be used for upgrade cluster one time,
+			// so both this case and another test case for upgrading cluster
+			// without arbitrary policies attach share this profile.
+			// It needs to add step to wait the cluster upgrade done
+			// and to check the `rosa describe/list upgrade` in both of these two case.
 			output, err = clusterService.Upgrade(
 				"-c", clusterID,
 				"--version", "4.15.14",

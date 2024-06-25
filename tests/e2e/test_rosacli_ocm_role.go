@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -48,7 +47,6 @@ var _ = Describe("Edit ocm role", labels.Feature.OCMRole,
 				rosaClient.Runner.UnsetFormat()
 				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 				ocmOrganizationExternalID = whoamiData.OCMOrganizationExternalID
-				rand.Seed(time.Now().UnixNano())
 				ocmrolePrefix = fmt.Sprintf("QEAuto-ocmr-%s-46187", time.Now().UTC().Format("20060102"))
 
 				By("Check linked ocm role then unlink it")

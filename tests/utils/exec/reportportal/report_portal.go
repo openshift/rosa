@@ -1,4 +1,4 @@
-package rosacli
+package reportportal
 
 import (
 	"encoding/json"
@@ -173,7 +173,7 @@ func GenerateReportXMLFile() (int, int, map[string][]Testcase, map[string][]Test
 
 			reportFileName := fmt.Sprintf("import-%s-%d.xml", xmlFilePrefix, n+1)
 			reportFile := path.Join(reportPortalDir, reportFileName)
-			err := os.WriteFile(reportFile, xmlBody, 0666)
+			err := os.WriteFile(reportFile, xmlBody, 0666) // #nosec G306
 			if err != nil {
 				panic(err)
 			}
@@ -280,7 +280,7 @@ func GenerateReportLog() {
 	}
 
 	jsonBody, _ := json.MarshalIndent(reportLogs, "", " ")
-	err := os.WriteFile(reportLogFile, jsonBody, 0666)
+	err := os.WriteFile(reportLogFile, jsonBody, 0666) // #nosec G306
 	if err != nil {
 		panic(err)
 	}

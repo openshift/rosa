@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -68,7 +67,6 @@ var _ = Describe("Edit OIDC config",
 					accountRolePrefix      string
 				)
 				By("Create account-roles for testing")
-				rand.Seed(time.Now().UnixNano())
 				accountRolePrefix = fmt.Sprintf("QEAuto-accr57570-%s", time.Now().UTC().Format("20060102"))
 				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 					"--prefix", accountRolePrefix,

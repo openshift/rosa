@@ -82,7 +82,8 @@ func (k *kubeletConfigService) ReflectKubeletConfigs(output bytes.Buffer) (kubes
 }
 
 // ListKubeletConfigsAndReflect will list the kubeletconfigs
-func (k *kubeletConfigService) ListKubeletConfigsAndReflect(clusterID string, flags ...string) (kubes *KubeletConfigList, err error) {
+func (k *kubeletConfigService) ListKubeletConfigsAndReflect(
+	clusterID string, flags ...string) (kubes *KubeletConfigList, err error) {
 	var output bytes.Buffer
 	output, err = k.ListKubeletConfigs(clusterID, flags...)
 	if err != nil {

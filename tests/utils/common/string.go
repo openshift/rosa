@@ -1,12 +1,11 @@
 package common
 
 import (
-	r "crypto/rand"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"strings"
-	"time"
 )
 
 func ParseLabels(labels string) []string {
@@ -48,7 +47,7 @@ func ParseTagsFronJsonOutput(tags string) map[string]interface{} {
 
 func GenerateRandomStringWithSymbols(length int) string {
 	b := make([]byte, length)
-	_, err := r.Read(b)
+	_, err := rand.Read(b)
 	if err != nil {
 		panic(err)
 	}
@@ -64,14 +63,18 @@ func GenerateRandomStringWithSymbols(length int) string {
 }
 
 // Generate random string
-func GenerateRandomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	rand.Seed(time.Now().UnixNano())
-	s := make([]byte, n)
-	for i := range s {
-		s[i] = letters[rand.Intn(len(letters))]
+func GenerateRandomString(length int) string {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	ret := make([]byte, length)
+	for i := 0; i < length; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			panic(err)
+		}
+		ret[i] = letters[num.Int64()]
 	}
-	return string(s)
+
+	return string(ret)
 }
 
 func GenerateRandomName(prefix string, n int) string {

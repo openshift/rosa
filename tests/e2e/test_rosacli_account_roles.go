@@ -2,13 +2,13 @@ package e2e
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
@@ -131,17 +131,29 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			accountRoleSetH := accountRoleList.AccountRoles(userRolePrefixH)
 			accountRoleSetC := accountRoleList.AccountRoles(userRolePrefixC)
 
-			selectedRoleH := accountRoleSetH[rand.Intn(len(accountRoleSetH))]
-			selectedRoleC := accountRoleSetC[rand.Intn(len(accountRoleSetC))]
+			selectedRoleH := accountRoleSetH[common.RandomInt(len(accountRoleSetH))]
+			selectedRoleC := accountRoleSetC[common.RandomInt(len(accountRoleSetC))]
 
 			Expect(len(accountRoleSetB)).To(Equal(7))
 			Expect(len(accountRoleSetH)).To(Equal(3))
 			Expect(len(accountRoleSetC)).To(Equal(4))
 
-			Expect(selectedRoleH.RoleArn).To(Equal(fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s", AWSAccountID, path, userRolePrefixH, rosacli.RoleTypeSuffixMap[selectedRoleH.RoleType])))
+			Expect(selectedRoleH.RoleArn).
+				To(Equal(
+					fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s",
+						AWSAccountID,
+						path,
+						userRolePrefixH,
+						rosacli.RoleTypeSuffixMap[selectedRoleH.RoleType])))
 			Expect(selectedRoleH.OpenshiftVersion).To(Equal(versionH))
 			Expect(selectedRoleH.AWSManaged).To(Equal("Yes"))
-			Expect(selectedRoleC.RoleArn).To(Equal(fmt.Sprintf("arn:aws:iam::%s:role%s%s-%s", AWSAccountID, path, userRolePrefixC, rosacli.RoleTypeSuffixMap[selectedRoleC.RoleType])))
+			Expect(selectedRoleC.RoleArn).
+				To(Equal(
+					fmt.Sprintf("arn:aws:iam::%s:role%s%s-%s",
+						AWSAccountID,
+						path,
+						userRolePrefixC,
+						rosacli.RoleTypeSuffixMap[selectedRoleC.RoleType])))
 			Expect(selectedRoleC.OpenshiftVersion).To(Equal(versionC))
 			Expect(selectedRoleC.AWSManaged).To(Equal("No"))
 
@@ -372,7 +384,9 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).ToNot(ContainSubstring("Creating classic account roles"))
 			Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
-			Expect(textData).To(ContainSubstring("WARN: Setting `version` flag for hosted CP managed policies has no effect, any supported ROSA version can be installed with managed policies"))
+			Expect(textData).
+				To(ContainSubstring("WARN: Setting `version` flag for hosted CP managed policies has no effect, " +
+					"any supported ROSA version can be installed with managed policies"))
 			Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Installer-Role'", rolePrefixStable)))
 			Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Support-Role'", rolePrefixStable)))
 			Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Worker-Role'", rolePrefixStable)))
@@ -392,7 +406,8 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).ToNot(ContainSubstring("Creating classic account roles"))
 			Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
-			Expect(textData).To(ContainSubstring("WARN: Setting `version` flag for hosted CP managed policies has no effect, any supported ROSA version can be installed with managed policies"))
+			Expect(textData).To(ContainSubstring("WARN: Setting `version` flag for hosted CP managed policies has no effect, " +
+				"any supported ROSA version can be installed with managed policies"))
 			Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Installer-Role'", rolePrefixCandidate)))
 			Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Support-Role'", rolePrefixCandidate)))
 			Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Worker-Role'", rolePrefixCandidate)))
@@ -405,8 +420,8 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			accountRoleSetStable := accountRoleList.AccountRoles(rolePrefixStable)
 			accountRoleSetCandidate := accountRoleList.AccountRoles(rolePrefixCandidate)
 
-			selectedRoleStable := accountRoleSetStable[rand.Intn(len(accountRoleSetStable))]
-			selectedRoleCandidate := accountRoleSetCandidate[rand.Intn(len(accountRoleSetCandidate))]
+			selectedRoleStable := accountRoleSetStable[common.RandomInt(len(accountRoleSetStable))]
+			selectedRoleCandidate := accountRoleSetCandidate[common.RandomInt(len(accountRoleSetCandidate))]
 
 			By("Check 3 roles are created for hosted CP account roles")
 			Expect(len(accountRoleSetStable)).To(Equal(3))
@@ -414,10 +429,22 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 
 			By("Check the roles are AWS managed, and path and version flag works correctly")
 			Expect(selectedRoleStable.AWSManaged).To(Equal("Yes"))
-			Expect(selectedRoleStable.RoleArn).To(Equal(fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s", AWSAccountID, path, rolePrefixStable, rosacli.RoleTypeSuffixMap[selectedRoleStable.RoleType])))
+			Expect(selectedRoleStable.RoleArn).
+				To(Equal(
+					fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s",
+						AWSAccountID,
+						path,
+						rolePrefixStable,
+						rosacli.RoleTypeSuffixMap[selectedRoleStable.RoleType])))
 			Expect(selectedRoleStable.OpenshiftVersion).To(Equal(versionStable))
 			Expect(selectedRoleCandidate.AWSManaged).To(Equal("Yes"))
-			Expect(selectedRoleCandidate.RoleArn).To(Equal(fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s", AWSAccountID, path, rolePrefixCandidate, rosacli.RoleTypeSuffixMap[selectedRoleCandidate.RoleType])))
+			Expect(selectedRoleCandidate.RoleArn).
+				To(Equal(
+					fmt.Sprintf("arn:aws:iam::%s:role%s%s-HCP-ROSA-%s",
+						AWSAccountID,
+						path,
+						rolePrefixCandidate,
+						rosacli.RoleTypeSuffixMap[selectedRoleCandidate.RoleType])))
 			Expect(selectedRoleCandidate.OpenshiftVersion).To(Equal(versionCandidate))
 
 			By("Delete the hypershift account roles in auto mode")
@@ -520,7 +547,9 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 
 			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("Expected a valid policy ARN for permissions boundary: Invalid ARN: arn: invalid prefix"))
+			Expect(textData).
+				To(ContainSubstring(
+					"Expected a valid policy ARN for permissions boundary: Invalid ARN: arn: invalid prefix"))
 
 			By("Try to create account-roles with non-existing permission boundary")
 			output, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,

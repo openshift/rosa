@@ -59,7 +59,9 @@ var _ = Describe("rosacli token",
 				Expect(err).To(BeNil())
 				payloadOutput, err := ocmService.Token("--payload")
 				Expect(err).To(BeNil())
-				Expect(strings.TrimSpace(payloadOutput.String())).To(Equal(strings.TrimSpace(parsedPayloadOutput.String())))
+				Expect(strings.TrimSpace(payloadOutput.String())).
+					To(Equal(
+						strings.TrimSpace(parsedPayloadOutput.String())))
 
 				By("Checlk `rosa token --signature`")
 				parsedSignatureOutput, err := rosaClient.Runner.RunPipeline(
@@ -71,6 +73,8 @@ var _ = Describe("rosacli token",
 				Expect(err).To(BeNil())
 				signatureOutput, err := ocmService.Token("--signature")
 				Expect(err).To(BeNil())
-				Expect(strings.TrimSpace(signatureOutput.String())).To(ContainSubstring(strings.TrimSpace(parsedSignatureOutput.String())))
+				Expect(strings.TrimSpace(signatureOutput.String())).
+					To(ContainSubstring(
+						strings.TrimSpace(parsedSignatureOutput.String())))
 			})
 	})

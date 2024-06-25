@@ -51,7 +51,7 @@ func (i *ingressService) CleanResources(clusterID string) (errors []error) {
 
 // Struct for the 'rosa describe ingress' output
 type IngressList struct {
-	Ingresses []Ingress `json:"Ingresses,omitempty"`
+	Ingresses []*Ingress `json:"Ingresses,omitempty"`
 }
 type Ingress struct {
 	ClusterID                string `yaml:"Cluster ID,omitempty"`
@@ -70,7 +70,7 @@ type Ingress struct {
 func (inl IngressList) Ingress(id string) (in *Ingress) {
 	for _, inItem := range inl.Ingresses {
 		if inItem.ID == id {
-			in = &inItem
+			in = inItem
 			return
 		}
 	}
@@ -127,7 +127,7 @@ func (i *ingressService) ReflectIngressList(result bytes.Buffer) (res *IngressLi
 		if err != nil {
 			return
 		}
-		res.Ingresses = append(res.Ingresses, *in)
+		res.Ingresses = append(res.Ingresses, in)
 	}
 	return res, err
 }
