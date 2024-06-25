@@ -275,8 +275,8 @@ github.com/onsi/ginkgo/v2 v2.17.1 h1:V++EzdbhI4ZV4ev0UTIj0PzhzOcReJFyJaLjtSF55M8
 github.com/onsi/ginkgo/v2 v2.17.1/go.mod h1:llBI3WDLL9Z6taip6f33H76YcWtJv+7R3HigUjbIBOs=
 github.com/onsi/gomega v1.30.0 h1:hvMK7xYz4D3HapigLTeGdId/NcfQx1VHMJc60ew99+8=
 github.com/onsi/gomega v1.30.0/go.mod h1:9sxs+SwGrKI0+PWe4Fxa9tFQQBG5xSsSbMXOI8PPpoQ=
-github.com/openshift-online/ocm-common v0.0.6 h1:Il9vZ58fHdPu79K8a04rrq0DFhpjWGNQZjNHID5DyMI=
-github.com/openshift-online/ocm-common v0.0.6/go.mod h1:gsBWQYLZB0w0ZRR+NLASuTr29uFo5nekEODasFKxESc=
+github.com/openshift-online/ocm-common v0.0.7 h1:2/3G7W4gIyAZ1RyqbC+IUOHlf52Rd1Sf+MqmbQ2FYGk=
+github.com/openshift-online/ocm-common v0.0.7/go.mod h1:gsBWQYLZB0w0ZRR+NLASuTr29uFo5nekEODasFKxESc=
 github.com/openshift-online/ocm-sdk-go v0.1.428 h1:HIgQ9FkkgNEMyLsP75JU17nZjYV1Q9M9FrpO/Df2SSg=
 github.com/openshift-online/ocm-sdk-go v0.1.428/go.mod h1:CiAu2jwl3ITKOxkeV0Qnhzv4gs35AmpIzVABQLtcI2Y=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

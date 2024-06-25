@@ -31,6 +31,7 @@ type ClusterConfig struct {
 	NameLegnth                    int    `default:"15" yaml:"name_length,omitempty" json:"name_length,omitempty"`
 	VolumeSize                    int    `yaml:"volume_size,omitempty" json:"volume_size,omitempty"`
 	WorkerPoolReplicas            int    `yaml:"replicas,omitempty" json:"replicas,omitempty"`
+	AdditionalPrincipals          bool   `yaml:"additional_principals,omitempty" json:"additional_principals,omitempty"`
 	AdminEnabled                  bool   `yaml:"admin_enabled,omitempty" json:"admin_enabled,omitempty"`
 	AuditLogForward               bool   `yaml:"auditlog_forward,omitempty" json:"auditlog_forward,omitempty"`
 	Autoscale                     bool   `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
@@ -60,17 +61,18 @@ type ClusterConfig struct {
 
 // UserData will record the user data prepared for resource clean up
 type UserData struct {
-	AccountRolesPrefix  string `json:"account_roles_prefix,omitempty"`
-	AuditLogArn         string `json:"audit_log,omitempty"`
-	DNSDomain           string `json:"dns_domain,omitempty"`
-	EtcdKMSKey          string `json:"etcd_kms_key,omitempty"`
-	HostedZoneID        string `json:"hosted_zone_id,omitempty"`
-	KMSKey              string `json:"kms_key,omitempty"`
-	OperatorRolesPrefix string `json:"operator_roles_prefix,omitempty"`
-	OIDCConfigID        string `json:"oidc_config_id,omitempty"`
-	ResourceShareArn    string `json:"resource_share,omitempty"`
-	SharedVPCRole       string `json:"shared_vpc_role,omitempty"`
-	VpcID               string `json:"vpc_id,omitempty"`
+	AccountRolesPrefix   string `json:"account_roles_prefix,omitempty"`
+	AdditionalPrincipals string `json:"additional_principals,omitempty"`
+	AuditLogArn          string `json:"audit_log,omitempty"`
+	DNSDomain            string `json:"dns_domain,omitempty"`
+	EtcdKMSKey           string `json:"etcd_kms_key,omitempty"`
+	HostedZoneID         string `json:"hosted_zone_id,omitempty"`
+	KMSKey               string `json:"kms_key,omitempty"`
+	OperatorRolesPrefix  string `json:"operator_roles_prefix,omitempty"`
+	OIDCConfigID         string `json:"oidc_config_id,omitempty"`
+	ResourceShareArn     string `json:"resource_share,omitempty"`
+	SharedVPCRole        string `json:"shared_vpc_role,omitempty"`
+	VpcID                string `json:"vpc_id,omitempty"`
 }
 
 // ClusterDetail will record basic cluster info to support other team's testing
