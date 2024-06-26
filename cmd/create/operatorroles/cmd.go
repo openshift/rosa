@@ -179,6 +179,12 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if cmd.Flag("cluster").Changed && cmd.Flag(OidcConfigIdFlag).Changed {
+		r.Reporter.Errorf("A cluster key for STS cluster and an OIDC configuration ID " +
+			"cannot be specified alongside each other.")
+		os.Exit(1)
+	}
+
 	var cluster *cmv1.Cluster
 	if args.prefix == "" {
 		cluster = r.FetchCluster()
