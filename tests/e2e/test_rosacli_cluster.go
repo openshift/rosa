@@ -332,69 +332,68 @@ var _ = Describe("Edit cluster",
 						"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
 			})
 
-		// Commented out until bug OCM-8408 is resolved
+		// Excluded until bug OCM-8408 is resolved
+		It("can verify delete protection on a rosa cluster - [id:73161]",
+			labels.High, labels.Runtime.Day2, labels.Exclude,
+			func() {
+				By("Enable delete protection on the cluster")
+				deleteProtection := "Enabled"
+				_, err := clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=true",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
 
-		// It("can verify delete protection on a rosa cluster - [id:73161]",
-		// labels.High, labels.Runtime.Day2,
-		// func() {
-		// 	By("Enable delete protection on the cluster")
-		// 	deleteProtection := "Enabled"
-		// 	_, err := clusterService.EditCluster(clusterID,
-		// 		"--enable-delete-protection=true",
-		// 		"-y",
-		// 	)
-		// 	Expect(err).ToNot(HaveOccurred())
+				By("Check the enable result from cluster description")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
 
-		// 	By("Check the enable result from cluster description")
-		// 	output, err := clusterService.DescribeCluster(clusterID)
-		// 	Expect(err).ToNot(HaveOccurred())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDetail.EnableDeleteProtection).To(Equal(deleteProtection))
 
-		// 	clusterDetail, err := clusterService.ReflectClusterDescription(output)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// 	Expect(clusterDetail.EnableDeleteProtection).To(Equal(deleteProtection))
+				By("Enable delete protection with invalid values")
+				_, err = clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=aaa",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring(
+					`Error: invalid argument "aaa" for "--enable-delete-protection" flag: strconv.ParseBool: parsing "aaa": invalid syntax`))
 
-		// 	By("Enable delete protection with invalid values")
-		// 	_, err = clusterService.EditCluster(clusterID,
-		// 		"--enable-delete-protection=aaa",
-		// 		"-y",
-		// 	)
-		// 	Expect(err).To(HaveOccurred())
-		// 	textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-		// 	Expect(textData).Should(ContainSubstring(
-		// `Error: invalid argument "aaa" for "--enable-delete-protection" flag: strconv.ParseBool: parsing "aaa": invalid syntax`))
+				_, err = clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring(
+					`Error: invalid argument "" for "--enable-delete-protection" flag: strconv.ParseBool: parsing "": invalid syntax`))
 
-		// 	_, err = clusterService.EditCluster(clusterID,
-		// 		"--enable-delete-protection=",
-		// 		"-y",
-		// 	)
-		// 	Expect(err).To(HaveOccurred())
-		// 	textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-		// 	Expect(textData).Should(ContainSubstring(
-		// `Error: invalid argument "" for "--enable-delete-protection" flag: strconv.ParseBool: parsing "": invalid syntax`))
+				By("Attempt to delete cluster with delete protection enabled")
+				_, err = clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring(
+					`Delete-protection has been activated on this cluster and it cannot be deleted until delete-protection is disabled`))
 
-		// 	By("Attempt to delete cluster with delete protection enabled")
-		// 	_, err = clusterService.DeleteCluster(clusterID, "-y")
-		// 	Expect(err).To(HaveOccurred())
-		// 	textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-		// 	Expect(textData).Should(ContainSubstring(
-		// `Delete-protection has been activated on this cluster and it cannot be deleted until delete-protection is disabled`))
+				By("Disable delete protection on the cluster")
+				deleteProtection = "Disabled"
+				_, err = clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=false",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
 
-		// 	By("Disable delete protection on the cluster")
-		// 	deleteProtection = "Disabled"
-		// 	_, err = clusterService.EditCluster(clusterID,
-		// 		"--enable-delete-protection=false",
-		// 		"-y",
-		// 	)
-		// 	Expect(err).ToNot(HaveOccurred())
+				By("Check the disable result from cluster description")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
 
-		// 	By("Check the disable result from cluster description")
-		// 	output, err = clusterService.DescribeCluster(clusterID)
-		// 	Expect(err).ToNot(HaveOccurred())
-
-		// 	clusterDetail, err = clusterService.ReflectClusterDescription(output)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// 	Expect(clusterDetail.EnableDeleteProtection).To(Equal(deleteProtection))
-		// })
+				clusterDetail, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDetail.EnableDeleteProtection).To(Equal(deleteProtection))
+			})
 	})
 
 var _ = Describe("Classic cluster creation validation",

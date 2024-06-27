@@ -167,18 +167,14 @@ var _ = Describe("Create machinepool",
 				accountRoleList, _, err := ocmResourceService.ListAccountRole()
 				Expect(err).To(BeNil())
 				classicInstallerRoleArn := accountRoleList.InstallerRole(accountRolePrefix, false).RoleArn
-				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypesByRegion(
+				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypes(
 					"--region", region, "--role-arn", classicInstallerRoleArn)
-
-				if err != nil {
-					log.Logger.Errorf("Failed to fetch instance types: %v", err)
-				} else {
-					var availableMachineTypesIDs []string
-					for _, it := range availableMachineTypes.InstanceTypesList {
-						availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
-					}
-					Expect(availableMachineTypesIDs).To(ContainElements(typesList))
+				Expect(err).To(BeNil())
+				var availableMachineTypesIDs []string
+				for _, it := range availableMachineTypes.InstanceTypesList {
+					availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
 				}
+				Expect(availableMachineTypesIDs).To(ContainElements(typesList))
 			})
 
 		It("can create spot machinepool - [id:43251]",
