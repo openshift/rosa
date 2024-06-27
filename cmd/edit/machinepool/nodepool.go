@@ -210,6 +210,9 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 				Help:     cmd.Flags().Lookup("node-drain-grace-period").Usage,
 				Default:  nodeDrainGracePeriod,
 				Required: false,
+				Validators: []interactive.Validator{
+					machinepools.ValidateNodeDrainGracePeriod,
+				},
 			})
 			if err != nil {
 				return fmt.Errorf("Expected a valid value for Node drain grace period: %s", err)
