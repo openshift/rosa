@@ -36,7 +36,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 
 	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
 	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet ||
-		isKubeletConfigSet
+		isKubeletConfigSet || isUpgradeMaxSurgeSet || isUpgradeMaxUnavailableSet
 	isAnyParameterSet := isMinReplicasSet || isMaxReplicasSet || isReplicasSet ||
 		isAutoscalingSet || isAnyAdditionalParameterSet
 
@@ -225,7 +225,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		}
 	}
 
-	if isUpgradeMaxSurgeSet && isUpgradeMaxUnavailableSet && interactive.Enabled() {
+	if isUpgradeMaxSurgeSet && isUpgradeMaxUnavailableSet {
 		maxSurge := args.maxSurge
 		if maxSurge == "" && nodePool.ManagementUpgrade().MaxSurge() != "" {
 			maxSurge = nodePool.ManagementUpgrade().MaxSurge()
