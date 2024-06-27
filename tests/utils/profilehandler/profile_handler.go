@@ -891,7 +891,7 @@ func DestroyPreparedUserData(client *rosacli.Client,
 			}
 		}
 		// delete oidc config
-		if oidcConfig != "" {
+		if ud.OIDCConfigID != "" {
 			log.Logger.Infof("Find prepared oidc config id: %s", ud.OIDCConfigID)
 			_, err := ocmResourceService.DeleteOIDCConfig(
 				"--oidc-config-id",

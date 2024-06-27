@@ -64,7 +64,7 @@ func GenerateRandomStringWithSymbols(length int) string {
 
 // Generate random string
 func GenerateRandomString(length int) string {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	ret := make([]byte, length)
 	for i := 0; i < length; i++ {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
@@ -85,7 +85,7 @@ func TrimNameByLength(name string, length int) string {
 	if len(name) <= length {
 		return name
 	}
-	return name[0:length]
+	return strings.TrimSuffix(name[0:length], "-")
 }
 
 func SplitMajorVersion(openshiftVersion string) string {
