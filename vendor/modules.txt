@@ -247,6 +247,11 @@ github.com/fatih/color
 # github.com/ghodss/yaml v1.0.0
 ## explicit
 github.com/ghodss/yaml
+# github.com/go-jose/go-jose/v4 v4.0.2
+## explicit; go 1.21
+github.com/go-jose/go-jose/v4
+github.com/go-jose/go-jose/v4/cipher
+github.com/go-jose/go-jose/v4/json
 # github.com/go-logr/logr v1.4.1
 ## explicit; go 1.18
 github.com/go-logr/logr
@@ -405,7 +410,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-online/ocm-common v0.0.0-20240611095658-2ad1e6fae94d
+# github.com/openshift-online/ocm-common v0.0.4
 ## explicit; go 1.21
 github.com/openshift-online/ocm-common/pkg/aws/aws_client
 github.com/openshift-online/ocm-common/pkg/aws/consts
@@ -421,7 +426,9 @@ github.com/openshift-online/ocm-common/pkg/machinepool/validations
 github.com/openshift-online/ocm-common/pkg/ocm/consts
 github.com/openshift-online/ocm-common/pkg/ocm/validations
 github.com/openshift-online/ocm-common/pkg/resource/validations
+github.com/openshift-online/ocm-common/pkg/rosa/accountroles
 github.com/openshift-online/ocm-common/pkg/rosa/oidcconfigs
+github.com/openshift-online/ocm-common/pkg/rosa/operatorroles
 github.com/openshift-online/ocm-common/pkg/test/kms_key
 github.com/openshift-online/ocm-common/pkg/test/vpc_client
 github.com/openshift-online/ocm-common/pkg/utils
@@ -520,7 +527,6 @@ golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/curve25519/internal/field
-golang.org/x/crypto/ed25519
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/pbkdf2
@@ -626,11 +632,6 @@ google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# gopkg.in/square/go-jose.v2 v2.6.0
-## explicit
-gopkg.in/square/go-jose.v2
-gopkg.in/square/go-jose.v2/cipher
-gopkg.in/square/go-jose.v2/json
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
