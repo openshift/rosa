@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestIdp(t *testing.T) {
+func TestCreateMachinePool(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "MachinePool Suite")
+	RunSpecs(t, "Create machine pool suite")
 }

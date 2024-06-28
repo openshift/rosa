@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper/features"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 )
@@ -111,7 +112,9 @@ var _ = Describe("Machine pool helper", func() {
 	})
 
 	Context("getSubnetFromUser", func() {
-		var r *rosa.Runtime
+		r := &rosa.Runtime{}
+		args := &mpOpts.CreateMachinepoolUserOptions{}
+		cmd := &cobra.Command{}
 		mockClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
 			c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
@@ -120,8 +123,10 @@ var _ = Describe("Machine pool helper", func() {
 			c.ExternalAuthConfig(cmv1.NewExternalAuthConfig().Enabled(true))
 		})
 		It("Should return the subnet if it's set", func() {
-			Cmd.Flags().Set("subnet", "test-subnet")
-			output := getSubnetFromUser(Cmd, r, true, mockClusterReady)
+			cmd.Flags().StringVar(&args.Subnet, "subnet", "", "")
+			cmd.Flags().Set("subnet", "test-subnet")
+			output, err := getSubnetFromUser(cmd, r, true, mockClusterReady, args)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal("test-subnet"))
 		})
 	})
