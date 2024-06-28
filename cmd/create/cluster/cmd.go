@@ -85,6 +85,10 @@ const (
 
 	// nolint:lll
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
+
+	duplicateIamRoleArnErrorMsg = "ROSA IAM roles must have unique ARNs " +
+		"and should not be shared with other IAM roles within the same cluster. " +
+		"Duplicated ARN: %s"
 )
 
 var args struct {
@@ -1807,6 +1811,11 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 			}
+		}
+		err = validateUniqueIamRoleArnsForStsCluster(roleARNs, computedOperatorIamRoleList)
+		if err != nil {
+			r.Reporter.Errorf(err.Error())
+			os.Exit(1)
 		}
 	}
 
@@ -4176,4 +4185,19 @@ func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 
 func clusterHasLongNameWithoutDomainPrefix(clusterName, domainPrefix string) bool {
 	return domainPrefix == "" && len(clusterName) > ocm.MaxClusterDomainPrefixLength
+}
+
+func validateUniqueIamRoleArnsForStsCluster(accountRoles []string, operatorRoles []ocm.OperatorIAMRole) error {
+	tempRoleList := []string{}
+	tempRoleList = append(tempRoleList, accountRoles...)
+
+	for _, role := range operatorRoles {
+		tempRoleList = append(tempRoleList, role.RoleARN)
+	}
+	duplicate, found := aws.HasDuplicates(tempRoleList)
+	if found {
+		return fmt.Errorf(duplicateIamRoleArnErrorMsg, duplicate)
+	}
+
+	return nil
 }
