@@ -18,6 +18,7 @@ type TestConfig struct {
 	// Env is the OpenShift Cluster Management environment used to provision clusters.
 	ENV               string `env:"OCM_LOGIN_ENV" default:""`
 	TestProfile       string `env:"TEST_PROFILE" default:""`
+	ResourcesDir      string `env:"RESOURCES_DIR" default:""`
 	OutputDir         string `env:"OUTPUT_DIR" default:""`
 	YAMLProfilesDir   string `env:"TEST_PROFILE_DIR" default:""`
 	RootDir           string `env:"WORKSPACE" default:""`
@@ -62,6 +63,8 @@ func init() {
 		path.Join(Test.RootDir, "tests", "ci", "data", "profiles"))
 	Test.OutputDir = common.ReadENVWithDefaultValue("SHARED_DIR",
 		path.Join(Test.RootDir, "tests", "output", Test.TestProfile))
+	Test.ResourcesDir = common.ReadENVWithDefaultValue("RESOURCES_DIR",
+		path.Join(Test.RootDir, "tests", "ci", "data", "resources"))
 	Test.ArtifactDir = common.ReadENVWithDefaultValue("ARTIFACT_DIR", Test.OutputDir)
 	err := os.MkdirAll(Test.OutputDir, 0777)
 	if err != nil {
