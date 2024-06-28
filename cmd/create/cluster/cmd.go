@@ -217,6 +217,9 @@ var args struct {
 
 	// Control Plane machine pool attributes
 	additionalControlPlaneSecurityGroupIds []string
+
+	// Multi arch enabled
+	multiArchEnabled bool
 }
 
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
@@ -839,6 +842,14 @@ func initFlags(cmd *cobra.Command) {
 			listInputMessage,
 	)
 
+	flags.BoolVar(
+		&args.multiArchEnabled,
+		"multi-arch-enabled",
+		false,
+		"Enable workers in arm64 architecture for Hosted Control Plane clusters.",
+	)
+	flags.MarkHidden("multi-arch-enabled")
+
 	interactive.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
 	output.AddFlag(cmd)
@@ -1189,6 +1200,14 @@ func run(cmd *cobra.Command, _ []string) {
 	if externalAuthProvidersEnabled {
 		if !isHostedCP {
 			r.Reporter.Errorf("External authentication configuration is only supported for a Hosted Control Plane cluster.")
+			os.Exit(1)
+		}
+	}
+
+	multiArchEnabled := args.multiArchEnabled
+	if multiArchEnabled {
+		if !isHostedCP {
+			r.Reporter.Errorf("Workers in arm64 architecture are only supported for a Hosted Control Plane cluster.")
 			os.Exit(1)
 		}
 	}
@@ -3137,6 +3156,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AdditionalInfraSecurityGroupIds:        additionalInfraSecurityGroupIds,
 		AdditionalControlPlaneSecurityGroupIds: additionalControlPlaneSecurityGroupIds,
 		AdditionalAllowedPrincipals:            additionalAllowedPrincipals,
+		MultiArchEnabled:                       multiArchEnabled,
 	}
 
 	if httpTokens != "" {
@@ -3936,6 +3956,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if len(spec.AdditionalAllowedPrincipals) > 0 {
 		command += fmt.Sprintf(" --additional-allowed-principals %s",
 			strings.Join(spec.AdditionalAllowedPrincipals, ","))
+	}
+
+	if spec.MultiArchEnabled {
+		command += " --multi-arch-enabled"
 	}
 
 	for _, p := range properties {

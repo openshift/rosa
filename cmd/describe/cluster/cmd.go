@@ -489,6 +489,8 @@ func run(cmd *cobra.Command, argv []string) {
 				"Additional Principals:      %s\n", str,
 				strings.Join(cluster.AWS().AdditionalAllowedPrincipals(), ","))
 		}
+		str = fmt.Sprintf("%s"+
+			"Multi Architecture Workers: %s\n", str, getMultiArchEnabledStatus(cluster))
 	}
 
 	if cluster.Status().State() == cmv1.ClusterStateError {
@@ -837,6 +839,14 @@ func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {
 		externalAuthConfigStatus = EnabledOutput
 	}
 	return externalAuthConfigStatus
+}
+
+func getMultiArchEnabledStatus(cluster *cmv1.Cluster) string {
+	multiArchEnabledStatus := DisabledOutput
+	if cluster.MultiArchEnabled() {
+		multiArchEnabledStatus = EnabledOutput
+	}
+	return multiArchEnabledStatus
 }
 
 func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.PolicyDetail,
