@@ -174,6 +174,9 @@ type Spec struct {
 
 	// Control Plane Machine Pool attributes
 	AdditionalControlPlaneSecurityGroupIds []string
+
+	// Workers with arm64 architecture
+	MultiArchEnabled bool
 }
 
 // Volume represents a volume property for a disk
@@ -1063,6 +1066,10 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	if config.AutoscalerConfig != nil {
 		clusterBuilder.Autoscaler(BuildClusterAutoscaler(config.AutoscalerConfig))
+	}
+
+	if config.MultiArchEnabled {
+		clusterBuilder.MultiArchEnabled(config.MultiArchEnabled)
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
