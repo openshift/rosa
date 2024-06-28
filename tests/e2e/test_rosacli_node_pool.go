@@ -1098,4 +1098,446 @@ var _ = Describe("Edit nodepool",
 					To(ContainSubstring(
 						"ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key value'"))
 			})
+
+		It("create/edit/describe maxunavailable/maxsurge for HCP nodepools - [id:74387]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				By("Retrieve help for create/edit machinepool")
+				output, err := machinePoolService.RetrieveHelpForCreate()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("--max-surge"))
+				Expect(output.String()).To(ContainSubstring("--max-unavailable"))
+
+				output, err = machinePoolService.RetrieveHelpForEdit()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("--max-surge"))
+				Expect(output.String()).To(ContainSubstring("--max-unavailable"))
+
+				reqBody := []map[string]string{
+					{
+						"max surge":       "5%",
+						"max unavailable": "10%",
+					},
+					{
+						"max surge":       "3",
+						"max unavailable": "2",
+					},
+					{
+						"max surge":       "",
+						"max unavailable": "",
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "10%",
+					},
+					{
+						"max surge":       "10%",
+						"max unavailable": "0%",
+					},
+					{
+						"max surge":       "100%",
+						"max unavailable": "10%",
+					},
+					{
+						"max surge":       "10%",
+						"max unavailable": "100%",
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1",
+					},
+					{
+						"max surge":       "1",
+						"max unavailable": "0",
+					},
+				}
+
+				for _, flags := range reqBody {
+
+					By("Create nodepool with max-surge/max-unavailable set with different values")
+					machinePoolName := common.GenerateRandomName("ocp-74387", 2)
+					output, err = machinePoolService.CreateMachinePool(
+						clusterID,
+						machinePoolName,
+						"--replicas", "3",
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).ToNot(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"Machine pool '%s' created successfully on hosted cluster '%s'",
+							machinePoolName,
+							clusterID))
+
+					By("Describe the nodepool to see max surge and max unavailable is set correctly")
+					res, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(res.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+					if flags["max surge"] == "" && flags["max unavailable"] == "" {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).To(Equal("1"))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).To(Equal("0"))
+					} else {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).To(Equal(flags["max surge"]))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).To(Equal(flags["max unavailable"]))
+					}
+				}
+
+				By("Get a nodepool to edit")
+				res, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.NodePools).ToNot(BeNil())
+				var machinePoolName string
+				for _, nodepool := range res.NodePools {
+					if !strings.Contains(nodepool.ID, "workers") {
+						machinePoolName = nodepool.ID
+						break
+					}
+				}
+
+				for _, flags := range reqBody {
+
+					By("Describe the nodepool to see max surge and max unavailable prev value")
+					out, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Edit nodepool with max-surge/max-unavailable set with different values")
+					output, err = machinePoolService.EditMachinePool(
+						clusterID,
+						machinePoolName,
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).ToNot(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"Updated machine pool '%s' on hosted cluster '%s'",
+							machinePoolName,
+							clusterID))
+
+					By("Describe the nodepool to see max surge and max unavailable is set correctly")
+					res, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(res.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+					if flags["max surge"] == "" && flags["max unavailable"] == "" {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).
+							To(
+								Equal(out.ManagementUpgrade[1]["Max surge"]))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).
+							To(
+								Equal(out.ManagementUpgrade[2]["Max unavailable"]))
+					} else {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).
+							To(
+								Equal(flags["max surge"]))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).
+							To(
+								Equal(flags["max unavailable"]))
+					}
+				}
+			})
+
+		It("validation for create/edit HCP nodepool with maxunavailable/maxsurge - [id:74430]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				rangeofNumbers := "must be between 0 and 100"
+				parseMsg := "machine pool to hosted cluster '%s': Failed to parse percentage "
+				attributeMsg := "machine pool to hosted cluster '%s': The value of attribute "
+				bothMsg := "'management_upgrade.max_unavailable' and 'management_upgrade.max_surge' "
+				eitherMsg := "'management_upgrade.max_unavailable' or 'management_upgrade.max_surge', "
+				createFailMsg := "ERR: Failed to add "
+				zeroMsg := "could be zero, not both"
+				sameUnitMsg := "must both use the same units (absolute value or percentage)"
+				integerMsg := "'1.1' to integer"
+
+				reqCreateBody := []map[string]string{
+					{
+						"max surge":       "0",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "1%",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "-1",
+						"max unavailable": "1",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' cannot be a negative integer",
+							clusterID),
+					},
+					{
+						"max surge":       "1",
+						"max unavailable": "-1",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' cannot be a negative integer",
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "-1%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value -1 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "-1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value -1 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "101%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value 101 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "101%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value 101 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "1.1%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Error converting "+
+							integerMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "1.1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Error converting "+
+							integerMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "1.1",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' must be an integer",
+							clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1.1",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' must be an integer",
+							clusterID),
+					},
+				}
+
+				for _, flags := range reqCreateBody {
+
+					By("Create nodepool with max-surge/max-unavailable set with different inavlid values")
+					machinePoolName := common.GenerateRandomName("ocp-74387", 2)
+					output, err := machinePoolService.CreateMachinePool(
+						clusterID,
+						machinePoolName,
+						"--replicas", "3",
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).To(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(flags["errMsg"]))
+				}
+
+				By("Create a nodepool to check edit validation")
+				machinePoolName := common.GenerateRandomName("ocp-74430", 2)
+				res, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "3")
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, machinePoolName)
+				Expect(rosaClient.Parser.TextData.Input(res).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePoolName,
+						clusterID))
+
+				parseMsg = "machine pool '%s' on hosted cluster '%s': Failed to parse percentage "
+				attributeMsg = "machine pool '%s' on hosted cluster '%s': The value of attribute "
+				editFailMsg := "ERR: Failed to update "
+				reqEditBody := []map[string]string{
+					{
+						"max surge":       "0",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1%",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "-1",
+						"max unavailable": "1",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' cannot be a negative integer",
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1",
+						"max unavailable": "-1",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' cannot be a negative integer",
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "-1%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value -1 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "-1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value -1 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "101%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value 101 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "101%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value 101 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "1.1%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Error converting "+
+							integerMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1.1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Error converting "+
+							integerMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1.1",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' must be an integer",
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1.1",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' must be an integer",
+							machinePoolName, clusterID),
+					},
+				}
+
+				for _, flags := range reqEditBody {
+
+					By("Edit nodepool with max-surge/max-unavailable set with different invalid values")
+					output, err := machinePoolService.EditMachinePool(
+						clusterID,
+						machinePoolName,
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).To(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(flags["errMsg"]))
+				}
+			})
 	})
