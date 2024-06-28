@@ -50,7 +50,7 @@ var _ = Describe("ROSA CLI Test", func() {
 	})
 	Describe("ocm-common test", func() {
 		It("VPCClientTesting", func() {
-			vpcClient, err := profilehandler.PrepareVPC("us-east-1", "xueli-test", "10.0.0.0/16")
+			vpcClient, err := profilehandler.PrepareVPC("us-east-1", "xueli-test", "10.0.0.0/16", "")
 			Expect(err).ToNot(HaveOccurred())
 			defer vpcClient.DeleteVPCChain(true)
 			subnets, err := profilehandler.PrepareSubnets(vpcClient, "us-east-1", []string{}, true)

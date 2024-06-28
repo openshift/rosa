@@ -71,6 +71,9 @@ type OCMResourceService interface {
 	CreateOIDCProvider(flags ...string) (bytes.Buffer, error)
 	DeleteOIDCProvider(flags ...string) (bytes.Buffer, error)
 
+	CreateDNSDomain(flags ...string) (bytes.Buffer, error)
+	DeleteDNSDomain(flags ...string) (bytes.Buffer, error)
+
 	Token(flags ...string) (bytes.Buffer, error)
 
 	UpgradeRoles(flags ...string) (bytes.Buffer, error)
@@ -681,6 +684,20 @@ func (ors *ocmResourceService) DeleteOIDCProvider(flags ...string) (bytes.Buffer
 	deleteOIDCProvider := ors.client.Runner
 	deleteOIDCProvider = deleteOIDCProvider.Cmd("delete", "oidc-provider").CmdFlags(flags...)
 	return deleteOIDCProvider.Run()
+}
+
+// run `rosa create dns-domain` command
+func (ors *ocmResourceService) CreateDNSDomain(flags ...string) (bytes.Buffer, error) {
+	createDNSDomain := ors.client.Runner
+	createDNSDomain = createDNSDomain.Cmd("create", "dns-domain").CmdFlags(flags...)
+	return createDNSDomain.Run()
+}
+
+// run `rosa delete dns-domain` command
+func (ors *ocmResourceService) DeleteDNSDomain(flags ...string) (bytes.Buffer, error) {
+	deleteDNSDomain := ors.client.Runner
+	deleteDNSDomain = deleteDNSDomain.Cmd("delete", "dns-domain").CmdFlags(flags...)
+	return deleteDNSDomain.Run()
 }
 
 func (ors *ocmResourceService) CleanResources(clusterID string) (errors []error) {

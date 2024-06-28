@@ -350,6 +350,12 @@ var _ = Describe("Validation testing",
 			By("Delete the testing role")
 			if len(testingRolesToClean) > 0 {
 				for _, roleName := range testingRolesToClean {
+					attachedPolicy, err := awsClient.ListRoleAttachedPolicies(roleName)
+					Expect(err).To(BeNil())
+					if len(attachedPolicy) > 0 {
+						err = awsClient.DetachRolePolicies(roleName)
+						Expect(err).To(BeNil())
+					}
 					err = awsClient.DeleteRole(roleName)
 					Expect(err).To(BeNil())
 				}
@@ -364,18 +370,25 @@ var _ = Describe("Validation testing",
 				}
 				By("Prepare a role wihtout red-hat-managed=true label for testing")
 				notRHManagedRoleName := fmt.Sprintf("ocmqe-role-%s", common.GenerateRandomString(3))
-				_, err := awsClient.CreateRegularRole(notRHManagedRoleName)
+
+				statement := map[string]interface{}{
+					"Effect":   "Allow",
+					"Action":   "*",
+					"Resource": "*",
+				}
+				notRHManagedRolePolicy, err := awsClient.CreatePolicy(
+					fmt.Sprintf("%s-policy", notRHManagedRoleName),
+					statement,
+				)
+				Expect(err).To(BeNil())
+				_, err = awsClient.CreateRegularRole(notRHManagedRoleName, notRHManagedRolePolicy)
 				Expect(err).To(BeNil())
 				testingRolesToClean = append(testingRolesToClean, notRHManagedRoleName)
 
 				By("Prepare 10 arbitrary policies for testing")
 				awsClient, err = aws_client.CreateAWSClient("", "")
 				Expect(err).To(BeNil())
-				statement := map[string]interface{}{
-					"Effect":   "Allow",
-					"Action":   "*",
-					"Resource": "*",
-				}
+
 				for i := 0; i < 10; i++ {
 					arn, err := awsClient.CreatePolicy(
 						fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
@@ -383,114 +396,97 @@ var _ = Describe("Validation testing",
 					)
 					Expect(err).To(BeNil())
 					arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
-
-					By("Prepare 10 arbitrary policies for testing")
-					awsClient, err = aws_client.CreateAWSClient("", "")
-					Expect(err).To(BeNil())
-					statement := map[string]interface{}{
-						"Effect":   "Allow",
-						"Action":   "*",
-						"Resource": "*",
-					}
-					for i := 0; i < 10; i++ {
-						arn, err := awsClient.CreatePolicy(
-							fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
-							statement,
-						)
-						Expect(err).To(BeNil())
-						arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
-					}
-
-					By("Get one managed role for testing,using support role in this case")
-					output, err := clusterService.DescribeCluster(clusterID)
-					Expect(err).To(BeNil())
-					CD, err := clusterService.ReflectClusterDescription(output)
-					Expect(err).To(BeNil())
-					supportRoleARN := CD.SupportRoleARN
-					_, supportRoleName, err := common.ParseRoleARN(supportRoleARN)
-					Expect(err).To(BeNil())
-
-					By("policy arn with invalid format when attach")
-					policyArnsWithOneInValidFormat := []string{
-						"arn:aws:polict:invalidformat",
-						arbitraryPoliciesToClean[0],
-						arbitraryPoliciesToClean[1],
-					}
-					out, err := arbitraryPolicyService.AttachPolicy(
-						supportRoleName,
-						policyArnsWithOneInValidFormat,
-						"--mode", "auto",
-					)
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("Invalid policy arn"))
-
-					By("not-existed policies arn when attach")
-					policyArnsWithNotExistedOne := []string{
-						"arn:aws:iam::123456789012:policy/ocmqe-arpolicy-rta-0",
-						arbitraryPoliciesToClean[0],
-						arbitraryPoliciesToClean[1],
-					}
-					out, err = arbitraryPolicyService.AttachPolicy(
-						supportRoleName,
-						policyArnsWithNotExistedOne,
-						"--mode", "auto",
-					)
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("not found"))
-
-					By("not-existed role name when attach")
-					notExistedRoleName := "notExistedRoleName"
-					policyArns := []string{
-						arbitraryPoliciesToClean[0],
-						arbitraryPoliciesToClean[1],
-					}
-					out, err = arbitraryPolicyService.AttachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("role with name %s cannot be found", notExistedRoleName))
-
-					By("number of the attaching policies exceed the quote (L-0DA4ABF3) when attach")
-					policyArnsWithTen := arbitraryPoliciesToClean[0:10]
-					out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithTen, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("Failed to attach policies due to quota limitations (total limit: 10"))
-
-					By("role has no red-hat-managed=true tag when attach")
-					out, err = arbitraryPolicyService.AttachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("Cannot attach/detach policies to non-ROSA roles"))
-
-					By("empry string in the policy-arn when attach")
-					policyArnsWithEmptyString := []string{""}
-					out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("expected a valid policy"))
-
-					By("policy arn with invalid format when detach")
-
-					out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithOneInValidFormat, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("Invalid policy arn"))
-
-					By("not-existed policies arn when detach")
-					out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithNotExistedOne, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("not found"))
-
-					By("not-existed role name when detach")
-					out, err = arbitraryPolicyService.DetachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("role with name %s cannot be found", notExistedRoleName))
-
-					By("role has no red-hat-managed=true tag when detach")
-					out, err = arbitraryPolicyService.DetachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("Cannot attach/detach policies to non-ROSA roles"))
-
-					By("empry string in the policy-arn when detach")
-					out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
-					Expect(err).NotTo(BeNil())
-					Expect(out.String()).To(ContainSubstring("expected a valid policy"))
 				}
+
+				By("Get one managed role for testing,using support role in this case")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				supportRoleARN := CD.SupportRoleARN
+				_, supportRoleName, err := common.ParseRoleARN(supportRoleARN)
+				Expect(err).To(BeNil())
+
+				By("policy arn with invalid format when attach")
+				policyArnsWithOneInValidFormat := []string{
+					"arn:aws:polict:invalidformat",
+					arbitraryPoliciesToClean[0],
+					arbitraryPoliciesToClean[1],
+				}
+				out, err := arbitraryPolicyService.AttachPolicy(
+					supportRoleName,
+					policyArnsWithOneInValidFormat,
+					"--mode", "auto",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("Invalid policy arn"))
+
+				By("not-existed policies arn when attach")
+				policyArnsWithNotExistedOne := []string{
+					"arn:aws:iam::123456789012:policy/ocmqe-arpolicy-rta-0",
+					arbitraryPoliciesToClean[0],
+					arbitraryPoliciesToClean[1],
+				}
+				out, err = arbitraryPolicyService.AttachPolicy(
+					supportRoleName,
+					policyArnsWithNotExistedOne,
+					"--mode", "auto",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("not found"))
+
+				By("not-existed role name when attach")
+				notExistedRoleName := "notExistedRoleName"
+				policyArns := []string{
+					arbitraryPoliciesToClean[0],
+					arbitraryPoliciesToClean[1],
+				}
+				out, err = arbitraryPolicyService.AttachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("role with name %s cannot be found", notExistedRoleName))
+
+				By("number of the attaching policies exceed the quote (L-0DA4ABF3) when attach")
+				policyArnsWithTen := arbitraryPoliciesToClean[0:10]
+				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithTen, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("Failed to attach policies due to quota limitations (total limit: 10"))
+
+				By("role has no red-hat-managed=true tag when attach")
+				out, err = arbitraryPolicyService.AttachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("Cannot attach/detach policies to non-ROSA roles"))
+
+				By("empry string in the policy-arn when attach")
+				policyArnsWithEmptyString := []string{""}
+				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("expected a valid policy"))
+
+				By("policy arn with invalid format when detach")
+
+				out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithOneInValidFormat, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("Invalid policy arn"))
+
+				By("not-existed policies arn when detach")
+				out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithNotExistedOne, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("not found"))
+
+				By("not-existed role name when detach")
+				out, err = arbitraryPolicyService.DetachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("role with name %s cannot be found", notExistedRoleName))
+
+				By("role has no red-hat-managed=true tag when detach")
+				out, err = arbitraryPolicyService.DetachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("Cannot attach/detach policies to non-ROSA roles"))
+
+				By("empry string in the policy-arn when detach")
+				out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("expected a valid policy"))
 			})
 	})
 

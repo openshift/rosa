@@ -25,3 +25,39 @@ func DeleteAuditLogRoleArn(arn string, region string) error {
 	}
 	return awsClent.DeleteRoleAndPolicy(arn, false)
 }
+
+func DeleteHostedZone(hostedZoneID string, region string, awsSharedCredentialFile string) error {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return err
+	}
+	return awsClient.DeleteHostedZone(hostedZoneID)
+}
+
+func DeleteSharedVPCRole(sharedVPCRoleName string, managedPolicy bool, region string,
+	awsSharedCredentialFile string) error {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return err
+	}
+
+	err = awsClient.DeleteRoleAndPolicy(sharedVPCRoleName, managedPolicy)
+	return err
+}
+
+func DeleteSharedVPCChain(vpcID string, region string, awsSharedCredentialFile string) error {
+	vpcClient, err := vpc_client.GenerateVPCByID(vpcID, region, awsSharedCredentialFile)
+	if err != nil {
+		return err
+	}
+	return vpcClient.DeleteVPCChain(true)
+}
+
+func DeleteResourceShare(resourceShareArn string, region string, awsSharedCredentialFile string) error {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return err
+	}
+
+	return awsClient.DeleteResourceShare(resourceShareArn)
+}

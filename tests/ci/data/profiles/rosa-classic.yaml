@@ -69,7 +69,7 @@ profiles:
   account-role:
     path: "/test/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
-- as: rosa-shared-vpc # TODO it is not supported right now.
+- as: rosa-shared-vpc
   version: latest
   channel_group: candidate
   region: "us-east-1"
@@ -83,22 +83,22 @@ profiles:
     private: false
     etcd_encryption: true
     fips: true
-    autoscale: false
+    autoscale: true
     kms_key: true
     networking: false
-    proxy_enabled: true
-    label_enabled: true
-    tag_enabled: true
+    proxy_enabled: false
+    label_enabled: false
+    tag_enabled: false
     zones: ""
     imdsv2: "required"
     shared_vpc: true
     oidc_config: managed
     admin_enabled: false
     volume_size: 512
-    autoscaler_enabled: true
+    autoscaler_enabled: false
     disable_uwm: true
-    additional_sg_number: 1
-    long_name: true
+    additional_sg_number: 0
+    long_name: false
   account-role:
     path: ""
     permission_boundary: ""  
