@@ -57,7 +57,7 @@ type MachinePool struct {
 	Labels           string `json:"LABELS,omitempty"`
 	Taints           string `json:"TAINTS,omitempty"`
 	AvalaiblityZones string `json:"AVAILABILITY ZONES,omitempty"`
-	Subnets          string `json:"SUBNETS,omitempty"`
+	Subnets          string `json:"SUBNET,omitempty"`
 	SpotInstances    string `json:"SPOT INSTANCES,omitempty"`
 	SecurityGroupIDs string `json:"SG IDs,omitempty"`
 }

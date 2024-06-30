@@ -79,7 +79,7 @@ var _ = Describe("Edit IDP User",
 					Should(ContainSubstring(
 						"Granted role '%s' to user '%s' on cluster '%s'",
 						dedicatedAdminsGroupName,
-						dedicatedAdminsGroupName,
+						dedicatedAdminsUserName,
 						clusterID))
 
 				By("Grant cluster-admins user")

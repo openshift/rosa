@@ -287,6 +287,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						clusterConfig, err := config.ParseClusterProfile()
 						Expect(err).ToNot(HaveOccurred())
 
+						hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+
+						if hostedCluster {
+							SkipNotClassic()
+						}
+
 						if clusterConfig.Autoscaler != nil {
 							Skip("autoscaler should not be enabled for 67348")
 						}
