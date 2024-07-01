@@ -43,7 +43,7 @@ type AutoScalerDescription struct {
 
 type Autoscaler struct {
 	LogVerbosity                int                       `yaml:"log_verbosity,omitempty"`
-	BalancingIgnoredLabels      string                    `yaml:"balancing_ignored_labels,omitempty"`
+	BalancingIgnoredLabels      []string                  `yaml:"balancing_ignored_labels,omitempty"`
 	BalanceSimilarNodeGroups    bool                      `yaml:"balance_similar_node_groups,omitempty"`
 	MaxNodeProvisionTime        string                    `yaml:"max_node_provision_time,omitempty"`
 	MaxPodGracePeriod           int                       `yaml:"max_pod_grace_period,omitempty"`
