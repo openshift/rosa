@@ -201,6 +201,50 @@ var _ = Describe("Edit default ingress",
 				ingress, _ = defaultIngress(*ingressList)
 				Expect(ingress.LBType).Should(ContainSubstring(ingress.LBType))
 			})
+
+		It("can customize ingress controller at install - [id:65798]",
+			labels.High,
+			labels.Runtime.Day1Post,
+			func() {
+				By("Skip testing if the cluster is not a Classic cluster")
+				if isHosted {
+					SkipNotClassic()
+				}
+
+				By("Check that the ingress was customized at install")
+				profile := ph.LoadProfileYamlFileByENV()
+				if !profile.ClusterConfig.IngressCustomized {
+					Skip("The ingress must be customized at install")
+				}
+
+				By("Get the expected ingress config")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+				ingressConfig := clusterConfig.IngressConfig
+				output, err := ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Get actual default ingress config")
+				ingressList, err := ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				defaultIngress := func(ingressList rosacli.IngressList) (*rosacli.Ingress, bool) {
+					for _, ingress := range ingressList.Ingresses {
+						if ingress.Default == YES {
+							return ingress, true
+						}
+					}
+					return nil, false
+				}
+
+				By("Check that the actual ingress config matches what was specified at install")
+				ingress, _ := defaultIngress(*ingressList)
+				Expect(ingress).NotTo(BeNil())
+				Expect(ingress.ExcludeNamespace).To(Equal(ingressConfig.DefaultIngressExcludedNamespaces))
+				Expect(ingress.RouteSelectors).To(Equal(ingressConfig.DefaultIngressRouteSelector))
+				Expect(ingress.NamespaceOwnershipPolicy).To(Equal(ingressConfig.DefaultIngressNamespaceOwnershipPolicy))
+				Expect(ingress.WildcardPolicy).To(Equal(ingressConfig.DefaultIngressWildcardPolicy))
+			})
+
 		It("can update ingress controller attributes - [id:65799]",
 			labels.Critical,
 			labels.Runtime.Day2,
