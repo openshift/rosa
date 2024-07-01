@@ -15,6 +15,14 @@ import (
 	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
+func validateIDPOutput(textData string, clusterID string, idpName string) {
+	Expect(textData).Should(ContainSubstring("Configuring IDP for cluster '%s'", clusterID))
+	Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpName))
+	Expect(textData).Should(ContainSubstring("To log in to the console, open"))
+	Expect(textData).Should(ContainSubstring("and click on '%s'", idpName))
+
+}
+
 var _ = Describe("Edit IDP",
 	labels.Feature.IDP,
 	func() {
@@ -330,9 +338,7 @@ var _ = Describe("Edit IDP",
 					"-y")
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
-				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[0]))
+				validateIDPOutput(textData, clusterID, idpNames[0])
 
 				By("Create one htpasswd idp with single users")
 				multipleuserPasswd, err = common.GenerateMultipleHtpasswdPairs(2)
@@ -344,9 +350,7 @@ var _ = Describe("Edit IDP",
 					"-y")
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
-				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[1]))
+				validateIDPOutput(textData, clusterID, idpNames[1])
 
 				By("Create one htpasswd idp with multiple users from the file")
 				multipleuserPasswd, err = common.GenerateMultipleHtpasswdPairs(3)
@@ -361,9 +365,7 @@ var _ = Describe("Edit IDP",
 					"-y")
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[2]))
-				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[2]))
+				validateIDPOutput(textData, clusterID, idpNames[2])
 
 				By("List IDP")
 				idpTab, _, err := idpService.ListIDP(clusterID)
@@ -400,9 +402,7 @@ var _ = Describe("Edit IDP",
 					"-y")
 				Expect(err).To(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
-				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[0]))
+				validateIDPOutput(textData, clusterID, idpNames[0])
 
 				By("Try to create another htpasswd idp with single user")
 				_, validUserName, validUserPasswd, err = common.GenerateHtpasswdPair(validUserName, validUserPasswd)
@@ -415,9 +415,7 @@ var _ = Describe("Edit IDP",
 					"-y")
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
-				Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-				Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[1]))
+				validateIDPOutput(textData, clusterID, idpNames[1])
 
 				By("Delete htpasswd idp")
 				output, err = idpService.DeleteIDP(
