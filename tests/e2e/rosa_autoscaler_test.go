@@ -74,7 +74,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 							"--pod-priority-threshold", strconv.Itoa(originalAutoscaler.PodPriorityThresold),
 							"--ignore-daemonsets-utilization",
 							"--max-node-provision-time", originalAutoscaler.MaxNodeProvisionTime,
-							"--balancing-ignored-labels", originalAutoscaler.BalancingIgnoredLabels,
+							"--balancing-ignored-labels", originalAutoscaler.BalancingIgnoredLabels[0],
 							"--max-nodes-total", strconv.Itoa(originalAutoscaler.ResourcesLimits.MaxNodesTotal),
 							"--min-cores", strconv.Itoa(originalAutoscaler.ResourcesLimits.Cores.Min),
 							"--scale-down-delay-after-add", originalAutoscaler.ScaleDown.DelayAfterAdd,
@@ -147,15 +147,15 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					Expect(autoscaler.MaxPodGracePeriod).To(Equal(0))
 					Expect(autoscaler.PodPriorityThresold).To(Equal(1))
 					Expect(autoscaler.ResourcesLimits.Cores.Min).To(Equal(0))
-					Expect(autoscaler.ResourcesLimits.Cores.Min).To(Equal(100))
+					Expect(autoscaler.ResourcesLimits.Cores.Max).To(Equal(100))
 					Expect(autoscaler.ResourcesLimits.Memory.Min).To(Equal(0))
-					Expect(autoscaler.ResourcesLimits.Cores.Max).To(Equal(4096))
+					Expect(autoscaler.ResourcesLimits.Memory.Max).To(Equal(4096))
 					Expect(autoscaler.ResourcesLimits.GPUs[0].Range.Max).To(Equal(10))
 					Expect(autoscaler.ResourcesLimits.GPUs[0].Range.Min).To(Equal(0))
 					Expect(autoscaler.ResourcesLimits.GPUs[0].Type).To(Equal("nvidia.com/gpu"))
-					Expect(autoscaler.ResourcesLimits.GPUs[0].Range.Max).To(Equal(5))
-					Expect(autoscaler.ResourcesLimits.GPUs[0].Range.Min).To(Equal(1))
-					Expect(autoscaler.ResourcesLimits.GPUs[0].Type).To(Equal("amd.com/gpu"))
+					Expect(autoscaler.ResourcesLimits.GPUs[1].Range.Max).To(Equal(5))
+					Expect(autoscaler.ResourcesLimits.GPUs[1].Range.Min).To(Equal(1))
+					Expect(autoscaler.ResourcesLimits.GPUs[1].Type).To(Equal("amd.com/gpu"))
 					Expect(autoscaler.ResourcesLimits.MaxNodesTotal).To(Equal(1000))
 					Expect(autoscaler.ScaleDown.DelayAfterAdd).To(Equal("10s"))
 					Expect(autoscaler.ScaleDown.DelayAfterDelete).To(Equal("10s"))
@@ -189,6 +189,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().YamlToObj(&autoscaler)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(autoscaler.IgnoreDaemonSetsUtilization).To(Equal(true))
+				Expect(autoscaler.ResourcesLimits.Cores.Min).To(Equal(0))
 				Expect(autoscaler.ResourcesLimits.Cores.Max).To(Equal(10))
 				Expect(autoscaler.ResourcesLimits.GPUs[0].Range.Max).To(Equal(5))
 				Expect(autoscaler.ResourcesLimits.GPUs[0].Range.Min).To(Equal(1))

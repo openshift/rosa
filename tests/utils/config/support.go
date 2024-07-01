@@ -68,7 +68,7 @@ func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, out
 		return err
 	}
 
-	stdout, err := ocClient.Run(fmt.Sprintf("oc apply -f %s", resultFile))
+	stdout, err := ocClient.Run(fmt.Sprintf("envsubst < %s | oc apply -f -", resultFile))
 	time.Sleep(3 * time.Second)
 	if err != nil {
 		log.Logger.Errorf("%s", stdout)
