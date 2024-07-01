@@ -31,6 +31,7 @@ type featureLabels struct {
 	VerifyResources      Labels
 	Version              Labels
 	Upgrade              Labels
+	Config               Labels
 }
 
 var Feature = initFeatureLabels()
@@ -60,6 +61,7 @@ func initFeatureLabels() *featureLabels {
 	fLabels.VerifyResources = Label("feature-verify-resources")
 	fLabels.Version = Label("feature-version")
 	fLabels.Upgrade = Label("feature-upgrade")
+	fLabels.Config = Label("feature-config")
 
 	return fLabels
 }
