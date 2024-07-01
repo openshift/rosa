@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -61,7 +62,11 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					rosaClient.Runner.UnsetFormat()
 
 					originalAutoscaler := rosacli.Autoscaler{}
-					err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().YamlToObj(&originalAutoscaler)
+					err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().TransformOutput(func(str string) (newStr string) {
+						// Apply transformation to avoid issue with beginning of the line starting with "- "
+						newStr = strings.ReplaceAll(str, "- aaa", "  aaa")
+						return
+					}).YamlToObj(&originalAutoscaler)
 					Expect(err).ToNot(HaveOccurred())
 
 					defer func() {
@@ -186,8 +191,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				rosaClient.Runner.UnsetFormat()
 
 				autoscaler := rosacli.Autoscaler{}
-				err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().YamlToObj(&autoscaler)
+				err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().TransformOutput(func(str string) (newStr string) {
+					// Apply transformation to avoid issue with beginning of the line starting with "- "
+					newStr = strings.ReplaceAll(str, "- aaa", "  aaa")
+					return
+				}).YamlToObj(&autoscaler)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(autoscaler.BalancingIgnoredLabels).To(Equal("aaa"))
 				Expect(autoscaler.IgnoreDaemonSetsUtilization).To(Equal(true))
 				Expect(autoscaler.ResourcesLimits.Cores.Max).To(Equal(10))
 				Expect(autoscaler.ResourcesLimits.GPUs[0].Range.Max).To(Equal(5))
