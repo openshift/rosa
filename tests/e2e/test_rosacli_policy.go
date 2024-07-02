@@ -382,7 +382,6 @@ var _ = Describe("Validation testing",
 						statement,
 					)
 					Expect(err).To(BeNil())
-					testingRolesToClean = append(testingRolesToClean, notRHManagedRoleName)
 					arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
 
 					By("Prepare 10 arbitrary policies for testing")
