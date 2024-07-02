@@ -196,7 +196,7 @@ func (r *runner) Run() (bytes.Buffer, error) {
 
 		err = cmd.Run()
 
-		log.Logger.Infof("Get Combining Stdout and Stder is :\n%s", output.String())
+		log.Logger.Infof("Get Combining Stdout and Stderr is :\n%s", output.String())
 
 		if strings.Contains(output.String(), "Not able to get authentication token") {
 			retry = retry + 1
@@ -218,7 +218,7 @@ func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	cmd.Stderr = cmd.Stdout
 
 	err = cmd.Run()
-	log.Logger.Debugf("Get Combining Stdout and Stder is : %s", output.String())
+	log.Logger.Debugf("Get Combining Stdout and Stderr is : %s", output.String())
 
 	return output, err
 }

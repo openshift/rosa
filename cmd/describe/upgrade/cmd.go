@@ -133,12 +133,14 @@ func formatHypershiftUpgrade(upgrade ocm.HypershiftUpgrader) string {
 %-35s%s
 %-35s%s
 %-35s%s
+%-35s%s
 `,
 		"ID:", upgrade.ID(),
 		"Cluster ID:", upgrade.ClusterID(),
 		"Schedule Type:", upgrade.ScheduleType(),
 		"Next Run:", upgrade.NextRun().Format("2006-01-02 15:04 MST"),
-		"Upgrade State:", upgrade.State().Value()))
+		"Upgrade State:", upgrade.State().Value(),
+		"State Message:", upgrade.State().Description()))
 	if upgrade.Schedule() != "" {
 		builder = append(builder, fmt.Sprintf(`
 %-35s%s

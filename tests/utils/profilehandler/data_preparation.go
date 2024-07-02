@@ -89,7 +89,7 @@ func PreparePrefix(profilePrefix string, nameLength int) string {
 			"the nameLength for random generated. Trimed it to %s", profilePrefix, newProfilePrefix)
 		profilePrefix = newProfilePrefix
 	}
-	return common.GenerateRandomName(profilePrefix, nameLength-len(profilePrefix)-1)
+	return strings.TrimSuffix(common.GenerateRandomName(profilePrefix, nameLength-len(profilePrefix)-1), "-")
 }
 
 // PrepareVPC will prepare a single vpc

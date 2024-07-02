@@ -18,7 +18,7 @@ var _ = Describe("Describe upgrade", func() {
 	Context("Format Hypershift upgrade", func() {
 		It("Node pool upgrade is scheduled", func() {
 			nowUTC := time.Now().UTC()
-			upgradeState := cmv1.NewUpgradePolicyState().Value("scheduled")
+			upgradeState := cmv1.NewUpgradePolicyState().Value("scheduled").Description("Upgrade scheduled.")
 			npUpgradePolicy, err := cmv1.NewNodePoolUpgradePolicy().ID("id1").Version("4.12.19").
 				State(upgradeState).NextRun(nowUTC).Build()
 			Expect(err).To(BeNil())
@@ -31,6 +31,7 @@ Cluster ID:
 Schedule Type:                     
 Next Run:                          %s
 Upgrade State:                     scheduled
+State Message:                     Upgrade scheduled.
 
 Version:                           4.12.19
 `, nowUTC.Format("2006-01-02 15:04 MST"))))
@@ -38,7 +39,7 @@ Version:                           4.12.19
 		It("Node pool upgrade is scheduled with a date", func() {
 			format.TruncatedDiff = false
 			nowUTC := time.Now().UTC()
-			upgradeState := cmv1.NewUpgradePolicyState().Value("scheduled")
+			upgradeState := cmv1.NewUpgradePolicyState().Value("scheduled").Description("Upgrade scheduled.")
 			npUpgradePolicy, err := cmv1.NewNodePoolUpgradePolicy().ID("id1").Version("4.12.19").
 				State(upgradeState).NextRun(nowUTC).Schedule(nowUTC.Format("2006-01-02 15:04 MST")).
 				EnableMinorVersionUpgrades(true).Build()
@@ -52,6 +53,7 @@ Cluster ID:
 Schedule Type:                     
 Next Run:                          %s
 Upgrade State:                     scheduled
+State Message:                     Upgrade scheduled.
 
 Schedule At:                       %s
 

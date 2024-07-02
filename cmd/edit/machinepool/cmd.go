@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -180,12 +181,8 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	var err error
-	if cluster.Hypershift().Enabled() {
-		err = editNodePool(cmd, machinePoolID, clusterKey, cluster, r)
-	} else {
-		err = editMachinePool(cmd, machinePoolID, clusterKey, cluster, r)
-	}
+	service := machinepool.NewMachinePoolService()
+	err := service.EditMachinePool(cmd, machinePoolID, clusterKey, cluster, r)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)

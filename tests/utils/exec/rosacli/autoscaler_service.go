@@ -43,7 +43,7 @@ type AutoScalerDescription struct {
 
 type Autoscaler struct {
 	LogVerbosity                int                       `yaml:"log_verbosity,omitempty"`
-	BalancingIgnoredLabels      string                    `yaml:"balancing_ignored_labels,omitempty"`
+	BalancingIgnoredLabels      []string                  `yaml:"balancing_ignored_labels,omitempty"`
 	BalanceSimilarNodeGroups    bool                      `yaml:"balance_similar_node_groups,omitempty"`
 	MaxNodeProvisionTime        string                    `yaml:"max_node_provision_time,omitempty"`
 	MaxPodGracePeriod           int                       `yaml:"max_pod_grace_period,omitempty"`
@@ -91,11 +91,18 @@ func NewAutoScalerService(client *Client) AutoScalerService {
 
 // Create AutoScaler
 func (a *autoscalerService) CreateAutoScaler(clusterID string, flags ...string) (output bytes.Buffer, err error) {
-	output, err = a.client.Runner.
-		Cmd("create", "autoscaler").
-		CmdFlags(append(flags, "-c", clusterID)...).
-		Run()
-	if err == nil {
+	if clusterID == "" {
+		output, err = a.client.Runner.
+			Cmd("create", "autoscaler").
+			CmdFlags().
+			Run()
+	} else {
+		output, err = a.client.Runner.
+			Cmd("create", "autoscaler").
+			CmdFlags(append(flags, "-c", clusterID)...).
+			Run()
+	}
+	if err == nil && clusterID != "" {
 		a.created[clusterID] = true
 	}
 	return
@@ -103,10 +110,17 @@ func (a *autoscalerService) CreateAutoScaler(clusterID string, flags ...string) 
 
 // Edit AutoScaler
 func (a *autoscalerService) EditAutoScaler(clusterID string, flags ...string) (output bytes.Buffer, err error) {
-	output, err = a.client.Runner.
-		Cmd("edit", "autoscaler").
-		CmdFlags(append(flags, "-c", clusterID)...).
-		Run()
+	if clusterID == "" {
+		output, err = a.client.Runner.
+			Cmd("edit", "autoscaler").
+			CmdFlags().
+			Run()
+	} else {
+		output, err = a.client.Runner.
+			Cmd("edit", "autoscaler").
+			CmdFlags(append(flags, "-c", clusterID)...).
+			Run()
+	}
 	return
 }
 
@@ -149,12 +163,10 @@ func (a *autoscalerService) ReflectAutoScalerDescription(result bytes.Buffer) (a
 
 // Delete AutoScaler
 func (a *autoscalerService) DeleteAutoScaler(clusterID string) (output bytes.Buffer, err error) {
-	if a.created[clusterID] {
-		output, err = a.client.Runner.
-			Cmd("delete", "autoscaler").
-			CmdFlags("-c", clusterID, "-y").
-			Run()
-	}
+	output, err = a.client.Runner.
+		Cmd("delete", "autoscaler").
+		CmdFlags("-c", clusterID, "-y").
+		Run()
 	if err == nil {
 		a.created[clusterID] = false
 	}

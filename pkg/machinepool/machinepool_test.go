@@ -10,6 +10,8 @@ import (
 
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/rosa"
+	. "github.com/openshift/rosa/pkg/test"
 )
 
 var policyBuilder cmv1.NodePoolUpgradePolicyBuilder
@@ -25,6 +27,96 @@ var _ = Describe("Machinepool and nodepool", func() {
 				ClusterID("test-cluster").State(cmv1.NewUpgradePolicyState().ID("test-state").
 				Value(cmv1.UpgradePolicyStateValueScheduled)).
 				NextRun(date)
+		})
+		It("editAutoscaling should equal nil if nothing is changed", func() {
+			nodepool, err := cmv1.NewNodePool().
+				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(2).MinReplica(1)).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+			builder := editAutoscaling(nodepool, 1, 2)
+			Expect(builder).To(BeNil())
+		})
+		It("editAutoscaling should equal the exepcted output", func() {
+			nodepool, err := cmv1.NewNodePool().
+				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(2).MinReplica(1)).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+			builder := editAutoscaling(nodepool, 2, 3)
+			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(3).MinReplica(2)
+			Expect(builder).To(Equal(asBuilder))
+		})
+		It("editAutoscaling should equal the exepcted output with no min replica value", func() {
+			nodepool, err := cmv1.NewNodePool().
+				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(2).MinReplica(1)).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+			builder := editAutoscaling(nodepool, 0, 3)
+			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(3).MinReplica(1)
+			Expect(builder).To(Equal(asBuilder))
+		})
+
+		It("editAutoscaling should equal the exepcted output with no max replica value", func() {
+			nodepool, err := cmv1.NewNodePool().
+				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(1)).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+			builder := editAutoscaling(nodepool, 2, 0)
+			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(2)
+			Expect(builder).To(Equal(asBuilder))
+		})
+		Context("Prompt For NodePoolNodeRecreate", func() {
+			var mockPromptFuncInvoked bool
+			var t *TestingRuntime
+			BeforeEach(func() {
+				t = NewTestRuntime()
+				mockPromptFuncInvoked = false
+			})
+
+			invoked := func(r *rosa.Runtime) bool {
+				mockPromptFuncInvoked = true
+				return mockPromptFuncInvoked
+			}
+
+			It("Prompts when the user has deleted a kubelet-config", func() {
+
+				original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+					n.KubeletConfigs("test")
+				})
+
+				update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+					n.KubeletConfigs("")
+				})
+
+				Expect(promptForNodePoolNodeRecreate(original, update, invoked, t.RosaRuntime)).To(BeTrue())
+				Expect(mockPromptFuncInvoked).To(BeTrue())
+			})
+
+			It("Prompts when the user has changed a kubelet-config", func() {
+
+				original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+					n.KubeletConfigs("test")
+				})
+
+				update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+					n.KubeletConfigs("bar")
+				})
+
+				Expect(promptForNodePoolNodeRecreate(original, update, invoked, t.RosaRuntime)).To(BeTrue())
+				Expect(mockPromptFuncInvoked).To(BeTrue())
+			})
+
+			It("Does not prompts when the user has not changed a kubelet-config", func() {
+				original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+					n.KubeletConfigs("test")
+				})
+
+				update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+					n.KubeletConfigs("test")
+				})
+
+				Expect(promptForNodePoolNodeRecreate(original, update, invoked, t.RosaRuntime)).To(BeTrue())
+				Expect(mockPromptFuncInvoked).To(BeFalse())
+			})
 		})
 		It("Test printNodePools", func() {
 			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
@@ -92,8 +184,95 @@ var _ = Describe("Machinepool and nodepool", func() {
 			fmt.Println(out)
 			Expect(fmt.Sprint(out)).To(Equal(fmt.Sprint(expectedOutput)))
 		})
+		Context("fillAutoScalingAndReplicas", func() {
+			var npBuilder *cmv1.NodePoolBuilder
+			existingNodepool, err := cmv1.NewNodePool().
+				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(1)).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+			It("Autoscaling set", func() {
+				npBuilder = cmv1.NewNodePool()
+				fillAutoScalingAndReplicas(npBuilder, true, existingNodepool, 1, 3, 2)
+				npPatch, err := npBuilder.Build()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(npPatch.Autoscaling()).ToNot(BeNil())
+				// Default (zero) value
+				Expect(npPatch.Replicas()).To(Equal(0))
+			})
+			It("Replicas set", func() {
+				npBuilder = cmv1.NewNodePool()
+				fillAutoScalingAndReplicas(npBuilder, false, existingNodepool, 0, 0, 2)
+				npPatch, err := npBuilder.Build()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(npPatch.Autoscaling()).To(BeNil())
+				Expect(npPatch.Replicas()).To(Equal(2))
+			})
+
+		})
+		Describe("Validate management upgrade print output", func() {
+			mgmtUpgrade, _ := cmv1.NewNodePoolManagementUpgrade().MaxSurge("10").MaxUnavailable("5").Type("Replace").Build()
+			DescribeTable("Validate management upgrade print output",
+				func(upgrade *cmv1.NodePoolManagementUpgrade, expectedOutput string) {
+					output := ocmOutput.PrintNodePoolManagementUpgrade(upgrade)
+					Expect(output).To(Equal(expectedOutput))
+				},
+				Entry("Should return empty string", nil,
+					"",
+				),
+				Entry("Should return string with type, maxSurge and maxUnavailable",
+					mgmtUpgrade,
+					fmt.Sprintf("\n - Type:%38s\n - Max surge:%28s\n - Max unavailable:%21s", "Replace", "10", "5"),
+				),
+			)
+		})
 	})
 	Context("MachinePools", func() {
+		Context("editMachinePoolAutoscaling", func() {
+			It("editMachinePoolAutoscaling should equal nil if nothing is changed", func() {
+				machinepool, err := cmv1.NewMachinePool().
+					Autoscaling(cmv1.NewMachinePoolAutoscaling().MaxReplicas(2).MinReplicas(1)).
+					Build()
+				Expect(err).ToNot(HaveOccurred())
+				builder := editMachinePoolAutoscaling(machinepool, 1, 2)
+				Expect(builder).To(BeNil())
+			})
+
+			It("editMachinePoolAutoscaling should equal the exepcted output", func() {
+				machinePool, err := cmv1.NewMachinePool().
+					Autoscaling(cmv1.NewMachinePoolAutoscaling().MaxReplicas(2).MinReplicas(1)).
+					Build()
+				Expect(err).ToNot(HaveOccurred())
+				builder := editMachinePoolAutoscaling(machinePool, 2, 3)
+				asBuilder := cmv1.NewMachinePoolAutoscaling().MaxReplicas(3).MinReplicas(2)
+				Expect(builder).To(Equal(asBuilder))
+			})
+
+			It("editMachinePoolAutoscaling should allow 0 min replicas", func() {
+				machinePool, err := cmv1.NewMachinePool().
+					Autoscaling(cmv1.NewMachinePoolAutoscaling().MaxReplicas(2).MinReplicas(1)).
+					Build()
+				Expect(err).ToNot(HaveOccurred())
+				builder := editMachinePoolAutoscaling(machinePool, 0, 2)
+				asBuilder := cmv1.NewMachinePoolAutoscaling().MaxReplicas(2).MinReplicas(0)
+				Expect(builder).To(Equal(asBuilder))
+			})
+		})
+
+		Context("isMultiAZMachinePool", func() {
+			It("isMultiAZMachinePool should return true", func() {
+				machinePool, err := cmv1.NewMachinePool().Build()
+				Expect(err).ToNot(HaveOccurred())
+				boolean := isMultiAZMachinePool(machinePool)
+				Expect(boolean).To(BeTrue())
+			})
+
+			It("isMultiAZMachinePool should return false", func() {
+				machinePool, err := cmv1.NewMachinePool().AvailabilityZones("test").Build()
+				Expect(err).ToNot(HaveOccurred())
+				boolean := isMultiAZMachinePool(machinePool)
+				Expect(boolean).To(BeFalse())
+			})
+		})
 		It("Test printMachinePools", func() {
 			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
 				MachinePools(cmv1.NewMachinePoolList().

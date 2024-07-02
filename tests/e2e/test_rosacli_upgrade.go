@@ -60,11 +60,9 @@ var _ = Describe("Cluster Upgrade testing",
 		It("to upgrade roles/operator-roles and cluster - [id:73731]", labels.Critical, labels.Runtime.Upgrade, func() {
 
 			By("Check the cluster version and compare with the profile to decide if skip this case")
-			output, err := clusterService.DescribeCluster(clusterID)
+			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 			Expect(err).To(BeNil())
-			clusterDetail, err := clusterService.ReflectClusterDescription(output)
-			Expect(err).To(BeNil())
-			clusterVersion := clusterDetail.OpenshiftVersion
+			clusterVersion := jsonData.DigString("version", "raw_id")
 
 			if profile.Version != "y-1" {
 				Skip("Skip this case as the version defined in profile is not y-1 for upgrading testing")
@@ -88,6 +86,10 @@ var _ = Describe("Cluster Upgrade testing",
 
 			By("Get operator-roles policies arns")
 			var operatorRolePolicies []string
+			output, err := clusterService.DescribeCluster(clusterID)
+			Expect(err).To(BeNil())
+			clusterDetail, err := clusterService.ReflectClusterDescription(output)
+			Expect(err).To(BeNil())
 			operatorRolesArns := clusterDetail.OperatorIAMRoles
 
 			for _, rolearn := range operatorRolesArns {

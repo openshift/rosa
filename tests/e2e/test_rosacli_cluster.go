@@ -179,6 +179,7 @@ var _ = Describe("Edit cluster",
 
 				clusterDetail, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).ToNot(HaveOccurred())
+				// nolint
 				expectedUWMValue := "Enabled"
 				recoverUWMStatus := false
 				if clusterConfig.DisableWorkloadMonitoring {
