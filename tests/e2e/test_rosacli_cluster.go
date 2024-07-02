@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
+	// "github.com/openshift/rosa/tests/utils/log"
 )
 
 var _ = Describe("Edit cluster",
@@ -853,6 +854,71 @@ var _ = Describe("Classic cluster creation validation",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
+			})
+
+		It("Create rosa cluster with additional security groups will work well via rosacli - [id:68971]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				var (
+					clusterService      = rosaClient.Cluster
+					clusterName         = "ocp-68971"
+					// ocpVersionBelow4_14 = "4.13.12"
+					index int
+					flagName string
+					securityGroups      = map[string]string{
+						"--additional-infra-security-group-ids":         "sg-aisgi",
+						"--additional-control-plane-security-group-ids": "sg-acpsgi",
+						"--additional-compute-security-group-ids":       "sg-acsgi",
+					}
+
+					// invalidSecurityGroups = map[string]string{
+					//  "--additional-infra-security-group-ids":         "aisgi",
+					//  "--additional-control-plane-security-group-ids": "acpsgi",
+					//  "--additional-compute-security-group-ids":       "acsgi",
+					// }
+					// emptySubnet = ""
+				)
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				By("Try creating cluster with additional security groups but no subnet-ids")
+				for additionalSecurityGroupFlag, value := range securityGroups {
+					out, err := clusterService.CreateDryRun(
+						clusterName, additionalSecurityGroupFlag, value,
+					)
+					index = strings.Index(additionalSecurityGroupFlag, "a")
+					flagName = additionalSecurityGroupFlag[index:]
+					Expect(err).NotTo(BeNil())
+					Expect(out.String()).To(ContainSubstring("Setting the `%s` flag is only allowed for BYO VPC clusters", flagName))
+				}
+
+				// By("Prepare creation command")
+				// var command string
+				// var rosalCommand config.Command
+				// flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				// Expect(err).To(BeNil())
+
+				// command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
+				// rosalCommand = config.GenerateCommand(command)
+
+				By("Try creating cluster with additional security groups and ocp version lower than 4.14")
+				for additionalSecurityGroupFlag, value := range securityGroups {
+					// levelMap := map[string]string{
+					// 	additionalSecurityGroupFlag: value, 
+					// 	"--version": ocpVersionBelow4_14,
+					// }
+					// rosalCommand.ReplaceFlagValue(levelMap)
+					// log.Logger.Debug(rosalCommand)
+					// rosalCommand.AddFlags("--dry-run", "-y")
+					// output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					// Expect(err).To(HaveOccurred())
+
+					out, err := clusterService.CreateDryRun(
+						clusterName, additionalSecurityGroupFlag, value, "--subnet-ids", "subnet-039f2a2a2d2d83e7f",
+					)
+					Expect(err).NotTo(BeNil())
+					index = strings.Index(additionalSecurityGroupFlag, "a")
+					flagName = additionalSecurityGroupFlag[index:]
+					Expect(out.String()).To(ContainSubstring("Parameter '%s' is not supported prior to version '4.14.0'", flagName))
+				}
 			})
 	})
 
