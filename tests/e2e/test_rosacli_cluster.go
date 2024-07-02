@@ -332,6 +332,145 @@ var _ = Describe("Edit cluster",
 					To(ContainSubstring(
 						"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
 			})
+
+		// Excluded until bug on OCP-73161 is resolved
+		It("can verify delete protection on a rosa cluster - [id:73161]",
+			labels.High, labels.Runtime.Day2, labels.Exclude,
+			func() {
+				By("Enable delete protection on the cluster")
+				deleteProtection := constants.DeleteProtectionEnabled
+				_, err := clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=true",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Check the enable result from cluster description")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDetail.EnableDeleteProtection).To(Equal(deleteProtection))
+
+				By("Attempt to delete cluster with delete protection enabled")
+				defer func() {
+					_, err = clusterService.DeleteCluster(clusterID, "-y")
+					Expect(err).To(HaveOccurred())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).Should(ContainSubstring(
+						`Delete-protection has been activated on this cluster and 
+						it cannot be deleted until delete-protection is disabled`))
+				}()
+
+				By("Disable delete protection on the cluster")
+				deleteProtection = constants.DeleteProtectionDisabled
+				_, err = clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=false",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Check the disable result from cluster description")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				clusterDetail, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDetail.EnableDeleteProtection).To(Equal(deleteProtection))
+			})
+
+		// Excluded until bug on OCP-74656 is resolved
+		It("can verify delete protection on a rosa cluster negative - [id:74656]",
+			labels.High, labels.Runtime.Day2, labels.Exclude,
+			func() {
+				By("Enable delete protection with invalid values")
+				resp, err := clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=aaa",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+				Expect(textData).Should(ContainSubstring(
+					`Error: invalid argument "aaa" for "--enable-delete-protection" 
+					flag: strconv.ParseBool: parsing "aaa": invalid syntax`))
+
+				resp, err = clusterService.EditCluster(clusterID,
+					"--enable-delete-protection=",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+				Expect(textData).Should(ContainSubstring(
+					`Error: invalid argument "" for "--enable-delete-protection" flag: strconv.ParseBool: parsing "": invalid syntax`))
+			})
+
+		It("can allow sts cluster installation with compatible policies - [id:45161]",
+			labels.High, labels.Runtime.Day1Supplemental,
+			func() {
+				clusterName := "cluster-45161"
+				operatorPrefix := "cluster-45161-asdf"
+				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+
+				By("Create cluster with one Y-1 version")
+				ocmResourceService := rosaClient.OCMResource
+				versionService := rosaClient.Version
+				accountRoleList, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				rosalCommand, err := config.RetrieveClusterCreationCommand(ciConfig.Test.CreateCommandFile)
+				Expect(err).To(BeNil())
+
+				installerRole := rosalCommand.GetFlagValue("--role-arn", true)
+				ar := accountRoleList.AccountRole(installerRole)
+				Expect(ar).ToNot(BeNil())
+
+				cg := rosalCommand.GetFlagValue("--channel-group", true)
+				if cg == "" {
+					cg = rosacli.VersionChannelGroupStable
+				}
+
+				versionList, err := versionService.ListAndReflectVersions(cg, isHostedCP)
+				Expect(err).To(BeNil())
+				Expect(versionList).ToNot(BeNil())
+				foundVersion, err := versionList.FindNearestBackwardMinorVersion(ar.OpenshiftVersion, 1, false)
+				Expect(err).To(BeNil())
+				var clusterVersion string
+				if foundVersion == nil {
+					Skip("No cluster version < y-1 found for compatibility testing")
+				}
+				clusterVersion = foundVersion.Version
+
+				replacingFlags := map[string]string{
+					"--version":               clusterVersion,
+					"--cluster-name":          clusterName,
+					"-c":                      clusterName,
+					"--operator-roles-prefix": operatorPrefix,
+					"--domain-prefix":         clusterName,
+				}
+
+				if rosalCommand.GetFlagValue("--https-proxy", true) != "" {
+					err = rosalCommand.DeleteFlag("--https-proxy", true)
+					Expect(err).To(BeNil())
+				}
+				if rosalCommand.GetFlagValue("--no-proxy", true) != "" {
+					err = rosalCommand.DeleteFlag("--no-proxy", true)
+					Expect(err).To(BeNil())
+				}
+				if rosalCommand.GetFlagValue("--http-proxy", true) != "" {
+					err = rosalCommand.DeleteFlag("--http-proxy", true)
+					Expect(err).To(BeNil())
+				}
+				if rosalCommand.CheckFlagExist("--base-domain") {
+					rosalCommand.DeleteFlag("--base-domain", true)
+				}
+
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run")
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Creating cluster '%s' should succeed", clusterName)))
+			})
 	})
 
 var _ = Describe("Classic cluster creation validation",

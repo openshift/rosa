@@ -23,7 +23,9 @@ const (
 
 // cluster configuration
 const (
-	DefaultVPCCIDRValue = "10.0.0.0/16"
+	DefaultVPCCIDRValue      = "10.0.0.0/16"
+	DeleteProtectionDisabled = "Disabled"
+	DeleteProtectionEnabled  = "Enabled"
 )
 
 // cluster status
