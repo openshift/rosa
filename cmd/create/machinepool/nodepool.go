@@ -33,6 +33,12 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 		os.Exit(1)
 	}
 
+	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
+	if isMultiAvailabilityZoneSet {
+		r.Reporter.Errorf("Setting the `multi-availability-zone` flag is not allowed for Hosted Control Plane clusters")
+		os.Exit(1)
+	}
+
 	// Machine pool name:
 	name := strings.Trim(args.name, " \t")
 	if name == "" && !interactive.Enabled() {
