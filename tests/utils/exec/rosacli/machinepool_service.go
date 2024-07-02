@@ -121,7 +121,7 @@ type NodePoolDescription struct {
 	ManagementUpgrade          []map[string]string `yaml:"Management upgrade,omitempty"`
 	Message                    string              `yaml:"Message,omitempty"`
 	ScheduledUpgrade           string              `yaml:"Scheduled upgrade,omitempty"`
-	AdditionalSecurityGroupIDs string              `yaml:"Additional security group IDs,omitempty"`
+	AdditionalSecurityGroupIDs string              `yaml:"Additional Security Group IDs,omitempty"`
 	NodeDrainGracePeriod       string              `yaml:"Node drain grace period,omitempty"`
 }
 
