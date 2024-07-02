@@ -119,6 +119,7 @@ type ClusterConfig struct {
 	WorkerDiskSize            string                    `json:"worker_disk_size,omitempty"`
 	DomainPrefix              string                    `json:"domain_prefix,omitempty"`
 	BillingAccount            string                    `json:"billing_account,omitempty"`
+	AdditionalPrincipals      string                    `json:"additional_principals,omitempty"`
 	AdditionalSecurityGroups  *AdditionalSecurityGroups `json:"additional_sgs,omitempty"`
 	Autoscaling               *Autoscaling              `json:"autoscaling,omitempty"`
 	Aws                       *AWS                      `json:"aws,omitempty"`

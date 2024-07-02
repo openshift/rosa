@@ -31,6 +31,7 @@ type ClusterConfig struct {
 	NameLegnth                    int    `default:"15" yaml:"name_length,omitempty" json:"name_length,omitempty"`
 	VolumeSize                    int    `yaml:"volume_size,omitempty" json:"volume_size,omitempty"`
 	WorkerPoolReplicas            int    `yaml:"replicas,omitempty" json:"replicas,omitempty"`
+	AdditionalPrincipals          bool   `yaml:"additional_principals,omitempty" json:"additional_principals,omitempty"`
 	AdminEnabled                  bool   `yaml:"admin_enabled,omitempty" json:"admin_enabled,omitempty"`
 	AuditLogForward               bool   `yaml:"auditlog_forward,omitempty" json:"auditlog_forward,omitempty"`
 	Autoscale                     bool   `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`

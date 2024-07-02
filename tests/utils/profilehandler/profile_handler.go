@@ -240,7 +240,13 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			flags = append(flags,
 				"--audit-log-arn", auditRoleArn)
 		}
+
+		if profile.ClusterConfig.AdditionalPrincipals {
+			flags = append(flags, "--additional-allowed-principals", accRoles.InstallerRole)
+			clusterConfiguration.AdditionalPrincipals = accRoles.InstallerRole
+		}
 	}
+
 	// Put this part before the BYOVPC preparation so the subnets is prepared based on PrivateLink
 	if profile.ClusterConfig.Private {
 		flags = append(flags, "--private")
