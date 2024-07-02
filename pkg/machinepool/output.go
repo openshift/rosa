@@ -83,7 +83,6 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		ocmOutput.PrintNodePoolAdditionalSecurityGroups(nodePool.AWSNodePool()),
 		ocmOutput.PrintNodeDrainGracePeriod(nodePool.NodeDrainGracePeriod()),
 		ocmOutput.PrintNodePoolManagementUpgrade(nodePool.ManagementUpgrade()),
-
 		ocmOutput.PrintNodePoolMessage(nodePool.Status()),
 	)
 }
