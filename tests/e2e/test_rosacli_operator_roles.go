@@ -152,6 +152,14 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 						To(ContainSubstring(
 							"OIDC provider already exists"))
+
+					By("Try to create operator-roles with --oic-config-id and cluster id at the same time")
+					output, err = ocmResourceService.CreateOperatorRoles("-c", clusterID, "--oidc-config-id", oidcConfigID)
+					Expect(err).To(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"ERR: A cluster key for STS cluster and an OIDC configuration ID" +
+								" cannot be specified alongside each other."))
 				}
 			})
 	})
