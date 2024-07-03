@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -195,8 +196,13 @@ func (r *runner) Run() (bytes.Buffer, error) {
 		cmd.Stderr = cmd.Stdout
 
 		err = cmd.Run()
-
-		log.Logger.Infof("Get Combining Stdout and Stderr is :\n%s", output.String())
+		if common.SliceContains(cmdElements, "access_token") ||
+			common.SliceContains(cmdElements, "token") ||
+			common.SliceContains(cmdElements, "refresh_token") {
+			log.Logger.Warnf("There is sensitive output possibility with token keyword in command line. Hide the output.")
+		} else {
+			log.Logger.Infof("Get Combining Stdout and Stderr is :\n%s", output.String())
+		}
 
 		if strings.Contains(output.String(), "Not able to get authentication token") {
 			retry = retry + 1
