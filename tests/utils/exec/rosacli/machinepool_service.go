@@ -75,7 +75,7 @@ type MachinePoolDescription struct {
 	InstanceType     string `yaml:"Instance type,omitempty"`
 	Labels           string `yaml:"Labels,omitempty"`
 	Replicas         string `yaml:"Replicas,omitempty"`
-	SecurityGroupIDs string `yaml:"Security Group IDs,omitempty"`
+	SecurityGroupIDs string `yaml:"Additional Security Group IDs,omitempty"`
 	Subnets          string `yaml:"Subnets,omitempty"`
 	SpotInstances    string `yaml:"Spot instances,omitempty"`
 	Taints           string `yaml:"Taints,omitempty"`
