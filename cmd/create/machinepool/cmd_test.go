@@ -28,12 +28,8 @@ var _ = Describe("Create machine pool", func() {
 		When("cluster is classic", func() {
 			It("should create machine pool", func() {
 				serviceMock := machinepool.NewMockMachinePoolService(ctrl)
-				serviceMock.EXPECT().CreateMachinePool(gomock.Any(), gomock.Any(),
+				serviceMock.EXPECT().CreateMachinePoolBasedOnClusterType(gomock.Any(), gomock.Any(),
 					gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-
-				createMachinepool := NewCreateMachinePool(CreateMachinePoolSpec{
-					Service: serviceMock,
-				})
 
 				mockClassicClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 					c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
@@ -41,9 +37,9 @@ var _ = Describe("Create machine pool", func() {
 					c.State(cmv1.ClusterStateReady)
 					c.Hypershift(cmv1.NewHypershift().Enabled(false))
 				})
-				err := createMachinepool.createMachinePoolBasedOnClusterType(rosa.NewRuntime(), NewCreateMachinePoolCommand(),
+				err := serviceMock.CreateMachinePoolBasedOnClusterType(rosa.NewRuntime(), NewCreateMachinePoolCommand(),
 					"82339823", mockClassicClusterReady, NewCreateMachinepoolUserOptions())
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 			})
 		})
@@ -76,8 +72,8 @@ var _ = Describe("Validation functions", func() {
 
 	Context("validateClusterState", func() {
 		It("should return nil when the cluster state is ready", func() {
-			err := validateClusterState(mockClassicClusterReady, "test-cluster")
-			Expect(err).To(BeNil())
+			err := machinepool.ValidateClusterState(mockClassicClusterReady, "test-cluster")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should return an error when the cluster state is not ready", func() {
@@ -87,30 +83,29 @@ var _ = Describe("Validation functions", func() {
 				c.State(cmv1.ClusterStateInstalling)
 				c.Hypershift(cmv1.NewHypershift().Enabled(false))
 			})
-			err := validateClusterState(mockClassicClusterInstalling, "test-cluster")
+			err := machinepool.ValidateClusterState(mockClassicClusterInstalling, "test-cluster")
 			Expect(err).To(MatchError("Cluster 'test-cluster' is not yet ready"))
 		})
 	})
 
 	Context("validateLabels", func() {
 		It("should return nil when the labels flag has not changed", func() {
-			err := validateLabels(mockCmd, mockArgs)
-			Expect(err).To(BeNil())
+			err := machinepool.ValidateLabels(mockCmd, mockArgs)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should return nil when the labels flag is set with valid labels", func() {
 			mockArgs.Labels = "key1=value1,key2=value2"
 			mockCmd.Flags().Set("labels", "key1=value1,key2=value2")
-			err := validateLabels(mockCmd, mockArgs)
-			Expect(err).To(BeNil())
+			err := machinepool.ValidateLabels(mockCmd, mockArgs)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should return an error when the labels flag is set with invalid labels", func() {
 			mockArgs.Labels = "key1=value1,key2"
 			mockCmd.Flags().Set("labels", "key1=value1,key2")
-			err := validateLabels(mockCmd, mockArgs)
-			Expect(err).NotTo(BeNil())
+			err := machinepool.ValidateLabels(mockCmd, mockArgs)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
-

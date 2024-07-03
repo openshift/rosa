@@ -2,7 +2,6 @@ package machinepool
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -12,11 +11,30 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 )
+
+// Parse labels if the 'labels' flag is set
+func ValidateLabels(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions) error {
+	if cmd.Flags().Changed("labels") {
+		if _, err := mpHelpers.ParseLabels(args.Labels); err != nil {
+			return fmt.Errorf("%s", err)
+		}
+	}
+	return nil
+}
+
+// Validate the cluster's state is ready
+func ValidateClusterState(cluster *cmv1.Cluster, clusterKey string) error {
+	if cluster.State() != cmv1.ClusterStateReady {
+		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+	}
+	return nil
+}
 
 func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
@@ -215,7 +233,7 @@ func spotMaxPriceValidator(val interface{}) error {
 }
 
 func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvailabilityZoneSet bool,
-	cluster *cmv1.Cluster, args MachinePoolArgs) (string, error) {
+	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
 
 	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
 	if err != nil {
@@ -260,7 +278,10 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 		}
 		r.Reporter.Infof("There are several subnets for availability zone '%s'", availabilityZone)
 		interactive.Enable()
-		subnet := getSubnetFromUser(cmd, r, false, cluster, args)
+		subnet, err := getSubnetFromUser(cmd, r, false, cluster, args)
+		if err != nil {
+			return "", err
+		}
 		return subnet, nil
 	}
 

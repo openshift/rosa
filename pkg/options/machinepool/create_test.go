@@ -47,6 +47,8 @@ var _ = Describe("BuildMachinePoolCreateCommandWithOptions", func() {
 		Expect(options.SecurityGroupIds).To(BeNil())
 		Expect(options.NodeDrainGracePeriod).To(Equal(""))
 		Expect(options.Tags).To(BeNil())
+		Expect(options.MaxSurge).To(Equal("1"))
+		Expect(options.MaxUnavailable).To(Equal("0"))
 	})
 
 	It("should have flags set with the correct default values", func() {
@@ -114,5 +116,11 @@ var _ = Describe("BuildMachinePoolCreateCommandWithOptions", func() {
 
 		tags, _ := flags.GetStringSlice("tags")
 		Expect(tags).To(BeEmpty())
+
+		maxSurge, _ := flags.GetString("max-surge")
+		Expect(maxSurge).To(Equal("1"))
+
+		maxUnavailable, _ := flags.GetString("max-unavailable")
+		Expect(maxUnavailable).To(Equal("0"))
 	})
 })
