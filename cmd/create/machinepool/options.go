@@ -5,6 +5,8 @@ import (
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
+const instanceType = "m5.xlarge"
+
 type CreateMachinepoolOptions struct {
 	reporter *reporter.Object
 
@@ -13,7 +15,7 @@ type CreateMachinepoolOptions struct {
 
 func NewCreateMachinepoolUserOptions() *mpOpts.CreateMachinepoolUserOptions {
 	return &mpOpts.CreateMachinepoolUserOptions{
-		InstanceType:          "m5.xlarge",
+		InstanceType:          instanceType,
 		AutoscalingEnabled:    false,
 		MultiAvailabilityZone: true,
 		Autorepair:            true,
@@ -29,12 +31,4 @@ func NewCreateMachinepoolOptions() *CreateMachinepoolOptions {
 
 func (m *CreateMachinepoolOptions) Machinepool() *mpOpts.CreateMachinepoolUserOptions {
 	return m.args
-}
-
-func (m *CreateMachinepoolOptions) Bind(args *mpOpts.CreateMachinepoolUserOptions, argv []string) error {
-	m.args = args
-	if len(argv) > 0 {
-		m.args.Name = argv[0]
-	}
-	return nil
 }

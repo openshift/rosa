@@ -1,6 +1,11 @@
 package machinepool
 
 import (
+	"fmt"
+
+	gomock "go.uber.org/mock/gomock"
+
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -9,10 +14,10 @@ import (
 
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper/features"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 	. "github.com/openshift/rosa/pkg/test"
-	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 )
 
 var _ = Describe("Machine pool helper", func() {
@@ -195,7 +200,7 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 	var (
 		r              *rosa.Runtime
 		cmd            *cobra.Command
-		args           *MachinePoolArgs
+		args           *mpOpts.CreateMachinepoolUserOptions
 		mockClient     *mock.MockClient
 		az             string
 		subnetId1      string
@@ -211,7 +216,7 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 		az = "us-east-1a"
 		subnetId1 = "subnet-123"
 		subnetId2 = "subnet-456"
-		args = &MachinePoolArgs{}
+		args = &mpOpts.CreateMachinepoolUserOptions{}
 	})
 
 	When("no availability zone is set", func() {
@@ -228,7 +233,7 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 		})
 
 		It("returns the correct subnet when one subnet is expected", func() {
-			subnet, err := getSubnetFromAvailabilityZone(cmd, r, false, cluster, *args)
+			subnet, err := getSubnetFromAvailabilityZone(cmd, r, false, cluster, args)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(subnet).To(Equal(subnetId1))
 		})
@@ -249,7 +254,7 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 		})
 
 		It("handles errors correctly when the availability zone does not match", func() {
-			subnet, err := getSubnetFromAvailabilityZone(cmd, r, true, cluster, *args)
+			subnet, err := getSubnetFromAvailabilityZone(cmd, r, true, cluster, args)
 			Expect(err).To(HaveOccurred())
 			Expect(subnet).To(Equal(""))
 		})

@@ -31,8 +31,6 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var args machinepool.MachinePoolArgs
-
 type CreateMachinePoolSpec struct {
 	Service machinepool.MachinePoolService
 }
@@ -51,16 +49,6 @@ func NewCreateMachinePoolCommand() *cobra.Command {
 	cmd, options := mpOpts.BuildMachinePoolCreateCommandWithOptions()
 	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCM(), CreateMachinepoolRunner(options))
 	return cmd
-}
-
-// Create machine pool based on cluster type
-func (m CreateMachinePool) createMachinePoolBasedOnClusterType(r *rosa.Runtime,
-	cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
-	options *mpOpts.CreateMachinepoolUserOptions) error {
-	if cluster.Hypershift().Enabled() {
-		return m.service.CreateNodePools(r, cmd, clusterKey, cluster, options)
-	}
-	return m.service.CreateMachinePool(r, cmd, clusterKey, cluster, options)
 }
 
 // Original function refactored to use the new helper functions
@@ -91,11 +79,12 @@ func CreateMachinepoolRunner(userOptions *mpOpts.CreateMachinepoolUserOptions) r
 		if err != nil {
 			return fmt.Errorf("Failed to create awsClient: %s", err)
 		}
-		service := NewCreateMachinePool(CreateMachinePoolSpec{
+		newService := NewCreateMachinePool(CreateMachinePoolSpec{
 			Service: machinepool.NewMachinePoolService(),
 		})
 
-		return service.createMachinePoolBasedOnClusterType(r, cmd, clusterKey, cluster, options.Machinepool())
+		return newService.service.CreateMachinePoolBasedOnClusterType(r,
+			cmd, clusterKey, cluster, options.Machinepool())
 	}
 }
 

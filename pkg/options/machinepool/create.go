@@ -32,6 +32,9 @@ type CreateMachinepoolUserOptions struct {
 	SecurityGroupIds      []string
 	NodeDrainGracePeriod  string
 	Tags                  []string
+	MaxSurge              string
+	MaxUnavailable        string
+	EC2MetadataHttpTokens string
 }
 
 const (
@@ -249,6 +252,29 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 		nil,
 		"Apply user defined tags to all resources created by ROSA in AWS. "+
 			"Tags are comma separated, for example: 'key value, foo bar'",
+	)
+
+	flags.StringVar(
+		&options.EC2MetadataHttpTokens,
+		"ec2-metadata-http-tokens",
+		"",
+		"Should cluster nodes use both v1 and v2 endpoints or just v2 endpoint "+
+			"of EC2 Instance Metadata Service (IMDS)"+
+			"This flag is only supported for Hosted Control Planes.",
+	)
+
+	flags.StringVar(&options.MaxSurge,
+		"max-surge",
+		"1",
+		"The maximum number of nodes that can be provisioned above the desired number of nodes in the machinepool during "+
+			"the upgrade. It can be an absolute number i.e. 1, or a percentage i.e. '20%'.",
+	)
+
+	flags.StringVar(&options.MaxUnavailable,
+		"max-unavailable",
+		"0",
+		"The maximum number of nodes in the machinepool that can be unavailable during the upgrade. It can be an "+
+			"absolute number i.e. 1, or a percentage i.e. '20%'.",
 	)
 
 	output.AddFlag(cmd)

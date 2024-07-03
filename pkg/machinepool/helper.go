@@ -2,7 +2,6 @@ package machinepool
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -215,7 +214,7 @@ func spotMaxPriceValidator(val interface{}) error {
 }
 
 func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvailabilityZoneSet bool,
-	cluster *cmv1.Cluster, args MachinePoolArgs) (string, error) {
+	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
 
 	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
 	if err != nil {
@@ -260,7 +259,10 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 		}
 		r.Reporter.Infof("There are several subnets for availability zone '%s'", availabilityZone)
 		interactive.Enable()
-		subnet := getSubnetFromUser(cmd, r, false, cluster, args)
+		subnet, err := getSubnetFromUser(cmd, r, false, cluster, args)
+		if err != nil {
+			return "", err
+		}
 		return subnet, nil
 	}
 

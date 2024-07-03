@@ -2,14 +2,11 @@ package machinepool
 
 import (
 	"bytes"
-	// "encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	reflect "reflect"
-
-	// "net/url"
 	"time"
 
 	gomock "go.uber.org/mock/gomock"
@@ -19,13 +16,12 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/interactive"
-	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
@@ -34,7 +30,7 @@ import (
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 var policyBuilder cmv1.NodePoolUpgradePolicyBuilder
@@ -42,8 +38,8 @@ var date time.Time
 
 var _ = Describe("Machinepool and nodepool", func() {
 	var (
-		mockClient           *mock.MockClient
-		mockCtrl             *gomock.Controller
+		mockClient *mock.MockClient
+		mockCtrl   *gomock.Controller
 	)
 	Context("Nodepools", Ordered, func() {
 		BeforeAll(func() {
@@ -56,7 +52,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 				NextRun(date)
 			mockCtrl = gomock.NewController(GinkgoT())
 			mockClient = mock.NewMockClient(mockCtrl)
-			
+
 		})
 		It("editAutoscaling should equal nil if nothing is changed", func() {
 			nodepool, err := cmv1.NewNodePool().
@@ -96,9 +92,10 @@ var _ = Describe("Machinepool and nodepool", func() {
 		})
 		Context("Prompt For NodePoolNodeRecreate", func() {
 			var mockPromptFuncInvoked bool
-			var t *TestingRuntime
+			var t *test.TestingRuntime
+
 			BeforeEach(func() {
-				t = NewTestRuntime()
+				t = test.NewTestRuntime()
 				mockPromptFuncInvoked = false
 			})
 
@@ -109,11 +106,11 @@ var _ = Describe("Machinepool and nodepool", func() {
 
 			It("Prompts when the user has deleted a kubelet-config", func() {
 
-				original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				original := test.MockNodePool(func(n *cmv1.NodePoolBuilder) {
 					n.KubeletConfigs("test")
 				})
 
-				update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				update := test.MockNodePool(func(n *cmv1.NodePoolBuilder) {
 					n.KubeletConfigs("")
 				})
 
@@ -123,11 +120,11 @@ var _ = Describe("Machinepool and nodepool", func() {
 
 			It("Prompts when the user has changed a kubelet-config", func() {
 
-				original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				original := test.MockNodePool(func(n *cmv1.NodePoolBuilder) {
 					n.KubeletConfigs("test")
 				})
 
-				update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				update := test.MockNodePool(func(n *cmv1.NodePoolBuilder) {
 					n.KubeletConfigs("bar")
 				})
 
@@ -136,11 +133,11 @@ var _ = Describe("Machinepool and nodepool", func() {
 			})
 
 			It("Does not prompts when the user has not changed a kubelet-config", func() {
-				original := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				original := test.MockNodePool(func(n *cmv1.NodePoolBuilder) {
 					n.KubeletConfigs("test")
 				})
 
-				update := MockNodePool(func(n *cmv1.NodePoolBuilder) {
+				update := test.MockNodePool(func(n *cmv1.NodePoolBuilder) {
 					n.KubeletConfigs("test")
 				})
 
@@ -257,6 +254,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 		})
 	})
 	Context("MachinePools", func() {
+		subnet := "subnet-12345"
 		Context("editMachinePoolAutoscaling", func() {
 			It("editMachinePoolAutoscaling should equal nil if nothing is changed", func() {
 				machinepool, err := cmv1.NewMachinePool().
@@ -370,7 +368,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 
 			// Test with subnet input
 			newAvailabilityZoneUserInput := "us-east-1a"
-			subnetUserInput = "subnet-123"
+			subnetUserInput = "subnet-12345"
 			multiAZMachinePool = true
 			mockClient.EXPECT().GetSubnetAvailabilityZone(subnetUserInput).
 				Return(newAvailabilityZoneUserInput, nil)
@@ -388,50 +386,49 @@ var _ = Describe("Machinepool and nodepool", func() {
 			isAvailabilityZoneSet := false
 			args := &mpOpts.CreateMachinepoolUserOptions{}
 			az := "us-east-1a"
-			subnetId1 := "subnet-123"
+
 			subnetId2 := "subnet-456"
 
 			// Mocking private subnet retrieval
 			privateSubnets := []ec2types.Subnet{
-				{AvailabilityZone: &az, SubnetId: &subnetId1},
+				{AvailabilityZone: &az, SubnetId: &subnet},
 			}
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
 
 			// Building a mock cluster
 			clusterBuilder := cmv1.NewCluster().ID("test-cluster").State(cmv1.ClusterStateReady).
-				Nodes(cmv1.NewClusterNodes().AvailabilityZones("us-east-1a")).AWS(cmv1.NewAWS().SubnetIDs(subnetId1, subnetId2))
+				Nodes(cmv1.NewClusterNodes().AvailabilityZones("us-east-1a")).AWS(cmv1.NewAWS().SubnetIDs(subnet, subnetId2))
 			cluster, err := clusterBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 
 			// Test when no availability zone is set and only one subnet is returned
 			subnet, err := getSubnetFromAvailabilityZone(cmd, r, isAvailabilityZoneSet, cluster, args)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(subnet).To(Equal("subnet-123"))
+			Expect(subnet).To(Equal("subnet-12345"))
 		})
 		It("Tests error case for getSubnetFromAvailabilityZone", func() {
 			r := &rosa.Runtime{AWSClient: mockClient}
 			cmd := &cobra.Command{}
-			isAvailabilityZoneSet := true 
+			isAvailabilityZoneSet := true
 			args := &mpOpts.CreateMachinepoolUserOptions{
 				AvailabilityZone: "us-west-1a",
 			}
 			az := "us-east-1a"
-			subnetId1 := "subnet-123"
 
 			privateSubnets := []ec2types.Subnet{
-				{AvailabilityZone: &az, SubnetId: &subnetId1},
+				{AvailabilityZone: &az, SubnetId: &subnet},
 			}
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
 
 			// Building a mock cluster
 			clusterBuilder := cmv1.NewCluster().ID("test-cluster").State(cmv1.ClusterStateReady).
-				Nodes(cmv1.NewClusterNodes().AvailabilityZones(az)).AWS(cmv1.NewAWS().SubnetIDs(subnetId1))
+				Nodes(cmv1.NewClusterNodes().AvailabilityZones(az)).AWS(cmv1.NewAWS().SubnetIDs(subnet))
 			cluster, err := clusterBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 
 			// Attempt to get a subnet from a non-existent availability zone
 			subnet, err := getSubnetFromAvailabilityZone(cmd, r, isAvailabilityZoneSet, cluster, args)
-			Expect(err).To(HaveOccurred()) 
+			Expect(err).To(HaveOccurred())
 			Expect(subnet).To(Equal(""))
 		})
 	})
@@ -615,26 +612,60 @@ var _ = Describe("Utility Functions", func() {
 	})
 })
 
+func returnMockCluster(version string) *cmv1.Cluster {
+	region := "us-east-1"
+	subnet := "subnet-12345"
+	v := cmv1.VersionBuilder{}
+	v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+		Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+	cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+		c.State(cmv1.ClusterStateReady)
+		b := cmv1.HypershiftBuilder{}
+		a := cmv1.AWSBuilder{}
+		s := cmv1.STSBuilder{}
+		n := cmv1.ClusterNodesBuilder{}
+		r := cmv1.CloudRegionBuilder{}
+		cloud := cmv1.CloudProviderBuilder{}
+		cloud.Name("aws").Regions(&r).Name("aws")
+		r.ID(region).Name(region)
+		n.AvailabilityZones("a1")
+		s.RoleARN("arn:aws:iam::123456789012:role/SampleRole")
+		a.STS(&s).AccountID("123456789012").SubnetIDs(subnet)
+		b.Enabled(true)
+		c.Hypershift(&b)
+		c.ID("test").State(cmv1.ClusterStateReady).AWS(&a).MultiAZ(true).
+			Version(&v).Nodes(&n).Region(&r).CloudProvider(&cloud)
+	})
+
+	return cluster
+}
+
 var _ = Describe("MachinePools", func() {
 	Context("AddMachinePool validation errors", func() {
 		var (
-			cmd                  *cobra.Command
-			clusterKey           string
-			args                 mpOpts.CreateMachinepoolUserOptions
-			cluster              *cmv1.Cluster
-			err                  error
-			t                    *TestingRuntime
-			mockClient           *mock.MockClient
-			mockCtrl             *gomock.Controller
+			cmd        *cobra.Command
+			clusterKey string
+			args       mpOpts.CreateMachinepoolUserOptions
+			cluster    *cmv1.Cluster
+			err        error
+			t          *TestRuntime
+			mockClient *mock.MockClient
+			mockCtrl   *gomock.Controller
+			subnet     string
+			region     string
+			version    string
 		)
 
 		JustBeforeEach(func() {
-			t = NewTestRuntime()
+			mockCtrl = gomock.NewController(GinkgoT())
+			mockClient = mock.NewMockClient(mockCtrl)
+			t = NewTestingRuntime(mockClient)
 			args = mpOpts.CreateMachinepoolUserOptions{}
 			clusterKey = "test-cluster-key"
 			cmd = &cobra.Command{}
-			mockCtrl = gomock.NewController(GinkgoT())
-			mockClient = mock.NewMockClient(mockCtrl)
+			subnet = "subnet-12345"
+			version = "4.15.0"
+			region = "us-east-1"
 		})
 
 		It("should error when 'multi-availability-zone' flag is set for non-multi-AZ clusters", func() {
@@ -666,93 +697,110 @@ var _ = Describe("MachinePools", func() {
 
 		It("should error when the security group IDs flag is set for non-BYOVPC clusters", func() {
 			machinePool := &machinePool{}
-			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids", []string{}, "comma-separated list of security group IDs")
+			v := cmv1.VersionBuilder{}
+			v.RawID(version).ChannelGroup("stable")
+			cluster = test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.ID("test")
+				c.State(cmv1.ClusterStateReady)
+				c.Version(&v)
+			})
+			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids",
+				[]string{}, "comma-separated list of security group IDs")
 			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
-			compatibleVersion := "4.15.0"
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).Version(cmv1.NewVersion().RawID(compatibleVersion))
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(fmt.Sprintf("Setting the `%s` flag is only allowed for BYOVPC clusters", securitygroups.MachinePoolSecurityGroupFlag)))
+			Expect(err.Error()).To(Equal(fmt.Sprintf(
+				"Setting the `%s` flag is only allowed for BYOVPC clusters",
+				securitygroups.MachinePoolSecurityGroupFlag)))
 		})
 
 		It("should error checking version compatibility", func() {
 			machinePool := &machinePool{}
 			incompatibleVersion := "2.5.0"
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).Version(cmv1.NewVersion().ID(incompatibleVersion))
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			v := cmv1.VersionBuilder{}
+			v.ID(incompatibleVersion).ChannelGroup("stable")
+			cluster = test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.ID("test")
+				c.State(cmv1.ClusterStateReady)
+				c.Version(&v)
+			})
 
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("There was a problem checking version compatibility:")))
+			Expect(err.Error()).To(ContainSubstring("There was a problem checking version compatibility:"))
 		})
 
 		It("should error when setting flag that is only allowed for BYOVPC clusters", func() {
 			machinePool := &machinePool{}
-			incompatibleVersion := "2.5.0"
-			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids", []string{}, "comma-separated list of security group IDs")
-			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).Version(cmv1.NewVersion().RawID(incompatibleVersion))
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version)
+			cluster = test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.ID("test")
+				c.State(cmv1.ClusterStateReady)
+				c.Version(&v)
+			})
 
+			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids",
+				[]string{}, "comma-separated list of security group IDs")
+			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Setting the `%s` flag is only allowed for BYOVPC clusters", securitygroups.MachinePoolSecurityGroupFlag)))
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
+				"Setting the `%s` flag is only allowed for BYOVPC clusters",
+				securitygroups.MachinePoolSecurityGroupFlag)))
 		})
 
 		It("should error when the security group IDs flag is set for clusters with incompatible versions", func() {
 			machinePool := &machinePool{}
 			incompatibleVersion := "2.5.0"
-			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids", []string{}, "comma-separated list of security group IDs")
+			v := cmv1.VersionBuilder{}
+			v.ID(incompatibleVersion).ChannelGroup("stable").RawID(incompatibleVersion).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			cluster = test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.ID("test")
+				a := cmv1.AWSBuilder{}
+				n := cmv1.ClusterNodesBuilder{}
+				n.AvailabilityZones("a1")
+				a.AccountID("123456789012").SubnetIDs(subnet)
+				c.State(cmv1.ClusterStateReady).AWS(&a).Version(&v).MultiAZ(true).Nodes(&n)
+			})
+
+			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids",
+				[]string{}, "comma-separated list of security group IDs")
 			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
-
-			subnetIDs := []string{"subnet-12345"}
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...)
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(incompatibleVersion))
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
-
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Parameter '%s' is not supported prior to version ", securitygroups.MachinePoolSecurityGroupFlag)))
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
+				"Parameter '%s' is not supported prior to version ", securitygroups.MachinePoolSecurityGroupFlag)))
 		})
 
 		It("should error when both 'subnet' and 'availability-zone' flags are set", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids", []string{}, "comma-separated list of security group IDs")
-			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
+			cluster = returnMockCluster(version)
 
-			subnetIDs := []string{"subnet-12345"}
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...)
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids",
+				[]string{}, "comma-separated list of security group IDs")
+			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
 			cmd.Flags().StringVar(&args.Subnet, "subnet", "", "")
 			cmd.Flags().Set("subnet", "test-subnet")
 			cmd.Flags().StringVar(&args.AvailabilityZone, "availability-zone", "", "")
 			cmd.Flags().Set("availability-zone", "az")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Setting both `subnet` and `availability-zone` flag is not supported. Please select `subnet` or `availability-zone` to create a single availability zone machine pool"))
+			Expect(err.Error()).To(Equal("Setting both `subnet` and `availability-zone`" +
+				" flag is not supported. Please select `subnet` or `availability-zone` " +
+				"to create a single availability zone machine pool"))
 		})
 
 		It("should error when 'availability-zone' flag is set for a single AZ machine pool in a multi-AZ cluster", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids", []string{}, "comma-separated list of security group IDs")
-			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
+			cluster = returnMockCluster(version)
 
-			subnetIDs := []string{"subnet-12345"}
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...)
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cmd.Flags().StringSliceVar(&args.SecurityGroupIds, "additional-security-group-ids",
+				[]string{}, "comma-separated list of security group IDs")
+			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
 			cmd.Flags().StringVar(&args.AvailabilityZone, "availability-zone", "", "")
@@ -760,19 +808,17 @@ var _ = Describe("MachinePools", func() {
 			args.MultiAvailabilityZone = true
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Setting the `availability-zone` flag is only supported for creating a single AZ machine pool in a multi-AZ cluster"))
+			Expect(err.Error()).To(Equal(
+				"Setting the `availability-zone` flag is only supported for creating a" +
+					" single AZ machine pool in a multi-AZ cluster"))
 		})
 
 		It("should error when setting an invalid name", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			subnetIDs := []string{"subnet-12345"}
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...)
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
-			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			invalidName := "998 .-"
+			cluster = returnMockCluster(version)
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			cmd.Flags().Set("name", invalidName)
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
@@ -783,13 +829,8 @@ var _ = Describe("MachinePools", func() {
 
 		It("should error when autoscaling and replicas are enabled", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			subnetIDs := []string{"subnet-12345"}
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...)
-			nodeBuilder := cmv1.NewClusterNodes().AvailabilityZones("a1")
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true).Nodes(nodeBuilder)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cluster = returnMockCluster(version)
+
 			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
@@ -799,7 +840,7 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
 			args.AutoscalingEnabled = true
-			
+
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Replicas can't be set when autoscaling is enabled"))
@@ -807,13 +848,8 @@ var _ = Describe("MachinePools", func() {
 
 		It("should error when not supplying an instance type", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			subnetIDs := []string{"subnet-12345"}
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...)
-			nodeBuilder := cmv1.NewClusterNodes().AvailabilityZones("a1")
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true).Nodes(nodeBuilder)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cluster = returnMockCluster(version)
+
 			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
@@ -832,13 +868,8 @@ var _ = Describe("MachinePools", func() {
 
 		It("should error when not supplying min and max replicas but not autoscaling", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			subnetIDs := []string{"subnet-12345"}
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...)
-			nodeBuilder := cmv1.NewClusterNodes().AvailabilityZones("a1")
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true).Nodes(nodeBuilder)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cluster = returnMockCluster(version)
+
 			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
@@ -854,19 +885,7 @@ var _ = Describe("MachinePools", func() {
 
 		It("should error when not providing a valid instance type", func() {
 			machinePool := &machinePool{}
-			
-			compatibleVersion := "4.15.0"
-			subnetIDs := []string{"subnet-12345"}
-			region := "us-east-1"
-			regionBuilder := cmv1.NewCloudRegion().Name(region).ID(region)
-			cloudProvider := cmv1.NewCloudProvider().ID("aws").Regions(regionBuilder)
-			stsBuilder := cmv1.NewSTS().RoleARN("arn:aws:iam::123456789012:role/SampleRole")
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...).STS(stsBuilder).AccountID("123456789012")
-			nodeBuilder := cmv1.NewClusterNodes().AvailabilityZones("a1")
-			clusterBuilder := cmv1.NewCluster().ID("cluster-test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true).Nodes(nodeBuilder).Region(regionBuilder).CloudProvider(cloudProvider)
-			cluster, err = clusterBuilder.Build()
-		
-			Expect(err).ToNot(HaveOccurred())
+			cluster = returnMockCluster(version)
 			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
@@ -874,16 +893,16 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
 			args.InstanceType = "test"
-			machineTypeList, err := cmv1.NewMachineTypeList().Items(cmv1.NewMachineType().ID("t3.small").CloudProvider(cmv1.NewCloudProvider().ID("aws").Regions(cmv1.NewCloudRegion().ID(region).Name(region)))).Build()
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
 			Expect(err).ToNot(HaveOccurred())
 			acc, err := amsv1.NewAccount().ID("123456789012").Build()
 			Expect(err).ToNot(HaveOccurred())
-			sq, err := amsv1.NewQuotaCostList().Items(amsv1.NewQuotaCost().QuotaID("test").OrganizationID("123456789012").Version("4.15.0")).Build()
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
 			Expect(err).ToNot(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(machineTypeList)))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(acc)))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(sq)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Expected a valid instance type"))
@@ -891,19 +910,8 @@ var _ = Describe("MachinePools", func() {
 
 		It("Should error when can't set max price when not using spot instances", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			subnetIDs := []string{"subnet-12345"}
-			region := "us-east-1"
-			regionBuilder := cmv1.NewCloudRegion().Name(region).ID(region)
-			cloudProvider := cmv1.NewCloudProvider().ID("aws").Regions(regionBuilder)
-			stsBuilder := cmv1.NewSTS().RoleARN("arn:aws:iam::123456789012:role/SampleRole")
-			awsBuilder := cmv1.NewAWS().SubnetIDs(subnetIDs...).STS(stsBuilder).AccountID("123456789012")
-			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small").CloudProvider(cloudProvider)
-			nodeBuilder := cmv1.NewClusterNodes().AvailabilityZones("a1")
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true).Nodes(nodeBuilder).Region(regionBuilder).CloudProvider(cloudProvider)
-			cluster, err = clusterBuilder.Build()
-		
-			Expect(err).ToNot(HaveOccurred())
+			cluster = returnMockCluster(version)
+
 			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
@@ -915,36 +923,25 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Changed("use-spot-instances")
 			cmd.Flags().StringVar(&args.SpotMaxPrice, "spot-max-price", "0.01", "")
 			cmd.Flags().Set("spot-max-price", "0.01")
-			args.InstanceType = "test"
-			machineTypeList, err := cmv1.NewMachineTypeList().Items(mtBuilder).Build()
+			args.InstanceType = "t3.small"
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
 			Expect(err).ToNot(HaveOccurred())
 			acc, err := amsv1.NewAccount().ID("123456789012").Build()
 			Expect(err).ToNot(HaveOccurred())
-			qcList, err := amsv1.NewQuotaCostList().Items(amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0")).Build()
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
 			Expect(err).ToNot(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(machineTypeList)))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(acc)))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(qcList)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Can't set max price when not using spot instances"))
 		})
 		It("Should error when instances are set for local zones", func() {
 			machinePool := &machinePool{}
-			compatibleVersion := "4.15.0"
-			region := "us-east-1"
-			subnet := "subnet-12345"
 			args.Subnet = subnet
-			regionBuilder := cmv1.NewCloudRegion().Name(region).ID(region)
-			cloudProvider := cmv1.NewCloudProvider().ID("aws").Regions(regionBuilder)
-			stsBuilder := cmv1.NewSTS().RoleARN("arn:aws:iam::123456789012:role/SampleRole")
-			awsBuilder := cmv1.NewAWS().STS(stsBuilder).AccountID("123456789012").SubnetIDs(subnet)
-			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small").CloudProvider(cloudProvider)
-			nodeBuilder := cmv1.NewClusterNodes().AvailabilityZones("a1")
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).AWS(awsBuilder).Version(cmv1.NewVersion().RawID(compatibleVersion)).MultiAZ(true).Nodes(nodeBuilder).Region(regionBuilder).CloudProvider(cloudProvider)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cluster = returnMockCluster(version)
 
 			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			cmd.Flags().Set("name", "mp-1")
@@ -952,23 +949,153 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("multi-availability-zone", "true")
 			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
-			args.InstanceType = "test"
-			machineTypeList, err := cmv1.NewMachineTypeList().Items(mtBuilder).Build()
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
 			Expect(err).ToNot(HaveOccurred())
 			acc, err := amsv1.NewAccount().ID("123456789012").Build()
 			Expect(err).ToNot(HaveOccurred())
-			qcList, err := amsv1.NewQuotaCostList().Items(amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0")).Build()
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
 			Expect(err).ToNot(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
-			// t.RosaRuntime.AWSClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
-			t.RosaRuntime.AWSClient.Expect().GetSubnetAvailabilityZone(subnet).Return(region, nil)
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(machineTypeList)))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(acc)))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(qcList)))
-			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(true, nil).Times(1)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(true, nil)
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Spot instances are not supported for local zones"))
+		})
+		It("should error when parsing invalid root disk size", func() {
+			machinePool := &machinePool{}
+			args.Subnet = subnet
+			cluster = returnMockCluster(version)
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "mp-1")
+			cmd.Flags().Bool("multi-availability-zone", true, "")
+			cmd.Flags().Set("multi-availability-zone", "true")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+			args.SpotMaxPrice = "1.00"
+			args.RootDiskSize = "opj99i"
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
+			Expect(err).ToNot(HaveOccurred())
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
+			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid machine pool root disk size value"))
+		})
+		It("should fail when there is an invalid root disk size set", func() {
+			machinePool := &machinePool{}
+			args.Subnet = subnet
+			cluster = returnMockCluster(version)
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "mp-1")
+			cmd.Flags().Bool("multi-availability-zone", true, "")
+			cmd.Flags().Set("multi-availability-zone", "true")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+			args.SpotMaxPrice = "1.00"
+			args.RootDiskSize = "1000"
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
+			Expect(err).ToNot(HaveOccurred())
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
+			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Invalid root disk size"))
+		})
+		It("Fails to add a machine pool to cluster", func() {
+			machinePool := &machinePool{}
+			args.Subnet = subnet
+			cluster = returnMockCluster(version)
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "mp-1")
+			cmd.Flags().Bool("multi-availability-zone", true, "")
+			cmd.Flags().Set("multi-availability-zone", "true")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+			args.SpotMaxPrice = "1.00"
+			args.RootDiskSize = "1000GB"
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
+			Expect(err).ToNot(HaveOccurred())
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
+			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Failed to add machine pool to cluster"))
+		})
+		It("Successfully create a machine pool", func() {
+			machinePool := &machinePool{}
+			args.Subnet = subnet
+			cluster = returnMockCluster(version)
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "mp-1")
+			cmd.Flags().Bool("multi-availability-zone", true, "")
+			cmd.Flags().Set("multi-availability-zone", "true")
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+			args.SpotMaxPrice = "1.00"
+			args.AutoscalingEnabled = true
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
+			Expect(err).ToNot(HaveOccurred())
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			machinePoolObj, err := cmv1.NewMachinePool().ID("mp-1").InstanceType("t3.small").Build()
+			Expect(err).ToNot(HaveOccurred())
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(machinePoolObj)))
+			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
@@ -976,31 +1103,36 @@ var _ = Describe("MachinePools", func() {
 var _ = Describe("NodePools", func() {
 	Context("AddNodePool validation errors", func() {
 		var (
-			cmd                  *cobra.Command
-			clusterKey           string
-			args                 mpOpts.CreateMachinepoolUserOptions
-			cluster              *cmv1.Cluster
-			err                  error
-			t                    *TestingRuntime
-			//mockClient           *mock.MockClient
-			//mockCtrl             *gomock.Controller
+			cmd        *cobra.Command
+			clusterKey string
+			args       mpOpts.CreateMachinepoolUserOptions
+			cluster    *cmv1.Cluster
+			err        error
+			t          *TestRuntime
+			mockClient *mock.MockClient
+			mockCtrl   *gomock.Controller
+			subnet     string
+			version    string
 		)
 
 		JustBeforeEach(func() {
-			t = NewTestRuntime()
+			mockCtrl = gomock.NewController(GinkgoT())
+			mockClient = mock.NewMockClient(mockCtrl)
+			t = NewTestingRuntime(mockClient)
 			args = mpOpts.CreateMachinepoolUserOptions{}
 			clusterKey = "test-cluster-key"
 			cmd = &cobra.Command{}
-			//mockCtrl = gomock.NewController(GinkgoT())
-			//mockClient = mock.NewMockClient(mockCtrl)
+			subnet = "subnet-12345"
+			version = "4.15.0"
 		})
 
 		It("should return an error if both `subnet` and `availability-zone` flags are set", func() {
 			cmd.Flags().Bool("availability-zone", true, "")
 			cmd.Flags().Bool("subnet", true, "")
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady)
-			cluster, err = clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cluster = test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+				c.ID("test")
+			})
 
 			cmd.Flags().Set("availability-zone", "true")
 			cmd.Flags().Set("subnet", "true")
@@ -1014,13 +1146,11 @@ var _ = Describe("NodePools", func() {
 				"or `availability-zone` to create a single availability zone machine pool"))
 		})
 		It("should fail name validation", func() {
-
 			machinePool := &machinePool{}
-
-			clusterKey := "test-cluster-key"
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady)
-			cluster, err := clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
+			cluster = test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+				c.ID("test")
+			})
 
 			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
 			invalidName := "0909+===..3"
@@ -1031,63 +1161,312 @@ var _ = Describe("NodePools", func() {
 
 			Expect(err.Error()).To(Equal("Expected a valid name for the machine pool"))
 		})
-		// It("", func() {
-		// 	version := "4.15.0"
-		// 	machinePool := &machinePool{}
-		// 	t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatClusterList([]*cmv1.Cluster{cluster})))
-		// 	clusterKey := "test-cluster-key"
-		// 	awsBuilder := cmv1.NewAWS().STS(cmv1.NewSTS().Enabled(false))
-		// 	versionBuilder := cmv1.NewVersion().ID(version).ChannelGroup("stable").RawID(version).Default(true).Enabled(true).ROSAEnabled(true).RawID(version)
-		// 	clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).Version(versionBuilder).AWS(awsBuilder)
-		// 	cluster, err := clusterBuilder.Build()
-		// 	Expect(err).ToNot(HaveOccurred())
+		It("should fail version validation", func() {
+			machinePool := &machinePool{}
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			cluster = returnMockCluster(version)
 
-		// 	cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
-		// 	cmd.Flags().Set("name", "test")
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
 
-		// 	cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
-		// 	cmd.Flags().Set("version", version)
-		// 	isVersionSet := cmd.Flags().Changed("version")
-		// 	Expect(isVersionSet).To(BeTrue())
-		// 	versionList := cmv1.NewVersionList().Items(cmv1.NewVersion().ID(version).ChannelGroup("stable").RawID(version).Default(true).Enabled(true).ROSAEnabled(true))
-		// 	versionList.Build()
-		// 	t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResource(versionList)))
-		// 	err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-		// 	Expect(err).To(HaveOccurred())
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", "aaaa")
+			isVersionSet := cmd.Flags().Changed("version")
+			Expect(isVersionSet).To(BeTrue())
 
-		// 	//Expect(err.Error()).To(Equal("Expected a valid name for the machine pool"))
-		// })
-		// It("", func() {
-		// 	version := "4.15.0"
-		// 	machinePool := &machinePool{}
-		// 	t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatClusterList([]*cmv1.Cluster{cluster})))
-		// 	clusterKey := "test-cluster-key"
-		// 	awsBuilder := cmv1.NewAWS().STS(cmv1.NewSTS().Enabled(false))
-		// 	versionBuilder := cmv1.NewVersion().ID(version).ChannelGroup("stable").RawID(version).Default(true).Enabled(true).ROSAEnabled(true).RawID(version)
-		// 	clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).Version(versionBuilder).AWS(awsBuilder)
-		// 	cluster, err := clusterBuilder.Build()
-		// 	Expect(err).ToNot(HaveOccurred())
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
 
-		// 	cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
-		// 	cmd.Flags().Set("name", "test")
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid OpenShift version"))
+		})
+		It("should fail when not providing a valid instance type", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			az := "a1"
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
 
-		// 	cmd.Flags().StringVar(&args.Subnet, "subnet", "", "Subnet of the machine pool")
-		// 	cmd.Flags().Set("subnet", "subnet-test")
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
 
-		// 	cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
-		// 	cmd.Flags().Set("min-replicas", "1")
-		// 	cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
-		// 	cmd.Flags().Set("max-replicas", "3")
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			isVersionSet := cmd.Flags().Changed("version")
+			Expect(isVersionSet).To(BeTrue())
 
-			
-		// 	err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-		// 	Expect(err).To(HaveOccurred())
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.AutoscalingEnabled = true
 
-		// 	//Expect(err.Error()).To(Equal("Expected a valid name for the machine pool"))
-		// })
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("You must supply a valid instance type"))
+		})
+		It("fails to validate instance type for availability zone", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			isVersionSet := cmd.Flags().Changed("version")
+			Expect(isVersionSet).To(BeTrue())
+
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.AutoscalingEnabled = true
+			args.InstanceType = "t3.small"
+
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mtBuilder := cmv1.NewMachineType()
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid instance type"))
+		})
+		It("fails to add the node pool to the hosted cluster", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			isVersionSet := cmd.Flags().Changed("version")
+			Expect(isVersionSet).To(BeTrue())
+
+			cmd.Flags().StringVar(&args.MaxSurge, "max-surge", "", "Max surge of the machine pool")
+			cmd.Flags().Set("max-surge", "1")
+			isMaxSurgeSet := cmd.Flags().Changed("max-surge")
+			Expect(isMaxSurgeSet).To(BeTrue())
+
+			cmd.Flags().StringVar(&args.MaxUnavailable, "max-unavailable", "", "Max unavailable of the machine pool")
+			cmd.Flags().Set("max-unavailable", "1")
+			isMaxUnavailableSet := cmd.Flags().Changed("max-unavailable")
+			Expect(isMaxUnavailableSet).To(BeTrue())
+
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+
+			args.AutoscalingEnabled = true
+			args.InstanceType = "t3.small"
+			args.TuningConfigs = "test"
+			args.KubeletConfigs = "test"
+			args.MaxSurge = "1"
+			args.MaxUnavailable = "1"
+
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().
+				QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatTuningConfigList([]*cmv1.TuningConfig{})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList([]*cmv1.KubeletConfig{})))
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Failed to add machine pool to hosted cluster"))
+		})
+		It("Successfully creates a node pool", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			isVersionSet := cmd.Flags().Changed("version")
+			Expect(isVersionSet).To(BeTrue())
+
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.AutoscalingEnabled = true
+			args.InstanceType = "t3.small"
+			args.TuningConfigs = "test"
+			args.KubeletConfigs = "test"
+			args.NodeDrainGracePeriod = "30"
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			tuningConfig, err := cmv1.NewTuningConfig().ID("test").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatTuningConfigList(
+				[]*cmv1.TuningConfig{tuningConfig})))
+			kubeConfig, err := cmv1.NewKubeletConfig().Name("test").ID("test").PodPidsLimit(5000).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList(
+				[]*cmv1.KubeletConfig{kubeConfig})))
+			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(Not(HaveOccurred()))
+		})
 	})
 })
 
+var _ = Describe("ManageReplicas", func() {
+	var cmd *cobra.Command
+	var args *mpOpts.CreateMachinepoolUserOptions
+	var multiAZMachinePool bool
+	var isMachinePool bool
+
+	BeforeEach(func() {
+		cmd = &cobra.Command{}
+		args = &mpOpts.CreateMachinepoolUserOptions{}
+		multiAZMachinePool = true
+		isMachinePool = true
+	})
+
+	When("when autoscaling is enabled", func() {
+		It("should not allow setting replicas directly", func() {
+			args.AutoscalingEnabled = true
+			cmd.Flags().Int32("replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "1")
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
+			Expect(autoscaling).To(BeTrue())
+		})
+		It("should pass successfully", func() {
+			args.AutoscalingEnabled = true
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			_, _, _, _, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("when autoscaling is not enabled", func() {
+		It("should not allow setting min and max replicas", func() {
+			args.AutoscalingEnabled = false
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
+			Expect(autoscaling).To(BeFalse())
+		})
+		It("should pass successfully", func() {
+			args.AutoscalingEnabled = false
+			cmd.Flags().Int32("replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "1")
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(autoscaling).To(BeFalse())
+		})
+	})
+})
 
 var _ = Describe("Utility Functions", func() {
 	Describe("Split function", func() {
@@ -1183,20 +1562,21 @@ var _ = Describe("Utility Functions", func() {
 	})
 })
 
-func NewTestRuntime() *TestingRuntime {
-	t := &TestingRuntime{}
-	t.InitRuntime()
+func NewTestingRuntime(mockClient *mock.MockClient) *TestRuntime {
+	t := &TestRuntime{}
+	t.InitRuntime(mockClient)
 	return t
 }
+
 // TestingRuntime is a wrapper for the structure used for testing
-type TestingRuntime struct {
+type TestRuntime struct {
 	SsoServer    *ghttp.Server
 	ApiServer    *ghttp.Server
 	RosaRuntime  *rosa.Runtime
 	StdOutReader stdOutReader
 }
 
-func (t *TestingRuntime) InitRuntime() {
+func (t *TestRuntime) InitRuntime(mockClient *mock.MockClient) {
 	// Create the servers:
 	t.SsoServer = MakeTCPServer()
 	t.ApiServer = MakeTCPServer()
@@ -1213,7 +1593,7 @@ func (t *TestingRuntime) InitRuntime() {
 	logger, err := logging.NewGoLoggerBuilder().
 		Debug(false).
 		Build()
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 	// Set up the connection with the fake config
 	connection, err := sdk.NewConnectionBuilder().
 		Logger(logger).
@@ -1221,11 +1601,8 @@ func (t *TestingRuntime) InitRuntime() {
 		URL(t.ApiServer.URL()).
 		Build()
 	// Initialize client object
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 	ocmClient := ocm.NewClientWithConnection(connection)
-	mockCtrl := gomock.NewController(GinkgoT())
-	mockCtrl = gomock.NewController(GinkgoT())
-	mockClient := mock.NewMockClient(mockCtrl)
 	ocm.SetClusterKey("cluster1")
 	t.RosaRuntime = rosa.NewRuntime()
 	t.RosaRuntime.OCMClient = ocmClient
@@ -1235,8 +1612,6 @@ func (t *TestingRuntime) InitRuntime() {
 		IsSTS:     false,
 	}
 	t.RosaRuntime.AWSClient = mockClient
-	
-	
 
 	DeferCleanup(t.RosaRuntime.Cleanup)
 	DeferCleanup(t.SsoServer.Close)
@@ -1244,11 +1619,11 @@ func (t *TestingRuntime) InitRuntime() {
 	DeferCleanup(t.Close)
 }
 
-func (t *TestingRuntime) Close() {
+func (t *TestRuntime) Close() {
 	ocm.SetClusterKey("")
 }
 
-func (t *TestingRuntime) SetCluster(clusterKey string, cluster *cmv1.Cluster) {
+func (t *TestRuntime) SetCluster(clusterKey string, cluster *cmv1.Cluster) {
 	ocm.SetClusterKey(clusterKey)
 	t.RosaRuntime.Cluster = cluster
 	t.RosaRuntime.ClusterKey = clusterKey
@@ -1283,25 +1658,25 @@ func (s *stdOutReader) Read() (string, error) {
 	return string(out), err
 }
 
-func FormatResource(resource interface{}) string {
+func FormatResources(resource interface{}) string {
 	var outputJson bytes.Buffer
 	var err error
 	switch reflect.TypeOf(resource).String() {
-	case "*v1.MachineTypeList":
-		if res, ok := resource.([]*cmv1.MachineType); ok {
-			err = cmv1.MarshalMachineTypeList(res, &outputJson)
-		}
-	case "*v1.VersionList":
-		if res, ok := resource.([]*cmv1.Version); ok {
-			err = cmv1.MarshalVersionList(res, &outputJson)
+	case "*v1.Version":
+		if res, ok := resource.(*cmv1.Version); ok {
+			err = cmv1.MarshalVersion(res, &outputJson)
 		}
 	case "*v1.Account":
 		if res, ok := resource.(*amsv1.Account); ok {
 			err = amsv1.MarshalAccount(res, &outputJson)
 		}
-	case "*v1.QuotaCostList":
-		if res, ok := resource.([]*amsv1.QuotaCost); ok {
-			err = amsv1.MarshalQuotaCostList(res, &outputJson)
+	case "*v1.MachinePool":
+		if res, ok := resource.(*cmv1.MachinePool); ok {
+			err = cmv1.MarshalMachinePool(res, &outputJson)
+		}
+	case "*v1.NodePool":
+		if res, ok := resource.(*cmv1.NodePool); ok {
+			err = cmv1.MarshalNodePool(res, &outputJson)
 		}
 	default:
 		{
