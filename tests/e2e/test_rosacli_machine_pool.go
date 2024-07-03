@@ -504,10 +504,10 @@ var _ = Describe("Create machinepool",
 				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
 				By("Check the machinepool details by describe")
-				mpDescription, err := rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
+				mpDescription, err := rosaClient.MachinePool.DescribeAndReflectMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(mpDescription.AdditionalSecurityGroupIDs).To(Equal(strings.Join(sgIDs, ", ")))
+				Expect(mpDescription.SecurityGroupIDs).To(Equal(strings.Join(sgIDs, ", ")))
 
 				By("Create another machinepool without security groups and describe it")
 				mpName = "mp-68173-nsg"
@@ -518,9 +518,9 @@ var _ = Describe("Create machinepool",
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 				By("Check the machinepool detail by describe")
-				mpDescription, err = rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
+				mpDescription, err = rosaClient.MachinePool.DescribeAndReflectMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mpDescription.AdditionalSecurityGroupIDs).To(BeEmpty())
+				Expect(mpDescription.SecurityGroupIDs).To(BeEmpty())
 			})
 
 		Context("validation", func() {
