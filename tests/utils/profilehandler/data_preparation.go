@@ -64,10 +64,10 @@ func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGr
 		log.Logger.Infof("Going to prepare version for %s stream %v versions lower", stream, versionStep)
 		switch stream {
 		case "y":
-			version, err := versionList.FindNearestBackwardMinorVersion(latestVersion.Version, int64(versionStep), true, true)
+			version, err := versionList.FindYStreamUpgradableVersion("")
 			return version, err
 		case "z":
-			version, err := versionList.FindNearestBackwardOptionalVersion(latestVersion.Version, versionStep, true)
+			version, err := versionList.FindZStreamUpgradableVersion("", versionStep)
 			return version, err
 		default:
 			return nil, fmt.Errorf("not supported stream configuration %s", stream)
