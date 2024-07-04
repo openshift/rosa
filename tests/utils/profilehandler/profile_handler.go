@@ -134,7 +134,12 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 	if profile.Version != "" {
 		version, err := PrepareVersion(client, profile.Version, profile.ChannelGroup, profile.ClusterConfig.HCP)
+
 		if err != nil {
+			return flags, err
+		}
+		if version == nil {
+			err = fmt.Errorf("cannot find a version match the condition %s", profile.Version)
 			return flags, err
 		}
 		profile.Version = version.Version

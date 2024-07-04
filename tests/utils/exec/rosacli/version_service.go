@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/semver"
 
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -208,9 +209,10 @@ func (vl *OpenShiftVersionTableList) FindNearestBackwardOptionalVersion(
 		}
 
 	}
-	if len(results) >= optionalsub-1 {
+	if len(results) > optionalsub-1 {
 		vs = results[optionalsub-1]
 	}
+
 	return
 
 }
@@ -351,4 +353,83 @@ func (vl *OpenShiftVersionTableList) FindYStreamUpgradeVersions(
 		break
 	}
 	return foundVersions, err
+}
+
+// FindZStreamUpgradableVersion will find a z-stream upgradable version for the upgrade testing
+// throttleVersion can be set to empty, it will use the lastest one who has availabel versions
+// when throttleVersion set will find the versions who can be upgraded to a version and not higher than it
+// For example, there is a cluster with version 4.15.19, but there is lower version can be upgraded to 4.15.19.
+// A case need to test nodepool upgrade, a lower and upgradable version is needed which is no higher than 4.15.19
+func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersion string, step int) (
+	vs *OpenShiftVersionTableOutput, err error) {
+	if step <= 0 {
+		log.Logger.Errorf("optionsub must be equal or greater than 1")
+		return
+	}
+	vl, _ = vl.Sort(true)
+	versionScopes := vl.OpenShiftVersions
+	if throttleVersion != "" {
+		vl, err := vl.FilterVersionsLowerThan(throttleVersion)
+		if err != nil {
+			return nil, err
+		}
+		vl, _ = vl.Sort(true)
+		versionScopes = vl.OpenShiftVersions
+	}
+	for _, version := range versionScopes {
+		semVersion, err := semver.NewVersion(version.Version)
+		if err != nil {
+			return nil, err
+		}
+		for _, availableUpgradeVersion := range common.ParseCommaSeparatedStrings(version.AvailableUpgrades) {
+			semAV, err := semver.NewVersion(availableUpgradeVersion)
+			if err != nil {
+				return nil, err
+			}
+			if semAV.Patch()-semVersion.Patch() == int64(step) {
+				vs = version
+				return vs, nil
+			}
+		}
+	}
+	return
+}
+
+// FindYStreamUpgradableVersion will find a y-stream upgradable version  testing
+// throttleVersion can be empty, will use the lastest one who has availabel versions
+// when throttleVersion not empty will find the versions who can be upgraded to a version which
+// is not higher than throttleVersion
+// For example, there is a cluster with version 4.15.19,
+// but there is lower version can be upgraded to 4.15.19.
+// There is a case need to test nodepool upgrade,
+// a lower and upgradable version is needed which is no higher than 4.15.19
+func (vl *OpenShiftVersionTableList) FindYStreamUpgradableVersion(throttleVersion string) (
+	vs *OpenShiftVersionTableOutput, err error) {
+	vl, _ = vl.Sort(true)
+	versionScopes := vl.OpenShiftVersions
+	if throttleVersion != "" {
+		vl, err := vl.FilterVersionsLowerThan(throttleVersion)
+		if err != nil {
+			return nil, err
+		}
+		vl, _ = vl.Sort(true)
+		versionScopes = vl.OpenShiftVersions
+	}
+	for _, version := range versionScopes {
+		semVersion, err := semver.NewVersion(version.Version)
+		if err != nil {
+			return nil, err
+		}
+		for _, availableUpgradeVersion := range common.ParseCommaSeparatedStrings(version.AvailableUpgrades) {
+			semAV, err := semver.NewVersion(availableUpgradeVersion)
+			if err != nil {
+				return nil, err
+			}
+			if semAV.Minor() != semVersion.Minor() {
+				vs = version
+				return vs, nil
+			}
+		}
+	}
+	return
 }
