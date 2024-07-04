@@ -332,6 +332,93 @@ var _ = Describe("Edit cluster",
 					To(ContainSubstring(
 						"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
 			})
+
+		It("can via rosa-cli - [id:60275]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				By("Check the cluster is private cluster")
+				private, err := clusterService.IsPrivateCluster(clusterID)
+				Expect(err).To(BeNil())
+				if !private {
+					SkipTestOnFeature("private")
+				}
+				isSTS, err := clusterService.IsSTSCluster(clusterID)
+				Expect(err).To(BeNil())
+				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+
+				By("Run command to check help message of edit cluster")
+				out, editErr := clusterService.EditCluster(clusterID, "-h")
+				Expect(editErr).ToNot(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("rosa edit cluster [flags]"))
+				Expect(out.String()).Should(ContainSubstring("rosa edit cluster -c mycluster --private"))
+				Expect(out.String()).Should(ContainSubstring("rosa edit cluster -c mycluster --interactive"))
+
+				By("Edit the cluster with '--private=false' flag")
+				out, editErr = clusterService.EditCluster(
+					clusterID,
+					"--private=false",
+					"-y",
+				)
+
+				defer func() {
+					By("Edit cluster to private back to false")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--private",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+					Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+
+					By("Describe cluster to check Private is true")
+					output, err := clusterService.DescribeCluster(clusterID)
+					Expect(err).To(BeNil())
+					CD, err := clusterService.ReflectClusterDescription(output)
+					Expect(err).To(BeNil())
+					Expect(CD.Private).To(Equal("Yes"))
+				}()
+
+				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				if isSTS && !isHostedCP {
+					Expect(editErr).ToNot(BeNil())
+					Expect(textData).Should(ContainSubstring("Failed to update cluster: Cannot update listening " +
+						"mode of cluster's API on an AWS STS cluster"))
+
+					Expect(CD.Private).To(Equal("Yes"))
+				} else {
+					Expect(editErr).To(BeNil())
+					Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+
+					Expect(CD.Private).To(Equal("No"))
+				}
+
+				By("Edit the cluster with '--private' flag")
+				out, editErr = clusterService.EditCluster(
+					clusterID,
+					"--private",
+					"-y",
+				)
+				Expect(editErr).To(BeNil())
+				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("You are choosing to make your cluster API private. " +
+					"You will not be able to access your cluster until you edit network settings in your cloud provider. " +
+					"To also change the privacy setting of the application router endpoints, use the 'rosa edit ingress' command."))
+				Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(CD.Private).To(Equal("Yes"))
+			})
 	})
 
 var _ = Describe("Classic cluster creation validation",
