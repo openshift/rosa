@@ -61,7 +61,7 @@ var _ = Describe("Create machinepool",
 			labels.Runtime.Day2,
 			labels.Critical,
 			func() {
-				mpID := "mp-66359"
+				mpID := "mp-66872"
 				expectedDiskSize := "186 GiB" // it is 200GB
 				machineType := "r5.xlarge"
 
@@ -93,7 +93,7 @@ var _ = Describe("Create machinepool",
 				Expect(mpD.DiskSize).To(Equal(expectedDiskSize))
 
 				By("Create another machinepool with volume size 0.5TiB")
-				mpID = "mp-66359-2"
+				mpID = "mp-66872-2"
 				expectedDiskSize = "512 GiB" // it is 0.5TiB
 				machineType = "m5.2xlarge"
 				_, err = machinePoolService.CreateMachinePool(clusterID, mpID,

@@ -36,10 +36,10 @@ var _ = Describe("Create Machine Pool", labels.Feature.Machinepool, func() {
 		labels.Critical, labels.Runtime.Day2,
 		func() {
 			By("Load the vpc client of the machinepool")
-			mps, err := rosaClient.MachinePool.ListAndReflectMachinePools(clusterID)
+			mps, err := rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 
-			subnetID := mps.MachinePools[0].Subnets
+			subnetID := mps.NodePools[0].Subnet
 			vpcClient, err := vpc_client.GenerateVPCBySubnet(subnetID, profile.Region)
 			Expect(err).ToNot(HaveOccurred())
 
