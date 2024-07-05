@@ -13,7 +13,8 @@ import (
 
 // DeployCilium The step is provided via here https://hypershift-docs.netlify.app/how-to/aws/other-sdn-providers/#cilium
 // Only for HCP cluster now
-func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, outputDir string) error {
+func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, outputDir string,
+	kubeconfigFile string) error {
 	ciliumVersion := "1.14.5"
 	yamlFileNames := []string{
 		"cluster-network-03-cilium-ciliumconfigs-crd.yaml",
@@ -68,7 +69,7 @@ func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, out
 		return err
 	}
 
-	stdout, err := ocClient.Run(fmt.Sprintf("envsubst < %s | oc apply -f -", resultFile))
+	stdout, err := ocClient.Run(fmt.Sprintf("oc apply -f %s --kubeconfig %s", resultFile, kubeconfigFile))
 	time.Sleep(3 * time.Second)
 	if err != nil {
 		log.Logger.Errorf("%s", stdout)
