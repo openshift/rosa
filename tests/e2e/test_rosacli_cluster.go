@@ -340,14 +340,16 @@ var _ = Describe("Classic cluster creation validation",
 		defer GinkgoRecover()
 
 		var (
-			rosaClient  *rosacli.Client
-			profilesMap map[string]*profilehandler.Profile
-			profile     *profilehandler.Profile
+			rosaClient     *rosacli.Client
+			profilesMap    map[string]*profilehandler.Profile
+			profile        *profilehandler.Profile
+			clusterService rosacli.ClusterService
 		)
 
 		BeforeEach(func() {
 			// Init the client
 			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
 			// Get a random profile
 			profilesMap = profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
 			profilesNames := make([]string, 0, len(profilesMap))
@@ -560,7 +562,6 @@ var _ = Describe("Classic cluster creation validation",
 		It("to validate to create the sts cluster with invalid tag - [id:56440]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				clusterService := rosaClient.Cluster
 				clusterName := "ocp-56440"
 
 				By("Create cluster with invalid tag key")
@@ -625,7 +626,6 @@ var _ = Describe("Classic cluster creation validation",
 			func() {
 				minSize := 128
 				maxSize := 16384
-				clusterService := rosaClient.Cluster
 				clusterName := "ocp-66372"
 				client := rosacli.NewClient()
 
@@ -683,7 +683,6 @@ var _ = Describe("Classic cluster creation validation",
 		It("to validate to create cluster with availability zones - [id:52692]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				clusterService := rosaClient.Cluster
 				clusterName := "ocp-52692"
 
 				By("Create cluster with the zone not available in the region")
@@ -828,7 +827,6 @@ var _ = Describe("Classic cluster creation validation",
 		It("to validate to create the cluster with version not in the channel group - [id:74399]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				clusterService := rosaClient.Cluster
 				clusterName := "ocp-74399"
 
 				By("Create cluster with version not in channel group")
@@ -844,7 +842,6 @@ var _ = Describe("Classic cluster creation validation",
 		It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				clusterService := rosaClient.Cluster
 				clusterName := "ocp-74436"
 
 				By("Create cluster with fips flag but '--etcd-encryption=false")
@@ -1158,6 +1155,40 @@ var _ = Describe("HCP cluster creation negative testing",
 						ContainSubstring(
 							"External authentication is only supported in version '4.15.9' or greater, current cluster version is '%s'",
 							foundVersion))
+			})
+
+		It("to validate '--ec2-metadata-http-tokens' flag during creating cluster - [id:64078]",
+			labels.Medium,
+			labels.Runtime.Day1Negative,
+			func() {
+				clusterName := "ocp-64078"
+
+				By("Create classic cluster with invalid httpTokens")
+				errorOutput, err := clusterService.CreateDryRun(
+					clusterName, "--ec2-metadata-http-tokens=invalid",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(errorOutput.String()).
+					To(
+						ContainSubstring(
+							"ERR: Expected a valid http tokens value : " +
+								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
+
+				By("Craete HCP cluster  with httpTokens=Required")
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--ec2-metadata-http-tokens=required", "-y")
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).
+					To(
+						ContainSubstring(
+							"ERR: 'ec2-metadata-http-tokens' is not available for Hosted Control Plane clusters"))
 			})
 	})
 
