@@ -267,10 +267,10 @@ var _ = Describe("Healthy check",
 			})
 		It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical,
 			func() {
-				private := "No"
+				private := constants.No
 				ingressPrivate := "false"
 				if clusterConfig.PrivateLink {
-					private = "Yes"
+					private = constants.Yes
 					ingressPrivate = "true"
 				}
 				By("Describe the cluster the cluster should be private")
