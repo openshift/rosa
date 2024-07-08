@@ -342,7 +342,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		err = fmt.Errorf("Failed to get inputted max replicas: %s", err)
 		return
 	}
-	autoscaling, err = cmd.Flags().GetBool("autoscaling")
+	autoscaling, err = cmd.Flags().GetBool("enable-autoscaling")
 	if err != nil {
 		err = fmt.Errorf("Failed to get inputted autoscaling: %s", err)
 		return
@@ -842,7 +842,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 		err = fmt.Errorf("Failed to get inputted max replicas: %s", err)
 		return
 	}
-	autoscaling, err = cmd.Flags().GetBool("autoscaling")
+	autoscaling, err = cmd.Flags().GetBool("enable-autoscaling")
 	if err != nil {
 		err = fmt.Errorf("Failed to get inputted autoscaling: %s", err)
 		return
