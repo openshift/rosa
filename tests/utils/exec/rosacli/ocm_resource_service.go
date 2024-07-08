@@ -60,6 +60,7 @@ type OCMResourceService interface {
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
 	GetOIDCIdFromList(providerURL string) (string, error)
 	GetOIDCConfigFromList(oidcConfigID string) (OIDCConfig, error)
+	RegisterOIDCConfig(flags ...string) (bytes.Buffer, error)
 
 	ListOperatorRoles(flags ...string) (bytes.Buffer, error)
 	DeleteOperatorRoles(flags ...string) (bytes.Buffer, error)
@@ -524,6 +525,17 @@ func (url OCMRoleList) FindLinkedOCMRole() (userRoles OCMRole) {
 	return
 }
 
+// Get the user-role which is linked to org
+func (url UserRoleList) FindLinkedUserRole() (userRoles UserRole) {
+	for _, roleItme := range url.UserRoleList {
+		if roleItme.Linded == "Yes" {
+			Logger.Infof("Find one linked user role %s ~", roleItme.RoleName)
+			return roleItme
+		}
+	}
+	return
+}
+
 // run `rosa create oidc-config` command
 func (ors *ocmResourceService) CreateOIDCConfig(flags ...string) (bytes.Buffer, error) {
 	createOIDCConfig := ors.client.Runner
@@ -600,6 +612,14 @@ func (ors *ocmResourceService) GetOIDCConfigFromList(oidcConfigID string) (OIDCC
 func (oidcl OIDCConfigList) OIDCConfig(id string) (oidc OIDCConfig) {
 	for _, item := range oidcl.OIDCConfigList {
 		if item.ID == id {
+			return item
+		}
+	}
+	return
+}
+func (oidcl OIDCConfigList) IssuerUrl(url string) (oidc OIDCConfig) {
+	for _, item := range oidcl.OIDCConfigList {
+		if item.IssuerUrl == url {
 			return item
 		}
 	}
@@ -693,4 +713,11 @@ func (ors *ocmResourceService) SetConfig(flags ...string) (bytes.Buffer, error) 
 	setConfig := ors.client.Runner
 	setConfig = setConfig.Cmd("config", "set").CmdFlags(flags...)
 	return setConfig.Run()
+}
+
+// run `rosa register oidc-config` command
+func (ors *ocmResourceService) RegisterOIDCConfig(flags ...string) (bytes.Buffer, error) {
+	registerOIDCConfig := ors.client.Runner
+	registerOIDCConfig = registerOIDCConfig.Cmd("register", "oidc-config").CmdFlags(flags...)
+	return registerOIDCConfig.Run()
 }
