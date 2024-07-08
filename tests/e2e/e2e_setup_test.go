@@ -67,7 +67,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					}
 					By("Deploy cilium configures")
 					ocClient := occli.NewOCClient(kubeconfigFile)
-					err = utilConfig.DeployCilium(ocClient, podCIDR, hostPrefix, testDir)
+					err = utilConfig.DeployCilium(ocClient, podCIDR, hostPrefix, testDir, kubeconfigFile)
 					Expect(err).ToNot(HaveOccurred())
 					log.Logger.Infof("Deploy cilium for HCP cluster: %s successfully ", cluster.ID)
 				} else {
