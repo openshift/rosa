@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
@@ -93,9 +94,10 @@ func PreparePrefix(profilePrefix string, nameLength int) string {
 }
 
 // PrepareVPC will prepare a single vpc
-func PrepareVPC(region string, vpcName string, cidrValue string) (*vpc_client.VPC, error) {
+func PrepareVPC(region string, vpcName string, cidrValue string,
+	awsSharedCredentialFile string) (*vpc_client.VPC, error) {
 	log.Logger.Info("Starting vpc preparation")
-	vpc, err := vpc_client.PrepareVPC(vpcName, region, cidrValue, false)
+	vpc, err := vpc_client.PrepareVPC(vpcName, region, cidrValue, false, awsSharedCredentialFile)
 	if err != nil {
 		return vpc, err
 	}
@@ -331,7 +333,7 @@ func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL strin
 		log.Logger.Errorf("Error happens when prepare audit log policy: %s", err.Error())
 		return "", err
 	}
-	roleArn, err := awsClient.CreateRoleForAuditLogForward(auditLogRoleName, awsClient.AccountID, oidcIssuerURL)
+	roleArn, err := awsClient.CreateRoleForAuditLogForward(auditLogRoleName, awsClient.AccountID, oidcIssuerURL, policyArn)
 	auditLogRoleArn := aws.ToString(roleArn.Arn)
 	if err != nil {
 		log.Logger.Errorf("Error happens when prepare audit log role: %s", err.Error())
@@ -422,4 +424,133 @@ func PrepareOIDCProviderByCluster(client *rosacli.Client, cluster string) error 
 		"--cluster", cluster,
 	)
 	return err
+}
+
+func PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string, ingressOperatorRoleArn string,
+	region string, awsSharedCredentialFile string) (string, string, error) {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	policyName := fmt.Sprintf("%s-%s", sharedVPCRolePrefix, "shared-vpc-policy")
+	policyArn, err := awsClient.CreatePolicyForSharedVPC(policyName)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare shared vpc policy: %s", err.Error())
+		return "", "", err
+	}
+
+	roleName := fmt.Sprintf("%s-%s", sharedVPCRolePrefix, "shared-vpc-role")
+	if installerRoleArn == "" {
+		log.Logger.Errorf("Can not create shared vpc role due to no installer role.")
+		return "", "", err
+	}
+	roleArn, err := awsClient.CreateRoleForSharedVPC(roleName, installerRoleArn, ingressOperatorRoleArn)
+	sharedVPCRoleArn := aws.ToString(roleArn.Arn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare shared vpc role: %s", err.Error())
+		return roleName, sharedVPCRoleArn, err
+	}
+	log.Logger.Infof("Create a new role for shared VPC: %s", sharedVPCRoleArn)
+	err = RecordUserDataInfo(config.Test.UserDataFile, "SharedVPCRole", roleName)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record shared VPC role: %s", err.Error())
+		return roleName, sharedVPCRoleArn, err
+	}
+	err = awsClient.AttachIAMPolicy(roleName, policyArn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when attach shared VPC policy %s to role %s: %s", policyArn,
+			sharedVPCRoleArn, err.Error())
+	}
+	return roleName, sharedVPCRoleArn, err
+}
+
+func PrepareDNSDomain(client *rosacli.Client) (string, error) {
+	var dnsDomain string
+	var output bytes.Buffer
+	var err error
+
+	output, err = client.OCMResource.CreateDNSDomain()
+	if err != nil {
+		return dnsDomain, err
+	}
+	parser := rosacli.NewParser()
+	tip := parser.TextData.Input(output).Parse().Tip()
+	dnsDomainStr := strings.Split(strings.Split(tip, "\n")[0], " ")[3]
+	dnsDomain = strings.TrimSuffix(strings.TrimPrefix(dnsDomainStr, "‘"), "’")
+	err = RecordUserDataInfo(config.Test.UserDataFile, "DNSDomain", dnsDomain)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record DNS Domain: %s", err.Error())
+	}
+	return dnsDomain, err
+}
+
+func PrepareHostedZone(clusterName string, dnsDomain string, vpcID string, region string, private bool,
+	awsSharedCredentialFile string) (string, error) {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return "", err
+	}
+
+	hostedZoneName := fmt.Sprintf("%s.%s", clusterName, dnsDomain)
+	callerReference := common.GenerateRandomString(10)
+	hostedZoneOutput, err := awsClient.CreateHostedZone(hostedZoneName, callerReference, vpcID, region, private)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare hosted zone: %s", err.Error())
+		return "", err
+	}
+	hostedZoneID := strings.Split(*hostedZoneOutput.HostedZone.Id, "/")[2]
+
+	err = RecordUserDataInfo(config.Test.UserDataFile, "HostedZoneID", hostedZoneID)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record Hosted Zone ID: %s", err.Error())
+	}
+	return hostedZoneID, err
+}
+
+func PrepareSubnetArns(subnetIDs string, region string, awsSharedCredentialFile string) ([]string, error) {
+	var subnetArns []string
+	var resp []types.Subnet
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return nil, err
+	}
+
+	subnets := strings.Split(subnetIDs, ",")
+	resp, err = awsClient.ListSubnetDetail(subnets...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, subnet := range resp {
+		subnetArns = append(subnetArns, *subnet.SubnetArn)
+	}
+	return subnetArns, err
+}
+
+func PrepareResourceShare(resourceShareName string, resourceArns []string, region string,
+	awsSharedCredentialFile string) (string, error) {
+	var principles []string
+	awsClient, err := aws_client.CreateAWSClient("", region)
+	if err != nil {
+		return "", err
+	}
+	principles = append(principles, awsClient.AccountID)
+
+	sharedVPCAWSClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return "", err
+	}
+
+	sharedResourceOutput, err := sharedVPCAWSClient.CreateResourceShare(resourceShareName, resourceArns, principles)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare resource share: %s", err.Error())
+		return "", err
+	}
+	resourceShareArn := *sharedResourceOutput.ResourceShare.ResourceShareArn
+	err = RecordUserDataInfo(config.Test.UserDataFile, "ResourceShareArn", resourceShareArn)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record resource share: %s", err.Error())
+	}
+	return resourceShareArn, err
 }

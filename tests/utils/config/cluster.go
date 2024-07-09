@@ -132,6 +132,7 @@ type ClusterConfig struct {
 	Subnets                   *Subnets                  `json:"subnets,omitempty"`
 	Version                   *Version                  `json:"version,omitempty"`
 	ExternalAuthentication    bool                      `json:"external_authentication,omitempty"`
+	SharedVPC                 bool                      `json:"shared_vpc,omitempty"`
 }
 
 func ParseClusterProfile() (*ClusterConfig, error) {

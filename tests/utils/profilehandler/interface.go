@@ -62,10 +62,14 @@ type ClusterConfig struct {
 type UserData struct {
 	AccountRolesPrefix  string `json:"account_roles_prefix,omitempty"`
 	AuditLogArn         string `json:"audit_log,omitempty"`
+	DNSDomain           string `json:"dns_domain,omitempty"`
 	EtcdKMSKey          string `json:"etcd_kms_key,omitempty"`
+	HostedZoneID        string `json:"hosted_zone_id,omitempty"`
 	KMSKey              string `json:"kms_key,omitempty"`
 	OperatorRolesPrefix string `json:"operator_roles_prefix,omitempty"`
 	OIDCConfigID        string `json:"oidc_config_id,omitempty"`
+	ResourceShareArn    string `json:"resource_share,omitempty"`
+	SharedVPCRole       string `json:"shared_vpc_role,omitempty"`
 	VpcID               string `json:"vpc_id,omitempty"`
 }
 

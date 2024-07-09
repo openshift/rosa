@@ -50,6 +50,7 @@ type GlobalENVVariables struct {
 	NamePrefix            string `env:"NAME_PREFIX"`
 	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"60"`
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
+	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`
 }
 
 func init() {
@@ -101,6 +102,7 @@ func init() {
 		Region:                os.Getenv("REGION"),
 		ProvisionShard:        os.Getenv("PROVISION_SHARD"),
 		NamePrefix:            os.Getenv("NAME_PREFIX"),
+		SVPC_CREDENTIALS_FILE: os.Getenv("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE"),
 		ClusterWaitingTime:    waitingTime,
 		WaitSetupClusterReady: waitSetupClusterReady,
 	}
