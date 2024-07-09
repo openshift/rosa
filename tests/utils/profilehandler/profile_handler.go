@@ -139,7 +139,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	clusterConfiguration.Name = clusterName
 
 	if profile.Version != "" {
-		version, err := PrepareVersion(client, profile.Version, profile.ChannelGroup, profile.ClusterConfig.HCP)
+		// Force set the hcp parameter to false since hcp cannot filter the upgrade versions
+		version, err := PrepareVersion(client, profile.Version, profile.ChannelGroup, false)
 
 		if err != nil {
 			return flags, err
