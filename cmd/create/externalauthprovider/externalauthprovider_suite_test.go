@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestIdp(t *testing.T) {
+func TestExternalAuthProvider(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "ExternalAuthProvider Create Suite")
 }
