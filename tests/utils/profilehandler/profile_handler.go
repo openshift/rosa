@@ -1,6 +1,7 @@
 package profilehandler
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -351,6 +352,9 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		)
 	}
 	if profile.ClusterConfig.AutoscalerEnabled {
+		if !profile.ClusterConfig.Autoscale {
+			return nil, errors.New("Autoscaler is enabled without having enabled the autoscale field") // nolint
+		}
 		autoscaler := &ClusterConfigure.Autoscaler{
 			AutoscalerBalanceSimilarNodeGroups:    true,
 			AutoscalerSkipNodesWithLocalStorage:   true,

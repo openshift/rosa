@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -413,7 +414,7 @@ var _ = Describe("create operator-roles forcely testing",
 		})
 
 		It("to create operator-roles which were created with cluster forcely - [id:74661]",
-			labels.Critical, labels.Runtime.OCMResources, labels.Runtime.Destructive, func() {
+			labels.Critical, labels.Runtime.Destructive, func() {
 				By("Check cluster type")
 				isSTS, err := clusterService.IsSTSCluster(clusterID)
 				Expect(err).To(BeNil())
@@ -516,13 +517,14 @@ var _ = Describe("create IAM roles forcely testing",
 			rosaClient          *rosacli.Client
 			ocmResourceService  rosacli.OCMResourceService
 			awsClient           *aws_client.AWSClient
-			err                 error
 			accountRolePrefix   string
 			operatorRolePrefix  string
 			managedOIDCConfigID string
 			installerRoleArn    string
 		)
 		BeforeEach(func() {
+			var err error
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
@@ -530,15 +532,8 @@ var _ = Describe("create IAM roles forcely testing",
 			awsClient, err = aws_client.CreateAWSClient("", "")
 			Expect(err).To(BeNil())
 
-			By("Create account-role")
-			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
-				"--prefix", accountRolePrefix,
-				"-y",
-			)
-			Expect(err).To(BeNil())
-			Expect(output.String()).To(ContainSubstring("Created role"))
-
 			By("Create oidconfig for testing")
+			var output bytes.Buffer
 			output, err = ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("Created OIDC provider with ARN"))
@@ -547,21 +542,6 @@ var _ = Describe("create IAM roles forcely testing",
 
 			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 			Expect(err).To(BeNil())
-
-			By("Create prior-to-cluster operator roles for testing")
-			installerRole, err := awsClient.GetRole(fmt.Sprintf("%s-Installer-Role", accountRolePrefix))
-			Expect(err).To(BeNil())
-			installerRoleArn = *installerRole.Arn
-
-			output, err = ocmResourceService.CreateOperatorRoles(
-				"--oidc-config-id", managedOIDCConfigID,
-				"--installer-role-arn", installerRoleArn,
-				"--mode", "auto",
-				"--prefix", operatorRolePrefix,
-				"-y",
-			)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring("Created role"))
 		})
 		AfterEach(func() {
 			By("Delete the testing account-roles")
@@ -593,10 +573,8 @@ var _ = Describe("create IAM roles forcely testing",
 		})
 		It("to create account-roles and prior-to-cluster operator-roles forcely - [id:59551]",
 			labels.Critical, labels.Runtime.OCMResources, func() {
-				var (
-					accountRolePrefix  = "ar59551"
-					operatorRolePrefix = "op59551"
-				)
+				accountRolePrefix = "ar59551"
+				operatorRolePrefix = "op59551"
 				accountRoleNamePermissionMap := map[string]string{
 					fmt.Sprintf("%s-Installer-Role", accountRolePrefix):    "AssumeRole",
 					fmt.Sprintf("%s-Support-Role", accountRolePrefix):      "DescribeInstances",
@@ -615,6 +593,29 @@ var _ = Describe("create IAM roles forcely testing",
 
 				accountRolePolicyMap := map[string]string{}
 				operatorRolePolicyMap := map[string]string{}
+
+				By("Create account-role")
+				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Created role"))
+
+				By("Create prior-to-cluster operator roles for testing")
+				installerRole, err := awsClient.GetRole(fmt.Sprintf("%s-Installer-Role", accountRolePrefix))
+				Expect(err).To(BeNil())
+				installerRoleArn = *installerRole.Arn
+
+				output, err = ocmResourceService.CreateOperatorRoles(
+					"--oidc-config-id", managedOIDCConfigID,
+					"--installer-role-arn", installerRoleArn,
+					"--mode", "auto",
+					"--prefix", operatorRolePrefix,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Created role"))
 
 				By("Get test policies")
 				for k := range accountRoleNamePermissionMap {
@@ -659,7 +660,7 @@ var _ = Describe("create IAM roles forcely testing",
 				Expect(err).To(BeNil())
 
 				By("Create account-role forcely")
-				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 					"--prefix", accountRolePrefix,
 					"-y",
 					"--force-policy-creation",
