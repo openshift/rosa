@@ -36,6 +36,7 @@ func RecordUserDataInfo(filePath string, key string, value string) error {
 func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGroup string, hcp bool) (
 	*rosacli.OpenShiftVersionTableOutput, error) {
 	log.Logger.Infof("Got version requirement %s going to prepare accordingly", versionRequirement)
+	log.Logger.Infof("Channel group = %s", channelGroup)
 	versionList, err := client.Version.ListAndReflectVersions(channelGroup, hcp)
 	if err != nil {
 		return nil, err
@@ -65,10 +66,12 @@ func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGr
 		log.Logger.Infof("Going to prepare version for %s stream %v versions lower", stream, versionStep)
 		switch stream {
 		case "y":
-			version, err := versionList.FindYStreamUpgradableVersion("")
+			var version *rosacli.OpenShiftVersionTableOutput
+			version, err = versionList.FindYStreamUpgradableVersion(latestVersion.Version)
 			return version, err
 		case "z":
-			version, err := versionList.FindZStreamUpgradableVersion("", versionStep)
+			var version *rosacli.OpenShiftVersionTableOutput
+			version, err := versionList.FindZStreamUpgradableVersion(latestVersion.Version, versionStep)
 			return version, err
 		default:
 			return nil, fmt.Errorf("not supported stream configuration %s", stream)

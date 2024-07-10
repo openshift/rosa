@@ -362,35 +362,47 @@ func (vl *OpenShiftVersionTableList) FindYStreamUpgradeVersions(
 // A case need to test nodepool upgrade, a lower and upgradable version is needed which is no higher than 4.15.19
 func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersion string, step int) (
 	vs *OpenShiftVersionTableOutput, err error) {
+	log.Logger.Debugf("FindZStreamUpgradableVersion with throttle = %v and step %v", throttleVersion, step)
+
 	if step <= 0 {
 		log.Logger.Errorf("optionsub must be equal or greater than 1")
 		return
 	}
-	vl, _ = vl.Sort(true)
-	versionScopes := vl.OpenShiftVersions
-	if throttleVersion != "" {
-		vl, err := vl.FilterVersionsLowerThan(throttleVersion)
-		if err != nil {
-			return nil, err
-		}
-		vl, _ = vl.Sort(true)
-		versionScopes = vl.OpenShiftVersions
+	throttleSemVer, err := semver.NewVersion(throttleVersion)
+	if err != nil {
+		return nil, err
 	}
-	for _, version := range versionScopes {
+
+	// Filter lower versions
+	vl, err = vl.FilterVersionsLowerThan(throttleVersion)
+	if err != nil {
+		return nil, err
+	}
+	vl, _ = vl.Sort(true)
+
+	for _, version := range vl.OpenShiftVersions {
+		log.Logger.Debugf("Analyze version = %v", version.Version)
 		semVersion, err := semver.NewVersion(version.Version)
 		if err != nil {
 			return nil, err
 		}
+		if semVersion.Minor() != throttleSemVer.Minor() ||
+			semVersion.Patch() > throttleSemVer.Patch()+int64(step) {
+			log.Logger.Debugf("Version %v is ignored", version.Version)
+			continue
+		}
+		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
 		for _, availableUpgradeVersion := range common.ParseCommaSeparatedStrings(version.AvailableUpgrades) {
 			semAV, err := semver.NewVersion(availableUpgradeVersion)
 			if err != nil {
 				return nil, err
 			}
-			if semAV.Patch()-semVersion.Patch() == int64(step) {
+			if throttleSemVer.Equal(semAV) {
 				vs = version
 				return vs, nil
 			}
 		}
+		log.Logger.Debugf("No upgrade found")
 	}
 	return
 }
@@ -405,31 +417,38 @@ func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersio
 // a lower and upgradable version is needed which is no higher than 4.15.19
 func (vl *OpenShiftVersionTableList) FindYStreamUpgradableVersion(throttleVersion string) (
 	vs *OpenShiftVersionTableOutput, err error) {
-	vl, _ = vl.Sort(true)
-	versionScopes := vl.OpenShiftVersions
-	if throttleVersion != "" {
-		vl, err := vl.FilterVersionsLowerThan(throttleVersion)
-		if err != nil {
-			return nil, err
-		}
-		vl, _ = vl.Sort(true)
-		versionScopes = vl.OpenShiftVersions
+	log.Logger.Debugf("FindYStreamUpgradableVersion with throttle = %v", throttleVersion)
+	throttleSemVer, err := semver.NewVersion(throttleVersion)
+	if err != nil {
+		return nil, err
 	}
-	for _, version := range versionScopes {
+	vl, err = vl.FilterVersionsLowerThan(throttleVersion)
+	if err != nil {
+		return nil, err
+	}
+	vl, _ = vl.Sort(true)
+	for _, version := range vl.OpenShiftVersions {
+		log.Logger.Debugf("Analyze version = %v", version.Version)
 		semVersion, err := semver.NewVersion(version.Version)
 		if err != nil {
 			return nil, err
 		}
+		if semVersion.Minor()+1 != throttleSemVer.Minor() {
+			log.Logger.Debugf("Version %v is ignored", version.Version)
+			continue
+		}
+		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
 		for _, availableUpgradeVersion := range common.ParseCommaSeparatedStrings(version.AvailableUpgrades) {
 			semAV, err := semver.NewVersion(availableUpgradeVersion)
 			if err != nil {
 				return nil, err
 			}
-			if semAV.Minor() != semVersion.Minor() {
+			if throttleSemVer.Equal(semAV) {
 				vs = version
 				return vs, nil
 			}
 		}
+		log.Logger.Debugf("No upgrade found")
 	}
 	return
 }

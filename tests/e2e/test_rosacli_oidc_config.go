@@ -212,17 +212,19 @@ var _ = Describe("Register ummanaged oidc config testing",
 
 		})
 		AfterEach(func() {
-			By("Delete oidc config")
-			output, err := ocmResourceService.DeleteOIDCConfig(
-				"--oidc-config-id", oidcConfigID,
-				"--mode", "auto",
-				"-y",
-			)
-			Expect(err).To(BeNil())
-			Expect(output.String()).To(ContainSubstring("Successfully deleted the OIDC provider"))
+			if oidcConfigID != "" {
+				By("Delete oidc config")
+				output, err := ocmResourceService.DeleteOIDCConfig(
+					"--oidc-config-id", oidcConfigID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Successfully deleted the OIDC provider"))
+			}
 
 			By("Cleanup created account-roles")
-			_, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
 				"--prefix", accountRolePrefix,
 				"-y")
 			Expect(err).To(BeNil())
