@@ -418,37 +418,31 @@ func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersio
 func (vl *OpenShiftVersionTableList) FindYStreamUpgradableVersion(throttleVersion string) (
 	vs *OpenShiftVersionTableOutput, err error) {
 	log.Logger.Debugf("FindYStreamUpgradableVersion with throttle = %v", throttleVersion)
-	throttleSemVer, err := semver.NewVersion(throttleVersion)
-	if err != nil {
-		return nil, err
-	}
-	vl, err = vl.FilterVersionsLowerThan(throttleVersion)
-	if err != nil {
-		return nil, err
-	}
-	vl, _ = vl.Sort(true)
-	for _, version := range vl.OpenShiftVersions {
-		log.Logger.Debugf("Analyze version = %v", version.Version)
-		semVersion, err := semver.NewVersion(version.Version)
+	if throttleVersion != "" {
+		vl, err = vl.FilterVersionsLowerThan(throttleVersion)
 		if err != nil {
 			return nil, err
 		}
-		if semVersion.Minor()+1 != throttleSemVer.Minor() {
-			log.Logger.Debugf("Version %v is ignored", version.Version)
-			continue
+	}
+
+	vl, _ = vl.Sort(true)
+
+	for _, version := range vl.OpenShiftVersions {
+		log.Logger.Debugf("Analyze version = %v", version.Version)
+		semVersion, _ := semver.NewVersion(version.Version)
+		if err != nil {
+			return nil, err
 		}
-		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
-		for _, availableUpgradeVersion := range common.ParseCommaSeparatedStrings(version.AvailableUpgrades) {
-			semAV, err := semver.NewVersion(availableUpgradeVersion)
-			if err != nil {
-				return nil, err
-			}
-			if throttleSemVer.Equal(semAV) {
+		availableUpgrades := common.ParseCommaSeparatedStrings(version.AvailableUpgrades)
+		for _, av := range availableUpgrades {
+			parsedAV, _ := semver.NewVersion(av)
+			if parsedAV.Minor() == semVersion.Minor()+1 {
 				vs = version
-				return vs, nil
+				return
 			}
 		}
-		log.Logger.Debugf("No upgrade found")
+		log.Logger.Debugf("Version %v is ignored", version.Version)
+		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
 	}
 	return
 }
