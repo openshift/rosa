@@ -244,7 +244,7 @@ var _ = Describe("Cluster Upgrade testing",
 			// and to check the `rosa describe/list upgrade` in both of these two case.
 			output, err = clusterService.Upgrade(
 				"-c", clusterID,
-				"--version", "4.15.14",
+				"--version", upgradingVersion,
 				"--mode", "auto",
 				"-y",
 			)
