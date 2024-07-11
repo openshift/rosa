@@ -2,6 +2,8 @@ package aws_client
 
 import (
 	"context"
+	"os"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -12,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/ram"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"os"
 
 	"github.com/openshift-online/ocm-common/pkg/log"
 
@@ -99,6 +100,7 @@ func CreateAWSClient(profileName string, region string, awsSharedCredentialFile 
 		KmsClient:            kms.NewFromConfig(cfg),
 		AWSConfig:            &cfg,
 		RamClient:            ram.NewFromConfig(cfg),
+		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(cfg),
 	}
 	awsClient.AccountID = awsClient.GetAWSAccountID()
 	return awsClient, nil

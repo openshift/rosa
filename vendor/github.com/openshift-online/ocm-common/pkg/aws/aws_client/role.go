@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openshift-online/ocm-common/pkg/log"
 	"time"
+
+	"github.com/openshift-online/ocm-common/pkg/log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -22,7 +23,7 @@ func (client *AWSClient) CreateRole(roleName string,
 	permissionBoundry string,
 	tags map[string]string,
 	path string,
-) (types.Role, error) {
+) (role types.Role, err error) {
 	var roleTags []types.Tag
 	for tagKey, tagValue := range tags {
 		roleTags = append(roleTags, types.Tag{
@@ -45,13 +46,14 @@ func (client *AWSClient) CreateRole(roleName string,
 	if len(tags) != 0 {
 		input.Tags = roleTags
 	}
+	var resp *iam.CreateRoleOutput
+	resp, err = client.IamClient.CreateRole(context.TODO(), input)
+	if err == nil && resp != nil {
+		role = *resp.Role
+		err = client.WaitForResourceExisting("role-"+*resp.Role.RoleName, 10) // add a prefix to meet the resourceExisting split rule
 
-	resp, err := client.IamClient.CreateRole(context.TODO(), input)
-	if err != nil {
-		return *resp.Role, err
 	}
-	err = client.WaitForResourceExisting("role-"+*resp.Role.RoleName, 10) // add a prefix to meet the resourceExisting split rule
-	return *resp.Role, err
+	return
 }
 
 func (client *AWSClient) CreateRoleAndAttachPolicy(roleName string,
