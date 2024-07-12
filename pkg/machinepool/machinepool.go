@@ -779,7 +779,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		}
 	}
 
-	if isUpgradeMaxSurgeSet && isUpgradeMaxUnavailableSet {
+	if isUpgradeMaxSurgeSet || isUpgradeMaxUnavailableSet || interactive.Enabled() {
 		maxSurge := cmd.Flags().Lookup("max-surge").Value.String()
 		if maxSurge == "" && nodePool.ManagementUpgrade().MaxSurge() != "" {
 			maxSurge = nodePool.ManagementUpgrade().MaxSurge()

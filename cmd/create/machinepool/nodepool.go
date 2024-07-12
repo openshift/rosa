@@ -474,7 +474,7 @@ func addNodePool(cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, r
 
 	isMaxSurgeSet := cmd.Flags().Changed("max-surge")
 	isMaxUnavailableSet := cmd.Flags().Changed("max-unavailable")
-	if isMaxSurgeSet && isMaxUnavailableSet {
+	if isMaxSurgeSet || isMaxUnavailableSet || interactive.Enabled() {
 		maxSurge := args.maxSurge
 		if interactive.Enabled() {
 			maxSurge, err = interactive.GetString(interactive.Input{
