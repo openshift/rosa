@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -317,42 +318,36 @@ var _ = Describe("Edit nodepool",
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63178", 2)
 				tuningConfig1Name := common.GenerateRandomName("tuned01", 2)
+				tc1Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig1Name, 25, 10)
 				tuningConfig2Name := common.GenerateRandomName("tuned02", 2)
+				tc2Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig2Name, 25, 10)
 				tuningConfig3Name := common.GenerateRandomName("tuned03", 2)
+				tc3Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig2Name, 25, 10)
 				allTuningConfigNames := []string{tuningConfig1Name, tuningConfig2Name, tuningConfig3Name}
 
-				tuningConfigPayload := `
-		{
-			"profile": [
-			  {
-				"data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"25\"\n",
-				"name": "%s-profile"
-			  }
-			],
-			"recommend": [
-			  {
-				"priority": 10,
-				"profile": "%s-profile"
-			  }
-			]
-		 }
-		`
-
 				By("Prepare tuning configs")
-				_, err := tuningConfigService.CreateTuningConfig(
+				tc1JSON, err := json.Marshal(tc1Spec)
+				Expect(err).ToNot(HaveOccurred())
+				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
 					tuningConfig1Name,
-					fmt.Sprintf(tuningConfigPayload, tuningConfig1Name, tuningConfig1Name))
+					string(tc1JSON))
+				Expect(err).ToNot(HaveOccurred())
+
+				tc2JSON, err := json.Marshal(tc2Spec)
 				Expect(err).ToNot(HaveOccurred())
 				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
 					tuningConfig2Name,
-					fmt.Sprintf(tuningConfigPayload, tuningConfig2Name, tuningConfig2Name))
+					string(tc2JSON))
+				Expect(err).ToNot(HaveOccurred())
+
+				tc3JSON, err := json.Marshal(tc3Spec)
 				Expect(err).ToNot(HaveOccurred())
 				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
 					tuningConfig3Name,
-					fmt.Sprintf(tuningConfigPayload, tuningConfig3Name, tuningConfig3Name))
+					string(tc3JSON))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create nodepool with tuning configs")
@@ -393,31 +388,17 @@ var _ = Describe("Edit nodepool",
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63179", 2)
-				tuningConfigName_1 := common.GenerateRandomName("tuned01", 2)
+				tuningConfigName := common.GenerateRandomName("tuned01", 2)
+				tcSpec := rosacli.NewTuningConfigSpecRootStub(tuningConfigName, 25, 10)
 				nonExistingTuningConfigName := common.GenerateRandomName("fake_tuning_config", 2)
 
-				tuningConfigPayload := `
-		{
-			"profile": [
-			  {
-				"data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"25\"\n",
-				"name": "%s-profile"
-			  }
-			],
-			"recommend": [
-			  {
-				"priority": 10,
-				"profile": "%s-profile"
-			  }
-			]
-		 }
-		`
-
 				By("Prepare tuning configs")
-				_, err := tuningConfigService.CreateTuningConfig(
+				tcJSON, err := json.Marshal(tcSpec)
+				Expect(err).ToNot(HaveOccurred())
+				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
-					tuningConfigName_1,
-					fmt.Sprintf(tuningConfigPayload, tuningConfigName_1, tuningConfigName_1))
+					tuningConfigName,
+					string(tcJSON))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create nodepool with the non-existing tuning configs")
@@ -442,7 +423,7 @@ var _ = Describe("Edit nodepool",
 					clusterID,
 					nodePoolName,
 					"--replicas", "3",
-					"--tuning-configs", fmt.Sprintf("%s,%s", tuningConfigName_1, tuningConfigName_1),
+					"--tuning-configs", fmt.Sprintf("%s,%s", tuningConfigName, tuningConfigName),
 				)
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
@@ -451,7 +432,7 @@ var _ = Describe("Edit nodepool",
 						fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': "+
 							"Tuning config with name '%s' is duplicated",
 							clusterID,
-							tuningConfigName_1)))
+							tuningConfigName)))
 
 				By("Create a nodepool")
 				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
