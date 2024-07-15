@@ -448,6 +448,9 @@ func PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string, i
 		log.Logger.Errorf("Can not create shared vpc role due to no installer role.")
 		return "", "", err
 	}
+	log.Logger.Debugf("Got installer role arn: %s for shared vpc role preparation", installerRoleArn)
+	log.Logger.Debugf("Got ingress role arn: %s for shared vpc role preparation", ingressOperatorRoleArn)
+
 	roleArn, err := awsClient.CreateRoleForSharedVPC(roleName, installerRoleArn, ingressOperatorRoleArn)
 	sharedVPCRoleArn := aws.ToString(roleArn.Arn)
 	if err != nil {
