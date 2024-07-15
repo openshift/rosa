@@ -156,6 +156,35 @@ func MockCluster(modifyFn func(c *v1.ClusterBuilder)) *v1.Cluster {
 	return cluster
 }
 
+// FormatNodePoolAutoscaling simulates the output of APIs for a fake node pool list with autoscaling
+func FormatNodePoolAutoscaling(nodePoolId string) string {
+	version := v1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
+	awsNodePool := v1.NewAWSNodePool().InstanceType("m5.xlarge")
+	nodeDrain := v1.NewValue().Value(1).Unit("minute")
+	nodePool, err := v1.NewNodePool().ID(nodePoolId).Version(version).
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).
+		Autoscaling(v1.NewNodePoolAutoscaling().ID("scaler").MinReplica(2).MaxReplica(1000)).Build()
+	Expect(err).ToNot(HaveOccurred())
+	return fmt.Sprintf("{\n  \"items\": [\n    %s\n  ],\n  \"page\": 0,\n  \"size\": 1,\n  \"total\": 1\n}",
+		FormatResource(nodePool))
+}
+
+// FormatMachinePoolList simulates the output of APIs for a fake machine pool list
+func FormatMachinePoolList(machinePools []*v1.MachinePool) string {
+	var json bytes.Buffer
+
+	v1.MarshalMachinePoolList(machinePools, &json)
+
+	return fmt.Sprintf(`
+	{
+		"kind": "NodePoolList",
+		"page": 1,
+		"size": %d,
+		"total": %d,
+		"items": %s
+	}`, len(machinePools), len(machinePools), json.String())
+}
+
 func FormatNodePoolList(nodePools []*v1.NodePool) string {
 	var json bytes.Buffer
 
