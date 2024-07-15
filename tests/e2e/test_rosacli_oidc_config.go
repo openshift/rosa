@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -202,16 +203,23 @@ var _ = Describe("Register ummanaged oidc config testing",
 			oidcConfigID       string
 			rosaClient         *rosacli.Client
 			ocmResourceService rosacli.OCMResourceService
+			defaultDir         string
+			dirToClean         string
 		)
 
 		BeforeEach(func() {
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
-			rosaClient = rosacli.NewClient()
 
+			By("Get the default dir")
+			defaultDir, _ = os.Getwd()
 		})
 		AfterEach(func() {
+
+			By("Go back original by setting runner dir")
+			rosaClient.Runner.Dir(defaultDir)
+
 			if oidcConfigID != "" {
 				By("Delete oidc config")
 				output, err := ocmResourceService.DeleteOIDCConfig(
@@ -249,9 +257,17 @@ var _ = Describe("Register ummanaged oidc config testing",
 			Expect(installerRole).ToNot(BeNil())
 			roleArn := installerRole.RoleArn
 
+			By("Create a temp dir to execute the create commands")
+			output, err := rosaClient.Runner.RunCMD([]string{"mktemp", "-d"})
+			Expect(err).To(BeNil())
+			dirToClean = strings.TrimSpace(output.String())
+
+			By("Go to the temp dir by setting Dir")
+			rosaClient.Runner.Dir(dirToClean)
+
 			By("Create unmanaged oidc config")
 			oidcConfigPrefix := "ocp64620oc"
-			output, err := ocmResourceService.CreateOIDCConfig(
+			output, err = ocmResourceService.CreateOIDCConfig(
 				"--mode", "manual",
 				"--prefix", oidcConfigPrefix,
 				"--role-arn", roleArn,
