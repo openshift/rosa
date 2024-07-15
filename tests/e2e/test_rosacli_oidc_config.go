@@ -276,6 +276,7 @@ var _ = Describe("Register ummanaged oidc config testing",
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
 			}
+			Expect(secretArn).ToNot(BeEmpty(), "secretArn is empty which will block coming steps.")
 
 			By("Register oidc config")
 			_, err = ocmResourceService.RegisterOIDCConfig(
