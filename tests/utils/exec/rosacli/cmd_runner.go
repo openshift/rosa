@@ -23,6 +23,7 @@ type runner struct {
 	cmdArgs   []string
 	envs      []string
 	runnerCfg *runnerConfig
+	dir       string
 }
 
 type runnerConfig struct {
@@ -32,6 +33,7 @@ type runnerConfig struct {
 }
 
 func NewRunner() *runner {
+	pwd, _ := os.Getwd()
 	runner := &runner{
 		runnerCfg: &runnerConfig{
 			format: "text",
@@ -39,6 +41,7 @@ func NewRunner() *runner {
 			color:  "auto",
 		},
 		envs: os.Environ(),
+		dir:  pwd,
 	}
 	return runner
 }
@@ -69,6 +72,11 @@ func (r *runner) Debug(debug bool) *runner {
 
 func (r *runner) Color(color string) *runner {
 	r.runnerCfg.color = color
+	return r
+}
+
+func (r *runner) Dir(dir string) *runner {
+	r.dir = dir
 	return r
 }
 
@@ -194,6 +202,7 @@ func (r *runner) Run() (bytes.Buffer, error) {
 		cmd.Env = append(cmd.Env, r.envs...)
 		cmd.Stdout = &output
 		cmd.Stderr = cmd.Stdout
+		cmd.Dir = r.dir
 
 		err = cmd.Run()
 		if err != nil {
@@ -225,6 +234,7 @@ func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Stdout = &output
 	cmd.Stderr = cmd.Stdout
+	cmd.Dir = r.dir
 
 	err = cmd.Run()
 	if err != nil {
