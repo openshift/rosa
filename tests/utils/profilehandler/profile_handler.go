@@ -262,6 +262,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		userData.OperatorRolesPrefix = operatorRolePrefix
 
 		if profile.ClusterConfig.SharedVPC {
+			log.Logger.Info("Got shared vpc settings. Going to sleep 30s to wait for the operator roles prepared")
+			time.Sleep(30 * time.Second)
 			installRoleArn := accRoles.InstallerRole
 			ingressOperatorRoleArn := fmt.Sprintf("%s/%s-%s", strings.Split(installRoleArn, "/")[0],
 				sharedVPCRolePrefix, "openshift-ingress-operator-cloud-credentials")
