@@ -45,6 +45,18 @@ func DeleteSharedVPCRole(sharedVPCRoleName string, managedPolicy bool, region st
 	return err
 }
 
+func DeleteAdditionalPrincipalsRole(additionalPrincipalRoleName string,
+	managedPolicy bool, region string,
+	awsSharedCredentialFile string) error {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return err
+	}
+
+	err = awsClient.DeleteRoleAndPolicy(additionalPrincipalRoleName, managedPolicy)
+	return err
+}
+
 func DeleteSharedVPCChain(vpcID string, region string, awsSharedCredentialFile string) error {
 	vpcClient, err := vpc_client.GenerateVPCByID(vpcID, region, awsSharedCredentialFile)
 	if err != nil {

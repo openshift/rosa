@@ -27,6 +27,7 @@ var _ = Describe("Healthy check",
 			clusterService     rosacli.ClusterService
 			machinePoolService rosacli.MachinePoolService
 			clusterConfig      *config.ClusterConfig
+			profile            *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
@@ -40,6 +41,7 @@ var _ = Describe("Healthy check",
 			machinePoolService = rosaClient.MachinePool
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
+			profile = profilehandler.LoadProfileYamlFileByENV()
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -228,6 +230,27 @@ var _ = Describe("Healthy check",
 				Expect(err).To(BeNil())
 				kmsKey := jsonData.DigString("aws", "kms_key_arn")
 				Expect(clusterConfig.Encryption.KmsKeyArn).To(Equal(kmsKey))
+			})
+
+		It("additional allowed principals work on cluster creation - [id:74408]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				By("Confirm current cluster profile uses additional allowed principals")
+				if !profile.ClusterConfig.AdditionalPrincipals {
+					SkipTestOnFeature("additional allowed principals")
+				}
+
+				By("Check the help message of 'rosa create cluster -h'")
+				output, err := clusterService.CreateDryRun(clusterID, "-h")
+				Expect(err).To(BeNil())
+				Expect(output.String()).
+					To(
+						ContainSubstring("--additional-allowed-principals"))
+
+				By("Confirm additional principals is present")
+				out, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+				Expect(out.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
 			})
 
 		It("etcd encryption works on cluster creation - [id:42188]",

@@ -471,6 +471,33 @@ func PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string, i
 	return roleName, sharedVPCRoleArn, err
 }
 
+func PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string,
+	region string, awsSharedCredentialFile string) (string, error) {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	if err != nil {
+		return "", err
+	}
+	policyArn := "arn:aws:iam::aws:policy/service-role/ROSAControlPlaneOperatorPolicy"
+	if installerRoleArn == "" {
+		log.Logger.Errorf("Can not create additional principal role due to no installer role.")
+		return "", err
+	}
+	roleArn, err := awsClient.CreateRoleForAdditionalPrincipals(roleName, installerRoleArn)
+	additionalPrincipalRoleArn := aws.ToString(roleArn.Arn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare additional principal role: %s", err.Error())
+		return additionalPrincipalRoleArn, err
+	}
+	log.Logger.Infof("Create a new role for Additional Principal: %s", additionalPrincipalRoleArn)
+	err = awsClient.AttachIAMPolicy(roleName, policyArn)
+	if err != nil {
+		log.Logger.Errorf(
+			"Error happens when attach control plane operator policy %s to role %s: %s", policyArn,
+			additionalPrincipalRoleArn, err.Error())
+	}
+	return additionalPrincipalRoleArn, err
+}
+
 func PrepareDNSDomain(client *rosacli.Client) (string, error) {
 	var dnsDomain string
 	var output bytes.Buffer

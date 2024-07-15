@@ -1190,6 +1190,39 @@ var _ = Describe("HCP cluster creation negative testing",
 						ContainSubstring(
 							"ERR: 'ec2-metadata-http-tokens' is not available for Hosted Control Plane clusters"))
 			})
+
+		It("expose additional allowed principals for HCP negative - [id:74433]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				By("Create hcp cluster using --additional-allowed-principals and invalid formatted arn")
+				clusterName := "ocp-74408"
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+
+				By("Create cluster with invalid additional allowed principals")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				if rosalCommand.CheckFlagExist("--additional-allowed-principals") {
+					rosalCommand.DeleteFlag("--additional-allowed-principals", true)
+				}
+				rosalCommand.AddFlags("--dry-run", "--additional-allowed-principals", "zzzz", "-y")
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).
+					To(
+						ContainSubstring(
+							"ERR: Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix"))
+
+				By("Create classic cluster with additional allowed principals")
+				output, err := clusterService.CreateDryRun(clusterName, "--additional-allowed-principals", "zzzz", "-y")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(
+						ContainSubstring(
+							"ERR: Additional Allowed Principals is supported only for Hosted Control Planes"))
+			})
 	})
 
 var _ = Describe("Create cluster with availability zones testing",

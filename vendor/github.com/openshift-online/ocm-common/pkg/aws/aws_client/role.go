@@ -440,3 +440,22 @@ func (client *AWSClient) CreatePolicyForSharedVPC(policyName string) (string, er
 	}
 	return client.CreatePolicy(policyName, statement)
 }
+
+func (client *AWSClient) CreateRoleForAdditionalPrincipals(roleName string, installerRoleArn string) (types.Role, error) {
+	statement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Principal": map[string]interface{}{
+			"AWS": []string{installerRoleArn},
+		},
+		"Action": "sts:AssumeRole",
+	}
+
+	assumeRolePolicyDocument, err := completeRolePolicyDocument(statement)
+	if err != nil {
+		log.LogError("Failed to convert Role Policy Document into JSON: %s", err.Error())
+		return types.Role{}, err
+	}
+
+	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
+}

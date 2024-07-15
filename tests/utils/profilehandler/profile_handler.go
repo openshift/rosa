@@ -119,6 +119,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	sharedVPCRoleArn := ""
 	sharedVPCRolePrefix := ""
 	awsSharedCredentialFile := ""
+	envVariableErrMsg := "'SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE' env is not set or empty, it is: %s"
 	defer func() {
 
 		// Record userdata
@@ -218,10 +219,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		if profile.ClusterConfig.SharedVPC {
 			awsSharedCredentialFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
 			if awsSharedCredentialFile == "" {
-				log.Logger.Errorf("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE env is not set or empty, "+
-					"it is: %s", awsSharedCredentialFile)
-				panic(fmt.Errorf("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE env is not set or empty, "+
-					"it is: %s", awsSharedCredentialFile))
+				log.Logger.Errorf(envVariableErrMsg, awsSharedCredentialFile)
+				panic(fmt.Errorf(envVariableErrMsg, awsSharedCredentialFile))
 			}
 
 			sharedVPCRolePrefix = accountRolePrefix
@@ -287,7 +286,27 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			flags = append(flags,
 				"--audit-log-arn", auditRoleArn)
 		}
+
+		if profile.ClusterConfig.AdditionalPrincipals {
+			awsSharedCredentialFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+			if awsSharedCredentialFile == "" {
+				log.Logger.Errorf(envVariableErrMsg, awsSharedCredentialFile)
+				panic(fmt.Errorf(envVariableErrMsg, awsSharedCredentialFile))
+			}
+			installRoleArn := accRoles.InstallerRole
+			additionalPrincipalRolePrefix := accountRolePrefix
+			additionalPrincipalRoleName := fmt.Sprintf("%s-%s", additionalPrincipalRolePrefix, "additional-principal-role")
+			additionalPrincipalRoleArn, err := PrepareAdditionalPrincipalsRole(additionalPrincipalRoleName, installRoleArn,
+				profile.Region, awsSharedCredentialFile)
+			if err != nil {
+				return flags, err
+			}
+			flags = append(flags, "--additional-allowed-principals", additionalPrincipalRoleArn)
+			clusterConfiguration.AdditionalPrincipals = additionalPrincipalRoleArn
+			userData.AdditionalPrincipals = additionalPrincipalRoleName
+		}
 	}
+
 	// Put this part before the BYOVPC preparation so the subnets is prepared based on PrivateLink
 	if profile.ClusterConfig.Private {
 		flags = append(flags, "--private")
@@ -897,7 +916,7 @@ func DestroyCluster(client *rosacli.Client) (*ClusterDetail, []error) {
 }
 
 func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region string, isSTS bool,
-	isSharedVPC bool) []error {
+	isSharedVPC bool, isAdditionalPrincipalAllowed bool) []error {
 
 	var (
 		ud                 *UserData
@@ -907,7 +926,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 	ocmResourceService = client.OCMResource
 
 	awsSharedCredentialFile := ""
-	if isSharedVPC {
+	if isSharedVPC || isAdditionalPrincipalAllowed {
 		awsSharedCredentialFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
 	}
 
@@ -1011,6 +1030,15 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 				ud.SharedVPCRole = ""
 			}
 		}
+		// delete additional principal role
+		if ud.AdditionalPrincipals != "" {
+			log.Logger.Infof("Find prepared additional principal role: %s", ud.AdditionalPrincipals)
+			err = DeleteAdditionalPrincipalsRole(ud.AdditionalPrincipals, true, region, awsSharedCredentialFile)
+			success := destroyLog(err, "additional principal role")
+			if success {
+				ud.AdditionalPrincipals = ""
+			}
+		}
 		// delete operator roles
 		if ud.OperatorRolesPrefix != "" {
 			log.Logger.Infof("Find prepared operator roles with prefix: %s", ud.OperatorRolesPrefix)
@@ -1046,7 +1074,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		}
 		// delete account roles
 		if ud.AccountRolesPrefix != "" {
-			log.Logger.Infof("Find prepared accout roles with prefix: %s", ud.AccountRolesPrefix)
+			log.Logger.Infof("Find prepared account roles with prefix: %s", ud.AccountRolesPrefix)
 			_, err = ocmResourceService.DeleteAccountRole("--mode", "auto", "--prefix", ud.AccountRolesPrefix, "-y")
 			success := destroyLog(err, "account roles")
 			if success {
@@ -1073,7 +1101,9 @@ func DestroyResourceByProfile(profile *Profile, client *rosacli.Client) (errors 
 	region := profile.Region
 	isSTS := profile.ClusterConfig.STS
 	isSharedVPC := profile.ClusterConfig.SharedVPC
-	errDestroyUserData := DestroyPreparedUserData(client, clusterId, region, isSTS, isSharedVPC)
+	isAdditionalPrincipalAllowed := profile.ClusterConfig.AdditionalPrincipals
+	errDestroyUserData := DestroyPreparedUserData(client, clusterId, region, isSTS, isSharedVPC,
+		isAdditionalPrincipalAllowed)
 	if len(errDestroyUserData) > 0 {
 		errors = append(errors, errDestroyUserData)
 	}
