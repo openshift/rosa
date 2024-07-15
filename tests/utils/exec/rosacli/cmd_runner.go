@@ -196,6 +196,9 @@ func (r *runner) Run() (bytes.Buffer, error) {
 		cmd.Stderr = cmd.Stdout
 
 		err = cmd.Run()
+		if err != nil {
+			err = fmt.Errorf("%s: %s", err.Error(), output.String())
+		}
 		if common.SliceContains(cmdElements, "access_token") ||
 			common.SliceContains(cmdElements, "token") ||
 			common.SliceContains(cmdElements, "refresh_token") {
@@ -224,6 +227,9 @@ func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	cmd.Stderr = cmd.Stdout
 
 	err = cmd.Run()
+	if err != nil {
+		err = fmt.Errorf("%s: %s", err.Error(), output.String())
+	}
 	log.Logger.Debugf("Get Combining Stdout and Stderr is : %s", output.String())
 
 	return output, err
@@ -235,17 +241,20 @@ func (r *runner) RunPipeline(commands ...[]string) (bytes.Buffer, error) {
 	var err error
 
 	cmds := make([]*exec.Cmd, len(commands))
+
 	for i, command := range commands {
 		cmds[i] = exec.Command(command[0], command[1:]...) // #nosec G204
 		if i > 0 {
 			cmds[i].Stdin, _ = cmds[i-1].StdoutPipe()
 		}
 		cmds[i].Stderr = &output
+
 	}
 
 	cmds[len(cmds)-1].Stdout = &output
 
 	for _, cmd := range cmds {
+		log.Logger.Infof("Running commands: %s", cmd.String())
 		if err = cmd.Start(); err != nil {
 			return output, fmt.Errorf("starting %v: %v", cmd.Args, err)
 		}

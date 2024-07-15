@@ -898,6 +898,15 @@ var _ = Describe("Edit machinepool",
 				workerPool := mpList.Machinepool(con.DefaultClassicWorkerPool)
 				Expect(workerPool).ToNot(BeNil())
 
+				By("Prepare an additional machinepool to make sure the taint edit can work")
+				_, err = rosaClient.MachinePool.CreateMachinePool(
+					clusterID,
+					"mp-57102",
+					"--replicas", "3",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, "mp-57102")
+
 				labels_1 := "m5.xlarge/test=aaa"
 				taints_1 := "Key1=:NoExecute"
 				labels_2 := "aaa="
@@ -908,6 +917,13 @@ var _ = Describe("Edit machinepool",
 					"empty_label_value":     {"--labels", labels_2, "--taints", taints_2},
 					"empty_label_and_taint": {"--labels", "", "--taints", ""},
 				}
+
+				// define the recovery step
+				defer machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", common.ReplaceCommaSpaceWithComma(workerPool.Labels),
+					"--taints", common.ReplaceCommaSpaceWithComma(workerPool.Taints),
+				)
 
 				for key, flags := range reqFlags {
 					By("Edit machinepools to the cluster")
