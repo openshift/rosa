@@ -27,6 +27,8 @@ var _ = Describe("Cluster Upgrade testing",
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
 			profile                  *profilehandler.Profile
+			clusterConfig            *config.ClusterConfig
+			err                      error
 		)
 
 		BeforeEach(func() {
@@ -38,6 +40,9 @@ var _ = Describe("Cluster Upgrade testing",
 			rosaClient = rosacli.NewClient()
 			arbitraryPolicyService = rosaClient.Policy
 			clusterService = rosaClient.Cluster
+
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Load the profile")
 			profile = profilehandler.LoadProfileYamlFileByENV()
@@ -58,7 +63,6 @@ var _ = Describe("Cluster Upgrade testing",
 		})
 
 		It("to upgrade roles/operator-roles and cluster - [id:73731]", labels.Critical, labels.Runtime.Upgrade, func() {
-
 			By("Check the cluster version and compare with the profile to decide if skip this case")
 			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 			Expect(err).To(BeNil())
@@ -67,6 +71,7 @@ var _ = Describe("Cluster Upgrade testing",
 			if profile.Version != "y-1" {
 				Skip("Skip this case as the version defined in profile is not y-1 for upgrading testing")
 			}
+
 			By("Prepare arbitrary policies for testing")
 			awsClient, err = aws_client.CreateAWSClient("", "")
 			Expect(err).To(BeNil())
@@ -207,34 +212,35 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(err).To(BeNil())
 				Expect(len(policy.Tags)).To(Equal(0))
 			}
+			if !clusterConfig.Hypershift {
+				By("Update the all operator policies tags to low version")
+				tagName := "rosa_openshift_version"
+				clusterMajorVersion := common.SplitMajorVersion(clusterVersion)
+				keysToUntag := []string{tagName}
 
-			By("Update the all operator policies tags to low version")
-			tagName := "rosa_openshift_version"
-			clusterMajorVersion := common.SplitMajorVersion(clusterVersion)
-			keysToUntag := []string{tagName}
+				for _, operatorRoleArn := range operatorRolePolicies {
+					err = awsClient.UntagPolicy(operatorRoleArn, keysToUntag)
+					Expect(err).To(BeNil())
+				}
+				tags := map[string]string{tagName: clusterMajorVersion}
+				for _, operatorRoleArn := range operatorRolePolicies {
+					err = awsClient.TagPolicy(operatorRoleArn, tags)
+					Expect(err).To(BeNil())
+				}
+				By("Upgrade operator-roles in auto mode")
+				_, err = ocmResourceService.UpgradeOperatorRoles(
+					"-c", clusterID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
 
-			for _, operatorRoleArn := range operatorRolePolicies {
-				err = awsClient.UntagPolicy(operatorRoleArn, keysToUntag)
-				Expect(err).To(BeNil())
-			}
-			tags := map[string]string{tagName: clusterMajorVersion}
-			for _, operatorRoleArn := range operatorRolePolicies {
-				err = awsClient.TagPolicy(operatorRoleArn, tags)
-				Expect(err).To(BeNil())
-			}
-			By("Upgrade operator-roles in auto mode")
-			_, err = ocmResourceService.UpgradeOperatorRoles(
-				"-c", clusterID,
-				"--mode", "auto",
-				"-y",
-			)
-			Expect(err).To(BeNil())
-
-			By("Check th arbitrary policies has no change")
-			for _, policyArn := range arbitraryPoliciesToClean {
-				policy, err := awsClient.GetIAMPolicy(policyArn)
-				Expect(err).To(BeNil())
-				Expect(len(policy.Tags)).To(Equal(0))
+				By("Check th arbitrary policies has no change")
+				for _, policyArn := range arbitraryPoliciesToClean {
+					policy, err := awsClient.GetIAMPolicy(policyArn)
+					Expect(err).To(BeNil())
+					Expect(len(policy.Tags)).To(Equal(0))
+				}
 			}
 			By("Update cluster")
 			// TODO: Wait the upgrade ready. As upgrade profile can only be used for upgrade cluster one time,
