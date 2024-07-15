@@ -295,6 +295,10 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 
 func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, clusterKey string,
 	cluster *cmv1.Cluster, r *rosa.Runtime) error {
+	if cluster.State() != cmv1.ClusterStateReady {
+		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+	}
+
 	if !MachinePoolKeyRE.MatchString(machinePoolId) {
 		return fmt.Errorf("Expected a valid identifier for the machine pool")
 	}

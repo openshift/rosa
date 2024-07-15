@@ -44,7 +44,6 @@ func init() {
 	Cmd.AddCommand(addon.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
-	Cmd.AddCommand(machinepool.Cmd)
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(autoscaler.Cmd)
@@ -57,11 +56,12 @@ func init() {
 	interactive.AddFlag(flags)
 	confirm.AddFlag(flags)
 
+	machinepoolCommand := machinepool.NewEditMachinePoolCommand()
 	globallyAvailableCommands := []*cobra.Command{
 		autoscaler.Cmd, addon.Cmd,
 		service.Cmd, cluster.Cmd,
 		ingress.Cmd, kubeletConfig,
-		machinepool.Cmd, tuningconfigs.Cmd,
+		machinepoolCommand, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }
