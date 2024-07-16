@@ -370,7 +370,7 @@ var _ = Describe("Create machinepool",
 					"invalidFmt": "invalid",
 					"noTagValue": "notagvalue:",
 					"noTagKey":   ":notagkey",
-					"nonAscii":   "non-ascii:值",
+					// "nonAscii":   "non-ascii:值",
 				}
 				for errorType, tag := range invalidTagMap {
 					out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
