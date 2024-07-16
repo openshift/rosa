@@ -1,0 +1,14 @@
+- name: channel-group
+- name: cluster
+- name: force-policy-creation
+- name: hosted-cp
+- name: interactive
+- name: mode
+- name: oidc-config-id
+- name: permissions-boundary
+- name: prefix
+- name: profile
+- name: region
+- name: role-arn
+- name: shared-vpc-role-arn
+- name: "yes"

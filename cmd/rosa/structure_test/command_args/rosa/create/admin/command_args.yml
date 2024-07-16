@@ -1,0 +1,6 @@
+- name: cluster
+- name: output
+- name: password
+- name: profile
+- name: region
+- name: "yes"

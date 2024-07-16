@@ -12,10 +12,8 @@
 
 ## PR Author Check List
 
-* [ ]  All commit messages adhere to the project [standard](https://github.com/openshift/rosa/blob/master/CONTRIBUTING.md) 
-
+* [ ]  All commit messages adhere to the project [standard](https://github.com/openshift/rosa/blob/master/CONTRIBUTING.md)
+* [ ]  All code aligns with the [Style Guide](../../CONTRIBUTING.md#style-guide)
 * [ ]  All commits are squashed into a single commit `git rebase -i HEAD~<number of commits>`
-
 * [ ]  All code changes have unit test coverage
-
 * [ ]  All changes have been tested locally and the steps documented in the `How to Test?` section

@@ -83,15 +83,36 @@ configured in https://github.com/openshift/release repo.
 `.golangciversion` file is read by the `lint` job commands there:
 https://github.com/openshift/release/blob/master/ci-operator/config/openshift/rosa/openshift-rosa-master.yaml
 
-## Contributing and Error Handling in Cobra
+# Style Guide
 
-1. If you are contributing code, please ensure that you are handling errors
-   properly. Please use `Run: run` instead of `RunE: runE` when writing commands,
+## Adding a New Command
+
+### Add your Command to expected CLI Structure
+
+We automatically test the structure of the ROSA CLI to ensure commands and command flags are not accidentally added or removed.
+When you first create a new command, the test suite will fail because of this.
+
+You need to add your command to the following file [command_structure](cmd/rosa/structure_test/command_structure.yml) in the correct
+location within the command tree in order for this test to pass.
+
+You additionally need to create a directory under the [command_args](cmd/rosa/structure_test/command_args) sub-directory 
+and create a file called `command_args.yml`. This file should contain a simple yaml list of the `flags` supported by your command.
+For example, a command with flag `foo`, `bar`, `bob` would have the following `command_args.yml`:
+
+```yaml
+- name: foo
+- name: bar
+- name: bob
+```
+
+## Error Handling in Commands
+
+If you are contributing code, please ensure that you are handling errors properly. You should
+not call `os.Exit()` in your Command (there is a significant amount of this in our code which we
+are working to remove)
+
+Please use `Run: run` instead of `RunE: runE` when writing commands,
    in order to stop the **usage info** being printed when an error is returned.
-
-## GitHub Workflows
-
-This repository also uses GitHub actions which are configured at `./github/workflows`
 
 ## Version-gating a feature
 

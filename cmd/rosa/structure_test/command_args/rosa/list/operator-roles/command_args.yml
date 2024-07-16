@@ -1,0 +1,7 @@
+- name: version
+- name: prefix
+- name: interactive
+- name: cluster
+- name: output
+- name: profile
+- name: region

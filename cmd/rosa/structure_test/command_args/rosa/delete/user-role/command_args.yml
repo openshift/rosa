@@ -1,0 +1,6 @@
+- name: interactive
+- name: mode
+- name: profile
+- name: region
+- name: role-arn
+- name: "yes"

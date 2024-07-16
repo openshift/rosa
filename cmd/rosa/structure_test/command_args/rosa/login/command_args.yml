@@ -1,0 +1,13 @@
+- name: admin
+- name: client-id
+- name: client-secret
+- name: govcloud
+- name: insecure
+- name: region
+- name: rh-region
+- name: scope
+- name: token
+- name: token-url
+- name: url
+- name: use-auth-code
+- name: use-device-code

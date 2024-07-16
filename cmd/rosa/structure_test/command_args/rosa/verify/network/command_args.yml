@@ -1,0 +1,9 @@
+- name: cluster
+- name: hosted-cp
+- name: output
+- name: region
+- name: role-arn
+- name: status-only
+- name: subnet-ids
+- name: tags
+- name: watch

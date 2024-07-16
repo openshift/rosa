@@ -1,0 +1,5 @@
+- name: channel-group
+- name: hosted-cp
+- name: output
+- name: profile
+- name: region

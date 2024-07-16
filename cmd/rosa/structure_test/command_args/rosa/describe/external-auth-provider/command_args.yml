@@ -1,0 +1,5 @@
+- name: cluster
+- name: output
+- name: name
+- name: profile
+- name: region

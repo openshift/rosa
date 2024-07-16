@@ -1,0 +1,7 @@
+- name: external-id
+- name: hosted-cp
+- name: multi-az
+- name: output
+- name: profile
+- name: region
+- name: role-arn

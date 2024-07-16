@@ -1,0 +1,6 @@
+- name: cluster
+- name: mode
+- name: oidc-config-id
+- name: profile
+- name: region
+- name: "yes"
