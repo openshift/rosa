@@ -6,7 +6,6 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2/dsl/core"
-	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
@@ -19,7 +18,7 @@ const (
 	breakGlassCredentialId = "test-break-glass-credential"
 )
 
-var _ = Describe("BreakGlassCredential", Ordered, func() {
+var _ = Describe("BreakGlassCredential", func() {
 
 	var ssoServer, apiServer *ghttp.Server
 	var ocmClient *Client
@@ -176,7 +175,7 @@ var _ = Describe("BreakGlassCredential", Ordered, func() {
 				body,
 			),
 		)
-		_, err := ocmClient.PollKubeconfig(clusterId, breakGlassCredential.ID())
+		_, err := ocmClient.PollKubeconfig(clusterId, breakGlassCredential.ID(), time.Millisecond*100, time.Second*5)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -187,7 +186,7 @@ var _ = Describe("BreakGlassCredential", Ordered, func() {
 				body,
 			),
 		)
-		_, err := ocmClient.PollKubeconfig(clusterId, breakGlassCredential.ID())
+		_, err := ocmClient.PollKubeconfig(clusterId, breakGlassCredential.ID(), time.Millisecond*100, time.Second*5)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(
 			"Failed to poll kubeconfig for cluster 'foo' with break glass credential 'test-break-glass-credential': " +
