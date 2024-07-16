@@ -57,6 +57,7 @@ func init() {
 	confirm.AddFlag(flags)
 
 	machinepoolCommand := machinepool.NewEditMachinePoolCommand()
+	Cmd.AddCommand(machinepoolCommand)
 	globallyAvailableCommands := []*cobra.Command{
 		autoscaler.Cmd, addon.Cmd,
 		service.Cmd, cluster.Cmd,
