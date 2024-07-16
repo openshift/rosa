@@ -223,6 +223,20 @@ func init() {
 			"Tags are comma separated, for example: 'key value, foo bar'",
 	)
 
+	flags.StringVar(&args.MaxSurge,
+		"max-surge",
+		"1",
+		"The maximum number of nodes that can be provisioned above the desired number of nodes in the machinepool during "+
+			"the upgrade. It can be an absolute number i.e. 1, or a percentage i.e. '20%'.",
+	)
+
+	flags.StringVar(&args.MaxUnavailable,
+		"max-unavailable",
+		"0",
+		"The maximum number of nodes in the machinepool that can be unavailable during the upgrade. It can be an "+
+			"absolute number i.e. 1, or a percentage i.e. '20%'.",
+	)
+
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
 }
