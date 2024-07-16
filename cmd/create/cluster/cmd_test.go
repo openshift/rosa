@@ -266,7 +266,7 @@ var _ = Describe("Validate cloud accounts", func() {
 						Dimensions(v1.NewContractDimension().Name("control_plane").Value("4")))
 				cloudAccount, err := mockCloudAccount.Build()
 				Expect(err).NotTo(HaveOccurred())
-				_, isContractEnabled := GetBillingAccountContracts([]*v1.CloudAccount{cloudAccount}, "1234567")
+				_, isContractEnabled := ocm.GetBillingAccountContracts([]*v1.CloudAccount{cloudAccount}, "1234567")
 				Expect(isContractEnabled).To(Equal(true))
 			})
 
@@ -287,7 +287,7 @@ var _ = Describe("Validate cloud accounts", func() {
 					"   | Number of clusters: |'4'             | \n" +
 					"   +---------------------+----------------+ \n"
 
-				contractDisplay := GenerateContractDisplay(mockContract)
+				contractDisplay := ocm.GenerateContractDisplay(mockContract)
 
 				Expect(contractDisplay).To(Equal(expected))
 			})
@@ -435,24 +435,23 @@ var _ = Describe("validateBillingAccount()", func() {
 
 	It("OK: valid billing account", func() {
 		validBillingAccount := "123456789012"
-		err := validateBillingAccount(validBillingAccount)
+		err := ocm.ValidateBillingAccount(validBillingAccount)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("KO: fails to validate a wrong billing account", func() {
 		wrongBillingAccount := "123"
-		err := validateBillingAccount(wrongBillingAccount)
+		err := ocm.ValidateBillingAccount(wrongBillingAccount)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("billing account is invalid. Run the command again with a valid billing account." +
-			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
+		Expect(err.Error()).To(Equal("Provided billing account number 123 is not valid. " +
+			"Rerun the command with a valid billing account number"))
 	})
 
 	It("KO: fails to validate an empty billing account", func() {
 		wrongBillingAccount := ""
-		err := validateBillingAccount(wrongBillingAccount)
+		err := ocm.ValidateBillingAccount(wrongBillingAccount)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("billing account is invalid. Run the command again with a valid billing account." +
-			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
+		Expect(err.Error()).To(Equal("A billing account number is required"))
 	})
 
 })
