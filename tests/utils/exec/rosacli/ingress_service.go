@@ -3,6 +3,8 @@ package rosacli
 import (
 	"bytes"
 
+	"gopkg.in/yaml.v3"
+
 	common "github.com/openshift/rosa/tests/utils/common"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
@@ -14,6 +16,8 @@ type IngressService interface {
 	ListIngress(clusterID string, flags ...string) (bytes.Buffer, error)
 	DeleteIngress(clusterID string, ingressID string) (bytes.Buffer, error)
 	ReflectIngressList(result bytes.Buffer) (res *IngressList, err error)
+	DescribeIngress(clusterID string, ingressID string) (bytes.Buffer, error)
+	DescribeIngressAndReflect(clusterID string, ingressID string) (res *Ingress, err error)
 }
 
 type ingressService struct {
@@ -47,7 +51,7 @@ func (i *ingressService) CleanResources(clusterID string) (errors []error) {
 
 // Struct for the 'rosa describe ingress' output
 type IngressList struct {
-	Ingresses []Ingress `json:"Ingresses,omitempty"`
+	Ingresses []*Ingress `json:"Ingresses,omitempty"`
 }
 type Ingress struct {
 	ClusterID                string `yaml:"Cluster ID,omitempty"`
@@ -55,7 +59,7 @@ type Ingress struct {
 	ApplicationRouter        string `yaml:"APPLICATION ROUTER,omitempty" json:"APPLICATION ROUTER,omitempty"`
 	Private                  string `yaml:"Private,omitempty" json:"PRIVATE,omitempty"`
 	Default                  string `yaml:"Default,omitempty" json:"DEFAULT,omitempty"`
-	RouteSelectors           string `yaml:"ROUTE SELECTORS,omitempty" json:"ROUTE SELECTORS,omitempty"`
+	RouteSelectors           string `yaml:"Route Selectors,omitempty" json:"ROUTE SELECTORS,omitempty"`
 	LBType                   string `yaml:"LB-Type,omitempty" json:"LB-TYPE,omitempty"`
 	ExcludeNamespace         string `yaml:"Exclude Namespce,omitempty" json:"EXCLUDED NAMESPACE,omitempty"`
 	WildcardPolicy           string `yaml:"Wildcard Policy,omitempty" json:"WILDCARD POLICY,omitempty"`
@@ -67,7 +71,7 @@ type Ingress struct {
 func (inl IngressList) Ingress(id string) (in *Ingress) {
 	for _, inItem := range inl.Ingresses {
 		if inItem.ID == id {
-			in = &inItem
+			in = inItem
 			return
 		}
 	}
@@ -81,6 +85,28 @@ func (i *ingressService) EditIngress(clusterID string, ingressID string, flags .
 		Cmd("edit", "ingress", ingressID).
 		CmdFlags(combflags...)
 	return editIngress.Run()
+}
+
+// List the cluster ingress
+func (i *ingressService) DescribeIngress(clusterID string, ingressID string) (bytes.Buffer, error) {
+	combflags := append([]string{"-c", clusterID}, ingressID)
+	describeIngress := i.client.Runner.
+		Cmd("describe", "ingress").
+		CmdFlags(combflags...)
+	return describeIngress.Run()
+}
+
+// Parse the result of 'rosa list ingress' to Ingress struct
+func (i *ingressService) DescribeIngressAndReflect(clusterID string, ingressID string) (res *Ingress, err error) {
+	output, err := i.DescribeIngress(clusterID, ingressID)
+	if err != nil {
+		return
+	}
+	res = &Ingress{}
+	theMap, _ := i.client.Parser.TextData.Input(output).Parse().YamlToMap()
+	data, _ := yaml.Marshal(&theMap)
+	yaml.Unmarshal(data, res)
+	return res, err
 }
 
 // List the cluster ingress
@@ -102,7 +128,7 @@ func (i *ingressService) ReflectIngressList(result bytes.Buffer) (res *IngressLi
 		if err != nil {
 			return
 		}
-		res.Ingresses = append(res.Ingresses, *in)
+		res.Ingresses = append(res.Ingresses, in)
 	}
 	return res, err
 }

@@ -512,6 +512,26 @@ var _ = Describe("clusterHasLongNameWithoutDomainPrefix()", func() {
 	)
 })
 
+var _ = Describe("validateUniqueIamRoleArnsForStsCluster()", func() {
+	It("returns error if duplicate arns for IAM roles are found", func() {
+		accountRoles := []string{"arn1", "arn2", "arn3", "arn4"}
+		operatorRoles := []ocm.OperatorIAMRole{
+			{RoleARN: "arn1"}, {RoleARN: "arn6"},
+		}
+		err := validateUniqueIamRoleArnsForStsCluster(accountRoles, operatorRoles)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(fmt.Sprintf(duplicateIamRoleArnErrorMsg, "arn1")))
+	})
+	It("returns nil if duplicate arns for IAM roles are not found", func() {
+		accountRoles := []string{"arn1", "arn2", "arn3", "arn4"}
+		operatorRoles := []ocm.OperatorIAMRole{
+			{RoleARN: "arn5"}, {RoleARN: "arn6"},
+		}
+		err := validateUniqueIamRoleArnsForStsCluster(accountRoles, operatorRoles)
+		Expect(err).ToNot(HaveOccurred())
+	})
+})
+
 func mustParseCIDR(s string) *net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	Expect(err).To(BeNil())

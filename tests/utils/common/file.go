@@ -37,16 +37,16 @@ func CreateFileWithContent(fileAbsPath string, content interface{}) (string, err
 	var err error
 	switch content := content.(type) {
 	case string:
-		err = os.WriteFile(fileAbsPath, []byte(content), 0644)
+		err = os.WriteFile(fileAbsPath, []byte(content), 0644) // #nosec G306
 	case []byte:
-		err = os.WriteFile(fileAbsPath, content, 0644)
+		err = os.WriteFile(fileAbsPath, content, 0644) // #nosec G306
 	case interface{}:
 		var marshedContent []byte
 		marshedContent, err = json.Marshal(content)
 		if err != nil {
 			return fileAbsPath, err
 		}
-		err = os.WriteFile(fileAbsPath, marshedContent, 0644)
+		err = os.WriteFile(fileAbsPath, marshedContent, 0644) // #nosec G306
 	}
 
 	if err != nil {

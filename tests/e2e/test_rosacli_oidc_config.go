@@ -2,7 +2,8 @@ package e2e
 
 import (
 	"fmt"
-	"math/rand"
+	"os"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -68,7 +69,6 @@ var _ = Describe("Edit OIDC config",
 					accountRolePrefix      string
 				)
 				By("Create account-roles for testing")
-				rand.Seed(time.Now().UnixNano())
 				accountRolePrefix = fmt.Sprintf("QEAuto-accr57570-%s", time.Now().UTC().Format("20060102"))
 				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -193,4 +193,121 @@ var _ = Describe("Edit OIDC config",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("not found"))
 			})
+	})
+var _ = Describe("Register ummanaged oidc config testing",
+	labels.Feature.OIDCConfig,
+	func() {
+		defer GinkgoRecover()
+		var (
+			accountRolePrefix  string
+			oidcConfigID       string
+			rosaClient         *rosacli.Client
+			ocmResourceService rosacli.OCMResourceService
+			defaultDir         string
+			dirToClean         string
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+
+			By("Get the default dir")
+			defaultDir, _ = os.Getwd()
+		})
+		AfterEach(func() {
+
+			By("Go back original by setting runner dir")
+			rosaClient.Runner.Dir(defaultDir)
+
+			if oidcConfigID != "" {
+				By("Delete oidc config")
+				output, err := ocmResourceService.DeleteOIDCConfig(
+					"--oidc-config-id", oidcConfigID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Successfully deleted the OIDC provider"))
+			}
+
+			By("Cleanup created account-roles")
+			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", accountRolePrefix,
+				"-y")
+			Expect(err).To(BeNil())
+		})
+
+		It("to register successfully - [id:64620]", labels.High, labels.Runtime.OCMResources, func() {
+			var (
+				secretArn string
+				issuerUrl string
+			)
+			By("Create account-roles for testing")
+			accountRolePrefix = fmt.Sprintf("QEAuto-ar64620-%s", time.Now().UTC().Format("20060102"))
+			_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accountRolePrefix,
+				"-y")
+			Expect(err).To(BeNil())
+
+			By("Get the installer role arn")
+			accountRoleList, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			installerRole := accountRoleList.InstallerRole(accountRolePrefix, false)
+			Expect(installerRole).ToNot(BeNil())
+			roleArn := installerRole.RoleArn
+
+			By("Create a temp dir to execute the create commands")
+			output, err := rosaClient.Runner.RunCMD([]string{"mktemp", "-d"})
+			Expect(err).To(BeNil())
+			dirToClean = strings.TrimSpace(output.String())
+
+			By("Go to the temp dir by setting Dir")
+			rosaClient.Runner.Dir(dirToClean)
+
+			By("Create unmanaged oidc config")
+			oidcConfigPrefix := "ocp64620oc"
+			output, err = ocmResourceService.CreateOIDCConfig(
+				"--mode", "manual",
+				"--prefix", oidcConfigPrefix,
+				"--role-arn", roleArn,
+				"--managed=false",
+				"-y")
+			Expect(err).To(BeNil())
+			commands := common.ExtractCommandsFromOIDCRegister(output)
+
+			By("Execute commands to create unmanaged oidc-config")
+			var commandArgs []string
+			for _, command := range commands {
+				if strings.Contains(command, "aws secretsmanager create-secret") {
+					commandArgs = common.ParseCommandToArgs(command)
+					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
+					Expect(err).To(BeNil())
+					secretArn = common.ParseSecretArnFromOutput(stdout.String())
+					continue
+				}
+				if strings.Contains(command, "aws iam create-open-id-connect-provider") {
+					issuerUrl = common.ParseIssuerURLFromCommand(command)
+				}
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+			Expect(secretArn).ToNot(BeEmpty(), "secretArn is empty which will block coming steps.")
+
+			By("Register oidc config")
+			_, err = ocmResourceService.RegisterOIDCConfig(
+				"--mode", "auto",
+				"--issuer-url", issuerUrl,
+				"--role-arn", roleArn,
+				"--secret-arn", secretArn,
+				"-y")
+			Expect(err).To(BeNil())
+
+			By("List oidc config to check if above one is registered")
+			oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
+			Expect(err).To(BeNil())
+			foundOIDCConfig := oidcConfigList.IssuerUrl(issuerUrl)
+			Expect(foundOIDCConfig).ToNot(Equal(rosacli.OIDCConfig{}))
+			oidcConfigID = foundOIDCConfig.ID
+		})
 	})

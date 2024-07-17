@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/semver"
 
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -20,7 +21,11 @@ type VersionService interface {
 
 	ReflectVersions(result bytes.Buffer) (*OpenShiftVersionTableList, error)
 	ListVersions(channelGroup string, hostedCP bool, flags ...string) (bytes.Buffer, error)
-	ListAndReflectVersions(channelGroup string, hostedCP bool, flags ...string) (*OpenShiftVersionTableList, error)
+	ListAndReflectVersions(
+		channelGroup string,
+		hostedCP bool,
+		flags ...string,
+	) (*OpenShiftVersionTableList, error)
 }
 
 type versionService struct {
@@ -71,11 +76,12 @@ func (v *versionService) ReflectVersions(result bytes.Buffer) (versionList *Open
 }
 
 // Reflect versions json
-func (v *versionService) ReflectJsonVersions(result bytes.Buffer) (versionList []*OpenShiftVersionJsonOutput, err error) {
+func (v *versionService) ReflectJsonVersions(
+	result bytes.Buffer) (versionList []*OpenShiftVersionJsonOutput, err error) {
 	versionList = []*OpenShiftVersionJsonOutput{}
 	parser := v.client.Parser.JsonData.Input(result).Parse()
 	theMap := parser.Output().([]interface{})
-	for index, _ := range theMap {
+	for index := range theMap {
 		version := &OpenShiftVersionJsonOutput{}
 		vDetail := parser.DigObject(index).(map[string]interface{})
 		err := MapStructure(vDetail, version)
@@ -104,7 +110,8 @@ func (v *versionService) ListVersions(channelGroup string, hostedCP bool, flags 
 	return listVersion.Run()
 }
 
-func (v *versionService) ListAndReflectVersions(channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionTableList, err error) {
+func (v *versionService) ListAndReflectVersions(
+	channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionTableList, err error) {
 	var output bytes.Buffer
 	output, err = v.ListVersions(channelGroup, hostedCP, flags...)
 	if err != nil {
@@ -114,7 +121,8 @@ func (v *versionService) ListAndReflectVersions(channelGroup string, hostedCP bo
 	versionList, err = v.ReflectVersions(output)
 	return versionList, err
 }
-func (v *versionService) ListAndReflectJsonVersions(channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionTableList, err error) {
+func (v *versionService) ListAndReflectJsonVersions(
+	channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionTableList, err error) {
 	var output bytes.Buffer
 	output, err = v.ListVersions(channelGroup, hostedCP, flags...)
 	if err != nil {
@@ -132,13 +140,17 @@ func (v *versionService) CleanResources(clusterID string) (errors []error) {
 
 // This function will find the nearest lower OCP version which version is under `Major.{minor-sub}`.
 // `strict` will find only the `Major.{minor-sub}` ones
-func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version string, minorSub int64, strict bool, upgradable ...bool) (vs *OpenShiftVersionTableOutput, err error) {
+func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(
+	version string, minorSub int64, strict bool, upgradable ...bool) (vs *OpenShiftVersionTableOutput, err error) {
 	var baseVersionSemVer *semver.Version
 	baseVersionSemVer, err = semver.NewVersion(version)
 	if err != nil {
 		return
 	}
-	nvl, err := vl.FilterVersionsSameMajorAndEqualOrLowerThanMinor(baseVersionSemVer.Major(), baseVersionSemVer.Minor()-minorSub, strict)
+	nvl, err := vl.FilterVersionsSameMajorAndEqualOrLowerThanMinor(
+		baseVersionSemVer.Major(),
+		baseVersionSemVer.Minor()-minorSub,
+		strict)
 	if err != nil {
 		return
 	}
@@ -160,20 +172,47 @@ func (vl *OpenShiftVersionTableList) FindNearestBackwardMinorVersion(version str
 
 // This function will find the nearest lower OCP version which version is under `Major.minor.{optional-sub}`.
 // `strict` will find only the `Major.monior,{optional-sub}` ones
-func (vl *OpenShiftVersionTableList) FindNearestBackwardOptionalVersion(version string, optionalsub int, strict bool) (vs *OpenShiftVersionTableOutput, err error) {
+func (vl *OpenShiftVersionTableList) FindNearestBackwardOptionalVersion(
+	version string,
+	optionalsub int,
+	strict bool,
+) (vs *OpenShiftVersionTableOutput, err error) {
+
+	if optionalsub <= 0 {
+		log.Logger.Errorf("optionsub must be equal or greater than 1")
+		return
+	}
 	var baseVersionSemVer *semver.Version
 	log.Logger.Debugf("Filter versions according to %s", version)
 	baseVersionSemVer, err = semver.NewVersion(version)
 	if err != nil {
 		return
 	}
-	nvl, err := vl.FilterVersionsSameMajorAndEqualOrLowerThanMinor(baseVersionSemVer.Major(), baseVersionSemVer.Minor(), strict)
+	nvl, err := vl.FilterVersionsSameMajorAndEqualOrLowerThanMinor(
+		baseVersionSemVer.Major(),
+		baseVersionSemVer.Minor(),
+		strict)
+	if err != nil {
+		return
+	}
+	results := []*OpenShiftVersionTableOutput{}
+	optionalVersion, err := semver.NewVersion(version)
 	if err != nil {
 		return
 	}
 	if nvl, err = nvl.Sort(true); err == nil && nvl.Len() >= optionalsub {
-		vs = nvl.OpenShiftVersions[optionalsub]
+		for _, nv := range nvl.OpenShiftVersions {
+			currentVersion, _ := semver.NewVersion(nv.Version)
+			if optionalVersion.GreaterThan(currentVersion) {
+				results = append(results, nv)
+			}
+		}
+
 	}
+	if len(results) > optionalsub-1 {
+		vs = results[optionalsub-1]
+	}
+
 	return
 
 }
@@ -210,9 +249,11 @@ func (vl *OpenShiftVersionTableList) Sort(reverse bool) (nvl *OpenShiftVersionTa
 	return
 }
 
-// FilterVersionsByMajorMinor filter the version list for all major/minor corresponding and returns a new `OpenShiftVersionList` struct
+// FilterVersionsByMajorMinor filter the version list for all major/minor corresponding
+// and returns a new `OpenShiftVersionList` struct
 // `strict` will find only the `Major.minor` ones
-func (vl *OpenShiftVersionTableList) FilterVersionsSameMajorAndEqualOrLowerThanMinor(major int64, minor int64, strict bool) (nvl *OpenShiftVersionTableList, err error) {
+func (vl *OpenShiftVersionTableList) FilterVersionsSameMajorAndEqualOrLowerThanMinor(
+	major int64, minor int64, strict bool) (nvl *OpenShiftVersionTableList, err error) {
 	var filteredVersions []*OpenShiftVersionTableOutput
 	var semverVersion *semver.Version
 	for _, version := range vl.OpenShiftVersions {
@@ -232,7 +273,8 @@ func (vl *OpenShiftVersionTableList) FilterVersionsSameMajorAndEqualOrLowerThanM
 }
 
 // FilterVersionsByMajorMinor filter the version list for all lower versions than the given one
-func (vl *OpenShiftVersionTableList) FilterVersionsLowerThan(version string) (nvl *OpenShiftVersionTableList, err error) {
+func (vl *OpenShiftVersionTableList) FilterVersionsLowerThan(
+	version string) (nvl *OpenShiftVersionTableList, err error) {
 	var givenSemVer *semver.Version
 	givenSemVer, err = semver.NewVersion(version)
 
@@ -284,4 +326,123 @@ func (vl *OpenShiftVersionTableList) Latest() (*OpenShiftVersionTableOutput, err
 	}
 	return vl.OpenShiftVersions[0], err
 
+}
+
+// Find version which can be used for Y stream upgrade
+func (vl *OpenShiftVersionTableList) FindYStreamUpgradeVersions(
+	clusterVerion string,
+) (foundVersions []string, err error) {
+	clusterBaseVersionSemVer, err := semver.NewVersion(clusterVerion)
+	if err != nil {
+		return foundVersions, err
+	}
+	for _, version := range vl.OpenShiftVersions {
+		if version.Version != clusterVerion {
+			continue
+		}
+		availableUpgradeVersions := strings.Split(version.AvailableUpgrades, ", ")
+		for _, availableUpgradeVersion := range availableUpgradeVersions {
+			baseVersionSemVer, err := semver.NewVersion(availableUpgradeVersion)
+			if err != nil {
+				return foundVersions, err
+			}
+			if baseVersionSemVer.Minor() > clusterBaseVersionSemVer.Minor() {
+				foundVersions = append(foundVersions, availableUpgradeVersion)
+			}
+		}
+		break
+	}
+	return foundVersions, err
+}
+
+// FindZStreamUpgradableVersion will find a z-stream upgradable version for the upgrade testing
+// throttleVersion can be set to empty, it will use the lastest one who has availabel versions
+// when throttleVersion set will find the versions who can be upgraded to a version and not higher than it
+// For example, there is a cluster with version 4.15.19, but there is lower version can be upgraded to 4.15.19.
+// A case need to test nodepool upgrade, a lower and upgradable version is needed which is no higher than 4.15.19
+func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersion string, step int) (
+	vs *OpenShiftVersionTableOutput, err error) {
+	log.Logger.Debugf("FindZStreamUpgradableVersion with throttle = %v and step %v", throttleVersion, step)
+
+	if step <= 0 {
+		log.Logger.Errorf("optionsub must be equal or greater than 1")
+		return
+	}
+	throttleSemVer, err := semver.NewVersion(throttleVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter lower versions
+	vl, err = vl.FilterVersionsLowerThan(throttleVersion)
+	if err != nil {
+		return nil, err
+	}
+	vl, _ = vl.Sort(true)
+
+	for _, version := range vl.OpenShiftVersions {
+		log.Logger.Debugf("Analyze version = %v", version.Version)
+		semVersion, err := semver.NewVersion(version.Version)
+		if err != nil {
+			return nil, err
+		}
+		if semVersion.Minor() != throttleSemVer.Minor() ||
+			semVersion.Patch() > throttleSemVer.Patch()+int64(step) {
+			log.Logger.Debugf("Version %v is ignored", version.Version)
+			continue
+		}
+		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
+		for _, availableUpgradeVersion := range common.ParseCommaSeparatedStrings(version.AvailableUpgrades) {
+			semAV, err := semver.NewVersion(availableUpgradeVersion)
+			if err != nil {
+				return nil, err
+			}
+			if throttleSemVer.Equal(semAV) {
+				vs = version
+				return vs, nil
+			}
+		}
+		log.Logger.Debugf("No upgrade found")
+	}
+	return
+}
+
+// FindYStreamUpgradableVersion will find a y-stream upgradable version  testing
+// throttleVersion can be empty, will use the lastest one who has availabel versions
+// when throttleVersion not empty will find the versions who can be upgraded to a version which
+// is not higher than throttleVersion
+// For example, there is a cluster with version 4.15.19,
+// but there is lower version can be upgraded to 4.15.19.
+// There is a case need to test nodepool upgrade,
+// a lower and upgradable version is needed which is no higher than 4.15.19
+func (vl *OpenShiftVersionTableList) FindYStreamUpgradableVersion(throttleVersion string) (
+	vs *OpenShiftVersionTableOutput, err error) {
+	log.Logger.Debugf("FindYStreamUpgradableVersion with throttle = %v", throttleVersion)
+	if throttleVersion != "" {
+		vl, err = vl.FilterVersionsLowerThan(throttleVersion)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	vl, _ = vl.Sort(true)
+
+	for _, version := range vl.OpenShiftVersions {
+		log.Logger.Debugf("Analyze version = %v", version.Version)
+		semVersion, _ := semver.NewVersion(version.Version)
+		if err != nil {
+			return nil, err
+		}
+		availableUpgrades := common.ParseCommaSeparatedStrings(version.AvailableUpgrades)
+		for _, av := range availableUpgrades {
+			parsedAV, _ := semver.NewVersion(av)
+			if parsedAV.Minor() == semVersion.Minor()+1 {
+				vs = version
+				return
+			}
+		}
+		log.Logger.Debugf("Version %v is ignored", version.Version)
+		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
+	}
+	return
 }

@@ -124,7 +124,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if *role.Arn != roleArn {
-		r.Reporter.Errorf("ARN '%s' did not match the existing role ARN", *role.Arn)
+		r.Reporter.Errorf("The role with '%s' cannot be found", roleArn)
 		os.Exit(1)
 	}
 

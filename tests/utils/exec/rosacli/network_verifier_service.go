@@ -28,7 +28,8 @@ func NewNetworkVerifierService(client *Client) NetworkVerifierService {
 	}
 }
 
-func (nv *networkVerifierService) CreateNetworkVerifierWithCluster(clusterID string, flags ...string) (bytes.Buffer, error) {
+func (nv *networkVerifierService) CreateNetworkVerifierWithCluster(
+	clusterID string, flags ...string) (bytes.Buffer, error) {
 	combflags := append([]string{"-c", clusterID}, flags...)
 	createNetworkVerifier := nv.client.Runner.
 		Cmd("verify", "network").

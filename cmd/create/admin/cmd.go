@@ -21,6 +21,7 @@ import (
 	"os"
 
 	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
+	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -106,6 +107,13 @@ func run(_ *cobra.Command, _ []string) {
 	} else {
 		password = passwordArg
 		r.Reporter.Debugf("Using user provided password")
+	}
+
+	// validates both user inputted custom password and randomly generated password
+	err = passwordValidator.PasswordValidator(password)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 
 	// Add admin user to the cluster-admins group:

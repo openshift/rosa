@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -45,7 +44,6 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			rosaClient.Runner.UnsetFormat()
 			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 			ocmAccountUsername = whoamiData.OCMAccountUsername
-			rand.Seed(time.Now().UnixNano())
 			userRolePrefix = fmt.Sprintf("QEAuto-user-%s-OCP-52580", time.Now().UTC().Format("20060102"))
 
 			By("Create an user-role with invalid mode")
@@ -74,7 +72,9 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 				"-y")
 			Expect(err).NotTo(BeNil())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("There was an error creating the ocm user role: operation error IAM: CreateRole"))
+			Expect(textData).
+				Should(ContainSubstring(
+					"There was an error creating the ocm user role: operation error IAM: CreateRole"))
 			Expect(textData).Should(ContainSubstring("api error NoSuchEntity"))
 
 			By("Create an user-role")
@@ -115,7 +115,9 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			output, err = ocmResourceService.UnlinkUserRole("--role-arn", userRoleArnInWrongFormat, "-y")
 			Expect(err).NotTo(BeNil())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("Expected a valid user role ARN to unlink from the current account"))
+			Expect(textData).
+				Should(ContainSubstring(
+					"Expected a valid user role ARN to unlink from the current account"))
 
 			By("Unlink user-role")
 			output, err = ocmResourceService.UnlinkUserRole("--role-arn", foundUserRole.RoleArn, "-y")

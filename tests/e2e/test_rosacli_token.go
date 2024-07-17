@@ -34,7 +34,7 @@ var _ = Describe("rosacli token",
 					[]string{"rosa", "token"},
 					[]string{"cut", "-d", ".", "-f", "1"},
 					[]string{"tr", "_-", "/+"},
-					[]string{"base64", "-D"},
+					[]string{"base64", "-d"},
 				)
 				Expect(err).To(BeNil())
 				headerOutput, err := ocmService.Token("--header")
@@ -54,23 +54,27 @@ var _ = Describe("rosacli token",
 					[]string{"rosa", "token"},
 					[]string{"cut", "-d", ".", "-f", "2"},
 					[]string{"tr", "_-", "/+"},
-					[]string{"base64", "-D"},
+					[]string{"base64", "-d"},
 				)
 				Expect(err).To(BeNil())
 				payloadOutput, err := ocmService.Token("--payload")
 				Expect(err).To(BeNil())
-				Expect(strings.TrimSpace(payloadOutput.String())).To(Equal(strings.TrimSpace(parsedPayloadOutput.String())))
+				Expect(strings.TrimSpace(payloadOutput.String())).
+					To(Equal(
+						strings.TrimSpace(parsedPayloadOutput.String())))
 
 				By("Checlk `rosa token --signature`")
 				parsedSignatureOutput, err := rosaClient.Runner.RunPipeline(
 					[]string{"rosa", "token"},
 					[]string{"cut", "-d", ".", "-f", "3"},
 					[]string{"tr", "_-", "/+"},
-					[]string{"base64", "-D"},
+					[]string{"base64", "-d"},
 				)
 				Expect(err).To(BeNil())
 				signatureOutput, err := ocmService.Token("--signature")
 				Expect(err).To(BeNil())
-				Expect(strings.TrimSpace(signatureOutput.String())).To(ContainSubstring(strings.TrimSpace(parsedSignatureOutput.String())))
+				Expect(strings.TrimSpace(signatureOutput.String())).
+					To(ContainSubstring(
+						strings.TrimSpace(parsedSignatureOutput.String())))
 			})
 	})

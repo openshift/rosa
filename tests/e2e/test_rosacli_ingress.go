@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -11,7 +12,10 @@ import (
 
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
+
+const YES = "yes"
 
 var _ = Describe("Edit default ingress",
 	labels.Feature.Ingress,
@@ -20,6 +24,7 @@ var _ = Describe("Edit default ingress",
 
 		var (
 			clusterID      string
+			profile        ph.Profile
 			rosaClient     *rosacli.Client
 			ingressService rosacli.IngressService
 			isHosted       bool
@@ -38,6 +43,9 @@ var _ = Describe("Edit default ingress",
 			var err error
 			isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
+
+			By("Load the profile")
+			profile = *ph.LoadProfileYamlFileByENV()
 		})
 
 		It("can update on rosa HCP cluster - [id:63323]",
@@ -56,7 +64,7 @@ var _ = Describe("Edit default ingress",
 				Expect(err).ToNot(HaveOccurred())
 				var defaultID, originalValue string
 				for _, v := range ingressList.Ingresses {
-					if v.Default == "yes" {
+					if v.Default == YES {
 						defaultID = v.ID
 						originalValue = v.Private
 					}
@@ -65,18 +73,22 @@ var _ = Describe("Edit default ingress",
 				By("Edit the default ingress on rosa HCP cluster to different value")
 				updatedValue := "no"
 				if originalValue == "no" {
-					updatedValue = "yes"
+					updatedValue = YES
 				}
 				testvalue := map[string]string{
-					"yes": "true",
-					"no":  "false",
+					YES:  "true",
+					"no": "false",
 				}
 				cmdFlag := fmt.Sprintf("--private=%s", testvalue[updatedValue])
 				output, err = ingressService.EditIngress(clusterID, defaultID,
 					cmdFlag)
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("INFO: Updated ingress '%s' on cluster '%s'", defaultID, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"INFO: Updated ingress '%s' on cluster '%s'",
+						defaultID,
+						clusterID))
 
 				defer func() {
 					_, err = ingressService.EditIngress(clusterID, defaultID,
@@ -106,16 +118,22 @@ var _ = Describe("Edit default ingress",
 				output, err = ingressService.EditIngress(clusterID, defaultID, cmdFlag)
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("WARN: No need to update ingress as there are no changes"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"WARN: No need to update ingress as there are no changes"))
 
 				By("Edit the default ingress only with --private")
 				output, err = ingressService.EditIngress(clusterID, defaultID, "--private")
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				if updatedValue == "yes" {
-					Expect(textData).Should(ContainSubstring("WARN: No need to update ingress as there are no changes"))
+				if updatedValue == YES {
+					Expect(textData).
+						Should(ContainSubstring(
+							"WARN: No need to update ingress as there are no changes"))
 				} else {
-					Expect(textData).Should(ContainSubstring("Updated ingress '%s' on cluster '%s'", defaultID, clusterID))
+					Expect(textData).
+						Should(ContainSubstring(
+							"Updated ingress '%s' on cluster '%s'", defaultID, clusterID))
 				}
 
 				By("Run command to edit a default ingress with --label-match")
@@ -123,7 +141,9 @@ var _ = Describe("Edit default ingress",
 					"--label-match", "aaa=bbb,ccc=ddd")
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("ERR: Updating route selectors is not supported for Hosted Control Plane clusters"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Updating route selectors is not supported for Hosted Control Plane clusters"))
 			})
 
 		It("change load balancer type - [id:64767]",
@@ -142,8 +162,8 @@ var _ = Describe("Edit default ingress",
 
 				defaultIngress := func(ingressList rosacli.IngressList) (*rosacli.Ingress, bool) {
 					for _, ingress := range ingressList.Ingresses {
-						if ingress.Default == "yes" {
-							return &ingress, true
+						if ingress.Default == YES {
+							return ingress, true
 						}
 					}
 					return nil, false
@@ -182,6 +202,50 @@ var _ = Describe("Edit default ingress",
 				ingress, _ = defaultIngress(*ingressList)
 				Expect(ingress.LBType).Should(ContainSubstring(ingress.LBType))
 			})
+
+		It("can customize ingress controller at install - [id:65798]",
+			labels.High,
+			labels.Runtime.Day1Post,
+			func() {
+				By("Skip testing if the cluster is not a Classic cluster")
+				if isHosted {
+					SkipNotClassic()
+				}
+
+				By("Check that the ingress was customized at install")
+				profile := ph.LoadProfileYamlFileByENV()
+				if !profile.ClusterConfig.IngressCustomized {
+					Skip("The ingress must be customized at install")
+				}
+
+				By("Get the expected ingress config")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+				ingressConfig := clusterConfig.IngressConfig
+				output, err := ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Get actual default ingress config")
+				ingressList, err := ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+				defaultIngress := func(ingressList rosacli.IngressList) (*rosacli.Ingress, bool) {
+					for _, ingress := range ingressList.Ingresses {
+						if ingress.Default == YES {
+							return ingress, true
+						}
+					}
+					return nil, false
+				}
+
+				By("Check that the actual ingress config matches what was specified at install")
+				ingress, _ := defaultIngress(*ingressList)
+				Expect(ingress).NotTo(BeNil())
+				Expect(ingress.ExcludeNamespace).To(Equal(ingressConfig.DefaultIngressExcludedNamespaces))
+				Expect(ingress.RouteSelectors).To(Equal(ingressConfig.DefaultIngressRouteSelector))
+				Expect(ingress.NamespaceOwnershipPolicy).To(Equal(ingressConfig.DefaultIngressNamespaceOwnershipPolicy))
+				Expect(ingress.WildcardPolicy).To(Equal(ingressConfig.DefaultIngressWildcardPolicy))
+			})
+
 		It("can update ingress controller attributes - [id:65799]",
 			labels.Critical,
 			labels.Runtime.Day2,
@@ -198,8 +262,8 @@ var _ = Describe("Edit default ingress",
 				Expect(err).ToNot(HaveOccurred())
 				defaultIngress := func(ingressList rosacli.IngressList) (*rosacli.Ingress, bool) {
 					for _, ingress := range ingressList.Ingresses {
-						if ingress.Default == "yes" {
-							return &ingress, true
+						if ingress.Default == YES {
+							return ingress, true
 						}
 					}
 					return nil, false
@@ -208,8 +272,25 @@ var _ = Describe("Edit default ingress",
 				ingress, exists := defaultIngress(*ingressList)
 				Expect(exists).To(BeTrue())
 				defaultID := ingress.ID
-				output, err = ingressService.EditIngress(clusterID, defaultID, "--excluded-namespaces", "test-ns1,test-ns2", "--route-selector",
-					"app1=test1,app2=test2", "--namespace-ownership-policy", "Strict", "--wildcard-policy", "WildcardsDisallowed")
+
+				// Recover the ingress
+				defer func() {
+					flags := []string{"--excluded-namespaces", ingress.ExcludeNamespace,
+						"--route-selector", common.ReplaceCommaSpaceWithComma(ingress.RouteSelectors),
+						"--namespace-ownership-policy", ingress.NamespaceOwnershipPolicy,
+						"--wildcard-policy", ingress.WildcardPolicy,
+					}
+					ingressService.EditIngress(clusterID, defaultID, flags...)
+				}()
+				updatingRouteSelector := "app-65799=test-65799-2,app2=test-65799"
+				output, err = ingressService.EditIngress(
+					clusterID,
+					defaultID,
+					"--excluded-namespaces", "test-ns1,test-ns2",
+					"--route-selector", updatingRouteSelector,
+					"--namespace-ownership-policy", "Strict",
+					"--wildcard-policy", "WildcardsDisallowed",
+				)
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Updated ingress '%s'", defaultID))
@@ -223,8 +304,8 @@ var _ = Describe("Edit default ingress",
 				ingress, _ = defaultIngress(*ingressList)
 				Expect(ingress.ExcludeNamespace).Should(ContainSubstring("test-ns1"))
 				Expect(ingress.ExcludeNamespace).Should(ContainSubstring("test-ns2"))
-				Expect(ingress.RouteSelectors).Should(ContainSubstring("app1=test1"))
-				Expect(ingress.RouteSelectors).Should(ContainSubstring("app2=test2"))
+				Expect(ingress.RouteSelectors).Should(ContainSubstring("app-65799=test-65799"))
+				Expect(ingress.RouteSelectors).Should(ContainSubstring("app2=test-65799"))
 				Expect(ingress.NamespaceOwnershipPolicy).Should(ContainSubstring("Strict"))
 				Expect(ingress.WildcardPolicy).Should(ContainSubstring("WildcardsDisallowed"))
 			})
@@ -243,7 +324,7 @@ var _ = Describe("Edit default ingress",
 				ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
 				Expect(err).ToNot(HaveOccurred())
 				defaultIngress := ingressList.Ingresses[0]
-				originalPrivate := defaultIngress.Private == "yes"
+				originalPrivate := defaultIngress.Private == YES
 				originalRouteSelectors := defaultIngress.RouteSelectors
 
 				By("Check edit ingress help message")
@@ -259,6 +340,44 @@ var _ = Describe("Edit default ingress",
 					fmt.Sprintf("--private=%v", !originalPrivate),
 					"-y",
 				)
+				if profile.ClusterConfig.PrivateLink && !isHosted {
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("Can't update listening mode on an AWS Private Link cluster"))
+
+					By("Edit label-match only")
+					output, err = rosaClient.Ingress.EditIngress(clusterID,
+						"apps",
+						"--label-match", labelMatch,
+						"-y",
+					)
+					Expect(err).ToNot(HaveOccurred())
+					defer rosaClient.Ingress.EditIngress(clusterID,
+						"apps",
+						"--label-match", common.ReplaceCommaSpaceWithComma(originalRouteSelectors),
+						"-y",
+					)
+
+					By("Describe ingress and check")
+					ingressDescription, err := rosaClient.Ingress.DescribeIngressAndReflect(clusterID, "apps")
+					Expect(err).ToNot(HaveOccurred())
+					// Below is workaround due to known issue
+					ingressRouteSelectors := strings.Split(ingressDescription.RouteSelectors, " ")
+					for index, ingressRS := range ingressRouteSelectors {
+						wgString := strings.TrimSuffix(strings.TrimPrefix(ingressRS, "map["), "]")
+						wgString = strings.ReplaceAll(wgString, ":", "=")
+						ingressRouteSelectors[index] = wgString
+					}
+					// Workaround finished
+					expectedRouteSelectors := common.ParseCommaSeparatedStrings(labelMatch)
+
+					Expect(len(ingressRouteSelectors)).To(Equal(len(expectedRouteSelectors)))
+
+					for _, expectLabel := range expectedRouteSelectors {
+						Expect(expectLabel).To(BeElementOf(ingressRouteSelectors))
+					}
+
+					return
+				}
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.Ingress.EditIngress(clusterID,
 					"apps",
@@ -274,7 +393,7 @@ var _ = Describe("Edit default ingress",
 				Expect(err).ToNot(HaveOccurred())
 
 				defaultIngress = ingressList.Ingresses[0]
-				Expect(defaultIngress.Private == "yes").To(Equal(!originalPrivate))
+				Expect(defaultIngress.Private == YES).To(Equal(!originalPrivate))
 
 				ingressRouteSelectors := common.ParseCommaSeparatedStrings(defaultIngress.RouteSelectors)
 				expectedRouteSelectors := common.ParseCommaSeparatedStrings(labelMatch)

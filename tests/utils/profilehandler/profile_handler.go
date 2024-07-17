@@ -1,9 +1,13 @@
 package profilehandler
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/tests/ci/config"
@@ -14,21 +18,16 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-var client rosacli.Client
-
-func init() {
-	client = *rosacli.NewClient()
-}
-
 func GetYAMLProfilesDir() string {
 	return config.Test.YAMLProfilesDir
 }
 func LoadProfileYamlFile(profileName string) *Profile {
 	p := GetProfile(profileName, GetYAMLProfilesDir())
-	log.Logger.Infof("Loaded cluster profile configuration from origional profile %s : %v", profileName, *p)
-	log.Logger.Infof("Loaded cluster profile configuration from origional cluster %s : %v", profileName, *p.ClusterConfig)
+	log.Logger.Infof("Loaded cluster profile configuration from original profile %s : %v", profileName, *p)
+	log.Logger.Infof("Loaded cluster profile configuration from original cluster %s : %v", profileName, *p.ClusterConfig)
 	if p.AccountRoleConfig != nil {
-		log.Logger.Infof("Loaded cluster profile configuration from origional account-roles %s : %v", profileName, *p.AccountRoleConfig)
+		log.Logger.Infof("Loaded cluster profile configuration from original account-roles %s : %v",
+			profileName, *p.AccountRoleConfig)
 	}
 
 	if p.NamePrefix == "" {
@@ -117,6 +116,10 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	profile.ClusterConfig.Name = clusterName
 	var clusterConfiguration = new(ClusterConfigure.ClusterConfig)
 	var userData = new(UserData)
+	sharedVPCRoleArn := ""
+	sharedVPCRolePrefix := ""
+	awsSharedCredentialFile := ""
+	envVariableErrMsg := "'SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE' env is not set or empty, it is: %s"
 	defer func() {
 
 		// Record userdata
@@ -138,8 +141,14 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	clusterConfiguration.Name = clusterName
 
 	if profile.Version != "" {
-		version, err := PrepareVersion(client, profile.Version, profile.ChannelGroup, profile.ClusterConfig.HCP)
+		// Force set the hcp parameter to false since hcp cannot filter the upgrade versions
+		version, err := PrepareVersion(client, profile.Version, profile.ChannelGroup, false)
+
 		if err != nil {
+			return flags, err
+		}
+		if version == nil {
+			err = fmt.Errorf("cannot find a version match the condition %s", profile.Version)
 			return flags, err
 		}
 		profile.Version = version.Version
@@ -206,6 +215,23 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			clusterConfiguration.Aws.Sts.ControlPlaneRoleArn = accRoles.ControlPlaneRole
 
 		}
+
+		if profile.ClusterConfig.SharedVPC {
+			awsSharedCredentialFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+			if awsSharedCredentialFile == "" {
+				log.Logger.Errorf(envVariableErrMsg, awsSharedCredentialFile)
+				panic(fmt.Errorf(envVariableErrMsg, awsSharedCredentialFile))
+			}
+
+			sharedVPCRolePrefix = accountRolePrefix
+			awsClient, err := aws_client.CreateAWSClient("", profile.Region, awsSharedCredentialFile)
+			if err != nil {
+				return flags, err
+			}
+			sharedVPCAccountID := awsClient.AccountID
+			sharedVPCRoleArn = fmt.Sprintf("arn:aws:iam::%s:role/%s-shared-vpc-role", sharedVPCAccountID, sharedVPCRolePrefix)
+		}
+
 		operatorRolePrefix := accountRolePrefix
 		if profile.ClusterConfig.OIDCConfig != "" {
 			oidcConfigPrefix := common.TrimNameByLength(clusterName, con.MaxOIDCConfigPrefixLength)
@@ -221,7 +247,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 				return flags, err
 			}
 			err = PrepareOperatorRolesByOIDCConfig(client, operatorRolePrefix,
-				oidcConfigID, accRoles.InstallerRole, "", profile.ClusterConfig.HCP, profile.ChannelGroup)
+				oidcConfigID, accRoles.InstallerRole, sharedVPCRoleArn, profile.ClusterConfig.HCP, profile.ChannelGroup)
 			if err != nil {
 				return flags, err
 			}
@@ -234,6 +260,21 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.Aws.Sts.OperatorRolesPrefix = operatorRolePrefix
 		userData.OperatorRolesPrefix = operatorRolePrefix
 
+		if profile.ClusterConfig.SharedVPC {
+			log.Logger.Info("Got shared vpc settings. Going to sleep 30s to wait for the operator roles prepared")
+			time.Sleep(30 * time.Second)
+			installRoleArn := accRoles.InstallerRole
+			ingressOperatorRoleArn := fmt.Sprintf("%s/%s-%s", strings.Split(installRoleArn, "/")[0],
+				sharedVPCRolePrefix, "openshift-ingress-operator-cloud-credentials")
+			sharedVPCRoleName, sharedVPCRoleArn, err := PrepareSharedVPCRole(sharedVPCRolePrefix, installRoleArn,
+				ingressOperatorRoleArn, profile.Region, awsSharedCredentialFile)
+			if err != nil {
+				return flags, err
+			}
+			flags = append(flags, "--shared-vpc-role-arn", sharedVPCRoleArn)
+			userData.SharedVPCRole = sharedVPCRoleName
+		}
+
 		if profile.ClusterConfig.AuditLogForward {
 			auditLogRoleName := accountRolePrefix
 			auditRoleArn, err := PrepareAuditlogRoleArnByOIDCConfig(client, auditLogRoleName, oidcConfigID, profile.Region)
@@ -244,6 +285,34 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			}
 			flags = append(flags,
 				"--audit-log-arn", auditRoleArn)
+		}
+
+		if profile.ClusterConfig.AdditionalPrincipals {
+			awsSharedCredentialFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+			if awsSharedCredentialFile == "" {
+				log.Logger.Errorf(envVariableErrMsg, awsSharedCredentialFile)
+				panic(fmt.Errorf(envVariableErrMsg, awsSharedCredentialFile))
+			}
+			installRoleArn := accRoles.InstallerRole
+			additionalPrincipalRolePrefix := accountRolePrefix
+			additionalPrincipalRoleName := fmt.Sprintf("%s-%s", additionalPrincipalRolePrefix, "additional-principal-role")
+			additionalPrincipalRoleArn, err := PrepareAdditionalPrincipalsRole(additionalPrincipalRoleName, installRoleArn,
+				profile.Region, awsSharedCredentialFile)
+			if err != nil {
+				return flags, err
+			}
+			flags = append(flags, "--additional-allowed-principals", additionalPrincipalRoleArn)
+			clusterConfiguration.AdditionalPrincipals = additionalPrincipalRoleArn
+			userData.AdditionalPrincipals = additionalPrincipalRoleName
+		}
+	}
+
+	// Put this part before the BYOVPC preparation so the subnets is prepared based on PrivateLink
+	if profile.ClusterConfig.Private {
+		flags = append(flags, "--private")
+		clusterConfiguration.Private = profile.ClusterConfig.Private
+		if profile.ClusterConfig.HCP {
+			profile.ClusterConfig.PrivateLink = true
 		}
 	}
 
@@ -293,13 +362,20 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			DefaultIngressNamespaceOwnershipPolicy: "Strict",
 		}
 		flags = append(flags,
-			"--default-ingress-route-selector", clusterConfiguration.IngressConfig.DefaultIngressRouteSelector,
-			"--default-ingress-excluded-namespaces", clusterConfiguration.IngressConfig.DefaultIngressExcludedNamespaces,
-			"--default-ingress-wildcard-policy", clusterConfiguration.IngressConfig.DefaultIngressWildcardPolicy,
-			"--default-ingress-namespace-ownership-policy", clusterConfiguration.IngressConfig.DefaultIngressNamespaceOwnershipPolicy,
+			"--default-ingress-route-selector",
+			clusterConfiguration.IngressConfig.DefaultIngressRouteSelector,
+			"--default-ingress-excluded-namespaces",
+			clusterConfiguration.IngressConfig.DefaultIngressExcludedNamespaces,
+			"--default-ingress-wildcard-policy",
+			clusterConfiguration.IngressConfig.DefaultIngressWildcardPolicy,
+			"--default-ingress-namespace-ownership-policy",
+			clusterConfiguration.IngressConfig.DefaultIngressNamespaceOwnershipPolicy,
 		)
 	}
 	if profile.ClusterConfig.AutoscalerEnabled {
+		if !profile.ClusterConfig.Autoscale {
+			return nil, errors.New("Autoscaler is enabled without having enabled the autoscale field") // nolint
+		}
 		autoscaler := &ClusterConfigure.Autoscaler{
 			AutoscalerBalanceSimilarNodeGroups:    true,
 			AutoscalerSkipNodesWithLocalStorage:   true,
@@ -363,16 +439,24 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.Networking = networking
 	}
 	if profile.ClusterConfig.BYOVPC {
+		var vpc *vpc_client.VPC
+		var err error
 		vpcPrefix := common.TrimNameByLength(clusterName, 20)
 		log.Logger.Info("Got BYOVPC set to true. Going to prepare subnets")
 		cidrValue := con.DefaultVPCCIDRValue
 		if profile.ClusterConfig.NetworkingSet {
 			cidrValue = clusterConfiguration.Networking.MachineCIDR
 		}
-		vpc, err := PrepareVPC(profile.Region, vpcPrefix, cidrValue)
+
+		if profile.ClusterConfig.SharedVPC {
+			vpc, err = PrepareVPC(profile.Region, vpcPrefix, cidrValue, awsSharedCredentialFile)
+		} else {
+			vpc, err = PrepareVPC(profile.Region, vpcPrefix, cidrValue, "")
+		}
 		if err != nil {
 			return flags, err
 		}
+
 		userData.VpcID = vpc.VpcID
 		zones := strings.Split(profile.ClusterConfig.Zones, ",")
 		zones = common.RemoveFromStringSlice(zones, "")
@@ -438,6 +522,36 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 				"--additional-trust-bundle-file", proxy.CABundleFilePath,
 			)
 
+		}
+		if profile.ClusterConfig.SharedVPC {
+			subnetArns, err := PrepareSubnetArns(subnetsFlagValue, profile.Region, awsSharedCredentialFile)
+			if err != nil {
+				return flags, err
+			}
+
+			resourceShareName := fmt.Sprintf("%s-%s", sharedVPCRolePrefix, "resource-share")
+			resourceShareArn, err := PrepareResourceShare(resourceShareName, subnetArns, profile.Region, awsSharedCredentialFile)
+			if err != nil {
+				return flags, err
+			}
+			userData.ResourceShareArn = resourceShareArn
+
+			dnsDomain, err := PrepareDNSDomain(client)
+			if err != nil {
+				return flags, err
+			}
+			flags = append(flags, "--base-domain", dnsDomain)
+			userData.DNSDomain = dnsDomain
+
+			hostedZoneID, err := PrepareHostedZone(clusterName, dnsDomain, vpc.VpcID, profile.Region, true,
+				awsSharedCredentialFile)
+			if err != nil {
+				return flags, err
+			}
+			flags = append(flags, "--private-hosted-zone-id", hostedZoneID)
+			userData.HostedZoneID = hostedZoneID
+
+			clusterConfiguration.SharedVPC = profile.ClusterConfig.SharedVPC
 		}
 	}
 	if profile.ClusterConfig.BillingAccount != "" {
@@ -516,13 +630,10 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.MultiAZ = profile.ClusterConfig.MultiAZ
 	}
 
-	if profile.ClusterConfig.Private {
-		flags = append(flags, "--private")
-		clusterConfiguration.Private = profile.ClusterConfig.Private
-	}
 	if profile.ClusterConfig.PrivateLink {
 		flags = append(flags, "--private-link")
 		clusterConfiguration.PrivateLink = profile.ClusterConfig.PrivateLink
+
 	}
 	if profile.ClusterConfig.ProvisionShard != "" {
 		flags = append(flags, "--properties", fmt.Sprintf("provision_shard_id:%s", profile.ClusterConfig.ProvisionShard))
@@ -531,9 +642,6 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		}
 	}
 
-	if profile.ClusterConfig.SharedVPC {
-		//Placeholder for shared vpc, need to research what to be set here
-	}
 	if profile.ClusterConfig.TagEnabled {
 		tags := "test-tag:tagvalue,qe-managed:true"
 		flags = append(flags, "--tags", tags)
@@ -550,6 +658,10 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	}
 	if profile.ClusterConfig.ExternalAuthConfig {
 		flags = append(flags, "--external-auth-providers-enabled")
+	}
+	if profile.ClusterConfig.NetworkType == "other" {
+		flags = append(flags, "--no-cni")
+		clusterConfiguration.Networking.Type = profile.ClusterConfig.NetworkType
 	}
 
 	return flags, nil
@@ -581,9 +693,11 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
 		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
-		common.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)         // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL) // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)       // Temporary recoding file to make it compatible to existing jobs
+		// Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)
+		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL)
+		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)
+		// End of temporary
 	}()
 	err = WaitForClusterPassWaiting(client, cluster, 2)
 	if err != nil {
@@ -622,7 +736,8 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 			if strings.Contains(description.State, con.Waiting) {
 				log.Logger.Infof("Cluster is in status of %v, wait for ready", con.Waiting)
 				if sleepTime >= 6 {
-					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. Check the user data preparation for roles", description.State)
+					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. "+
+						"Check the user data preparation for roles", description.State)
 				}
 				sleepTime += 2
 				time.Sleep(2 * time.Minute)
@@ -651,7 +766,10 @@ func RecordClusterInstallationLog(client *rosacli.Client, cluster string) error 
 	return err
 }
 
-func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Client) (*rosacli.ClusterDescription, error) {
+func CreateClusterByProfileWithoutWaiting(
+	profile *Profile,
+	client *rosacli.Client) (*rosacli.ClusterDescription, error) {
+
 	clusterDetail := new(ClusterDetail)
 
 	flags, err := GenerateClusterCreateFlags(profile, client)
@@ -665,7 +783,7 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 		return nil, err
 	}
 	common.CreateFileWithContent(config.Test.CreateCommandFile, createCMD)
-	log.Logger.Info("Cluster created succesfully")
+	log.Logger.Info("Cluster created successfully")
 	description, err := client.Cluster.DescribeClusterAndReflect(profile.ClusterConfig.Name)
 	if err != nil {
 		return description, err
@@ -673,9 +791,11 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
 		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
-		common.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)     // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ClusterNameFile, description.Name) // Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")           // Temporary recoding file to make it compatible to existing jobs
+		// Temporary recoding file to make it compatible to existing jobs
+		common.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)
+		common.CreateFileWithContent(config.Test.ClusterNameFile, description.Name)
+		common.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")
+		// End of temporary
 	}()
 	clusterDetail.ClusterID = description.ID
 	clusterDetail.ClusterName = description.Name
@@ -707,8 +827,14 @@ func CreateClusterByProfileWithoutWaiting(profile *Profile, client *rosacli.Clie
 	}
 	return description, err
 }
-func CreateClusterByProfile(profile *Profile, client *rosacli.Client, waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
+func CreateClusterByProfile(profile *Profile,
+	client *rosacli.Client,
+	waitForClusterReady bool) (*rosacli.ClusterDescription, error) {
+
 	description, err := CreateClusterByProfileWithoutWaiting(profile, client)
+	if err != nil {
+		return description, err
+	}
 	if profile.ClusterConfig.BYOVPC {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", description.ID)
 		ReverifyClusterNetwork(client, description.ID)
@@ -728,7 +854,9 @@ func WaitForClusterUninstalled(client *rosacli.Client, cluster string, timeoutMi
 	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
 	for time.Now().Before(endTime) {
 		output, err := client.Cluster.DescribeCluster(cluster)
-		if err != nil && strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", cluster)) {
+		if err != nil &&
+			strings.Contains(output.String(),
+				fmt.Sprintf("There is no cluster with identifier or name '%s'", cluster)) {
 			log.Logger.Infof("Cluster %s has been deleted.", cluster)
 			return nil
 		}
@@ -787,13 +915,20 @@ func DestroyCluster(client *rosacli.Client) (*ClusterDetail, []error) {
 	return cd, errors
 }
 
-func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region string, isSTS bool, oidcConfig string) []error {
+func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region string, isSTS bool,
+	isSharedVPC bool, isAdditionalPrincipalAllowed bool) []error {
+
 	var (
 		ud                 *UserData
 		ocmResourceService rosacli.OCMResourceService
 		errors             []error
 	)
 	ocmResourceService = client.OCMResource
+
+	awsSharedCredentialFile := ""
+	if isSharedVPC || isAdditionalPrincipalAllowed {
+		awsSharedCredentialFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+	}
 
 	// get user data from resource file
 	ud, err := ParseUserData()
@@ -807,7 +942,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		_, err = common.CreateFileWithContent(config.Test.UserDataFile, ud)
 	}()
 
-	destroyLog := func(err error, errors []error, resource string) bool {
+	destroyLog := func(err error, resource string) bool {
 		if err != nil {
 			log.Logger.Errorf("Error happened when delete %s: %s", resource, err.Error())
 			errors = append(errors, err)
@@ -822,7 +957,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		if ud.KMSKey != "" {
 			log.Logger.Infof("Find prepared kms key: %s. Going to schedule the deletion.", ud.KMSKey)
 			err = ScheduleKMSDesiable(ud.KMSKey, region)
-			success := destroyLog(err, errors, "kms key")
+			success := destroyLog(err, "kms key")
 			if success {
 				ud.KMSKey = ""
 			}
@@ -831,7 +966,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		if ud.EtcdKMSKey != "" {
 			log.Logger.Infof("Find prepared etcd kms key: %s. Going to schedule the deletion", ud.EtcdKMSKey)
 			err = ScheduleKMSDesiable(ud.EtcdKMSKey, region)
-			success := destroyLog(err, errors, "etcd kms key")
+			success := destroyLog(err, "etcd kms key")
 			if success {
 				ud.EtcdKMSKey = ""
 			}
@@ -841,41 +976,97 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 			log.Logger.Infof("Find prepared audit log arn: %s", ud.AuditLogArn)
 			roleName := strings.Split(ud.AuditLogArn, "/")[1]
 			err = DeleteAuditLogRoleArn(roleName, region)
-			success := destroyLog(err, errors, "audit log arn")
+			success := destroyLog(err, "audit log arn")
 			if success {
 				ud.AuditLogArn = ""
+			}
+		}
+		//delete hosted zone
+		if ud.HostedZoneID != "" {
+			log.Logger.Infof("Find prepared hosted zone: %s", ud.HostedZoneID)
+			err = DeleteHostedZone(ud.HostedZoneID, region, awsSharedCredentialFile)
+			success := destroyLog(err, "hosted zone")
+			if success {
+				ud.HostedZoneID = ""
+			}
+		}
+		//delete dns domain
+		if ud.DNSDomain != "" {
+			log.Logger.Infof("Find prepared DNS Domain: %s", ud.DNSDomain)
+			_, err = ocmResourceService.DeleteDNSDomain(ud.DNSDomain)
+			success := destroyLog(err, "dns domain")
+			if success {
+				ud.DNSDomain = ""
+			}
+		}
+		// delete resource share
+		if ud.ResourceShareArn != "" {
+			log.Logger.Infof("Find prepared resource share: %s", ud.ResourceShareArn)
+			err = DeleteResourceShare(ud.ResourceShareArn, region, awsSharedCredentialFile)
+			success := destroyLog(err, "resource share")
+			if success {
+				ud.ResourceShareArn = ""
 			}
 		}
 		// delete vpc chain
 		if ud.VpcID != "" {
 			log.Logger.Infof("Find prepared vpc id: %s", ud.VpcID)
-			err = DeleteVPCChain(ud.VpcID, region)
-			success := destroyLog(err, errors, "vpc chain")
+			if isSharedVPC {
+				err = DeleteSharedVPCChain(ud.VpcID, region, awsSharedCredentialFile)
+			} else {
+				err = DeleteVPCChain(ud.VpcID, region)
+			}
+			success := destroyLog(err, "vpc chain")
 			if success {
 				ud.VpcID = ""
+			}
+		}
+		// delete shared vpc role
+		if ud.SharedVPCRole != "" {
+			log.Logger.Infof("Find prepared shared vpc role: %s", ud.SharedVPCRole)
+			err = DeleteSharedVPCRole(ud.SharedVPCRole, false, region, awsSharedCredentialFile)
+			success := destroyLog(err, "shared vpc role")
+			if success {
+				ud.SharedVPCRole = ""
+			}
+		}
+		// delete additional principal role
+		if ud.AdditionalPrincipals != "" {
+			log.Logger.Infof("Find prepared additional principal role: %s", ud.AdditionalPrincipals)
+			err = DeleteAdditionalPrincipalsRole(ud.AdditionalPrincipals, true, region, awsSharedCredentialFile)
+			success := destroyLog(err, "additional principal role")
+			if success {
+				ud.AdditionalPrincipals = ""
 			}
 		}
 		// delete operator roles
 		if ud.OperatorRolesPrefix != "" {
 			log.Logger.Infof("Find prepared operator roles with prefix: %s", ud.OperatorRolesPrefix)
-			_, err := ocmResourceService.DeleteOperatorRoles("--prefix", ud.OperatorRolesPrefix, "--mode", "auto", "-y")
-			success := destroyLog(err, errors, "operator roles")
+			_, err = ocmResourceService.DeleteOperatorRoles("--prefix", ud.OperatorRolesPrefix, "--mode", "auto", "-y")
+			success := destroyLog(err, "operator roles")
 			if success {
 				ud.OperatorRolesPrefix = ""
 			}
 		}
 		// delete oidc config
-		if oidcConfig != "" {
+		if ud.OIDCConfigID != "" {
 			log.Logger.Infof("Find prepared oidc config id: %s", ud.OIDCConfigID)
-			_, err := ocmResourceService.DeleteOIDCConfig("--oidc-config-id", ud.OIDCConfigID, "--region", region, "--mode", "auto", "-y")
-			success := destroyLog(err, errors, "oidc config")
+			_, err = ocmResourceService.DeleteOIDCConfig(
+				"--oidc-config-id",
+				ud.OIDCConfigID,
+				"--region",
+				region,
+				"--mode",
+				"auto",
+				"-y")
+			success := destroyLog(err, "oidc config")
 			if success {
 				ud.OIDCConfigID = ""
 			}
 		} else {
 			if clusterID != "" && isSTS {
 				_, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
-				success := destroyLog(err, errors, "oidc provider")
+				success := destroyLog(err, "oidc provider")
 				if success {
 					ud.OIDCConfigID = ""
 				}
@@ -883,9 +1074,9 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 		}
 		// delete account roles
 		if ud.AccountRolesPrefix != "" {
-			log.Logger.Infof("Find prepared accout roles with prefix: %s", ud.AccountRolesPrefix)
-			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto", "--prefix", ud.AccountRolesPrefix, "-y")
-			success := destroyLog(err, errors, "account roles")
+			log.Logger.Infof("Find prepared account roles with prefix: %s", ud.AccountRolesPrefix)
+			_, err = ocmResourceService.DeleteAccountRole("--mode", "auto", "--prefix", ud.AccountRolesPrefix, "-y")
+			success := destroyLog(err, "account roles")
 			if success {
 				ud.AccountRolesPrefix = ""
 			}
@@ -909,8 +1100,10 @@ func DestroyResourceByProfile(profile *Profile, client *rosacli.Client) (errors 
 	}
 	region := profile.Region
 	isSTS := profile.ClusterConfig.STS
-	oidcConfig := profile.ClusterConfig.OIDCConfig
-	errDestroyUserData := DestroyPreparedUserData(client, clusterId, region, isSTS, oidcConfig)
+	isSharedVPC := profile.ClusterConfig.SharedVPC
+	isAdditionalPrincipalAllowed := profile.ClusterConfig.AdditionalPrincipals
+	errDestroyUserData := DestroyPreparedUserData(client, clusterId, region, isSTS, isSharedVPC,
+		isAdditionalPrincipalAllowed)
 	if len(errDestroyUserData) > 0 {
 		errors = append(errors, errDestroyUserData)
 	}

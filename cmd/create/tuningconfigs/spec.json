@@ -1,0 +1,14 @@
+{
+    "profile": [
+      {
+        "data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"65\"\n",
+        "name": "tuned-2-profile"
+      }
+    ],
+    "recommend": [
+      {
+        "priority": 20,
+        "profile": "tuned-2-profile"
+      }
+    ]
+ }

@@ -51,16 +51,21 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 				output, _ := kubeletService.CreateKubeletConfig(clusterID,
 					"--pod-pids-limit", "12345")
 
+				// nolint:goconst
 				Expect(output.String()).To(ContainSubstring("Creating the KubeletConfig for cluster '%s' "+
 					"will cause all non-Control Plane nodes to reboot. "+
-					"This may cause outages to your applications. Do you wish to continue", clusterID))
+					"This may cause outages to your applications. Do you wish to continue",
+					clusterID))
 
 				By("Run the command to ignore the warning")
 				output, err := kubeletService.CreateKubeletConfig(clusterID, "-y",
 					"--pod-pids-limit", "12345")
 				Expect(err).ToNot(HaveOccurred())
 				defer kubeletService.DeleteKubeletConfig(clusterID, "-y")
-				Expect(output.String()).To(ContainSubstring("Successfully created KubeletConfig for cluster '%s'", clusterID))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Successfully created KubeletConfig for cluster '%s'",
+						clusterID))
 
 				By("Describe the kubeletconfig")
 				output, err = kubeletService.DescribeKubeletConfig(clusterID)
@@ -75,7 +80,10 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--name", "shouldnotwork",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("A KubeletConfig for cluster '%s' already exists. You should edit it via 'rosa edit kubeletconfig'", clusterID))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"A KubeletConfig for cluster '%s' already exists. You should edit it via 'rosa edit kubeletconfig'",
+						clusterID))
 
 			})
 
@@ -85,9 +93,11 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 				By("Edit the kubeletconfig to the cluster before it is created")
 				output, _ := rosaClient.KubeletConfig.EditKubeletConfig(clusterID,
 					"--pod-pids-limit", "12345")
-				Expect(output.String()).To(ContainSubstring("The specified KubeletConfig does not exist for cluster '%s'."+
-					" You should first create it via 'rosa create kubeletconfig'",
-					clusterID))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"The specified KubeletConfig does not exist for cluster '%s'."+
+							" You should first create it via 'rosa create kubeletconfig'",
+						clusterID))
 
 				By("Run the command to create a kubeletconfig to the cluster")
 				_, err := rosaClient.KubeletConfig.CreateKubeletConfig(clusterID,
@@ -109,7 +119,10 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--pod-pids-limit", "12344")
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Successfully updated KubeletConfig for cluster '%s'", clusterID))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Successfully updated KubeletConfig for cluster '%s'",
+						clusterID))
 
 				By("Describe the kubeletconfig")
 				output, err = rosaClient.KubeletConfig.DescribeKubeletConfig(clusterID)
@@ -124,7 +137,10 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--name", "notexisting",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("ERR: The specified KubeletConfig does not exist for cluster '%s'", clusterID))
+				Expect(output.String()).
+					Should(ContainSubstring(
+						"ERR: The specified KubeletConfig does not exist for cluster '%s'",
+						clusterID))
 			})
 
 		It("can delete podPidLimit via rosacli will work well - [id:68836]",
@@ -132,8 +148,10 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 			func() {
 				By("Delete the kubeletconfig from the cluster before it is created")
 				output, _ := rosaClient.KubeletConfig.DeleteKubeletConfig(clusterID, "-y")
-				Expect(output.String()).To(ContainSubstring("Failed to delete KubeletConfig for cluster '%s'",
-					clusterID))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Failed to delete KubeletConfig for cluster '%s'",
+						clusterID))
 
 				By("Run the command to create a kubeletconfig to the cluster")
 				_, err := rosaClient.KubeletConfig.CreateKubeletConfig(clusterID,
@@ -144,19 +162,28 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 
 				By("Run the command to delete the kubeletconfig from the cluster to check warning")
 				output, _ = rosaClient.KubeletConfig.DeleteKubeletConfig(clusterID)
-				Expect(output.String()).To(ContainSubstring("Deleting the KubeletConfig for cluster '%s' "+
-					"will cause all non-Control Plane nodes to reboot. "+
-					"This may cause outages to your applications. Do you wish to continue", clusterID))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Deleting the KubeletConfig for cluster '%s' "+
+							"will cause all non-Control Plane nodes to reboot. "+
+							"This may cause outages to your applications. Do you wish to continue",
+						clusterID))
 
 				By("Run the command to ignore the warning")
 				output, err = rosaClient.KubeletConfig.DeleteKubeletConfig(clusterID, "-y")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Successfully deleted KubeletConfig for cluster '%s'", clusterID))
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Successfully deleted KubeletConfig for cluster '%s'",
+						clusterID))
 
 				By("Describe the kubeletconfig")
 				output, err = rosaClient.KubeletConfig.DescribeKubeletConfig(clusterID)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("The KubeletConfig specified does not exist for cluster '%s'", clusterID))
+				Expect(output.String()).
+					Should(ContainSubstring(
+						"The KubeletConfig specified does not exist for cluster '%s'",
+						clusterID))
 
 				By("Create the kubeletconfig again")
 				_, err = rosaClient.KubeletConfig.CreateKubeletConfig(clusterID,
@@ -171,8 +198,10 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--name", "notexisting",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("The KubeletConfig with name 'notexisting' does not exist on cluster '%s'", clusterID))
+				Expect(output.String()).
+					Should(ContainSubstring(
+						"The KubeletConfig with name 'notexisting' does not exist on cluster '%s'",
+						clusterID))
 
 			})
 	})
@@ -226,7 +255,10 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				By("List the kubeletconfig with not existing cluster")
 				out, err := kubeletService.ListKubeletConfigs(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("There are no KubeletConfigs for cluster '%s'", clusterID))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"There are no KubeletConfigs for cluster '%s'",
+						clusterID))
 
 				By("Create kubeletconfig with name specified without flag --name")
 				out, err = kubeletService.CreateKubeletConfig(clusterID,
@@ -284,7 +316,10 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--name", name,
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("The KubeletConfig specified does not exist for cluster '%s'", clusterID))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"The KubeletConfig specified does not exist for cluster '%s'",
+						clusterID))
 
 			})
 		It("can validate when create/edit/delete/describe - [id:73754]",
@@ -293,7 +328,10 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				By("List the kubeletconfig with not existing cluster")
 				out, err := kubeletService.ListKubeletConfigs("notexisting")
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("There is no cluster with identifier or name '%s'", "notexisting"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"There is no cluster with identifier or name '%s'",
+						"notexisting"))
 
 				By("Create kubeletconfig with invalid name")
 				out, err = kubeletService.CreateKubeletConfig(clusterID,
@@ -301,7 +339,9 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--pod-pids-limit", "4096",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("The name must be a lowercase RFC 1123 subdomain."))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"The name must be a lowercase RFC 1123 subdomain."))
 
 				By("Create kubeletconfig with invalid pod pids limit value like 123456789")
 				out, err = kubeletService.CreateKubeletConfig(clusterID,
@@ -309,7 +349,9 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--pod-pids-limit", "123456789",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("The maximum value for --pod-pids-limit is '16384'. You have supplied '123456789'"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"The maximum value for --pod-pids-limit is '16384'. You have supplied '123456789'"))
 
 				By("Create a kubeletconfig")
 				dupName := "dupname-73754"
@@ -325,7 +367,9 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--pod-pids-limit", "4096",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("'KubeletConfig with name '%s' already exists'", dupName))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"'KubeletConfig with name '%s' already exists'", dupName))
 
 				By("Edit with invalid pod pids limit value")
 				out, err = kubeletService.EditKubeletConfig(clusterID,
@@ -333,7 +377,9 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--pod-pids-limit", "123456789",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("The maximum value for --pod-pids-limit is '16384'. You have supplied '123456789'"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"The maximum value for --pod-pids-limit is '16384'. You have supplied '123456789'"))
 
 				By("edit/delete/describe kubeletconfig with not existing")
 				out, err = kubeletService.EditKubeletConfig(clusterID,
@@ -341,19 +387,27 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--pod-pids-limit", "4096",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("The specified KubeletConfig does not exist for cluster '%s'", clusterID))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"The specified KubeletConfig does not exist for cluster '%s'",
+						clusterID))
 
 				out, err = kubeletService.DescribeKubeletConfig(clusterID,
 					"--name", "notexisting",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("The KubeletConfig specified does not exist for cluster '%s'", clusterID))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"The KubeletConfig specified does not exist for cluster '%s'",
+						clusterID))
 
 				out, err = kubeletService.DeleteKubeletConfig(clusterID,
 					"--name", "notexisting",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("The KubeletConfig with name 'notexisting' does not exist on cluster"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"The KubeletConfig with name 'notexisting' does not exist on cluster"))
 			})
 
 		It("can be attach to machinepool successfully - [id:73765]",
@@ -456,7 +510,9 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--kubelet-configs", strings.Join([]string{kubeName1, kubeName2}, ","),
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("Only a single kubelet config is supported for Machine Pools"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"Only a single kubelet config is supported for Machine Pools"))
 
 				By("Create machinepool with not existing kubeletconfig name")
 				out, err = machinePoolService.CreateMachinePool(clusterID, "unknown",
@@ -464,7 +520,9 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--kubelet-configs", "notexisting",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("KubeletConfig with name '%s' does not exist for cluster", "notexisting"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"KubeletConfig with name '%s' does not exist for cluster", "notexisting"))
 
 				By("Create a machinepool with existing kubeletconfig")
 				mpName := "mp-73766"
@@ -479,21 +537,27 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				out, err = kubeletService.DeleteKubeletConfig(clusterID,
 					"--name", kubeName1)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("cannot be updated or deleted. It is referenced in the following node pools"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"cannot be updated or deleted. It is referenced in the following node pools"))
 
 				By("Edit the kubeletconfig")
 				out, err = kubeletService.EditKubeletConfig(clusterID,
 					"--name", kubeName1,
 					"--pod-pids-limit", "12345")
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("cannot be updated or deleted. It is referenced in the following node pools"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"cannot be updated or deleted. It is referenced in the following node pools"))
 
 				By("Edit machinepool with multiple kubelet config ids")
 				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
 					"--kubelet-configs", strings.Join([]string{kubeName1, kubeName2}, ","),
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("Only a single kubelet config is supported for Machine Pools"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"Only a single kubelet config is supported for Machine Pools"))
 
 				By("Edit machinepool with not existing kubeletconfig name")
 				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
@@ -501,6 +565,8 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"-y",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("KubeletConfig with name '%s' does not exist for cluster", "nonexisting"))
+				Expect(out.String()).
+					Should(ContainSubstring(
+						"KubeletConfig with name '%s' does not exist for cluster", "nonexisting"))
 			})
 	})

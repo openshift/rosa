@@ -19,6 +19,137 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 )
 
+var _ = Describe("ListOperatorRoles", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{
+			iamClient: mockIamAPI,
+		}
+	})
+
+	It("Retrieves by target version", func() {
+		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(
+			&iam.ListRolesOutput{
+				IsTruncated: false,
+				Roles: []iamtypes.Role{
+					{
+						RoleName: aws.String("some-role-name-openshift"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+			&iam.ListRoleTagsOutput{
+				IsTruncated: false,
+			}, nil)
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+			&iam.ListAttachedRolePoliciesOutput{
+				IsTruncated: false,
+				AttachedPolicies: []iamtypes.AttachedPolicy{
+					{
+						PolicyName: aws.String("some-policy-name"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
+			&iam.ListPolicyTagsOutput{
+				IsTruncated: false,
+				Tags: []iamtypes.Tag{
+					{
+						Key:   aws.String(common.OpenShiftVersion),
+						Value: aws.String("4.13"),
+					},
+				},
+			}, nil)
+		roles, err := client.ListOperatorRoles("4.13", "", "")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(roles).To(HaveLen(1))
+	})
+
+	It("Retrieves by target cluster ID", func() {
+		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(
+			&iam.ListRolesOutput{
+				IsTruncated: false,
+				Roles: []iamtypes.Role{
+					{
+						RoleName: aws.String("some-role-name-openshift"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+			&iam.ListRoleTagsOutput{
+				IsTruncated: false,
+				Tags: []iamtypes.Tag{
+					{
+						Key:   aws.String(tags.ClusterID),
+						Value: aws.String("123"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+			&iam.ListAttachedRolePoliciesOutput{
+				IsTruncated: false,
+				AttachedPolicies: []iamtypes.AttachedPolicy{
+					{
+						PolicyName: aws.String("some-policy-name"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
+			&iam.ListPolicyTagsOutput{
+				IsTruncated: false,
+				Tags: []iamtypes.Tag{
+					{
+						Key:   aws.String(common.OpenShiftVersion),
+						Value: aws.String("4.13"),
+					},
+				},
+			}, nil)
+		roles, err := client.ListOperatorRoles("", "123", "")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(roles).To(HaveLen(1))
+	})
+
+	It("Retrieves by target prefix", func() {
+		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(
+			&iam.ListRolesOutput{
+				IsTruncated: false,
+				Roles: []iamtypes.Role{
+					{
+						RoleName: aws.String("some-role-name-openshift"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+			&iam.ListRoleTagsOutput{
+				IsTruncated: false,
+				Tags: []iamtypes.Tag{
+					{
+						Key:   aws.String(common.ManagedPolicies),
+						Value: aws.String("true"),
+					}},
+			}, nil)
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+			&iam.ListAttachedRolePoliciesOutput{
+				IsTruncated: false,
+				AttachedPolicies: []iamtypes.AttachedPolicy{
+					{
+						PolicyName: aws.String("some-policy-name"),
+					},
+				},
+			}, nil)
+		roles, err := client.ListOperatorRoles("", "", "some-role-name")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(roles).To(HaveLen(1))
+	})
+})
+
 var _ = Describe("mapToAccountRoles", func() {
 	var (
 		client     awsClient

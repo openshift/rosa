@@ -28,6 +28,7 @@ type AWSNodePoolBuilder struct {
 	href                       string
 	additionalSecurityGroupIds []string
 	availabilityZoneTypes      map[string]string
+	ec2MetadataHttpTokens      Ec2MetadataHttpTokens
 	instanceProfile            string
 	instanceType               string
 	subnetOutposts             map[string]string
@@ -83,17 +84,26 @@ func (b *AWSNodePoolBuilder) AvailabilityZoneTypes(value map[string]string) *AWS
 	return b
 }
 
+// Ec2MetadataHttpTokens sets the value of the 'ec_2_metadata_http_tokens' attribute to the given value.
+//
+// Which Ec2MetadataHttpTokens to use for metadata service interaction options for EC2 instances
+func (b *AWSNodePoolBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) *AWSNodePoolBuilder {
+	b.ec2MetadataHttpTokens = value
+	b.bitmap_ |= 32
+	return b
+}
+
 // InstanceProfile sets the value of the 'instance_profile' attribute to the given value.
 func (b *AWSNodePoolBuilder) InstanceProfile(value string) *AWSNodePoolBuilder {
 	b.instanceProfile = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
 // InstanceType sets the value of the 'instance_type' attribute to the given value.
 func (b *AWSNodePoolBuilder) InstanceType(value string) *AWSNodePoolBuilder {
 	b.instanceType = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -101,9 +111,9 @@ func (b *AWSNodePoolBuilder) InstanceType(value string) *AWSNodePoolBuilder {
 func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoolBuilder {
 	b.subnetOutposts = value
 	if value != nil {
-		b.bitmap_ |= 128
+		b.bitmap_ |= 256
 	} else {
-		b.bitmap_ &^= 128
+		b.bitmap_ &^= 256
 	}
 	return b
 }
@@ -112,9 +122,9 @@ func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoo
 func (b *AWSNodePoolBuilder) Tags(value map[string]string) *AWSNodePoolBuilder {
 	b.tags = value
 	if value != nil {
-		b.bitmap_ |= 256
+		b.bitmap_ |= 512
 	} else {
-		b.bitmap_ &^= 256
+		b.bitmap_ &^= 512
 	}
 	return b
 }
@@ -141,6 +151,7 @@ func (b *AWSNodePoolBuilder) Copy(object *AWSNodePool) *AWSNodePoolBuilder {
 	} else {
 		b.availabilityZoneTypes = nil
 	}
+	b.ec2MetadataHttpTokens = object.ec2MetadataHttpTokens
 	b.instanceProfile = object.instanceProfile
 	b.instanceType = object.instanceType
 	if len(object.subnetOutposts) > 0 {
@@ -178,6 +189,7 @@ func (b *AWSNodePoolBuilder) Build() (object *AWSNodePool, err error) {
 			object.availabilityZoneTypes[k] = v
 		}
 	}
+	object.ec2MetadataHttpTokens = b.ec2MetadataHttpTokens
 	object.instanceProfile = b.instanceProfile
 	object.instanceType = b.instanceType
 	if b.subnetOutposts != nil {

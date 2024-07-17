@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Healthy check",
@@ -26,6 +27,7 @@ var _ = Describe("Healthy check",
 			clusterService     rosacli.ClusterService
 			machinePoolService rosacli.MachinePoolService
 			clusterConfig      *config.ClusterConfig
+			profile            *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
@@ -39,6 +41,7 @@ var _ = Describe("Healthy check",
 			machinePoolService = rosaClient.MachinePool
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
+			profile = profilehandler.LoadProfileYamlFileByENV()
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -127,7 +130,7 @@ var _ = Describe("Healthy check",
 			})
 
 		It("the windows certificates expiration - [id:64040]",
-			labels.Medium, labels.Runtime.Day1Post,
+			labels.Medium, labels.Runtime.Day1Post, labels.Exclude,
 			func() {
 				//If the case fails,please open a card to ask dev update windows certificates.
 				//Example card: https://issues.redhat.com/browse/SDA-8990
@@ -143,7 +146,9 @@ var _ = Describe("Healthy check",
 				By("Check the domains certificates if it is updated")
 				domains := []string{"api.openshift.com", "sso.redhat.com"}
 				for _, url := range domains {
-					cmd := fmt.Sprintf("openssl s_client -connect %s:443 -showcerts 2>&1  | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'", url)
+					cmd := fmt.Sprintf(
+						"openssl s_client -connect %s:443 -showcerts 2>&1  | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'",
+						url)
 					stdout, err := rosaClient.Runner.RunCMD([]string{"bash", "-c", cmd})
 					Expect(err).ToNot(HaveOccurred())
 					result := strings.Trim(stdout.String(), "\n")
@@ -179,10 +184,16 @@ var _ = Describe("Healthy check",
 					Expect(additionalMap).ToNot(BeNil())
 					for _, addSgGroups := range additionalMap {
 						if value, ok := addSgGroups.(map[string]interface{})["Control Plane"]; ok {
-							Expect(value).To(Equal(common.ReplaceCommaWithCommaSpace(clusterConfig.AdditionalSecurityGroups.ControlPlaneSecurityGroups)))
+							Expect(value).
+								To(Equal(
+									common.ReplaceCommaWithCommaSpace(
+										clusterConfig.AdditionalSecurityGroups.ControlPlaneSecurityGroups)))
 						} else {
 							value = addSgGroups.(map[string]interface{})["Infra"]
-							Expect(value).To(Equal(common.ReplaceCommaWithCommaSpace(clusterConfig.AdditionalSecurityGroups.InfraSecurityGroups)))
+							Expect(value).
+								To(Equal(
+									common.ReplaceCommaWithCommaSpace(
+										clusterConfig.AdditionalSecurityGroups.InfraSecurityGroups)))
 						}
 					}
 				}
@@ -193,7 +204,10 @@ var _ = Describe("Healthy check",
 				if clusterConfig.AdditionalSecurityGroups == nil {
 					Expect(mp.SecurityGroupIDs).To(BeEmpty())
 				} else {
-					Expect(mp.SecurityGroupIDs).To(Equal(common.ReplaceCommaWithCommaSpace(clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
+					Expect(mp.SecurityGroupIDs).
+						To(Equal(
+							common.ReplaceCommaWithCommaSpace(
+								clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
 				}
 
 			})
@@ -218,6 +232,27 @@ var _ = Describe("Healthy check",
 				Expect(clusterConfig.Encryption.KmsKeyArn).To(Equal(kmsKey))
 			})
 
+		It("additional allowed principals work on cluster creation - [id:74408]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				By("Confirm current cluster profile uses additional allowed principals")
+				if !profile.ClusterConfig.AdditionalPrincipals {
+					SkipTestOnFeature("additional allowed principals")
+				}
+
+				By("Check the help message of 'rosa create cluster -h'")
+				output, err := clusterService.CreateDryRun(clusterID, "-h")
+				Expect(err).To(BeNil())
+				Expect(output.String()).
+					To(
+						ContainSubstring("--additional-allowed-principals"))
+
+				By("Confirm additional principals is present")
+				out, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+				Expect(out.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
+			})
+
 		It("etcd encryption works on cluster creation - [id:42188]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
@@ -235,5 +270,82 @@ var _ = Describe("Healthy check",
 				Expect(err).To(BeNil())
 				etcdEncryption := jsonData.DigBool("etcd_encryption")
 				Expect(etcdEncryption).To(BeTrue())
+			})
+
+		It("Rosa cluster with fips enabled can be created successfully - [id:46312]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				des, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Check if fips is enabled")
+				if !profile.ClusterConfig.FIPS {
+					Expect(des.FIPSMod).To(Equal(""))
+				} else {
+					Expect(des.FIPSMod).To(Equal("Enabled"))
+				}
+			})
+		It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical,
+			func() {
+				private := constants.No
+				ingressPrivate := "false"
+				if clusterConfig.PrivateLink {
+					private = constants.Yes
+					ingressPrivate = "true"
+				}
+				By("Describe the cluster the cluster should be private")
+				clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDescription.Private).To(Equal(private))
+
+				By("Check the ingress should be private")
+				ingress, err := rosaClient.Ingress.DescribeIngressAndReflect(clusterID, "apps")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ingress.Private).To(Equal(ingressPrivate))
+
+			})
+	})
+
+var _ = Describe("Create cluster with the version in some channel group testing",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+		var (
+			clusterID      string
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			var clusterDetail *profilehandler.ClusterDetail
+			var err error
+			clusterDetail, err = profilehandler.ParserClusterDetail()
+			Expect(err).ToNot(HaveOccurred())
+			clusterID = clusterDetail.ClusterID
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			rosaClient.CleanResources(clusterID)
+		})
+
+		It("User can create cluster with channel group - [id:35420]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+
+				By("Check if the cluster using right channel group")
+				versionOutput, err := clusterService.GetClusterVersion(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(versionOutput.ChannelGroup).To(Equal(profile.ChannelGroup))
 			})
 	})

@@ -1,12 +1,16 @@
 package e2e
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("HCP cluster testing",
@@ -19,6 +23,7 @@ var _ = Describe("HCP cluster testing",
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
 			clusterConfig  *config.ClusterConfig
+			profile        *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
@@ -29,6 +34,7 @@ var _ = Describe("HCP cluster testing",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
+			profile = profilehandler.LoadProfileYamlFileByENV()
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
@@ -171,11 +177,87 @@ var _ = Describe("HCP cluster testing",
 				output, err = rosaClient.User.CreateAdmin(clusterID)
 				Expect(err).ToNot(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured"))
 
 				_, output, err = rosaClient.IDP.ListIDP(clusterID)
 				Expect(err).ToNot(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("ERR: Listing identity providers is not supported for clusters with external authentication configured"))
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Listing identity providers is not supported for clusters with external authentication configured"))
+			})
+
+		It("can edit ROSA HCP cluster with additional allowed principals - [id:74556]",
+			labels.High, labels.Runtime.Day2,
+			func() {
+				By("Check the help message of 'rosa edit cluster -h'")
+				helpOutput, err := clusterService.EditCluster("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--additional-allowed-principals"))
+
+				By("Check if cluster profile is enabled with additional allowed principals")
+				if !profile.ClusterConfig.AdditionalPrincipals {
+					SkipTestOnFeature("additional allowed principals")
+				}
+
+				output, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
+
+				By("Get the installer role arn")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				installRoleArn := jsonData.DigString("aws", "sts", "role_arn")
+
+				By("Get additional principal credentials")
+				awsSharedCredentialFile := ciConfig.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+
+				By("Create additional account roles")
+				accrolePrefix := "arPrefix74556"
+
+				additionalPrincipalRoleName := fmt.Sprintf("%s-%s", accrolePrefix, "additional-principal-role")
+				additionalPrincipalRoleArn, err := profilehandler.PrepareAdditionalPrincipalsRole(
+					additionalPrincipalRoleName,
+					installRoleArn,
+					profile.Region, awsSharedCredentialFile)
+				Expect(err).To(BeNil())
+				defer func() {
+					By("Delete the additional principal account-roles")
+					err = profilehandler.DeleteAdditionalPrincipalsRole(additionalPrincipalRoleName,
+						true, profile.Region, awsSharedCredentialFile)
+					Expect(err).To(BeNil())
+				}()
+
+				additionalPrincipalsFlag := fmt.Sprintf(
+					"%s,%s", clusterConfig.AdditionalPrincipals, additionalPrincipalRoleArn)
+
+				By("Edit the cluster with additional allowed principals")
+				out, err := clusterService.EditCluster(clusterID,
+					"--additional-allowed-principals",
+					additionalPrincipalsFlag)
+				Expect(err).ToNot(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+				By("Confirm additional principals is edited successfully")
+				output, err = clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+				Expect(output.AdditionalPrincipals).
+					To(
+						ContainSubstring(
+							"%s,%s", clusterConfig.AdditionalPrincipals, additionalPrincipalRoleArn))
+
+				By("Edit the cluster with additional allowed principals")
+				out, err = clusterService.EditCluster(clusterID,
+					"--additional-allowed-principals",
+					clusterConfig.AdditionalPrincipals)
+				Expect(err).ToNot(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
 			})
 	})

@@ -16,8 +16,7 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/square/go-jose.v2"
-
+	"github.com/go-jose/go-jose/v4"
 	"github.com/openshift-online/ocm-common/pkg/utils"
 )
 

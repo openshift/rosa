@@ -61,10 +61,10 @@ func NewRosaVersionCommand() *cobra.Command {
 func RosaVersionRunner(userOptions RosaVersionUserOptions) rosa.CommandRunner {
 	return func(_ context.Context, _ *rosa.Runtime, _ *cobra.Command, _ []string) error {
 		options, err := NewRosaVersionOptions()
-		options.BindAndValidate(userOptions)
 		if err != nil {
 			return fmt.Errorf("there was a problem creating version options: %v", err)
 		}
+		options.BindAndValidate(userOptions)
 		return options.Version()
 	}
 }

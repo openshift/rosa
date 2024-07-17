@@ -10,6 +10,7 @@ profiles:
     sts: true
     byo_vpc: true
     private_link: false
+    additional_principals: false
     private: false
     etcd_encryption: true
     autoscale: true
@@ -41,6 +42,7 @@ profiles:
     sts: true
     byo_vpc: true
     private: true
+    additional_principals: true
     etcd_encryption: false
     autoscale: false
     kms_key: false
@@ -64,6 +66,7 @@ profiles:
     sts: true
     byo_vpc: true
     private: false
+    additional_principals: false
     etcd_encryption: true
     autoscale: false
     kms_key: true
@@ -78,7 +81,7 @@ profiles:
     shared_vpc: false
     firewall: true
     imdsv2: ""
-    ingress_customized: true
+    ingress_customized: false
     auditlog_forward: false
     name_length: 54
     customize_domain_prefix: true
@@ -97,6 +100,7 @@ profiles:
     sts: true
     byo_vpc: true
     private_link: false
+    additional_principals: false
     private: false
     etcd_encryption: true
     autoscale: false
@@ -126,6 +130,7 @@ profiles:
     byo_vpc: true
     private_link: false
     private: false
+    additional_principals: false
     etcd_encryption: true
     autoscale: false
     kms_key: true

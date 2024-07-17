@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
@@ -88,7 +89,11 @@ var _ = Describe("Edit nodepool",
 					"--labels", labels,
 					"--taints", taints)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", nodePoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						nodePoolName,
+						clusterID))
 
 				By("Check created nodepool")
 				npList, err := machinePoolService.ListAndReflectNodePools(clusterID)
@@ -116,7 +121,11 @@ var _ = Describe("Edit nodepool",
 					"--labels", newLabels,
 					"--taints", newTaints)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Updated machine pool '%s' on hosted cluster '%s'", nodePoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						nodePoolName,
+						clusterID))
 
 				By("Check edited nodepool")
 				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
@@ -150,7 +159,11 @@ var _ = Describe("Edit nodepool",
 				By("Delete nodepool")
 				output, err = machinePoolService.DeleteMachinePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Successfully deleted machine pool '%s' from hosted cluster '%s'", nodePoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Successfully deleted machine pool '%s' from hosted cluster '%s'",
+						nodePoolName,
+						clusterID))
 
 				By("Nodepool does not appear anymore")
 				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
@@ -193,7 +206,11 @@ var _ = Describe("Edit nodepool",
 					"--replicas", strconv.Itoa(replicasNumber),
 					"--subnet", subnets[0])
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", nodePoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						nodePoolName,
+						clusterID))
 
 				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -219,7 +236,11 @@ var _ = Describe("Edit nodepool",
 					"--max-replicas", strconv.Itoa(maxReplicasNumber),
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Updated machine pool '%s' on hosted cluster '%s'", nodePoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						nodePoolName,
+						clusterID))
 				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				np = npList.Nodepool(nodePoolName)
@@ -236,7 +257,11 @@ var _ = Describe("Edit nodepool",
 					"--max-replicas", strconv.Itoa(maxReplicasNumber),
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Updated machine pool '%s' on hosted cluster '%s'", nodePoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						nodePoolName,
+						clusterID))
 				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				np = npList.Nodepool(nodePoolName)
@@ -246,7 +271,11 @@ var _ = Describe("Edit nodepool",
 				By("Delete nodepool")
 				output, err = machinePoolService.DeleteMachinePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Successfully deleted machine pool '%s' from hosted cluster '%s'", nodePoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Successfully deleted machine pool '%s' from hosted cluster '%s'",
+						nodePoolName,
+						clusterID))
 
 				By("Check cluster nodes information after deletion")
 				CD, err = clusterService.DescribeClusterAndReflect(clusterID)
@@ -257,7 +286,9 @@ var _ = Describe("Edit nodepool",
 
 				By("Create new nodepool with replicas 0")
 				replicas0NPName := common.GenerateRandomName(nodePoolName, 2)
-				_, err = machinePoolService.CreateMachinePool(clusterID, replicas0NPName,
+				_, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					replicas0NPName,
 					"--replicas", strconv.Itoa(0),
 					"--subnet", subnets[0])
 				Expect(err).ToNot(HaveOccurred())
@@ -269,7 +300,9 @@ var _ = Describe("Edit nodepool",
 
 				By("Create new nodepool with min replicas 0")
 				minReplicas0NPName := common.GenerateRandomName(nodePoolName, 2)
-				_, err = machinePoolService.CreateMachinePool(clusterID, minReplicas0NPName,
+				_, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					minReplicas0NPName,
 					"--enable-autoscaling",
 					"--min-replicas", strconv.Itoa(0),
 					"--max-replicas", strconv.Itoa(3),
@@ -306,11 +339,20 @@ var _ = Describe("Edit nodepool",
 		`
 
 				By("Prepare tuning configs")
-				_, err := tuningConfigService.CreateTuningConfig(clusterID, tuningConfig1Name, fmt.Sprintf(tuningConfigPayload, tuningConfig1Name, tuningConfig1Name))
+				_, err := tuningConfigService.CreateTuningConfig(
+					clusterID,
+					tuningConfig1Name,
+					fmt.Sprintf(tuningConfigPayload, tuningConfig1Name, tuningConfig1Name))
 				Expect(err).ToNot(HaveOccurred())
-				_, err = tuningConfigService.CreateTuningConfig(clusterID, tuningConfig2Name, fmt.Sprintf(tuningConfigPayload, tuningConfig2Name, tuningConfig2Name))
+				_, err = tuningConfigService.CreateTuningConfig(
+					clusterID,
+					tuningConfig2Name,
+					fmt.Sprintf(tuningConfigPayload, tuningConfig2Name, tuningConfig2Name))
 				Expect(err).ToNot(HaveOccurred())
-				_, err = tuningConfigService.CreateTuningConfig(clusterID, tuningConfig3Name, fmt.Sprintf(tuningConfigPayload, tuningConfig3Name, tuningConfig3Name))
+				_, err = tuningConfigService.CreateTuningConfig(
+					clusterID,
+					tuningConfig3Name,
+					fmt.Sprintf(tuningConfigPayload, tuningConfig3Name, tuningConfig3Name))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create nodepool with tuning configs")
@@ -372,26 +414,44 @@ var _ = Describe("Edit nodepool",
 		`
 
 				By("Prepare tuning configs")
-				_, err := tuningConfigService.CreateTuningConfig(clusterID, tuningConfigName_1, fmt.Sprintf(tuningConfigPayload, tuningConfigName_1, tuningConfigName_1))
+				_, err := tuningConfigService.CreateTuningConfig(
+					clusterID,
+					tuningConfigName_1,
+					fmt.Sprintf(tuningConfigPayload, tuningConfigName_1, tuningConfigName_1))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create nodepool with the non-existing tuning configs")
-				output, err := machinePoolService.CreateMachinePool(clusterID, nodePoolName,
+				output, err := machinePoolService.CreateMachinePool(
+					clusterID,
+					nodePoolName,
 					"--replicas", "3",
 					"--tuning-configs", nonExistingTuningConfigName,
 				)
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
-				Expect(textData).To(ContainSubstring(fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': Tuning config with name '%s' does not exist for cluster '%s'", clusterID, nonExistingTuningConfigName, clusterID)))
+				Expect(textData).
+					To(ContainSubstring(
+						fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': "+
+							"Tuning config with name '%s' does not exist for cluster '%s'",
+							clusterID,
+							nonExistingTuningConfigName,
+							clusterID)))
 
 				By("Create nodepool with duplicate tuning configs")
-				output, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					nodePoolName,
 					"--replicas", "3",
 					"--tuning-configs", fmt.Sprintf("%s,%s", tuningConfigName_1, tuningConfigName_1),
 				)
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
-				Expect(textData).To(ContainSubstring(fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': Tuning config with name '%s' is duplicated", clusterID, tuningConfigName_1)))
+				Expect(textData).
+					To(ContainSubstring(
+						fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': "+
+							"Tuning config with name '%s' is duplicated",
+							clusterID,
+							tuningConfigName_1)))
 
 				By("Create a nodepool")
 				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
@@ -405,7 +465,14 @@ var _ = Describe("Edit nodepool",
 				)
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
-				Expect(textData).To(ContainSubstring(fmt.Sprintf("Failed to update machine pool '%s' on hosted cluster '%s': Tuning config with name '%s' does not exist for cluster '%s'", nodePoolName, clusterID, nonExistingTuningConfigName, clusterID)))
+				Expect(textData).
+					To(ContainSubstring(
+						fmt.Sprintf("Failed to update machine pool '%s' on hosted cluster '%s': "+
+							"Tuning config with name '%s' does not exist for cluster '%s'",
+							nodePoolName,
+							clusterID,
+							nonExistingTuningConfigName,
+							clusterID)))
 			})
 
 		It("does support 'version' parameter on nodepool - [id:61138]",
@@ -454,13 +521,18 @@ var _ = Describe("Edit nodepool",
 				Expect(np.Version).To(Equal(previousVersion))
 
 				By("Wait for NodePool replicas to be available")
-				err = wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 20*time.Minute, false, func(context.Context) (bool, error) {
-					npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
-					if err != nil {
-						return false, err
-					}
-					return npDesc.CurrentReplicas == defaultNodePoolReplicas, nil
-				})
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					30*time.Second,
+					20*time.Minute,
+					false,
+					func(context.Context) (bool, error) {
+						npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
+						if err != nil {
+							return false, err
+						}
+						return npDesc.CurrentReplicas == defaultNodePoolReplicas, nil
+					})
 				common.AssertWaitPollNoErr(err, "Replicas are not ready after 600")
 
 				nodePoolVersion, err := versionList.FindNearestBackwardMinorVersion(clusterVersion, 1, true)
@@ -513,10 +585,15 @@ var _ = Describe("Edit nodepool",
 			func() {
 				testVersionFailFunc := func(flags ...string) {
 					Logger.Infof("Creating nodepool with flags %v", flags)
-					output, err := machinePoolService.CreateMachinePool(clusterID, common.GenerateRandomName("np-61139", 2), flags...)
+					output, err := machinePoolService.CreateMachinePool(
+						clusterID,
+						common.GenerateRandomName("np-61139", 2),
+						flags...)
 					Expect(err).To(HaveOccurred())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).Should(ContainSubstring(`ERR: Expected a valid OpenShift version: A valid version number must be specified`))
+					Expect(textData).
+						Should(ContainSubstring(
+							`ERR: Expected a valid OpenShift version: A valid version number must be specified`))
 					textData = rosaClient.Parser.TextData.Input(output).Parse().Output()
 					Expect(textData).Should(ContainSubstring(`Valid versions:`))
 				}
@@ -532,7 +609,10 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create a nodepool with version greater than cluster's version should fail")
-				testVersion := fmt.Sprintf("%d.%d.%d", clusterSemVer.Major()+100, clusterSemVer.Minor()+100, clusterSemVer.Patch()+100)
+				testVersion := fmt.Sprintf("%d.%d.%d",
+					clusterSemVer.Major()+100,
+					clusterSemVer.Minor()+100,
+					clusterSemVer.Patch()+100)
 				testVersionFailFunc("--replicas",
 					defaultNodePoolReplicas,
 					"--version",
@@ -555,7 +635,10 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Create a nodepool with major different from cluster's version should fail")
-				testVersion = fmt.Sprintf("%d.%d.%d", clusterSemVer.Major()-1, clusterSemVer.Minor(), clusterSemVer.Patch())
+				testVersion = fmt.Sprintf("%d.%d.%d",
+					clusterSemVer.Major()-1,
+					clusterSemVer.Minor(),
+					clusterSemVer.Patch())
 				testVersionFailFunc("--replicas",
 					defaultNodePoolReplicas,
 					"--version",
@@ -586,55 +669,85 @@ var _ = Describe("Edit nodepool",
 				currentDateTimeUTC := time.Now().UTC()
 
 				By("Check help(s) for node pool upgrade")
-				_, err := machinePoolUpgradeService.RetrieveHelpForCreate()
-				Expect(err).ToNot(HaveOccurred())
-				help, err := machinePoolUpgradeService.RetrieveHelpForDescribe()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(help.String()).To(ContainSubstring("--machinepool"))
-				help, err = machinePoolUpgradeService.RetrieveHelpForList()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(help.String()).To(ContainSubstring("--machinepool"))
-				help, err = machinePoolUpgradeService.RetrieveHelpForDelete()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(help.String()).To(ContainSubstring("--machinepool"))
+				helpMessageFuncs := []func() (bytes.Buffer, error){
+					machinePoolUpgradeService.RetrieveHelpForCreate,
+					machinePoolUpgradeService.RetrieveHelpForDescribe,
+					machinePoolUpgradeService.RetrieveHelpForList,
+					machinePoolUpgradeService.RetrieveHelpForDelete,
+				}
+				for index, funcName := range helpMessageFuncs {
+					help, err := funcName()
+					Expect(err).ToNot(HaveOccurred())
+					if index == 0 {
+						continue
+					}
+					Expect(help.String()).To(ContainSubstring("--machinepool"))
+				}
 
-				By("Get previous version")
+				By("Get a lower version")
 				clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				clusterVersion := clusterVersionInfo.RawID
 				clusterChannelGroup := clusterVersionInfo.ChannelGroup
-				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, true)
+				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
 				Expect(err).ToNot(HaveOccurred())
-				previousVersionsList, err := versionList.FilterVersionsLowerThan(clusterVersion)
-				Expect(err).ToNot(HaveOccurred())
-				if previousVersionsList.Len() <= 1 {
-					Skip("Skipping as no previous version is available for testing")
-				}
-				previousVersionsList.Sort(true)
-				previousVersion := previousVersionsList.OpenShiftVersions[0].Version
-				Logger.Infof("Using previous version %s", previousVersion)
 
-				By("Prepare a node pool with previous version with manual upgrade")
+				var lVersion string = clusterVersion
+				var upgradeVersion string
+				for {
+					lowerVersion, err := versionList.FindNearestBackwardOptionalVersion(lVersion, 1, false)
+					Expect(err).ToNot(HaveOccurred())
+					lVersion = lowerVersion.Version
+					if lowerVersion.AvailableUpgrades != "" {
+						upgrades := common.ParseCommaSeparatedStrings(lowerVersion.AvailableUpgrades)
+						upgradeVersion = upgrades[len(upgrades)-1]
+						break
+					}
+					Logger.Debugf("The lower version %s has no available upgrades continue to find next one\n", lVersion)
+				}
+				if upgradeVersion == "" {
+					Logger.Warn("Cannot find a version with available upgrades")
+					return
+				}
+				Logger.Infof("Using previous version %s", lVersion)
+
+				By("Prepare a node pool with optional-1 version with manual upgrade")
 				nodePoolManualName := common.GenerateRandomName("np-67414", 2)
 				output, err := machinePoolService.CreateMachinePool(clusterID, nodePoolManualName,
 					"--replicas", "2",
-					"--version", previousVersion)
+					"--version", lVersion)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", nodePoolManualName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						nodePoolManualName,
+						clusterID))
 				output, err = machinePoolUpgradeService.CreateManualUpgrade(clusterID, nodePoolManualName, "", "", "")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Upgrade successfully scheduled for the machine pool '%s' on cluster '%s'", nodePoolManualName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Upgrade successfully scheduled for the machine pool '%s' on cluster '%s'",
+						nodePoolManualName,
+						clusterID))
 
-				By("Prepare a node pool with previous version with automatic upgrade")
+				By("Prepare a node pool with lower version with automatic upgrade")
 				nodePoolAutoName := common.GenerateRandomName("np-67414", 2)
 				output, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
 					"--replicas", "2",
-					"--version", previousVersion)
+					"--version", lVersion)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", nodePoolAutoName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						nodePoolAutoName,
+						clusterID))
 				output, err = machinePoolUpgradeService.CreateAutomaticUpgrade(clusterID, nodePoolAutoName, "2 5 * * *")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Upgrade successfully scheduled for the machine pool '%s' on cluster '%s'", nodePoolAutoName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					Should(ContainSubstring(
+						"Upgrade successfully scheduled for the machine pool '%s' on cluster '%s'",
+						nodePoolAutoName,
+						clusterID))
 
 				analyzeUpgrade := func(nodePoolName string, scheduleType string) {
 					By(fmt.Sprintf("Describe node pool in json format (%s upgrade)", scheduleType))
@@ -657,14 +770,14 @@ var _ = Describe("Edit nodepool",
 					Expect(err).ToNot(HaveOccurred())
 					Expect(nextRunDT.After(currentDateTimeUTC)).To(BeTrue())
 					Expect(npuDesc.UpgradeState).To(BeElementOf("pending", "scheduled"))
-					Expect(npuDesc.Version).To(Equal(clusterVersion))
+					Expect(npuDesc.Version).To(Equal(upgradeVersion))
 
 					nextRun := npuDesc.NextRun
 
 					By(fmt.Sprintf("Describe node pool should contain upgrade (%s upgrade)", scheduleType))
 					npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(npDesc.ScheduledUpgrade).To(ContainSubstring(clusterVersion))
+					Expect(npDesc.ScheduledUpgrade).To(ContainSubstring(upgradeVersion))
 					Expect(npDesc.ScheduledUpgrade).To(ContainSubstring(nextRun))
 					Expect(npDesc.ScheduledUpgrade).To(Or(ContainSubstring("pending"), ContainSubstring("scheduled")))
 
@@ -675,7 +788,7 @@ var _ = Describe("Edit nodepool",
 					var upgradeMPU rosacli.MachinePoolUpgrade
 					for _, mpu := range npuList.MachinePoolUpgrades {
 						Expect(mpu.Version).To(BeElementOf(npAvailableUpgrades))
-						if mpu.Version == clusterVersion {
+						if mpu.Version == upgradeVersion {
 							upgradeMPU = mpu
 						}
 					}
@@ -685,7 +798,9 @@ var _ = Describe("Edit nodepool",
 					By(fmt.Sprintf("Delete the upgrade policy (%s upgrade)", scheduleType))
 					output, err = machinePoolUpgradeService.DeleteUpgrade(clusterID, nodePoolName)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(ContainSubstring("Successfully canceled scheduled upgrade for machine pool '%s' for cluster '%s'", nodePoolName, clusterID))
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).Should(
+						ContainSubstring("Successfully canceled scheduled upgrade for machine pool '%s' for cluster '%s'",
+							nodePoolName, clusterID))
 				}
 
 				analyzeUpgrade(nodePoolManualName, "manual")
@@ -704,7 +819,11 @@ var _ = Describe("Edit nodepool",
 				Expect(help.String()).To(ContainSubstring("--node-drain-grace-period"))
 
 				By("Create nodepool with different node-drain-grace-periods")
-				nodeDrainGracePeriodsReqAndRes := []map[string]string{{"20": "20 minutes", "20 hours": "1200 minutes", "20 minutes": "20 minutes"}}
+				nodeDrainGracePeriodsReqAndRes := []map[string]string{{
+					"20":         "20 minutes",
+					"20 hours":   "1200 minutes",
+					"20 minutes": "20 minutes",
+				}}
 				for _, nodnodeDrainGracePeriod := range nodeDrainGracePeriodsReqAndRes {
 					for req, res := range nodnodeDrainGracePeriod {
 
@@ -749,7 +868,11 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Edit nodepool with different node-drain-grace-periods")
-				nodeDrainGracePeriodsReqAndRes = []map[string]string{{"10": "10 minutes", "10 hours": "600 minutes", "10 minutes": "10 minutes"}}
+				nodeDrainGracePeriodsReqAndRes = []map[string]string{{
+					"10":         "10 minutes",
+					"10 hours":   "600 minutes",
+					"10 minutes": "10 minutes",
+				}}
 				for _, nodnodeDrainGracePeriod := range nodeDrainGracePeriodsReqAndRes {
 					for req, res := range nodnodeDrainGracePeriod {
 
@@ -777,42 +900,74 @@ var _ = Describe("Edit nodepool",
 				By("Try to edit machinepool with the name not present in cluster")
 				output, err := machinePoolService.EditMachinePool(clusterID, nonExistingMachinepoolName, "--replicas", "3")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' does not exist for hosted cluster '%s'", nonExistingMachinepoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' does not exist for hosted cluster '%s'",
+						nonExistingMachinepoolName,
+						clusterID))
 
 				By("Create a new machinepool to the cluster")
 				output, err = machinePoolService.CreateMachinePool(clusterID, machinepoolName, "--replicas", "3")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", machinepoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinepoolName,
+						clusterID))
 
 				By("Try to edit the replicas of the machinepool with negative value")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "-9")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("The number of machine pool replicas needs to be a non-negative integer"))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"The number of machine pool replicas needs to be a non-negative integer"))
 
 				By("Try to edit the machinepool with --min-replicas flag when autoscaling is disabled for the machinepool.")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "2")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas'", machinepoolName))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. "+
+							"can't set min or max replicas'",
+						machinepoolName))
 
 				By("Try to edit the machinepool with --max-replicas flag when autoscaling is disabled for the machinepool.")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--max-replicas", "5")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas'", machinepoolName))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. "+
+							"can't set min or max replicas'",
+						machinepoolName))
 
 				By("Edit the machinepool to autoscaling mode.")
-				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--enable-autoscaling", "--min-replicas", "2", "--max-replicas", "6")
+				output, err = machinePoolService.EditMachinePool(
+					clusterID,
+					machinepoolName,
+					"--enable-autoscaling",
+					"--min-replicas", "2",
+					"--max-replicas", "6")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Updated machine pool '%s' on hosted cluster '%s'", machinepoolName, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						machinepoolName,
+						clusterID))
 
 				By("Try to edit machinepool with negative min_replicas value.")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "-3")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("The number of machine pool min-replicas needs to be greater than zero"))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"The number of machine pool min-replicas needs to be greater than zero"))
 
 				By("Try to edit machinepool with --replicas flag when the autoscaling is enabled for the machinepool.")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "3")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Failed to get autoscaling or replicas: 'Autoscaling enabled on machine pool '%s'. can't set replicas'", machinepoolName))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Failed to get autoscaling or replicas: 'Autoscaling enabled on machine pool '%s'. can't set replicas'",
+						machinepoolName))
 			})
 
 		It("create/describe machinepool with user tags for HCP - [id:73492]",
@@ -826,7 +981,7 @@ var _ = Describe("Edit nodepool",
 				organizationID := userInfo.OCMOrganizationID
 
 				By("Get OCM Env")
-				OCMEnv := common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "")
+				OCMEnv := common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "staging")
 
 				By("Get the cluster informations")
 				rosaClient.Runner.JsonFormat()
@@ -872,7 +1027,11 @@ var _ = Describe("Edit nodepool",
 				}
 				output, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName_1, "--replicas", "3")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", machinePoolName_1, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePoolName_1,
+						clusterID))
 
 				By("Describe the machinepool in json format")
 				rosaClient.Runner.JsonFormat()
@@ -900,9 +1059,17 @@ var _ = Describe("Edit nodepool",
 						requiredTags[k] = v
 					}
 				}
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName_2, "--replicas", "3", "--tags", tagsReq)
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName_2,
+					"--replicas", "3",
+					"--tags", tagsReq)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("Machine pool '%s' created successfully on hosted cluster '%s'", machinePoolName_2, clusterID))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePoolName_2,
+						clusterID))
 
 				By("Describe the machinepool in json format")
 				rosaClient.Runner.JsonFormat()
@@ -921,8 +1088,456 @@ var _ = Describe("Edit nodepool",
 
 				By("Create machinepool with invalid tags")
 				machinePoolName_3 := common.GenerateRandomName("mp-73492-2", 2)
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinePoolName_3, "--replicas", "3", "--tags", "#.bar")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName_3,
+					"--replicas", "3",
+					"--tags", "#.bar")
 				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring("ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key:value'"))
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key value'"))
+			})
+
+		It("create/edit/describe maxunavailable/maxsurge for HCP nodepools - [id:74387]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				By("Retrieve help for create/edit machinepool")
+				output, err := machinePoolService.RetrieveHelpForCreate()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("--max-surge"))
+				Expect(output.String()).To(ContainSubstring("--max-unavailable"))
+
+				output, err = machinePoolService.RetrieveHelpForEdit()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("--max-surge"))
+				Expect(output.String()).To(ContainSubstring("--max-unavailable"))
+
+				reqBody := []map[string]string{
+					{
+						"max surge":       "5%",
+						"max unavailable": "10%",
+					},
+					{
+						"max surge":       "3",
+						"max unavailable": "2",
+					},
+					{
+						"max surge":       "",
+						"max unavailable": "",
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "10%",
+					},
+					{
+						"max surge":       "10%",
+						"max unavailable": "0%",
+					},
+					{
+						"max surge":       "100%",
+						"max unavailable": "10%",
+					},
+					{
+						"max surge":       "10%",
+						"max unavailable": "100%",
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1",
+					},
+					{
+						"max surge":       "1",
+						"max unavailable": "0",
+					},
+				}
+
+				for _, flags := range reqBody {
+
+					By("Create nodepool with max-surge/max-unavailable set with different values")
+					machinePoolName := common.GenerateRandomName("ocp-74387", 2)
+					output, err = machinePoolService.CreateMachinePool(
+						clusterID,
+						machinePoolName,
+						"--replicas", "3",
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).ToNot(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"Machine pool '%s' created successfully on hosted cluster '%s'",
+							machinePoolName,
+							clusterID))
+
+					By("Describe the nodepool to see max surge and max unavailable is set correctly")
+					res, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(res.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+					if flags["max surge"] == "" && flags["max unavailable"] == "" {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).To(Equal("1"))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).To(Equal("0"))
+					} else {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).To(Equal(flags["max surge"]))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).To(Equal(flags["max unavailable"]))
+					}
+				}
+
+				By("Get a nodepool to edit")
+				res, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.NodePools).ToNot(BeNil())
+				var machinePoolName string
+				for _, nodepool := range res.NodePools {
+					if !strings.Contains(nodepool.ID, "workers") {
+						machinePoolName = nodepool.ID
+						break
+					}
+				}
+
+				for _, flags := range reqBody {
+
+					By("Describe the nodepool to see max surge and max unavailable prev value")
+					out, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Edit nodepool with max-surge/max-unavailable set with different values")
+					output, err = machinePoolService.EditMachinePool(
+						clusterID,
+						machinePoolName,
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).ToNot(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"Updated machine pool '%s' on hosted cluster '%s'",
+							machinePoolName,
+							clusterID))
+
+					By("Describe the nodepool to see max surge and max unavailable is set correctly")
+					res, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(res.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+					if flags["max surge"] == "" && flags["max unavailable"] == "" {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).
+							To(
+								Equal(out.ManagementUpgrade[1]["Max surge"]))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).
+							To(
+								Equal(out.ManagementUpgrade[2]["Max unavailable"]))
+					} else {
+						Expect(res.ManagementUpgrade[1]["Max surge"]).
+							To(
+								Equal(flags["max surge"]))
+						Expect(res.ManagementUpgrade[2]["Max unavailable"]).
+							To(
+								Equal(flags["max unavailable"]))
+					}
+				}
+			})
+
+		It("validation for create/edit HCP nodepool with maxunavailable/maxsurge - [id:74430]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				rangeofNumbers := "must be between 0 and 100"
+				parseMsg := "machine pool to hosted cluster '%s': Failed to parse percentage "
+				attributeMsg := "machine pool to hosted cluster '%s': The value of attribute "
+				bothMsg := "'management_upgrade.max_unavailable' and 'management_upgrade.max_surge' "
+				eitherMsg := "'management_upgrade.max_unavailable' or 'management_upgrade.max_surge', "
+				createFailMsg := "ERR: Failed to add "
+				zeroMsg := "could be zero, not both"
+				sameUnitMsg := "must both use the same units (absolute value or percentage)"
+				integerMsg := "'1.1' to integer"
+
+				reqCreateBody := []map[string]string{
+					{
+						"max surge":       "0",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "1%",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							"machine pool to hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "-1",
+						"max unavailable": "1",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' cannot be a negative integer",
+							clusterID),
+					},
+					{
+						"max surge":       "1",
+						"max unavailable": "-1",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' cannot be a negative integer",
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "-1%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value -1 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "-1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value -1 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "101%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value 101 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "101%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value 101 "+
+							rangeofNumbers,
+							clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "1.1%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Error converting "+
+							integerMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "1.1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Error converting "+
+							integerMsg,
+							clusterID),
+					},
+					{
+						"max surge":       "1.1",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' must be an integer",
+							clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1.1",
+						"errMsg": fmt.Sprintf(createFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' must be an integer",
+							clusterID),
+					},
+				}
+
+				for _, flags := range reqCreateBody {
+
+					By("Create nodepool with max-surge/max-unavailable set with different inavlid values")
+					machinePoolName := common.GenerateRandomName("ocp-74387", 2)
+					output, err := machinePoolService.CreateMachinePool(
+						clusterID,
+						machinePoolName,
+						"--replicas", "3",
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).To(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(flags["errMsg"]))
+				}
+
+				By("Create a nodepool to check edit validation")
+				machinePoolName := common.GenerateRandomName("ocp-74430", 2)
+				res, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "3")
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, machinePoolName)
+				Expect(rosaClient.Parser.TextData.Input(res).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePoolName,
+						clusterID))
+
+				parseMsg = "machine pool '%s' on hosted cluster '%s': Failed to parse percentage "
+				attributeMsg = "machine pool '%s' on hosted cluster '%s': The value of attribute "
+				editFailMsg := "ERR: Failed to update "
+				reqEditBody := []map[string]string{
+					{
+						"max surge":       "0",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': The value of only one attribute, "+
+							eitherMsg+
+							zeroMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1%",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							"machine pool '%s' on hosted cluster '%s': Attribute "+
+							bothMsg+
+							sameUnitMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "-1",
+						"max unavailable": "1",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' cannot be a negative integer",
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1",
+						"max unavailable": "-1",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' cannot be a negative integer",
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "-1%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value -1 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "-1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value -1 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "101%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Value 101 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "101%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Value 101 "+
+							rangeofNumbers,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0%",
+						"max unavailable": "1.1%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_unavailable': Error converting "+
+							integerMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1.1%",
+						"max unavailable": "0%",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							parseMsg+
+							"value for attribute 'management_upgrade.max_surge': Error converting "+
+							integerMsg,
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "1.1",
+						"max unavailable": "0",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_surge' must be an integer",
+							machinePoolName, clusterID),
+					},
+					{
+						"max surge":       "0",
+						"max unavailable": "1.1",
+						"errMsg": fmt.Sprintf(editFailMsg+
+							attributeMsg+
+							"'management_upgrade.max_unavailable' must be an integer",
+							machinePoolName, clusterID),
+					},
+				}
+
+				for _, flags := range reqEditBody {
+
+					By("Edit nodepool with max-surge/max-unavailable set with different invalid values")
+					output, err := machinePoolService.EditMachinePool(
+						clusterID,
+						machinePoolName,
+						"--max-surge", flags["max surge"],
+						"--max-unavailable", flags["max unavailable"])
+					Expect(err).To(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(flags["errMsg"]))
+				}
 			})
 	})

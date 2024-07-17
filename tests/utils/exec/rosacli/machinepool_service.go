@@ -62,7 +62,7 @@ type MachinePool struct {
 	SecurityGroupIDs string `json:"SG IDs,omitempty"`
 }
 type MachinePoolList struct {
-	MachinePools []MachinePool `json:"MachinePools,omitempty"`
+	MachinePools []*MachinePool `json:"MachinePools,omitempty"`
 }
 
 // Struct for the 'rosa list machinepool' output for non-hosted-cp clusters
@@ -75,7 +75,7 @@ type MachinePoolDescription struct {
 	InstanceType     string `yaml:"Instance type,omitempty"`
 	Labels           string `yaml:"Labels,omitempty"`
 	Replicas         string `yaml:"Replicas,omitempty"`
-	SecurityGroupIDs string `yaml:"Security Group IDs,omitempty"`
+	SecurityGroupIDs string `yaml:"Additional Security Group IDs,omitempty"`
 	Subnets          string `yaml:"Subnets,omitempty"`
 	SpotInstances    string `yaml:"Spot instances,omitempty"`
 	Taints           string `yaml:"Taints,omitempty"`
@@ -99,33 +99,35 @@ type NodePool struct {
 }
 
 type NodePoolList struct {
-	NodePools []NodePool `json:"NodePools,omitempty"`
+	NodePools []*NodePool `json:"NodePools,omitempty"`
 }
 
 type NodePoolDescription struct {
-	ID                         string `yaml:"ID,omitempty"`
-	ClusterID                  string `yaml:"Cluster ID,omitempty"`
-	AutoScaling                string `yaml:"Autoscaling,omitempty"`
-	DesiredReplicas            string `yaml:"Desired replicas,omitempty"`
-	CurrentReplicas            string `yaml:"Current replicas,omitempty"`
-	InstanceType               string `yaml:"Instance type,omitempty"`
-	KubeletConfigs             string `yaml:"Kubelet configs,omitempty"`
-	Labels                     string `yaml:"Labels,omitempty"`
-	Tags                       string `yaml:"Tags,omitempty"`
-	Taints                     string `yaml:"Taints,omitempty"`
-	AvalaiblityZones           string `yaml:"Availability zone,omitempty"`
-	Subnet                     string `yaml:"Subnet,omitempty"`
-	Version                    string `yaml:"Version,omitempty"`
-	AutoRepair                 string `yaml:"Autorepair,omitempty"`
-	TuningConfigs              string `yaml:"Tuning configs,omitempty"`
-	Message                    string `yaml:"Message,omitempty"`
-	ScheduledUpgrade           string `yaml:"Scheduled upgrade,omitempty"`
-	AdditionalSecurityGroupIDs string `yaml:"Additional security group IDs,omitempty"`
-	NodeDrainGracePeriod       string `yaml:"Node drain grace period,omitempty"`
+	ID                         string              `yaml:"ID,omitempty"`
+	ClusterID                  string              `yaml:"Cluster ID,omitempty"`
+	AutoScaling                string              `yaml:"Autoscaling,omitempty"`
+	DesiredReplicas            string              `yaml:"Desired replicas,omitempty"`
+	CurrentReplicas            string              `yaml:"Current replicas,omitempty"`
+	InstanceType               string              `yaml:"Instance type,omitempty"`
+	KubeletConfigs             string              `yaml:"Kubelet configs,omitempty"`
+	Labels                     string              `yaml:"Labels,omitempty"`
+	Tags                       string              `yaml:"Tags,omitempty"`
+	Taints                     string              `yaml:"Taints,omitempty"`
+	AvalaiblityZones           string              `yaml:"Availability zone,omitempty"`
+	Subnet                     string              `yaml:"Subnet,omitempty"`
+	Version                    string              `yaml:"Version,omitempty"`
+	AutoRepair                 string              `yaml:"Autorepair,omitempty"`
+	TuningConfigs              string              `yaml:"Tuning configs,omitempty"`
+	ManagementUpgrade          []map[string]string `yaml:"Management upgrade,omitempty"`
+	Message                    string              `yaml:"Message,omitempty"`
+	ScheduledUpgrade           string              `yaml:"Scheduled upgrade,omitempty"`
+	AdditionalSecurityGroupIDs string              `yaml:"Additional security group IDs,omitempty"`
+	NodeDrainGracePeriod       string              `yaml:"Node drain grace period,omitempty"`
 }
 
 // Create MachinePool
-func (m *machinepoolService) CreateMachinePool(clusterID string, name string, flags ...string) (output bytes.Buffer, err error) {
+func (m *machinepoolService) CreateMachinePool(
+	clusterID string, name string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = m.client.Runner.
 		Cmd("create", "machinepool").
 		CmdFlags(append(flags, "-c", clusterID, "--name", name)...).
@@ -153,7 +155,8 @@ func (m *machinepoolService) DescribeMachinePool(clusterID string, mpID string) 
 }
 
 // DescribeAndReflectMachinePool
-func (m *machinepoolService) DescribeAndReflectMachinePool(clusterID string, mpID string) (*MachinePoolDescription, error) {
+func (m *machinepoolService) DescribeAndReflectMachinePool(
+	clusterID string, mpID string) (*MachinePoolDescription, error) {
 	output, err := m.DescribeMachinePool(clusterID, mpID)
 	if err != nil {
 		return nil, err
@@ -162,7 +165,8 @@ func (m *machinepoolService) DescribeAndReflectMachinePool(clusterID string, mpI
 }
 
 // Delete MachinePool
-func (m *machinepoolService) DeleteMachinePool(clusterID string, machinePoolName string) (output bytes.Buffer, err error) {
+func (m *machinepoolService) DeleteMachinePool(
+	clusterID string, machinePoolName string) (output bytes.Buffer, err error) {
 	output, err = m.client.Runner.
 		Cmd("delete", "machinepool").
 		CmdFlags("-c", clusterID, machinePoolName, "-y").
@@ -174,7 +178,8 @@ func (m *machinepoolService) DeleteMachinePool(clusterID string, machinePoolName
 }
 
 // Edit MachinePool
-func (m *machinepoolService) EditMachinePool(clusterID string, machinePoolName string, flags ...string) (bytes.Buffer, error) {
+func (m *machinepoolService) EditMachinePool(
+	clusterID string, machinePoolName string, flags ...string) (bytes.Buffer, error) {
 	editMachinePool := m.client.Runner.
 		Cmd("edit", "machinepool", machinePoolName).
 		CmdFlags(append(flags, "-c", clusterID)...)
@@ -192,7 +197,7 @@ func (m *machinepoolService) ReflectMachinePoolList(result bytes.Buffer) (mpl Ma
 		if err != nil {
 			return
 		}
-		mpl.MachinePools = append(mpl.MachinePools, *mp)
+		mpl.MachinePools = append(mpl.MachinePools, mp)
 	}
 	return mpl, err
 }
@@ -210,7 +215,8 @@ func (m *machinepoolService) ListAndReflectMachinePools(clusterID string) (mpl M
 }
 
 // Pasrse the result of 'rosa list machinepool' to MachinePoolList struct
-func (m *machinepoolService) ReflectMachinePoolDescription(result bytes.Buffer) (mp *MachinePoolDescription, err error) {
+func (m *machinepoolService) ReflectMachinePoolDescription(
+	result bytes.Buffer) (mp *MachinePoolDescription, err error) {
 	mp = new(MachinePoolDescription)
 	theMap, _ := m.client.Parser.TextData.Input(result).Parse().YamlToMap()
 
@@ -237,7 +243,7 @@ func (m *machinepoolService) CleanResources(clusterID string) (errors []error) {
 func (mpl MachinePoolList) Machinepool(id string) (mp *MachinePool) {
 	for _, mpItem := range mpl.MachinePools {
 		if mpItem.ID == id {
-			mp = &mpItem
+			mp = mpItem
 			return
 		}
 	}
@@ -269,7 +275,7 @@ func (m *machinepoolService) ReflectNodePoolList(result bytes.Buffer) (npl *Node
 		if err != nil {
 			return
 		}
-		npl.NodePools = append(npl.NodePools, *np)
+		npl.NodePools = append(npl.NodePools, np)
 	}
 	return npl, err
 }
@@ -303,7 +309,7 @@ func (m *machinepoolService) ReflectNodePoolDescription(result bytes.Buffer) (*N
 func (npl NodePoolList) Nodepool(id string) (np *NodePool) {
 	for _, npItem := range npl.NodePools {
 		if npItem.ID == id {
-			np = &npItem
+			np = npItem
 			return
 		}
 	}

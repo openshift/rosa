@@ -281,3 +281,19 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 	}
 	return nil
 }
+
+func ValidateAdditionalAllowedPrincipals(aapARNs []string) error {
+	duplicate, found := aws.HasDuplicates(aapARNs)
+	if found {
+		return fmt.Errorf("Invalid additional allowed principals list, duplicate key '%s' found",
+			duplicate)
+	}
+	for _, aap := range aapARNs {
+		err := aws.ARNValidator(aap)
+		if err != nil {
+			return fmt.Errorf("Expected valid ARNs for additional allowed principals list: %s",
+				err)
+		}
+	}
+	return nil
+}

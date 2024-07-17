@@ -28,6 +28,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -53,6 +54,9 @@ var args struct {
 
 	// Audit log forwarding
 	auditLogRoleARN string
+
+	// Other options
+	additionalAllowedPrincipals []string
 }
 
 var Cmd = &cobra.Command{
@@ -147,6 +151,15 @@ func init() {
 		"",
 		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
 	)
+
+	flags.StringSliceVar(
+		&args.additionalAllowedPrincipals,
+		"additional-allowed-principals",
+		nil,
+		"A comma-separated list of additional allowed principal ARNs "+
+			"to be added to the Hosted Control Plane's VPC Endpoint Service to enable additional "+
+			"VPC Endpoint connection requests to be automatically accepted.",
+	)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -160,7 +173,7 @@ func run(cmd *cobra.Command, _ []string) {
 		changedFlags := false
 		for _, flag := range []string{"expiration-time", "expiration", "private",
 			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy",
-			"additional-trust-bundle-file", "audit-log-arn"} {
+			"additional-trust-bundle-file", "additional-allowed-principals", "audit-log-arn"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -228,6 +241,11 @@ func run(cmd *cobra.Command, _ []string) {
 			(additionalTrustBundleFile != nil && *additionalTrustBundleFile != "")) {
 		r.Reporter.Errorf("Cluster-wide proxy is not supported on clusters using the default VPC")
 		os.Exit(1)
+	}
+
+	var additionalAllowedPrincipals []string
+	if cmd.Flags().Changed("additional-allowed-principals") {
+		additionalAllowedPrincipals = args.additionalAllowedPrincipals
 	}
 
 	var private *bool
@@ -500,6 +518,47 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	/*******  AdditionalAllowedPrincipals *******/
+	updateAdditionalAllowedPrincipals := false
+	if additionalAllowedPrincipals != nil {
+		updateAdditionalAllowedPrincipals = true
+	}
+	if !updateAdditionalAllowedPrincipals && additionalAllowedPrincipals == nil &&
+		interactive.Enabled() {
+		updateAdditionalAllowedPrincipalsValue, err := interactive.GetBool(interactive.Input{
+			Question: "Update additional allowed principals",
+			Default:  updateAdditionalAllowedPrincipals,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid update-additional-allowed-principals value: %s", err)
+			os.Exit(1)
+		}
+		updateAdditionalAllowedPrincipals = updateAdditionalAllowedPrincipalsValue
+	}
+	if updateAdditionalAllowedPrincipals && interactive.Enabled() {
+		aapInputs, err := interactive.GetString(interactive.Input{
+			Question: "Additional Allowed Principal ARNs",
+			Help:     cmd.Flags().Lookup("additional-allowed-principals").Usage,
+			Default:  cluster.AWS().AdditionalAllowedPrincipals(),
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for Additional Allowed Principal ARNs: %s", err)
+			os.Exit(1)
+		}
+		additionalAllowedPrincipals = helper.HandleEmptyStringOnSlice(strings.Split(aapInputs, ","))
+	}
+	if len(additionalAllowedPrincipals) > 0 {
+		if len(additionalAllowedPrincipals) == 1 &&
+			additionalAllowedPrincipals[0] == input.DoubleQuotesToRemove {
+			additionalAllowedPrincipals = []string{}
+		} else {
+			if err := roles.ValidateAdditionalAllowedPrincipals(additionalAllowedPrincipals); err != nil {
+				r.Reporter.Errorf(err.Error())
+				os.Exit(1)
+			}
+		}
+	}
+
 	// Audit Log Forwarding
 	auditLogRole, err := setAuditLogForwarding(r, cmd, cluster, args.auditLogRoleARN)
 	if err != nil {
@@ -547,6 +606,10 @@ func run(cmd *cobra.Command, _ []string) {
 				*clusterConfig.AdditionalTrustBundle = string(cert)
 			}
 		}
+	}
+
+	if additionalAllowedPrincipals != nil {
+		clusterConfig.AdditionalAllowedPrincipals = additionalAllowedPrincipals
 	}
 
 	if auditLogRole != nil {

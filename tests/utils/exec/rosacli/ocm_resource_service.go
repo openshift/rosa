@@ -60,15 +60,26 @@ type OCMResourceService interface {
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
 	GetOIDCIdFromList(providerURL string) (string, error)
 	GetOIDCConfigFromList(oidcConfigID string) (OIDCConfig, error)
+	RegisterOIDCConfig(flags ...string) (bytes.Buffer, error)
+
 	ListOperatorRoles(flags ...string) (bytes.Buffer, error)
 	DeleteOperatorRoles(flags ...string) (bytes.Buffer, error)
 	CreateOperatorRoles(flags ...string) (bytes.Buffer, error)
+	UpgradeOperatorRoles(flags ...string) (bytes.Buffer, error)
 	ReflectOperatorRoleList(result bytes.Buffer) (opl OperatorRoleList, err error)
 
 	CreateOIDCProvider(flags ...string) (bytes.Buffer, error)
 	DeleteOIDCProvider(flags ...string) (bytes.Buffer, error)
 
+	CreateDNSDomain(flags ...string) (bytes.Buffer, error)
+	DeleteDNSDomain(flags ...string) (bytes.Buffer, error)
+
 	Token(flags ...string) (bytes.Buffer, error)
+
+	UpgradeRoles(flags ...string) (bytes.Buffer, error)
+
+	GetConfig(flags ...string) (bytes.Buffer, error)
+	SetConfig(flags ...string) (bytes.Buffer, error)
 }
 
 type ocmResourceService struct {
@@ -421,13 +432,17 @@ func (arl AccountRoleList) InstallerRole(prefix string, hostedcp bool) (accountR
 		// if hostedcp && strings.Contains(lines[i], "-HCP-ROSA-Installer-Role") {
 		// 	return lines[i], nil
 		// }
-		// if !hostedcp && !strings.Contains(lines[i], "-ROSA-Installer-Role") && strings.Contains(lines[i], "-Installer-Role") {
+		// if !hostedcp && !strings.Contains(lines[i], "-ROSA-Installer-Role") &&
+		// 	strings.Contains(lines[i], "-Installer-Role") {
 		// 	return lines[i], nil
 		// }
-		if hostedcp && strings.Contains(roleItem.RoleName, prefix) && strings.Contains(roleItem.RoleName, roleType) {
+		if hostedcp && strings.Contains(roleItem.RoleName, prefix) &&
+			strings.Contains(roleItem.RoleName, roleType) {
 			return roleItem
 		}
-		if !hostedcp && strings.Contains(roleItem.RoleName, prefix) && strings.Contains(roleItem.RoleName, roleType) && !strings.Contains(roleItem.RoleName, "HCP-ROSA-") {
+		if !hostedcp && strings.Contains(roleItem.RoleName, prefix) &&
+			strings.Contains(roleItem.RoleName, roleType) &&
+			!strings.Contains(roleItem.RoleName, "HCP-ROSA-") {
 			return roleItem
 		}
 	}
@@ -507,6 +522,17 @@ func (url OCMRoleList) FindLinkedOCMRole() (userRoles OCMRole) {
 	for _, roleItme := range url.OCMRoleList {
 		if roleItme.Linded == "Yes" {
 			Logger.Infof("Find one linked ocm Role %s ~", roleItme.RoleName)
+			return roleItme
+		}
+	}
+	return
+}
+
+// Get the user-role which is linked to org
+func (url UserRoleList) FindLinkedUserRole() (userRoles UserRole) {
+	for _, roleItme := range url.UserRoleList {
+		if roleItme.Linded == "Yes" {
+			Logger.Infof("Find one linked user role %s ~", roleItme.RoleName)
 			return roleItme
 		}
 	}
@@ -594,6 +620,14 @@ func (oidcl OIDCConfigList) OIDCConfig(id string) (oidc OIDCConfig) {
 	}
 	return
 }
+func (oidcl OIDCConfigList) IssuerUrl(url string) (oidc OIDCConfig) {
+	for _, item := range oidcl.OIDCConfigList {
+		if item.IssuerUrl == url {
+			return item
+		}
+	}
+	return
+}
 
 // run `rosa create operator-roles` command
 func (ors *ocmResourceService) CreateOperatorRoles(flags ...string) (bytes.Buffer, error) {
@@ -607,6 +641,13 @@ func (ors *ocmResourceService) DeleteOperatorRoles(flags ...string) (bytes.Buffe
 	deleteOperatorRoles := ors.client.Runner
 	deleteOperatorRoles = deleteOperatorRoles.Cmd("delete", "operator-roles").CmdFlags(flags...)
 	return deleteOperatorRoles.Run()
+}
+
+// run `rosa upgrade operator-roles` command
+func (ors *ocmResourceService) UpgradeOperatorRoles(flags ...string) (bytes.Buffer, error) {
+	createOperatorRoles := ors.client.Runner
+	createOperatorRoles = createOperatorRoles.Cmd("upgrade", "operator-roles").CmdFlags(flags...)
+	return createOperatorRoles.Run()
 }
 
 // run `rosa list operator-roles`
@@ -645,6 +686,20 @@ func (ors *ocmResourceService) DeleteOIDCProvider(flags ...string) (bytes.Buffer
 	return deleteOIDCProvider.Run()
 }
 
+// run `rosa create dns-domain` command
+func (ors *ocmResourceService) CreateDNSDomain(flags ...string) (bytes.Buffer, error) {
+	createDNSDomain := ors.client.Runner
+	createDNSDomain = createDNSDomain.Cmd("create", "dns-domain").CmdFlags(flags...)
+	return createDNSDomain.Run()
+}
+
+// run `rosa delete dns-domain` command
+func (ors *ocmResourceService) DeleteDNSDomain(flags ...string) (bytes.Buffer, error) {
+	deleteDNSDomain := ors.client.Runner
+	deleteDNSDomain = deleteDNSDomain.Cmd("delete", "dns-domain").CmdFlags(flags...)
+	return deleteDNSDomain.Run()
+}
+
 func (ors *ocmResourceService) CleanResources(clusterID string) (errors []error) {
 	Logger.Debugf("Nothing releated to cluster was done there")
 	return
@@ -654,4 +709,32 @@ func (ors *ocmResourceService) Token(flags ...string) (bytes.Buffer, error) {
 	token := ors.client.Runner
 	token = token.Cmd("token").CmdFlags(flags...)
 	return token.Run()
+}
+
+// run `rosa upgrade roles` command
+func (ors *ocmResourceService) UpgradeRoles(flags ...string) (bytes.Buffer, error) {
+	upgradeAccountRole := ors.client.Runner
+	upgradeAccountRole = upgradeAccountRole.Cmd("upgrade", "roles").CmdFlags(flags...)
+	return upgradeAccountRole.Run()
+}
+
+// run `rosa config get` command
+func (ors *ocmResourceService) GetConfig(flags ...string) (bytes.Buffer, error) {
+	getConfig := ors.client.Runner
+	getConfig = getConfig.Cmd("config", "get").CmdFlags(flags...)
+	return getConfig.Run()
+}
+
+// run `rosa config set` command
+func (ors *ocmResourceService) SetConfig(flags ...string) (bytes.Buffer, error) {
+	setConfig := ors.client.Runner
+	setConfig = setConfig.Cmd("config", "set").CmdFlags(flags...)
+	return setConfig.Run()
+}
+
+// run `rosa register oidc-config` command
+func (ors *ocmResourceService) RegisterOIDCConfig(flags ...string) (bytes.Buffer, error) {
+	registerOIDCConfig := ors.client.Runner
+	registerOIDCConfig = registerOIDCConfig.Cmd("register", "oidc-config").CmdFlags(flags...)
+	return registerOIDCConfig.Run()
 }

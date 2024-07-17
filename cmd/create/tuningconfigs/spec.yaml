@@ -1,0 +1,11 @@
+profile:
+- data: |-
+    [main]
+    summary=Custom OpenShift profile
+    include=openshift-node
+    [sysctl]
+    vm.dirty_ratio="55"
+  name: tuned-1-profile
+recommend:
+- priority: 20
+  profile: tuned-1-profile

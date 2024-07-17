@@ -1,22 +1,23 @@
 package e2e
 
 import (
-	"os"
-	"path"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	"github.com/openshift/rosa/tests/utils/log"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Create Machine Pool", labels.Feature.Machinepool, func() {
 
-	var rosaClient *rosacli.Client
+	var (
+		rosaClient *rosacli.Client
+		profile    *ph.Profile
+	)
 	BeforeEach(func() {
 		Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
 		rosaClient = rosacli.NewClient()
@@ -24,6 +25,9 @@ var _ = Describe("Create Machine Pool", labels.Feature.Machinepool, func() {
 		By("Skip testing if the cluster is not a HCP cluster")
 		hostedCluster, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
 		Expect(err).ToNot(HaveOccurred())
+
+		profile = ph.LoadProfileYamlFileByENV()
+
 		if !hostedCluster {
 			SkipNotHosted()
 		}
@@ -31,17 +35,17 @@ var _ = Describe("Create Machine Pool", labels.Feature.Machinepool, func() {
 	It("to hosted cluster with additional security group IDs will work [id:72195]",
 		labels.Critical, labels.Runtime.Day2,
 		func() {
-			By("Prepare security groups")
-			// This part is finding security groups according to old structure of day1.
-			// Need to be updated after ocm-common migration
-			preparedSGFile := path.Join(os.Getenv("SHARED_DIR"), "security_groups_ids")
-			if _, err := os.Stat(preparedSGFile); err != nil {
-				log.Logger.Warnf("Didn't find file %s", preparedSGFile)
-				SkipTestOnFeature("security groups")
-			}
-			sgContent, err := common.ReadFileContent(preparedSGFile)
+			By("Load the vpc client of the machinepool")
+			mps, err := rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			sgIDs := strings.Split(sgContent, " ")
+
+			subnetID := mps.NodePools[0].Subnet
+			vpcClient, err := vpc_client.GenerateVPCBySubnet(subnetID, profile.Region)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Prepare security groups")
+			sgIDs, err := vpcClient.CreateAdditionalSecurityGroups(3, "72195", "testing for case 72195")
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Create machinepool with security groups set")
 			mpName := "mp-72195"

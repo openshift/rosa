@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/openshift/rosa/tests/ci/config"
 	. "github.com/openshift/rosa/tests/utils/log"
@@ -120,6 +119,7 @@ type ClusterConfig struct {
 	WorkerDiskSize            string                    `json:"worker_disk_size,omitempty"`
 	DomainPrefix              string                    `json:"domain_prefix,omitempty"`
 	BillingAccount            string                    `json:"billing_account,omitempty"`
+	AdditionalPrincipals      string                    `json:"additional_principals,omitempty"`
 	AdditionalSecurityGroups  *AdditionalSecurityGroups `json:"additional_sgs,omitempty"`
 	Autoscaling               *Autoscaling              `json:"autoscaling,omitempty"`
 	Aws                       *AWS                      `json:"aws,omitempty"`
@@ -133,6 +133,7 @@ type ClusterConfig struct {
 	Subnets                   *Subnets                  `json:"subnets,omitempty"`
 	Version                   *Version                  `json:"version,omitempty"`
 	ExternalAuthentication    bool                      `json:"external_authentication,omitempty"`
+	SharedVPC                 bool                      `json:"shared_vpc,omitempty"`
 }
 
 func ParseClusterProfile() (*ClusterConfig, error) {
@@ -159,19 +160,13 @@ func GetClusterID() (clusterID string) {
 		return
 	}
 
-	if _, err := os.Stat(getClusterIDFile()); err != nil {
-		Logger.Errorf("Cluster id file not existing")
+	if _, err := os.Stat(config.Test.ClusterIDFile); err != nil {
+		Logger.Errorf("Cluster detail file not existing")
 		return ""
 	}
-	fileCont, _ := os.ReadFile(getClusterIDFile())
+	fileCont, _ := os.ReadFile(config.Test.ClusterIDFile)
 	clusterID = string(fileCont)
 	return
-}
-
-// Get the cluster config file, for jean chen
-func getClusterIDFile() string {
-	sharedDir := os.Getenv("SHARED_DIR")
-	return path.Join(sharedDir, "cluster_id")
 }
 
 // Get the clusterID env.

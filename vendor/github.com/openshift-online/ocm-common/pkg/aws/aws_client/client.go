@@ -12,12 +12,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
+	"github.com/aws/aws-sdk-go-v2/service/ram"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/openshift-online/ocm-common/pkg/log"
 
 	elb "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
+
+	CON "github.com/openshift-online/ocm-common/pkg/aws/consts"
 )
 
 type AWSClient struct {
@@ -32,37 +35,53 @@ type AWSClient struct {
 	AccountID            string
 	KmsClient            *kms.Client
 	CloudWatchLogsClient *cloudwatchlogs.Client
+	AWSConfig            *aws.Config
+	RamClient            *ram.Client
 }
 
-func CreateAWSClient(profileName string, region string) (*AWSClient, error) {
+type AccessKeyMod struct {
+	AccessKeyId     string `ini:"aws_access_key_id,omitempty"`
+	SecretAccessKey string `ini:"aws_secret_access_key,omitempty"`
+}
+
+func CreateAWSClient(profileName string, region string, awsSharedCredentialFile ...string) (*AWSClient, error) {
 	var cfg aws.Config
 	var err error
 
-	if envCredential() {
-		log.LogInfo("Got AWS_ACCESS_KEY_ID env settings, going to build the config with the env")
+	if len(awsSharedCredentialFile) > 0 {
+		file := awsSharedCredentialFile[0]
+		log.LogInfo("Got aws shared credential file path: %s ", file)
 		cfg, err = config.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(region),
-			config.WithCredentialsProvider(
-				credentials.NewStaticCredentialsProvider(
-					os.Getenv("AWS_ACCESS_KEY_ID"),
-					os.Getenv("AWS_SECRET_ACCESS_KEY"),
-					"")),
+			config.WithSharedCredentialsFiles([]string{file}),
 		)
 	} else {
-		if envAwsProfile() {
-			file := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
-			log.LogInfo("Got file path: %s from env variable AWS_SHARED_CREDENTIALS_FILE\n", file)
+		if envCredential() {
+			log.LogInfo("Got AWS_ACCESS_KEY_ID env settings, going to build the config with the env")
 			cfg, err = config.LoadDefaultConfig(context.TODO(),
 				config.WithRegion(region),
-				config.WithSharedCredentialsFiles([]string{file}),
+				config.WithCredentialsProvider(
+					credentials.NewStaticCredentialsProvider(
+						os.Getenv("AWS_ACCESS_KEY_ID"),
+						os.Getenv("AWS_SECRET_ACCESS_KEY"),
+						"")),
 			)
 		} else {
-			cfg, err = config.LoadDefaultConfig(context.TODO(),
-				config.WithRegion(region),
-				config.WithSharedConfigProfile(profileName),
-			)
-		}
+			if envAwsProfile() {
+				file := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
+				log.LogInfo("Got file path: %s from env variable AWS_SHARED_CREDENTIALS_FILE\n", file)
+				cfg, err = config.LoadDefaultConfig(context.TODO(),
+					config.WithRegion(region),
+					config.WithSharedCredentialsFiles([]string{file}),
+				)
+			} else {
+				cfg, err = config.LoadDefaultConfig(context.TODO(),
+					config.WithRegion(region),
+					config.WithSharedConfigProfile(profileName),
+				)
+			}
 
+		}
 	}
 
 	if err != nil {
@@ -79,6 +98,9 @@ func CreateAWSClient(profileName string, region string) (*AWSClient, error) {
 		IamClient:            iam.NewFromConfig(cfg),
 		ClientContext:        context.TODO(),
 		KmsClient:            kms.NewFromConfig(cfg),
+		AWSConfig:            &cfg,
+		RamClient:            ram.NewFromConfig(cfg),
+		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(cfg),
 	}
 	awsClient.AccountID = awsClient.GetAWSAccountID()
 	return awsClient, nil
@@ -105,4 +127,33 @@ func (client *AWSClient) CloudFormation() *cloudformation.Client {
 }
 func (client *AWSClient) ELB() *elb.Client {
 	return client.ElbClient
+}
+
+func GrantValidAccessKeys(userName string) (*AccessKeyMod, error) {
+	var cre aws.Credentials
+	var keysMod *AccessKeyMod
+	var err error
+	retryTimes := 3
+	for retryTimes > 0 {
+		if cre.AccessKeyID != "" {
+			break
+		}
+		client, err := CreateAWSClient(userName, CON.DefaultAWSRegion)
+		if err != nil {
+			return nil, err
+		}
+
+		cre, err = client.AWSConfig.Credentials.Retrieve(client.ClientContext)
+		if err != nil {
+			return nil, err
+		}
+		log.LogInfo(">>> Access key grant successfully")
+
+		keysMod = &AccessKeyMod{
+			AccessKeyId:     cre.AccessKeyID,
+			SecretAccessKey: cre.SecretAccessKey,
+		}
+		retryTimes--
+	}
+	return keysMod, err
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit IDP User",
@@ -18,6 +19,7 @@ var _ = Describe("Edit IDP User",
 			clusterID   string
 			rosaClient  *rosacli.Client
 			userService rosacli.UserService
+			profile     *ph.Profile
 		)
 
 		BeforeEach(func() {
@@ -28,6 +30,11 @@ var _ = Describe("Edit IDP User",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			userService = rosaClient.User
+
+			profile = ph.LoadProfileYamlFileByENV()
+			if profile.ClusterConfig.ExternalAuthConfig {
+				Skip("This is not supported for external auth")
+			}
 		})
 
 		AfterEach(func() {
@@ -68,7 +75,12 @@ var _ = Describe("Edit IDP User",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Granted role '%s' to user '%s' on cluster '%s'", dedicatedAdminsGroupName, dedicatedAdminsUserName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Granted role '%s' to user '%s' on cluster '%s'",
+						dedicatedAdminsGroupName,
+						dedicatedAdminsUserName,
+						clusterID))
 
 				By("Grant cluster-admins user")
 				out, err = userService.GrantUser(
@@ -78,7 +90,12 @@ var _ = Describe("Edit IDP User",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Granted role '%s' to user '%s' on cluster '%s'", clusterAdminsGroupName, clusterAdminsUserName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Granted role '%s' to user '%s' on cluster '%s'",
+						clusterAdminsGroupName,
+						clusterAdminsUserName,
+						clusterID))
 
 				By("Get specific users")
 				usersList, _, err := userService.ListUsers(clusterID)
@@ -102,7 +119,12 @@ var _ = Describe("Edit IDP User",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Revoked role '%s' from user '%s' on cluster '%s'", dedicatedAdminsGroupName, dedicatedAdminsUserName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Revoked role '%s' from user '%s' on cluster '%s'",
+						dedicatedAdminsGroupName,
+						dedicatedAdminsUserName,
+						clusterID))
 
 				By("Revoke cluster-admins user")
 				out, err = userService.RevokeUser(
@@ -112,10 +134,15 @@ var _ = Describe("Edit IDP User",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Revoked role '%s' from user '%s' on cluster '%s'", clusterAdminsGroupName, clusterAdminsUserName, clusterID))
+				Expect(textData).
+					Should(ContainSubstring(
+						"Revoked role '%s' from user '%s' on cluster '%s'",
+						clusterAdminsGroupName,
+						clusterAdminsUserName,
+						clusterID))
 
 				By("List users after revoke")
-				usersList, _, err = userService.ListUsers(clusterID)
+				usersList, _, _ = userService.ListUsers(clusterID)
 				// Comment this part due to known issue
 				// Expect(err).ToNot(HaveOccurred())
 

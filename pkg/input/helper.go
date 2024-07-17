@@ -1,9 +1,10 @@
 package input
 
 import (
-	"encoding/json"
 	"io"
 	"os"
+
+	"github.com/ghodss/yaml"
 )
 
 // UnmarshalInputFile is a generic unmarshaller from an input path
@@ -20,7 +21,8 @@ func UnmarshalInputFile(specPath string) (map[string]interface{}, error) {
 	}
 
 	// Unmarshall the spec file
-	err = json.Unmarshal(byteValue, &result)
+	// Support both json and yaml formats
+	err = yaml.Unmarshal(byteValue, &result)
 	if err != nil {
 		return result, err
 	}

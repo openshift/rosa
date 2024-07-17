@@ -19,7 +19,7 @@ previous_release="release_$2"
 commit_output=$(git log "$previous_release"..HEAD --oneline --no-merges --format="%s" --no-decorate --reverse | tr '[:upper:]' '[:lower:]')
 
 # Regular expression pattern to extract Jira ticket numbers and commit messages
-pattern="^(revert\s*\")?([^|]+)\|(.+)$"
+pattern="^(revert[[:space:]]*\")?([^|]+)\|(.+)$"
 
 # Array to store Jira ticket numbers
 jira_tickets=()
