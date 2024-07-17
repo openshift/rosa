@@ -428,57 +428,39 @@ var _ = Describe("Edit default ingress",
 					"--component-routes", componentRoutes,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				defer rosaClient.Ingress.EditIngress(clusterID,
+
+				_, err = rosaClient.Ingress.EditIngress(clusterID,
 					defaultIngress.ID,
-					"--component-routes", "oauth: hostname=oauth.hostname.com;tlsSecretRef=oauth-secret,downloads: hostname=downloads.hostname.com;tlsSecretRef=downloads-secret,console: hostname=console.hostname.com;tlsSecretRef=console-secret",
+					"--component-routes", componentRoutes,
 				)
+				Expect(err).ToNot(HaveOccurred())
 
 				By("List ingress to check")
 				output, err = rosaClient.Ingress.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-			})
-		It("cannot update ingress components with incorrect syntax - [id:72868]",
-			labels.Medium,
-			labels.Runtime.Day2,
-			func() {
-				By("Record ingress default value")
-				output, err := rosaClient.Ingress.ListIngress(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
-				Expect(err).ToNot(HaveOccurred())
-				defaultIngress := ingressList.Ingresses[0]
 
-				By("Edit ingress with --component-routes")
-				componentRoutes := "oauth: hostname:custom1;tlsSecretRef=custom1,downloads: hostname=custom2;tlsSecretRef=custom2,console: hostname=custom3;tlsSecretRef=custom3"
+				By("Edit ingress with --component-routes with incorrect syntax")
+				componentRoutes = "oauth: hostname:custom1;tlsSecretRef=custom1,downloads: hostname=custom2;tlsSecretRef=custom2,console: hostname=custom3;tlsSecretRef=custom3"
 				output, err = rosaClient.Ingress.EditIngress(clusterID,
 					defaultIngress.ID,
 					"--component-routes", componentRoutes,
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("An error occurred whilst parsing the supplied component routes: only the name of the component should be followed by ':'"))
+
 				By("List ingress to check")
 				output, err = rosaClient.Ingress.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-			})
-		It("cannot update ingress components with incorrect number of components - [id:72868]",
-			labels.Medium,
-			labels.Runtime.Day2,
-			func() {
-				By("Record ingress default value")
-				output, err := rosaClient.Ingress.ListIngress(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
-				Expect(err).ToNot(HaveOccurred())
-				defaultIngress := ingressList.Ingresses[0]
 
-				By("Edit ingress with --component-routes")
-				componentRoutes := "oauth: hostname=custom1;tlsSecretRef=custom1"
+				By("Edit ingress with --component-routes with incorrect number of components")
+				componentRoutes = "oauth: hostname=custom1;tlsSecretRef=custom1"
 				output, err = rosaClient.Ingress.EditIngress(clusterID,
 					defaultIngress.ID,
 					"--component-routes", componentRoutes,
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("An error occurred whilst parsing the supplied component routes: the expected amount of component routes is 3, but 1 have been supplied"))
+
 				By("List ingress to check")
 				_, err = rosaClient.Ingress.ListIngress(clusterID)
 				Expect(err).ToNot(HaveOccurred())
