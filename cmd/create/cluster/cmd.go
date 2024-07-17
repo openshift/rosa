@@ -1018,11 +1018,6 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if isHostedCP && cmd.Flags().Changed(Ec2MetadataHttpTokensFlag) {
-		r.Reporter.Errorf("'%s' is not available for Hosted Control Plane clusters", Ec2MetadataHttpTokensFlag)
-		os.Exit(1)
-	}
-
 	createAdminUser := args.createAdminUser
 	clusterAdminUser := admin.ClusterAdminUsername
 	clusterAdminPassword := strings.Trim(args.clusterAdminPassword, " \t")
@@ -1301,31 +1296,29 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	httpTokens := args.ec2MetadataHttpTokens
-	if !isHostedCP {
-		if httpTokens == "" {
-			httpTokens = string(v1.Ec2MetadataHttpTokensOptional)
-		}
-		if interactive.Enabled() {
-			httpTokens, err = interactive.GetOption(interactive.Input{
-				Question: "Configure the use of IMDSv2 for ec2 instances",
-				Options:  []string{string(v1.Ec2MetadataHttpTokensOptional), string(v1.Ec2MetadataHttpTokensRequired)},
-				Help:     cmd.Flags().Lookup(Ec2MetadataHttpTokensFlag).Usage,
-				Required: true,
-				Default:  httpTokens,
-			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
-				os.Exit(1)
-			}
-		}
-		if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
+	if httpTokens == "" {
+		httpTokens = string(v1.Ec2MetadataHttpTokensOptional)
+	}
+	if interactive.Enabled() {
+		httpTokens, err = interactive.GetOption(interactive.Input{
+			Question: "Configure the use of IMDSv2 for ec2 instances",
+			Options:  []string{string(v1.Ec2MetadataHttpTokensOptional), string(v1.Ec2MetadataHttpTokensRequired)},
+			Help:     cmd.Flags().Lookup(Ec2MetadataHttpTokensFlag).Usage,
+			Required: true,
+			Default:  httpTokens,
+		})
+		if err != nil {
 			r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
 			os.Exit(1)
 		}
-		if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
-			r.Reporter.Errorf(err.Error())
-			os.Exit(1)
-		}
+	}
+	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
+		r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
+		os.Exit(1)
+	}
+	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
 	}
 
 	// warn if mode is used for non sts cluster

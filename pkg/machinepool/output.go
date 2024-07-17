@@ -22,6 +22,7 @@ var nodePoolOutputString string = "\n" +
 	"Availability zone:                     %s\n" +
 	"Subnet:                                %s\n" +
 	"Version:                               %s\n" +
+	"EC2 Metadata Http Tokens:              %s\n" +
 	"Autorepair:                            %s\n" +
 	"Tuning configs:                        %s\n" +
 	"Kubelet configs:                       %s\n" +
@@ -77,6 +78,7 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		nodePool.AvailabilityZone(),
 		nodePool.Subnet(),
 		ocmOutput.PrintNodePoolVersion(nodePool.Version()),
+		ocmOutput.PrintEC2MetadataHttpTokens(nodePool.AWSNodePool()),
 		ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
 		ocmOutput.PrintNodePoolConfigs(nodePool.TuningConfigs()),
 		ocmOutput.PrintNodePoolConfigs(nodePool.KubeletConfigs()),

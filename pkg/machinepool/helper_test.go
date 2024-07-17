@@ -65,6 +65,7 @@ var _ = Describe("Machine pool helper", func() {
 			awsNpBuilder := createAwsNodePoolBuilder(
 				instanceType,
 				securityGroupIds,
+				"optional",
 				awsTags,
 			)
 			awsNodePool, err := awsNpBuilder.Build()
@@ -77,7 +78,7 @@ var _ = Describe("Machine pool helper", func() {
 			instanceType := "123"
 			securityGroupIds := []string{"123"}
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, securityGroupIds, map[string]string{})
+			awsNpBuilder := createAwsNodePoolBuilder(instanceType, securityGroupIds, "optional", map[string]string{})
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(Equal(securityGroupIds))
@@ -87,7 +88,7 @@ var _ = Describe("Machine pool helper", func() {
 		It("Create AWS node pool without security group IDs if not provided", func() {
 			instanceType := "123"
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, []string{}, map[string]string{})
+			awsNpBuilder := createAwsNodePoolBuilder(instanceType, []string{}, "optional", map[string]string{})
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(HaveLen(0))
@@ -385,13 +386,15 @@ var _ = Describe("CreateAwsNodePoolBuilder", func() {
 		instanceType := "t2.micro"
 		securityGroupIds := []string{"sg-12345"}
 		awsTags := map[string]string{"env": "test"}
+		httpTokens := "required"
 
-		builder := createAwsNodePoolBuilder(instanceType, securityGroupIds, awsTags)
+		builder := createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags)
 		built, err := builder.Build()
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(built.InstanceType()).To(Equal(instanceType))
 		Expect(built.AdditionalSecurityGroupIds()).To(ConsistOf(securityGroupIds))
+		Expect(string(built.Ec2MetadataHttpTokens())).To(Equal(httpTokens))
 		Expect(built.Tags()).To(Equal(awsTags))
 	})
 })
