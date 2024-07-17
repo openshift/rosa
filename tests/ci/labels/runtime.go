@@ -27,6 +27,9 @@ type runtimeLabels struct {
 	Day1Supplemental Labels
 	Day1Negative     Labels
 	OCMResources     Labels
+
+	// Test case for hibernation full cycle
+	Hibernate Labels
 }
 
 var Runtime = initRuntime()
@@ -45,6 +48,7 @@ func initRuntime() *runtimeLabels {
 	rLabels.Day1Supplemental = Label("day1-supplemental")
 	rLabels.OCMResources = Label("ocm-resources")
 	rLabels.Day1Negative = Label("day1-negative")
+	rLabels.Hibernate = Label("hibernate")
 
 	return rLabels
 }
