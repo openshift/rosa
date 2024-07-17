@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
@@ -1301,3 +1302,77 @@ var _ = Describe("Create cluster with availability zones testing",
 				Expect(common.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
 			})
 	})
+var _ = Describe("Create sts and hcp cluster with the IAM roles with path setting", labels.Feature.Cluster, func() {
+	defer GinkgoRecover()
+	var (
+		clusterID      string
+		rosaClient     *rosacli.Client
+		profile        *profilehandler.Profile
+		err            error
+		clusterService rosacli.ClusterService
+		path           string
+		awsClient      *aws_client.AWSClient
+	)
+
+	BeforeEach(func() {
+		By("Get the cluster")
+		profile = profilehandler.LoadProfileYamlFileByENV()
+		Expect(err).ToNot(HaveOccurred())
+
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		clusterService = rosaClient.Cluster
+		clusterID = config.GetClusterID()
+	})
+
+	AfterEach(func() {
+		By("Clean remaining resources")
+		rosaClient.CleanResources(clusterID)
+
+	})
+
+	It("to check the IAM roles can be used to create clsuters - [id:53570]",
+		labels.Critical, labels.Runtime.Day1Post,
+		func() {
+			By("Skip testing if the cluster is a Classic NON-STS cluster")
+			isSTS, err := clusterService.IsSTSCluster(clusterID)
+			Expect(err).To(BeNil())
+			if !isSTS {
+				Skip("Skip this case as it only supports on STS clusters")
+			}
+
+			By("Check the account-roles using on the cluster has path setting")
+			if profile.AccountRoleConfig.Path == "" {
+				Skip("Skip this case as it only checks the cluster which has the account-roles with path setting")
+			} else {
+				path = profile.AccountRoleConfig.Path
+			}
+
+			By("Get operator-roles arns and installer role arn")
+			output, err := clusterService.DescribeCluster(clusterID)
+			Expect(err).To(BeNil())
+			CD, err := clusterService.ReflectClusterDescription(output)
+			Expect(err).To(BeNil())
+			operatorRolesArns := CD.OperatorIAMRoles
+
+			installerRole := CD.STSRoleArn
+			Expect(installerRole).To(ContainSubstring(path))
+
+			By("Check the operator-roles has the path setting")
+			for _, pArn := range operatorRolesArns {
+				Expect(pArn).To(ContainSubstring(path))
+			}
+			if profile.ClusterConfig.STS && !profile.ClusterConfig.HCP {
+				By("Check the operator role policies has the path setting")
+				awsClient, err = aws_client.CreateAWSClient("", "")
+				Expect(err).To(BeNil())
+				for _, pArn := range operatorRolesArns {
+					_, roleName, err := common.ParseRoleARN(pArn)
+					Expect(err).To(BeNil())
+					attachedPolicy, err := awsClient.ListRoleAttachedPolicies(roleName)
+					Expect(err).To(BeNil())
+					Expect(*(attachedPolicy[0].PolicyArn)).To(ContainSubstring(path))
+				}
+			}
+		})
+})
