@@ -32,6 +32,7 @@ type featureLabels struct {
 	Version              Labels
 	Upgrade              Labels
 	Config               Labels
+	Hibernation          Labels
 }
 
 var Feature = initFeatureLabels()
@@ -62,6 +63,7 @@ func initFeatureLabels() *featureLabels {
 	fLabels.Version = Label("feature-version")
 	fLabels.Upgrade = Label("feature-upgrade")
 	fLabels.Config = Label("feature-config")
+	fLabels.Hibernation = Label("feature-hibernation")
 
 	return fLabels
 }

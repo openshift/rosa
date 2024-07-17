@@ -110,6 +110,10 @@ func (r *runner) AddCmdFlags(cmdFlags ...string) *runner {
 	return r
 }
 
+func (r *runner) UnsetArgs() {
+	r.cmdArgs = []string{}
+}
+
 func (r *runner) UnsetBoolFlag(flag string) *runner {
 	var newCmdArgs []string
 	cmdArgs := r.cmdArgs
