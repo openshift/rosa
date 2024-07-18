@@ -1,9 +1,11 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
+
+	"gopkg.in/yaml.v2"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,90 +43,84 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 		labels.Critical, labels.Runtime.Day2,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
-			tuningConfigName_1 := common.GenerateRandomName("tuned01", 2)
-			tuningConfigName_2 := common.GenerateRandomName("tuned02", 2)
+			tc1Name := common.GenerateRandomName("tuned01", 2)
+			firstPriority := 10
+			firstVMDirtyRatio := 25
+			tc2Name := common.GenerateRandomName("tuned02", 2)
+			secondPriority := 20
+			secondVMDirtyRatio := 65
 
-			tuningConfigPayload_1 := `{
-			"profile": [
-				{
-				"data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"25\"\n",
-				"name": "%s-profile"
-				}
-			],
-			"recommend": [
-				{
-				"priority": 10,
-				"profile": "%s-profile"
-				}
-			]
-		}`
-			tuningConfigPayload_2 := `{
-			"profile": [
-				{
-					"data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"65\"\n",
-					"name": "%s-profile"
-				}
-			],
-			"recommend": [
-				{
-					"priority": 20,
-					"profile": "%s-profile"
-				}
-			]
-		}`
+			tc1Spec := rosacli.NewTuningConfigSpecRootStub(tc1Name, firstVMDirtyRatio, firstPriority)
+			tc2Spec := rosacli.NewTuningConfigSpecRootStub(tc2Name, firstVMDirtyRatio, firstPriority)
+
 			By("Create tuning configs to the cluster")
+			tc1JSON, err := json.Marshal(tc1Spec)
+			Expect(err).ToNot(HaveOccurred())
 			resp, err := tuningConfigService.CreateTuningConfig(
 				clusterID,
-				tuningConfigName_1,
-				fmt.Sprintf(tuningConfigPayload_1, tuningConfigName_1, tuningConfigName_1))
+				tc1Name,
+				string(tc1JSON))
 			Expect(err).ToNot(HaveOccurred())
 			textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 			Expect(textData).
 				To(ContainSubstring(
-					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tuningConfigName_1, clusterID)))
+					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tc1Name, clusterID)))
+
+			tc2YAML, err := yaml.Marshal(tc2Spec)
+			Expect(err).ToNot(HaveOccurred())
 			resp, err = tuningConfigService.CreateTuningConfig(
 				clusterID,
-				tuningConfigName_2,
-				fmt.Sprintf(tuningConfigPayload_1, tuningConfigName_2, tuningConfigName_2))
+				tc2Name,
+				string(tc2YAML))
 			Expect(err).ToNot(HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 			Expect(textData).
 				To(ContainSubstring(
-					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tuningConfigName_2, clusterID)))
+					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tc2Name, clusterID)))
 
 			By("List all tuning configs")
 			tuningConfigList, err := tuningConfigService.ListTuningConfigsAndReflect(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tuningConfigList.IsPresent(tuningConfigName_1)).
-				To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_1)
-			Expect(tuningConfigList.IsPresent(tuningConfigName_2)).
-				To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_2)
+			Expect(tuningConfigList.IsPresent(tc1Name)).
+				To(BeTrue(), "the tuningconfig %s is not in output", tc1Name)
+			Expect(tuningConfigList.IsPresent(tc2Name)).
+				To(BeTrue(), "the tuningconfig %s is not in output", tc2Name)
 
 			By("Update a tuning config of the cluster")
-			specPath, err := common.CreateTempFileWithContent(
-				fmt.Sprintf(tuningConfigPayload_2, tuningConfigName_2, tuningConfigName_2))
+			tc2Spec.Profile[0].Data = rosacli.NewTuningConfigSpecProfileData(secondVMDirtyRatio)
+			tc2Spec.Recommend[0].Priority = secondPriority
+			tc2JSON, err := json.Marshal(tc2Spec)
+			Expect(err).ToNot(HaveOccurred())
+			specPath, err := common.CreateTempFileWithContent(string(tc2JSON))
 			defer os.Remove(specPath)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = tuningConfigService.EditTuningConfig(clusterID, tuningConfigName_2, "--spec-path", specPath)
+			_, err = tuningConfigService.EditTuningConfig(clusterID, tc2Name, "--spec-path", specPath)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Describe the updated tuning config")
-			output, err := tuningConfigService.DescribeTuningConfigAndReflect(clusterID, tuningConfigName_2)
+			output, err := tuningConfigService.DescribeTuningConfigAndReflect(clusterID, tc2Name)
 			Expect(err).ToNot(HaveOccurred())
-			tuningConfigPayload_2 = strings.ReplaceAll(tuningConfigPayload_2, "\t", "  ")
-			Expect(output.Spec).To(Equal(fmt.Sprintf(tuningConfigPayload_2, tuningConfigName_2, tuningConfigName_2)))
-			Expect(output.Name).To(Equal(tuningConfigName_2))
+			Expect(output.Name).To(Equal(tc2Name))
+			var spec rosacli.TuningConfigSpecRoot
+			err = json.Unmarshal([]byte(output.Spec), &spec)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(spec.Profile)).To(Equal(len(tc2Spec.Profile)))
+			Expect(spec.Profile[0].Data).To(Equal(tc2Spec.Profile[0].Data))
+			Expect(spec.Profile[0].Name).To(Equal(tc2Spec.Profile[0].Name))
+			Expect(len(spec.Recommend)).To(Equal(len(tc2Spec.Recommend)))
+			Expect(spec.Recommend[0].Priority).To(Equal(tc2Spec.Recommend[0].Priority))
+			Expect(spec.Recommend[0].Profile).To(Equal(tc2Spec.Recommend[0].Profile))
 
 			By("Delete the tuning config")
-			_, err = tuningConfigService.DeleteTuningConfig(clusterID, tuningConfigName_2)
+			_, err = tuningConfigService.DeleteTuningConfig(clusterID, tc2Name)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("List the tuning configs and check deleted tuning config should not be present]")
 			tuningConfigList, err = tuningConfigService.ListTuningConfigsAndReflect(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tuningConfigList.IsPresent(tuningConfigName_1)).
-				To(BeTrue(), "the tuningconfig %s is not in output", tuningConfigName_1)
-			Expect(tuningConfigList.IsPresent(tuningConfigName_2)).
-				To(BeFalse(), "the tuningconfig %s is in the output", tuningConfigName_2)
+			Expect(tuningConfigList.IsPresent(tc1Name)).
+				To(BeTrue(), "the tuningconfig %s is not in output", tc1Name)
+			Expect(tuningConfigList.IsPresent(tc2Name)).
+				To(BeFalse(), "the tuningconfig %s is in the output", tc2Name)
 		})
 })
