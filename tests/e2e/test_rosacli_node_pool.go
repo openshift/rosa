@@ -1163,6 +1163,48 @@ var _ = Describe("Edit nodepool",
 					}
 				}
 
+				By("Create a nodepool with just max surge set")
+				machinePool_Name := common.GenerateRandomName("ocp-74387", 2)
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePool_Name,
+					"--replicas", "3",
+					"--max-surge", "2")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePool_Name,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePool_Name)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+				Expect(out.ManagementUpgrade[1]["Max surge"]).To(Equal("2"))
+				Expect(out.ManagementUpgrade[2]["Max unavailable"]).To(Equal("0"))
+
+				By("Create a nodepool with just max unavailable set")
+				machinePool_Name = common.GenerateRandomName("ocp-74387", 2)
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePool_Name,
+					"--replicas", "3",
+					"--max-unavailable", "2")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePool_Name,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err = machinePoolService.DescribeAndReflectNodePool(clusterID, machinePool_Name)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+				Expect(out.ManagementUpgrade[1]["Max surge"]).To(Equal("1"))
+				Expect(out.ManagementUpgrade[2]["Max unavailable"]).To(Equal("2"))
+
 				By("Get a nodepool to edit")
 				res, err := machinePoolService.ListAndReflectNodePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -1214,6 +1256,40 @@ var _ = Describe("Edit nodepool",
 								Equal(flags["max unavailable"]))
 					}
 				}
+
+				By("Edit a nodepool with just max surge set")
+				output, err = machinePoolService.EditMachinePool(
+					clusterID,
+					machinePoolName,
+					"--max-surge", "7")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						machinePoolName,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err = machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[1]["Max surge"]).To(Equal("7"))
+
+				By("Edit a nodepool with just max unavailable set")
+				output, err = machinePoolService.EditMachinePool(
+					clusterID,
+					machinePoolName,
+					"--max-unavailable", "7")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						machinePoolName,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err = machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[2]["Max unavailable"]).To(Equal("7"))
 			})
 
 		It("validation for create/edit HCP nodepool with maxunavailable/maxsurge - [id:74430]",

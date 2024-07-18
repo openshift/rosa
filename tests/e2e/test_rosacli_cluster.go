@@ -1262,7 +1262,7 @@ var _ = Describe("HCP cluster creation negative testing",
 							"ERR: Expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 
-				By("Craete HCP cluster  with httpTokens=Required")
+				By("Create HCP cluster  with invalid httpTokens")
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -1270,13 +1270,14 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 
 				rosalCommand.ReplaceFlagValue(replacingFlags)
-				rosalCommand.AddFlags("--dry-run", "--ec2-metadata-http-tokens=required", "-y")
+				rosalCommand.AddFlags("--dry-run", "--ec2-metadata-http-tokens=invalid", "-y")
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
 					To(
 						ContainSubstring(
-							"ERR: 'ec2-metadata-http-tokens' is not available for Hosted Control Plane clusters"))
+							"ERR: Expected a valid http tokens value : " +
+								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 			})
 
 		It("expose additional allowed principals for HCP negative - [id:74433]",
