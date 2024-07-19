@@ -29,6 +29,8 @@ type ClusterService interface {
 	EditCluster(clusterID string, flags ...string) (bytes.Buffer, error)
 	DeleteUpgrade(flags ...string) (bytes.Buffer, error)
 	Upgrade(flags ...string) (bytes.Buffer, error)
+	DescribeUpgrade(clusterID string, flags ...string) (bytes.Buffer, error)
+	DescribeUpgradeAndReflect(clusterID string) (*UpgradeDescription, error)
 	InstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
 	UnInstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
 
@@ -68,6 +70,14 @@ type ClusterListItem struct {
 }
 type ClusterList struct {
 	Clusters []ClusterListItem `yaml:"Clusters,omitempty"`
+}
+
+// Struct for the 'rosa describe upgrade' output
+type UpgradeDescription struct {
+	ID           string `yaml:"ID,omitempty"`
+	ClusterID    string `yaml:"Cluster ID,omitempty"`
+	NextRun      string `yaml:"Next Run,omitempty"`
+	UpgradeState string `yaml:"Upgrade State,omitempty"`
 }
 
 // Struct for the 'rosa describe cluster' output
@@ -259,6 +269,42 @@ func (c *clusterService) Upgrade(flags ...string) (bytes.Buffer, error) {
 		Cmd("upgrade", "cluster").
 		CmdFlags(flags...)
 	return upgrade.Run()
+}
+
+func (c *clusterService) DescribeUpgrade(clusterID string, flags ...string) (bytes.Buffer, error) {
+	combflags := append([]string{"-c", clusterID}, flags...)
+	describe := c.client.Runner.
+		Cmd("describe", "upgrade").
+		CmdFlags(combflags...)
+	return describe.Run()
+}
+
+func (c *clusterService) DescribeUpgradeAndReflect(clusterID string) (res *UpgradeDescription, err error) {
+	output, err := c.DescribeUpgrade(clusterID)
+	if err != nil {
+		return nil, err
+	}
+	return c.ReflectUpgradeDescription(output)
+}
+
+func (c *clusterService) ReflectUpgradeDescription(result bytes.Buffer) (res *UpgradeDescription, err error) {
+	var data []byte
+	res = new(UpgradeDescription)
+	theMap, err := c.client.
+		Parser.
+		TextData.
+		Input(result).
+		Parse().
+		YamlToMap()
+	if err != nil {
+		return
+	}
+	data, err = yaml.Marshal(&theMap)
+	if err != nil {
+		return
+	}
+	err = yaml.Unmarshal(data, res)
+	return res, err
 }
 
 func (c *clusterService) InstallLog(clusterID string, flags ...string) (bytes.Buffer, error) {

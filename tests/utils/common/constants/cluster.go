@@ -37,6 +37,13 @@ const (
 	Validating   = "validating"
 )
 
+// cluster upgrade status
+const (
+	Scheduled = "scheduled"
+	Started   = "started"
+	Delayed   = "delayed"
+)
+
 // version pattern supported for the CI
 var (
 	VersionLatestPattern     = regexp.MustCompile("latest")
