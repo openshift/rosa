@@ -123,6 +123,7 @@ func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, clus
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
 	mpHelpers.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")
+	mpHelpers.HostedClusterOnlyFlag(r, cmd, "ec2-metadata-http-tokens")
 
 	// Machine pool name:
 	name := strings.Trim(args.Name, " \t")
@@ -938,7 +939,30 @@ func (m *machinePool) AddNodePool(cmd *cobra.Command, clusterKey string, cluster
 		}
 	}
 
-	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, awsTags))
+	httpTokens := args.EC2MetadataHttpTokens
+	if httpTokens == "" {
+		httpTokens = string(cmv1.Ec2MetadataHttpTokensOptional)
+	}
+	if interactive.Enabled() {
+		httpTokens, err = interactive.GetOption(interactive.Input{
+			Question: "Configure the use of IMDSv2 for ec2 instances",
+			Options:  []string{string(cmv1.Ec2MetadataHttpTokensOptional), string(cmv1.Ec2MetadataHttpTokensRequired)},
+			Help:     cmd.Flags().Lookup("ec2-metadata-http-tokens").Usage,
+			Required: true,
+			Default:  httpTokens,
+		})
+		if err != nil {
+			return fmt.Errorf("Expected a valid http tokens value : %v", err)
+		}
+	}
+	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
+		return fmt.Errorf("Expected a valid http tokens value : %v", err)
+	}
+	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
+		return fmt.Errorf(err.Error())
+	}
+
+	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags))
 
 	nodeDrainGracePeriod := args.NodeDrainGracePeriod
 	if interactive.Enabled() {

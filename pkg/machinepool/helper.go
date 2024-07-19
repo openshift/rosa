@@ -115,6 +115,7 @@ func getSecurityGroupsOption(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.
 func createAwsNodePoolBuilder(
 	instanceType string,
 	securityGroupIds []string,
+	httpTokens string,
 	awsTags map[string]string,
 ) *cmv1.AWSNodePoolBuilder {
 	awsNpBuilder := cmv1.NewAWSNodePool().InstanceType(instanceType)
@@ -126,6 +127,8 @@ func createAwsNodePoolBuilder(
 	if len(awsTags) > 0 {
 		awsNpBuilder.Tags(awsTags)
 	}
+
+	awsNpBuilder.Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokens(httpTokens))
 
 	return awsNpBuilder
 }

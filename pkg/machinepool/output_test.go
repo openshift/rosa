@@ -119,7 +119,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "Yes", replicasOutput, "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", managementUpgradeOutput, "")
+				"test-subnets", "1", "optional", "No", "test-tc", "test-kc", "", "", managementUpgradeOutput, "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
@@ -136,7 +136,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "No", "4", "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "1", "No", "test-tc", "test-kc", "", "", "", "")
+				"test-subnets", "1", "optional", "No", "test-tc", "test-kc", "", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))

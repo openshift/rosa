@@ -223,6 +223,15 @@ func init() {
 			"Tags are comma separated, for example: 'key value, foo bar'",
 	)
 
+	flags.StringVar(
+		&args.EC2MetadataHttpTokens,
+		"ec2-metadata-http-tokens",
+		"",
+		"Should cluster nodes use both v1 and v2 endpoints or just v2 endpoint "+
+			"of EC2 Instance Metadata Service (IMDS)"+
+			"This flag is only supported for Hosted Control Planes.",
+	)
+
 	flags.StringVar(&args.MaxSurge,
 		"max-surge",
 		"1",

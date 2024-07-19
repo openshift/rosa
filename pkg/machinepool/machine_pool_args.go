@@ -24,4 +24,5 @@ type MachinePoolArgs struct {
 	Tags                  []string
 	MaxSurge              string
 	MaxUnavailable        string
+	EC2MetadataHttpTokens string
 }
