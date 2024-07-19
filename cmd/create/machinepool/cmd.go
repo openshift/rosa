@@ -278,8 +278,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	service := machinepool.NewMachinePoolService()
 	if cluster.Hypershift().Enabled() {
-		service.AddNodePool(cmd, clusterKey, cluster, r, &args)
+		err = service.AddNodePool(cmd, clusterKey, cluster, r, &args)
 	} else {
-		service.AddMachinePool(cmd, clusterKey, cluster, r, &args)
+		err = service.AddMachinePool(cmd, clusterKey, cluster, r, &args)
+	}
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 }
