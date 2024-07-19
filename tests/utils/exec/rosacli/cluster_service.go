@@ -154,6 +154,16 @@ func (clusterList ClusterList) Cluster(clusterID string) (cluster ClusterListIte
 	return
 }
 
+// Get specified cluster by cluster name
+func (clusterList ClusterList) ClusterByName(clusterName string) (cluster ClusterListItem) {
+	for _, c := range clusterList.Clusters {
+		if c.Name == clusterName {
+			return c
+		}
+	}
+	return
+}
+
 func (c *clusterService) DescribeCluster(clusterID string, flags ...string) (bytes.Buffer, error) {
 	combflags := append([]string{"-c", clusterID}, flags...)
 	describe := c.client.Runner.
@@ -437,7 +447,7 @@ func (c *clusterService) WaitClusterDeleted(clusterID string, interval int, dura
 			if err != nil {
 				return false, err
 			}
-			return clusterList.IsExist(clusterID), err
+			return !clusterList.IsExist(clusterID), err
 		})
 	return err
 }

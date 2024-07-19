@@ -1039,7 +1039,6 @@ var _ = Describe("Classic cluster creation negative testing",
 				arl, _, err := ocmResourceService.ListAccountRole()
 				Expect(err).To(BeNil())
 				ar := arl.DigAccountRoles(accrolePrefix, false)
-				fmt.Println(ar)
 
 				By("Create cluster with latest version and use the low version account-roles")
 				clusterName := "cluster45176"
@@ -1463,3 +1462,284 @@ var _ = Describe("Create sts and hcp cluster with the IAM roles with path settin
 			}
 		})
 })
+
+var _ = Describe("Create cluster with existing operator-roles prefix which roles are not using byo oidc",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			// clusterID  string
+			rosaClient         *rosacli.Client
+			err                error
+			accountRolePrefix  string
+			ocmResourceService rosacli.OCMResourceService
+			clusterNameToClean string
+			clusterService     rosacli.ClusterService
+			clusterID          string
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+			clusterService = rosaClient.Cluster
+		})
+
+		AfterEach(func() {
+			By("Delete the cluster")
+			if clusterNameToClean != "" {
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(clusterNameToClean).ID
+
+				rosaClient.Runner.UnsetArgs()
+				_, err = clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+				Expect(err).To(BeNil())
+			}
+			By("Delete operator-roles")
+			_, err = ocmResourceService.DeleteOperatorRoles(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+
+			By("Delete oidc-provider")
+			_, err = ocmResourceService.DeleteOIDCProvider(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y")
+			Expect(err).To(BeNil())
+
+			By("Delete account-roles")
+			if accountRolePrefix != "" {
+				By("Delete the account-roles")
+				rosaClient.Runner.UnsetArgs()
+				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y")
+				Expect(err).To(BeNil())
+			}
+
+		})
+
+		It("to validate to create cluster with existing operator roles prefix - [id:45742]",
+			labels.Critical, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Create acount-roles")
+				accountRolePrefix = "testAr45742"
+				output, err := ocmResourceService.CreateAccountRole(
+					"--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y")
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Created role"))
+
+				arl, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				ar := arl.DigAccountRoles(accountRolePrefix, false)
+
+				By("Create one sts cluster")
+				clusterNameToClean = "test-45742"
+				operatorRolePreifx := "opPrefix45742"
+				_, err, _ = clusterService.Create(
+					clusterNameToClean, "--sts",
+					"--mode", "auto",
+					"--role-arn", ar.InstallerRole,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.ControlPlaneRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"--operator-roles-prefix", operatorRolePreifx,
+					"-y",
+				)
+				Expect(err).To(BeNil())
+
+				By("Create another cluster with the same operator-roless-prefix")
+				clusterName := "test-45742b"
+				out, err, _ := clusterService.Create(
+					clusterName, "--sts",
+					"--mode", "auto",
+					"--role-arn", ar.InstallerRole,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.ControlPlaneRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"--operator-roles-prefix", operatorRolePreifx,
+					"-y",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(ContainSubstring("already exists"))
+				Expect(out.String()).To(ContainSubstring("provide a different prefix"))
+			})
+	})
+
+var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient *rosacli.Client
+
+			accountRolePrefix  string
+			ocmResourceService rosacli.OCMResourceService
+			clusterNameToClean string
+			clusterService     rosacli.ClusterService
+			clusterID          string
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+			clusterService = rosaClient.Cluster
+		})
+
+		AfterEach(func() {
+
+			By("Delete cluster")
+			rosaClient.Runner.UnsetArgs()
+			clusterListout, err := clusterService.List()
+			Expect(err).To(BeNil())
+			clusterList, err := clusterService.ReflectClusterList(clusterListout)
+			Expect(err).To(BeNil())
+
+			if clusterList.IsExist(clusterID) {
+				rosaClient.Runner.UnsetArgs()
+				_, err = clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+			}
+			By("Delete operator-roles")
+			_, err = ocmResourceService.DeleteOperatorRoles(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+
+			By("Delete oidc-provider")
+			_, err = ocmResourceService.DeleteOIDCProvider(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y")
+			Expect(err).To(BeNil())
+
+			By("Delete the account-roles")
+			rosaClient.Runner.UnsetArgs()
+			_, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", accountRolePrefix,
+				"-y")
+			Expect(err).To(BeNil())
+		})
+
+		It("to create/delete operator-roles and oidc-provider to cluster in manual mode - [id:43053]",
+			labels.Critical, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Create acount-roles")
+				accountRolePrefix = "testAr43053"
+				output, err := ocmResourceService.CreateAccountRole(
+					"--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y")
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Created role"))
+
+				arl, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				ar := arl.DigAccountRoles(accountRolePrefix, false)
+
+				By("Create one sts cluster in manual mode")
+				clusterNameToClean = "test-43053"
+				operatorRolePreifx := "opPrefix43053"
+				_, err, _ = clusterService.Create(
+					clusterNameToClean, "--sts",
+					"--mode", "manual",
+					"--role-arn", ar.InstallerRole,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.ControlPlaneRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"--operator-roles-prefix", operatorRolePreifx,
+					"-y",
+				)
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(clusterNameToClean).ID
+
+				By("Create operator-roles in manual mode")
+				output, err = ocmResourceService.CreateOperatorRoles(
+					"-c", clusterID,
+					"--mode", "manual",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				commands := common.ExtractCommandsToCreateAWSResoueces(output)
+				for _, command := range commands {
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
+
+				By("Create oidc provider in manual mode")
+				output, err = ocmResourceService.CreateOIDCProvider(
+					"-c", clusterID,
+					"--mode", "manual",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				commands = common.ExtractCommandsToCreateAWSResoueces(output)
+				for _, command := range commands {
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
+
+				By("Check cluster status to installing")
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
+				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+
+				By("Delete cluster and wait it deleted")
+				rosaClient.Runner.UnsetArgs()
+				_, err = clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterDeleted(clusterID, 3, 24)
+				Expect(err).To(BeNil())
+
+				By("Delete operator-roles in manual mode")
+				output, err = ocmResourceService.DeleteOperatorRoles(
+					"-c", clusterID,
+					"--mode", "manual",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				commands = common.ExtractCommandsToDeleteAWSResoueces(output)
+				for _, command := range commands {
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
+
+				By("Delete oidc provider in manual mode")
+				output, err = ocmResourceService.DeleteOIDCProvider(
+					"-c", clusterID,
+					"--mode", "manual",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				commands = common.ExtractCommandsToDeleteAWSResoueces(output)
+				for _, command := range commands {
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
+			})
+	})

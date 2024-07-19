@@ -557,7 +557,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				"--managed-policies",
 				"-y")
 			Expect(err).To(BeNil())
-			commands := common.ExtractCommandsToCreateAccountRoles(output)
+			commands := common.ExtractCommandsToCreateAWSResoueces(output)
 
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
@@ -579,7 +579,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				"-y")
 
 			Expect(err).To(BeNil())
-			commands = common.ExtractCommandsToCreateAccountRoles(output)
+			commands = common.ExtractCommandsToCreateAWSResoueces(output)
 
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))

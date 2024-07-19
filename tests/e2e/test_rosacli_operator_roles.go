@@ -824,7 +824,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			"-y",
 		)
 		Expect(err).To(BeNil())
-		commands := common.ExtractCommandsToDeleteOpRoles(output)
+		commands := common.ExtractCommandsToDeleteAWSResoueces(output)
 		for k, v := range commands {
 			fmt.Printf("the %d command is %s\n", k, v)
 		}
@@ -879,7 +879,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			By("Delete the hosted-cp operator-roles by prefix in manual mode")
 			output, err = ocmResourceService.DeleteOperatorRoles("--prefix", operatorRolePrefixH, "-y", "--mode", "manual")
 			Expect(err).NotTo(HaveOccurred())
-			commands := common.ExtractCommandsToDeleteOpRoles(output)
+			commands := common.ExtractCommandsToDeleteAWSResoueces(output)
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
@@ -901,7 +901,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			By("Delete the classic operator-roles by prefix in manual mode")
 			output, err = ocmResourceService.DeleteOperatorRoles("--prefix", operatorRolePrefixC, "-y", "--mode", "manual")
 			Expect(err).NotTo(HaveOccurred())
-			commands = common.ExtractCommandsToDeleteOpRoles(output)
+			commands = common.ExtractCommandsToDeleteAWSResoueces(output)
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
