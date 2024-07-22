@@ -955,11 +955,9 @@ func (m *machinePool) AddNodePool(cmd *cobra.Command, clusterKey string, cluster
 			return fmt.Errorf("Expected a valid http tokens value : %v", err)
 		}
 	}
+
 	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
 		return fmt.Errorf("Expected a valid http tokens value : %v", err)
-	}
-	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
-		return fmt.Errorf(err.Error())
 	}
 
 	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags))
