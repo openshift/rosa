@@ -7,8 +7,11 @@ import (
 	"strings"
 )
 
-// Extract aws commands from `rosa create account-role --mode manual`
-func ExtractCommandsToCreateAccountRoles(bf bytes.Buffer) []string {
+// Extract aws commands to create AWS resource promted by rosacli, this function supports to parse bellow commands
+// `rosa create account-role --mode manual`
+// `rosa create operator-roles --mode manual`
+// `rosa create oidc-provider --mode manual`
+func ExtractCommandsToCreateAWSResoueces(bf bytes.Buffer) []string {
 	var commands []string
 	output := strings.Split(bf.String(), "\n\n")
 	for _, message := range output {
@@ -29,8 +32,10 @@ func ExtractCommandsToCreateAccountRoles(bf bytes.Buffer) []string {
 	return newCommands
 }
 
-// Extract aws commands from `rosa delete operator-roles --mode manual`
-func ExtractCommandsToDeleteOpRoles(bf bytes.Buffer) []string {
+// Extract aws commands to create AWS resource promted by rosacli, this function supports to parse bellow commands
+// `rosa create operator-roles --mode manual`
+// `rosa create oidc-provider --mode manual`
+func ExtractCommandsToDeleteAWSResoueces(bf bytes.Buffer) []string {
 	var commands []string
 	output := strings.Split(bf.String(), "\naws")
 	for _, message := range output {
