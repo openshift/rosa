@@ -154,12 +154,14 @@ var _ = Describe("Edit default ingress",
 
 				ingressList, err := ingressService.ReflectIngressList(output)
 				Expect(err).ToNot(HaveOccurred())
-				var defaultID string
-				for _, v := range ingressList.Ingresses {
-					defaultID = v.ID
+				if len(ingressList.Ingresses) > 0{
+					defaultID := ingressList.Ingresses[0]
+				} else {
+					log.logger.Error("No default ingress is present to the cluster")
 				}
-				_, err = rosaClient.Ingress.DescribeIngressAndReflect(clusterID, defaultID)
+				out, err := rosaClient.Ingress.DescribeIngressAndReflect(clusterID, defaultID)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(out).Should(ContainSubstring("ID '%s'", defaultID))
 			})
 
 		It("change load balancer type - [id:64767]",
