@@ -68,6 +68,11 @@ func LoadProfileYamlFileByENV() *Profile {
 			config.Test.GlobalENV.NamePrefix)
 		profile.NamePrefix = config.Test.GlobalENV.NamePrefix
 	}
+	if config.Test.GlobalENV.ComputeMachineType != "" {
+		log.Logger.Infof("Got global env settings for INSTANCE_TYPE, overwritten the profile setting with value %s",
+			config.Test.GlobalENV.ComputeMachineType)
+		profile.ClusterConfig.InstanceType = config.Test.GlobalENV.ComputeMachineType
+	}
 
 	return profile
 }
