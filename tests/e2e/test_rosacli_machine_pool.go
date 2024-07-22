@@ -1076,4 +1076,70 @@ var _ = Describe("Edit machinepool",
 				Expect(mpDescription.AutoScaling).To(Equal(constants.Yes))
 				Expect(mpDescription.Replicas).To(Equal("3-12"))
 			})
+
+		It("will validate labels and taints for default worker pool - [id:57105]", labels.Runtime.Day2, labels.Medium,
+			func() {
+				By("Record original labels and define the recovery steps")
+				mpDescription, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, con.DefaultClassicWorkerPool)
+				Expect(err).ToNot(HaveOccurred())
+				originalLabels := mpDescription.Labels
+				defer machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", common.ReplaceCommaSpaceWithComma(originalLabels),
+				)
+
+				By("Edit machinepool label with invalid labels p*=test will fail")
+				output, err := machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", "p*=test",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Invalid label key 'p*': name part must consist of alphanumeric characters"))
+
+				By("Edit machinepool label with empty key =test will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", "=test",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Invalid label key '': name part must be non-empty"))
+
+				By("Edit machinepool with duplicate key will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", "dupkey=test,dupkey=test2",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Duplicated label key 'dupkey' used"))
+
+				By("Edit taints with invalid values will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--taints", "dupkey=test:InvalidEffect",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Taint at index 0 is incorrect: Unrecognized taint effect"))
+
+				By("Remove other machinepools to make sure there is only workers left")
+				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				for _, mp := range mpList.MachinePools {
+					if mp.ID != con.DefaultClassicWorkerPool {
+						machinePoolService.DeleteMachinePool(clusterID, mp.ID)
+					}
+				}
+
+				By("Edit the only existing worker pool with taints will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--taints", "dupkey=test:NoSchedule",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("At least one machine pool able to run OCP workload is required"))
+			})
 	})
