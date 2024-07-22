@@ -1,0 +1,7 @@
+- name: billing-model
+- name: billing-model-account-id
+- name: cluster
+- name: interactive
+- name: profile
+- name: region
+- name: "yes"

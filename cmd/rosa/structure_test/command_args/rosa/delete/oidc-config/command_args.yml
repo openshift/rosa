@@ -1,0 +1,4 @@
+- name: interactive
+- name: mode
+- name: oidc-config-id
+- name: "yes"

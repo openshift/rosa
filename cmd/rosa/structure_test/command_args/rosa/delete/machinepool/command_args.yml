@@ -1,0 +1,5 @@
+- name: cluster
+- name: machinepool
+- name: profile
+- name: region
+- name: "yes"

@@ -1,0 +1,7 @@
+- name: classic
+- name: hosted-cp
+- name: mode
+- name: prefix
+- name: profile
+- name: region
+- name: "yes"

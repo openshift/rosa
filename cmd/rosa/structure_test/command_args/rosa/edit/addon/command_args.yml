@@ -1,0 +1,5 @@
+- name: cluster
+- name: interactive
+- name: profile
+- name: region
+- name: "yes"

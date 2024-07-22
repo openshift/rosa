@@ -1,0 +1,10 @@
+- name: type
+- name: name
+- name: subnet-ids
+- name: private-link
+- name: machine-cidr
+- name: service-cidr
+- name: pod-cidr
+- name: host-prefix
+- name: fake-cluster
+- name: region

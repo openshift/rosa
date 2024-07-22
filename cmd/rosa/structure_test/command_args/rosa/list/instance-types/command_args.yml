@@ -1,0 +1,6 @@
+- name: external-id
+- name: hosted-cp
+- name: output
+- name: region
+- name: role-arn
+- name: "yes"

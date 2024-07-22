@@ -1,0 +1,6 @@
+- name: cluster
+- name: interactive
+- name: profile
+- name: region
+- name: spec-path
+- name: "yes"

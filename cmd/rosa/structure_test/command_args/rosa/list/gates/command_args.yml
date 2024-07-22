@@ -1,0 +1,6 @@
+- name: cluster
+- name: gate
+- name: output
+- name: profile
+- name: region
+- name: version

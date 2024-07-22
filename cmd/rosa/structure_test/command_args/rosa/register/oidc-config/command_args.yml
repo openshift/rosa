@@ -1,0 +1,9 @@
+- name: interactive
+- name: issuer-url
+- name: mode
+- name: output
+- name: profile
+- name: region
+- name: role-arn
+- name: secret-arn
+- name: "yes"

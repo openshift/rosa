@@ -1,0 +1,4 @@
+- name: addon
+- name: cluster
+- name: profile
+- name: region

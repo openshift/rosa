@@ -1,0 +1,13 @@
+- name: cluster
+- name: component-routes
+- name: excluded-namespaces
+- name: interactive
+- name: label-match
+- name: lb-type
+- name: namespace-ownership-policy
+- name: private
+- name: profile
+- name: region
+- name: route-selector
+- name: wildcard-policy
+- name: "yes"

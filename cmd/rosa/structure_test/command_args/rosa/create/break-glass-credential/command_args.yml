@@ -1,0 +1,7 @@
+- name: cluster
+- name: expiration
+- name: interactive
+- name: profile
+- name: region
+- name: username
+- name: "yes"

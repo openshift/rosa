@@ -1,0 +1,6 @@
+- name: cluster
+- name: output
+- name: id
+- name: kubeconfig
+- name: profile
+- name: region

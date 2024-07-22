@@ -1,0 +1,8 @@
+- name: interactive
+- name: mode
+- name: path
+- name: permissions-boundary
+- name: prefix
+- name: profile
+- name: region
+- name: "yes"
