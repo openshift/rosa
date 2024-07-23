@@ -18,7 +18,7 @@ limitations under the License.
 
 package info
 
-const Version = "1.2.43"
+const Version = "1.2.43-rc1"
 
 // Build contains the short Git SHA of the CLI at the point it was build. Set via `-ldflags` at build time
 var Build = "local"
