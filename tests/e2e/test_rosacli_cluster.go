@@ -441,8 +441,10 @@ var _ = Describe("Classic cluster creation validation",
 			// Get a random profile
 			profilesMap = profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
 			profilesNames := make([]string, 0, len(profilesMap))
-			for k := range profilesMap {
-				profilesNames = append(profilesNames, k)
+			for k, v := range profilesMap {
+				if !v.ClusterConfig.SharedVPC {
+					profilesNames = append(profilesNames, k)
+				}
 			}
 			profile = profilesMap[profilesNames[common.RandomInt(len(profilesNames))]]
 			profile.NamePrefix = constants.DefaultNamePrefix
