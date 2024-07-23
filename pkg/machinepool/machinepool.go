@@ -26,7 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
-	. "github.com/openshift/rosa/pkg/kubeletconfig"
+	"github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
@@ -1854,7 +1854,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		return fmt.Errorf("Failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
-	if isKubeletConfigSet && !promptForNodePoolNodeRecreate(nodePool, update, PromptToAcceptNodePoolNodeRecreate, r) {
+	if isKubeletConfigSet && !promptForNodePoolNodeRecreate(
+		nodePool, update, kubeletconfig.PromptToAcceptNodePoolNodeRecreate, r) {
 		return nil
 	}
 
