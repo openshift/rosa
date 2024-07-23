@@ -275,7 +275,6 @@ var _ = Describe("Healthy check",
 		It("Rosa cluster with fips enabled can be created successfully - [id:46312]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				profile := profilehandler.LoadProfileYamlFileByENV()
 				output, err := clusterService.DescribeCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				des, err := clusterService.ReflectClusterDescription(output)
@@ -306,6 +305,27 @@ var _ = Describe("Healthy check",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ingress.Private).To(Equal(ingressPrivate))
 
+			})
+		It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High,
+			func() {
+				By("Check cluster is multiarch")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+				if isHosted {
+					Expect(jsonData.DigBool("multi_arch_enabled")).To(BeTrue())
+				} else {
+					Expect(jsonData.DigBool("multi_arch_enabled")).To(BeFalse())
+				}
+			})
+
+		It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High,
+			func() {
+				By("Check compute machine type")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(profile.ClusterConfig.InstanceType))
 			})
 	})
 
