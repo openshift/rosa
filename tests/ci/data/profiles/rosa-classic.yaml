@@ -189,3 +189,29 @@ profiles:
   account-role:
     path: "/test/"
     permission_boundary: ""
+- as: rosa-non-sts-upgrade-y-stream
+  version: "y-1"
+  channel_group: candidate
+  region: "us-east-1"
+  cluster:
+    multi_az: false
+    instance_type: "r5.xlarge"
+    hcp: false
+    sts: false
+    byo_vpc: false
+    private_link: false
+    private: false
+    etcd_encryption: false
+    autoscale: false
+    kms_key: false
+    networking: false
+    proxy_enabled: false
+    label_enabled: false
+    zones: ""
+    tag_enabled: true
+    etcd_kms: false
+    fips: false
+    oidc_config: ""
+    shared_vpc: false
+    imdsv2: "optional"
+    admin_enabled: false
