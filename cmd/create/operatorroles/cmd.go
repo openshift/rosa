@@ -185,6 +185,18 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if !args.hostedCp && args.installerRoleArn != "" {
+		managedPolicies, err := r.AWSClient.HasManagedPolicies(args.installerRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
+			os.Exit(1)
+		}
+		if managedPolicies {
+			r.Reporter.Errorf("The managed policies are not supported for classic operator-roles.")
+			os.Exit(1)
+		}
+	}
+
 	var cluster *cmv1.Cluster
 	if args.prefix == "" {
 		cluster = r.FetchCluster()
