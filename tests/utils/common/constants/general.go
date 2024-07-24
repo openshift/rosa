@@ -1,8 +1,9 @@
 package constants
 
 const (
-	Yes = "Yes"
-	No  = "No"
+	Yes                    = "Yes"
+	No                     = "No"
+	YStreamPreviousVersion = "y-1"
 )
 
 // Ec2MetadataHttpTokens for hcp cluster

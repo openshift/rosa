@@ -45,6 +45,7 @@ type Client struct {
 	ExternalAuthProvider ExternalAuthProviderService
 	Policy               PolicyService
 	AutoScaler           AutoScalerService
+	Upgrade              UpgradeService
 }
 
 func NewClient() *Client {
@@ -72,6 +73,7 @@ func NewClient() *Client {
 	client.ExternalAuthProvider = NewExternalAuthProviderService(client)
 	client.Policy = NewPolicyService(client)
 	client.AutoScaler = NewAutoScalerService(client)
+	client.Upgrade = NewUpgradeService(client)
 
 	return client
 }
@@ -95,6 +97,7 @@ func (c *Client) CleanResources(clusterID string) error {
 	errorList = append(errorList, c.ExternalAuthProvider.CleanResources(clusterID)...)
 	errorList = append(errorList, c.AutoScaler.CleanResources(clusterID)...)
 	errorList = append(errorList, c.Policy.CleanResources(clusterID)...)
+	errorList = append(errorList, c.Upgrade.CleanResources(clusterID)...)
 
 	return errors.Join(errorList...)
 

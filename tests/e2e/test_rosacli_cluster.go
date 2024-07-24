@@ -29,6 +29,7 @@ var _ = Describe("Edit cluster",
 			clusterID      string
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
+			upgradeService rosacli.UpgradeService
 			clusterConfig  *config.ClusterConfig
 		)
 
@@ -40,6 +41,7 @@ var _ = Describe("Edit cluster",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
+			upgradeService = rosaClient.Upgrade
 
 			By("Load the original cluster config")
 			var err error
@@ -228,19 +230,19 @@ var _ = Describe("Edit cluster",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
-				output, err := clusterService.DeleteUpgrade()
+				output, err := upgradeService.DeleteUpgrade()
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring(`required flag(s) "cluster" not set`))
 
 				By("Delete an non-existent upgrade when cluster has no scheduled policy")
-				output, err = clusterService.DeleteUpgrade("-c", clusterID)
+				output, err = upgradeService.DeleteUpgrade("-c", clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring(`There are no scheduled upgrades on cluster '%s'`, clusterID))
 
 				By("Delete with unknown flag --interactive")
-				output, err = clusterService.DeleteUpgrade("-c", clusterID, "--interactive")
+				output, err = upgradeService.DeleteUpgrade("-c", clusterID, "--interactive")
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Error: unknown flag: --interactive"))
@@ -250,7 +252,7 @@ var _ = Describe("Edit cluster",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				defer func() {
-					_, err := clusterService.DeleteUpgrade("-c", clusterID, "-y")
+					_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
 					Expect(err).ToNot(HaveOccurred())
 				}()
 
@@ -262,7 +264,7 @@ var _ = Describe("Edit cluster",
 				}
 
 				By("Upgrade cluster without --control-plane flag")
-				output, err := clusterService.Upgrade("-c", clusterID)
+				output, err := upgradeService.Upgrade("-c", clusterID)
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).
@@ -271,7 +273,7 @@ var _ = Describe("Edit cluster",
 
 				By("Upgrade cluster with invalid cluster id")
 				invalidClusterID := common.GenerateRandomString(30)
-				output, err = clusterService.Upgrade("-c", invalidClusterID)
+				output, err = upgradeService.Upgrade("-c", invalidClusterID)
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).
@@ -281,7 +283,7 @@ var _ = Describe("Edit cluster",
 						invalidClusterID))
 
 				By("Upgrade cluster with incorrect format of the date and time")
-				output, err = clusterService.Upgrade(
+				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--control-plane",
 					"--mode=auto",
@@ -293,7 +295,7 @@ var _ = Describe("Edit cluster",
 				Expect(textData).To(ContainSubstring("ERR: schedule date should use the format 'yyyy-mm-dd'"))
 
 				By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
-				output, err = clusterService.Upgrade(
+				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--control-plane",
 					"--mode=auto",
@@ -308,7 +310,7 @@ var _ = Describe("Edit cluster",
 						"ERR: The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
 				By("Upgrade cluster using --schedule and --version flags at the same time")
-				output, err = clusterService.Upgrade(
+				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--control-plane",
 					"--mode=auto",
@@ -322,7 +324,7 @@ var _ = Describe("Edit cluster",
 						"ERR: The '--schedule' option is mutually exclusive with '--version'"))
 
 				By("Upgrade cluster with value not match the cron epression")
-				output, err = clusterService.Upgrade(
+				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--control-plane",
 					"--mode=auto",
