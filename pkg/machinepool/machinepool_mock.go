@@ -5,6 +5,7 @@
 //
 //	mockgen -source=machinepool.go -package=machinepool -destination=machinepool_mock.go
 //
+
 // Package machinepool is a generated GoMock package.
 package machinepool
 
@@ -94,6 +95,20 @@ func (m *MockMachinePoolService) DescribeMachinePool(r *rosa.Runtime, cluster *v
 func (mr *MockMachinePoolServiceMockRecorder) DescribeMachinePool(r, cluster, clusterKey, machinePoolId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeMachinePool", reflect.TypeOf((*MockMachinePoolService)(nil).DescribeMachinePool), r, cluster, clusterKey, machinePoolId)
+}
+
+// EditMachinePool mocks base method.
+func (m *MockMachinePoolService) EditMachinePool(cmd *cobra.Command, machinePoolID, clusterKey string, cluster *v1.Cluster, r *rosa.Runtime) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EditMachinePool", cmd, machinePoolID, clusterKey, cluster, r)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EditMachinePool indicates an expected call of EditMachinePool.
+func (mr *MockMachinePoolServiceMockRecorder) EditMachinePool(cmd, machinePoolID, clusterKey, cluster, r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditMachinePool", reflect.TypeOf((*MockMachinePoolService)(nil).EditMachinePool), cmd, machinePoolID, clusterKey, cluster, r)
 }
 
 // ListMachinePools mocks base method.

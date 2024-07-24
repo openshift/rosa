@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/openshift/rosa/tests/utils/log"
 )
@@ -336,7 +337,9 @@ func (url UserRoleList) UserRole(prefix string, ocmAccountUsername string) (user
 func (ors *ocmResourceService) CreateAccountRole(flags ...string) (bytes.Buffer, error) {
 	createAccountRole := ors.client.Runner
 	createAccountRole = createAccountRole.Cmd("create", "account-roles").CmdFlags(flags...)
-	return createAccountRole.Run()
+	AccountRoles, err := createAccountRole.Run()
+	time.Sleep(10 * time.Second)
+	return AccountRoles, err
 }
 
 // Pasrse the result of 'rosa list account-roles' to AccountRoleList struct

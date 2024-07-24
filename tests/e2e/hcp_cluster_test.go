@@ -8,6 +8,7 @@ import (
 
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
+	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
@@ -19,11 +20,13 @@ var _ = Describe("HCP cluster testing",
 		defer GinkgoRecover()
 
 		var (
-			clusterID      string
-			rosaClient     *rosacli.Client
-			clusterService rosacli.ClusterService
-			clusterConfig  *config.ClusterConfig
-			profile        *profilehandler.Profile
+			clusterID          string
+			rosaClient         *rosacli.Client
+			clusterService     rosacli.ClusterService
+			clusterConfig      *config.ClusterConfig
+			profile            *profilehandler.Profile
+			machinePoolService rosacli.MachinePoolService
+			ocmResourceService rosacli.OCMResourceService
 		)
 
 		BeforeEach(func() {
@@ -38,6 +41,8 @@ var _ = Describe("HCP cluster testing",
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
+			machinePoolService = rosaClient.MachinePool
+			ocmResourceService = rosaClient.OCMResource
 
 			By("Skip testing if the cluster is not a HCP cluster")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
@@ -259,5 +264,64 @@ var _ = Describe("HCP cluster testing",
 				Expect(err).ToNot(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
 				Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+			})
+
+		It("rosacli can show the details of HCP cluster well when describe - [id:54869]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				By("Get cluster description")
+				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+
+				By("Check values of description")
+				Expect(clusterDesc.Name).ToNot(BeEmpty())
+				Expect(clusterDesc.ID).ToNot(BeEmpty())
+				Expect(clusterDesc.ControlPlane).To(Equal("ROSA Service Hosted"))
+				Expect(clusterDesc.OpenshiftVersion).ToNot(BeEmpty())
+				Expect(clusterDesc.DNS).ToNot(BeEmpty())
+				Expect(clusterDesc.APIURL).ToNot(BeEmpty())
+				Expect(clusterDesc.Region).ToNot(BeEmpty())
+				Expect(clusterDesc.Availability[0]).To(HaveKeyWithValue("Control Plane", MatchRegexp("MultiAZ")))
+
+				By("List nodepools")
+				npList, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if len(npList.NodePools) == 1 {
+					Expect(clusterDesc.Availability[1]).To(HaveKeyWithValue("Data Plane", MatchRegexp("SingleAZ")))
+				} else {
+					Expect(clusterDesc.Availability[1]).To(HaveKeyWithValue("Data Plane", MatchRegexp("MultiAZ")))
+				}
+
+				Expect(clusterDesc.Nodes).To(HaveEach(HaveKey(MatchRegexp("Compute.*"))))
+				for _, v := range clusterDesc.Nodes {
+					for _, value := range v {
+						switch value.(type) {
+						case int:
+							Expect(value).To(BeNumerically(">=", 0))
+						case string:
+							Expect(value).To(MatchRegexp("^[0-9]+-[0-9]+$"))
+						default:
+							Expect(value).To(BeNil())
+						}
+					}
+				}
+				Expect(clusterDesc.Network).To(ContainElements(HaveKey("Type"), HaveKey("Service CIDR"), HaveKey("Machine CIDR"),
+					HaveKey("Pod CIDR"), HaveKey("Host Prefix"), HaveKeyWithValue("Subnets", MatchRegexp("^subnet-.{17}"))))
+				Expect(clusterDesc.STSRoleArn).To(MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+-HCP-ROSA-Installer-Role"))
+				Expect(clusterDesc.SupportRoleARN).To(MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+-HCP-ROSA-Support-Role"))
+				Expect(clusterDesc.InstanceIAMRoles[0]).To(HaveKeyWithValue("Worker",
+					MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+-HCP-ROSA-Worker-Role")))
+
+				By("List Operator roles")
+				roles, err := ocmResourceService.ListOperatorRoles("--prefix", clusterConfig.Aws.Sts.OperatorRolesPrefix)
+				Expect(err).ToNot(HaveOccurred())
+				operRolesList, err := ocmResourceService.ReflectOperatorRoleList(roles)
+				Expect(err).ToNot(HaveOccurred())
+				for _, role := range operRolesList.OperatorRoleList {
+					Expect(clusterDesc.OperatorIAMRoles).To(ContainElement(ContainSubstring(role.RoleName)))
+				}
+
+				Expect(clusterDesc.OperatorIAMRoles).To(HaveEach(MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+")))
+				Expect(clusterDesc.State).To(Equal(constants.Ready))
 			})
 	})
