@@ -1,11 +1,13 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"io"
 	nets "net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
@@ -372,6 +374,92 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 				versionOutput, err := clusterService.GetClusterVersion(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(versionOutput.ChannelGroup).To(Equal(profile.ChannelGroup))
+			})
+	})
+
+var _ = Describe("Delete BYO OIDC cluster testing",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient         *rosacli.Client
+			ocmResourceService rosacli.OCMResourceService
+			clusterService     rosacli.ClusterService
+			clusterID          string
+			err                error
+			awsClient          *aws_client.AWSClient
+			oidcEndpointUrlC   string
+			clusterConfig      *config.ClusterConfig
+			oidcConfigC        string
+			oidcProviderArn    string
+			profile            *profilehandler.Profile
+		)
+
+		BeforeEach(func() {
+			By("Init the client and get profile and config")
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+
+			profile = profilehandler.LoadProfileYamlFileByENV()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("to verifiy the byo oidc cluster is deleted successfully - [id:75210]",
+			labels.Critical, labels.Runtime.DestroyPost,
+			func() {
+
+				By("Check if it is using oidc config")
+				if profile.ClusterConfig.OIDCConfig == "" {
+					Skip("Skip this case as it is only for byo oidc cluster")
+				}
+				By("Get aws account id")
+				rosaClient.Runner.JsonFormat()
+				whoamiOutput, err := ocmResourceService.Whoami()
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+				AWSAccountID := whoamiData.AWSAccountID
+
+				By("Get the oidc config and cluster id from cluster config file")
+				clusterID = config.GetClusterID()
+				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
+
+				By("Get oidc endpoint URL from cluster detail json file")
+				clusterDetail, err := profilehandler.ParserClusterDetail()
+				Expect(err).To(BeNil())
+				oidcEndpointUrlC = clusterDetail.OIDCEndpointURL
+				oidcEndpointUrlC, err = common.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrlC)
+				Expect(err).To(BeNil())
+
+				By("Check the cluster is deleted")
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				Expect(clusterList.IsExist(clusterID)).To(BeFalse())
+
+				By("Check the oidc config is deleted")
+				out, err := ocmResourceService.GetOIDCConfigFromList(oidcConfigC)
+				Expect(err).To(BeNil())
+				Expect(out).To(Equal(rosacli.OIDCConfig{}))
+
+				By("Check oidc provider is deleted")
+				oidcProviderArn = fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", AWSAccountID, oidcEndpointUrlC)
+				_, err = awsClient.IamClient.GetOpenIDConnectProvider(
+					context.TODO(),
+					&iam.GetOpenIDConnectProviderInput{
+						OpenIDConnectProviderArn: &oidcProviderArn,
+					},
+				)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(ContainSubstring("NoSuchEntity"))
+
 			})
 	})
 var _ = Describe("Create BYO OIDC cluster testing",
