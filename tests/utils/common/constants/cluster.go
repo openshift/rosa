@@ -51,3 +51,8 @@ var (
 	VersionRawPattern        = regexp.MustCompile(`[0-9]+\.[0-9]+\.[0-9]+-?[0-9a-z\.-]*`)
 	VersionFlexyPattern      = regexp.MustCompile(`[zy]{1}-[1-3]{1}`)
 )
+
+// instance type
+const (
+	DefaultInstanceType = "m5.xlarge"
+)
