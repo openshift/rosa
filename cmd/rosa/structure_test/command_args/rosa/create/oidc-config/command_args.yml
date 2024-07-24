@@ -1,0 +1,9 @@
+- name: interactive
+- name: managed
+- name: mode
+- name: output
+- name: prefix
+- name: raw-files
+- name: region
+- name: role-arn
+- name: "yes"

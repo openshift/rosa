@@ -1,16 +1,23 @@
 package e2e
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
@@ -44,7 +51,60 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			err := rosaClient.CleanResources(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 		})
+		It("to delete in-used operator-roles and byo oidc-config  [id:74761]",
+			labels.Critical, labels.Runtime.Day2, func() {
+				By("Check if the cluster is using BYO oidc config")
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				if profile.ClusterConfig.OIDCConfig == "" {
+					SkipTestOnFeature("This testing only work for byo oidc cluster")
+				}
 
+				By("Describe cluster")
+				clusterService := rosaClient.Cluster
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				oidcConfigID := jsonData.DigString("aws", "sts", "oidc_config", "id")
+				operatorRolePrefix := jsonData.DigString("aws", "sts", "operator_role_prefix")
+
+				By("Delete in-used operator roles by prefix in auto mode")
+				output, err := ocmResourceService.DeleteOperatorRoles(
+					"--prefix", operatorRolePrefix,
+					"-y",
+					"--mode", "auto",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("There are clusters using Operator Roles Prefix"))
+
+				By("Delete in-used operator roles by prefix in manual mode")
+				output, err = ocmResourceService.DeleteOperatorRoles(
+					"--prefix", operatorRolePrefix,
+					"-y",
+					"--mode", "manual",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("There are clusters using Operator Roles Prefix"))
+
+				By("Delete in-used oidc config in auto mode")
+				output, err = ocmResourceService.DeleteOIDCConfig(
+					"--oidc-config-id", oidcConfigID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("There are clusters using OIDC config"))
+
+				By("Delete in-used oidc config in manual mode")
+				output, err = ocmResourceService.DeleteOIDCConfig(
+					"--oidc-config-id", oidcConfigID,
+					"--mode", "manual",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("There are clusters using OIDC config"))
+			})
 		It("can validate when user create operator-roles to cluster - [id:43051]",
 			labels.High, labels.Runtime.Day2,
 			func() {
@@ -152,6 +212,14 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 						To(ContainSubstring(
 							"OIDC provider already exists"))
+
+					By("Try to create operator-roles with --oic-config-id and cluster id at the same time")
+					output, err = ocmResourceService.CreateOperatorRoles("-c", clusterID, "--oidc-config-id", oidcConfigID)
+					Expect(err).To(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(ContainSubstring(
+							"ERR: A cluster key for STS cluster and an OIDC configuration ID" +
+								" cannot be specified alongside each other."))
 				}
 			})
 	})
@@ -370,6 +438,474 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			Expect(textData).
 				Should(ContainSubstring(
 					"Either a cluster key for STS cluster or an operator roles prefix must be specified"))
+		})
+
+})
+
+var _ = Describe("create operator-roles forcely testing",
+	func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient         *rosacli.Client
+			ocmResourceService rosacli.OCMResourceService
+			awsClient          *aws_client.AWSClient
+			err                error
+			clusterService     rosacli.ClusterService
+			clusterID          string
+		)
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+			clusterService = rosaClient.Cluster
+
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+
+			By("Get cluster id")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+		})
+
+		It("to create operator-roles which were created with cluster forcely - [id:74661]",
+			labels.Critical, labels.Runtime.Destructive, func() {
+				By("Check cluster type")
+				isSTS, err := clusterService.IsSTSCluster(clusterID)
+				Expect(err).To(BeNil())
+				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+
+				if !isSTS || isHostedCP {
+					Skip("Skip this case as this case is only for classic STS cluster")
+				}
+				operatorRoleNamePermissionMap := map[string]string{
+					"openshift-image-registry-installer": "GetObject",
+					"openshift-ingress-operator-cloud":   "ListHostedZones",
+					"openshift-cluster-csi-drivers-ebs":  "CreateTags",
+					"openshift-cloud-network-config":     "DescribeInstanceTypes",
+					"openshift-machine-api-aws-cloud":    "DescribeImages",
+					"openshift-cloud-credential":         "GetUserPolicy",
+				}
+				By("Get operator-roles arn and name")
+				rolePolicyMap := make(map[string]string)
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				operatorRolesArns := CD.OperatorIAMRoles
+				for _, policyArn := range operatorRolesArns {
+					_, operatorRoleName, err := common.ParseRoleARN(policyArn)
+					Expect(err).To(BeNil())
+					attachedPolicy, err := awsClient.ListAttachedRolePolicies(operatorRoleName)
+					Expect(err).To(BeNil())
+					rolePolicyMap[operatorRoleName] = *attachedPolicy[0].PolicyArn
+				}
+
+				By("Update opertor-roles policies permission")
+				updatedPolicyDocument := `{
+					"Version": "2012-10-17",
+					"Statement": [
+						{
+							"Action": [
+								"autoscaling:DescribeAutoScalingGroups"
+							],
+							"Effect": "Allow",
+							"Resource": "*"
+						}
+					]
+				}`
+				for _, policyArn := range rolePolicyMap {
+					_, err = awsClient.IamClient.CreatePolicyVersion(context.Background(), &iam.CreatePolicyVersionInput{
+						PolicyArn:      aws.String(policyArn),
+						PolicyDocument: aws.String(updatedPolicyDocument),
+						SetAsDefault:   true,
+					})
+					Expect(err).To(BeNil())
+				}
+
+				By("Detach and Delete one operator-role policy,openshift-cluster-csi-drivers-ebs")
+				var deletingPolicyRoleName string
+				for roleName := range rolePolicyMap {
+					if strings.Contains(roleName, "openshift-cluster-csi-drivers-ebs") {
+						deletingPolicyRoleName = roleName
+						break
+					}
+				}
+				err = awsClient.DetachRolePolicies(deletingPolicyRoleName)
+				Expect(err).To(BeNil())
+				err = awsClient.DeleteIAMPolicy(rolePolicyMap[deletingPolicyRoleName])
+				Expect(err).To(BeNil())
+
+				By("Create operator-role forcely")
+				output, err = ocmResourceService.CreateOperatorRoles(
+					"-c", clusterID,
+					"--mode", "auto",
+					"--force-policy-creation",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Created role"))
+
+				By("Check the operator role policies are regenerated")
+
+				for roleName, policy := range rolePolicyMap {
+					policy, err := awsClient.GetIAMPolicy(policy)
+					Expect(err).To(BeNil())
+					policyVersion, err := awsClient.IamClient.GetPolicyVersion(context.TODO(), &iam.GetPolicyVersionInput{
+						PolicyArn: aws.String(*policy.Arn),
+						VersionId: policy.DefaultVersionId,
+					})
+					Expect(err).To(BeNil())
+					for rolSubName, permission := range operatorRoleNamePermissionMap {
+						if strings.Contains(roleName, rolSubName) {
+							Expect(*policyVersion.PolicyVersion.Document).To(ContainSubstring(permission))
+						}
+					}
+				}
+			})
+	})
+var _ = Describe("create IAM roles forcely testing",
+	func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient          *rosacli.Client
+			ocmResourceService  rosacli.OCMResourceService
+			awsClient           *aws_client.AWSClient
+			accountRolePrefix   string
+			operatorRolePrefix  string
+			managedOIDCConfigID string
+			installerRoleArn    string
+		)
+		BeforeEach(func() {
+			var err error
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+
+			By("Create oidconfig for testing")
+			var output bytes.Buffer
+			output, err = ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Created OIDC provider with ARN"))
+			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+
+			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+			Expect(err).To(BeNil())
+		})
+		AfterEach(func() {
+			By("Delete the testing account-roles")
+			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", accountRolePrefix,
+				"-y",
+			)
+			Expect(err).To(BeNil())
+
+			By("Delete testing operator-roles")
+			output, err := ocmResourceService.DeleteOperatorRoles(
+				"--prefix", operatorRolePrefix,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Successfully deleted the operator roles"))
+
+			By("Detete testing oidc condig")
+			if managedOIDCConfigID != "" {
+				output, err := ocmResourceService.DeleteOIDCConfig(
+					"--oidc-config-id", managedOIDCConfigID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Successfully deleted the OIDC provider"))
+			}
+		})
+		It("to create account-roles and prior-to-cluster operator-roles forcely - [id:59551]",
+			labels.Critical, labels.Runtime.OCMResources, func() {
+				accountRolePrefix = "ar59551"
+				operatorRolePrefix = "op59551"
+				accountRoleNamePermissionMap := map[string]string{
+					fmt.Sprintf("%s-Installer-Role", accountRolePrefix):    "AssumeRole",
+					fmt.Sprintf("%s-Support-Role", accountRolePrefix):      "DescribeInstances",
+					fmt.Sprintf("%s-Worker-Role", accountRolePrefix):       "DescribeRegions",
+					fmt.Sprintf("%s-ControlPlane-Role", accountRolePrefix): "DescribeAvailabilityZones",
+				}
+
+				operatorRoleNamePermissionMap := map[string]string{
+					fmt.Sprintf("%s-openshift-image-registry-installer-cloud-credentials", operatorRolePrefix):     "GetObject",
+					fmt.Sprintf("%s-openshift-ingress-operator-cloud-credentials", operatorRolePrefix):             "ListHostedZones",
+					fmt.Sprintf("%s-openshift-cluster-csi-drivers-ebs-cloud-credentials", operatorRolePrefix):      "CreateTags",
+					fmt.Sprintf("%s-openshift-cloud-network-config-controller-cloud-credenti", operatorRolePrefix): "DescribeSubnets",
+					fmt.Sprintf("%s-openshift-machine-api-aws-cloud-credentials", operatorRolePrefix):              "DescribeImages",
+					fmt.Sprintf("%s-openshift-cloud-credential-operator-cloud-credential-ope", operatorRolePrefix): "GetUserPolicy",
+				}
+
+				accountRolePolicyMap := map[string]string{}
+				operatorRolePolicyMap := map[string]string{}
+
+				By("Create account-role")
+				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Created role"))
+
+				By("Create prior-to-cluster operator roles for testing")
+				installerRole, err := awsClient.GetRole(fmt.Sprintf("%s-Installer-Role", accountRolePrefix))
+				Expect(err).To(BeNil())
+				installerRoleArn = *installerRole.Arn
+
+				output, err = ocmResourceService.CreateOperatorRoles(
+					"--oidc-config-id", managedOIDCConfigID,
+					"--installer-role-arn", installerRoleArn,
+					"--mode", "auto",
+					"--prefix", operatorRolePrefix,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Created role"))
+
+				By("Get test policies")
+				for k := range accountRoleNamePermissionMap {
+					attachedPolicy, err := awsClient.ListAttachedRolePolicies(k)
+					Expect(err).To(BeNil())
+					accountRolePolicyMap[k] = *attachedPolicy[0].PolicyArn
+				}
+
+				for k := range operatorRoleNamePermissionMap {
+					attachedPolicy, err := awsClient.ListAttachedRolePolicies(k)
+					Expect(err).To(BeNil())
+					operatorRolePolicyMap[k] = *attachedPolicy[0].PolicyArn
+				}
+
+				By("Update account-role policy permission")
+				updatedPolicyDocument := `{
+					"Version": "2012-10-17",
+					"Statement": [
+						{
+							"Action": [
+								"autoscaling:DescribeAutoScalingGroups"
+							],
+							"Effect": "Allow",
+							"Resource": "*"
+						}
+					]
+				}`
+				for _, policyArn := range accountRolePolicyMap {
+					_, err = awsClient.IamClient.CreatePolicyVersion(context.Background(), &iam.CreatePolicyVersionInput{
+						PolicyArn:      aws.String(policyArn),
+						PolicyDocument: aws.String(updatedPolicyDocument),
+						SetAsDefault:   true,
+					})
+					Expect(err).To(BeNil())
+				}
+
+				By("Detach and Delete Support-Role policy")
+				supportRoleName := fmt.Sprintf("%s-Support-Role", accountRolePrefix)
+				err = awsClient.DetachRolePolicies(supportRoleName)
+				Expect(err).To(BeNil())
+				err = awsClient.DeleteIAMPolicy(accountRolePolicyMap[supportRoleName])
+				Expect(err).To(BeNil())
+
+				By("Create account-role forcely")
+				output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y",
+					"--force-policy-creation",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Created role"))
+
+				By("Check the account role policies are regenerated")
+				for roleName := range accountRoleNamePermissionMap {
+					policy, err := awsClient.GetIAMPolicy(accountRolePolicyMap[roleName])
+					Expect(err).To(BeNil())
+					policyVersion, err := awsClient.IamClient.GetPolicyVersion(context.TODO(), &iam.GetPolicyVersionInput{
+						PolicyArn: aws.String(*policy.Arn),
+						VersionId: policy.DefaultVersionId,
+					})
+					Expect(err).To(BeNil())
+					fmt.Println(*policyVersion.PolicyVersion.Document)
+					Expect(*policyVersion.PolicyVersion.Document).To(ContainSubstring(accountRoleNamePermissionMap[roleName]))
+				}
+				By("Update operator-role policy permission")
+				for _, policyArn := range operatorRolePolicyMap {
+					_, err = awsClient.IamClient.CreatePolicyVersion(context.Background(), &iam.CreatePolicyVersionInput{
+						PolicyArn:      aws.String(policyArn),
+						PolicyDocument: aws.String(updatedPolicyDocument),
+						SetAsDefault:   true,
+					})
+					Expect(err).To(BeNil())
+				}
+
+				By("Detach and Delete one operator-role policy")
+				policyToDel := fmt.Sprintf("%s-openshift-cloud-network-config-controller-cloud-credenti", operatorRolePrefix)
+				err = awsClient.DetachRolePolicies(policyToDel)
+				Expect(err).To(BeNil())
+				err = awsClient.DeleteIAMPolicy(operatorRolePolicyMap[policyToDel])
+				Expect(err).To(BeNil())
+
+				By("Create operator-role forcely")
+				output, err = ocmResourceService.CreateOperatorRoles(
+					"--oidc-config-id", managedOIDCConfigID,
+					"--installer-role-arn", installerRoleArn,
+					"--mode", "auto",
+					"--prefix", operatorRolePrefix,
+					"--force-policy-creation",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Created role"))
+
+				By("Check the operator role policies are regenerated")
+				for roleName := range operatorRoleNamePermissionMap {
+					policy, err := awsClient.GetIAMPolicy(operatorRolePolicyMap[roleName])
+					Expect(err).To(BeNil())
+					policyVersion, err := awsClient.IamClient.GetPolicyVersion(context.TODO(), &iam.GetPolicyVersionInput{
+						PolicyArn: aws.String(*policy.Arn),
+						VersionId: policy.DefaultVersionId,
+					})
+					Expect(err).To(BeNil())
+					Expect(*policyVersion.PolicyVersion.Document).To(ContainSubstring(operatorRoleNamePermissionMap[roleName]))
+				}
+			})
+	})
+var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorRoles, func() {
+	defer GinkgoRecover()
+	var (
+		rosaClient          *rosacli.Client
+		ocmResourceService  rosacli.OCMResourceService
+		awsClient           *aws_client.AWSClient
+		err                 error
+		accountRolePrefix   string
+		operatorRolePrefixC string
+		operatorRolePrefixH string
+		managedOIDCConfigID string
+
+		installerRoleArnC string
+		installerRoleArnH string
+	)
+	BeforeEach(func() {
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		ocmResourceService = rosaClient.OCMResource
+
+		awsClient, err = aws_client.CreateAWSClient("", "")
+		Expect(err).To(BeNil())
+
+	})
+	AfterEach(func() {
+
+		By("Delete testing operator-roles")
+		_, err = ocmResourceService.DeleteOperatorRoles(
+			"--prefix", operatorRolePrefixC,
+			"--mode", "auto",
+			"-y",
+		)
+		Expect(err).To(BeNil())
+
+		_, err = ocmResourceService.DeleteOperatorRoles(
+			"--prefix", operatorRolePrefixH,
+			"--mode", "auto",
+			"-y",
+		)
+		Expect(err).To(BeNil())
+
+		By("Detete testing oidc condig")
+		output, err := ocmResourceService.DeleteOIDCConfig(
+			"--oidc-config-id", managedOIDCConfigID,
+			"--mode", "manual",
+			"-y",
+		)
+		Expect(err).To(BeNil())
+		commands := common.ExtractCommandsToDeleteAWSResoueces(output)
+		for k, v := range commands {
+			fmt.Printf("the %d command is %s\n", k, v)
+		}
+		By("Delete the testing account-roles")
+		_, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+			"--prefix", accountRolePrefix,
+			"-y",
+		)
+		Expect(err).To(BeNil())
+	})
+	It("to delete operator-roles and byo oidc-config in manual mode - [id:60956]",
+		labels.Critical, labels.Runtime.OCMResources, func() {
+			By("Create account-roles")
+			accountRolePrefix = "arp60956"
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accountRolePrefix,
+				"-y",
+			)
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Created role"))
+			installerRoleC, err := awsClient.GetRole(fmt.Sprintf("%s-Installer-Role", accountRolePrefix))
+			Expect(err).To(BeNil())
+			installerRoleArnC = *installerRoleC.Arn
+
+			installerRoleH, err := awsClient.GetRole(fmt.Sprintf("%s-HCP-ROSA-Installer-Role", accountRolePrefix))
+			Expect(err).To(BeNil())
+			installerRoleArnH = *installerRoleH.Arn
+
+			By("Create oidc-config")
+			output, err = ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Created OIDC provider with ARN"))
+			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+
+			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+			Expect(err).To(BeNil())
+
+			By("Create hosted-cp operator-roles")
+			operatorRolePrefixH = "opp60956h"
+			output, err = ocmResourceService.CreateOperatorRoles(
+				"--oidc-config-id", managedOIDCConfigID,
+				"--installer-role-arn", installerRoleArnH,
+				"--mode", "auto",
+				"--prefix", operatorRolePrefixH,
+				"--hosted-cp",
+				"-y",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring("Created role"))
+
+			By("Delete the hosted-cp operator-roles by prefix in manual mode")
+			output, err = ocmResourceService.DeleteOperatorRoles("--prefix", operatorRolePrefixH, "-y", "--mode", "manual")
+			Expect(err).NotTo(HaveOccurred())
+			commands := common.ExtractCommandsToDeleteAWSResoueces(output)
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+
+			By("Create classic operator-roles")
+			operatorRolePrefixC = "opp60956c"
+			output, err = ocmResourceService.CreateOperatorRoles(
+				"--oidc-config-id", managedOIDCConfigID,
+				"--installer-role-arn", installerRoleArnC,
+				"--mode", "auto",
+				"--prefix", operatorRolePrefixC,
+				"-y",
+			)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring("Created role"))
+
+			By("Delete the classic operator-roles by prefix in manual mode")
+			output, err = ocmResourceService.DeleteOperatorRoles("--prefix", operatorRolePrefixC, "-y", "--mode", "manual")
+			Expect(err).NotTo(HaveOccurred())
+			commands = common.ExtractCommandsToDeleteAWSResoueces(output)
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
 		})
 
 })

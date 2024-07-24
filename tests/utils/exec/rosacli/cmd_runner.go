@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -22,6 +23,7 @@ type runner struct {
 	cmdArgs   []string
 	envs      []string
 	runnerCfg *runnerConfig
+	dir       string
 }
 
 type runnerConfig struct {
@@ -31,6 +33,7 @@ type runnerConfig struct {
 }
 
 func NewRunner() *runner {
+	pwd, _ := os.Getwd()
 	runner := &runner{
 		runnerCfg: &runnerConfig{
 			format: "text",
@@ -38,6 +41,7 @@ func NewRunner() *runner {
 			color:  "auto",
 		},
 		envs: os.Environ(),
+		dir:  pwd,
 	}
 	return runner
 }
@@ -71,6 +75,11 @@ func (r *runner) Color(color string) *runner {
 	return r
 }
 
+func (r *runner) Dir(dir string) *runner {
+	r.dir = dir
+	return r
+}
+
 func (r *runner) JsonFormat() *runner {
 	return r.format(jsonRunnerFormat)
 }
@@ -99,6 +108,10 @@ func (r *runner) AddCmdFlags(cmdFlags ...string) *runner {
 	cmdArgs := append(r.cmdArgs, cmdFlags...)
 	r.cmdArgs = cmdArgs
 	return r
+}
+
+func (r *runner) UnsetArgs() {
+	r.cmdArgs = []string{}
 }
 
 func (r *runner) UnsetBoolFlag(flag string) *runner {
@@ -193,10 +206,19 @@ func (r *runner) Run() (bytes.Buffer, error) {
 		cmd.Env = append(cmd.Env, r.envs...)
 		cmd.Stdout = &output
 		cmd.Stderr = cmd.Stdout
+		cmd.Dir = r.dir
 
 		err = cmd.Run()
-
-		log.Logger.Infof("Get Combining Stdout and Stderr is :\n%s", output.String())
+		if err != nil {
+			err = fmt.Errorf("%s: %s", err.Error(), output.String())
+		}
+		if common.SliceContains(cmdElements, "access_token") ||
+			common.SliceContains(cmdElements, "token") ||
+			common.SliceContains(cmdElements, "refresh_token") {
+			log.Logger.Warnf("There is sensitive output possibility with token keyword in command line. Hide the output.")
+		} else {
+			log.Logger.Infof("Get Combining Stdout and Stderr is :\n%s", output.String())
+		}
 
 		if strings.Contains(output.String(), "Not able to get authentication token") {
 			retry = retry + 1
@@ -216,8 +238,12 @@ func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
 	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Stdout = &output
 	cmd.Stderr = cmd.Stdout
+	cmd.Dir = r.dir
 
 	err = cmd.Run()
+	if err != nil {
+		err = fmt.Errorf("%s: %s", err.Error(), output.String())
+	}
 	log.Logger.Debugf("Get Combining Stdout and Stderr is : %s", output.String())
 
 	return output, err
@@ -229,17 +255,20 @@ func (r *runner) RunPipeline(commands ...[]string) (bytes.Buffer, error) {
 	var err error
 
 	cmds := make([]*exec.Cmd, len(commands))
+
 	for i, command := range commands {
 		cmds[i] = exec.Command(command[0], command[1:]...) // #nosec G204
 		if i > 0 {
 			cmds[i].Stdin, _ = cmds[i-1].StdoutPipe()
 		}
 		cmds[i].Stderr = &output
+
 	}
 
 	cmds[len(cmds)-1].Stdout = &output
 
 	for _, cmd := range cmds {
+		log.Logger.Infof("Running commands: %s", cmd.String())
 		if err = cmd.Start(); err != nil {
 			return output, fmt.Errorf("starting %v: %v", cmd.Args, err)
 		}

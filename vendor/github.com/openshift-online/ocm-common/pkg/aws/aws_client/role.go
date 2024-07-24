@@ -6,9 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openshift-online/ocm-common/pkg/log"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+)
+
+var (
+	DEFAULT_RETRIES        = 3
+	DEFAULT_RETRY_DURATION = 60 * time.Second
 )
 
 func (client *AWSClient) CreateRole(roleName string,
@@ -16,7 +23,7 @@ func (client *AWSClient) CreateRole(roleName string,
 	permissionBoundry string,
 	tags map[string]string,
 	path string,
-) (types.Role, error) {
+) (role types.Role, err error) {
 	var roleTags []types.Tag
 	for tagKey, tagValue := range tags {
 		roleTags = append(roleTags, types.Tag{
@@ -39,13 +46,27 @@ func (client *AWSClient) CreateRole(roleName string,
 	if len(tags) != 0 {
 		input.Tags = roleTags
 	}
+	var resp *iam.CreateRoleOutput
+	resp, err = client.IamClient.CreateRole(context.TODO(), input)
+	if err == nil && resp != nil {
+		role = *resp.Role
+		err = client.WaitForResourceExisting("role-"+*resp.Role.RoleName, 10) // add a prefix to meet the resourceExisting split rule
 
-	resp, err := client.IamClient.CreateRole(context.TODO(), input)
-	if err != nil {
-		return *resp.Role, err
 	}
-	err = client.WaitForResourceExisting("role-"+*resp.Role.RoleName, 10) // add a prefix to meet the resourceExisting split rule
-	return *resp.Role, err
+	return
+}
+
+func (client *AWSClient) CreateRoleAndAttachPolicy(roleName string,
+	assumeRolePolicyDocument string,
+	permissionBoundry string,
+	tags map[string]string,
+	path string,
+	policyArn string) (types.Role, error) {
+	role, err := client.CreateRole(roleName, assumeRolePolicyDocument, permissionBoundry, tags, path)
+	if err == nil {
+		err = client.AttachPolicy(*role.RoleName, policyArn, DEFAULT_RETRIES, DEFAULT_RETRY_DURATION)
+	}
+	return role, err
 }
 
 func (client *AWSClient) GetRole(roleName string) (*types.Role, error) {
@@ -162,7 +183,7 @@ func (client *AWSClient) DeleteRoleInstanceProfiles(roleName string) error {
 	return nil
 }
 
-func (client *AWSClient) CreateIAMRole(roleName string, ProdENVTrustedRole string, StageENVTrustedRole string, StageIssuerTrustedRole string,
+func (client *AWSClient) CreateIAMRole(roleName string, ProdENVTrustedRole string, StageENVTrustedRole string, StageIssuerTrustedRole string, policyArn string,
 	externalID ...string) (types.Role, error) {
 	statement := map[string]interface{}{
 		"Effect": "Allow",
@@ -191,10 +212,10 @@ func (client *AWSClient) CreateIAMRole(roleName string, ProdENVTrustedRole strin
 		return types.Role{}, err
 	}
 
-	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
+	return client.CreateRoleAndAttachPolicy(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/", policyArn)
 }
 
-func (client *AWSClient) CreateRegularRole(roleName string) (types.Role, error) {
+func (client *AWSClient) CreateRegularRole(roleName string, policyArn string) (types.Role, error) {
 
 	statement := map[string]interface{}{
 		"Effect": "Allow",
@@ -209,10 +230,10 @@ func (client *AWSClient) CreateRegularRole(roleName string) (types.Role, error) 
 		fmt.Println("Failed to convert Role Policy Document into JSON: ", err)
 		return types.Role{}, err
 	}
-	return client.CreateRole(roleName, assumeRolePolicyDocument, "", make(map[string]string), "/")
+	return client.CreateRoleAndAttachPolicy(roleName, assumeRolePolicyDocument, "", make(map[string]string), "/", policyArn)
 }
 
-func (client *AWSClient) CreateRoleForAuditLogForward(roleName, awsAccountID string, oidcEndpointURL string) (types.Role, error) {
+func (client *AWSClient) CreateRoleForAuditLogForward(roleName, awsAccountID string, oidcEndpointURL string, policyArn string) (types.Role, error) {
 	statement := map[string]interface{}{
 		"Effect": "Allow",
 		"Principal": map[string]interface{}{
@@ -232,7 +253,7 @@ func (client *AWSClient) CreateRoleForAuditLogForward(roleName, awsAccountID str
 		return types.Role{}, err
 	}
 
-	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
+	return client.CreateRoleAndAttachPolicy(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/", policyArn)
 }
 
 func (client *AWSClient) CreatePolicy(policyName string, statements ...map[string]interface{}) (string, error) {
@@ -293,6 +314,66 @@ func completeRolePolicyDocument(statement map[string]interface{}) (string, error
 	return string(assumeRolePolicyDocument), err
 }
 
+func (client *AWSClient) AttachPolicy(roleName string, policyArn string, retries int, retryIntervalInSeconds time.Duration) error {
+	policyAttach := iam.AttachRolePolicyInput{
+		PolicyArn: &policyArn,
+		RoleName:  &roleName,
+	}
+	_, err := client.IamClient.AttachRolePolicy(context.TODO(), &policyAttach)
+	if err != nil {
+		return err
+	}
+
+	attached, err := client.PolicyAttachedToRole(roleName, policyArn)
+
+	if err != nil {
+		return err
+	}
+	if attached {
+		return nil
+	}
+
+	start := 0
+
+	for start < retries {
+		attached, err := client.PolicyAttachedToRole(roleName, policyArn)
+		if err != nil && start == retries {
+			return err
+		}
+		if attached {
+			return nil
+		}
+		time.Sleep(retryIntervalInSeconds)
+		start++
+	}
+	return fmt.Errorf("failed to attach policy to role but no errors were thrown, please investigate")
+}
+
+func (client *AWSClient) PolicyAttachedToRole(roleName string, policyArn string) (bool, error) {
+	policies, err := client.ListRoleAttachedPolicies(roleName)
+	if err != nil {
+		return false, err
+	}
+	for _, policy := range policies {
+		if *policy.PolicyArn == policyArn {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (client *AWSClient) ListRoleAttachedPolicies(roleName string) ([]types.AttachedPolicy, error) {
+	policies := []types.AttachedPolicy{}
+	policyLister := iam.ListAttachedRolePoliciesInput{
+		RoleName: &roleName,
+	}
+	policyOut, err := client.IamClient.ListAttachedRolePolicies(context.TODO(), &policyLister)
+	if err != nil {
+		return policies, err
+	}
+	policies = policyOut.AttachedPolicies
+	return policies, nil
+}
 func (client *AWSClient) TagRole(roleName string, tags map[string]string) error {
 	var roleTags []types.Tag
 	for tagKey, tagValue := range tags {
@@ -316,4 +397,65 @@ func (client *AWSClient) UntagRole(roleName string, tagKeys []string) error {
 	}
 	_, err := client.IamClient.UntagRole(context.TODO(), input)
 	return err
+}
+
+func (client *AWSClient) CreateRoleForSharedVPC(roleName, installerRoleArn string, ingressOperatorRoleArn string) (types.Role, error) {
+	statement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Principal": map[string]interface{}{
+			"AWS": []string{installerRoleArn, ingressOperatorRoleArn},
+		},
+		"Action": "sts:AssumeRole",
+	}
+
+	assumeRolePolicyDocument, err := completeRolePolicyDocument(statement)
+	if err != nil {
+		log.LogError("Failed to convert Role Policy Document into JSON: %s", err.Error())
+		return types.Role{}, err
+	}
+
+	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
+}
+
+func (client *AWSClient) CreatePolicyForSharedVPC(policyName string) (string, error) {
+	statement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Action": []string{
+			"route53:GetChange",
+			"route53:GetHostedZone",
+			"route53:ChangeResourceRecordSets",
+			"route53:ListHostedZones",
+			"route53:ListHostedZonesByName",
+			"route53:ListResourceRecordSets",
+			"route53:ChangeTagsForResource",
+			"route53:GetAccountLimit",
+			"route53:ListTagsForResource",
+			"route53:UpdateHostedZoneComment",
+			"tag:GetResources",
+			"tag:UntagResources",
+		},
+		"Resource": "*",
+	}
+	return client.CreatePolicy(policyName, statement)
+}
+
+func (client *AWSClient) CreateRoleForAdditionalPrincipals(roleName string, installerRoleArn string) (types.Role, error) {
+	statement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Principal": map[string]interface{}{
+			"AWS": []string{installerRoleArn},
+		},
+		"Action": "sts:AssumeRole",
+	}
+
+	assumeRolePolicyDocument, err := completeRolePolicyDocument(statement)
+	if err != nil {
+		log.LogError("Failed to convert Role Policy Document into JSON: %s", err.Error())
+		return types.Role{}, err
+	}
+
+	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
 }

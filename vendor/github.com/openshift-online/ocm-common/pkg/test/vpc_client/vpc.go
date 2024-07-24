@@ -149,7 +149,10 @@ func (vpc *VPC) DeleteVPCChain(totalClean ...bool) error {
 // Just be careful once you use checkExisting, the vpc may have subnets not existing in your zones. And maybe multi subnets in the zones
 // Try vpc.PreparePairSubnets by zone for further implementation to get a pair of
 // Zones will be customized if you want. Otherwise, it will use the default zone "a"
-func PrepareVPC(vpcName string, region string, vpcCIDR string, checkExisting bool, zones ...string) (*VPC, error) {
+func PrepareVPC(vpcName string, region string, vpcCIDR string, checkExisting bool, awsSharedCredentialFile string, zones ...string) (*VPC, error) {
+	var awsclient *aws_client.AWSClient
+	var err error
+
 	if vpcCIDR == "" {
 		vpcCIDR = CON.DefaultVPCCIDR
 	}
@@ -160,7 +163,12 @@ func PrepareVPC(vpcName string, region string, vpcCIDR string, checkExisting boo
 			vpcName, region, vpcCIDR)
 	}
 	log.LogInfo(logMessage)
-	awsclient, err := aws_client.CreateAWSClient("", region)
+	if awsSharedCredentialFile == "" {
+		awsclient, err = aws_client.CreateAWSClient("", region)
+	} else {
+		awsclient, err = aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	}
+
 	if err != nil {
 		log.LogError("Create AWS Client due to error: %s", err.Error())
 		return nil, err
@@ -217,8 +225,9 @@ func PrepareVPC(vpcName string, region string, vpcCIDR string, checkExisting boo
 
 // GenerateVPCByID will return a VPC with CIDRpool and subnets
 // If you know the vpc ID on AWS, then try to generate it
-func GenerateVPCByID(vpcID string, region string) (*VPC, error) {
-	awsClient, err := aws_client.CreateAWSClient("", region)
+func GenerateVPCByID(vpcID string, region string, awsSharedCredentialFile ...string) (*VPC, error) {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile...)
+
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,16 @@
+- name: cluster
+- name: "yes"
+- name: expiration-time
+- name: expiration
+- name: enable-delete-protection
+- name: private
+- name: disable-workload-monitoring
+- name: http-proxy
+- name: https-proxy
+- name: no-proxy
+- name: additional-trust-bundle-file
+- name: audit-log-arn
+- name: additional-allowed-principals
+- name: interactive
+- name: profile
+- name: region

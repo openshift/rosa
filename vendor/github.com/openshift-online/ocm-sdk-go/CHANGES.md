@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.428
+- Update model version v0.0.379
+  - Add `Ec2MetadataHttpTokens` to `AWSNodePool` resource
+
+## 0.1.427
+- Update model version v0.0.378
+  - Add `MultiArchEnabled` attribute to `Cluster` model
+
 ## 0.1.426
 - Update for Windows support including systemcertpool
 

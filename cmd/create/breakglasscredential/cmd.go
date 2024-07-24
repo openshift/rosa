@@ -73,7 +73,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		return err
 	}
 
-	kubeconfig, err := r.OCMClient.PollKubeconfig(cluster.ID(), credentialResponse.ID())
+	kubeconfig, err := r.OCMClient.PollKubeconfig(
+		cluster.ID(), credentialResponse.ID(), ocm.DefaultKubeConfigPollInterval, ocm.DefaultKubeConfigTimeout)
 	if err != nil {
 		return fmt.Errorf("An error occurred while polling for kubeconfig: %v", err)
 	}

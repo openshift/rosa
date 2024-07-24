@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -317,42 +318,36 @@ var _ = Describe("Edit nodepool",
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63178", 2)
 				tuningConfig1Name := common.GenerateRandomName("tuned01", 2)
+				tc1Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig1Name, 25, 10)
 				tuningConfig2Name := common.GenerateRandomName("tuned02", 2)
+				tc2Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig2Name, 25, 10)
 				tuningConfig3Name := common.GenerateRandomName("tuned03", 2)
+				tc3Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig2Name, 25, 10)
 				allTuningConfigNames := []string{tuningConfig1Name, tuningConfig2Name, tuningConfig3Name}
 
-				tuningConfigPayload := `
-		{
-			"profile": [
-			  {
-				"data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"25\"\n",
-				"name": "%s-profile"
-			  }
-			],
-			"recommend": [
-			  {
-				"priority": 10,
-				"profile": "%s-profile"
-			  }
-			]
-		 }
-		`
-
 				By("Prepare tuning configs")
-				_, err := tuningConfigService.CreateTuningConfig(
+				tc1JSON, err := json.Marshal(tc1Spec)
+				Expect(err).ToNot(HaveOccurred())
+				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
 					tuningConfig1Name,
-					fmt.Sprintf(tuningConfigPayload, tuningConfig1Name, tuningConfig1Name))
+					string(tc1JSON))
+				Expect(err).ToNot(HaveOccurred())
+
+				tc2JSON, err := json.Marshal(tc2Spec)
 				Expect(err).ToNot(HaveOccurred())
 				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
 					tuningConfig2Name,
-					fmt.Sprintf(tuningConfigPayload, tuningConfig2Name, tuningConfig2Name))
+					string(tc2JSON))
+				Expect(err).ToNot(HaveOccurred())
+
+				tc3JSON, err := json.Marshal(tc3Spec)
 				Expect(err).ToNot(HaveOccurred())
 				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
 					tuningConfig3Name,
-					fmt.Sprintf(tuningConfigPayload, tuningConfig3Name, tuningConfig3Name))
+					string(tc3JSON))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create nodepool with tuning configs")
@@ -393,31 +388,17 @@ var _ = Describe("Edit nodepool",
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := common.GenerateRandomName("np-63179", 2)
-				tuningConfigName_1 := common.GenerateRandomName("tuned01", 2)
+				tuningConfigName := common.GenerateRandomName("tuned01", 2)
+				tcSpec := rosacli.NewTuningConfigSpecRootStub(tuningConfigName, 25, 10)
 				nonExistingTuningConfigName := common.GenerateRandomName("fake_tuning_config", 2)
 
-				tuningConfigPayload := `
-		{
-			"profile": [
-			  {
-				"data": "[main]\nsummary=Custom OpenShift profile\ninclude=openshift-node\n\n[sysctl]\nvm.dirty_ratio=\"25\"\n",
-				"name": "%s-profile"
-			  }
-			],
-			"recommend": [
-			  {
-				"priority": 10,
-				"profile": "%s-profile"
-			  }
-			]
-		 }
-		`
-
 				By("Prepare tuning configs")
-				_, err := tuningConfigService.CreateTuningConfig(
+				tcJSON, err := json.Marshal(tcSpec)
+				Expect(err).ToNot(HaveOccurred())
+				_, err = tuningConfigService.CreateTuningConfig(
 					clusterID,
-					tuningConfigName_1,
-					fmt.Sprintf(tuningConfigPayload, tuningConfigName_1, tuningConfigName_1))
+					tuningConfigName,
+					string(tcJSON))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create nodepool with the non-existing tuning configs")
@@ -442,7 +423,7 @@ var _ = Describe("Edit nodepool",
 					clusterID,
 					nodePoolName,
 					"--replicas", "3",
-					"--tuning-configs", fmt.Sprintf("%s,%s", tuningConfigName_1, tuningConfigName_1),
+					"--tuning-configs", fmt.Sprintf("%s,%s", tuningConfigName, tuningConfigName),
 				)
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
@@ -451,7 +432,7 @@ var _ = Describe("Edit nodepool",
 						fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': "+
 							"Tuning config with name '%s' is duplicated",
 							clusterID,
-							tuningConfigName_1)))
+							tuningConfigName)))
 
 				By("Create a nodepool")
 				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
@@ -805,6 +786,48 @@ var _ = Describe("Edit nodepool",
 
 				analyzeUpgrade(nodePoolManualName, "manual")
 				analyzeUpgrade(nodePoolAutoName, "automatic")
+			})
+
+		It("can upgrade machinepool of hosted cluster - [id:67412]", labels.Critical, labels.Runtime.Upgrade,
+			func() {
+
+				By("Find a version has available upgrade versions")
+				clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterVersion := clusterVersionInfo.RawID
+				clusterChannelGroup := clusterVersionInfo.ChannelGroup
+				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				upgradableVersion, err := versionList.FindZStreamUpgradableVersion(clusterVersion, 1)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Create a machinepool with the upgradable version")
+				nodePoolAutoName := common.GenerateRandomName("np-67412", 2)
+				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
+					"--replicas", "0",
+					"--version", upgradableVersion.Version)
+				Expect(err).ToNot(HaveOccurred())
+				availableUpgradeVersions := common.ParseCommaSeparatedStrings(upgradableVersion.AvailableUpgrades)
+
+				By("Schedule the upgrade without time scheduled")
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					availableUpgradeVersions[0],
+					"",
+					"")
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Wait for the upgrade finished ")
+				err = machinePoolUpgradeService.WaitForUpgradeFinished(clusterID, nodePoolAutoName, 30)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Verify the upgrade result")
+				npDescription, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolAutoName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(npDescription.Version).To(Equal(availableUpgradeVersions[0]))
+				Expect(npDescription.ScheduledUpgrade).To(BeEmpty())
 			})
 
 		It("create/edit nodepool with node_drain_grace_period to HCP cluster via ROSA cli can work well - [id:72715]",
@@ -1540,4 +1563,78 @@ var _ = Describe("Edit nodepool",
 						To(ContainSubstring(flags["errMsg"]))
 				}
 			})
+
+		It("can enable/disable/update autoscaling - [id:59430]", func() {
+			By("Check help message in edit machinepool")
+			output, err := machinePoolService.EditMachinePool(clusterID, "", "-h")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.String()).Should(
+				MatchRegexp(`--enable-autoscaling[\s\t]*Enable autoscaling for the machine pool.`))
+			Expect(output.String()).Should(
+				MatchRegexp(`--max-replicas int[\s\t]*Maximum number of machines for the machine pool.`))
+			Expect(output.String()).Should(
+				MatchRegexp(`--min-replicas int[\s\t]*Minimum number of machines for the machine pool.`))
+
+			By("Prepare a machinepool")
+			mpName := common.GenerateRandomName("np-59430", 2)
+			_, err = machinePoolService.CreateMachinePool(
+				clusterID, mpName,
+				"--replicas", "0",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+			By("Update the machinepool to autoscaling")
+			output, err = machinePoolService.EditMachinePool(
+				clusterID, mpName,
+				"--enable-autoscaling",
+				"--min-replicas", "1",
+				"--max-replicas", "3",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring("Updated machine pool "))
+
+			By("Describe the machinepool and check the value")
+			mpDescription, err := machinePoolService.DescribeMachinePool(clusterID, mpName)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mpDescription.String()).To(MatchRegexp(`Autoscaling:[\s\t]*Yes`))
+			Expect(mpDescription.String()).To(
+				ContainSubstring(`Min replicas: 1`))
+			Expect(mpDescription.String()).To(
+				ContainSubstring(`Max replicas: 3`))
+
+			By("Edit the machinepool and min-replicas to another value")
+			output, err = machinePoolService.EditMachinePool(
+				clusterID, mpName,
+				"--min-replicas", "2",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring("Updated machine pool "))
+
+			By("Describe the machinepool and check the value")
+			mpDescription, err = machinePoolService.DescribeMachinePool(clusterID, mpName)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mpDescription.String()).To(MatchRegexp(`Autoscaling:[\s\t]*Yes`))
+			Expect(mpDescription.String()).To(
+				ContainSubstring(`Min replicas: 2`))
+			Expect(mpDescription.String()).To(
+				ContainSubstring(`Max replicas: 3`))
+
+			By("Disable the autoscaling")
+			_, err = machinePoolService.EditMachinePool(
+				clusterID, mpName,
+				"--enable-autoscaling=false",
+				"--replicas", "0",
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			mpDescription, err = machinePoolService.DescribeMachinePool(clusterID, mpName)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mpDescription.String()).To(MatchRegexp(`Autoscaling:[\s\t]*No`))
+			Expect(mpDescription.String()).ToNot(
+				ContainSubstring(`Min replicas`))
+			Expect(mpDescription.String()).ToNot(
+				ContainSubstring(`Max replicas`))
+			Expect(mpDescription.String()).Should(MatchRegexp(`Desired replicas:[\s\t]*0`))
+		})
 	})

@@ -1,0 +1,15 @@
+- name: channel-group
+- name: classic
+- name: force-policy-creation
+- name: hosted-cp
+- name: interactive
+- name: managed-policies
+- name: mode
+- name: mp
+- name: path
+- name: permissions-boundary
+- name: prefix
+- name: profile
+- name: region
+- name: version
+- name: "yes"

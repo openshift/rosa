@@ -2,11 +2,15 @@ package rosacli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	config "github.com/openshift/rosa/tests/utils/config"
 	. "github.com/openshift/rosa/tests/utils/log"
@@ -36,6 +40,11 @@ type ClusterService interface {
 	IsBYOVPCCluster(clusterID string) (bool, error)
 	IsExternalAuthenticationEnabled(clusterID string) (bool, error)
 	GetJSONClusterDescription(clusterID string) (*jsonData, error)
+	HibernateCluster(clusterID string, flags ...string) (bytes.Buffer, error)
+	ResumeCluster(clusterID string, flags ...string) (bytes.Buffer, error)
+	ReflectClusterList(result bytes.Buffer) (clusterList ClusterList, err error)
+	WaitClusterStatus(clusterID string, status string, interval int, duration int) error
+	WaitClusterDeleted(clusterID string, interval int, duration int) error
 }
 
 type clusterService struct {
@@ -50,6 +59,17 @@ func NewClusterService(client *Client) ClusterService {
 	}
 }
 
+// Struct for the 'rosa list cluster' output
+type ClusterListItem struct {
+	ID       string `yaml:"ID,omitempty"`
+	Name     string `yaml:"NAME,omitempty"`
+	STATE    string `yaml:"STATE,omitempty"`
+	TOPOLOGY string `yaml:"TOPOLOGY,omitempty"`
+}
+type ClusterList struct {
+	Clusters []ClusterListItem `yaml:"Clusters,omitempty"`
+}
+
 // Struct for the 'rosa describe cluster' output
 type ClusterDescription struct {
 	Name                  string                   `yaml:"Name,omitempty"`
@@ -58,6 +78,7 @@ type ClusterDescription struct {
 	OpenshiftVersion      string                   `yaml:"OpenShift Version,omitempty"`
 	ChannelGroup          string                   `yaml:"Channel Group,omitempty"`
 	DNS                   string                   `yaml:"DNS,omitempty"`
+	AdditionalPrincipals  string                   `yaml:"Additional Principals,omitempty"`
 	AWSAccount            string                   `yaml:"AWS Account,omitempty"`
 	AWSBillingAccount     string                   `yaml:"AWS Billing Account,omitempty"`
 	APIURL                string                   `yaml:"API URL,omitempty"`
@@ -95,6 +116,53 @@ type ClusterDescription struct {
 	FailedInflightChecks     string              `yaml:"Failed Inflight Checks,omitempty"`
 	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
 	EnableDeleteProtection   string              `yaml:"Delete Protection,omitempty"`
+}
+
+// Pasrse the result of 'rosa list cluster' to the ClusterList struct
+func (c *clusterService) ReflectClusterList(result bytes.Buffer) (clusterList ClusterList, err error) {
+	clusterList = ClusterList{}
+	theMap := c.client.Parser.TableData.Input(result).Parse().Output()
+	for _, cItem := range theMap {
+		cluster := &ClusterListItem{}
+		err = MapStructure(cItem, cluster)
+		if err != nil {
+			return
+		}
+		clusterList.Clusters = append(clusterList.Clusters, *cluster)
+	}
+	return clusterList, err
+}
+
+// Check the cluster with the id exists in the ClusterList
+func (clusterList ClusterList) IsExist(clusterID string) (existed bool) {
+	existed = false
+	for _, c := range clusterList.Clusters {
+		if c.ID == clusterID {
+			existed = true
+			break
+		}
+	}
+	return
+}
+
+// Get specified cluster by cluster id
+func (clusterList ClusterList) Cluster(clusterID string) (cluster ClusterListItem) {
+	for _, c := range clusterList.Clusters {
+		if c.ID == clusterID {
+			return c
+		}
+	}
+	return
+}
+
+// Get specified cluster by cluster name
+func (clusterList ClusterList) ClusterByName(clusterName string) (cluster ClusterListItem) {
+	for _, c := range clusterList.Clusters {
+		if c.Name == clusterName {
+			return c
+		}
+	}
+	return
 }
 
 func (c *clusterService) DescribeCluster(clusterID string, flags ...string) (bytes.Buffer, error) {
@@ -318,4 +386,69 @@ func (c *clusterService) IsExternalAuthenticationEnabled(clusterID string) (bool
 		return false, err
 	}
 	return jsonData.DigBool("external_auth_config", "enabled"), nil
+}
+
+func (c *clusterService) HibernateCluster(clusterID string, flags ...string) (bytes.Buffer, error) {
+	combflags := append([]string{"-c", clusterID}, flags...)
+	hibernate := c.client.Runner.
+		Cmd("hibernate", "cluster").
+		CmdFlags(combflags...)
+	return hibernate.Run()
+}
+
+func (c *clusterService) ResumeCluster(clusterID string, flags ...string) (bytes.Buffer, error) {
+	combflags := append([]string{"-c", clusterID}, flags...)
+	resume := c.client.Runner.
+		Cmd("resume", "cluster").
+		CmdFlags(combflags...)
+	return resume.Run()
+}
+
+// Wait cluster to some status, the inerval and duration are using minute
+func (c *clusterService) WaitClusterStatus(clusterID string, status string, interval int, duration int) error {
+	err := wait.PollUntilContextTimeout(
+		context.Background(),
+		time.Duration(interval)*time.Minute,
+		time.Duration(duration)*time.Minute,
+		false,
+		func(context.Context) (bool, error) {
+			clusterListB, err := c.List()
+			if err != nil {
+				return false, err
+			}
+			clusterList, err := c.ReflectClusterList(clusterListB)
+			if err != nil {
+				return false, err
+			}
+			clusterItem := clusterList.Cluster(clusterID)
+			if err != nil {
+				return false, err
+			}
+			if clusterItem.STATE == status {
+				return true, nil
+			}
+			return false, err
+		})
+	return err
+}
+
+// Wait for cluster deleted
+func (c *clusterService) WaitClusterDeleted(clusterID string, interval int, duration int) error {
+	err := wait.PollUntilContextTimeout(
+		context.Background(),
+		time.Duration(interval)*time.Minute,
+		time.Duration(duration)*time.Minute,
+		false,
+		func(context.Context) (bool, error) {
+			clusterListB, err := c.List()
+			if err != nil {
+				return false, err
+			}
+			clusterList, err := c.ReflectClusterList(clusterListB)
+			if err != nil {
+				return false, err
+			}
+			return !clusterList.IsExist(clusterID), err
+		})
+	return err
 }

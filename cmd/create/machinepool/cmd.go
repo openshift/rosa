@@ -18,7 +18,6 @@ package machinepool
 
 import (
 	"os"
-	"regexp"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -27,41 +26,14 @@ import (
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-// Regular expression to used to make sure that the identifier given by the
-// user is safe and that it there is no risk of SQL injection:
-var machinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
-
-var args struct {
-	name                  string
-	instanceType          string
-	replicas              int
-	autoscalingEnabled    bool
-	minReplicas           int
-	maxReplicas           int
-	labels                string
-	taints                string
-	useSpotInstances      bool
-	spotMaxPrice          string
-	multiAvailabilityZone bool
-	availabilityZone      string
-	subnet                string
-	version               string
-	autorepair            bool
-	tuningConfigs         string
-	kubeletConfigs        string
-	rootDiskSize          string
-	securityGroupIds      []string
-	nodeDrainGracePeriod  string
-	tags                  []string
-	maxSurge              string
-	maxUnavailable        string
-}
+var args machinepool.MachinePoolArgs
 
 var Cmd = &cobra.Command{
 	Use:     "machinepool",
@@ -97,49 +69,49 @@ func init() {
 	ocm.AddClusterFlag(Cmd)
 
 	flags.StringVar(
-		&args.name,
+		&args.Name,
 		"name",
 		"",
 		"Name for the machine pool (required).",
 	)
 
 	flags.IntVar(
-		&args.replicas,
+		&args.Replicas,
 		"replicas",
 		0,
 		"Count of machines for the machine pool (required when autoscaling is disabled).",
 	)
 
 	flags.BoolVar(
-		&args.autoscalingEnabled,
+		&args.AutoscalingEnabled,
 		"enable-autoscaling",
 		false,
 		"Enable autoscaling for the machine pool.",
 	)
 
 	flags.IntVar(
-		&args.minReplicas,
+		&args.MinReplicas,
 		"min-replicas",
 		0,
 		"Minimum number of machines for the machine pool.",
 	)
 
 	flags.IntVar(
-		&args.maxReplicas,
+		&args.MaxReplicas,
 		"max-replicas",
 		0,
 		"Maximum number of machines for the machine pool.",
 	)
 
 	flags.StringVar(
-		&args.instanceType,
+		&args.InstanceType,
 		"instance-type",
 		"m5.xlarge",
 		"Instance type that should be used.",
 	)
 
 	flags.StringVar(
-		&args.labels,
+		&args.Labels,
 		"labels",
 		"",
 		"Labels for machine pool. Format should be a comma-separated list of 'key=value'. "+
@@ -147,7 +119,7 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.taints,
+		&args.Taints,
 		"taints",
 		"",
 		"Taints for machine pool. Format should be a comma-separated list of 'key=value:ScheduleType'. "+
@@ -155,39 +127,39 @@ func init() {
 	)
 
 	flags.BoolVar(
-		&args.useSpotInstances,
+		&args.UseSpotInstances,
 		"use-spot-instances",
 		false,
 		"Use spot instances for the machine pool.",
 	)
 
 	flags.StringVar(
-		&args.spotMaxPrice,
+		&args.SpotMaxPrice,
 		"spot-max-price",
 		"on-demand",
 		"Max price for spot instance. If empty use the on-demand price.",
 	)
 
 	flags.BoolVar(
-		&args.multiAvailabilityZone,
+		&args.MultiAvailabilityZone,
 		"multi-availability-zone",
 		true,
 		"Create a multi-AZ machine pool for a multi-AZ cluster")
 
 	flags.StringVar(
-		&args.availabilityZone,
+		&args.AvailabilityZone,
 		"availability-zone",
 		"",
 		"Select availability zone to create a single AZ machine pool for a multi-AZ cluster")
 
 	flags.StringVar(
-		&args.subnet,
+		&args.Subnet,
 		"subnet",
 		"",
 		"Select subnet to create a single AZ machine pool for BYOVPC cluster")
 
 	flags.StringVar(
-		&args.version,
+		&args.Version,
 		"version",
 		"",
 		"Version of OpenShift that will be used to install a machine pool for a hosted cluster,"+
@@ -195,14 +167,14 @@ func init() {
 	)
 
 	flags.BoolVar(
-		&args.autorepair,
+		&args.Autorepair,
 		"autorepair",
 		true,
 		"Select auto-repair behaviour for a machinepool in a hosted cluster.",
 	)
 
 	flags.StringVar(
-		&args.tuningConfigs,
+		&args.TuningConfigs,
 		"tuning-configs",
 		"",
 		"Name of the tuning configs to be applied to the machine pool. Format should be a comma-separated list. "+
@@ -211,7 +183,7 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.kubeletConfigs,
+		&args.KubeletConfigs,
 		"kubelet-configs",
 		"",
 		"Name of the kubelet config to be applied to the machine pool. A single kubelet config is allowed. "+
@@ -219,20 +191,20 @@ func init() {
 			"This will overwrite any modifications made to node kubelet configs on an ongoing basis.",
 	)
 
-	flags.StringVar(&args.rootDiskSize,
+	flags.StringVar(&args.RootDiskSize,
 		"disk-size",
 		"",
 		"Root disk size with a suffix like GiB or TiB",
 	)
 
-	flags.StringSliceVar(&args.securityGroupIds,
+	flags.StringSliceVar(&args.SecurityGroupIds,
 		securitygroups.MachinePoolSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the machine pool. "+
 			"Format should be a comma-separated list.",
 	)
 
-	flags.StringVar(&args.nodeDrainGracePeriod,
+	flags.StringVar(&args.NodeDrainGracePeriod,
 		"node-drain-grace-period",
 		"",
 		"You may set a grace period for how long Pod Disruption Budget-protected workloads will be "+
@@ -244,21 +216,30 @@ func init() {
 	)
 
 	flags.StringSliceVar(
-		&args.tags,
+		&args.Tags,
 		"tags",
 		nil,
 		"Apply user defined tags to all resources created by ROSA in AWS. "+
 			"Tags are comma separated, for example: 'key value, foo bar'",
 	)
 
-	flags.StringVar(&args.maxSurge,
+	flags.StringVar(
+		&args.EC2MetadataHttpTokens,
+		"ec2-metadata-http-tokens",
+		"",
+		"Should cluster nodes use both v1 and v2 endpoints or just v2 endpoint "+
+			"of EC2 Instance Metadata Service (IMDS)"+
+			"This flag is only supported for Hosted Control Planes.",
+	)
+
+	flags.StringVar(&args.MaxSurge,
 		"max-surge",
 		"1",
 		"The maximum number of nodes that can be provisioned above the desired number of nodes in the machinepool during "+
 			"the upgrade. It can be an absolute number i.e. 1, or a percentage i.e. '20%'.",
 	)
 
-	flags.StringVar(&args.maxUnavailable,
+	flags.StringVar(&args.MaxUnavailable,
 		"max-unavailable",
 		"0",
 		"The maximum number of nodes in the machinepool that can be unavailable during the upgrade. It can be an "+
@@ -285,7 +266,7 @@ func run(cmd *cobra.Command, _ []string) {
 	useLocalCredentials := ok && val == "true"
 
 	if cmd.Flags().Changed("labels") {
-		_, err := mpHelpers.ParseLabels(args.labels)
+		_, err := mpHelpers.ParseLabels(args.Labels)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -304,9 +285,14 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	service := machinepool.NewMachinePoolService()
 	if cluster.Hypershift().Enabled() {
-		addNodePool(cmd, clusterKey, cluster, r)
+		err = service.AddNodePool(cmd, clusterKey, cluster, r, &args)
 	} else {
-		addMachinePool(cmd, clusterKey, cluster, r)
+		err = service.AddMachinePool(cmd, clusterKey, cluster, r, &args)
+	}
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
 	}
 }

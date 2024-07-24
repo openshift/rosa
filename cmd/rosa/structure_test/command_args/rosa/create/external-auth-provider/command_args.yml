@@ -1,0 +1,14 @@
+- name: claim-mapping-groups-claim
+- name: claim-mapping-username-claim
+- name: claim-validation-rule
+- name: cluster
+- name: console-client-id
+- name: console-client-secret
+- name: interactive
+- name: issuer-audiences
+- name: issuer-ca-file
+- name: issuer-url
+- name: name
+- name: profile
+- name: region
+- name: "yes"

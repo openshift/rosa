@@ -1,0 +1,9 @@
+- name: channel-group
+- name: cluster
+- name: cluster-version
+- name: interactive
+- name: mode
+- name: policy-version
+- name: profile
+- name: region
+- name: "yes"

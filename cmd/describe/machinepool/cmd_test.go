@@ -33,6 +33,7 @@ Taints:
 Availability zone:                     us-east-1a
 Subnet:                                
 Version:                               4.12.24
+EC2 Metadata Http Tokens:              optional
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       
@@ -57,6 +58,7 @@ Taints:
 Availability zone:                     us-east-1a
 Subnet:                                
 Version:                               4.12.24
+EC2 Metadata Http Tokens:              optional
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       
@@ -82,6 +84,7 @@ Taints:
 Availability zone:                     us-east-1a
 Subnet:                                
 Version:                               4.12.24
+EC2 Metadata Http Tokens:              optional
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       

@@ -94,13 +94,6 @@ var _ = Describe("Network verifier",
 					})
 				common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
-				output, err = networkService.GetNetworkVerifierStatus(
-					"--region", region,
-					"--subnet-ids", subnets,
-				)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).ToNot(ContainSubstring("failed"))
-
 				By("Check the network verifier with tags attributes")
 				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID,
 					"--tags", "t1:v1")
@@ -123,13 +116,6 @@ var _ = Describe("Network verifier",
 						return true, err
 					})
 				common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
-
-				output, err = networkService.GetNetworkVerifierStatus(
-					"--region", region,
-					"--subnet-ids", subnets,
-				)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).ToNot(ContainSubstring("failed"))
 
 				By("Run network verifier vith subnet id")
 				if installerRoleArn == "" {

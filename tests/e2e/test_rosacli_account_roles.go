@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
@@ -474,6 +475,143 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(err).ToNot(HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).To(ContainSubstring("WARN: There are no hosted CP account roles to be deleted"))
+		})
+	It("create/delete classic account roles with managed policies - [id:57408]",
+		labels.Critical, labels.Runtime.OCMResources,
+		func() {
+
+			var (
+				rolePrefixAuto      = "ar57408a"
+				rolePrefixManual    = "ar57408m"
+				roleVersion         string
+				path                = "/fd/sd/"
+				policiesArn         []string
+				managedPoliciesName = []string{
+					"ROSAInstallerCorePolicy",
+					"ROSAInstallerVPCPolicy",
+					"ROSAInstallerPrivateLinkPolicy",
+					"ROSAControlPlanePolicy",
+					"ROSAWorkerPolicy",
+					"ROSASRESupportPolicy",
+				}
+			)
+			awsClient, err := aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			defer func() {
+				By("Cleanup created account-roles in the test case")
+				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", rolePrefixManual,
+					"-y")
+
+				Expect(err).To(BeNil())
+				_, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", rolePrefixAuto,
+					"-y")
+
+				Expect(err).To(BeNil())
+
+				By("Check managed policies not deleted by rosa command")
+				for _, policyArn := range policiesArn {
+					policy, err := awsClient.GetIAMPolicy(policyArn)
+					Expect(err).To(BeNil())
+					Expect(policy).ToNot(BeNil())
+				}
+
+				By("Delete fake managed policies")
+				for _, policyArn := range policiesArn {
+					err := awsClient.DeletePolicy(policyArn)
+					Expect(err).To(BeNil())
+				}
+			}()
+
+			By("Prepare fake managed policies")
+			statement := map[string]interface{}{
+				"Effect":   "Allow",
+				"Action":   "*",
+				"Resource": "*",
+			}
+			for _, pName := range managedPoliciesName {
+				pArn, err := awsClient.CreatePolicy(pName, statement)
+				Expect(err).To(BeNil())
+				policiesArn = append(policiesArn, pArn)
+			}
+
+			By("Prepare verson for testing")
+			versionService := rosaClient.Version
+			versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+			Expect(err).To(BeNil())
+			defaultVersion := versionList.DefaultVersion()
+			Expect(defaultVersion).ToNot(BeNil())
+			version, err := versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
+			Expect(err).To(BeNil())
+			Expect(version).NotTo(BeNil())
+			_, _, roleVersion, err = version.MajorMinor()
+			Expect(err).To(BeNil())
+
+			By("Create classic account-roles with managed policies in manual mode")
+			output, err := ocmResourceService.CreateAccountRole("--mode", "manual",
+				"--prefix", rolePrefixManual,
+				"--path", path,
+				"--permissions-boundary", permissionsBoundaryArn,
+				"--version", roleVersion,
+				"--managed-policies",
+				"-y")
+			Expect(err).To(BeNil())
+			commands := common.ExtractCommandsToCreateAWSResoueces(output)
+
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+
+			By("List the account roles created in manual mode")
+			accountRoleList, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			accountRoles := accountRoleList.AccountRoles(rolePrefixManual)
+			Expect(len(accountRoles)).To(Equal(4))
+			for _, ar := range accountRoles {
+				Expect(ar.AWSManaged).To(Equal("Yes"))
+			}
+
+			By("Delete the account-roles in manual mode")
+			output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", rolePrefixManual,
+				"-y")
+
+			Expect(err).To(BeNil())
+			commands = common.ExtractCommandsToCreateAWSResoueces(output)
+
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+
+			By("Create classic account-roles with managed policies in auto mode")
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", rolePrefixAuto,
+				"--path", path,
+				"--permissions-boundary", permissionsBoundaryArn,
+				"--version", roleVersion,
+				"--managed-policies",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Created role"))
+
+			By("List the account roles created in auto mode")
+			accountRoleList, _, err = ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			accountRoles = accountRoleList.AccountRoles(rolePrefixAuto)
+			Expect(len(accountRoles)).To(Equal(4))
+			for _, ar := range accountRoles {
+				Expect(ar.AWSManaged).To(Equal("Yes"))
+			}
+
+			By("Delete the account-roles in auto mode")
+			output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", rolePrefixAuto,
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Successfully deleted"))
 		})
 
 	It("Validation for account-role creation by user - [id:43067]",

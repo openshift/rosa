@@ -1,0 +1,13 @@
+- name: cluster
+- name: mode
+- name: version
+- name: schedule-date
+- name: schedule-time
+- name: schedule
+- name: allow-minor-version-updates
+- name: node-drain-grace-period
+- name: control-plane
+- name: "yes"
+- name: interactive
+- name: profile
+- name: region

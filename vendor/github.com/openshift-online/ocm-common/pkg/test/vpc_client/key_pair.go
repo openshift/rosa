@@ -8,9 +8,10 @@ import (
 func (vpc *VPC) CreateKeyPair(keyName string) (*ec2.CreateKeyPairOutput, error) {
 	output, err := vpc.AWSClient.CreateKeyPair(keyName)
 	if err != nil {
+		log.LogError("Create key pair meets error %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("create key pair: %v successfully\n", *output.KeyPairId)
+	log.LogInfo("Create key pair %v successfully\n", *output.KeyPairId)
 
 	return output, nil
 }
@@ -19,9 +20,10 @@ func (vpc *VPC) DeleteKeyPair(keyNames []string) error {
 	for _, key := range keyNames {
 		_, err := vpc.AWSClient.DeleteKeyPair(key)
 		if err != nil {
+			log.LogError("Delete key pair meets error %s", err.Error())
 			return err
 		}
 	}
-	log.LogInfo("delete key pair successfully\n")
+	log.LogInfo("Delete key pair successfully")
 	return nil
 }

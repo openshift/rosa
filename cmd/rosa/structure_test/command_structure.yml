@@ -1,0 +1,167 @@
+#
+# Defines the structure of commands supported by ROSA CLI. Used to verify that CLI structure is correctly assembled
+# at build time as part of our unit testing.
+#
+# New commands should be added in the correct location.
+#
+name: rosa
+children:
+- name: completion
+- name: config
+  children:
+    - name: get
+    - name: set
+- name: create
+  children:
+    - name: account-roles
+    - name: admin
+    - name: autoscaler
+    - name: break-glass-credential
+    - name: cluster
+    - name: dns-domain
+    - name: idp
+    - name: external-auth-provider
+    - name: kubeletconfig
+    - name: machinepool
+    - name: ocm-role
+    - name: oidc-config
+    - name: oidc-provider
+    - name: operator-roles
+    - name: managed-service
+    - name: tuning-configs
+    - name: user-role
+- name: delete
+  children:
+    - name: account-roles
+    - name: admin
+    - name: autoscaler
+    - name: cluster
+    - name: dns-domain
+    - name: external-auth-provider
+    - name: idp
+    - name: ingress
+    - name: kubeletconfig
+    - name: machinepool
+    - name: ocm-role
+    - name: oidc-config
+    - name: oidc-provider
+    - name: operator-roles
+    - name: managed-service
+    - name: tuning-configs
+    - name: upgrade
+    - name: user-role
+- name: describe
+  children:
+    - name: addon
+    - name: admin
+    - name: autoscaler
+    - name: break-glass-credential
+    - name: cluster
+    - name: external-auth-provider
+    - name: ingress
+    - name: addon-installation
+    - name: kubeletconfig
+    - name: machinepool
+    - name: managed-service
+    - name: tuning-configs
+    - name: upgrade
+- name: detach
+  children:
+    - name: policy
+- name: docs
+- name: download
+  children:
+    - name: openshift-client
+    - name: rosa-client
+- name: edit
+  children:
+    - name: addon
+    - name: autoscaler
+    - name: cluster
+    - name: ingress
+    - name: kubeletconfig
+    - name: machinepool
+    - name: managed-service
+    - name: tuning-configs
+- name: grant
+  children:
+    - name: user
+- name: help
+  generated: true
+- name: hibernate
+  children:
+    - name: cluster
+- name: init
+- name: install
+  children:
+    - name: addon
+- name: link
+  children:
+    - name: ocm-role
+    - name: user-role
+- name: list
+  children:
+    - name: account-roles
+    - name: addons
+    - name: break-glass-credentials
+    - name: clusters
+    - name: dns-domain
+    - name: external-auth-providers
+    - name: gates
+    - name: idps
+    - name: ingresses
+    - name: instance-types
+    - name: kubeletconfigs
+    - name: machinepools
+    - name: ocm-roles
+    - name: oidc-config
+    - name: oidc-providers
+    - name: operator-roles
+    - name: regions
+    - name: rh-regions
+    - name: managed-services
+    - name: tuning-configs
+    - name: upgrades
+    - name: users
+    - name: user-roles
+    - name: versions
+- name: login
+- name: logout
+- name: logs
+  children:
+    - name: install
+    - name: uninstall
+- name: register
+  children:
+    - name: oidc-config
+- name: resume
+  children:
+    - name: cluster
+- name: revoke
+  children:
+    - name: break-glass-credentials
+    - name: user
+- name: token
+- name: uninstall
+  children:
+    - name: addon
+- name: unlink
+  children:
+    - name: ocm-role
+    - name: user-role
+- name: upgrade
+  children:
+    - name: account-roles
+    - name: cluster
+    - name: machinepool
+    - name: operator-roles
+    - name: roles
+- name: verify
+  children:
+    - name: network
+    - name: openshift-client
+    - name: permissions
+    - name: quota
+    - name: rosa-client
+- name: version
+- name: whoami

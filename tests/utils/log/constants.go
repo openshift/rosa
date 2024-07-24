@@ -24,4 +24,5 @@ var RedactKeyList = []*regexp.Regexp{
 	regexp.MustCompile(`(AWS Billing Account:\s*)([0-9]{12})([\n\\n].)`),
 	regexp.MustCompile(`("billing_account_id"\:?\s*")([0-9]{12})(")`),
 	regexp.MustCompile(`(OCM AWS role on\s*')([0-9]{12})(')`),
+	regexp.MustCompile(`(_token\s*)([\w.-]+)([\s\S]*)`),
 }

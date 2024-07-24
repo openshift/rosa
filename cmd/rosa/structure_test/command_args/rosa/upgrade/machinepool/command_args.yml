@@ -1,0 +1,10 @@
+- name: cluster
+- name: version
+- name: schedule-date
+- name: schedule-time
+- name: schedule
+- name: allow-minor-version-updates
+- name: "yes"
+- name: interactive
+- name: profile
+- name: region

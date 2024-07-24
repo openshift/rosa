@@ -1,0 +1,6 @@
+- name: cluster
+- name: mode
+- name: prefix
+- name: profile
+- name: region
+- name: "yes"

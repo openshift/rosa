@@ -1,0 +1,7 @@
+- name: cluster
+- name: interactive
+- name: pod-pids-limit
+- name: name
+- name: profile
+- name: region
+- name: "yes"

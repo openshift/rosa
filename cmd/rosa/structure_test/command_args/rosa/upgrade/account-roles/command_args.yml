@@ -1,0 +1,9 @@
+- name: channel-group
+- name: hosted-cp
+- name: interactive
+- name: mode
+- name: prefix
+- name: profile
+- name: region
+- name: version
+- name: "yes"

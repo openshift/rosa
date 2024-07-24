@@ -1,0 +1,5 @@
+- name: output
+- name: cluster
+- name: oidc-config-id
+- name: profile
+- name: region

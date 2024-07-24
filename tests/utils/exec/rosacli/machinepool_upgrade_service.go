@@ -2,6 +2,8 @@ package rosacli
 
 import (
 	"bytes"
+	"fmt"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -33,6 +35,8 @@ type MachinePoolUpgradeService interface {
 	RetrieveHelpForDescribe() (bytes.Buffer, error)
 	RetrieveHelpForList() (bytes.Buffer, error)
 	RetrieveHelpForDelete() (bytes.Buffer, error)
+
+	WaitForUpgradeFinished(cluster string, mpID string, timeout int) error
 }
 
 type machinePoolUpgradeService struct {
@@ -192,6 +196,24 @@ func (mpus *machinePoolUpgradeService) RetrieveHelpForDescribe() (output bytes.B
 
 func (mpus *machinePoolUpgradeService) RetrieveHelpForDelete() (output bytes.Buffer, err error) {
 	return mpus.client.Runner.Cmd("list", "upgrade").CmdFlags("-h").Run()
+}
+
+// WaitForUpgradeFinished will wait for upgrade finished in <timeout> mins
+func (mpus *machinePoolUpgradeService) WaitForUpgradeFinished(cluster string, mpID string, timeout int) error {
+	startTime := time.Now()
+	for time.Now().Before(startTime.Add(time.Duration(timeout) * time.Minute)) {
+		upgrade, err := mpus.DescribeAndReflectUpgrade(cluster, mpID)
+		if err != nil {
+			return err
+		}
+		// manual upgrade policy will be deleted after upgrade finished
+		// automatic upgrade policy will be set to "pending" again and no available upgrade version
+		if upgrade.ClusterID == "" || (upgrade.UpgradeState == "pending" && upgrade.Version == "") {
+			return nil
+		}
+		time.Sleep(2 * time.Minute)
+	}
+	return fmt.Errorf("timeout after %v minutes for upgrade waiting", timeout)
 }
 
 func (mpus *machinePoolUpgradeService) CleanResources(clusterID string) (errors []error) {

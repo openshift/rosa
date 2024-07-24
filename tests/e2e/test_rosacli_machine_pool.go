@@ -12,10 +12,13 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/common/constants"
 	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
+	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Create machinepool",
@@ -28,6 +31,7 @@ var _ = Describe("Create machinepool",
 			machinePoolService     rosacli.MachinePoolService
 			ocmResourceService     rosacli.OCMResourceService
 			clusterConfig          *config.ClusterConfig
+			profile            *ph.Profile
 			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
 		)
 
@@ -51,6 +55,9 @@ var _ = Describe("Create machinepool",
 			By("Parse the cluster config")
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
+
+			By("Load cluster profile configuration")
+			profile = profilehandler.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
@@ -59,24 +66,100 @@ var _ = Describe("Create machinepool",
 
 		})
 
+		It("can create/list/delete machinepool - [id:36293]",
+			labels.Critical,
+			labels.Runtime.Day2,
+			func() {
+				By("Check help info for create machinepool")
+				_, err := machinePoolService.RetrieveHelpForCreate()
+				Expect(err).ToNot(HaveOccurred())
+
+				labels_1 := "m5.xlarge/test=aaa"
+				taints := "Key1=value1:NoExecute,test1=value2:NoSchedule"
+				labels_2 := "aaa=bbb"
+				maxReplicas := "6"
+				minReplicas := "3"
+
+				reqFlags := map[string][]string{
+					"default": {"--replicas", "0"},
+					"advanced": {"--replicas", "3", "--labels", labels_1,
+						"--taints", taints, "--instance-type", "m5.2xlarge"},
+					"auto_scaling": {"--enable-autoscaling", "--max-replicas", maxReplicas,
+						"--min-replicas", minReplicas, "--labels", labels_2},
+				}
+
+				By("List the default machinepool of the cluster")
+				resp, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				for key, flags := range reqFlags {
+					By("Create machinepools to the cluster")
+					mpID := common.GenerateRandomName("mp-36293", 2)
+					output, err := machinePoolService.CreateMachinePool(clusterID, mpID, flags...)
+					Expect(err).ToNot(HaveOccurred())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).
+						To(
+							ContainSubstring(
+								"Machine pool '%s' created successfully on cluster '%s'",
+								mpID,
+								clusterID))
+
+					By("List the machinepools of the cluster")
+					out, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+					Expect(out.Machinepool(mpID).AvalaiblityZones).To(Equal(resp.MachinePools[0].AvalaiblityZones))
+					Expect(err).ToNot(HaveOccurred())
+					if key == "default" {
+						Expect(out.Machinepool(mpID).Replicas).To(Equal("0"))
+						Expect(out.Machinepool(mpID).InstanceType).To(Equal("m5.xlarge"))
+					}
+
+					if key == "advanced" {
+						Expect(out.Machinepool(mpID).Replicas).To(Equal("3"))
+						Expect(out.Machinepool(mpID).InstanceType).To(Equal("m5.2xlarge"))
+						Expect(out.Machinepool(mpID).AutoScaling).To(Equal("No"))
+						Expect(out.Machinepool(mpID).Labels).To(
+							Equal(strings.Join(common.ParseCommaSeparatedStrings(labels_1), ", ")))
+						Expect(out.Machinepool(mpID).Taints).To(
+							Equal(strings.Join(common.ParseCommaSeparatedStrings(taints), ", ")))
+					}
+
+					if key == "auto_scaling" {
+						Expect(out.Machinepool(mpID).AutoScaling).To(Equal("Yes"))
+						Expect(out.Machinepool(mpID).Replicas).
+							To(
+								Equal(fmt.Sprintf("%s-%s", minReplicas, maxReplicas)))
+						Expect(out.Machinepool(mpID).InstanceType).To(Equal("m5.xlarge"))
+						Expect(out.Machinepool(mpID).Labels).To(
+							Equal(strings.Join(common.ParseCommaSeparatedStrings(labels_2), ", ")))
+					}
+				}
+			})
+
 		It("can create machinepool with volume size set - [id:66872]",
 			labels.Runtime.Day2,
 			labels.Critical,
 			func() {
-				mpID := "mp-66359"
+				mpID := "mp-66872"
 				expectedDiskSize := "186 GiB" // it is 200GB
 				machineType := "r5.xlarge"
 
 				By("Create a machinepool with the disk size")
-				_, err := machinePoolService.CreateMachinePool(clusterID, mpID,
+				output, err := machinePoolService.CreateMachinePool(clusterID, mpID,
 					"--replicas", "0",
 					"--disk-size", "200GB",
 					"--instance-type", machineType,
 				)
 				Expect(err).ToNot(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						mpID,
+						clusterID))
 
 				By("Check the machinepool list")
-				output, err := machinePoolService.ListMachinePool(clusterID)
+				output, err = machinePoolService.ListMachinePool(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
 				mplist, err := machinePoolService.ReflectMachinePoolList(output)
@@ -95,16 +178,22 @@ var _ = Describe("Create machinepool",
 				Expect(mpD.DiskSize).To(Equal(expectedDiskSize))
 
 				By("Create another machinepool with volume size 0.5TiB")
-				mpID = "mp-66359-2"
+				mpID = "mp-66872-2"
 				expectedDiskSize = "512 GiB" // it is 0.5TiB
 				machineType = "m5.2xlarge"
-				_, err = machinePoolService.CreateMachinePool(clusterID, mpID,
+				output, err = machinePoolService.CreateMachinePool(clusterID, mpID,
 					"--replicas", "0",
 					"--disk-size", "0.5TiB",
 					"--instance-type", machineType,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"Machine pool '%s' created successfully on cluster '%s'",
+						mpID,
+						clusterID))
 
 				By("Check the machinepool list")
 				output, err = machinePoolService.ListMachinePool(clusterID)
@@ -531,10 +620,10 @@ var _ = Describe("Create machinepool",
 				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
 				By("Check the machinepool details by describe")
-				mpDescription, err := rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
+				mpDescription, err := rosaClient.MachinePool.DescribeAndReflectMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(mpDescription.AdditionalSecurityGroupIDs).To(Equal(strings.Join(sgIDs, ", ")))
+				Expect(mpDescription.SecurityGroupIDs).To(Equal(strings.Join(sgIDs, ", ")))
 
 				By("Create another machinepool without security groups and describe it")
 				mpName = "mp-68173-nsg"
@@ -545,11 +634,79 @@ var _ = Describe("Create machinepool",
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 				By("Check the machinepool detail by describe")
-				mpDescription, err = rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
+				mpDescription, err = rosaClient.MachinePool.DescribeAndReflectMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mpDescription.AdditionalSecurityGroupIDs).To(BeEmpty())
+				Expect(mpDescription.SecurityGroupIDs).To(BeEmpty())
 			})
 
+		It("can create local zone machinepool - [id:55979]", labels.Runtime.Day2, labels.High,
+			func() {
+				By("Check if cluster is BYOVPC cluster")
+				if clusterConfig.Subnets == nil {
+					SkipTestOnFeature("This testing only work for byovpc cluster")
+				}
+
+				By("Prepare a subnet out of the cluster creation subnet")
+				subnets := common.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
+
+				By("Build vpc client to find a local zone for subnet preparation")
+				var vpcClient *vpc_client.VPC
+				var err error
+				if profile.ClusterConfig.SharedVPC {
+					// TODO skip right now to bypass CI failure
+					SkipTestOnFeature("Skip for shared vpc for now.")
+				} else {
+					vpcClient, err = vpc_client.GenerateVPCBySubnet(subnets[0], clusterConfig.Region)
+				}
+				Expect(err).ToNot(HaveOccurred())
+
+				zones, err := vpcClient.AWSClient.ListAvaliableZonesForRegion(clusterConfig.Region, "local-zone")
+				Expect(err).ToNot(HaveOccurred())
+				if len(zones) == 0 {
+					SkipTestOnFeature("No local zone found in the region skip the testing")
+				}
+				localZone := zones[0]
+
+				By("Prepare the subnet for the picked zone")
+				subNetMap, err := vpcClient.PreparePairSubnetByZone(localZone)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(subNetMap).ToNot(BeNil())
+				privateSubnet := subNetMap["private"]
+
+				By("Describe the cluster to get the infra ID for tagging")
+				clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				tagKey := fmt.Sprintf("kubernetes.io/cluster/%s", clusterDescription.InfraID)
+				vpcClient.AWSClient.TagResource(privateSubnet.ID, map[string]string{
+					tagKey: "shared",
+				})
+
+				By("Find a machinetype supported by the zone")
+				instanceTypes, err := vpcClient.AWSClient.ListAvaliableInstanceTypesForRegion(
+					clusterConfig.Region, localZone)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instanceTypes).ToNot(BeEmpty(), "There are no instance types supported in the zone")
+				instanceType := instanceTypes[0]
+
+				By("Create machinepool with the subnet specified will succeed")
+				localZoneMpName := "localz-55979"
+				_, err = machinePoolService.CreateMachinePool(clusterID, localZoneMpName,
+					"--enable-autoscaling",
+					"--max-replicas", "2",
+					"--min-replicas", "1",
+					"--subnet", privateSubnet.ID,
+					"--instance-type", instanceType,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, localZoneMpName)
+
+				By("List the machinepools and check")
+				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				mp := mpList.Machinepool(localZoneMpName)
+				Expect(mp.Replicas).To(Equal("1-2"))
+				Expect(mp.Subnets).To(Equal(privateSubnet.ID))
+			})
 		Context("validation", func() {
 			It("will validate name/replicas/labels/taints  - [id:67057]",
 				labels.Runtime.Day2, labels.Medium,
@@ -759,7 +916,7 @@ var _ = Describe("Edit machinepool",
 				By("Check the edited machinePool")
 				mp, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, machinePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mp.AutoScaling).To(Equal("Yes"))
+				Expect(mp.AutoScaling).To(Equal(constants.Yes))
 				Expect(mp.Replicas).To(Equal("3-3"))
 
 				By("Edit the the machinepool to min-replicas 0, taints and labels")
@@ -773,10 +930,79 @@ var _ = Describe("Edit machinepool",
 				Expect(err).ToNot(HaveOccurred())
 				mp, err = machinePoolService.DescribeAndReflectMachinePool(clusterID, machinePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mp.AutoScaling).To(Equal("Yes"))
+				Expect(mp.AutoScaling).To(Equal(constants.Yes))
 				Expect(mp.Replicas).To(Equal("0-3"))
 				Expect(mp.Labels).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(labels), ", ")))
 				Expect(mp.Taints).To(Equal(strings.Join(common.ParseCommaSeparatedStrings(taints), ", ")))
+			})
+
+		It("can edit the default machinepool labels and taints - [id:57102]",
+			labels.High,
+			labels.Runtime.Day2,
+			func() {
+				By("List the machinepools of the cluster")
+				mpList, err := rosaClient.MachinePool.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				workerPool := mpList.Machinepool(con.DefaultClassicWorkerPool)
+				Expect(workerPool).ToNot(BeNil())
+
+				By("Prepare an additional machinepool to make sure the taint edit can work")
+				_, err = rosaClient.MachinePool.CreateMachinePool(
+					clusterID,
+					"mp-57102",
+					"--replicas", "3",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, "mp-57102")
+
+				labels_1 := "m5.xlarge/test=aaa"
+				taints_1 := "Key1=:NoExecute"
+				labels_2 := "aaa="
+				taints_2 := "Key2=Value1:NoExecute"
+
+				reqFlags := map[string][]string{
+					"empty_taint_value":     {"--labels", labels_1, "--taints", taints_1},
+					"empty_label_value":     {"--labels", labels_2, "--taints", taints_2},
+					"empty_label_and_taint": {"--labels", "", "--taints", ""},
+				}
+
+				// define the recovery step
+				defer machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", common.ReplaceCommaSpaceWithComma(workerPool.Labels),
+					"--taints", common.ReplaceCommaSpaceWithComma(workerPool.Taints),
+				)
+
+				for key, flags := range reqFlags {
+					By("Edit machinepools to the cluster")
+					_, err := machinePoolService.EditMachinePool(clusterID, con.DefaultClassicWorkerPool, flags...)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("List the machinepools of the cluster")
+					out, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+
+					if key == "empty_taint_value" {
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Labels).To(
+							Equal(strings.Join(common.ParseCommaSeparatedStrings(labels_1), ", ")))
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Taints).To(
+							Equal(strings.Join(common.ParseCommaSeparatedStrings(taints_1), ", ")))
+					}
+
+					if key == "empty_label_value" {
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Labels).To(
+							Equal(strings.Join(common.ParseCommaSeparatedStrings(labels_2), ", ")))
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Taints).To(
+							Equal(strings.Join(common.ParseCommaSeparatedStrings(taints_2), ", ")))
+					}
+
+					if key == "empty_label_and_taint" {
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Labels).To(
+							Equal(""))
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Taints).To(
+							Equal(""))
+					}
+				}
 			})
 
 		It("can list/edit/delete the default worker pool - [id:66750]", labels.Runtime.Destructive, labels.High,
@@ -790,7 +1016,7 @@ var _ = Describe("Edit machinepool",
 				By("Scale up the default machinepool worker")
 				var updatedValue string
 				var flags []string
-				if workerPool.AutoScaling == "Yes" {
+				if workerPool.AutoScaling == constants.Yes {
 					flags = []string{
 						"--enable-autoscaling=false",
 						"--replicas", "6",
@@ -851,4 +1077,117 @@ var _ = Describe("Edit machinepool",
 				verifyClusterComputeNodesMatched(clusterID)
 			})
 
+		It("enable/disable/update autoscaling will work well - [id:38194]", labels.Runtime.Day2, labels.High,
+			func() {
+				By("Record the original info of default worker pool")
+				mpDescription, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, con.DefaultClassicWorkerPool)
+				Expect(err).ToNot(HaveOccurred())
+				recoverFlags := []string{}
+				if mpDescription.AutoScaling == constants.Yes {
+					minReplicas, maxReplicas := strings.Split(mpDescription.Replicas, "-")[0],
+						strings.Split(mpDescription.Replicas, "-")[1]
+					recoverFlags = append(recoverFlags,
+						"--enable-autoscaling=true",
+						"--min-replicas", minReplicas,
+						"--max-replicas", maxReplicas,
+					)
+				} else {
+					recoverFlags = append(recoverFlags,
+						"--enable-autoscaling=false",
+						"--replicas", mpDescription.Replicas,
+					)
+				}
+
+				By("Update the worker pool to autoscaling will work")
+				_, err = machinePoolService.EditMachinePool(clusterID, con.DefaultClassicWorkerPool,
+					"--enable-autoscaling",
+					"--min-replicas", "3",
+					"--max-replicas", "9",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.EditMachinePool(clusterID, con.DefaultClassicWorkerPool, recoverFlags...)
+
+				By("Describe the machinepool and check the editing")
+				mpDescription, err = machinePoolService.DescribeAndReflectMachinePool(clusterID, con.DefaultClassicWorkerPool)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpDescription.AutoScaling).To(Equal(constants.Yes))
+				Expect(mpDescription.Replicas).To(Equal("3-9"))
+
+				By("Scale up the worker pool with autoscaling will work")
+				_, err = machinePoolService.EditMachinePool(clusterID, con.DefaultClassicWorkerPool,
+					"--max-replicas", "12",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				mpDescription, err = machinePoolService.DescribeAndReflectMachinePool(clusterID, con.DefaultClassicWorkerPool)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpDescription.AutoScaling).To(Equal(constants.Yes))
+				Expect(mpDescription.Replicas).To(Equal("3-12"))
+			})
+
+		It("will validate labels and taints for default worker pool - [id:57105]", labels.Runtime.Day2, labels.Medium,
+			func() {
+				By("Record original labels and define the recovery steps")
+				mpDescription, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, con.DefaultClassicWorkerPool)
+				Expect(err).ToNot(HaveOccurred())
+				originalLabels := mpDescription.Labels
+				defer machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", common.ReplaceCommaSpaceWithComma(originalLabels),
+				)
+
+				By("Edit machinepool label with invalid labels p*=test will fail")
+				output, err := machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", "p*=test",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Invalid label key 'p*': name part must consist of alphanumeric characters"))
+
+				By("Edit machinepool label with empty key =test will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", "=test",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Invalid label key '': name part must be non-empty"))
+
+				By("Edit machinepool with duplicate key will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--labels", "dupkey=test,dupkey=test2",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Duplicated label key 'dupkey' used"))
+
+				By("Edit taints with invalid values will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--taints", "dupkey=test:InvalidEffect",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Taint at index 0 is incorrect: Unrecognized taint effect"))
+
+				By("Remove other machinepools to make sure there is only workers left")
+				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				for _, mp := range mpList.MachinePools {
+					if mp.ID != con.DefaultClassicWorkerPool {
+						machinePoolService.DeleteMachinePool(clusterID, mp.ID)
+					}
+				}
+
+				By("Edit the only existing worker pool with taints will fail")
+				output, err = machinePoolService.EditMachinePool(clusterID,
+					con.DefaultClassicWorkerPool,
+					"--taints", "dupkey=test:NoSchedule",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("At least one machine pool able to run OCP workload is required"))
+			})
 	})

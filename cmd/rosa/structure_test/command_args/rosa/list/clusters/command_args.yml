@@ -1,0 +1,5 @@
+- name: output
+- name: all
+- name: account-role-arn
+- name: profile
+- name: region

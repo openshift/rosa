@@ -1,0 +1,5 @@
+- name: account-id
+- name: interactive
+- name: profile
+- name: role-arn
+- name: "yes"

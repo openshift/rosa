@@ -60,6 +60,7 @@ type OCMResourceService interface {
 	ReflectOIDCConfigList(result bytes.Buffer) (oidclist OIDCConfigList, err error)
 	GetOIDCIdFromList(providerURL string) (string, error)
 	GetOIDCConfigFromList(oidcConfigID string) (OIDCConfig, error)
+	RegisterOIDCConfig(flags ...string) (bytes.Buffer, error)
 
 	ListOperatorRoles(flags ...string) (bytes.Buffer, error)
 	DeleteOperatorRoles(flags ...string) (bytes.Buffer, error)
@@ -69,6 +70,9 @@ type OCMResourceService interface {
 
 	CreateOIDCProvider(flags ...string) (bytes.Buffer, error)
 	DeleteOIDCProvider(flags ...string) (bytes.Buffer, error)
+
+	CreateDNSDomain(flags ...string) (bytes.Buffer, error)
+	DeleteDNSDomain(flags ...string) (bytes.Buffer, error)
 
 	Token(flags ...string) (bytes.Buffer, error)
 
@@ -524,6 +528,17 @@ func (url OCMRoleList) FindLinkedOCMRole() (userRoles OCMRole) {
 	return
 }
 
+// Get the user-role which is linked to org
+func (url UserRoleList) FindLinkedUserRole() (userRoles UserRole) {
+	for _, roleItme := range url.UserRoleList {
+		if roleItme.Linded == "Yes" {
+			Logger.Infof("Find one linked user role %s ~", roleItme.RoleName)
+			return roleItme
+		}
+	}
+	return
+}
+
 // run `rosa create oidc-config` command
 func (ors *ocmResourceService) CreateOIDCConfig(flags ...string) (bytes.Buffer, error) {
 	createOIDCConfig := ors.client.Runner
@@ -605,6 +620,14 @@ func (oidcl OIDCConfigList) OIDCConfig(id string) (oidc OIDCConfig) {
 	}
 	return
 }
+func (oidcl OIDCConfigList) IssuerUrl(url string) (oidc OIDCConfig) {
+	for _, item := range oidcl.OIDCConfigList {
+		if item.IssuerUrl == url {
+			return item
+		}
+	}
+	return
+}
 
 // run `rosa create operator-roles` command
 func (ors *ocmResourceService) CreateOperatorRoles(flags ...string) (bytes.Buffer, error) {
@@ -663,6 +686,20 @@ func (ors *ocmResourceService) DeleteOIDCProvider(flags ...string) (bytes.Buffer
 	return deleteOIDCProvider.Run()
 }
 
+// run `rosa create dns-domain` command
+func (ors *ocmResourceService) CreateDNSDomain(flags ...string) (bytes.Buffer, error) {
+	createDNSDomain := ors.client.Runner
+	createDNSDomain = createDNSDomain.Cmd("create", "dns-domain").CmdFlags(flags...)
+	return createDNSDomain.Run()
+}
+
+// run `rosa delete dns-domain` command
+func (ors *ocmResourceService) DeleteDNSDomain(flags ...string) (bytes.Buffer, error) {
+	deleteDNSDomain := ors.client.Runner
+	deleteDNSDomain = deleteDNSDomain.Cmd("delete", "dns-domain").CmdFlags(flags...)
+	return deleteDNSDomain.Run()
+}
+
 func (ors *ocmResourceService) CleanResources(clusterID string) (errors []error) {
 	Logger.Debugf("Nothing releated to cluster was done there")
 	return
@@ -693,4 +730,11 @@ func (ors *ocmResourceService) SetConfig(flags ...string) (bytes.Buffer, error) 
 	setConfig := ors.client.Runner
 	setConfig = setConfig.Cmd("config", "set").CmdFlags(flags...)
 	return setConfig.Run()
+}
+
+// run `rosa register oidc-config` command
+func (ors *ocmResourceService) RegisterOIDCConfig(flags ...string) (bytes.Buffer, error) {
+	registerOIDCConfig := ors.client.Runner
+	registerOIDCConfig = registerOIDCConfig.Cmd("register", "oidc-config").CmdFlags(flags...)
+	return registerOIDCConfig.Run()
 }

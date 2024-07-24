@@ -1,0 +1,6 @@
+- name: interactive
+- name: organization-id
+- name: profile
+- name: region
+- name: role-arn
+- name: "yes"
