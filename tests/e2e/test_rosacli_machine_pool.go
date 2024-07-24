@@ -268,9 +268,9 @@ var _ = Describe("Create machinepool",
 				Expect(availableMachineTypesIDs).To(ContainElements(typesList))
 
 				availableMachineTypes, output, err := ocmResourceService.ListInstanceTypes(
-					"--region", region, "--role-arn", "xxx")
+					"--region", "xxx", "--role-arn", classicInstallerRoleArn)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("E: Unsupported region 'xxx', available regions"))
+				Expect(output.String()).Should(ContainSubstring("ERR: Unsupported region 'xxx', available regions"))
 			})
 
 		It("can create spot machinepool - [id:43251]",
