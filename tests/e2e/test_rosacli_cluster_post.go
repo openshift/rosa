@@ -325,7 +325,11 @@ var _ = Describe("Healthy check",
 				By("Check compute machine type")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
-				Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(profile.ClusterConfig.InstanceType))
+				if profile.ClusterConfig.InstanceType == "" {
+					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(constants.DefaultInstanceType))
+				} else {
+					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(profile.ClusterConfig.InstanceType))
+				}
 			})
 	})
 
