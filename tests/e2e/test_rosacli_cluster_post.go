@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
@@ -371,5 +372,61 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 				versionOutput, err := clusterService.GetClusterVersion(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(versionOutput.ChannelGroup).To(Equal(profile.ChannelGroup))
+			})
+	})
+var _ = Describe("Create BYO OIDC cluster testing",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient     *rosacli.Client
+			clusterConfig  *config.ClusterConfig
+			err            error
+			clusterID      string
+			clusterService rosacli.ClusterService
+			oidcConfigC    string
+			awsClient      *aws_client.AWSClient
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+		})
+
+		It("to verify byo oidc cluster is created successfully - [id:59530]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				By("Retrieve oidc config from cluster config")
+				clusterID = config.GetClusterID()
+				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
+
+				By("Get the operator roles")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				oidcConfigID := jsonData.DigString("aws", "sts", "oidc_config", "id")
+				Expect(oidcConfigC).To(Equal(oidcConfigID))
+
+				By("Check oidc provider using the oidc config created in day1")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				OidcUrl := CD.OIDCEndpointURL
+				Expect(OidcUrl).To(ContainSubstring(oidcConfigC))
+
+				By("Get operator roles from cluster")
+				operatorRolesArns := CD.OperatorIAMRoles
+				for _, operatorRoleARN := range operatorRolesArns {
+					_, roleName, err := common.ParseRoleARN(operatorRoleARN)
+					Expect(err).To(BeNil())
+					opRole, err := awsClient.GetRole(roleName)
+					Expect(err).To(BeNil())
+					Expect(*opRole.AssumeRolePolicyDocument).To(ContainSubstring(oidcConfigC))
+				}
 			})
 	})
