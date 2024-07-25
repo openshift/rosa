@@ -11,6 +11,7 @@ profiles:
     byo_vpc: true
     private_link: false
     additional_principals: false
+    imdsv2: "required"
     private: false
     etcd_encryption: true
     autoscale: true
@@ -43,6 +44,7 @@ profiles:
     byo_vpc: true
     private: true
     additional_principals: true
+    imdsv2: ""
     etcd_encryption: false
     autoscale: false
     kms_key: false
@@ -67,6 +69,7 @@ profiles:
     byo_vpc: true
     private: false
     additional_principals: false
+    imdsv2: "optional"
     etcd_encryption: true
     autoscale: false
     kms_key: true
@@ -80,7 +83,6 @@ profiles:
     oidc_config: "managed"
     shared_vpc: false
     firewall: true
-    imdsv2: ""
     ingress_customized: false
     auditlog_forward: false
     name_length: 54
@@ -101,6 +103,7 @@ profiles:
     byo_vpc: true
     private_link: false
     additional_principals: false
+    imdsv2: "optional"
     private: false
     etcd_encryption: true
     autoscale: false
@@ -131,6 +134,7 @@ profiles:
     private_link: false
     private: false
     additional_principals: false
+    imdsv2: "optional"
     etcd_encryption: true
     autoscale: false
     kms_key: true
