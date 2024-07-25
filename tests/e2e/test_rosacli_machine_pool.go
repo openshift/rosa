@@ -267,10 +267,18 @@ var _ = Describe("Create machinepool",
 				}
 				Expect(availableMachineTypesIDs).To(ContainElements(typesList))
 
+				By("Try to list instance-types with invalid region")
 				availableMachineTypes, output, err := ocmResourceService.ListInstanceTypes(
 					"--region", "xxx", "--role-arn", classicInstallerRoleArn)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("ERR: Unsupported region 'xxx', available regions"))
+
+				By("Delete the account-roles")
+				rosaClient.Runner.UnsetArgs()
+				_, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y")
+				Expect(err).To(BeNil())
 			})
 
 		It("can create spot machinepool - [id:43251]",

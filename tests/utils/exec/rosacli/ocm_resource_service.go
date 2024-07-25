@@ -204,7 +204,8 @@ func (ors *ocmResourceService) ReflectInstanceTypesList(result bytes.Buffer) (ur
 func (ors *ocmResourceService) ListInstanceTypes(flags ...string) (InstanceTypesList, bytes.Buffer, error) {
 	ors.client.Runner.cmdArgs = []string{}
 	listInstanceTypes := ors.client.Runner.
-		Cmd("list", "instance-types").CmdFlags(flags...)
+		Cmd("list", "instance-types").
+		CmdFlags(flags...)
 	output, err := listInstanceTypes.Run()
 	if err != nil {
 		return InstanceTypesList{}, output, err
