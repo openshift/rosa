@@ -53,13 +53,25 @@ func (m *EditMachinepoolOptions) Bind(args *EditMachinepoolUserOptions, argv []s
 	}
 
 	if m.args.machinepool == "" {
-		return fmt.Errorf("you need to specify a machine pool name")
+		return fmt.Errorf("You need to specify a machine pool name")
 	}
 
 	if m.args.labels != "" {
 		_, err := mpHelpers.ParseLabels(args.labels)
 		if err != nil {
 			return err
+		}
+	}
+
+	if m.args.autoscalingEnabled {
+		if m.args.minReplicas <= 0 {
+			return fmt.Errorf("Min replicas must be greater than zero when autoscaling is enabled")
+		}
+		if m.args.maxReplicas <= 0 {
+			return fmt.Errorf("Max replicas must be greater than zero when autoscaling is enabled")
+		}
+		if m.args.minReplicas > m.args.maxReplicas {
+			return fmt.Errorf("Min replicas must be less than max replicas")
 		}
 	}
 
