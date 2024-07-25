@@ -15,6 +15,9 @@ var _ = Describe("Test edit machinepool options", func() {
 	})
 	Context("Edit Machinepool Options", func() {
 		var options EditMachinepoolOptions
+		BeforeEach(func() {
+			args = NewEditMachinepoolUserOptions()
+		})
 		It("Create args from options using Bind (also tests MachinePool func)", func() {
 			// Set value then bind
 			testMachinepool := "test"
@@ -25,7 +28,7 @@ var _ = Describe("Test edit machinepool options", func() {
 		It("Fail to bind args due to empty machinepool name", func() {
 			args.machinepool = ""
 			err := options.Bind(args, []string{})
-			Expect(err).To(MatchError("you need to specify a machine pool name"))
+			Expect(err).To(MatchError("You need to specify a machine pool name"))
 		})
 		It("Test Bind with argv instead of normal args (single arg, no flag for machinepool)", func() {
 			argv := []string{"test-id"}
@@ -47,6 +50,30 @@ var _ = Describe("Test edit machinepool options", func() {
 			args.machinepool = testMachinepool
 			err := options.Bind(args, []string{})
 			Expect(err).To(MatchError("Expected key=value format for labels"))
+		})
+		It("Test min replicas negative value (fail)", func() {
+			args.minReplicas = -1
+			args.maxReplicas = 1
+			args.autoscalingEnabled = true
+			args.machinepool = "test"
+			err := options.Bind(args, []string{})
+			Expect(err).To(MatchError("Min replicas must be greater than zero when autoscaling is enabled"))
+		})
+		It("Test max replicas negative value (fail)", func() {
+			args.maxReplicas = -1
+			args.minReplicas = 1
+			args.autoscalingEnabled = true
+			args.machinepool = "test"
+			err := options.Bind(args, []string{})
+			Expect(err).To(MatchError("Max replicas must be greater than zero when autoscaling is enabled"))
+		})
+		It("Test min replicas > max replicas (fail)", func() {
+			args.maxReplicas = 1
+			args.minReplicas = 5
+			args.autoscalingEnabled = true
+			args.machinepool = "test"
+			err := options.Bind(args, []string{})
+			Expect(err).To(MatchError("Min replicas must be less than max replicas"))
 		})
 	})
 })
