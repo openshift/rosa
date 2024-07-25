@@ -142,10 +142,11 @@ var _ = Describe("Edit nodepool",
 				By("Check describe nodepool")
 				npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-
+				replicasCount, err := strconv.Atoi(replicasNb)
+				Expect(err).ToNot(HaveOccurred())
 				Expect(npDesc).ToNot(BeNil())
 				Expect(npDesc.AutoScaling).To(Equal("No"))
-				Expect(npDesc.DesiredReplicas).To(Equal(replicasNb))
+				Expect(npDesc.DesiredReplicas).To(Equal(replicasCount))
 				Expect(npDesc.CurrentReplicas).To(Equal("0"))
 				Expect(npDesc.InstanceType).To(Equal(instanceType))
 				Expect(npDesc.AvalaiblityZones).ToNot(BeNil())
@@ -1713,4 +1714,53 @@ var _ = Describe("Edit nodepool",
 				ContainSubstring(`Max replicas`))
 			Expect(mpDescription.String()).Should(MatchRegexp(`Desired replicas:[\s\t]*0`))
 		})
+
+		It("create/describe rosa hcp machinepool support imdsv2 - [id:75227]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				By("Check the help message of 'rosa create machinepool -h'")
+				res, err := machinePoolService.RetrieveHelpForCreate()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.String()).To(ContainSubstring("--ec2-metadata-http-tokens"))
+
+				imdsv2Values := []string{"",
+					constants.OptionalEc2MetadataHttpTokens,
+					constants.RequiredEc2MetadataHttpTokens}
+
+				for _, imdsv2Value := range imdsv2Values {
+					machinePool_Name := common.GenerateRandomName("ocp-75227", 2)
+					By("Create a machinepool with --ec2-metadata-http-tokens = " + imdsv2Value)
+					output, err := machinePoolService.CreateMachinePool(clusterID,
+						machinePool_Name,
+						"--replicas", "3",
+						"--ec2-metadata-http-tokens", imdsv2Value)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(
+							ContainSubstring(
+								"Machine pool '%s' created successfully on hosted cluster '%s'", machinePool_Name, clusterID))
+
+					By("Describe the machinepool to check ec2 metadata http tokens value is set correctly")
+					npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePool_Name)
+					Expect(err).ToNot(HaveOccurred())
+					if imdsv2Value == "" {
+						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(constants.DefaultEc2MetadataHttpTokens))
+					} else {
+						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(imdsv2Value))
+					}
+				}
+
+				By("Try to create machinepool to the cluster by setting invalid value of --ec2-metadata-http-tokens")
+				machinePool_Name := common.GenerateRandomName("ocp-75227", 2)
+				output, err := machinePoolService.CreateMachinePool(clusterID,
+					machinePool_Name,
+					"--replicas", "3",
+					"--ec2-metadata-http-tokens", "invalid")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(
+						ContainSubstring(
+							"ERR: Expected a valid http tokens value : ec2-metadata-http-tokens " +
+								"value should be one of 'required', 'optional'"))
+			})
 	})

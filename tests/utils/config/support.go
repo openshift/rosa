@@ -35,8 +35,7 @@ func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, out
 	url := "https://raw.githubusercontent.com/isovalent/olm-for-cilium/main/manifests"
 	for _, n := range yamlFileNames {
 		stdout, err := ocClient.Run(
-			fmt.Sprintf("oc apply -f %s/cilium.v%s/%s --kubeconfig %s", url, ciliumVersion,
-				n, kubeconfigFile))
+			fmt.Sprintf("oc apply -f %s/cilium.v%s/%s", url, ciliumVersion, n))
 		time.Sleep(3 * time.Second)
 
 		if err != nil {

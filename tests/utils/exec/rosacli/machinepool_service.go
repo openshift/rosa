@@ -65,7 +65,7 @@ type MachinePoolList struct {
 	MachinePools []*MachinePool `json:"MachinePools,omitempty"`
 }
 
-// Struct for the 'rosa list machinepool' output for non-hosted-cp clusters
+// Struct for the 'rosa describe machinepool' output for non-hosted-cp clusters
 type MachinePoolDescription struct {
 	AvailablityZones string `yaml:"Availability zones,omitempty"`
 	AutoScaling      string `yaml:"Autoscaling,omitempty"`
@@ -106,7 +106,7 @@ type NodePoolDescription struct {
 	ID                         string              `yaml:"ID,omitempty"`
 	ClusterID                  string              `yaml:"Cluster ID,omitempty"`
 	AutoScaling                string              `yaml:"Autoscaling,omitempty"`
-	DesiredReplicas            string              `yaml:"Desired replicas,omitempty"`
+	DesiredReplicas            interface{}         `yaml:"Desired replicas,omitempty"`
 	CurrentReplicas            string              `yaml:"Current replicas,omitempty"`
 	InstanceType               string              `yaml:"Instance type,omitempty"`
 	KubeletConfigs             string              `yaml:"Kubelet configs,omitempty"`
@@ -116,6 +116,7 @@ type NodePoolDescription struct {
 	AvalaiblityZones           string              `yaml:"Availability zone,omitempty"`
 	Subnet                     string              `yaml:"Subnet,omitempty"`
 	Version                    string              `yaml:"Version,omitempty"`
+	EC2MetadataHttpTokens      string              `yaml:"EC2 Metadata Http Tokens,omitempty"`
 	AutoRepair                 string              `yaml:"Autorepair,omitempty"`
 	TuningConfigs              string              `yaml:"Tuning configs,omitempty"`
 	ManagementUpgrade          []map[string]string `yaml:"Management upgrade,omitempty"`
