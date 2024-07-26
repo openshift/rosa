@@ -1756,7 +1756,6 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 		oidcConfigToClean        string
 		ocmResourceService       rosacli.OCMResourceService
 		originalMajorMinorVerson string
-		clusterConfig            *config.ClusterConfig
 		clusterService           rosacli.ClusterService
 		awsClient                *aws_client.AWSClient
 		operatorPolicyArn        string
@@ -1770,7 +1769,6 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 		ocmResourceService = rosaClient.OCMResource
 		clusterService = rosaClient.Cluster
 		profile = profilehandler.LoadProfileYamlFileByENV()
-		clusterConfig, err = config.ParseClusterProfile()
 		Expect(err).ToNot(HaveOccurred())
 
 		awsClient, err = aws_client.CreateAWSClient("", "")
@@ -1858,7 +1856,9 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			originalMajorMinorVerson = fmt.Sprintf("%d.%d", major, minor)
 			testingRoleVersion := fmt.Sprintf("%d.%d", major, minor-1)
 
-			if !clusterConfig.Hypershift {
+			isHosted, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !isHosted {
 				By("Update the all operator policies tags to low version")
 				_, roleName, err := common.ParseRoleARN(operatorRolesArns[1])
 				Expect(err).To(BeNil())
