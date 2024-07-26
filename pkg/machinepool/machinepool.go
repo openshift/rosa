@@ -442,7 +442,7 @@ func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, clus
 		InstanceType(instanceType).
 		Labels(labelMap).
 		Taints(taintBuilders...)
-
+		// hello
 	if autoscaling {
 		mpBuilder = mpBuilder.Autoscaling(
 			cmv1.NewMachinePoolAutoscaling().
