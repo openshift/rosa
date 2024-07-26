@@ -29,8 +29,6 @@ var _ = Describe("Cluster Upgrade testing",
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
 			profile                  *profilehandler.Profile
-			clusterConfig            *config.ClusterConfig
-			err                      error
 		)
 
 		BeforeEach(func() {
@@ -42,9 +40,6 @@ var _ = Describe("Cluster Upgrade testing",
 			rosaClient = rosacli.NewClient()
 			arbitraryPolicyService = rosaClient.Policy
 			clusterService = rosaClient.Cluster
-
-			clusterConfig, err = config.ParseClusterProfile()
-			Expect(err).ToNot(HaveOccurred())
 
 			By("Load the profile")
 			profile = profilehandler.LoadProfileYamlFileByENV()
@@ -214,7 +209,9 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(err).To(BeNil())
 				Expect(len(policy.Tags)).To(Equal(0))
 			}
-			if !clusterConfig.Hypershift {
+			isHosted, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !isHosted {
 				By("Update the all operator policies tags to low version")
 				tagName := "rosa_openshift_version"
 				clusterMajorVersion := common.SplitMajorVersion(clusterVersion)
