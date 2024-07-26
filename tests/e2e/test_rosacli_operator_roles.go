@@ -110,6 +110,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				By("Delete in-used oidc config in auto mode")
 				output, err = ocmResourceService.DeleteOIDCConfig(
 					"--oidc-config-id", oidcConfigID,
+					"--region", clusterConfig.Region,
 					"--mode", "auto",
 					"--region", clusterConfig.Region,
 					"-y",

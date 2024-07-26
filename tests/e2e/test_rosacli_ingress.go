@@ -255,8 +255,12 @@ var _ = Describe("Edit default ingress",
 				By("Check that the actual ingress config matches what was specified at install")
 				ingress, _ := defaultIngress(*ingressList)
 				Expect(ingress).NotTo(BeNil())
-				Expect(ingress.ExcludeNamespace).To(Equal(ingressConfig.DefaultIngressExcludedNamespaces))
-				Expect(ingress.RouteSelectors).To(Equal(ingressConfig.DefaultIngressRouteSelector))
+				defaultIngressInArrayFormList := strings.Split(ingressConfig.DefaultIngressExcludedNamespaces, ",")
+				defaultIngressInArrayForm := "[" + defaultIngressInArrayFormList[0] + ", " + defaultIngressInArrayFormList[1] + "]"
+				Expect(ingress.ExcludeNamespace).To(Equal(defaultIngressInArrayForm))
+				defaultIngressRouteSelectorList := strings.Split(ingressConfig.DefaultIngressRouteSelector, ",")
+				defaultIngressRouteSelector := defaultIngressRouteSelectorList[0] + ", " + defaultIngressRouteSelectorList[1]
+				Expect(ingress.RouteSelectors).To(Equal(defaultIngressRouteSelector))
 				Expect(ingress.NamespaceOwnershipPolicy).To(Equal(ingressConfig.DefaultIngressNamespaceOwnershipPolicy))
 				Expect(ingress.WildcardPolicy).To(Equal(ingressConfig.DefaultIngressWildcardPolicy))
 			})
