@@ -256,6 +256,47 @@ var _ = Describe("Healthy check",
 				Expect(out.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
 			})
 
+		It("rosa hcp cluster creation support imdsv2 - [id:75114]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				By("Check the cluster is hosted cp cluster")
+				isHostedCPCluster, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				if !isHostedCPCluster {
+					SkipNotHosted()
+				}
+
+				By("Check the help message of 'rosa create cluster -h'")
+				res, err := clusterService.CreateDryRun(clusterID, "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.String()).To(ContainSubstring("--ec2-metadata-http-tokens"))
+
+				By("Get the ec2_metadata_http_tokens value from cluster level spec attribute")
+				output, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterIMDSv2Value := output.DigString("aws", "ec2_metadata_http_tokens")
+
+				By("Check the cluster description value to match cluster profile configuration")
+				if profile.ClusterConfig.Ec2MetadataHttpTokens == "" {
+					Expect(clusterIMDSv2Value).To(Equal(constants.DefaultEc2MetadataHttpTokens))
+				} else {
+					Expect(clusterIMDSv2Value).To(Equal(profile.ClusterConfig.Ec2MetadataHttpTokens))
+				}
+
+				By("Check the default workers machinepool value to match cluster level spec attribute")
+				npList, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				for _, np := range npList.NodePools {
+					Expect(np.ID).ToNot(BeNil())
+					if strings.HasPrefix(np.ID, constants.DefaultHostedWorkerPool) {
+						npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, np.ID)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(clusterIMDSv2Value))
+					}
+				}
+			})
+
 		It("etcd encryption works on cluster creation - [id:42188]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
