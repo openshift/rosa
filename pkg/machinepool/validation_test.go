@@ -65,4 +65,48 @@ var _ = Describe("MachinePool validation", func() {
 			Expect(err.Error()).To(Equal("Input for kubelet config flag is not valid"))
 		})
 	})
+	Context("Validate edit machinepool options", func() {
+		It("Fails with autoscaling + replicas set", func() {
+			Expect(validateEditInput("machine", true, 1,
+				2, 1, true, true, true,
+				true, "test")).ToNot(Succeed())
+		})
+		It("Fails with max, min, and replicas <= 0", func() {
+			Expect(validateEditInput("machine", true, 0,
+				1, 0, false, true, true,
+				true, "test")).ToNot(Succeed())
+			Expect(validateEditInput("machine", true, 1,
+				0, 0, false, true, true,
+				true, "test")).ToNot(Succeed())
+			Expect(validateEditInput("machine", false, 0,
+				0, 0, true, true, false,
+				false, "test")).ToNot(Succeed())
+		})
+		It("Fails with max < min replicas", func() {
+			Expect(validateEditInput("machine", true, 5,
+				4, 0, false, true, true,
+				true, "test")).ToNot(Succeed())
+		})
+		It("Fails when no autoscaling, but min/max are set", func() {
+			Expect(validateEditInput("machine", false, 1,
+				0, 1, true, false, true,
+				false, "test")).ToNot(Succeed())
+			Expect(validateEditInput("machine", false, 0,
+				1, 1, true, false, false,
+				true, "test")).ToNot(Succeed())
+			Expect(validateEditInput("machine", false, 1,
+				1, 1, true, false, true,
+				true, "test")).ToNot(Succeed())
+		})
+		It("Passes (autoscaling)", func() {
+			Expect(validateEditInput("machine", true, 1,
+				2, 0, false, true, true,
+				true, "test")).To(Succeed())
+		})
+		It("Passes (not autoscaling)", func() {
+			Expect(validateEditInput("machine", false, 0,
+				0, 2, true, false, false,
+				false, "test")).To(Succeed())
+		})
+	})
 })

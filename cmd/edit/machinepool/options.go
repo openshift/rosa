@@ -73,6 +73,9 @@ func (m *EditMachinepoolOptions) Bind(args *EditMachinepoolUserOptions, argv []s
 		if m.args.minReplicas > m.args.maxReplicas {
 			return fmt.Errorf("Min replicas must be less than max replicas")
 		}
+		if m.args.replicas != 0 {
+			return fmt.Errorf("Autoscaling enabled on machine pool '%s'. can't set replicas", m.Machinepool())
+		}
 	}
 
 	return nil
