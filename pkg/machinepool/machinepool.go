@@ -1399,7 +1399,6 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 	}
 
 	if autoscaling {
-
 		// set default values from previous autoscaling values
 		if !isMinReplicasSet {
 			minReplicas = existingAutoscaling.MinReplicas()
@@ -1409,12 +1408,16 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		}
 
 		// Prompt for min replicas if neither min or max is set or interactive mode
-		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet && askForScalingParams) {
+		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet &&
+			askForScalingParams) {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
 				Default:  minReplicas,
 				Required: replicasRequired,
+				Validators: []interactive.Validator{
+					mpHelpers.MinNodePoolReplicaValidator(false),
+				},
 			})
 			if err != nil {
 				err = fmt.Errorf("Expected a valid number of min replicas: %s", err)
@@ -1423,12 +1426,16 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		}
 
 		// Prompt for max replicas if neither min or max is set or interactive mode
-		if !isMaxReplicasSet && (interactive.Enabled() || !isMinReplicasSet && askForScalingParams) {
+		if !isMaxReplicasSet && (interactive.Enabled() || !isMinReplicasSet &&
+			askForScalingParams) {
 			maxReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Max replicas",
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
 				Default:  maxReplicas,
 				Required: replicasRequired,
+				Validators: []interactive.Validator{
+					mpHelpers.MaxNodePoolReplicaValidator(minReplicas),
+				},
 			})
 			if err != nil {
 				err = fmt.Errorf("Expected a valid number of max replicas: %s", err)
@@ -1447,8 +1454,13 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		})
 		if err != nil {
 			err = fmt.Errorf("Expected a valid number of replicas: %s", err)
+			return
 		}
 	}
+
+	err = validateEditInput("machine", autoscaling, minReplicas, maxReplicas, replicas, isReplicasSet,
+		isAutoscalingSet, isMinReplicasSet, isMaxReplicasSet, machinePoolID)
+
 	return
 }
 
@@ -1517,11 +1529,6 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 
 	if err != nil {
 		return fmt.Errorf("Failed to get autoscaling or replicas: '%s'", err)
-	}
-
-	if !autoscaling && replicas < 0 ||
-		(autoscaling && isMinReplicasSet && minReplicas < 0) {
-		return fmt.Errorf("The number of machine pool replicas needs to be a non-negative integer")
 	}
 
 	if cluster.MultiAZ() && isMultiAZMachinePool(machinePool) &&
@@ -1928,7 +1935,6 @@ func getNodePoolReplicas(cmd *cobra.Command,
 		err = fmt.Errorf("Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
 			nodePoolID)
 		return
-
 	}
 
 	// if the user set replicas but enabled autoscaling or hasn't disabled existing autoscaling
@@ -2010,6 +2016,10 @@ func getNodePoolReplicas(cmd *cobra.Command,
 			return
 		}
 	}
+
+	err = validateEditInput("node", autoscaling, minReplicas, maxReplicas, replicas, isReplicasSet,
+		isAutoscalingSet, isMinReplicasSet, isMaxReplicasSet, nodePoolID)
+
 	return
 }
 
