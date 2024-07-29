@@ -174,3 +174,13 @@ func GetClusterID() (clusterID string) {
 func getClusterIDENVExisted() string {
 	return os.Getenv("CLUSTER_ID")
 }
+
+// IsNodePoolGlobalCheck Get the nodepool global check flag
+func IsNodePoolGlobalCheck() bool {
+	nodePoolGlobalCheck := os.Getenv("CLUSTER_NODE_POOL_GLOBAL_CHECK")
+	if nodePoolGlobalCheck == "true" {
+		return true
+	} else {
+		return false
+	}
+}

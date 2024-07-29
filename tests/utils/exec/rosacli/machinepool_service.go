@@ -2,6 +2,8 @@ package rosacli
 
 import (
 	"bytes"
+	"fmt"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 
@@ -21,12 +23,13 @@ type MachinePoolService interface {
 	ReflectMachinePoolList(result bytes.Buffer) (mpl MachinePoolList, err error)
 	ReflectMachinePoolDescription(result bytes.Buffer) (*MachinePoolDescription, error)
 	ListAndReflectMachinePools(clusterID string) (mpl MachinePoolList, err error)
+	DescribeAndReflectMachinePool(clusterID string, name string) (*MachinePoolDescription, error)
 
 	ReflectNodePoolList(result bytes.Buffer) (*NodePoolList, error)
 	ListAndReflectNodePools(clusterID string) (*NodePoolList, error)
 	ReflectNodePoolDescription(result bytes.Buffer) (npd *NodePoolDescription, err error)
 	DescribeAndReflectNodePool(clusterID string, name string) (*NodePoolDescription, error)
-	DescribeAndReflectMachinePool(clusterID string, name string) (*MachinePoolDescription, error)
+	GetNodePoolAutoScaledReplicas(clusterID string, mpName string) (map[string]int, error)
 
 	RetrieveHelpForCreate() (bytes.Buffer, error)
 	RetrieveHelpForEdit() (bytes.Buffer, error)
@@ -103,9 +106,11 @@ type NodePoolList struct {
 }
 
 type NodePoolDescription struct {
-	ID                         string              `yaml:"ID,omitempty"`
-	ClusterID                  string              `yaml:"Cluster ID,omitempty"`
-	AutoScaling                string              `yaml:"Autoscaling,omitempty"`
+	ID          string `yaml:"ID,omitempty"`
+	ClusterID   string `yaml:"Cluster ID,omitempty"`
+	AutoScaling string `yaml:"Autoscaling,omitempty"`
+	// autoscale enabled nodepool return `[]interface{}`, which interface{} here is map[string]string
+	// autoscale disabled nodepool return `int`
 	DesiredReplicas            interface{}         `yaml:"Desired replicas,omitempty"`
 	CurrentReplicas            string              `yaml:"Current replicas,omitempty"`
 	InstanceType               string              `yaml:"Instance type,omitempty"`
@@ -304,6 +309,39 @@ func (m *machinepoolService) ReflectNodePoolDescription(result bytes.Buffer) (*N
 	npd := new(NodePoolDescription)
 	err = yaml.Unmarshal(data, npd)
 	return npd, err
+}
+
+// GetNodePoolAutoScaledReplicas Get autoscaled replicas of node pool
+func (m *machinepoolService) GetNodePoolAutoScaledReplicas(clusterID string, mpName string) (map[string]int, error) {
+	mpDesc, err := m.DescribeAndReflectNodePool(clusterID, mpName)
+	if err != nil {
+		return nil, err
+	}
+
+	desiredReplicaList := mpDesc.DesiredReplicas.([]interface{})
+	// Parse replicas of autoscaled machine/node pool
+	replicas, err := parseAutoscaledReplicas(desiredReplicaList)
+	// For node pool, it has current replicas which will be used to compare.
+	replicas["Current replicas"], _ = strconv.Atoi(fmt.Sprintf("%v", mpDesc.CurrentReplicas))
+	return replicas, err
+}
+
+// Parse replicas(Min replicas and Max replicas) of autoscaled machine/node pool
+func parseAutoscaledReplicas(desiredReplicaList []interface{}) (map[string]int, error) {
+	// Parse replicas of autoscaled machine pool
+	replicas := make(map[string]int)
+	for _, data := range desiredReplicaList {
+		valMap := data.(map[string]interface{})
+		for key, value := range valMap {
+			replica, err := strconv.Atoi(fmt.Sprintf("%v", value))
+			if err != nil {
+				return nil, err
+			}
+			replicas[key] = replica
+		}
+	}
+
+	return replicas, nil
 }
 
 // Get specified nodepool by nodepool id

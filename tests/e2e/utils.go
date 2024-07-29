@@ -19,3 +19,8 @@ func SkipTestOnFeature(feature string) {
 	message := fmt.Sprintf("The test profile is not configured with the feature: %s", feature)
 	Skip(message)
 }
+
+func SkipNotMultiArch() {
+	message := fmt.Sprintln("The cluster can not handle multiple CPU architecture")
+	Skip(message)
+}
