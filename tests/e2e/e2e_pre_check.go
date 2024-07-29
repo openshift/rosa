@@ -26,7 +26,7 @@ var _ = Describe("PreCheck", func() {
 
 		label, err := rosacli.GetFeatureLabelFilter(commitMessage)
 		Expect(err).ToNot(HaveOccurred())
-		if focus != "" {
+		if label != nil {
 			fmt.Printf("\nThe latest commit updates the feature: %v\n", *label)
 		}
 
