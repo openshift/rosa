@@ -38,6 +38,7 @@ type TestConfig struct {
 	ClusterInstallLogArtifactFile string
 	ClusterAdminFile              string
 	TestFocusFile                 string
+	TestLabelFilterFile           string
 	ProxySSHPemFile               string
 	ProxyCABundleFile             string
 	GlobalENV                     *GlobalENVVariables
@@ -89,6 +90,7 @@ func init() {
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
+	Test.TestLabelFilterFile = path.Join(Test.RootDir, "tests", "ci", "data", "label-filter")
 	Test.ProxySSHPemFile = "ocm-test-proxy"
 	Test.ProxyCABundleFile = path.Join(Test.OutputDir, "proxy-bundle.ca")
 
