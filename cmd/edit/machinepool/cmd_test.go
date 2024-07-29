@@ -41,7 +41,6 @@ var _ = Describe("Edit Machinepool", func() {
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(false))
 		})
-		classicClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClassicClusterReady})
 
 		version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 		awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge")
@@ -69,9 +68,8 @@ var _ = Describe("Edit Machinepool", func() {
 			t.SetCluster("", nil)
 		})
 
-		Describe("Machinepools", func() {
+		Describe("Machinepools", Ordered, func() {
 			It("Able to edit machinepool with no issues", func() {
-				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 				// First get
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
 				// Edit
@@ -87,7 +85,6 @@ var _ = Describe("Edit Machinepool", func() {
 					nodePoolId, "--min-replicas", "2", "--enable-autoscaling", "true", "-y"})).To(Succeed())
 			})
 			It("Machinepool ID passed in without flag in random location", func() {
-				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 				// First get
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
 				// Edit
@@ -135,6 +132,8 @@ var _ = Describe("Edit Machinepool", func() {
 				args := NewEditMachinepoolUserOptions()
 				args.machinepool = nodePoolId
 				args.autoscalingEnabled = true
+				args.maxReplicas = 10
+				args.minReplicas = 2
 				runner := EditMachinePoolRunner(args)
 				cmd := NewEditMachinePoolCommand()
 				Expect(cmd.Flag("cluster").Value.Set(clusterId)).To(Succeed())

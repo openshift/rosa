@@ -1321,8 +1321,7 @@ func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, 
 	if cluster.Hypershift().Enabled() {
 		return editNodePool(cmd, machinePoolId, clusterKey, cluster, r)
 	}
-	editMachinePool(cmd, machinePoolId, clusterKey, cluster, r)
-	return nil
+	return editMachinePool(cmd, machinePoolId, clusterKey, cluster, r)
 }
 
 // fillAutoScalingAndReplicas is filling either autoscaling or replicas value in the builder
@@ -1531,16 +1530,10 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 		return fmt.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
 	}
 
-	labels, err := cmd.Flags().GetString("labels")
-	if err != nil {
-		return fmt.Errorf("Failed to get inputted labels: '%s'", err)
-	}
+	labels := cmd.Flags().Lookup("labels").Value.String()
 	labelMap := mpHelpers.GetLabelMap(cmd, r, machinePool.Labels(), labels)
 
-	taints, err := cmd.Flags().GetString("taints")
-	if err != nil {
-		return fmt.Errorf("Failed to get inputted taints: '%s'", err)
-	}
+	taints := cmd.Flags().Lookup("taints").Value.String()
 	taintBuilders := mpHelpers.GetTaints(cmd, r, machinePool.Taints(), taints)
 
 	mpBuilder := cmv1.NewMachinePool().
@@ -1628,7 +1621,17 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	}
 
 	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1 {
-		return fmt.Errorf("The number of machine pool min-replicas needs to be greater than zero")
+		return fmt.Errorf("The number of machine pool min-replicas needs to be a non-negative integer")
+	}
+
+	if autoscaling && cmd.Flags().Changed("max-replicas") && maxReplicas < 1 {
+		return fmt.Errorf("The number of machine pool max-replicas needs to be a non-negative integer")
+	}
+
+	if autoscaling && cmd.Flags().Changed("max-replicas") && cmd.Flags().Changed(
+		"min-replicas") && minReplicas > maxReplicas {
+		return fmt.Errorf("The number of machine pool min-replicas needs to be less than the number of " +
+			"machine pool max-replicas")
 	}
 
 	labels := cmd.Flags().Lookup("labels").Value.String()
