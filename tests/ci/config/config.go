@@ -53,6 +53,7 @@ type GlobalENVVariables struct {
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
 	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`
 	ComputeMachineType    string `env:"COMPUTE_MACHINE_TYPE" default:""`
+	OCM_LOGIN_ENV         string `env:"OCM_LOGIN_ENV" default:""`
 }
 
 func init() {
