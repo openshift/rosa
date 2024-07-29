@@ -77,13 +77,14 @@ type UserData struct {
 
 // ClusterDetail will record basic cluster info to support other team's testing
 type ClusterDetail struct {
-	APIURL          string `json:"api_url,omitempty"`
-	ClusterID       string `json:"cluster_id,omitempty"`
-	ClusterName     string `json:"cluster_name,omitempty"`
-	ClusterType     string `json:"cluster_type,omitempty"`
-	ConsoleURL      string `json:"console_url,omitempty"`
-	InfraID         string `json:"infra_id,omitempty"`
-	OIDCEndpointURL string `json:"oidc_endpoint_url,omitempty"`
+	APIURL           string   `json:"api_url,omitempty"`
+	ClusterID        string   `json:"cluster_id,omitempty"`
+	ClusterName      string   `json:"cluster_name,omitempty"`
+	ClusterType      string   `json:"cluster_type,omitempty"`
+	ConsoleURL       string   `json:"console_url,omitempty"`
+	InfraID          string   `json:"infra_id,omitempty"`
+	OIDCEndpointURL  string   `json:"oidc_endpoint_url,omitempty"`
+	OperatorRoleArns []string `json:"operator_role_arn,omitempty"`
 }
 
 type ProxyDetail struct {

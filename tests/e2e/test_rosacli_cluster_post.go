@@ -377,7 +377,7 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 			})
 	})
 
-var _ = Describe("Delete BYO OIDC cluster testing",
+var _ = Describe("Post-Check testing for cluster deletion",
 	labels.Feature.Cluster, func() {
 		defer GinkgoRecover()
 		var (
@@ -461,8 +461,56 @@ var _ = Describe("Delete BYO OIDC cluster testing",
 				Expect(err.Error()).To(ContainSubstring("NoSuchEntity"))
 
 			})
+		It("to verify the sts cluster is deleted successfully - [id:75256]",
+			labels.High, labels.Runtime.DestroyPost,
+			func() {
+				By("Check the operator-roles is deleted")
+				clusterDetail, err := profilehandler.ParserClusterDetail()
+				Expect(err).To(BeNil())
+
+				operatorRolesArn := clusterDetail.OperatorRoleArns
+				for _, v := range operatorRolesArn {
+					_, roleName, err := common.ParseRoleARN(v)
+					Expect(err).To(BeNil())
+					opRole, err := awsClient.IamClient.GetRole(
+						context.TODO(),
+						&iam.GetRoleInput{
+							RoleName: &roleName,
+						})
+					Expect(opRole).To(BeNil())
+					Expect(err.Error()).To(ContainSubstring("NoSuchEntity"))
+				}
+
+				By("Check the cluster is deleted")
+				clusterID = config.GetClusterID()
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				Expect(clusterList.IsExist(clusterID)).To(BeFalse())
+
+				By("Check account roles are deleted")
+				accountRoleArns := []string{
+					clusterConfig.Aws.Sts.RoleArn,
+					clusterConfig.Aws.Sts.SupportRoleArn,
+					clusterConfig.Aws.Sts.WorkerRoleArn,
+				}
+
+				for _, v := range accountRoleArns {
+					_, roleName, err := common.ParseRoleARN(v)
+					Expect(err).To(BeNil())
+					opRole, err := awsClient.IamClient.GetRole(
+						context.TODO(),
+						&iam.GetRoleInput{
+							RoleName: &roleName,
+						})
+					Expect(opRole).To(BeNil())
+					Expect(err.Error()).To(ContainSubstring("NoSuchEntity"))
+				}
+			})
 	})
-var _ = Describe("Create BYO OIDC cluster testing",
+var _ = Describe("Post-Check testing for cluster creation",
 	labels.Feature.Cluster, func() {
 		defer GinkgoRecover()
 		var (
@@ -516,5 +564,34 @@ var _ = Describe("Create BYO OIDC cluster testing",
 					Expect(err).To(BeNil())
 					Expect(*opRole.AssumeRolePolicyDocument).To(ContainSubstring(oidcConfigC))
 				}
+			})
+		It("to verify sts cluster is created successfully - [id:41822]",
+			labels.High, labels.Runtime.Day1Post,
+			func() {
+				By("Check the cluster is STS cluster")
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				if !profile.ClusterConfig.STS {
+					Skip("This case is only for STS cluster post check")
+				}
+				By("Check the cluster is in ready status")
+				clusterDetail, err := profilehandler.ParserClusterDetail()
+				Expect(err).ToNot(HaveOccurred())
+				clusterID = clusterDetail.ClusterID
+				Expect(clusterID).ToNot(Equal(""), "ClusterID is required.Please debug why it is empty")
+
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterDescription, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDescription.State).To(Equal("ready"))
+				Expect(clusterDescription.STSRoleArn).ToNot(BeEmpty())
+
+				By("Check the sts cluster created with IAM roles")
+				if profile.ClusterConfig.HCP {
+					Expect(len(clusterDescription.OperatorIAMRoles)).To(Equal(8))
+				} else {
+					Expect(len(clusterDescription.OperatorIAMRoles)).To(Equal(6))
+				}
+
 			})
 	})
