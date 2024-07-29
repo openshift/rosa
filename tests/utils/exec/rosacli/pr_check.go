@@ -39,9 +39,6 @@ func GetFocusCaseIDs(commitMessage string) (string, error) {
 	reg := regexp.MustCompile(`ids?:([0-9,\s,]*)`)
 	idsMatched := reg.FindAllStringSubmatch(commitMessage, -1)
 	focus := ""
-	if len(idsMatched) == 0 {
-		return focus, nil
-	}
 	var ids = []string{}
 	for _, matched := range idsMatched {
 		ids = append(ids, common.ParseCommaSeparatedStrings(matched[1])...)
