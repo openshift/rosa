@@ -247,12 +247,21 @@ var _ = Describe("Cluster Upgrade testing",
 			// without arbitrary policies attach share this profile.
 			// It needs to add step to wait the cluster upgrade done
 			// and to check the `rosa describe/list upgrade` in both of these two case.
-			output, err = clusterService.Upgrade(
-				"-c", clusterID,
-				"--version", upgradingVersion,
-				"--mode", "auto",
-				"-y",
-			)
+			if !isHosted {
+				output, err = clusterService.Upgrade(
+					"-c", clusterID,
+					"--version", upgradingVersion,
+					"--mode", "auto",
+					"-y",
+				)
+			} else {
+				output, err = clusterService.Upgrade(
+					"-c", clusterID,
+					"--version", upgradingVersion,
+					"--mode", "auto", "--hosted-cp",
+					"-y",
+				)
+			}
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("are already up-to-date"))
 			Expect(output.String()).To(ContainSubstring("are compatible with upgrade"))
