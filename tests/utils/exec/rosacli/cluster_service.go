@@ -125,6 +125,7 @@ type ClusterDescription struct {
 	AuditLogRoleARN          string              `yaml:"Audit Log Role ARN,omitempty"`
 	FailedInflightChecks     string              `yaml:"Failed Inflight Checks,omitempty"`
 	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
+	EnableDeleteProtection   string              `yaml:"Delete Protection,omitempty"`
 }
 
 // Pasrse the result of 'rosa list cluster' to the ClusterList struct
