@@ -248,7 +248,7 @@ var _ = Describe("Create machinepool",
 			func() {
 				By("List the available instance-types with the region flag")
 				typesList := []string{"dl1.24xlarge", "g4ad.16xlarge", "c5.xlarge"}
-				region := "us-east-1"
+				region := "us-west-2"
 				accountRolePrefix := fmt.Sprintf("QEAuto-accr72174-%s", time.Now().UTC().Format("20060102"))
 				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -264,6 +264,15 @@ var _ = Describe("Create machinepool",
 					"--region", region, "--role-arn", classicInstallerRoleArn)
 				Expect(err).To(BeNil())
 				var availableMachineTypesIDs []string
+				for _, it := range availableMachineTypes.InstanceTypesList {
+					availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
+				}
+				Expect(availableMachineTypesIDs).To(ContainElements(typesList))
+
+				By("List the available instance-types with the region flag and hosted-cp flag")
+				availableMachineTypes, _, err = ocmResourceService.ListInstanceTypes(
+					"--region", region, "--role-arn", classicInstallerRoleArn, "--hosted-cp")
+				Expect(err).To(BeNil())
 				for _, it := range availableMachineTypes.InstanceTypesList {
 					availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
 				}
