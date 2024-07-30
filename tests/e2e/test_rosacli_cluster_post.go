@@ -533,6 +533,9 @@ var _ = Describe("Create BYO OIDC cluster testing",
 		It("to verify byo oidc cluster is created successfully - [id:59530]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				Expect(err).ToNot(HaveOccurred())
+
 				By("Retrieve oidc config from cluster config")
 				clusterID = config.GetClusterID()
 				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
@@ -541,6 +544,7 @@ var _ = Describe("Create BYO OIDC cluster testing",
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
 				oidcConfigID := jsonData.DigString("aws", "sts", "oidc_config", "id")
+				oidcConfigIssuerURL := jsonData.DigString("aws", "sts", "oidc_config", "issuer_url")
 				Expect(oidcConfigC).To(Equal(oidcConfigID))
 
 				By("Check oidc provider using the oidc config created in day1")
@@ -550,7 +554,11 @@ var _ = Describe("Create BYO OIDC cluster testing",
 				Expect(err).To(BeNil())
 
 				OidcUrl := CD.OIDCEndpointURL
-				Expect(OidcUrl).To(ContainSubstring(oidcConfigC))
+				if profile.ClusterConfig.OIDCConfig == "unmanaged" {
+					Expect(OidcUrl).To(Equal(oidcConfigIssuerURL + " (Unmanaged)"))
+				} else {
+					Expect(OidcUrl).To(ContainSubstring(oidcConfigC))
+				}
 
 				By("Get operator roles from cluster")
 				operatorRolesArns := CD.OperatorIAMRoles
@@ -559,7 +567,12 @@ var _ = Describe("Create BYO OIDC cluster testing",
 					Expect(err).To(BeNil())
 					opRole, err := awsClient.GetRole(roleName)
 					Expect(err).To(BeNil())
-					Expect(*opRole.AssumeRolePolicyDocument).To(ContainSubstring(oidcConfigC))
+					if profile.ClusterConfig.OIDCConfig == "unmanaged" {
+						Expect(*opRole.AssumeRolePolicyDocument).To(
+							ContainSubstring(strings.Replace(oidcConfigIssuerURL, "https://", "", 1)))
+					} else {
+						Expect(*opRole.AssumeRolePolicyDocument).To(ContainSubstring(oidcConfigC))
+					}
 				}
 			})
 	})

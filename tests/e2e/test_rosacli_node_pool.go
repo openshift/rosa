@@ -1009,9 +1009,12 @@ var _ = Describe("Edit nodepool",
 
 				By("Get OCM Env")
 				if ciConfig.Test.GlobalENV.OCM_LOGIN_ENV != "" {
-					if strings.Contains(ciConfig.Test.GlobalENV.OCM_LOGIN_ENV, "staging") {
+					OCM_LOGIN_ENV := ciConfig.Test.GlobalENV.OCM_LOGIN_ENV
+					if strings.Contains(OCM_LOGIN_ENV, "staging") ||
+						strings.Contains(OCM_LOGIN_ENV, "stage") {
 						OCMEnv = "staging"
-					} else if strings.Contains(ciConfig.Test.GlobalENV.OCM_LOGIN_ENV, "production") {
+					} else if strings.Contains(OCM_LOGIN_ENV, "production") ||
+						strings.Contains(OCM_LOGIN_ENV, "prod") {
 						OCMEnv = "production"
 					}
 				} else {
