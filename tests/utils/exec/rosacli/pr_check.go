@@ -5,7 +5,10 @@ import (
 	"regexp"
 	"strings"
 
+	. "github.com/onsi/ginkgo/v2"
+
 	"github.com/openshift/rosa/tests/ci/config"
+	"github.com/openshift/rosa/tests/ci/labels"
 	common "github.com/openshift/rosa/tests/utils/common"
 )
 
@@ -20,8 +23,7 @@ func GetCommitAuthor() (string, error) {
 
 	return output.String(), nil
 }
-
-func GetCommitFoucs() (string, error) {
+func GetCommitMessage() (string, error) {
 	command := "git log -n 1 --no-merges --pretty=format:%s"
 	runner := NewRunner()
 
@@ -30,22 +32,34 @@ func GetCommitFoucs() (string, error) {
 		return "", err
 	}
 	fmt.Printf("\nThe last commit is: %s\n", output.String())
-	theStrSlice := strings.Split(output.String(), " ")
+	return output.String(), err
+}
 
-	var tcIDs []string
-	reg := regexp.MustCompile(`(id:.*)`)
-	for _, theStr := range theStrSlice {
-		m := reg.FindAllString(theStr, -1)
-		if len(m) > 0 {
-			for _, idStr := range m {
-				idStr = strings.Split(idStr, "id:")[1]
-				ids := strings.Split(idStr, ",")
-				tcIDs = append(tcIDs, ids...)
-			}
+func GetFocusCaseIDs(commitMessage string) (string, error) {
+	reg := regexp.MustCompile(`ids?:([0-9,\s,]*)`)
+	idsMatched := reg.FindAllStringSubmatch(commitMessage, -1)
+	focus := ""
+	var ids = []string{}
+	for _, matched := range idsMatched {
+		ids = append(ids, common.ParseCommaSeparatedStrings(matched[1])...)
+	}
+
+	focus = strings.Join(ids, "|")
+	_, err := common.CreateFileWithContent(config.Test.TestFocusFile, focus)
+	return focus, err
+}
+
+func GetFeatureLabelFilter(commitMessage string) (*Labels, error) {
+	featureFilterMap := map[*Labels]regexp.Regexp{
+		&labels.Feature.Machinepool: *regexp.MustCompile(`[Ff]eature\s?:\s?[mM]achine[\s-]?[pP]ools?`),
+		// TODO more other feature labels mapping will be added once this can work well
+	}
+	for label, regexpMatch := range featureFilterMap {
+		if regexpMatch.MatchString(commitMessage) {
+			_, err := common.CreateFileWithContent(config.Test.TestLabelFilterFile, *label)
+			return label, err
 		}
 	}
 
-	focus := strings.Join(tcIDs, "|")
-	_, err = common.CreateFileWithContent(config.Test.TestFocusFile, focus)
-	return focus, err
+	return nil, nil
 }

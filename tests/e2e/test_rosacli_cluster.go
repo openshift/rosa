@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -441,8 +442,10 @@ var _ = Describe("Classic cluster creation validation",
 			// Get a random profile
 			profilesMap = profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
 			profilesNames := make([]string, 0, len(profilesMap))
-			for k := range profilesMap {
-				profilesNames = append(profilesNames, k)
+			for k, v := range profilesMap {
+				if !v.ClusterConfig.SharedVPC {
+					profilesNames = append(profilesNames, k)
+				}
 			}
 			profile = profilesMap[profilesNames[common.RandomInt(len(profilesNames))]]
 			profile.NamePrefix = constants.DefaultNamePrefix
@@ -1261,7 +1264,7 @@ var _ = Describe("HCP cluster creation negative testing",
 							"ERR: Expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 
-				By("Craete HCP cluster  with httpTokens=Required")
+				By("Create HCP cluster  with invalid httpTokens")
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -1269,13 +1272,14 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 
 				rosalCommand.ReplaceFlagValue(replacingFlags)
-				rosalCommand.AddFlags("--dry-run", "--ec2-metadata-http-tokens=required", "-y")
+				rosalCommand.AddFlags("--dry-run", "--ec2-metadata-http-tokens=invalid", "-y")
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
 					To(
 						ContainSubstring(
-							"ERR: 'ec2-metadata-http-tokens' is not available for Hosted Control Plane clusters"))
+							"ERR: Expected a valid http tokens value : " +
+								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 			})
 
 		It("expose additional allowed principals for HCP negative - [id:74433]",
@@ -1743,3 +1747,142 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 				}
 			})
 	})
+var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", labels.Feature.Cluster, func() {
+	defer GinkgoRecover()
+	var (
+		rosaClient               *rosacli.Client
+		profile                  *profilehandler.Profile
+		err                      error
+		oidcConfigToClean        string
+		ocmResourceService       rosacli.OCMResourceService
+		originalMajorMinorVerson string
+		clusterService           rosacli.ClusterService
+		awsClient                *aws_client.AWSClient
+		operatorPolicyArn        string
+		clusterID                string
+	)
+	const versionTagName = "rosa_openshift_version"
+
+	BeforeEach(func() {
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		ocmResourceService = rosaClient.OCMResource
+		clusterService = rosaClient.Cluster
+		profile = profilehandler.LoadProfileYamlFileByENV()
+		Expect(err).ToNot(HaveOccurred())
+
+		awsClient, err = aws_client.CreateAWSClient("", "")
+		Expect(err).To(BeNil())
+
+		By("Get the cluster")
+		clusterID = config.GetClusterID()
+		Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+	})
+
+	AfterEach(func() {
+		By("Recover the operator role policy version")
+		keysToUntag := []string{versionTagName}
+		err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
+		Expect(err).To(BeNil())
+		tags := map[string]string{versionTagName: originalMajorMinorVerson}
+		err = awsClient.TagPolicy(operatorPolicyArn, tags)
+		Expect(err).To(BeNil())
+
+		By("Delete resources for testing")
+		output, err := ocmResourceService.DeleteOIDCConfig(
+			"--oidc-config-id", oidcConfigToClean,
+			"--mode", "auto",
+			"-y",
+		)
+		Expect(err).To(BeNil())
+		textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+		Expect(textData).To(ContainSubstring("Successfully deleted the OIDC provider"))
+
+	})
+
+	It("to reuse operator-roles prefix and oidc config - [id:60688]",
+		labels.Critical, labels.Runtime.Day2,
+		func() {
+			By("Check if it is using oidc config")
+			if profile.ClusterConfig.OIDCConfig == "" {
+				Skip("Skip this case as it is only for byo oidc cluster")
+			}
+			By("Prepare creation command")
+			var originalOidcConfigID string
+			var rosalCommand config.Command
+
+			sharedDIR := os.Getenv("SHARED_DIR")
+			filePath := sharedDIR + "/create_cluster.sh"
+			rosalCommand, err = config.RetrieveClusterCreationCommand(filePath)
+			Expect(err).To(BeNil())
+
+			originalOidcConfigID = rosalCommand.GetFlagValue("--oidc-config-id", true)
+			rosalCommand.AddFlags("--dry-run")
+			testClusterName := "cluster60688"
+			rosalCommand.ReplaceFlagValue(map[string]string{
+				"-c": testClusterName,
+			})
+
+			By("Reuse the oidc config and operator-roles")
+			stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+			Expect(err).To(BeNil())
+			Expect(stdout.String()).To(ContainSubstring("Creating cluster '%s' should succeed", testClusterName))
+
+			By("Reuse the operator prefix to create cluster but using different oidc config")
+			output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+			Expect(err).To(BeNil())
+			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+			oidcConfigToClean, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+			Expect(err).To(BeNil())
+
+			rosalCommand.ReplaceFlagValue(map[string]string{
+				"--oidc-config-id": oidcConfigToClean,
+			})
+			stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+			Expect(err).NotTo(BeNil())
+			Expect(stdout.String()).To(ContainSubstring("does not have trusted relationship to"))
+
+			By("Find the nearest backward minor version")
+			output, err = clusterService.DescribeCluster(clusterID)
+			Expect(err).To(BeNil())
+			clusterDetail, err := clusterService.ReflectClusterDescription(output)
+			Expect(err).To(BeNil())
+			operatorRolesArns := clusterDetail.OperatorIAMRoles
+
+			clusterVersion := clusterDetail.OpenshiftVersion
+			major, minor, _, err := common.ParseVersion(clusterVersion)
+			Expect(err).To(BeNil())
+			originalMajorMinorVerson = fmt.Sprintf("%d.%d", major, minor)
+			testingRoleVersion := fmt.Sprintf("%d.%d", major, minor-1)
+
+			isHosted, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !isHosted {
+				By("Update the all operator policies tags to low version")
+				_, roleName, err := common.ParseRoleARN(operatorRolesArns[1])
+				Expect(err).To(BeNil())
+				policies, err := awsClient.ListAttachedRolePolicies(roleName)
+				Expect(err).To(BeNil())
+				operatorPolicyArn = *policies[0].PolicyArn
+
+				keysToUntag := []string{versionTagName}
+				err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
+				Expect(err).To(BeNil())
+
+				tags := map[string]string{versionTagName: testingRoleVersion}
+
+				err = awsClient.TagPolicy(operatorPolicyArn, tags)
+				Expect(err).To(BeNil())
+
+				By("Reuse operatot-role prefix and oidc config to create cluster with not-compatible version")
+
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--oidc-config-id": originalOidcConfigID,
+				})
+				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).NotTo(BeNil())
+				Expect(stdout.String()).To(ContainSubstring("is not compatible with cluster version"))
+			}
+		})
+})

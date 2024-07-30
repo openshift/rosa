@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/common/constants"
@@ -142,10 +143,11 @@ var _ = Describe("Edit nodepool",
 				By("Check describe nodepool")
 				npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-
+				replicasCount, err := strconv.Atoi(replicasNb)
+				Expect(err).ToNot(HaveOccurred())
 				Expect(npDesc).ToNot(BeNil())
 				Expect(npDesc.AutoScaling).To(Equal("No"))
-				Expect(npDesc.DesiredReplicas).To(Equal(replicasNb))
+				Expect(npDesc.DesiredReplicas).To(Equal(replicasCount))
 				Expect(npDesc.CurrentReplicas).To(Equal("0"))
 				Expect(npDesc.InstanceType).To(Equal(instanceType))
 				Expect(npDesc.AvalaiblityZones).ToNot(BeNil())
@@ -1003,8 +1005,21 @@ var _ = Describe("Edit nodepool",
 				rosaClient.Runner.UnsetFormat()
 				organizationID := userInfo.OCMOrganizationID
 
+				var OCMEnv string
+
 				By("Get OCM Env")
-				OCMEnv := common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "staging")
+				if ciConfig.Test.GlobalENV.OCM_LOGIN_ENV != "" {
+					OCM_LOGIN_ENV := ciConfig.Test.GlobalENV.OCM_LOGIN_ENV
+					if strings.Contains(OCM_LOGIN_ENV, "staging") ||
+						strings.Contains(OCM_LOGIN_ENV, "stage") {
+						OCMEnv = "staging"
+					} else if strings.Contains(OCM_LOGIN_ENV, "production") ||
+						strings.Contains(OCM_LOGIN_ENV, "prod") {
+						OCMEnv = "production"
+					}
+				} else {
+					OCMEnv = common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "staging")
+				}
 
 				By("Get the cluster informations")
 				rosaClient.Runner.JsonFormat()
@@ -1205,6 +1220,48 @@ var _ = Describe("Edit nodepool",
 					}
 				}
 
+				By("Create a nodepool with just max surge set")
+				machinePool_Name := common.GenerateRandomName("ocp-74387", 2)
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePool_Name,
+					"--replicas", "3",
+					"--max-surge", "2")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePool_Name,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePool_Name)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+				Expect(out.ManagementUpgrade[1]["Max surge"]).To(Equal("2"))
+				Expect(out.ManagementUpgrade[2]["Max unavailable"]).To(Equal("0"))
+
+				By("Create a nodepool with just max unavailable set")
+				machinePool_Name = common.GenerateRandomName("ocp-74387", 2)
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePool_Name,
+					"--replicas", "3",
+					"--max-unavailable", "2")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePool_Name,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err = machinePoolService.DescribeAndReflectNodePool(clusterID, machinePool_Name)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[0]["Type"]).To(Equal("Replace"))
+				Expect(out.ManagementUpgrade[1]["Max surge"]).To(Equal("1"))
+				Expect(out.ManagementUpgrade[2]["Max unavailable"]).To(Equal("2"))
+
 				By("Get a nodepool to edit")
 				res, err := machinePoolService.ListAndReflectNodePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -1256,6 +1313,40 @@ var _ = Describe("Edit nodepool",
 								Equal(flags["max unavailable"]))
 					}
 				}
+
+				By("Edit a nodepool with just max surge set")
+				output, err = machinePoolService.EditMachinePool(
+					clusterID,
+					machinePoolName,
+					"--max-surge", "7")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						machinePoolName,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err = machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[1]["Max surge"]).To(Equal("7"))
+
+				By("Edit a nodepool with just max unavailable set")
+				output, err = machinePoolService.EditMachinePool(
+					clusterID,
+					machinePoolName,
+					"--max-unavailable", "7")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'",
+						machinePoolName,
+						clusterID))
+
+				By("Describe the nodepool to see max surge and max unavailable is set correctly")
+				out, err = machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.ManagementUpgrade[2]["Max unavailable"]).To(Equal("7"))
 			})
 
 		It("validation for create/edit HCP nodepool with maxunavailable/maxsurge - [id:74430]",
@@ -1637,4 +1728,53 @@ var _ = Describe("Edit nodepool",
 				ContainSubstring(`Max replicas`))
 			Expect(mpDescription.String()).Should(MatchRegexp(`Desired replicas:[\s\t]*0`))
 		})
+
+		It("create/describe rosa hcp machinepool support imdsv2 - [id:75227]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				By("Check the help message of 'rosa create machinepool -h'")
+				res, err := machinePoolService.RetrieveHelpForCreate()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.String()).To(ContainSubstring("--ec2-metadata-http-tokens"))
+
+				imdsv2Values := []string{"",
+					constants.OptionalEc2MetadataHttpTokens,
+					constants.RequiredEc2MetadataHttpTokens}
+
+				for _, imdsv2Value := range imdsv2Values {
+					machinePool_Name := common.GenerateRandomName("ocp-75227", 2)
+					By("Create a machinepool with --ec2-metadata-http-tokens = " + imdsv2Value)
+					output, err := machinePoolService.CreateMachinePool(clusterID,
+						machinePool_Name,
+						"--replicas", "3",
+						"--ec2-metadata-http-tokens", imdsv2Value)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						To(
+							ContainSubstring(
+								"Machine pool '%s' created successfully on hosted cluster '%s'", machinePool_Name, clusterID))
+
+					By("Describe the machinepool to check ec2 metadata http tokens value is set correctly")
+					npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePool_Name)
+					Expect(err).ToNot(HaveOccurred())
+					if imdsv2Value == "" {
+						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(constants.DefaultEc2MetadataHttpTokens))
+					} else {
+						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(imdsv2Value))
+					}
+				}
+
+				By("Try to create machinepool to the cluster by setting invalid value of --ec2-metadata-http-tokens")
+				machinePool_Name := common.GenerateRandomName("ocp-75227", 2)
+				output, err := machinePoolService.CreateMachinePool(clusterID,
+					machinePool_Name,
+					"--replicas", "3",
+					"--ec2-metadata-http-tokens", "invalid")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(
+						ContainSubstring(
+							"ERR: Expected a valid http tokens value : ec2-metadata-http-tokens " +
+								"value should be one of 'required', 'optional'"))
+			})
 	})

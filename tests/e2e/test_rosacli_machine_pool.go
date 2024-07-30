@@ -702,8 +702,33 @@ var _ = Describe("Create machinepool",
 				instanceTypes, err := vpcClient.AWSClient.ListAvaliableInstanceTypesForRegion(
 					clusterConfig.Region, localZone)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(instanceTypes).ToNot(BeEmpty(), "There are no instance types supported in the zone")
-				instanceType := instanceTypes[0]
+
+				By("Create temporary account-roles for instance type list")
+				accountRoles, err := ph.PrepareAccountRoles(rosaClient, "test-55979",
+					false,
+					clusterConfig.Version.RawID,
+					clusterConfig.Version.ChannelGroup,
+					"", "")
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.OCMResource.DeleteAccountRole(
+					"--prefix", "test-55979",
+					"--mode", "auto",
+					"-y")
+
+				rosaSupported, _, err := rosaClient.OCMResource.ListInstanceTypes(
+					"--region", clusterConfig.Region,
+					"--role-arn", accountRoles.InstallerRole,
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				bothSupported := []string{}
+				for _, rosains := range rosaSupported.InstanceTypesList {
+					if common.SliceContains(instanceTypes, rosains.ID) {
+						bothSupported = append(bothSupported, rosains.ID)
+					}
+				}
+				Expect(bothSupported).ToNot(BeEmpty(), "There are no instance types supported in the zone")
+				instanceType := bothSupported[0]
 
 				By("Create machinepool with the subnet specified will succeed")
 				localZoneMpName := "localz-55979"

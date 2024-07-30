@@ -68,6 +68,11 @@ func LoadProfileYamlFileByENV() *Profile {
 			config.Test.GlobalENV.NamePrefix)
 		profile.NamePrefix = config.Test.GlobalENV.NamePrefix
 	}
+	if config.Test.GlobalENV.ComputeMachineType != "" {
+		log.Logger.Infof("Got global env settings for INSTANCE_TYPE, overwritten the profile setting with value %s",
+			config.Test.GlobalENV.ComputeMachineType)
+		profile.ClusterConfig.InstanceType = config.Test.GlobalENV.ComputeMachineType
+	}
 
 	return profile
 }
@@ -385,9 +390,9 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			AutoscalerIgnoreDaemonsetsUtilization: true,
 			AutoscalerMaxNodeProvisionTime:        "10m",
 			AutoscalerBalancingIgnoredLabels:      "aaa",
-			AutoscalerMaxNodesTotal:               "10",
+			AutoscalerMaxNodesTotal:               "100",
 			AutoscalerMinCores:                    "0",
-			AutoscalerMaxCores:                    "100",
+			AutoscalerMaxCores:                    "1000",
 			AutoscalerMinMemory:                   "0",
 			AutoscalerMaxMemory:                   "4096",
 			// AutoscalerGpuLimit:                      "1",
@@ -800,6 +805,7 @@ func CreateClusterByProfileWithoutWaiting(
 	clusterDetail.ClusterID = description.ID
 	clusterDetail.ClusterName = description.Name
 	clusterDetail.ClusterType = "rosa"
+	clusterDetail.OIDCEndpointURL = description.OIDCEndpointURL
 
 	// Need to do the post step when cluster has no oidcconfig enabled
 	if profile.ClusterConfig.OIDCConfig == "" && profile.ClusterConfig.STS {

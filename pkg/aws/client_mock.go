@@ -5,6 +5,7 @@
 //
 //	mockgen -source=client.go -package=aws -destination=client_mock.go
 //
+
 // Package aws is a generated GoMock package.
 package aws
 

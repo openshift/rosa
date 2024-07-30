@@ -1,14 +1,18 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"io"
 	nets "net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/common/constants"
@@ -253,6 +257,47 @@ var _ = Describe("Healthy check",
 				Expect(out.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
 			})
 
+		It("rosa hcp cluster creation support imdsv2 - [id:75114]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				By("Check the cluster is hosted cp cluster")
+				isHostedCPCluster, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+
+				if !isHostedCPCluster {
+					SkipNotHosted()
+				}
+
+				By("Check the help message of 'rosa create cluster -h'")
+				res, err := clusterService.CreateDryRun(clusterID, "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.String()).To(ContainSubstring("--ec2-metadata-http-tokens"))
+
+				By("Get the ec2_metadata_http_tokens value from cluster level spec attribute")
+				output, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterIMDSv2Value := output.DigString("aws", "ec2_metadata_http_tokens")
+
+				By("Check the cluster description value to match cluster profile configuration")
+				if profile.ClusterConfig.Ec2MetadataHttpTokens == "" {
+					Expect(clusterIMDSv2Value).To(Equal(constants.DefaultEc2MetadataHttpTokens))
+				} else {
+					Expect(clusterIMDSv2Value).To(Equal(profile.ClusterConfig.Ec2MetadataHttpTokens))
+				}
+
+				By("Check the default workers machinepool value to match cluster level spec attribute")
+				npList, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				for _, np := range npList.NodePools {
+					Expect(np.ID).ToNot(BeNil())
+					if strings.HasPrefix(np.ID, constants.DefaultHostedWorkerPool) {
+						npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, np.ID)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(clusterIMDSv2Value))
+					}
+				}
+			})
+
 		It("etcd encryption works on cluster creation - [id:42188]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
@@ -275,7 +320,6 @@ var _ = Describe("Healthy check",
 		It("Rosa cluster with fips enabled can be created successfully - [id:46312]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				profile := profilehandler.LoadProfileYamlFileByENV()
 				output, err := clusterService.DescribeCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				des, err := clusterService.ReflectClusterDescription(output)
@@ -306,6 +350,34 @@ var _ = Describe("Healthy check",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ingress.Private).To(Equal(ingressPrivate))
 
+			})
+		It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High,
+			func() {
+				By("Check cluster is multiarch")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+				if isHosted {
+					Expect(jsonData.DigBool("multi_arch_enabled")).To(BeTrue())
+				} else {
+					Expect(jsonData.DigBool("multi_arch_enabled")).To(BeFalse())
+				}
+			})
+
+		It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High,
+			func() {
+				By("Check compute machine type")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				if ciConfig.Test.GlobalENV.ComputeMachineType != "" {
+					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(
+						Equal(ciConfig.Test.GlobalENV.ComputeMachineType))
+				} else if profile.ClusterConfig.InstanceType == "" {
+					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(constants.DefaultInstanceType))
+				} else {
+					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(profile.ClusterConfig.InstanceType))
+				}
 			})
 	})
 
@@ -347,5 +419,160 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 				versionOutput, err := clusterService.GetClusterVersion(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(versionOutput.ChannelGroup).To(Equal(profile.ChannelGroup))
+			})
+	})
+
+var _ = Describe("Delete BYO OIDC cluster testing",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient         *rosacli.Client
+			ocmResourceService rosacli.OCMResourceService
+			clusterService     rosacli.ClusterService
+			clusterID          string
+			err                error
+			awsClient          *aws_client.AWSClient
+			oidcEndpointUrlC   string
+			clusterConfig      *config.ClusterConfig
+			oidcConfigC        string
+			oidcProviderArn    string
+			profile            *profilehandler.Profile
+		)
+
+		BeforeEach(func() {
+			By("Init the client and get profile and config")
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+
+			profile = profilehandler.LoadProfileYamlFileByENV()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("to verifiy the byo oidc cluster is deleted successfully - [id:75210]",
+			labels.Critical, labels.Runtime.DestroyPost,
+			func() {
+
+				By("Check if it is using oidc config")
+				if profile.ClusterConfig.OIDCConfig == "" {
+					Skip("Skip this case as it is only for byo oidc cluster")
+				}
+				By("Get aws account id")
+				rosaClient.Runner.JsonFormat()
+				whoamiOutput, err := ocmResourceService.Whoami()
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+				AWSAccountID := whoamiData.AWSAccountID
+
+				By("Get the oidc config and cluster id from cluster config file")
+				clusterID = config.GetClusterID()
+				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
+
+				By("Get oidc endpoint URL from cluster detail json file")
+				clusterDetail, err := profilehandler.ParserClusterDetail()
+				Expect(err).To(BeNil())
+				oidcEndpointUrlC = clusterDetail.OIDCEndpointURL
+				oidcEndpointUrlC, err = common.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrlC)
+				Expect(err).To(BeNil())
+
+				By("Check the cluster is deleted")
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				Expect(clusterList.IsExist(clusterID)).To(BeFalse())
+
+				By("Check the oidc config is deleted")
+				out, err := ocmResourceService.GetOIDCConfigFromList(oidcConfigC)
+				Expect(err).To(BeNil())
+				Expect(out).To(Equal(rosacli.OIDCConfig{}))
+
+				By("Check oidc provider is deleted")
+				oidcProviderArn = fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", AWSAccountID, oidcEndpointUrlC)
+				_, err = awsClient.IamClient.GetOpenIDConnectProvider(
+					context.TODO(),
+					&iam.GetOpenIDConnectProviderInput{
+						OpenIDConnectProviderArn: &oidcProviderArn,
+					},
+				)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(ContainSubstring("NoSuchEntity"))
+
+			})
+	})
+var _ = Describe("Create BYO OIDC cluster testing",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient     *rosacli.Client
+			clusterConfig  *config.ClusterConfig
+			err            error
+			clusterID      string
+			clusterService rosacli.ClusterService
+			oidcConfigC    string
+			awsClient      *aws_client.AWSClient
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+		})
+
+		It("to verify byo oidc cluster is created successfully - [id:59530]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Retrieve oidc config from cluster config")
+				clusterID = config.GetClusterID()
+				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
+
+				By("Get the operator roles")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				oidcConfigID := jsonData.DigString("aws", "sts", "oidc_config", "id")
+				oidcConfigIssuerURL := jsonData.DigString("aws", "sts", "oidc_config", "issuer_url")
+				Expect(oidcConfigC).To(Equal(oidcConfigID))
+
+				By("Check oidc provider using the oidc config created in day1")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				OidcUrl := CD.OIDCEndpointURL
+				if profile.ClusterConfig.OIDCConfig == "unmanaged" {
+					Expect(OidcUrl).To(Equal(oidcConfigIssuerURL + " (Unmanaged)"))
+				} else {
+					Expect(OidcUrl).To(ContainSubstring(oidcConfigC))
+				}
+
+				By("Get operator roles from cluster")
+				operatorRolesArns := CD.OperatorIAMRoles
+				for _, operatorRoleARN := range operatorRolesArns {
+					_, roleName, err := common.ParseRoleARN(operatorRoleARN)
+					Expect(err).To(BeNil())
+					opRole, err := awsClient.GetRole(roleName)
+					Expect(err).To(BeNil())
+					if profile.ClusterConfig.OIDCConfig == "unmanaged" {
+						Expect(*opRole.AssumeRolePolicyDocument).To(
+							ContainSubstring(strings.Replace(oidcConfigIssuerURL, "https://", "", 1)))
+					} else {
+						Expect(*opRole.AssumeRolePolicyDocument).To(ContainSubstring(oidcConfigC))
+					}
+				}
 			})
 	})

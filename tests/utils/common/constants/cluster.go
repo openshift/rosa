@@ -37,10 +37,22 @@ const (
 	Validating   = "validating"
 )
 
+// cluster upgrade status
+const (
+	Scheduled = "scheduled"
+	Started   = "started"
+	Delayed   = "delayed"
+)
+
 // version pattern supported for the CI
 var (
 	VersionLatestPattern     = regexp.MustCompile("latest")
 	VersionMajorMinorPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+$`)
 	VersionRawPattern        = regexp.MustCompile(`[0-9]+\.[0-9]+\.[0-9]+-?[0-9a-z\.-]*`)
 	VersionFlexyPattern      = regexp.MustCompile(`[zy]{1}-[1-3]{1}`)
+)
+
+// instance type
+const (
+	DefaultInstanceType = "m5.xlarge"
 )

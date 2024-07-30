@@ -38,6 +38,7 @@ type TestConfig struct {
 	ClusterInstallLogArtifactFile string
 	ClusterAdminFile              string
 	TestFocusFile                 string
+	TestLabelFilterFile           string
 	ProxySSHPemFile               string
 	ProxyCABundleFile             string
 	GlobalENV                     *GlobalENVVariables
@@ -51,6 +52,8 @@ type GlobalENVVariables struct {
 	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"60"`
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
 	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`
+	ComputeMachineType    string `env:"COMPUTE_MACHINE_TYPE" default:""`
+	OCM_LOGIN_ENV         string `env:"OCM_LOGIN_ENV" default:""`
 }
 
 func init() {
@@ -88,6 +91,7 @@ func init() {
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
+	Test.TestLabelFilterFile = path.Join(Test.RootDir, "tests", "ci", "data", "label-filter")
 	Test.ProxySSHPemFile = "ocm-test-proxy"
 	Test.ProxyCABundleFile = path.Join(Test.OutputDir, "proxy-bundle.ca")
 
@@ -103,6 +107,7 @@ func init() {
 		ProvisionShard:        os.Getenv("PROVISION_SHARD"),
 		NamePrefix:            os.Getenv("NAME_PREFIX"),
 		SVPC_CREDENTIALS_FILE: os.Getenv("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE"),
+		ComputeMachineType:    os.Getenv("COMPUTE_MACHINE_TYPE"),
 		ClusterWaitingTime:    waitingTime,
 		WaitSetupClusterReady: waitSetupClusterReady,
 	}

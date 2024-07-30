@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/big"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -103,4 +105,24 @@ func ReplaceCommaWithCommaSpace(sourceValue string) string {
 func ReplaceCommaSpaceWithComma(sourceValue string) string {
 	splited := ParseCommaSeparatedStrings(sourceValue)
 	return strings.Join(splited, ",")
+}
+
+// Extract the major, minor,optional parts from the version strings Major.Minor.Optional-<suffix>,
+func ParseVersion(version string) (major, minor, optional int, err error) {
+	re := regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)(-.+)?$`)
+	matches := re.FindStringSubmatch(version)
+	if matches == nil {
+		err = fmt.Errorf("invalid version format")
+		return
+	}
+	major, err = strconv.Atoi(matches[1])
+	if err != nil {
+		return
+	}
+	minor, err = strconv.Atoi(matches[2])
+	if err != nil {
+		return
+	}
+	optional, err = strconv.Atoi(matches[3])
+	return
 }

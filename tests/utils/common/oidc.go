@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -104,4 +105,19 @@ func ParseSecretArnFromOutput(output string) string {
 func ParseIssuerURLFromCommand(command string) string {
 	re := regexp.MustCompile(`https://[^\s]+`)
 	return re.FindString(command)
+}
+
+// Extract oidc provider from the 'OIDC Endpoint URL' field of `rosa describe cluster`
+func ExtractOIDCProviderFromOidcUrl(urlString string) (string, error) {
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		return "", err
+	}
+	host := parsedURL.Host
+	path := strings.TrimPrefix(parsedURL.Path, "/")
+	fmt.Printf("The past host and path is %s and %s\n", host, path)
+	oidcProvider := fmt.Sprintf("%s/%s", host, path)
+	oidcProvider = strings.Split(oidcProvider, " ")[0]
+
+	return oidcProvider, nil
 }

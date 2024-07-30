@@ -41,7 +41,6 @@ var _ = Describe("Edit Machinepool", func() {
 			c.State(cmv1.ClusterStateReady)
 			c.Hypershift(cmv1.NewHypershift().Enabled(false))
 		})
-		classicClusterReady := test.FormatClusterList([]*cmv1.Cluster{mockClassicClusterReady})
 
 		version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 		awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge")
@@ -69,9 +68,8 @@ var _ = Describe("Edit Machinepool", func() {
 			t.SetCluster("", nil)
 		})
 
-		Describe("Machinepools", func() {
+		Describe("Machinepools", Ordered, func() {
 			It("Able to edit machinepool with no issues", func() {
-				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 				// First get
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
 				// Edit
@@ -83,11 +81,10 @@ var _ = Describe("Edit Machinepool", func() {
 				cmd := NewEditMachinePoolCommand()
 				Expect(cmd.Flag("cluster").Value.Set(clusterId)).To(Succeed())
 				Expect(cmd.Flags().Set("labels", "test=test")).To(Succeed())
-				Expect(runner(context.Background(), t.RosaRuntime, cmd, []string{"--machinepool",
-					nodePoolId, "--min-replicas", "2", "--enable-autoscaling", "true", "-y"})).To(Succeed())
+				Expect(cmd.Flags().Set("replicas", "1")).To(Succeed())
+				Expect(runner(context.Background(), t.RosaRuntime, cmd, []string{})).To(Succeed())
 			})
 			It("Machinepool ID passed in without flag in random location", func() {
-				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 				// First get
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
 				// Edit
@@ -99,8 +96,11 @@ var _ = Describe("Edit Machinepool", func() {
 				cmd := NewEditMachinePoolCommand()
 				Expect(cmd.Flag("cluster").Value.Set(clusterId)).To(Succeed())
 				Expect(cmd.Flags().Set("labels", "test=test")).To(Succeed())
+				Expect(cmd.Flags().Set("min-replicas", "1")).To(Succeed())
+				Expect(cmd.Flags().Set("max-replicas", "1")).To(Succeed())
+				Expect(cmd.Flags().Set("enable-autoscaling", "true")).To(Succeed())
 				Expect(runner(context.Background(), t.RosaRuntime, cmd,
-					[]string{"--min-replicas", "2", nodePoolId, "--enable-autoscaling", "true", "-y"})).To(Succeed())
+					[]string{})).To(Succeed())
 			})
 		})
 
@@ -135,6 +135,8 @@ var _ = Describe("Edit Machinepool", func() {
 				args := NewEditMachinepoolUserOptions()
 				args.machinepool = nodePoolId
 				args.autoscalingEnabled = true
+				args.maxReplicas = 10
+				args.minReplicas = 2
 				runner := EditMachinePoolRunner(args)
 				cmd := NewEditMachinePoolCommand()
 				Expect(cmd.Flag("cluster").Value.Set(clusterId)).To(Succeed())

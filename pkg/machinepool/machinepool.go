@@ -26,7 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
-	. "github.com/openshift/rosa/pkg/kubeletconfig"
+	"github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
@@ -955,11 +955,9 @@ func (m *machinePool) AddNodePool(cmd *cobra.Command, clusterKey string, cluster
 			return fmt.Errorf("Expected a valid http tokens value : %v", err)
 		}
 	}
+
 	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
 		return fmt.Errorf("Expected a valid http tokens value : %v", err)
-	}
-	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
-		return fmt.Errorf(err.Error())
 	}
 
 	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags))
@@ -1323,8 +1321,7 @@ func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, 
 	if cluster.Hypershift().Enabled() {
 		return editNodePool(cmd, machinePoolId, clusterKey, cluster, r)
 	}
-	editMachinePool(cmd, machinePoolId, clusterKey, cluster, r)
-	return nil
+	return editMachinePool(cmd, machinePoolId, clusterKey, cluster, r)
 }
 
 // fillAutoScalingAndReplicas is filling either autoscaling or replicas value in the builder
@@ -1402,7 +1399,6 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 	}
 
 	if autoscaling {
-
 		// set default values from previous autoscaling values
 		if !isMinReplicasSet {
 			minReplicas = existingAutoscaling.MinReplicas()
@@ -1412,12 +1408,16 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		}
 
 		// Prompt for min replicas if neither min or max is set or interactive mode
-		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet && askForScalingParams) {
+		if !isMinReplicasSet && (interactive.Enabled() || !isMaxReplicasSet &&
+			askForScalingParams) {
 			minReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Min replicas",
 				Help:     cmd.Flags().Lookup("min-replicas").Usage,
 				Default:  minReplicas,
 				Required: replicasRequired,
+				Validators: []interactive.Validator{
+					mpHelpers.MinNodePoolReplicaValidator(false),
+				},
 			})
 			if err != nil {
 				err = fmt.Errorf("Expected a valid number of min replicas: %s", err)
@@ -1426,12 +1426,16 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		}
 
 		// Prompt for max replicas if neither min or max is set or interactive mode
-		if !isMaxReplicasSet && (interactive.Enabled() || !isMinReplicasSet && askForScalingParams) {
+		if !isMaxReplicasSet && (interactive.Enabled() || !isMinReplicasSet &&
+			askForScalingParams) {
 			maxReplicas, err = interactive.GetInt(interactive.Input{
 				Question: "Max replicas",
 				Help:     cmd.Flags().Lookup("max-replicas").Usage,
 				Default:  maxReplicas,
 				Required: replicasRequired,
+				Validators: []interactive.Validator{
+					mpHelpers.MaxNodePoolReplicaValidator(minReplicas),
+				},
 			})
 			if err != nil {
 				err = fmt.Errorf("Expected a valid number of max replicas: %s", err)
@@ -1450,8 +1454,13 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 		})
 		if err != nil {
 			err = fmt.Errorf("Expected a valid number of replicas: %s", err)
+			return
 		}
 	}
+
+	err = validateEditInput("machine", autoscaling, minReplicas, maxReplicas, replicas, isReplicasSet,
+		isAutoscalingSet, isMinReplicasSet, isMaxReplicasSet, machinePoolID)
+
 	return
 }
 
@@ -1522,27 +1531,16 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 		return fmt.Errorf("Failed to get autoscaling or replicas: '%s'", err)
 	}
 
-	if !autoscaling && replicas < 0 ||
-		(autoscaling && isMinReplicasSet && minReplicas < 0) {
-		return fmt.Errorf("The number of machine pool replicas needs to be a non-negative integer")
-	}
-
 	if cluster.MultiAZ() && isMultiAZMachinePool(machinePool) &&
 		(!autoscaling && replicas%3 != 0 ||
 			(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
 		return fmt.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
 	}
 
-	labels, err := cmd.Flags().GetString("labels")
-	if err != nil {
-		return fmt.Errorf("Failed to get inputted labels: '%s'", err)
-	}
+	labels := cmd.Flags().Lookup("labels").Value.String()
 	labelMap := mpHelpers.GetLabelMap(cmd, r, machinePool.Labels(), labels)
 
-	taints, err := cmd.Flags().GetString("taints")
-	if err != nil {
-		return fmt.Errorf("Failed to get inputted taints: '%s'", err)
-	}
+	taints := cmd.Flags().Lookup("taints").Value.String()
 	taintBuilders := mpHelpers.GetTaints(cmd, r, machinePool.Taints(), taints)
 
 	mpBuilder := cmv1.NewMachinePool().
@@ -1630,7 +1628,17 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	}
 
 	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1 {
-		return fmt.Errorf("The number of machine pool min-replicas needs to be greater than zero")
+		return fmt.Errorf("The number of machine pool min-replicas needs to be a non-negative integer")
+	}
+
+	if autoscaling && cmd.Flags().Changed("max-replicas") && maxReplicas < 1 {
+		return fmt.Errorf("The number of machine pool max-replicas needs to be a non-negative integer")
+	}
+
+	if autoscaling && cmd.Flags().Changed("max-replicas") && cmd.Flags().Changed(
+		"min-replicas") && minReplicas > maxReplicas {
+		return fmt.Errorf("The number of machine pool min-replicas needs to be less than the number of " +
+			"machine pool max-replicas")
 	}
 
 	labels := cmd.Flags().Lookup("labels").Value.String()
@@ -1854,7 +1862,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		return fmt.Errorf("Failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
-	if isKubeletConfigSet && !promptForNodePoolNodeRecreate(nodePool, update, PromptToAcceptNodePoolNodeRecreate, r) {
+	if isKubeletConfigSet && !promptForNodePoolNodeRecreate(
+		nodePool, update, kubeletconfig.PromptToAcceptNodePoolNodeRecreate, r) {
 		return nil
 	}
 
@@ -1926,7 +1935,6 @@ func getNodePoolReplicas(cmd *cobra.Command,
 		err = fmt.Errorf("Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
 			nodePoolID)
 		return
-
 	}
 
 	// if the user set replicas but enabled autoscaling or hasn't disabled existing autoscaling
@@ -2008,6 +2016,10 @@ func getNodePoolReplicas(cmd *cobra.Command,
 			return
 		}
 	}
+
+	err = validateEditInput("node", autoscaling, minReplicas, maxReplicas, replicas, isReplicasSet,
+		isAutoscalingSet, isMinReplicasSet, isMaxReplicasSet, nodePoolID)
+
 	return
 }
 
