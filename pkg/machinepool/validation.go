@@ -26,16 +26,16 @@ func validateCount[K any](kubeletConfigs []K) error {
 func validateEditInput(poolType string, autoscaling bool, minReplicas int, maxReplicas int, replicas int,
 	isReplicasSet bool, isAutoscalingSet bool, isMinReplicasSet bool, isMaxReplicasSet bool, id string) error {
 
-	if autoscaling && minReplicas <= 0 && isMinReplicasSet {
-		return fmt.Errorf("Min replicas must be a positive number when autoscaling is set")
+	if autoscaling && minReplicas < 0 && isMinReplicasSet {
+		return fmt.Errorf("Min replicas must be a non-negative number when autoscaling is set")
 	}
 
-	if autoscaling && maxReplicas <= 0 && isMaxReplicasSet {
-		return fmt.Errorf("Max replicas must be a positive number when autoscaling is set")
+	if autoscaling && maxReplicas < 0 && isMaxReplicasSet {
+		return fmt.Errorf("Max replicas must be a non-negative number when autoscaling is set")
 	}
 
-	if !autoscaling && replicas <= 0 {
-		return fmt.Errorf("Replicas must be a positive number")
+	if !autoscaling && replicas < 0 {
+		return fmt.Errorf("Replicas must be a non-negative number")
 	}
 
 	if autoscaling && isReplicasSet && isAutoscalingSet {

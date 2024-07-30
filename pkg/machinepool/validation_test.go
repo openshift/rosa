@@ -71,15 +71,15 @@ var _ = Describe("MachinePool validation", func() {
 				2, 1, true, true, true,
 				true, "test")).ToNot(Succeed())
 		})
-		It("Fails with max, min, and replicas <= 0", func() {
-			Expect(validateEditInput("machine", true, 0,
+		It("Fails with max, min, and replicas < 0", func() {
+			Expect(validateEditInput("machine", true, -1,
 				1, 0, false, true, true,
 				true, "test")).ToNot(Succeed())
 			Expect(validateEditInput("machine", true, 1,
-				0, 0, false, true, true,
+				-1, 0, false, true, true,
 				true, "test")).ToNot(Succeed())
 			Expect(validateEditInput("machine", false, 0,
-				0, 0, true, true, false,
+				0, -1, true, true, false,
 				false, "test")).ToNot(Succeed())
 		})
 		It("Fails with max < min replicas", func() {
