@@ -520,7 +520,7 @@ github.com/zalando/go-keyring/secret_service
 # github.com/zgalor/weberr v0.6.0
 ## explicit
 github.com/zgalor/weberr
-# gitlab.com/c0b/go-ordered-json v0.0.0-20171130231205-49bbdab258c2
+# gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a
 ## explicit
 gitlab.com/c0b/go-ordered-json
 # go.uber.org/mock v0.3.0
