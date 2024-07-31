@@ -134,6 +134,9 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
 			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints. Got '%s'", taint)
 		}
+		if err := validateMachinePoolTaintEffect(taint); err != nil {
+			return nil, err
+		}
 		// First split effect
 		splitEffect := strings.Split(taint, ":")
 		// Then split key and value
@@ -157,6 +160,20 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 	}
 
 	return taintBuilders, nil
+}
+
+func validateMachinePoolTaintEffect(taint string) error {
+	parts := strings.Split(taint, ":")
+	if len(parts) != 2 {
+		return fmt.Errorf("Invalid taint format: '%s'. Expected format is '<key>=<value>:<effect>'", taint)
+	}
+	effect := parts[1]
+	if effect != "" && effect != "NoSchedule" && effect != "NoExecute" &&
+		effect != "PreferNoSchedule" {
+		return fmt.Errorf("Invalid taint effect '%s', only the following effects are supported:"+
+			" 'NoExecute', 'NoSchedule', 'PreferNoSchedule'", effect)
+	}
+	return nil
 }
 
 func ValidateTaintKeyValuePair(key, value string) error {
