@@ -103,7 +103,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"--ignore-daemonsets-utilization",
 						"--max-node-provision-time", "10m",
 						"--balancing-ignored-labels", "aaa",
-						"--max-nodes-total", "1000",
+						"--max-nodes-total", "100",
 						"--min-cores", "0",
 						"--scale-down-delay-after-add", "10s",
 						"--max-cores", "100",
@@ -156,7 +156,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					Expect(autoscaler.ResourcesLimits.GPUs[1].Range.Max).To(Equal(5))
 					Expect(autoscaler.ResourcesLimits.GPUs[1].Range.Min).To(Equal(1))
 					Expect(autoscaler.ResourcesLimits.GPUs[1].Type).To(Equal("amd.com/gpu"))
-					Expect(autoscaler.ResourcesLimits.MaxNodesTotal).To(Equal(1000))
+					Expect(autoscaler.ResourcesLimits.MaxNodesTotal).To(Equal(100))
 					Expect(autoscaler.ScaleDown.DelayAfterAdd).To(Equal("10s"))
 					Expect(autoscaler.ScaleDown.DelayAfterDelete).To(Equal("10s"))
 					Expect(autoscaler.ScaleDown.DelayAfterFailure).To(Equal("10s"))
