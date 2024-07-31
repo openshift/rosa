@@ -7,10 +7,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 	. "github.com/openshift/rosa/pkg/test"
 )
@@ -307,6 +309,75 @@ var _ = Describe("Machinepool and nodepool", func() {
 			Expect(MachinePoolKeyRE.MatchString("#1machinepool")).To(BeFalse())
 			Expect(MachinePoolKeyRE.MatchString("m123123123123123123123123123")).To(BeTrue())
 			Expect(MachinePoolKeyRE.MatchString("m#123")).To(BeFalse())
+		})
+		Context("Test getMachinePoolReplicas", func() {
+			var (
+				cmd                                                        *cobra.Command
+				r                                                          *reporter.Object
+				machinepoolId                                              string
+				existingReplicas, existingMinReplicas, existingMaxReplicas int
+				existingAutoscaling                                        *cmv1.MachinePoolAutoscaling
+				options                                                    struct {
+					replicas           int
+					autoscalingEnabled bool
+					minReplicas        int
+					maxReplicas        int
+				}
+			)
+			BeforeEach(func() {
+				cmd = &cobra.Command{}
+				flags := cmd.Flags()
+				flags.IntVar(
+					&options.replicas,
+					"replicas",
+					0,
+					"Count of machines for this machine pool.",
+				)
+				flags.BoolVar(
+					&options.autoscalingEnabled,
+					"enable-autoscaling",
+					false,
+					"Enable autoscaling for the machine pool.",
+				)
+				flags.IntVar(
+					&options.minReplicas,
+					"min-replicas",
+					0,
+					"Minimum number of machines for the machine pool.",
+				)
+				flags.IntVar(
+					&options.maxReplicas,
+					"max-replicas",
+					0,
+					"Maximum number of machines for the machine pool.",
+				)
+				r = rosa.Runtime{}.Reporter
+				machinepoolId = "fake-id"
+				existingReplicas = 3
+				existingMinReplicas = 1
+				existingMaxReplicas = 3
+				existingAutoscaling, _ = cmv1.NewMachinePoolAutoscaling().
+					MaxReplicas(existingMaxReplicas).MinReplicas(existingMinReplicas).Build()
+			})
+			It("Replicas is not set without autoscaling enabled", func() {
+				autoscaling, replicas, minReplicas, maxReplicas, err :=
+					getMachinePoolReplicas(cmd, r, machinepoolId, existingReplicas, nil, false)
+				Expect(autoscaling).To(Equal(false))
+				Expect(minReplicas).To(Equal(0))
+				Expect(maxReplicas).To(Equal(0))
+				Expect(replicas).To(Equal(existingReplicas))
+				Expect(err).ToNot(HaveOccurred())
+			})
+			It("min/maxReplicas are not set with autoscaling enabled", func() {
+				cmd.Flags().Set("enable-autoscaling", "true")
+				autoscaling, replicas, minReplicas, maxReplicas, err :=
+					getMachinePoolReplicas(cmd, r, machinepoolId, 0, existingAutoscaling, false)
+				Expect(autoscaling).To(Equal(true))
+				Expect(minReplicas).To(Equal(existingMinReplicas))
+				Expect(maxReplicas).To(Equal(existingMaxReplicas))
+				Expect(replicas).To(Equal(0))
+				Expect(err).ToNot(HaveOccurred())
+			})
 		})
 	})
 
