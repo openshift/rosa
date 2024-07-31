@@ -3,6 +3,7 @@ package machinepools
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -30,6 +31,12 @@ const (
 	MaxNodeDrainTimeInMinutes = 10080
 	MaxNodeDrainTimeInHours   = 168
 )
+
+var allowedTaintEffects = []string{
+	"NoSchedule",
+	"NoExecute",
+	"PreferNoSchedule",
+}
 
 func MinNodePoolReplicaValidator(autoscaling bool) interactive.Validator {
 	return func(val interface{}) error {
@@ -149,6 +156,10 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 			errs = append(errs, fmt.Errorf("Expected a not empty effect"))
 			continue
 		}
+		if err := validateMachinePoolTaintEffect(taint); err != nil {
+			errs = append(errs, err)
+			continue
+		}
 		taintBuilders = append(taintBuilders, newTaintBuilder)
 	}
 
@@ -157,6 +168,19 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 	}
 
 	return taintBuilders, nil
+}
+
+func validateMachinePoolTaintEffect(taint string) error {
+	parts := strings.Split(taint, ":")
+	if len(parts) != 2 {
+		return fmt.Errorf("Invalid taint format: '%s'. Expected format is '<key>=<value>:<effect>'", taint)
+	}
+	effect := parts[1]
+	if !slices.Contains(allowedTaintEffects, effect) {
+		return fmt.Errorf("Invalid taint effect '%s', only the following effects are supported:"+
+			" 'NoExecute', 'NoSchedule', 'PreferNoSchedule'", effect)
+	}
+	return nil
 }
 
 func ValidateTaintKeyValuePair(key, value string) error {
