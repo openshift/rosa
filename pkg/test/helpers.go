@@ -169,155 +169,74 @@ func FormatNodePoolAutoscaling(nodePoolId string) string {
 		FormatResource(nodePool))
 }
 
-// FormatMachinePoolList simulates the output of APIs for a fake machine pool list
-func FormatMachinePoolList(machinePools []*v1.MachinePool) string {
+func FormatList[T any](list []*T, marshalFunc func([]*T, io.Writer) error, kind string) string {
 	var json bytes.Buffer
 
-	v1.MarshalMachinePoolList(machinePools, &json)
+	err := marshalFunc(list, &json)
+	if err != nil {
+		return err.Error()
+	}
 
-	return fmt.Sprintf(`
-	{
-		"kind": "NodePoolList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(machinePools), len(machinePools), json.String())
+	return fmt.Sprintf(`{
+        "kind": "%s",
+        "page": 1,
+        "size": %d,
+        "total": %d,
+        "items": %s
+    }`, kind, len(list), len(list), json.String())
+}
+
+// Example usage for MachinePool and NodePool
+func FormatMachinePoolList(machinePools []*v1.MachinePool) string {
+	return FormatList(machinePools, v1.MarshalMachinePoolList, "MachinePoolList")
 }
 
 func FormatNodePoolList(nodePools []*v1.NodePool) string {
-	var json bytes.Buffer
-
-	v1.MarshalNodePoolList(nodePools, &json)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "NodePoolList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(nodePools), len(nodePools), json.String())
+	return FormatList(nodePools, v1.MarshalNodePoolList, "NodePoolList")
 }
 
 func FormatKubeletConfigList(configs []*v1.KubeletConfig) string {
-	var json bytes.Buffer
-
-	v1.MarshalKubeletConfigList(configs, &json)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "KubeletConfigList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(configs), len(configs), json.String())
+	return FormatList(configs, v1.MarshalKubeletConfigList, "KubeletConfigList")
 }
 
 func FormatClusterList(clusters []*v1.Cluster) string {
-	var clusterJson bytes.Buffer
-
-	v1.MarshalClusterList(clusters, &clusterJson)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "ClusterList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(clusters), len(clusters), clusterJson.String())
+	return FormatList(clusters, v1.MarshalClusterList, "ClusterList")
 }
 
 func FormatIngressList(ingresses []*v1.Ingress) string {
-	var ingressJson bytes.Buffer
-
-	v1.MarshalIngressList(ingresses, &ingressJson)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "IngressList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(ingresses), len(ingresses), ingressJson.String())
+	return FormatList(ingresses, v1.MarshalIngressList, "IngressList")
 }
 
 func FormatVersionList(versions []*v1.Version) string {
-	var versionJson bytes.Buffer
+	return FormatList(versions, v1.MarshalVersionList, "VersionList")
+}
 
-	v1.MarshalVersionList(versions, &versionJson)
+func FormatMachineTypeList(mt []*v1.MachineType) string {
+	return FormatList(mt, v1.MarshalMachineTypeList, "MachineTypeList")
+}
 
-	return fmt.Sprintf(`
-	{
-		"kind": "VersionList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(versions), len(versions), versionJson.String())
+func FormatTuningConfigList(tc []*v1.TuningConfig) string {
+	return FormatList(tc, v1.MarshalTuningConfigList, "TuningConfigList")
+}
+
+func FormatQuotaCostList(qc []*amsv1.QuotaCost) string {
+	return FormatList(qc, amsv1.MarshalQuotaCostList, "QuotaCostList")
 }
 
 func FormatIDPList(idps []*v1.IdentityProvider) string {
-	var idpJson bytes.Buffer
-
-	v1.MarshalIdentityProviderList(idps, &idpJson)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "IdentityProviderList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(idps), len(idps), idpJson.String())
+	return FormatList(idps, v1.MarshalIdentityProviderList, "IdentityProviderList")
 }
 
 func FormatHtpasswdUserList(htpasswdUsers []*v1.HTPasswdUser) string {
-	var htpasswdUserJson bytes.Buffer
-
-	v1.MarshalHTPasswdUserList(htpasswdUsers, &htpasswdUserJson)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "HTPasswdUserList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(htpasswdUsers), len(htpasswdUsers), htpasswdUserJson.String())
+	return FormatList(htpasswdUsers, v1.MarshalHTPasswdUserList, "HTPasswdUserList")
 }
 
 func FormatExternalAuthList(externalAuths []*v1.ExternalAuth) string {
-	var outputJson bytes.Buffer
-
-	v1.MarshalExternalAuthList(externalAuths, &outputJson)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "ExternalAuthList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(externalAuths), len(externalAuths), outputJson.String())
+	return FormatList(externalAuths, v1.MarshalExternalAuthList, "ExternalAuthList")
 }
 
 func FormatNodePoolUpgradePolicyList(upgrades []*v1.NodePoolUpgradePolicy) string {
-	var outputJson bytes.Buffer
-
-	v1.MarshalNodePoolUpgradePolicyList(upgrades, &outputJson)
-
-	return fmt.Sprintf(`
-	{
-		"kind": "NodePoolUpgradePolicyList",
-		"page": 1,
-		"size": %d,
-		"total": %d,
-		"items": %s
-	}`, len(upgrades), len(upgrades), outputJson.String())
+	return FormatList(upgrades, v1.MarshalNodePoolUpgradePolicyList, "NodePoolUpgradePolicyList")
 }
 
 // FormatResource wraps the SDK marshalling and returns a string starting from an object
