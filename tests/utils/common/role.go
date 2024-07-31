@@ -32,9 +32,9 @@ func ExtractCommandsToCreateAWSResoueces(bf bytes.Buffer) []string {
 	return newCommands
 }
 
-// Extract aws commands to create AWS resource promted by rosacli, this function supports to parse bellow commands
-// `rosa create operator-roles --mode manual`
-// `rosa create oidc-provider --mode manual`
+// Extract aws commands to delete AWS resource promted by rosacli, this function supports to parse bellow commands
+// `rosa delete operator-roles --mode manual`
+// `rosa delete oidc-provider --mode manual`
 func ExtractCommandsToDeleteAWSResoueces(bf bytes.Buffer) []string {
 	var commands []string
 	output := strings.Split(bf.String(), "\naws")
@@ -48,6 +48,32 @@ func ExtractCommandsToDeleteAWSResoueces(bf bytes.Buffer) []string {
 	}
 	var newCommands []string
 	for _, command := range commands {
+		command = strings.ReplaceAll(command, "\\", "")
+		command = strings.ReplaceAll(command, "\n", " ")
+		spaceRegex := regexp.MustCompile(`\s+`)
+		command = spaceRegex.ReplaceAllString(command, " ")
+		command = strings.ReplaceAll(command, "'", "")
+		newCommands = append(newCommands, command)
+
+	}
+	return newCommands
+}
+
+// Extract aws command to delete account roles in manual mode
+func ExtractCommandsToDeleteAccountRoles(bf bytes.Buffer) []string {
+	var commands []string
+	output := strings.Split(bf.String(), "\n\n")
+	for _, message := range output {
+		if strings.HasPrefix(message, "aws iam") {
+			commands = append(commands, message)
+		}
+	}
+	var newCommands []string
+	for _, command := range commands {
+		if strings.Contains(command, "WARN") {
+			awscommand := strings.Split(command, "\nWARN")
+			command = awscommand[0]
+		}
 		command = strings.ReplaceAll(command, "\\", "")
 		command = strings.ReplaceAll(command, "\n", " ")
 		spaceRegex := regexp.MustCompile(`\s+`)

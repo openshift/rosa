@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -21,11 +22,20 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		rosaClient                     *rosacli.Client
 		ocmResourceService             rosacli.OCMResourceService
 		permissionsBoundaryArn         string = "arn:aws:iam::aws:policy/AdministratorAccess"
+		defaultDir                     string
+		dirToClean                     string
 	)
 	BeforeEach(func() {
 		By("Init the client")
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
+
+		By("Get the default dir")
+		defaultDir = rosaClient.Runner.GetDir()
+	})
+	AfterEach(func() {
+		By("Go back original by setting runner dir")
+		rosaClient.Runner.SetDir(defaultDir)
 	})
 
 	It("can create/list/delete account-roles - [id:43070]",
@@ -548,7 +558,12 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			_, _, roleVersion, err = version.MajorMinor()
 			Expect(err).To(BeNil())
 
+			By("Create a temp dir to execute the create commands")
+			dirToClean, err = os.MkdirTemp("", "*")
+			Expect(err).To(BeNil())
+
 			By("Create classic account-roles with managed policies in manual mode")
+			rosaClient.Runner.SetDir(dirToClean)
 			output, err := ocmResourceService.CreateAccountRole("--mode", "manual",
 				"--prefix", rolePrefixManual,
 				"--path", path,
@@ -574,12 +589,12 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			}
 
 			By("Delete the account-roles in manual mode")
-			output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+			output, err = ocmResourceService.DeleteAccountRole("--mode", "manual",
 				"--prefix", rolePrefixManual,
 				"-y")
 
 			Expect(err).To(BeNil())
-			commands = common.ExtractCommandsToCreateAWSResoueces(output)
+			commands = common.ExtractCommandsToDeleteAccountRoles(output)
 
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
