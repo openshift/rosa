@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/upgrade"
 )
 
 var Cmd = &cobra.Command{
@@ -38,7 +39,7 @@ var Cmd = &cobra.Command{
   rosa describe upgrade`,
 	Run:    run,
 	Hidden: false,
-	Args:   cobra.NoArgs,
+	Args:   upgrade.NewUpgradeArgsFunction(true),
 }
 
 var args struct {

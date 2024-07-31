@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/upgrade"
 )
 
 var args struct {
@@ -42,7 +43,7 @@ var Cmd = &cobra.Command{
 	Short:   "List available cluster upgrades",
 	Long:    "List available and scheduled cluster version upgrades",
 	Run:     run,
-	Args:    cobra.NoArgs,
+	Args:    upgrade.NewUpgradeArgsFunction(true),
 }
 
 func init() {
