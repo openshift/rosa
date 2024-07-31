@@ -806,6 +806,7 @@ func CreateClusterByProfileWithoutWaiting(
 	clusterDetail.ClusterName = description.Name
 	clusterDetail.ClusterType = "rosa"
 	clusterDetail.OIDCEndpointURL = description.OIDCEndpointURL
+	clusterDetail.OperatorRoleArns = description.OperatorIAMRoles
 
 	// Need to do the post step when cluster has no oidcconfig enabled
 	if profile.ClusterConfig.OIDCConfig == "" && profile.ClusterConfig.STS {
