@@ -1442,19 +1442,21 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				return
 			}
 		}
-	} else if interactive.Enabled() || !isReplicasSet && askForScalingParams {
+	} else {
 		if !isReplicasSet {
 			replicas = existingReplicas
 		}
-		replicas, err = interactive.GetInt(interactive.Input{
-			Question: "Replicas",
-			Help:     cmd.Flags().Lookup("replicas").Usage,
-			Default:  replicas,
-			Required: true,
-		})
-		if err != nil {
-			err = fmt.Errorf("Expected a valid number of replicas: %s", err)
-			return
+		if interactive.Enabled() || !isReplicasSet && askForScalingParams {
+			replicas, err = interactive.GetInt(interactive.Input{
+				Question: "Replicas",
+				Help:     cmd.Flags().Lookup("replicas").Usage,
+				Default:  replicas,
+				Required: true,
+			})
+			if err != nil {
+				err = fmt.Errorf("Expected a valid number of replicas: %s", err)
+				return
+			}
 		}
 	}
 
