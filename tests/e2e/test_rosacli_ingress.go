@@ -145,6 +145,22 @@ var _ = Describe("Edit default ingress",
 						"ERR: Updating route selectors is not supported for Hosted Control Plane clusters"))
 			})
 
+		It("can describe ingress of a cluster - [id:73538]",
+			labels.Low, labels.Runtime.Day2,
+			func() {
+				By("Retrieve cluster and get default ingress id")
+				output, err := ingressService.ListIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				ingressList, err := ingressService.ReflectIngressList(output)
+				Expect(err).ToNot(HaveOccurred())
+
+				defaultID := ingressList.Ingresses[0]
+				_, err = rosaClient.Ingress.DescribeIngressAndReflect(clusterID, defaultID.ID)
+				Expect(err).ToNot(HaveOccurred())
+				in := ingressList.Ingress(defaultID.ID)
+				Expect(in.ID).To(Equal(defaultID.ID))
+			})
+
 		It("change load balancer type - [id:64767]",
 			labels.Critical,
 			labels.Runtime.Day2,
