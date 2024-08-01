@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	. "github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit nodepool",
@@ -37,6 +38,7 @@ var _ = Describe("Edit nodepool",
 			machinePoolService        rosacli.MachinePoolService
 			machinePoolUpgradeService rosacli.MachinePoolUpgradeService
 			versionService            rosacli.VersionService
+			profile                   *profilehandler.Profile
 		)
 
 		const (
@@ -56,6 +58,7 @@ var _ = Describe("Edit nodepool",
 			machinePoolService = rosaClient.MachinePool
 			machinePoolUpgradeService = rosaClient.MachinePoolUpgrade
 			versionService = rosaClient.Version
+			profile = profilehandler.LoadProfileYamlFileByENV()
 
 			By("Skip testing if the cluster is not a HCP cluster")
 			hosted, err := clusterService.IsHostedCPCluster(clusterID)
@@ -1776,5 +1779,100 @@ var _ = Describe("Edit nodepool",
 						ContainSubstring(
 							"ERR: Expected a valid http tokens value : ec2-metadata-http-tokens " +
 								"value should be one of 'required', 'optional'"))
+			})
+
+		It("Edit machine pool to the ROSA Hypershift cluster - [id:56778]", labels.Runtime.Day2, labels.High,
+			func() {
+				var (
+					replicas         string
+					machinepoolNames = []string{common.GenerateRandomName("np-56778", 2), common.GenerateRandomName("np-56778", 2)}
+					np               *rosacli.NodePool
+				)
+
+				By("List Machinepools")
+				machinePoolList, err := rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if profile.ClusterConfig.MultiAZ {
+					np = machinePoolList.Nodepool("workers-0")
+				} else {
+					np = machinePoolList.Nodepool("workers")
+				}
+				Expect(np).ToNot(BeNil())
+				for _, npName := range machinepoolNames {
+					By("Create a Machinepool")
+					taints := "k56778=v:NoSchedule,k56778-2=:NoExecute"
+					labels := "test56778="
+					replicas = "3"
+					output, err := rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+						"--replicas", replicas,
+						"--labels", labels,
+						"--taints", taints,
+						"--enable-autoscaling=false",
+						"--autorepair=false",
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+						Should(ContainSubstring(
+							"Machine pool '%s' created successfully on hosted cluster '%s'",
+							npName,
+							clusterID))
+
+					By("Verify edited machinepool")
+					npList, err := rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					np = npList.Nodepool(npName)
+					Expect(np).ToNot(BeNil())
+					Expect(np.AutoScaling).To(Equal("No"))
+					Expect(np.Replicas).To(Equal("0/3"))
+					Expect(np.AutoRepair).To(Equal("No"))
+
+					By("Edit an advanced machine pools")
+					_, err = rosaClient.MachinePool.EditMachinePool(clusterID, npName,
+						"--enable-autoscaling=true",
+						"--min-replicas", "3",
+						"--max-replicas", "6",
+						"--autorepair=true",
+					)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Verify edited machinepool")
+					npList, err = rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					np = npList.Nodepool(npName)
+					Expect(np).ToNot(BeNil())
+					Expect(np.AutoScaling).To(Equal("Yes"))
+					Expect(np.Replicas).To(Equal("0/3-6"))
+					Expect(np.AutoRepair).To(Equal("Yes"))
+
+					By("Edit machine pool to enable autoscaling and set min-replicas to 1")
+					_, err = rosaClient.MachinePool.EditMachinePool(clusterID, npName,
+						"--enable-autoscaling=true",
+						"--min-replicas", "1",
+						"--max-replicas", "6",
+					)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Verify edited machinepool")
+					npList, err = rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					np = npList.Nodepool(npName)
+					Expect(np).ToNot(BeNil())
+					Expect(np.AutoScaling).To(Equal("Yes"))
+					Expect(np.Replicas).To(Equal("0/1-6"))
+
+					By("Edit machinepool with tag --autorepair")
+					_, err = rosaClient.MachinePool.EditMachinePool(clusterID, npName,
+						"--autorepair=false",
+					)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Verify edited machinepool")
+					npList, err = rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					np = npList.Nodepool(npName)
+					Expect(np).ToNot(BeNil())
+					Expect(np.AutoRepair).To(Equal("No"))
+				}
+
 			})
 	})
