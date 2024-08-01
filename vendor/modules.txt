@@ -250,9 +250,6 @@ github.com/evanphx/json-patch/v5
 # github.com/fatih/color v1.7.0
 ## explicit
 github.com/fatih/color
-# github.com/ghodss/yaml v1.0.0
-## explicit
-github.com/ghodss/yaml
 # github.com/go-jose/go-jose/v4 v4.0.2
 ## explicit; go 1.21
 github.com/go-jose/go-jose/v4
@@ -668,4 +665,7 @@ k8s.io/utils/clock
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/strings/slices
+# sigs.k8s.io/yaml v1.3.0
+## explicit; go 1.12
+sigs.k8s.io/yaml
 # github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
