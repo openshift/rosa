@@ -331,6 +331,23 @@ var _ = Describe("Validate node drain grace period", func() {
 	)
 })
 
+var _ = Describe("ValidateMachinePoolTaintEffect", func() {
+	It("should return nil for recognized taint effects", func() {
+		Expect(validateMachinePoolTaintEffect("key=value:NoSchedule")).To(Succeed())
+		Expect(validateMachinePoolTaintEffect("key=value:NoExecute")).To(Succeed())
+		Expect(validateMachinePoolTaintEffect("key=value:PreferNoSchedule")).To(Succeed())
+	})
+
+	It("should return an error for unrecognized taint effects", func() {
+		Expect(validateMachinePoolTaintEffect("key=value:unrecognized")).To(MatchError(
+			MatchRegexp("Invalid taint effect 'unrecognized', only the following" +
+				" effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'")))
+		Expect(validateMachinePoolTaintEffect("key=value:unrecognized:")).To(MatchError(
+			MatchRegexp("Invalid taint format: 'key=value:unrecognized:'. Expected format" +
+				" is '<key>=<value>:<effect>'")))
+	})
+})
+
 var _ = Describe("Validate MaxSurge and MaxUnavailable", func() {
 	DescribeTable("Validate MaxSurge and MaxUnavailable",
 		func(value interface{}, errMsg string) {
