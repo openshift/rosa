@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -38,15 +39,23 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 	Describe("on cluster", func() {
 		var (
-			clusterID string
+			clusterID  string
+			defaultDir string
+			dirToClean string
 		)
 		BeforeEach(func() {
 			By("Get the cluster id")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Get the default dir")
+			defaultDir = rosaClient.Runner.GetDir()
 		})
 
 		AfterEach(func() {
+			By("Go back original by setting runner dir")
+			rosaClient.Runner.SetDir(defaultDir)
+
 			By("Clean remaining resources")
 			err := rosaClient.CleanResources(clusterID)
 			Expect(err).ToNot(HaveOccurred())
@@ -78,7 +87,12 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring("There are clusters using Operator Roles Prefix"))
 
+				By("Create a temp dir to execute the create commands")
+				dirToClean, err = os.MkdirTemp("", "*")
+				Expect(err).To(BeNil())
+
 				By("Delete in-used operator roles by prefix in manual mode")
+				rosaClient.Runner.SetDir(dirToClean)
 				output, err = ocmResourceService.DeleteOperatorRoles(
 					"--prefix", operatorRolePrefix,
 					"-y",
@@ -387,7 +401,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			)
 			Expect(err).To(HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("Invalid ARN"))
+			Expect(textData).Should(ContainSubstring("to be a valid IAM role ARN"))
 
 			By("Create operator roles with not-existed oidc id")
 			output, err = ocmResourceService.CreateOperatorRoles(
@@ -790,6 +804,9 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 
 		installerRoleArnC string
 		installerRoleArnH string
+
+		defaultDir string
+		dirToClean string
 	)
 	BeforeEach(func() {
 		By("Init the client")
@@ -798,6 +815,9 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 
 		awsClient, err = aws_client.CreateAWSClient("", "")
 		Expect(err).To(BeNil())
+
+		By("Get the default dir")
+		defaultDir = rosaClient.Runner.GetDir()
 
 	})
 	AfterEach(func() {
@@ -834,6 +854,9 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			"-y",
 		)
 		Expect(err).To(BeNil())
+
+		By("Go back original by setting runner dir")
+		rosaClient.Runner.SetDir(defaultDir)
 	})
 	It("to delete operator-roles and byo oidc-config in manual mode - [id:60956]",
 		labels.Critical, labels.Runtime.OCMResources, func() {
@@ -876,7 +899,12 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output.String()).Should(ContainSubstring("Created role"))
 
+			By("Create a temp dir to execute the create commands")
+			dirToClean, err = os.MkdirTemp("", "*")
+			Expect(err).To(BeNil())
+
 			By("Delete the hosted-cp operator-roles by prefix in manual mode")
+			rosaClient.Runner.SetDir(dirToClean)
 			output, err = ocmResourceService.DeleteOperatorRoles("--prefix", operatorRolePrefixH, "-y", "--mode", "manual")
 			Expect(err).NotTo(HaveOccurred())
 			commands := common.ExtractCommandsToDeleteAWSResoueces(output)

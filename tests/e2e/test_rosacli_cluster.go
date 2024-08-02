@@ -1654,6 +1654,8 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 			clusterNameToClean string
 			clusterService     rosacli.ClusterService
 			clusterID          string
+			defaultDir         string
+			dirToClean         string
 		)
 
 		BeforeEach(func() {
@@ -1661,9 +1663,14 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
 			clusterService = rosaClient.Cluster
+
+			By("Get the default dir")
+			defaultDir = rosaClient.Runner.GetDir()
 		})
 
 		AfterEach(func() {
+			By("Go back original by setting runner dir")
+			rosaClient.Runner.SetDir(defaultDir)
 
 			By("Delete cluster")
 			rosaClient.Runner.UnsetArgs()
@@ -1717,7 +1724,12 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 				Expect(err).To(BeNil())
 				ar := arl.DigAccountRoles(accountRolePrefix, false)
 
+				By("Create a temp dir to execute the create commands")
+				dirToClean, err = os.MkdirTemp("", "*")
+				Expect(err).To(BeNil())
+
 				By("Create one sts cluster in manual mode")
+				rosaClient.Runner.SetDir(dirToClean)
 				clusterNameToClean = "test-43053"
 				operatorRolePreifx := "opPrefix43053"
 				_, err, _ = clusterService.Create(

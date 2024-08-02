@@ -75,9 +75,13 @@ func (r *runner) Color(color string) *runner {
 	return r
 }
 
-func (r *runner) Dir(dir string) *runner {
+func (r *runner) SetDir(dir string) *runner {
 	r.dir = dir
 	return r
+}
+
+func (r *runner) GetDir() string {
+	return r.dir
 }
 
 func (r *runner) JsonFormat() *runner {
