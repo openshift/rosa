@@ -1014,7 +1014,7 @@ var _ = Describe("Edit machinepool",
 					"--labels", common.ReplaceCommaSpaceWithComma(workerPool.Labels),
 					"--taints", common.ReplaceCommaSpaceWithComma(workerPool.Taints),
 				)
-
+				originalReplicas := workerPool.Replicas
 				for key, flags := range reqFlags {
 					By("Edit machinepools to the cluster")
 					_, err := machinePoolService.EditMachinePool(clusterID, con.DefaultClassicWorkerPool, flags...)
@@ -1029,6 +1029,7 @@ var _ = Describe("Edit machinepool",
 							Equal(strings.Join(common.ParseCommaSeparatedStrings(labels_1), ", ")))
 						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Taints).To(
 							Equal(strings.Join(common.ParseCommaSeparatedStrings(taints_1), ", ")))
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Replicas).To(Equal(originalReplicas))
 					}
 
 					if key == "empty_label_value" {
@@ -1036,6 +1037,7 @@ var _ = Describe("Edit machinepool",
 							Equal(strings.Join(common.ParseCommaSeparatedStrings(labels_2), ", ")))
 						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Taints).To(
 							Equal(strings.Join(common.ParseCommaSeparatedStrings(taints_2), ", ")))
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Replicas).To(Equal(originalReplicas))
 					}
 
 					if key == "empty_label_and_taint" {
@@ -1043,6 +1045,7 @@ var _ = Describe("Edit machinepool",
 							Equal(""))
 						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Taints).To(
 							Equal(""))
+						Expect(out.Machinepool(con.DefaultClassicWorkerPool).Replicas).To(Equal(originalReplicas))
 					}
 				}
 			})
