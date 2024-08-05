@@ -44,6 +44,13 @@ var _ = Describe("NewUpgradeArgsFunction test", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("Does not return an error if machinepool flag is not set", func() {
+			validateArgs := NewUpgradeArgsFunction(true)
+			err := validateArgs(cmd, []string{})
+
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Context("When machinepool is an argument", func() {

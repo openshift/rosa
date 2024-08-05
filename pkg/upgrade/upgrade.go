@@ -21,6 +21,9 @@ func NewUpgradeArgsFunction(flagSource bool) func(cmd *cobra.Command, argv []str
 
 		if flagSource {
 			flags := cmd.Flags()
+			if !cmd.Flags().Changed(machinepoolFlagName) {
+				return nil
+			}
 			if machinepoolID, err = flags.GetString(machinepoolFlagName); err != nil {
 				return err
 			}
