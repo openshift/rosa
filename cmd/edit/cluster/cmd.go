@@ -66,6 +66,9 @@ var Cmd = &cobra.Command{
 	Example: `  # Edit a cluster named "mycluster" to make it private
   rosa edit cluster -c mycluster --private
 
+  # Edit a cluster named "mycluster" to enable User Workload Monitoring
+  rosa edit cluster -c mycluster --disable-workload-monitoring=false
+
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
 	Run:  run,
