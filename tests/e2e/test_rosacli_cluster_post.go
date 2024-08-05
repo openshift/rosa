@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
-	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/common/constants"
@@ -370,14 +369,7 @@ var _ = Describe("Healthy check",
 				By("Check compute machine type")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
-				if ciConfig.Test.GlobalENV.ComputeMachineType != "" {
-					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(
-						Equal(ciConfig.Test.GlobalENV.ComputeMachineType))
-				} else if profile.ClusterConfig.InstanceType == "" {
-					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(constants.DefaultInstanceType))
-				} else {
-					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(profile.ClusterConfig.InstanceType))
-				}
+				Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(clusterConfig.Nodes.ComputeInstanceType))
 			})
 	})
 

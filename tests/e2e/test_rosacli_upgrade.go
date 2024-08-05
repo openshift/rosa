@@ -260,7 +260,7 @@ var _ = Describe("Cluster Upgrade testing",
 				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--version", upgradingVersion,
-					"--mode", "auto", "--hosted-cp",
+					"--mode", "auto", "--control-plane",
 					"-y",
 				)
 			}

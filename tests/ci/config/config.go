@@ -108,6 +108,7 @@ func init() {
 		NamePrefix:            os.Getenv("NAME_PREFIX"),
 		SVPC_CREDENTIALS_FILE: os.Getenv("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE"),
 		ComputeMachineType:    os.Getenv("COMPUTE_MACHINE_TYPE"),
+		OCM_LOGIN_ENV:         os.Getenv("OCM_LOGIN_ENV"),
 		ClusterWaitingTime:    waitingTime,
 		WaitSetupClusterReady: waitSetupClusterReady,
 	}
