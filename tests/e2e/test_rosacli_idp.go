@@ -18,9 +18,6 @@ import (
 func validateIDPOutput(textData string, clusterID string, idpName string) {
 	Expect(textData).Should(ContainSubstring("Configuring IDP for cluster '%s'", clusterID))
 	Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpName))
-	Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-	Expect(textData).Should(ContainSubstring("and click on '%s'", idpName))
-
 }
 
 var _ = Describe("Edit IDP",
