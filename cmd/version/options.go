@@ -14,15 +14,15 @@ type RosaVersionUserOptions struct {
 	verbose    bool
 }
 
-func NewRosaVersionUserOptions() RosaVersionUserOptions {
-	return RosaVersionUserOptions{}
+func NewRosaVersionUserOptions() *RosaVersionUserOptions {
+	return &RosaVersionUserOptions{}
 }
 
 type RosaVersionOptions struct {
 	reporter   *reporter.Object
 	verifyRosa verify.VerifyRosa
 
-	args RosaVersionUserOptions
+	args *RosaVersionUserOptions
 }
 
 func NewRosaVersionOptions() (*RosaVersionOptions, error) {
@@ -55,7 +55,6 @@ func (o *RosaVersionOptions) Version() error {
 	return nil
 }
 
-func (o *RosaVersionOptions) BindAndValidate(options RosaVersionUserOptions) {
-	o.args.verbose = options.verbose
-	o.args.clientOnly = options.clientOnly
+func (o *RosaVersionOptions) BindAndValidate(options *RosaVersionUserOptions) {
+	o.args = options
 }

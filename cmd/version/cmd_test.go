@@ -46,7 +46,7 @@ var _ = Describe("RosaVersionOptions", func() {
 				verifyRosa: mockVerify,
 				reporter:   rpt,
 
-				args: RosaVersionUserOptions{
+				args: &RosaVersionUserOptions{
 					clientOnly: false,
 				},
 			}
@@ -87,7 +87,7 @@ var _ = Describe("RosaVersionOptions", func() {
 				verifyRosa: mockVerify,
 				reporter:   rpt,
 
-				args: RosaVersionUserOptions{
+				args: &RosaVersionUserOptions{
 					clientOnly: true,
 				},
 			}
@@ -114,7 +114,7 @@ var _ = Describe("RosaVersionOptions", func() {
 				verifyRosa: mockVerify,
 				reporter:   rpt,
 
-				args: RosaVersionUserOptions{
+				args: &RosaVersionUserOptions{
 					clientOnly: true,
 					verbose:    true,
 				},

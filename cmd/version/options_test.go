@@ -24,16 +24,16 @@ var _ = Describe("RosaVersionOptions", func() {
 					verbose:    true,
 					clientOnly: true,
 				}
-				o.BindAndValidate(userOptions)
-				Expect(o.args).To(Equal(expectedArgs))
+				o.BindAndValidate(&userOptions)
+				Expect(o.args).To(Equal(&expectedArgs))
 			})
 		})
 
 		When("empty options are provided", func() {
 			It("should not change the default options", func() {
 				o = &RosaVersionOptions{}
-				o.BindAndValidate(RosaVersionUserOptions{})
-				Expect(o.args).To(Equal(RosaVersionUserOptions{}))
+				o.BindAndValidate(&RosaVersionUserOptions{})
+				Expect(o.args).To(Equal(&RosaVersionUserOptions{}))
 			})
 		})
 	})
