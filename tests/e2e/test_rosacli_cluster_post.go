@@ -584,6 +584,11 @@ var _ = Describe("Post-Check testing for cluster creation",
 				profile := profilehandler.LoadProfileYamlFileByENV()
 				Expect(err).ToNot(HaveOccurred())
 
+				By("Check if it is using oidc config")
+				if profile.ClusterConfig.OIDCConfig == "" {
+					Skip("Skip this case as it is only for byo oidc cluster")
+				}
+
 				By("Retrieve oidc config from cluster config")
 				clusterID = config.GetClusterID()
 				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID

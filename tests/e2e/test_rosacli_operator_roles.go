@@ -30,6 +30,8 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 		rosaClient             *rosacli.Client
 		ocmResourceService     rosacli.OCMResourceService
 		permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+		clusterConfig          *config.ClusterConfig
+		err                    error
 	)
 	BeforeEach(func() {
 		By("Init the client")
@@ -50,6 +52,10 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 			By("Get the default dir")
 			defaultDir = rosaClient.Runner.GetDir()
+
+			By("Get cluster config")
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -105,6 +111,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				output, err = ocmResourceService.DeleteOIDCConfig(
 					"--oidc-config-id", oidcConfigID,
 					"--mode", "auto",
+					"--region", clusterConfig.Region,
 					"-y",
 				)
 				Expect(err).To(HaveOccurred())
@@ -114,6 +121,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				output, err = ocmResourceService.DeleteOIDCConfig(
 					"--oidc-config-id", oidcConfigID,
 					"--mode", "manual",
+					"--region", clusterConfig.Region,
 					"-y",
 				)
 				Expect(err).To(HaveOccurred())

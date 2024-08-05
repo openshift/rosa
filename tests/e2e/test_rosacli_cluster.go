@@ -1853,13 +1853,17 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	})
 
 	AfterEach(func() {
-		By("Recover the operator role policy version")
-		keysToUntag := []string{versionTagName}
-		err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
-		Expect(err).To(BeNil())
-		tags := map[string]string{versionTagName: originalMajorMinorVerson}
-		err = awsClient.TagPolicy(operatorPolicyArn, tags)
-		Expect(err).To(BeNil())
+		hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+		Expect(err).ToNot(HaveOccurred())
+		if !hostedCluster {
+			By("Recover the operator role policy version")
+			keysToUntag := []string{versionTagName}
+			err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
+			Expect(err).To(BeNil())
+			tags := map[string]string{versionTagName: originalMajorMinorVerson}
+			err = awsClient.TagPolicy(operatorPolicyArn, tags)
+			Expect(err).To(BeNil())
+		}
 
 		By("Delete resources for testing")
 		output, err := ocmResourceService.DeleteOIDCConfig(
@@ -1895,6 +1899,11 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			rosalCommand.ReplaceFlagValue(map[string]string{
 				"-c": testClusterName,
 			})
+			if profile.ClusterConfig.DomainPrefixEnabled {
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--domain-prefix": "dp60688",
+				})
+			}
 
 			By("Reuse the oidc config and operator-roles")
 			stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
@@ -1923,7 +1932,9 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			Expect(err).To(BeNil())
 			operatorRolesArns := clusterDetail.OperatorIAMRoles
 
-			clusterVersion := clusterDetail.OpenshiftVersion
+			versionOutput, err := clusterService.GetClusterVersion(clusterID)
+			Expect(err).To(BeNil())
+			clusterVersion := versionOutput.RawID
 			major, minor, _, err := common.ParseVersion(clusterVersion)
 			Expect(err).To(BeNil())
 			originalMajorMinorVerson = fmt.Sprintf("%d.%d", major, minor)
