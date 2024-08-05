@@ -608,6 +608,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	}
 	if profile.ClusterConfig.InstanceType != "" {
 		flags = append(flags, "--compute-machine-type", profile.ClusterConfig.InstanceType)
+		clusterConfiguration.Nodes.ComputeInstanceType = profile.ClusterConfig.InstanceType
 	}
 	if profile.ClusterConfig.KMSKey {
 		kmsKeyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP, false)

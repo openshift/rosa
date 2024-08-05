@@ -50,9 +50,10 @@ type Subnets struct {
 }
 
 type Nodes struct {
-	Replicas    string `json:"replicas,omitempty"`
-	MinReplicas string `json:"min_replicas,omitempty"`
-	MaxReplicas string `json:"max_replicas,omitempty"`
+	Replicas            string `json:"replicas,omitempty"`
+	MinReplicas         string `json:"min_replicas,omitempty"`
+	MaxReplicas         string `json:"max_replicas,omitempty"`
+	ComputeInstanceType string `json:"compute_instance_type,omitempty"`
 }
 
 type Autoscaling struct {

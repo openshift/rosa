@@ -16,7 +16,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/common/constants"
@@ -1007,21 +1006,17 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(BeNil())
 				rosaClient.Runner.UnsetFormat()
 				organizationID := userInfo.OCMOrganizationID
+				ocmApi := userInfo.OCMApi
 
 				var OCMEnv string
 
 				By("Get OCM Env")
-				if ciConfig.Test.GlobalENV.OCM_LOGIN_ENV != "" {
-					OCM_LOGIN_ENV := ciConfig.Test.GlobalENV.OCM_LOGIN_ENV
-					if strings.Contains(OCM_LOGIN_ENV, "staging") ||
-						strings.Contains(OCM_LOGIN_ENV, "stage") {
-						OCMEnv = "staging"
-					} else if strings.Contains(OCM_LOGIN_ENV, "production") ||
-						strings.Contains(OCM_LOGIN_ENV, "prod") {
-						OCMEnv = "production"
-					}
+				if strings.Contains(ocmApi, "stage") {
+					OCMEnv = "staging"
+				} else if strings.Contains(ocmApi, "integration") {
+					OCMEnv = "integration"
 				} else {
-					OCMEnv = common.ReadENVWithDefaultValue("OCM_LOGIN_ENV", "staging")
+					OCMEnv = "production"
 				}
 
 				By("Get the cluster informations")
