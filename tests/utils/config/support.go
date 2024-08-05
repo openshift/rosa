@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/openshift/rosa/tests/ci/config"
@@ -15,6 +14,8 @@ import (
 // Only for HCP cluster now
 func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, outputDir string,
 	kubeconfigFile string) error {
+	var err error
+
 	ciliumVersion := "1.14.5"
 	yamlFileNames := []string{
 		"cluster-network-03-cilium-ciliumconfigs-crd.yaml",
@@ -33,20 +34,13 @@ func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, out
 	}
 
 	url := "https://raw.githubusercontent.com/isovalent/olm-for-cilium/main/manifests"
-	for _, n := range yamlFileNames {
-		stdout, err := ocClient.Run(
-			fmt.Sprintf("oc apply -f %s/cilium.v%s/%s", url, ciliumVersion, n))
-		time.Sleep(3 * time.Second)
-
+	for _, yamlFile := range yamlFileNames {
+		_, err = ocClient.Run(
+			fmt.Sprintf("oc apply -f %s/cilium.v%s/%s", url, ciliumVersion, yamlFile),
+			3,
+		)
 		if err != nil {
-			if strings.Contains(err.Error(), "Warning") {
-				stdout, err = ocClient.Run(
-					fmt.Sprintf("oc apply -f %s/cilium.v%s/%s", url, ciliumVersion, n))
-			}
-			if err != nil {
-				log.Logger.Errorf("%s:%s", stdout, err.Error())
-				return err
-			}
+			return err
 		}
 	}
 
@@ -58,7 +52,7 @@ func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, out
 
 	resultFile := path.Join(outputDir, "cilium.yaml")
 
-	_, _, err := occli.RunCMD(
+	_, _, err = occli.RunCMD(
 		fmt.Sprintf("cat %s | sed -e 's/HOSTPREFIX/%v/g' >> %s", fileName, hostPrefix, resultFile))
 	if err != nil {
 		return err
@@ -69,12 +63,12 @@ func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, out
 		return err
 	}
 
-	stdout, err := ocClient.Run(fmt.Sprintf("oc apply -f %s --kubeconfig %s", resultFile, kubeconfigFile))
-	time.Sleep(3 * time.Second)
+	stdout, err := ocClient.Run(fmt.Sprintf("oc apply -f %s --kubeconfig %s", resultFile, kubeconfigFile), 3)
 	if err != nil {
 		log.Logger.Errorf("%s", stdout)
 		return err
 	}
+	time.Sleep(3 * time.Second)
 
 	return err
 }
