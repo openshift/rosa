@@ -340,6 +340,7 @@ func (m *machinePool) AddMachinePool(cmd *cobra.Command, clusterKey string, clus
 		availabilityZonesFilter,
 		cluster.AWS().STS().RoleARN(),
 		r.AWSClient,
+		cluster.AWS().STS().ExternalID(),
 	)
 	if err != nil {
 		return fmt.Errorf(fmt.Sprintf("%s", err))
@@ -811,7 +812,7 @@ func (m *machinePool) AddNodePool(cmd *cobra.Command, clusterKey string, cluster
 	}
 
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
-		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient)
+		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient, cluster.AWS().STS().ExternalID())
 	if err != nil {
 		return fmt.Errorf(fmt.Sprintf("%s", err))
 	}

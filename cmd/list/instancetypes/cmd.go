@@ -142,7 +142,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		}
 
 		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypesInRegion(arguments.GetRegion(),
-			availabilityZones, roleArn, r.AWSClient)
+			availabilityZones, roleArn, r.AWSClient, args.externalId)
 		if err != nil {
 			return fmt.Errorf("Failed to fetch instance types: %v", err)
 		}
