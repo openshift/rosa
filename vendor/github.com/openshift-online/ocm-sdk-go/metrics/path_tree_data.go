@@ -179,6 +179,7 @@ var pathTreeData = `{
         },
         "aws_inquiries": {
           "machine_types": null,
+          "oidc_thumbprint": null,
           "regions": null,
           "sts_account_roles": null,
           "sts_credential_requests": null,
@@ -328,6 +329,225 @@ var pathTreeData = `{
         "events": null,
         "flavours": {
           "-": null
+        },
+        "gcp": {
+          "wif_configs": {
+            "-": null
+          }
+        },
+        "gcp_inquiries": {
+          "encryption_keys": null,
+          "key_rings": null,
+          "machine_types": null,
+          "regions": null,
+          "vpcs": null
+        },
+        "limited_support_reason_templates": {
+          "-": null
+        },
+        "load_balancer_quota_values": null,
+        "machine_types": {
+          "-": null
+        },
+        "network_verifications": {
+          "-": null
+        },
+        "oidc_configs": {
+          "-": null
+        },
+        "pending_delete_clusters": {
+          "-": null
+        },
+        "products": {
+          "-": {
+            "minimal_versions": {
+              "-": null
+            },
+            "technology_previews": {
+              "-": null
+            }
+          }
+        },
+        "provision_shards": {
+          "-": null
+        },
+        "storage_quota_values": null,
+        "trusted_ip_addresses": null,
+        "version_gates": {
+          "-": null
+        },
+        "versions": {
+          "-": null
+        }
+      },
+      "v2alpha1": {
+        "addons": {
+          "-": {
+            "versions": {
+              "-": null
+            }
+          }
+        },
+        "aws_infrastructure_access_roles": {
+          "-": null
+        },
+        "aws_inquiries": {
+          "machine_types": null,
+          "oidc_thumbprint": null,
+          "regions": null,
+          "sts_account_roles": null,
+          "sts_credential_requests": null,
+          "sts_policies": null,
+          "validate_credentials": null,
+          "vpcs": null
+        },
+        "cloud_providers": {
+          "-": {
+            "available_regions": null,
+            "regions": {
+              "-": null
+            }
+          }
+        },
+        "clusters": {
+          "-": {
+            "addon_inquiries": {
+              "-": null
+            },
+            "addon_upgrade_policies": {
+              "-": {
+                "state": null
+              }
+            },
+            "addons": {
+              "-": null
+            },
+            "autoscaler": null,
+            "aws": {
+              "private_link_configuration": {
+                "principals": {
+                  "-": null
+                }
+              },
+              "role_policy_bindings": null
+            },
+            "aws_infrastructure_access_role_grants": {
+              "-": null
+            },
+            "break_glass_credentials": {
+              "-": null
+            },
+            "clusterdeployment": null,
+            "control_plane": {
+              "upgrade_policies": {
+                "-": null
+              }
+            },
+            "credentials": null,
+            "delete_protection": null,
+            "external_auth_config": {
+              "external_auths": {
+                "-": null
+              }
+            },
+            "external_configuration": {
+              "labels": {
+                "-": null
+              },
+              "manifests": {
+                "-": null
+              },
+              "syncsets": {
+                "-": null
+              }
+            },
+            "gate_agreements": {
+              "-": null
+            },
+            "groups": {
+              "-": {
+                "users": {
+                  "-": null
+                }
+              }
+            },
+            "hibernate": null,
+            "hypershift": null,
+            "identity_providers": {
+              "-": {
+                "htpasswd_users": {
+                  "-": null,
+                  "import": null
+                }
+              }
+            },
+            "inflight_checks": {
+              "-": null
+            },
+            "ingresses": {
+              "-": null
+            },
+            "kubelet_config": null,
+            "kubelet_configs": {
+              "-": null
+            },
+            "limited_support_reasons": {
+              "-": null
+            },
+            "logs": {
+              "install": null,
+              "uninstall": null
+            },
+            "machine_pools": {
+              "-": null
+            },
+            "metric_queries": {
+              "alerts": null,
+              "cluster_operators": null,
+              "cpu_total_by_node_roles_os": null,
+              "nodes": null,
+              "socket_total_by_node_roles_os": null
+            },
+            "node_pools": {
+              "-": {
+                "upgrade_policies": {
+                  "-": null
+                }
+              }
+            },
+            "provision_shard": null,
+            "resources": {
+              "live": null
+            },
+            "resume": null,
+            "status": null,
+            "sts_operator_roles": {
+              "-": null
+            },
+            "sts_support_jump_role": null,
+            "tuning_configs": {
+              "-": null
+            },
+            "upgrade_policies": {
+              "-": {
+                "state": null
+              }
+            },
+            "vpc": null
+          }
+        },
+        "dns_domains": {
+          "-": null
+        },
+        "environment": null,
+        "events": null,
+        "flavours": {
+          "-": null
+        },
+        "gcp": {
+          "wif_configs": {
+            "-": null
+          }
         },
         "gcp_inquiries": {
           "encryption_keys": null,
