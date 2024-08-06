@@ -1187,7 +1187,9 @@ func run(cmd *cobra.Command, _ []string) {
 	externalAuthProvidersEnabled := args.externalAuthProvidersEnabled
 	if externalAuthProvidersEnabled {
 		if !isHostedCP {
-			r.Reporter.Errorf("External authentication configuration is only supported for a Hosted Control Plane cluster.")
+			r.Reporter.Errorf(
+				"External authentication configuration is only supported for a Hosted Control Plane cluster.",
+			)
 			os.Exit(1)
 		}
 	}
@@ -2372,7 +2374,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Compute node instance type:
 	computeMachineType := args.computeMachineType
 	computeMachineTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(region, availabilityZones, roleARN,
-		awsClient)
+		awsClient, externalID)
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
