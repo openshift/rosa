@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -27,9 +28,13 @@ var _ = Describe("Cluster Upgrade testing",
 			arbitraryPolicyService   rosacli.PolicyService
 			clusterService           rosacli.ClusterService
 			upgradeService           rosacli.UpgradeService
+			ocmResourceService       rosacli.OCMResourceService
+			versionService           rosacli.VersionService
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
 			profile                  *profilehandler.Profile
+			accountRoles             []string
+			operatorRoles            []string
 		)
 
 		BeforeEach(func() {
@@ -42,6 +47,8 @@ var _ = Describe("Cluster Upgrade testing",
 			arbitraryPolicyService = rosaClient.Policy
 			clusterService = rosaClient.Cluster
 			upgradeService = rosaClient.Upgrade
+			ocmResourceService = rosaClient.OCMResource
+			versionService = rosaClient.Version
 
 			By("Load the profile")
 			profile = profilehandler.LoadProfileYamlFileByENV()
@@ -67,7 +74,7 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).To(BeNil())
 			clusterVersion := jsonData.DigString("version", "raw_id")
 
-			if profile.Version != "y-1" {
+			if profile.Version != con.YStreamPreviousVersion {
 				Skip("Skip this case as the version defined in profile is not y-1 for upgrading testing")
 			}
 
@@ -280,7 +287,7 @@ var _ = Describe("Cluster Upgrade testing",
 			scheduledDate := time.Now().Format("2006-01-02")
 			scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
 
-			if profile.Version != "y-1" || profile.ClusterConfig.STS {
+			if profile.Version != con.YStreamPreviousVersion || profile.ClusterConfig.STS {
 				Skip("Skip this case as the version defined in profile is not y-1 for non-sts cluster upgrading testing")
 			}
 
@@ -314,6 +321,185 @@ var _ = Describe("Cluster Upgrade testing",
 			err = WaitForUpgradeToState(upgradeService, clusterID, con.Started, 70)
 			Expect(err).To(BeNil())
 		})
+
+		It("to upgrade wide AMI roles with the managed policies in auto mode - [id:57444]",
+			labels.Critical, labels.Runtime.Upgrade, func() {
+				By("Check the cluster version and compare with the profile to decide if skip this case")
+				if !profile.ClusterConfig.STS || profile.Version != con.YStreamPreviousVersion {
+					Skip("Skip this case as the version defined in profile is not y-1 or non-sts cluster for " +
+						"upgrading testing")
+				}
+
+				By("Upgrade wide AMI roles in auto mode")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				clusterVersion := jsonData.DigString("version", "raw_id")
+
+				if profile.ClusterConfig.HCP {
+					By("Find HCP cluster upgrade version")
+					hcpUpgradingVersion, _, err := FindUpgradeVersion(versionService,
+						profile.ChannelGroup, true, clusterVersion)
+					Expect(err).To(BeNil())
+					Expect(hcpUpgradingVersion).NotTo(BeEmpty())
+
+					By("upgrade HCP cluster wide AMI roles in auto mode")
+					ud, err := profilehandler.ParseUserData()
+					Expect(err).To(BeNil())
+					Expect(ud).NotTo(BeNil())
+					output1, err := ocmResourceService.UpgradeRoles(
+						"-c", clusterID,
+						"--cluster-version", hcpUpgradingVersion,
+						"--mode", "auto",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					Expect(output1.String()).To(ContainSubstring("Account roles with the prefix '%s' have attached "+
+						"managed policies.", ud.AccountRolesPrefix))
+					Expect(output1.String()).To(ContainSubstring("Cluster '%s' operator roles have attached managed "+
+						"policies. An upgrade isn't needed", ud.OperatorRolesPrefix))
+				} else {
+					By("Find STS Classic cluster upgrade version")
+					classicUpgradingVersion, classicUpgradingMajorVersion, err := FindUpgradeVersion(versionService,
+						profile.ChannelGroup, false, clusterVersion)
+					Expect(err).To(BeNil())
+					Expect(classicUpgradingVersion).NotTo(BeEmpty())
+					Expect(classicUpgradingMajorVersion).NotTo(BeEmpty())
+
+					By("get account roles and operator roles from cluster description")
+					description, err := clusterService.DescribeClusterAndReflect(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+
+					_, installerRoleName, err := common.ParseRoleARN(description.STSRoleArn)
+					Expect(err).To(BeNil())
+					_, supportRoleName, err := common.ParseRoleARN(description.SupportRoleARN)
+					Expect(err).To(BeNil())
+
+					accountRoles = append(accountRoles, installerRoleName)
+					accountRoles = append(accountRoles, supportRoleName)
+
+					for _, i := range description.InstanceIAMRoles {
+						for _, v := range i {
+							_, accountRoleName, err := common.ParseRoleARN(v)
+							Expect(err).To(BeNil())
+							accountRoles = append(accountRoles, accountRoleName)
+						}
+					}
+
+					for _, v := range description.OperatorIAMRoles {
+						_, operatorRoleName, err := common.ParseRoleARN(v)
+						Expect(err).To(BeNil())
+						operatorRoles = append(operatorRoles, operatorRoleName)
+					}
+
+					awsClient, err = aws_client.CreateAWSClient("", "")
+					Expect(err).To(BeNil())
+
+					By("upgrade STS Classic cluster wide AMI roles in auto mode")
+					output, err := ocmResourceService.UpgradeRoles(
+						"-c", clusterID,
+						"--cluster-version", classicUpgradingVersion,
+						"--mode", "auto",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					Expect(output.String()).To(ContainSubstring("Ensuring account role/policies compatibility for " +
+						"upgrade"))
+					Expect(output.String()).To(ContainSubstring("Starting to upgrade the policies"))
+					for _, accountRoleName := range accountRoles {
+						accountRolePolicyArns, err := awsClient.ListRoleAttachedPolicies(accountRoleName)
+						Expect(err).To(BeNil())
+						Expect(output.String()).To(ContainSubstring("Upgraded policy with ARN '%s' to version '%s'",
+							*accountRolePolicyArns[0].PolicyArn, classicUpgradingMajorVersion))
+					}
+					Expect(output.String()).To(ContainSubstring("Ensuring operator role/policies compatibility for" +
+						" upgrade"))
+					for _, operatorRoleName := range operatorRoles {
+						operatorRolePolicyArns, err := awsClient.ListRoleAttachedPolicies(operatorRoleName)
+						Expect(err).To(BeNil())
+						Expect(output.String()).To(ContainSubstring("Upgraded policy with ARN '%s' to version '%s'",
+							*operatorRolePolicyArns[0].PolicyArn, classicUpgradingMajorVersion))
+					}
+				}
+			})
+
+		It("to upgrade wide AMI roles with the managed policies in manual mode - [id:75445]",
+			labels.Critical, labels.Runtime.Upgrade, func() {
+				By("Check the cluster version and compare with the profile to decide if skip this case")
+				if !profile.ClusterConfig.STS || profile.Version != con.YStreamPreviousVersion {
+					Skip("Skip this case as the version defined in profile is not y-1 or non-sts cluster for " +
+						"upgrading testing")
+				}
+
+				By("Upgrade wide AMI roles in manual mode")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				clusterVersion := jsonData.DigString("version", "raw_id")
+
+				if profile.ClusterConfig.HCP {
+					By("Find HCP cluster upgrade version")
+					hcpUpgradingVersion, _, err := FindUpgradeVersion(versionService, profile.ChannelGroup,
+						true, clusterVersion)
+					Expect(err).To(BeNil())
+					Expect(hcpUpgradingVersion).NotTo(BeEmpty())
+
+					By("upgrade HCP cluster wide AMI roles in manual mode")
+					ud, err := profilehandler.ParseUserData()
+					Expect(err).To(BeNil())
+					Expect(ud).NotTo(BeNil())
+
+					output1, err := ocmResourceService.UpgradeRoles(
+						"-c", clusterID,
+						"--cluster-version", hcpUpgradingVersion,
+						"--mode", "manual",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					Expect(output1.String()).To(ContainSubstring("Account roles with the prefix '%s' have attached "+
+						"managed policies.", ud.AccountRolesPrefix))
+					Expect(output1.String()).To(ContainSubstring("Cluster '%s' operator roles have attached managed "+
+						"policies. An upgrade isn't needed", ud.OperatorRolesPrefix))
+				} else {
+					By("Find STS Classic cluster upgrade version")
+					classicUpgradingVersion, _, err := FindUpgradeVersion(versionService, profile.ChannelGroup,
+						false, clusterVersion)
+					Expect(err).To(BeNil())
+					Expect(classicUpgradingVersion).NotTo(BeEmpty())
+
+					By("upgrade STS Classic cluster wide AMI roles in manual mode")
+					output2, err := ocmResourceService.UpgradeRoles(
+						"-c", clusterID,
+						"--cluster-version", classicUpgradingVersion,
+						"--mode", "manual",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					Expect(output2.String()).To(ContainSubstring("Ensuring account role/policies compatibility " +
+						"for upgrade"))
+
+					commands := common.ExtractCommandsToCreateAWSResoueces(output2)
+					for _, command := range commands {
+						info := "INFO: Ensuring operator role/policies compatibility for upgrade"
+						if strings.Contains(command, info) {
+							index := strings.Index(command, info)
+							cmd1 := strings.Fields(command[:index])
+							cmd2 := strings.Fields(command[index+len(info):])
+
+							_, err := rosaClient.Runner.RunCMD(cmd1)
+							Expect(err).To(BeNil())
+
+							_, err = rosaClient.Runner.RunCMD(cmd2)
+							Expect(err).To(BeNil())
+						} else {
+							cmd := strings.Split(command, " ")
+							if len(cmd) > 0 && cmd[len(cmd)-1] == "" {
+								cmd = cmd[:len(cmd)-1]
+							}
+							_, err := rosaClient.Runner.RunCMD(cmd)
+							Expect(err).To(BeNil())
+						}
+					}
+				}
+			})
 	})
 
 var _ = Describe("Describe/List rosa upgrade",
@@ -464,4 +650,23 @@ func WaitForUpgradeToState(u rosacli.UpgradeService, clusterID string, state str
 	}
 	return fmt.Errorf("ERROR!Timeout after %d minutes to wait for the upgrade into status %s of cluster %s",
 		timeout, state, clusterID)
+}
+
+func FindUpgradeVersion(v rosacli.VersionService, channelGroup string, hostedCP bool, clusterVersion string) (string,
+	string, error) {
+	clusterVersionList, err := v.ListAndReflectVersions(channelGroup, hostedCP)
+	if err != nil {
+		return "", "", err
+	}
+	versions, err := clusterVersionList.FindYStreamUpgradeVersions(clusterVersion)
+	if err != nil {
+		return "", "", err
+	}
+	if len(versions) == 0 {
+		return "", "", nil
+	} else {
+		upgradingVersion := versions[0]
+		upgradingMajorVersion := common.SplitMajorVersion(upgradingVersion)
+		return upgradingVersion, upgradingMajorVersion, nil
+	}
 }
