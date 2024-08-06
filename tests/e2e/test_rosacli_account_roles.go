@@ -792,3 +792,221 @@ var _ = Describe("List account roles", labels.Feature.AccountRoles, func() {
 			}
 		})
 })
+
+var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
+	defer GinkgoRecover()
+
+	var (
+		rosaClient                     *rosacli.Client
+		ocmResourceService             rosacli.OCMResourceService
+		accountRolePrefixesNeedCleanup []string
+		path                           = "/aa/bb/"
+	)
+	BeforeEach(func() {
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		ocmResourceService = rosaClient.OCMResource
+	})
+
+	It("to create account-roles with invalid version/channel group - [id:75246]",
+		labels.High, labels.Runtime.OCMResources,
+		func() {
+			By("Create account roles with invalid version")
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", "ocp75246",
+				"--version", "4.8",
+				"-y")
+			Expect(err).ToNot(BeNil())
+			Expect(output.String()).To(ContainSubstring("Error getting version: A valid policy version number " +
+				"must be specified"))
+
+			By("Create account roles with invalid version format")
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", "ocp75246",
+				"--version", "4.8.10",
+				"-y")
+			Expect(err).ToNot(BeNil())
+			Expect(output.String()).To(ContainSubstring("A valid policy version number must be specified"))
+
+			By("Create account roles with invalid channel group")
+			versionService := rosaClient.Version
+			// get stable channel version
+			versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+			Expect(err).To(BeNil())
+			defaultVersion := versionList.DefaultVersion()
+			Expect(defaultVersion).ToNot(BeNil())
+
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", "ocp75246",
+				"--version", defaultVersion.Version,
+				"--channel-group", "fakecg",
+				"-y")
+			Expect(err).ToNot(BeNil())
+			Expect(output.String()).To(ContainSubstring("Error getting version: could not find versions for the " +
+				"provided channel-group: 'fakecg'"))
+
+		})
+
+	It("to create/Upgrade account-roles by setting version and channel-group via rosacli - [id:54469]",
+		labels.High, labels.Runtime.OCMResources,
+		func() {
+			defer func() {
+				By("Cleanup account-roles")
+				if len(accountRolePrefixesNeedCleanup) > 0 {
+					for _, v := range accountRolePrefixesNeedCleanup {
+						_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+							"--prefix", v,
+							"-y")
+
+						Expect(err).To(BeNil())
+					}
+				}
+			}()
+
+			By("Prepare y-1 version for testing")
+			versionService := rosaClient.Version
+			// get stable channel version
+			versionListS, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+			Expect(err).To(BeNil())
+			defaultVersionS := versionListS.DefaultVersion()
+			Expect(defaultVersionS).ToNot(BeNil())
+			_, _, upgradeVersionS, err := defaultVersionS.MajorMinor()
+			Expect(err).To(BeNil())
+			versionS, err := versionListS.FindNearestBackwardMinorVersion(defaultVersionS.Version, 1, true)
+			Expect(err).To(BeNil())
+			Expect(versionS).NotTo(BeNil())
+			_, _, versionStable, err := versionS.MajorMinor()
+			Expect(err).To(BeNil())
+
+			// get candidate channel version
+			versionListC, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, true)
+			Expect(err).To(BeNil())
+			defaultVersionC := versionListC.DefaultVersion()
+			Expect(defaultVersionC).ToNot(BeNil())
+			_, _, upgradeVersionC, err := defaultVersionC.MajorMinor()
+			Expect(err).To(BeNil())
+			versionC, err := versionListS.FindNearestBackwardMinorVersion(defaultVersionC.Version, 1, true)
+			Expect(err).To(BeNil())
+			Expect(versionC).NotTo(BeNil())
+			_, _, versionCandidate, err := versionC.MajorMinor()
+			Expect(err).To(BeNil())
+
+			channelVersion := map[string]string{"stable": versionStable, "candidate": versionCandidate}
+
+			By("Create/upgrade account role with version and channel group in auto mode")
+			for c, v := range channelVersion {
+				By("Create account roles in auto mode with channel group and version")
+				accrolePrefix := common.GenerateRandomString(5)
+				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accrolePrefix,
+					"--version", v,
+					"--channel-group", c,
+					"-y")
+				Expect(err).To(BeNil())
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix)
+
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Creating classic account roles"))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-ControlPlane-Role'", accrolePrefix)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-Worker-Role'", accrolePrefix)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-Support-Role'", accrolePrefix)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-Installer-Role'", accrolePrefix)))
+				Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Installer-Role'", accrolePrefix)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Support-Role'", accrolePrefix)))
+				Expect(textData).To(ContainSubstring(fmt.Sprintf("Created role '%s-HCP-ROSA-Worker-Role'", accrolePrefix)))
+
+				By("Upgrade account roles in auto mode")
+				upgradeVersion := upgradeVersionC
+				if c == "stable" {
+					upgradeVersion = upgradeVersionS
+				}
+				output, err = ocmResourceService.UpgradeAccountRole(
+					"--prefix", accrolePrefix,
+					"--mode", "auto",
+					"--version", upgradeVersion,
+					"--channel-group", c,
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Ensuring account role policies compatibility for upgrade"))
+				Expect(output.String()).To(ContainSubstring("Starting to upgrade the policies"))
+				Expect(output.String()).To(ContainSubstring("policy/%s-ControlPlane-Role-Policy' to version '%s'",
+					accrolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring("policy/%s-Worker-Role-Policy' to version '%s'",
+					accrolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring("policy/%s-Support-Role-Policy' to version '%s'",
+					accrolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring("policy/%s-Installer-Role-Policy' to version '%s'",
+					accrolePrefix, upgradeVersion))
+			}
+
+			By("Create/upgrade account role with version and channel group in manual mode")
+			for c, v := range channelVersion {
+				By("Create account roles in manual mode with channel group and version")
+				accrolePrefix := common.GenerateRandomString(5)
+				output, err := ocmResourceService.CreateAccountRole("--mode", "manual",
+					"--prefix", accrolePrefix,
+					"--path", path,
+					"--version", v,
+					"--channel-group", c,
+					"-y")
+				Expect(err).To(BeNil())
+				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix)
+
+				commands := common.ExtractCommandsToCreateAWSResoueces(output)
+
+				for _, command := range commands {
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
+
+				By("List the account roles created in manual mode")
+				accountRoleList, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				accountRoles := accountRoleList.AccountRoles(accrolePrefix)
+				Expect(len(accountRoles)).To(Equal(7))
+				for _, ar := range accountRoles {
+					Expect(ar.OpenshiftVersion).To(Equal(v))
+				}
+
+				By("Upgrade account roles in manual mode")
+				upgradeVersion := upgradeVersionC
+				if c == "stable" {
+					upgradeVersion = upgradeVersionS
+				}
+				output, err = ocmResourceService.UpgradeAccountRole(
+					"--prefix", accrolePrefix,
+					"--mode", "manual",
+					"--version", upgradeVersion,
+					"--channel-group", c,
+					"-y",
+				)
+				Expect(err).To(BeNil())
+
+				commands = common.ExtractCommandsToCreateAWSResoueces(output)
+
+				for _, command := range commands {
+					cmd := strings.Split(command, " ")
+					if len(cmd) > 0 && cmd[len(cmd)-1] == "" {
+						cmd = cmd[:len(cmd)-1]
+					}
+					_, err := rosaClient.Runner.RunCMD(cmd)
+					Expect(err).To(BeNil())
+				}
+
+				By("List the account roles upgraded in manual mode")
+				accountRoleList, _, err = ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				accountRoles = accountRoleList.AccountRoles(accrolePrefix)
+				Expect(len(accountRoles)).To(Equal(7))
+				for _, ar := range accountRoles {
+					if ar.AWSManaged == "Yes" {
+						Expect(ar.OpenshiftVersion).To(Equal(v))
+					} else {
+						Expect(ar.OpenshiftVersion).To(Equal(upgradeVersion))
+					}
+				}
+			}
+		})
+})
