@@ -43,6 +43,7 @@ type AWSNodePool struct {
 	ec2MetadataHttpTokens      Ec2MetadataHttpTokens
 	instanceProfile            string
 	instanceType               string
+	rootVolume                 *AWSVolume
 	subnetOutposts             map[string]string
 	tags                       map[string]string
 }
@@ -219,12 +220,35 @@ func (o *AWSNodePool) GetInstanceType() (value string, ok bool) {
 	return
 }
 
+// RootVolume returns the value of the 'root_volume' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// AWS Volume specification to be used to set custom worker disk size
+func (o *AWSNodePool) RootVolume() *AWSVolume {
+	if o != nil && o.bitmap_&256 != 0 {
+		return o.rootVolume
+	}
+	return nil
+}
+
+// GetRootVolume returns the value of the 'root_volume' attribute and
+// a flag indicating if the attribute has a value.
+//
+// AWS Volume specification to be used to set custom worker disk size
+func (o *AWSNodePool) GetRootVolume() (value *AWSVolume, ok bool) {
+	ok = o != nil && o.bitmap_&256 != 0
+	if ok {
+		value = o.rootVolume
+	}
+	return
+}
+
 // SubnetOutposts returns the value of the 'subnet_outposts' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Associates nodepool subnets with AWS Outposts.
 func (o *AWSNodePool) SubnetOutposts() map[string]string {
-	if o != nil && o.bitmap_&256 != 0 {
+	if o != nil && o.bitmap_&512 != 0 {
 		return o.subnetOutposts
 	}
 	return nil
@@ -235,7 +259,7 @@ func (o *AWSNodePool) SubnetOutposts() map[string]string {
 //
 // Associates nodepool subnets with AWS Outposts.
 func (o *AWSNodePool) GetSubnetOutposts() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&256 != 0
+	ok = o != nil && o.bitmap_&512 != 0
 	if ok {
 		value = o.subnetOutposts
 	}
@@ -254,7 +278,7 @@ func (o *AWSNodePool) GetSubnetOutposts() (value map[string]string, ok bool) {
 // - Tag values may be between 0 and 256 characters in length
 // - Tags may only contain letters, numbers, spaces, and the following characters: [_ . : / = + - @]
 func (o *AWSNodePool) Tags() map[string]string {
-	if o != nil && o.bitmap_&512 != 0 {
+	if o != nil && o.bitmap_&1024 != 0 {
 		return o.tags
 	}
 	return nil
@@ -272,7 +296,7 @@ func (o *AWSNodePool) Tags() map[string]string {
 // - Tag values may be between 0 and 256 characters in length
 // - Tags may only contain letters, numbers, spaces, and the following characters: [_ . : / = + - @]
 func (o *AWSNodePool) GetTags() (value map[string]string, ok bool) {
-	ok = o != nil && o.bitmap_&512 != 0
+	ok = o != nil && o.bitmap_&1024 != 0
 	if ok {
 		value = o.tags
 	}

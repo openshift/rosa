@@ -31,6 +31,7 @@ type AWSNodePoolBuilder struct {
 	ec2MetadataHttpTokens      Ec2MetadataHttpTokens
 	instanceProfile            string
 	instanceType               string
+	rootVolume                 *AWSVolumeBuilder
 	subnetOutposts             map[string]string
 	tags                       map[string]string
 }
@@ -107,9 +108,11 @@ func (b *AWSNodePoolBuilder) InstanceType(value string) *AWSNodePoolBuilder {
 	return b
 }
 
-// SubnetOutposts sets the value of the 'subnet_outposts' attribute to the given value.
-func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoolBuilder {
-	b.subnetOutposts = value
+// RootVolume sets the value of the 'root_volume' attribute to the given value.
+//
+// Holds settings for an AWS storage volume.
+func (b *AWSNodePoolBuilder) RootVolume(value *AWSVolumeBuilder) *AWSNodePoolBuilder {
+	b.rootVolume = value
 	if value != nil {
 		b.bitmap_ |= 256
 	} else {
@@ -118,13 +121,24 @@ func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoo
 	return b
 }
 
-// Tags sets the value of the 'tags' attribute to the given value.
-func (b *AWSNodePoolBuilder) Tags(value map[string]string) *AWSNodePoolBuilder {
-	b.tags = value
+// SubnetOutposts sets the value of the 'subnet_outposts' attribute to the given value.
+func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoolBuilder {
+	b.subnetOutposts = value
 	if value != nil {
 		b.bitmap_ |= 512
 	} else {
 		b.bitmap_ &^= 512
+	}
+	return b
+}
+
+// Tags sets the value of the 'tags' attribute to the given value.
+func (b *AWSNodePoolBuilder) Tags(value map[string]string) *AWSNodePoolBuilder {
+	b.tags = value
+	if value != nil {
+		b.bitmap_ |= 1024
+	} else {
+		b.bitmap_ &^= 1024
 	}
 	return b
 }
@@ -154,6 +168,11 @@ func (b *AWSNodePoolBuilder) Copy(object *AWSNodePool) *AWSNodePoolBuilder {
 	b.ec2MetadataHttpTokens = object.ec2MetadataHttpTokens
 	b.instanceProfile = object.instanceProfile
 	b.instanceType = object.instanceType
+	if object.rootVolume != nil {
+		b.rootVolume = NewAWSVolume().Copy(object.rootVolume)
+	} else {
+		b.rootVolume = nil
+	}
 	if len(object.subnetOutposts) > 0 {
 		b.subnetOutposts = map[string]string{}
 		for k, v := range object.subnetOutposts {
@@ -192,6 +211,12 @@ func (b *AWSNodePoolBuilder) Build() (object *AWSNodePool, err error) {
 	object.ec2MetadataHttpTokens = b.ec2MetadataHttpTokens
 	object.instanceProfile = b.instanceProfile
 	object.instanceType = b.instanceType
+	if b.rootVolume != nil {
+		object.rootVolume, err = b.rootVolume.Build()
+		if err != nil {
+			return
+		}
+	}
 	if b.subnetOutposts != nil {
 		object.subnetOutposts = make(map[string]string)
 		for k, v := range b.subnetOutposts {

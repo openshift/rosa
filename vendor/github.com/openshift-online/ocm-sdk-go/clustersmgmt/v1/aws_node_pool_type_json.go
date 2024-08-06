@@ -131,7 +131,16 @@ func writeAWSNodePool(object *AWSNodePool, stream *jsoniter.Stream) {
 		stream.WriteString(object.instanceType)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0 && object.subnetOutposts != nil
+	present_ = object.bitmap_&256 != 0 && object.rootVolume != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("root_volume")
+		writeAWSVolume(object.rootVolume, stream)
+		count++
+	}
+	present_ = object.bitmap_&512 != 0 && object.subnetOutposts != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -160,7 +169,7 @@ func writeAWSNodePool(object *AWSNodePool, stream *jsoniter.Stream) {
 		}
 		count++
 	}
-	present_ = object.bitmap_&512 != 0 && object.tags != nil
+	present_ = object.bitmap_&1024 != 0 && object.tags != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -252,6 +261,10 @@ func readAWSNodePool(iterator *jsoniter.Iterator) *AWSNodePool {
 			value := iterator.ReadString()
 			object.instanceType = value
 			object.bitmap_ |= 128
+		case "root_volume":
+			value := readAWSVolume(iterator)
+			object.rootVolume = value
+			object.bitmap_ |= 256
 		case "subnet_outposts":
 			value := map[string]string{}
 			for {
@@ -263,7 +276,7 @@ func readAWSNodePool(iterator *jsoniter.Iterator) *AWSNodePool {
 				value[key] = item
 			}
 			object.subnetOutposts = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "tags":
 			value := map[string]string{}
 			for {
@@ -275,7 +288,7 @@ func readAWSNodePool(iterator *jsoniter.Iterator) *AWSNodePool {
 				value[key] = item
 			}
 			object.tags = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		default:
 			iterator.ReadAny()
 		}

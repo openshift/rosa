@@ -24,6 +24,7 @@ import (
 	"path"
 
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift-online/ocm-sdk-go/clustersmgmt/v2alpha1"
 )
 
 // Client is the client for service 'clusters_mgmt'.
@@ -46,5 +47,13 @@ func (c *Client) V1() *v1.Client {
 	return v1.NewClient(
 		c.transport,
 		path.Join(c.path, "v1"),
+	)
+}
+
+// V2alpha1 returns a reference to a client for version 'v2alpha1'.
+func (c *Client) V2alpha1() *v2alpha1.Client {
+	return v2alpha1.NewClient(
+		c.transport,
+		path.Join(c.path, "v2alpha1"),
 	)
 }
