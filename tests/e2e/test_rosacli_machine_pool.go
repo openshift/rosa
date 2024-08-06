@@ -798,7 +798,7 @@ var _ = Describe("Create machinepool",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
-						ContainSubstring("Unrecognized taint effect 'Invalid'," +
+						ContainSubstring("Invalid taint effect 'Invalid'," +
 							" only the following effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'"))
 
 				})
