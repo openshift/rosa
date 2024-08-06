@@ -64,11 +64,11 @@ func (m *EditMachinepoolOptions) Bind(args *EditMachinepoolUserOptions, argv []s
 	}
 
 	if m.args.autoscalingEnabled {
-		if m.args.minReplicas <= 0 {
-			return fmt.Errorf("Min replicas must be greater than zero when autoscaling is enabled")
+		if m.args.minReplicas < 0 {
+			return fmt.Errorf("Min replicas must be a number that is 0 or greater when autoscaling is enabled")
 		}
-		if m.args.maxReplicas <= 0 {
-			return fmt.Errorf("Max replicas must be greater than zero when autoscaling is enabled")
+		if m.args.maxReplicas < 0 {
+			return fmt.Errorf("Max replicas must be a number that is 0 or greater when autoscaling is enabled")
 		}
 		if m.args.minReplicas > m.args.maxReplicas {
 			return fmt.Errorf("Min replicas must be less than max replicas")
