@@ -58,7 +58,7 @@ func NewRosaVersionCommand() *cobra.Command {
 	return cmd
 }
 
-func RosaVersionRunner(userOptions RosaVersionUserOptions) rosa.CommandRunner {
+func RosaVersionRunner(userOptions *RosaVersionUserOptions) rosa.CommandRunner {
 	return func(_ context.Context, _ *rosa.Runtime, _ *cobra.Command, _ []string) error {
 		options, err := NewRosaVersionOptions()
 		if err != nil {
