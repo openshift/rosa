@@ -305,7 +305,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 			return err
 		}
 
-		err = awsClient.AttachRolePolicy(roleName, policyARN)
+		err = awsClient.AttachRolePolicy(reporter, roleName, policyARN)
 		if err != nil {
 			return err
 		}

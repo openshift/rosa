@@ -114,9 +114,8 @@ func AttachPolicyRunner(userOptions *RosaAttachPolicyOptions) rosa.CommandRunner
 		}
 		switch mode {
 		case interactive.ModeAuto:
-			output, err := policySvc.AutoAttachArbitraryPolicy(options.roleName, policyArns,
+			err := policySvc.AutoAttachArbitraryPolicy(r.Reporter, options.roleName, policyArns,
 				r.Creator.AccountID, orgID)
-			r.Reporter.Infof(output)
 			if err != nil {
 				return err
 			}
