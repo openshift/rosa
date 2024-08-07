@@ -158,17 +158,6 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if r.Creator.IsGovcloud {
 		deleteHostedCP = false
-	} else if interactive.Enabled() && !cmd.Flags().Changed("hosted-cp") && !cmd.Flags().Changed("classic") {
-		deleteHostedCP, err = interactive.GetBool(interactive.Input{
-			Question: "Delete hosted CP account roles",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-			Default:  true,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
-		}
 	}
 
 	if deleteHostedCP {
