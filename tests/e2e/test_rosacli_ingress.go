@@ -161,6 +161,23 @@ var _ = Describe("Edit default ingress",
 				Expect(in.ID).To(Equal(defaultID.ID))
 			})
 
+		It("can describe ingress of a cluster negative - [id:75052]",
+			labels.Low, labels.Runtime.Day2,
+			func() {
+				By("Get default ingress id with no clusterID provided")
+				emptyClusterID := ""
+				output, err := ingressService.ListIngress(emptyClusterID)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(
+					"ERR: Cluster name, identifier or external identifier '' " +
+						"isn't valid: it must contain only letters, digits, dashes and underscore"))
+
+				By("Get default ingress id with no clusterID provided")
+				out, err := rosaClient.Ingress.DescribeIngress(clusterID, "xxx")
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).Should(ContainSubstring("ERR: Failed to get ingress 'xxx' for cluster '%s'", clusterID))
+			})
+
 		It("change load balancer type - [id:64767]",
 			labels.Critical,
 			labels.Runtime.Day2,
