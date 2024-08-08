@@ -2,11 +2,13 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
@@ -325,6 +327,8 @@ var _ = Describe("Describe/List rosa upgrade",
 			upgradeService rosacli.UpgradeService
 			clusterID      string
 			profile        *profilehandler.Profile
+			clusterConfig  *config.ClusterConfig
+			err            error
 		)
 
 		BeforeEach(func() {
@@ -339,6 +343,10 @@ var _ = Describe("Describe/List rosa upgrade",
 
 			By("Load the profile")
 			profile = profilehandler.LoadProfileYamlFileByENV()
+
+			By("Get cluster config")
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -446,6 +454,100 @@ var _ = Describe("Describe/List rosa upgrade",
 					Expect(UD.NextRun).To(Equal(fmt.Sprintf("%s %s UTC", scheduledDate, scheduledTime)))
 					Expect(UD.UpgradeState).To(Equal("scheduled"))
 				}
+			})
+
+		It("Automatic upgrade can be scheduled and described on hosted-cp cluster via rosacli - [id:64187]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				var (
+					ocmResourceService = rosaClient.OCMResource
+					hostedCP           = true
+					installerRoleArn   string
+					clusterName        = "ocp-64187"
+					versionService     = rosaClient.Version
+					scheduledAt        = "20 20 * * *"
+				)
+
+				By("Prepare a vpc for the testing")
+				vpc, err := vpc_client.PrepareVPC("64187", clusterConfig.Region, "", false, "")
+				Expect(err).ToNot(HaveOccurred())
+				defer vpc.DeleteVPCChain()
+
+				subnetMap, err := profilehandler.PrepareSubnets(vpc, clusterConfig.Region, []string{}, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				subnetsFlagValue := strings.Join(append(subnetMap["private"], subnetMap["public"]...), ",")
+
+				By("Create account-roles for hosted-cp")
+				_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", "akanni",
+					"--hosted-cp",
+					"-y")
+				Expect(err).To(BeNil())
+
+				By("Get the installer role arn")
+				accountRoleList, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				installerRole := accountRoleList.InstallerRole("akanni", hostedCP)
+				Expect(installerRole).ToNot(BeNil())
+				installerRoleArn = installerRole.RoleArn
+
+				By("Create managed=false oidc config in auto mode")
+				output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto",
+					"--prefix", "akanni",
+					"--managed=false",
+					"--installer-role-arn", installerRoleArn,
+					"-y")
+				Expect(err).To(BeNil())
+				oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
+				oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+				unmanagedOIDCConfigID, err := ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
+
+				By("Get the latest and immediate latest ocp versions")
+				versionList, err := versionService.ListAndReflectVersions("candidate", hostedCP)
+				Expect(err).ToNot(HaveOccurred())
+				latestVersion, err := versionList.Latest()
+				Expect(err).ToNot(HaveOccurred())
+				nearestToLatestVersion, err := versionList.FindNearestBackwardOptionalVersion(latestVersion.Version, 1, true)
+				Expect(err).ToNot(HaveOccurred())
+				By("Create a ROSA HCP cluster")
+				output, err, _ = rosaClient.Cluster.Create(
+					clusterName,
+					"--region", clusterConfig.Region,
+					"--version", nearestToLatestVersion.Version,
+					"--replicas", "3",
+					"--subnet-ids", subnetsFlagValue,
+					"--hosted-cp",
+					"--oidc-config-id", unmanagedOIDCConfigID,
+					"--billing-account", profile.ClusterConfig.BillingAccount,
+					"-y",
+					"--channel-group", "candidate",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("wait for cluster being ready")
+				time.Sleep(60 * time.Minute)
+
+				By("upgrade cluster")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", latestVersion.Version,
+					"--schedule", scheduledAt,
+					"--mode", "auto",
+					"--allow-control-plane",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				output, err = upgradeService.DescribeUpgrade(clusterID)
+				print("------------------------------", output.String(), "----------------------------------")
+				// output, err = output.ReadByte(bytes, ).scheduledAt
+				// Expect(err).ToNot(HaveOccurred())
+				// Expect(output.ReadByte().scheduledAt).To(con)
+
 			})
 	})
 

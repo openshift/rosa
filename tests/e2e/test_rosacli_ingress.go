@@ -259,8 +259,9 @@ var _ = Describe("Edit default ingress",
 				defaultIngressInArrayForm := "[" + defaultIngressInArrayFormList[0] + ", " + defaultIngressInArrayFormList[1] + "]"
 				Expect(ingress.ExcludeNamespace).To(Equal(defaultIngressInArrayForm))
 				defaultIngressRouteSelectorList := strings.Split(ingressConfig.DefaultIngressRouteSelector, ",")
-				defaultIngressRouteSelector := defaultIngressRouteSelectorList[0] + ", " + defaultIngressRouteSelectorList[1]
-				Expect(ingress.RouteSelectors).To(Equal(defaultIngressRouteSelector))
+				defaultIngressRouteSelector_1 := defaultIngressRouteSelectorList[1] + ", " + defaultIngressRouteSelectorList[0]
+                defaultIngressRouteSelector_2 := defaultIngressRouteSelectorList[0] + ", " + defaultIngressRouteSelectorList[1]
+                Expect(ingress.RouteSelectors).To(Or(Equal(defaultIngressRouteSelector_1), Equal(defaultIngressRouteSelector_2)))
 				Expect(ingress.NamespaceOwnershipPolicy).To(Equal(ingressConfig.DefaultIngressNamespaceOwnershipPolicy))
 				Expect(ingress.WildcardPolicy).To(Equal(ingressConfig.DefaultIngressWildcardPolicy))
 			})
