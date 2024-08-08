@@ -179,7 +179,6 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags,
 			"--domain-prefix", common.TrimNameByLength(clusterName, ocm.MaxClusterDomainPrefixLength),
 		)
-
 	}
 	if profile.ClusterConfig.STS {
 		var accRoles *rosacli.AccountRolesUnit

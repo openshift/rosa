@@ -94,7 +94,7 @@ var _ = Describe("Edit cluster",
 					//todo
 				} else {
 					if jsonData.DigBool("multi_az") {
-						Expect(CD.MultiAZ).To(Equal(strconv.FormatBool(jsonData.DigBool("multi_az"))))
+						Expect(CD.MultiAZ).To(Equal(jsonData.DigBool("multi_az")))
 					} else {
 						Expect(CD.Nodes[0]["Control plane"]).To(Equal(int(jsonData.DigFloat("nodes", "master"))))
 						Expect(CD.Nodes[1]["Infra"]).To(Equal(int(jsonData.DigFloat("nodes", "infra"))))

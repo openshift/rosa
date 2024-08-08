@@ -9,7 +9,6 @@ profiles:
     hcp: true
     sts: true
     byo_vpc: true
-    private_link: false
     additional_principals: false
     imdsv2: "required"
     private: false
@@ -101,10 +100,9 @@ profiles:
     cloud_provider: "aws"
     sts: true
     byo_vpc: true
-    private_link: false
+    private: false
     additional_principals: false
     imdsv2: "optional"
-    private: false
     etcd_encryption: true
     autoscale: false
     kms_key: true
@@ -131,7 +129,6 @@ profiles:
     cloud_provider: "aws"
     sts: true
     byo_vpc: true
-    private_link: false
     private: false
     additional_principals: false
     imdsv2: "optional"
