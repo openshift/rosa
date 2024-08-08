@@ -356,7 +356,7 @@ var _ = Describe("Describe/List rosa upgrade",
 		})
 
 		It("to list/describe rosa upgrade via ROSA CLI - [id:57094]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.Runtime.Upgrade,
 			func() {
 				By("Check the help message of 'rosa describe upgrade -h'")
 				output, err := upgradeService.DescribeUpgrade(clusterID, "-h")
@@ -436,7 +436,7 @@ var _ = Describe("Describe/List rosa upgrade",
 					By("Check list upgrade")
 					out, err := upgradeService.ListUpgrades(clusterID)
 					Expect(err).To(BeNil())
-					Expect(out.String()).To(ContainSubstring("%s  scheduled for %s %s UTC", upgradingVersion,
+					Expect(out.String()).To(ContainSubstring("%s   recommended - scheduled for %s %s UTC", upgradingVersion,
 						scheduledDate, scheduledTime))
 
 					By("Check describe upgrade")
