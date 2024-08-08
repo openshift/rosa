@@ -84,3 +84,40 @@ func ExtractCommandsToDeleteAccountRoles(bf bytes.Buffer) []string {
 	}
 	return newCommands
 }
+
+// Extract aws commands to create AWS resource promted by rosacli, this function supports to parse bellow commands
+// `rosa create cluster --mode manual --sts /--hosted-cp`
+func ExtractAWSCmdsForClusterCreation(bf bytes.Buffer) []string {
+
+	var commands []string
+	//remove empty lines
+	lines := strings.Split(bf.String(), "\n")
+	var nonEmptyLines []string
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			nonEmptyLines = append(nonEmptyLines, line)
+		}
+	}
+	nonEmptyInput := strings.Join(nonEmptyLines, "\n")
+	//replace \ and \n and spaces with one space
+	re := regexp.MustCompile(`\\\s*\n\s*`)
+	processedInput := re.ReplaceAllString(nonEmptyInput, " ")
+
+	output := strings.Split(processedInput, "\n")
+	for _, message := range output {
+		if strings.HasPrefix(message, "aws iam") {
+			commands = append(commands, message)
+		}
+	}
+	var newCommands []string
+	for _, command := range commands {
+		command = strings.ReplaceAll(command, "\\", "")
+		command = strings.ReplaceAll(command, "\n", " ")
+		spaceRegex := regexp.MustCompile(`\s+`)
+		command = spaceRegex.ReplaceAllString(command, " ")
+		command = strings.ReplaceAll(command, "'", "")
+		newCommands = append(newCommands, command)
+
+	}
+	return newCommands
+}

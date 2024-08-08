@@ -16,6 +16,7 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
@@ -946,3 +947,136 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 		})
 
 })
+
+var _ = Describe("Create cluster with oprator roles which are attaching managed policies in manual mode",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient         *rosacli.Client
+			clusterService     rosacli.ClusterService
+			customProfile      *profilehandler.Profile
+			ocmResourceService rosacli.OCMResourceService
+			AWSAccountID       string
+			testingClusterName string
+			defaultDir         string
+			dirForManual       string
+			clusterID          string
+		)
+
+		BeforeEach(func() {
+			// Init the client
+			By("Init client and service")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+			clusterService = rosaClient.Cluster
+
+			By("Get AWS account id")
+			rosaClient.Runner.JsonFormat()
+			whoamiOutput, err := ocmResourceService.Whoami()
+			Expect(err).To(BeNil())
+			rosaClient.Runner.UnsetFormat()
+			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+			AWSAccountID = whoamiData.AWSAccountID
+
+			By("Prepare custom profile")
+			customProfile = &profilehandler.Profile{
+				ClusterConfig: &profilehandler.ClusterConfig{
+					HCP:           true,
+					MultiAZ:       true,
+					STS:           true,
+					OIDCConfig:    "managed",
+					NetworkingSet: true,
+					BYOVPC:        true,
+					Zones:         "",
+				},
+				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+					Path:               "",
+					PermissionBoundary: "",
+				},
+				Version:      "latest",
+				ChannelGroup: "candidate",
+				Region:       "us-west-2",
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+
+			By("Get the default dir")
+			defaultDir = rosaClient.Runner.GetDir()
+		})
+
+		AfterEach(func() {
+
+			By("Go back original by setting runner dir")
+			rosaClient.Runner.SetDir(defaultDir)
+
+			By("Delete cluster")
+			rosaClient.Runner.UnsetArgs()
+			_, err := clusterService.DeleteCluster(clusterID, "-y")
+			Expect(err).To(BeNil())
+
+			rosaClient.Runner.UnsetArgs()
+			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+			Expect(err).To(BeNil())
+
+			By("Delete operator-roles")
+			_, err = ocmResourceService.DeleteOperatorRoles(
+				"-c", testingClusterName,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+
+			By("Clean resource")
+			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		It("to create and delete operatorroles attaching managed policies in manual mode - [id:75504]",
+			labels.Critical, labels.Runtime.Day1Supplemental, func() {
+				By("Create hcp cluster in manual mode")
+				testingClusterName = "rosa75504"
+				testOperatorRolePrefix := "rosa75504opp"
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--operator-roles-prefix": testOperatorRolePrefix,
+				})
+
+				rosalCommand.AddFlags("--mode", "manual")
+				rosalCommand.AddFlags("--billing-account", AWSAccountID)
+
+				By("Create a temp dir to execute the create commands")
+				dirForManual, err = os.MkdirTemp("", "*")
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.SetDir(dirForManual)
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+
+				commands := common.ExtractAWSCmdsForClusterCreation(stdout)
+				hasCreatePolicyFlag := false
+				for _, command := range commands {
+					if strings.Contains(command, "aws iam create-policy") {
+						hasCreatePolicyFlag = true
+						break
+					}
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
+				Expect(hasCreatePolicyFlag).To(BeFalse())
+
+				By("Check and wait cluster to installing status")
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
+				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+			})
+	})
