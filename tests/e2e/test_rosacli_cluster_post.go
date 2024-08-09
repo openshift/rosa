@@ -7,6 +7,7 @@ import (
 	nets "net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -648,5 +649,43 @@ var _ = Describe("Post-Check testing for cluster creation",
 					Expect(len(clusterDescription.OperatorIAMRoles)).To(Equal(6))
 				}
 
+			})
+		It("to verify cluster with the operator-roles attaching managed policy is created successfully - [id:57410]",
+			labels.High, labels.Runtime.Day1Post,
+			func() {
+				// Till now, only HCP clusters operator roles are attaching managed policies
+				By("Skip is the cluster is not HCP cluster")
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				if !profile.ClusterConfig.HCP {
+					Skip("This case is only for STS cluster post check")
+				}
+				By("Check the attaching policies are managed")
+				clusterID = config.GetClusterID()
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				operatorRolesArns := CD.OperatorIAMRoles
+				for _, policyArn := range operatorRolesArns {
+					By("Check role tag")
+					_, operatorRoleName, err := common.ParseRoleARN(policyArn)
+					Expect(err).To(BeNil())
+					roleTags, err := awsClient.IamClient.ListRoleTags(context.TODO(), &iam.ListRoleTagsInput{
+						RoleName: aws.String(operatorRoleName),
+					})
+					Expect(err).To(BeNil())
+					tagCheckPass := false
+					for _, tag := range roleTags.Tags {
+						if *tag.Key == "rosa_managed_policies" && *tag.Value == constants.TrueString {
+							tagCheckPass = true
+							break
+						}
+					}
+					Expect(tagCheckPass).To(BeTrue())
+					By("Check policy is aws managed policy")
+					attachedPolicies, err := awsClient.ListAttachedRolePolicies(operatorRoleName)
+					Expect(err).To(BeNil())
+					Expect(*attachedPolicies[0].PolicyArn).To(ContainSubstring("arn:aws:iam::aws"))
+				}
 			})
 	})

@@ -4,6 +4,7 @@ const (
 	Yes                    = "Yes"
 	No                     = "No"
 	YStreamPreviousVersion = "y-1"
+	TrueString             = "true"
 )
 
 // Ec2MetadataHttpTokens for hcp cluster
