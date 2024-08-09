@@ -629,7 +629,7 @@ func upgradeAccountRolePoliciesFromCluster(
 			return err
 		}
 
-		err = awsClient.AttachRolePolicy(roleName, policyARN)
+		err = awsClient.AttachRolePolicy(reporter, roleName, policyARN)
 		if err != nil {
 			return err
 		}
@@ -866,7 +866,7 @@ func upgradeOperatorRolePoliciesFromCluster(
 		}
 
 		if operatorRoleName != "" {
-			err = awsClient.AttachRolePolicy(operatorRoleName, policyARN)
+			err = awsClient.AttachRolePolicy(reporter, operatorRoleName, policyARN)
 			if err != nil {
 				return err
 			}
@@ -1101,7 +1101,7 @@ func upgradeMissingOperatorRole(
 		}
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
-		err = r.AWSClient.AttachRolePolicy(roleName, policyARN)
+		err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyARN)
 		if err != nil {
 			return weberr.Errorf("Failed to attach role policy. Check your prefix or run "+
 				"'rosa create operator-roles' to create the necessary policies: %s", err)

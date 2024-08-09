@@ -577,7 +577,7 @@ func createPermissionPolicy(r *rosa.Runtime, policyARN string,
 	}
 
 	r.Reporter.Debugf("Attaching permission policy to role '%s'", roleName)
-	err := r.AWSClient.AttachRolePolicy(roleName, policyARN)
+	err := r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyARN)
 	if err != nil {
 		return err
 	}

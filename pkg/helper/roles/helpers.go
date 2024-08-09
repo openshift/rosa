@@ -273,7 +273,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 		}
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyARN, roleName)
-		err = r.AWSClient.AttachRolePolicy(roleName, policyARN)
+		err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyARN)
 		if err != nil {
 			return fmt.Errorf("Failed to attach role policy. Check your prefix or run "+
 				"'rosa create account-roles' to create the necessary policies: %s", err)

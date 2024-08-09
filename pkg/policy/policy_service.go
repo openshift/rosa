@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 const (
@@ -35,7 +36,8 @@ const (
 
 type PolicyService interface {
 	ValidateAttachOptions(roleName string, policyArns []string) error
-	AutoAttachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) (string, error)
+	AutoAttachArbitraryPolicy(reporter *reporter.Object, roleName string,
+		policyArns []string, accountID, orgID string) error
 	ManualAttachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) string
 	ValidateDetachOptions(roleName string, policyArns []string) error
 	AutoDetachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) (string, error)
@@ -74,16 +76,14 @@ func (p *policyService) ValidateDetachOptions(roleName string, policyArns []stri
 	return validateRoleAndPolicies(p.AWSClient, roleName, policyArns)
 }
 
-func (p *policyService) AutoAttachArbitraryPolicy(roleName string, policyArns []string,
-	accountID, orgID string) (string, error) {
-	output := ""
+func (p *policyService) AutoAttachArbitraryPolicy(reporter *reporter.Object, roleName string, policyArns []string,
+	accountID, orgID string) error {
 	for _, policyArn := range policyArns {
-		err := p.AWSClient.AttachRolePolicy(roleName, policyArn)
+		err := p.AWSClient.AttachRolePolicy(reporter, roleName, policyArn)
 		if err != nil {
-			return output, fmt.Errorf("Failed to attach policy %s to role %s: %s",
+			return fmt.Errorf("Failed to attach policy %s to role %s: %s",
 				policyArn, roleName, err)
 		}
-		output = output + fmt.Sprintf("Attached policy '%s' to role '%s'\n", policyArn, roleName)
 		p.OCMClient.LogEvent("ROSAAttachPolicyAuto", map[string]string{
 			ocm.Account:      accountID,
 			ocm.Organization: orgID,
@@ -91,7 +91,7 @@ func (p *policyService) AutoAttachArbitraryPolicy(roleName string, policyArns []
 			ocm.PolicyArn:    policyArn,
 		})
 	}
-	return output[:len(output)-1], nil
+	return nil
 }
 
 func (p *policyService) ManualAttachArbitraryPolicy(roleName string, policyArns []string,

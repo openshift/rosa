@@ -34,9 +34,11 @@ import (
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var (
+	r         *rosa.Runtime
 	awsClient *mock.MockClient
 	ocmClient *ocm.Client
 	policySvc PolicyService
@@ -56,6 +58,7 @@ func TestDescribeUpgrade(t *testing.T) {
 var _ = Describe("Policy Service", func() {
 	Context("Attach Policy", Ordered, func() {
 		BeforeAll(func() {
+			r = rosa.NewRuntime()
 			roleName = "sample-role"
 			policyArn1 = "arn:aws:iam::111111111111:policy/Sample-Policy-1"
 			policyArn2 = "arn:aws:iam::111111111111:policy/Sample-Policy-2"
@@ -116,14 +119,11 @@ var _ = Describe("Policy Service", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		It("Test AutoAttachArbitraryPolicy", func() {
-			awsClient.EXPECT().AttachRolePolicy(roleName, policyArn1).Return(nil)
-			awsClient.EXPECT().AttachRolePolicy(roleName, policyArn2).Return(nil)
-			output, err := policySvc.AutoAttachArbitraryPolicy(roleName, policyArns,
+			awsClient.EXPECT().AttachRolePolicy(r.Reporter, roleName, policyArn1).Return(nil)
+			awsClient.EXPECT().AttachRolePolicy(r.Reporter, roleName, policyArn2).Return(nil)
+			err := policySvc.AutoAttachArbitraryPolicy(r.Reporter, roleName, policyArns,
 				"sample-account-id", "sample-org-id")
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(output).To(Equal(fmt.Sprintf("Attached policy '%s' to role '%s'\n"+
-				"Attached policy '%s' to role '%s'",
-				policyArn1, roleName, policyArn2, roleName)))
 		})
 		It("Test ManualAttachArbitraryPolicy", func() {
 			output := policySvc.ManualAttachArbitraryPolicy(roleName, policyArns,

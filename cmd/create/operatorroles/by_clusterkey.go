@@ -263,7 +263,7 @@ func createRoles(
 		}
 
 		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyArn, roleName)
-		err = r.AWSClient.AttachRolePolicy(roleName, policyArn)
+		err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyArn)
 		if err != nil {
 			return err
 		}

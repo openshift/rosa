@@ -127,7 +127,7 @@ type Client interface {
 		path string) (string, error)
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string,
 		path string) (string, error)
-	AttachRolePolicy(roleName string, policyARN string) error
+	AttachRolePolicy(reporter *reporter.Object, roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
 	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, partition string, accountID string) (bool, error)
