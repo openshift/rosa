@@ -33,12 +33,13 @@ import (
 )
 
 type Input struct {
-	Question   string
-	Help       string
-	Options    []string
-	Default    interface{}
-	Required   bool
-	Validators []Validator
+	Question       string
+	Help           string
+	Options        []string
+	Default        interface{}
+	DefaultMessage string
+	Required       bool
+	Validators     []Validator
 }
 
 // Gets string input from the command line
@@ -179,7 +180,11 @@ func GetOption(input Input) (a string, err error) {
 	}
 	defaultMessage := ""
 	if dflt != "" {
-		defaultMessage = fmt.Sprintf("default = '%s'", dflt)
+		if input.DefaultMessage != "" {
+			defaultMessage = input.DefaultMessage
+		} else {
+			defaultMessage = fmt.Sprintf("default = '%s'", dflt)
+		}
 	}
 	question := input.Question
 	optionalMessage := ""

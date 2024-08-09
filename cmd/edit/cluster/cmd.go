@@ -55,6 +55,9 @@ var args struct {
 	// Audit log forwarding
 	auditLogRoleARN string
 
+	// HCP options:
+	billingAccount string
+
 	// Other options
 	additionalAllowedPrincipals []string
 }
@@ -163,6 +166,13 @@ func init() {
 			"to be added to the Hosted Control Plane's VPC Endpoint Service to enable additional "+
 			"VPC Endpoint connection requests to be automatically accepted.",
 	)
+
+	flags.StringVar(
+		&args.billingAccount,
+		"billing-account",
+		"",
+		"Account used for billing subscriptions purchased via the AWS console for ROSA",
+	)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -176,7 +186,7 @@ func run(cmd *cobra.Command, _ []string) {
 		changedFlags := false
 		for _, flag := range []string{"expiration-time", "expiration", "private",
 			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy",
-			"additional-trust-bundle-file", "additional-allowed-principals", "audit-log-arn"} {
+			"additional-trust-bundle-file", "additional-allowed-principals", "audit-log-arn", "billing-account"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 			}
@@ -652,6 +662,77 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Failed to update cluster delete protection: %v", err)
 			os.Exit(1)
 		}
+	}
+
+	var billingAccount string
+	if cmd.Flags().Changed("billing-account") {
+		billingAccount = args.billingAccount
+
+		if billingAccount != "" && !aws.IsHostedCP(cluster) {
+			r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
+			r.Reporter.Errorf("Billing account number is not valid. Rerun the command with a valid billing account number")
+			os.Exit(1)
+		}
+	} else {
+		billingAccount = cluster.AWS().BillingAccountID()
+	}
+
+	if interactive.Enabled() && aws.IsHostedCP(cluster) {
+		cloudAccounts, err := r.OCMClient.GetBillingAccounts()
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
+		if len(billingAccounts) > 0 {
+			billingAccount, err = interactive.GetOption(interactive.Input{
+				Question:       "Update billing account",
+				Help:           cmd.Flags().Lookup("billing-account").Usage,
+				Default:        billingAccount,
+				DefaultMessage: fmt.Sprintf("current = '%s'", billingAccount),
+				Required:       true,
+				Options:        billingAccounts,
+			})
+
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid billing account: '%s'", err)
+				os.Exit(1)
+			}
+
+			billingAccount = aws.ParseOption(billingAccount)
+		}
+
+		err = ocm.ValidateBillingAccount(billingAccount)
+		if err != nil {
+			r.Reporter.Errorf("%v", err)
+			os.Exit(1)
+		}
+
+		// Get contract info
+		contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
+
+		if billingAccount != r.Creator.AccountID {
+			r.Reporter.Infof(
+				"The selected AWS billing account is a different account than your AWS infrastructure account. " +
+					"The AWS billing account will be charged for subscription usage. " +
+					"The AWS infrastructure account contains the ROSA infrastructure.",
+			)
+		}
+
+		if isContractEnabled && len(contracts) > 0 {
+			//currently, an AWS account will have only one ROSA HCP active contract at a time
+			contractDisplay := ocm.GenerateContractDisplay(contracts[0])
+			r.Reporter.Infof(contractDisplay)
+		}
+	}
+
+	// sets the billing account only if it has changed
+	if billingAccount != "" && billingAccount != cluster.AWS().BillingAccountID() {
+		clusterConfig.BillingAccount = billingAccount
 	}
 
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)

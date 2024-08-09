@@ -33,7 +33,6 @@ import (
 	passwordValidator "github.com/openshift-online/ocm-common/pkg/idp/validations"
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	kmsArnRegexpValidator "github.com/openshift-online/ocm-common/pkg/resource/validations"
-	accountsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -721,7 +720,7 @@ func initFlags(cmd *cobra.Command) {
 		&args.billingAccount,
 		"billing-account",
 		"",
-		"Account used for billing subscriptions purchased via the AWS marketplace",
+		"Account used for billing subscriptions purchased via the AWS console for ROSA",
 	)
 
 	flags.BoolVar(
@@ -1106,7 +1105,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if !isHcpBillingTechPreview {
 
 			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account. %s",
+				r.Reporter.Errorf("Billing account number is not valid. Rerun the command with a valid billing account number. %s",
 					listBillingAccountMessage)
 				os.Exit(1)
 			}
@@ -1150,20 +1149,20 @@ func run(cmd *cobra.Command, _ []string) {
 					billingAccount = aws.ParseOption(billingAccount)
 				}
 
-				err := validateBillingAccount(billingAccount)
+				err := ocm.ValidateBillingAccount(billingAccount)
 				if err != nil {
 					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
 				}
 
 				// Get contract info
-				contracts, isContractEnabled := GetBillingAccountContracts(cloudAccounts, billingAccount)
+				contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
 
 				if billingAccount != awsCreator.AccountID {
 					r.Reporter.Infof(
-						"The selected AWS billing account is a different account than your AWS infrastructure account." +
+						"The selected AWS billing account is a different account than your AWS infrastructure account. " +
 							"The AWS billing account will be charged for subscription usage. " +
-							"The AWS infrastructure account will be used for managing the cluster.",
+							"The AWS infrastructure account contains the ROSA infrastructure.",
 					)
 				} else {
 					r.Reporter.Infof("Using '%s' as billing account.",
@@ -1172,7 +1171,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 				if isContractEnabled && len(contracts) > 0 {
 					//currently, an AWS account will have only one ROSA HCP active contract at a time
-					contractDisplay := GenerateContractDisplay(contracts[0])
+					contractDisplay := ocm.GenerateContractDisplay(contracts[0])
 					r.Reporter.Infof(contractDisplay)
 				}
 			}
@@ -3343,14 +3342,6 @@ func clusterConfigFor(
 	return clusterConfig, nil
 }
 
-func validateBillingAccount(billingAccount string) error {
-	if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-		return fmt.Errorf("billing account is invalid. Run the command again with a valid billing account. %s",
-			listBillingAccountMessage)
-	}
-	return nil
-}
-
 // validateNetworkType ensure user passes a valid network type parameter at creation
 func validateNetworkType(networkType string) error {
 	if networkType == "" {
@@ -3361,44 +3352,6 @@ func validateNetworkType(networkType string) error {
 		return fmt.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
 	}
 	return nil
-}
-
-func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
-	billingAccount string) ([]*accountsv1.Contract, bool) {
-	var contracts []*accountsv1.Contract
-	for _, account := range cloudAccounts {
-		if account.CloudAccountID() == billingAccount {
-			contracts = account.Contracts()
-			if ocm.HasValidContracts(account) {
-				return contracts, true
-			}
-		}
-	}
-	return contracts, false
-}
-
-func GenerateContractDisplay(contract *accountsv1.Contract) string {
-	format := "Jan 02, 2006"
-	dimensions := contract.Dimensions()
-
-	numberOfVCPUs, numberOfClusters := ocm.GetNumsOfVCPUsAndClusters(dimensions)
-
-	contractDisplay := fmt.Sprintf(`
-   +---------------------+----------------+ 
-   | Start Date          |%s    | 
-   | End Date            |%s    | 
-   | Number of vCPUs:    |'%s'             | 
-   | Number of clusters: |'%s'             | 
-   +---------------------+----------------+ 
-`,
-		contract.StartDate().Format(format),
-		contract.EndDate().Format(format),
-		strconv.Itoa(numberOfVCPUs),
-		strconv.Itoa(numberOfClusters),
-	)
-
-	return contractDisplay
-
 }
 
 func validateOperatorRolesAvailabilityUnderUserAwsAccount(awsClient aws.Client,

@@ -629,7 +629,7 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 
-	if config.AuditLogRoleARN != nil || config.AdditionalAllowedPrincipals != nil {
+	if config.AuditLogRoleARN != nil || config.AdditionalAllowedPrincipals != nil || config.BillingAccount != "" {
 		awsBuilder := cmv1.NewAWS()
 		if config.AdditionalAllowedPrincipals != nil {
 			awsBuilder = awsBuilder.AdditionalAllowedPrincipals(config.AdditionalAllowedPrincipals...)
@@ -638,6 +638,9 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		if config.AuditLogRoleARN != nil {
 			auditLogBuiler := cmv1.NewAuditLog().RoleArn(*config.AuditLogRoleARN)
 			awsBuilder = awsBuilder.AuditLog(auditLogBuiler)
+		}
+		if config.BillingAccount != "" {
+			awsBuilder.BillingAccountID(config.BillingAccount)
 		}
 		clusterBuilder.AWS(awsBuilder)
 	}
