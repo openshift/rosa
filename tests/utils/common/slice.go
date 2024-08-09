@@ -25,3 +25,15 @@ func AppendToStringSliceIfNotExist(slice []string, value string) []string {
 	}
 	return slice
 }
+
+func UniqueStringValues(slice []string) []string {
+	keys := make(map[string]bool)
+	var uniq []string
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			uniq = append(uniq, entry)
+		}
+	}
+	return uniq
+}

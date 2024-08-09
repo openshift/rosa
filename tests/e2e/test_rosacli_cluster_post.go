@@ -32,6 +32,7 @@ var _ = Describe("Healthy check",
 			machinePoolService rosacli.MachinePoolService
 			clusterConfig      *config.ClusterConfig
 			profile            *profilehandler.Profile
+			isHosted           bool
 		)
 
 		BeforeEach(func() {
@@ -39,14 +40,21 @@ var _ = Describe("Healthy check",
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 
-			By("Init the client")
+			By("Init service")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			machinePoolService = rosaClient.MachinePool
+
+			By("Retrieve Cluster config and profile")
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
-			profile = profilehandler.LoadProfileYamlFileByENV()
 			Expect(err).ToNot(HaveOccurred())
+			profile = profilehandler.LoadProfileYamlFileByENV()
+
+			By("Retrieve whether hosted cluster")
+			isHosted, err = clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+
 		})
 
 		AfterEach(func() {
@@ -57,9 +65,6 @@ var _ = Describe("Healthy check",
 		It("the creation of rosa cluster with volume size will work - [id:66359]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				By("Skip testing if the cluster is not a Classic cluster")
-				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
 				if isHosted {
 					SkipTestOnFeature("volume size")
 				}
@@ -98,9 +103,6 @@ var _ = Describe("Healthy check",
 		It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				By("Skip testing if the cluster is not a Classic cluster")
-				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
 				if isHosted {
 					SkipTestOnFeature("default machinepool labels")
 				}
@@ -260,11 +262,7 @@ var _ = Describe("Healthy check",
 		It("rosa hcp cluster creation support imdsv2 - [id:75114]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				By("Check the cluster is hosted cp cluster")
-				isHostedCPCluster, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-
-				if !isHostedCPCluster {
+				if !isHosted {
 					SkipNotHosted()
 				}
 
@@ -338,7 +336,7 @@ var _ = Describe("Healthy check",
 				ingressPrivate := "false"
 				if clusterConfig.PrivateLink {
 					private = constants.Yes
-					ingressPrivate = "true"
+					ingressPrivate = "true" // nolint
 				}
 				By("Describe the cluster the cluster should be private")
 				clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
@@ -356,8 +354,6 @@ var _ = Describe("Healthy check",
 				By("Check cluster is multiarch")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
-				isHosted, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).To(BeNil())
 				if isHosted {
 					Expect(jsonData.DigBool("multi_arch_enabled")).To(BeTrue())
 				} else {
@@ -372,6 +368,119 @@ var _ = Describe("Healthy check",
 				Expect(err).To(BeNil())
 				Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(Equal(clusterConfig.Nodes.ComputeInstanceType))
 			})
+
+		It("with policy path will work - [id:75525]", labels.Runtime.Day1Post, labels.High,
+			func() {
+				path := profile.AccountRoleConfig.Path
+				if path == "" {
+					Skip("No account-role path defined. Skipping ...")
+				}
+
+				By("Retrieve cluster description")
+				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+
+				By("Check account roles path")
+				Expect(clusterDesc.STSRoleArn).To(ContainSubstring(path))
+				Expect(clusterDesc.SupportRoleARN).To(ContainSubstring(path))
+				for _, roles := range clusterDesc.InstanceIAMRoles {
+					for _, role := range roles {
+						Expect(role).To(ContainSubstring(path))
+					}
+				}
+
+				By("Check operator roles path")
+				for _, role := range clusterDesc.OperatorIAMRoles {
+					Expect(role).To(ContainSubstring(path))
+				}
+			})
+
+		It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical,
+			func() {
+				By("Retrieve cluster description")
+				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+
+				By("Check Data plane")
+				if isHosted {
+					for _, plane := range clusterDesc.Availability {
+						for planeKey, planeValue := range plane {
+							if planeKey == "Data Plane" {
+								if clusterConfig.MultiAZ {
+									Expect(planeValue).To(Equal("MultiAZ"))
+								} else {
+									Expect(planeValue).To(Equal("SingleAZ"))
+								}
+							}
+						}
+					}
+				} else {
+					Expect(clusterDesc.MultiAZ).To(Equal(clusterConfig.MultiAZ))
+				}
+
+				By("Check machinepool size and subnets")
+				var mpSize int
+				var subnets []string
+				if isHosted {
+					mps, err := machinePoolService.ListAndReflectNodePools(clusterID)
+					Expect(err).To(BeNil())
+					mpSize = len(mps.NodePools)
+					for _, mp := range mps.NodePools {
+						subnets = append(subnets, mp.Subnet)
+					}
+				} else {
+					mps, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+					Expect(err).To(BeNil())
+					mpSize = len(mps.MachinePools)
+					for _, mp := range mps.MachinePools {
+						subnets = append(subnets, mp.Subnets)
+					}
+				}
+				if clusterConfig.MultiAZ {
+					Expect(mpSize > 1).To(BeTrue(), fmt.Sprintf("MachinePool size is not greater than one: '%d'", mpSize))
+					Expect(len(subnets) > 1).To(BeTrue(), fmt.Sprintf("Subnet size is not greater than one: '%d'", len(subnets)))
+					Expect(len(subnets)).To(Equal(len(common.UniqueStringValues(subnets))), "Subnet is duplicated")
+				} else {
+					Expect(mpSize).To(Equal(1))
+					Expect(len(subnets)).To(Equal(1))
+				}
+			})
+
+		It("with private will work - [id:75526]", labels.Runtime.Day1Post, labels.Critical,
+			func() {
+				private := constants.No
+				ingressPrivate := "false"
+				if clusterConfig.Private {
+					private = constants.Yes
+					ingressPrivate = "true" // nolint
+				}
+
+				By("Describe the cluster and check private field")
+				clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDescription.Private).To(Equal(private))
+
+				By("Check the ingress should be private")
+				ingress, err := rosaClient.Ingress.DescribeIngressAndReflect(clusterID, "apps")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ingress.Private).To(Equal(ingressPrivate))
+			})
+
+		It("with autoscaling will work - [id:75527]", labels.Runtime.Day1Post, labels.High,
+			func() {
+				isAutoscale := clusterConfig.Autoscaling != nil && clusterConfig.Autoscaling.Enabled
+
+				By("Retrieve cluster description")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+
+				if isAutoscale {
+					Expect(jsonData.DigString("nodes", "autoscale_compute")).ToNot(BeNil())
+				} else {
+					Expect(jsonData.DigString("nodes", "autoscale_compute")).To(BeNil())
+				}
+			})
+
 	})
 
 var _ = Describe("Create cluster with the version in some channel group testing",

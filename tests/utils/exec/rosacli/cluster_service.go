@@ -82,7 +82,7 @@ type ClusterDescription struct {
 	APIURL                string                   `yaml:"API URL,omitempty"`
 	ConsoleURL            string                   `yaml:"Console URL,omitempty"`
 	Region                string                   `yaml:"Region,omitempty"`
-	MultiAZ               string                   `yaml:"Multi-AZ,omitempty"`
+	MultiAZ               bool                     `yaml:"Multi-AZ,omitempty"`
 	State                 string                   `yaml:"State,omitempty"`
 	Private               string                   `yaml:"Private,omitempty"`
 	Created               string                   `yaml:"Created,omitempty"`
