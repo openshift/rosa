@@ -1215,7 +1215,8 @@ var _ = Describe("Edit machinepool",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Taint at index 0 is incorrect: Unrecognized taint effect"))
+					ContainSubstring("Invalid taint effect 'InvalidEffect'," +
+						" only the following effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'"))
 
 				By("Remove other machinepools to make sure there is only workers left")
 				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
