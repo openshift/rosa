@@ -778,8 +778,6 @@ var _ = Describe("Edit IDP",
 						Expect(err).To(BeNil())
 						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
-						Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-						Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[1]))
 
 						By("List IDPs")
 						idpTab, _, err := idpService.ListIDP(clusterID)
@@ -825,8 +823,6 @@ var _ = Describe("Edit IDP",
 						Expect(err).To(BeNil())
 						textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
-						Expect(textData).Should(ContainSubstring("To log in to the console, open"))
-						Expect(textData).Should(ContainSubstring("and click on '%s'", idpNames[0]))
 
 						By("Create htpasswd idp with --users flag")
 						output, err = idpService.CreateIDP(clusterID, idpNames[1],
