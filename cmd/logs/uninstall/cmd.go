@@ -131,6 +131,13 @@ func run(cmd *cobra.Command, argv []string) {
 				os.Exit(0)
 			}
 			printLog(logResponse.Body(), spin)
+
+			err = r.OCMClient.KeepTokensAlive()
+			if err != nil {
+				r.Reporter.Errorf(fmt.Sprintf("Failed to keep tokens alive for polling: %v", err))
+				os.Exit(1)
+			}
+
 			return false
 		})
 		if err != nil {
