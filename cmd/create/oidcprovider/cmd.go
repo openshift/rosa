@@ -21,7 +21,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/openshift-online/ocm-common/pkg/rosa/oidcconfigs"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -227,13 +226,17 @@ func run(cmd *cobra.Command, argv []string) {
 }
 
 func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) error {
-	thumbprint, err := oidcconfigs.FetchThumbprint(oidcEndpointUrl)
+	input, err := cmv1.NewOidcThumbprintInput().OidcConfigId(args.oidcConfigId).ClusterId(clusterId).Build()
 	if err != nil {
 		return err
 	}
-	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
+	thumbprint, err := r.OCMClient.FetchOidcThumbprint(input)
+	if err != nil {
+		return err
+	}
+	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint.Thumbprint())
 
-	oidcProviderARN, err := r.AWSClient.CreateOpenIDConnectProvider(oidcEndpointUrl, thumbprint, clusterId)
+	oidcProviderARN, err := r.AWSClient.CreateOpenIDConnectProvider(oidcEndpointUrl, thumbprint.Thumbprint(), clusterId)
 	if err != nil {
 		return err
 	}
@@ -247,11 +250,18 @@ func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) e
 func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (string, error) {
 	commands := []string{}
 
-	thumbprint, err := oidcconfigs.FetchThumbprint(oidcEndpointUrl)
+	input, err := cmv1.NewOidcThumbprintInput().OidcConfigId(args.oidcConfigId).ClusterId(clusterId).Build()
 	if err != nil {
 		return "", err
 	}
-	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint)
+	thumbprint, err := r.OCMClient.FetchOidcThumbprint(input)
+	if err != nil {
+		return "", err
+	}
+	if err != nil {
+		return "", err
+	}
+	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint.Thumbprint())
 
 	iamTags := map[string]string{
 		tags.RedHatManaged: tags.True,
@@ -266,7 +276,7 @@ func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (s
 		SetCommand(awscb.CreateOpenIdConnectProvider).
 		AddParam(awscb.Url, oidcEndpointUrl).
 		AddParam(awscb.ClientIdList, clientIdList).
-		AddParam(awscb.ThumbprintList, thumbprint).
+		AddParam(awscb.ThumbprintList, thumbprint.Thumbprint()).
 		AddTags(iamTags).
 		Build()
 	commands = append(commands, createOpenIDConnectProvider)
