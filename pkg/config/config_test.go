@@ -85,7 +85,7 @@ var _ = Describe("Config", Ordered, func() {
 
 		BeforeAll(func() {
 			tmpdir, err = os.MkdirTemp("/tmp", ".ocm-config-*")
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 			os.Setenv("OCM_CONFIG", tmpdir+"/ocm_config.json")
 		})
 
@@ -101,7 +101,7 @@ var _ = Describe("Config", Ordered, func() {
 			Save(cfg)
 
 			myconf, err := Load()
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(myconf.URL).To(Equal(url))
 		})
 	})
@@ -117,10 +117,47 @@ var _ = Describe("Config", Ordered, func() {
 
 		It("Saves and loads config", func() {
 			myconf, err := Load()
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(myconf).To(BeNil())
 		})
 	})
+
+	When("Persisting tokens", Ordered, func() {
+		var tmpdir string
+		var err error
+
+		BeforeAll(func() {
+			tmpdir, err = os.MkdirTemp("/tmp", ".ocm-config-*")
+			Expect(err).NotTo(HaveOccurred())
+			os.Setenv("OCM_CONFIG", tmpdir+"/ocm_config.json")
+		})
+
+		AfterAll(func() {
+			os.Setenv("OCM_CONFIG", "")
+		})
+
+		It("Uses existing config and saves", func() {
+			cfg := &Config{}
+			err := PersistTokens(cfg, "foo", "bar")
+			Expect(err).NotTo(HaveOccurred())
+
+			myconf, err := Load()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(myconf.AccessToken).To(Equal("foo"))
+			Expect(myconf.RefreshToken).To(Equal("bar"))
+		})
+
+		It("Loads config and saves", func() {
+			err := PersistTokens(nil, "foo", "bar")
+			Expect(err).NotTo(HaveOccurred())
+
+			myconf, err := Load()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(myconf.AccessToken).To(Equal("foo"))
+			Expect(myconf.RefreshToken).To(Equal("bar"))
+		})
+	})
+
 })
 var _ = Describe("Config Keyring", func() {
 	When("Load()", func() {
@@ -141,7 +178,7 @@ var _ = Describe("Config Keyring", func() {
 				GetConfigFromKeyring = mockSpy.MockGetConfigFromKeyring
 
 				cfg, err := Load()
-				Expect(err).To(BeNil())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg).ToNot(BeNil())
 				Expect(cfg.AccessToken).To(Equal("access_token"))
 				Expect(mockSpy.calledGet).To(BeTrue())
@@ -152,7 +189,7 @@ var _ = Describe("Config Keyring", func() {
 				GetConfigFromKeyring = mockSpy.MockGetConfigFromKeyring
 
 				cfg, err := Load()
-				Expect(err).To(BeNil())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg).To(BeNil())
 				Expect(mockSpy.calledGet).To(BeTrue())
 			})
@@ -163,7 +200,7 @@ var _ = Describe("Config Keyring", func() {
 				GetConfigFromKeyring = mockSpy.MockGetConfigFromKeyring
 
 				cfg, err := Load()
-				Expect(err).To(BeNil())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg).To(BeNil())
 				Expect(mockSpy.calledGet).To(BeTrue())
 			})
@@ -200,7 +237,7 @@ var _ = Describe("Config Keyring", func() {
 				UpsertConfigToKeyring = mockSpy.MockUpsertConfigToKeyring
 
 				err := Save(data)
-				Expect(err).To(BeNil())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(mockSpy.calledUpsert).To(BeTrue())
 			})
 
@@ -234,7 +271,7 @@ var _ = Describe("Config Keyring", func() {
 				RemoveConfigFromKeyring = mockSpy.MockRemoveConfigFromKeyring
 
 				err := Remove()
-				Expect(err).To(BeNil())
+				Expect(err).NotTo(HaveOccurred())
 				Expect(mockSpy.calledRemove).To(BeTrue())
 			})
 
@@ -258,7 +295,7 @@ func generateInvalidConfigBytes() []byte {
 func generateConfigBytes(config Config) []byte {
 	data := &config
 	jsonData, err := json.Marshal(data)
-	Expect(err).To(BeNil())
+	Expect(err).NotTo(HaveOccurred())
 
 	return jsonData
 }
