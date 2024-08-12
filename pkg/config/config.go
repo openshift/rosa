@@ -385,6 +385,22 @@ func (c *Config) Connection() (connection *sdk.Connection, err error) {
 	return
 }
 
+func PersistTokens(cfg *Config, accessToken string, refreshToken string) error {
+	var err error
+	activeCfg := cfg
+
+	if activeCfg == nil {
+		// Load the configuration if none is provided
+		activeCfg, err = Load()
+		if err != nil {
+			return err
+		}
+	}
+	activeCfg.AccessToken = accessToken
+	activeCfg.RefreshToken = refreshToken
+	return Save(activeCfg)
+}
+
 // IsKeyringManaged returns the keyring name and a boolean indicating if the config is managed by the keyring.
 func IsKeyringManaged() (keyring string, ok bool) {
 	keyring = os.Getenv(properties.KeyringEnvKey)
