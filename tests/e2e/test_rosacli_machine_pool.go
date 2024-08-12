@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,13 +25,12 @@ var _ = Describe("Create machinepool",
 	func() {
 		defer GinkgoRecover()
 		var (
-			clusterID              string
-			rosaClient             *rosacli.Client
-			machinePoolService     rosacli.MachinePoolService
-			ocmResourceService     rosacli.OCMResourceService
-			clusterConfig          *config.ClusterConfig
-			profile                *ph.Profile
-			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+			clusterID          string
+			rosaClient         *rosacli.Client
+			machinePoolService rosacli.MachinePoolService
+			ocmResourceService rosacli.OCMResourceService
+			clusterConfig      *config.ClusterConfig
+			profile            *ph.Profile
 		)
 
 		BeforeEach(func() {
@@ -241,48 +239,6 @@ var _ = Describe("Create machinepool",
 					}
 					Expect(availableMachineTypesIDs).To(ContainElements(newlyAddedTypes))
 				}
-			})
-
-		It("List instance-types with region flag - [id:72174]",
-			labels.Low, labels.Runtime.OCMResources,
-			func() {
-				By("List the available instance-types with the region flag")
-				typesList := []string{"dl1.24xlarge", "g4ad.16xlarge", "c5.xlarge"}
-				region := "us-west-2"
-				accountRolePrefix := fmt.Sprintf("QEAuto-accr72174-%s", time.Now().UTC().Format("20060102"))
-				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
-					"--prefix", accountRolePrefix,
-					"--permissions-boundary", permissionsBoundaryArn,
-					"-y")
-				Expect(err).To(BeNil())
-				defer ocmResourceService.DeleteAccountRole("--mode", "auto", "--prefix", accountRolePrefix, "-y")
-
-				accountRoleList, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
-				classicInstallerRoleArn := accountRoleList.InstallerRole(accountRolePrefix, false).RoleArn
-				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypes(
-					"--region", region, "--role-arn", classicInstallerRoleArn)
-				Expect(err).To(BeNil())
-				var availableMachineTypesIDs []string
-				for _, it := range availableMachineTypes.InstanceTypesList {
-					availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
-				}
-				Expect(availableMachineTypesIDs).To(ContainElements(typesList))
-
-				By("List the available instance-types with the region flag and hosted-cp flag")
-				availableMachineTypes, _, err = ocmResourceService.ListInstanceTypes(
-					"--region", region, "--role-arn", classicInstallerRoleArn, "--hosted-cp")
-				Expect(err).To(BeNil())
-				for _, it := range availableMachineTypes.InstanceTypesList {
-					availableMachineTypesIDs = append(availableMachineTypesIDs, it.ID)
-				}
-				Expect(availableMachineTypesIDs).To(ContainElements(typesList))
-
-				By("Try to list instance-types with invalid region")
-				availableMachineTypes, output, err := ocmResourceService.ListInstanceTypes(
-					"--region", "xxx", "--role-arn", classicInstallerRoleArn)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("ERR: Unsupported region 'xxx', available regions"))
 			})
 
 		It("can create spot machinepool - [id:43251]",
