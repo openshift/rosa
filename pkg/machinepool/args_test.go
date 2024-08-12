@@ -1,19 +1,12 @@
-package upgrade
+package machinepool
 
 import (
-	"testing"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 )
 
-func TestUpgrade(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "upgrade testing")
-}
-
-var _ = Describe("NewUpgradeArgsFunction test", func() {
+var _ = Describe("NewMachinepoolArgsFunction test", func() {
 	var (
 		cmd                    *cobra.Command
 		invalidMachinepoolName = "-c"
@@ -29,7 +22,7 @@ var _ = Describe("NewUpgradeArgsFunction test", func() {
 		It("Returns an error if the machinepool identifier is invalid", func() {
 			cmd.Flags().Set(machinepoolFlagName, invalidMachinepoolName)
 
-			validateArgs := NewUpgradeArgsFunction(true)
+			validateArgs := NewMachinepoolArgsFunction(true)
 			err := validateArgs(cmd, []string{})
 
 			Expect(err).To(HaveOccurred())
@@ -39,14 +32,14 @@ var _ = Describe("NewUpgradeArgsFunction test", func() {
 		It("Does not return an error for a valid machinepool identifier", func() {
 			cmd.Flags().Set(machinepoolFlagName, validMachinepoolName)
 
-			validateArgs := NewUpgradeArgsFunction(true)
+			validateArgs := NewMachinepoolArgsFunction(true)
 			err := validateArgs(cmd, []string{})
 
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Does not return an error if machinepool flag is not set", func() {
-			validateArgs := NewUpgradeArgsFunction(true)
+			validateArgs := NewMachinepoolArgsFunction(true)
 			err := validateArgs(cmd, []string{})
 
 			Expect(err).NotTo(HaveOccurred())
@@ -55,7 +48,7 @@ var _ = Describe("NewUpgradeArgsFunction test", func() {
 
 	Context("When machinepool is an argument", func() {
 		It("Returns an error if the machinepool identifier is missing", func() {
-			validateArgs := NewUpgradeArgsFunction(false)
+			validateArgs := NewMachinepoolArgsFunction(false)
 			err := validateArgs(cmd, []string{})
 
 			Expect(err).To(HaveOccurred())
@@ -65,7 +58,7 @@ var _ = Describe("NewUpgradeArgsFunction test", func() {
 		It("Returns an error if the machinepool identifier is invalid", func() {
 			cmd.Flags().Set(machinepoolFlagName, invalidMachinepoolName)
 
-			validateArgs := NewUpgradeArgsFunction(false)
+			validateArgs := NewMachinepoolArgsFunction(false)
 			err := validateArgs(cmd, []string{invalidMachinepoolName})
 
 			Expect(err).To(HaveOccurred())
@@ -73,7 +66,7 @@ var _ = Describe("NewUpgradeArgsFunction test", func() {
 		})
 
 		It("Does not return an error for a valid machinepool identifier", func() {
-			validateArgs := NewUpgradeArgsFunction(false)
+			validateArgs := NewMachinepoolArgsFunction(false)
 			err := validateArgs(cmd, []string{validMachinepoolName})
 
 			Expect(err).NotTo(HaveOccurred())

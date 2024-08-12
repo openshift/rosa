@@ -27,10 +27,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/openshift/rosa/pkg/upgrade"
 )
 
 var args struct {
@@ -43,7 +43,7 @@ var Cmd = &cobra.Command{
 	Short:   "List available cluster upgrades",
 	Long:    "List available and scheduled cluster version upgrades",
 	Run:     run,
-	Args:    upgrade.NewUpgradeArgsFunction(true),
+	Args:    machinepool.NewMachinepoolArgsFunction(true),
 }
 
 func init() {
