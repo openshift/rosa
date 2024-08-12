@@ -477,7 +477,7 @@ var _ = Describe("Healthy check",
 				if isAutoscale {
 					Expect(jsonData.DigString("nodes", "autoscale_compute")).ToNot(BeNil())
 				} else {
-					Expect(jsonData.DigString("nodes", "autoscale_compute")).To(BeNil())
+					Expect(jsonData.DigString("nodes", "autoscale_compute")).To(BeEmpty())
 				}
 			})
 
