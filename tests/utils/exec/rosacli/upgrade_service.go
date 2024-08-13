@@ -32,10 +32,15 @@ func NewUpgradeService(client *Client) UpgradeService {
 
 // Struct for the 'rosa describe upgrade' output
 type UpgradeDescription struct {
-	ID           string `yaml:"ID,omitempty"`
-	ClusterID    string `yaml:"Cluster ID,omitempty"`
-	NextRun      string `yaml:"Next Run,omitempty"`
-	UpgradeState string `yaml:"Upgrade State,omitempty"`
+	ID                         string `yaml:"ID,omitempty"`
+	ClusterID                  string `yaml:"Cluster ID,omitempty"`
+	NextRun                    string `yaml:"Next Run,omitempty"`
+	Version                    string `yaml:"Version,omitempty"`
+	UpgradeState               string `yaml:"Upgrade State,omitempty"`
+	StateMesage                string `yaml:"State Message,omitempty"`
+	ScheduleType               string `yaml:"Schedule Type,omitempty"`
+	ScheduleAt                 string `yaml:"Schedule At,omitempty"`
+	EnableMinorVersionUpgrades string `yaml:"Enable minor version upgrades,omitempty"`
 }
 
 func (u *upgradeService) ListUpgrades(clusterID string, flags ...string) (bytes.Buffer, error) {

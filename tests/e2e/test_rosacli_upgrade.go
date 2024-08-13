@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/semver"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
@@ -13,6 +14,7 @@ import (
 	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -496,6 +498,132 @@ var _ = Describe("Describe/List rosa upgrade",
 			})
 	})
 
+var _ = Describe("ROSA HCP cluster upgrade",
+	labels.Feature.Upgrade, func() {
+		defer GinkgoRecover()
+		var (
+			clusterID      string
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+			upgradeService rosacli.UpgradeService
+			yStreamVersion string
+			zStreamVersion string
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the service")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			upgradeService = rosaClient.Upgrade
+
+			By("Skip testing if the cluster is not a HCP cluster")
+			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !hostedCluster {
+				SkipNotHosted()
+			}
+
+			By("Get cluster version")
+			clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			clusterVersion := clusterVersionInfo.RawID
+
+			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+			Expect(err).To(BeNil())
+
+			var availableUpgrades []string
+			if jsonData.DigObject("version", "available_upgrades") != nil {
+				for _, value := range jsonData.DigObject("version", "available_upgrades").([]interface{}) {
+					availableUpgrades = append(availableUpgrades, fmt.Sprint(value))
+				}
+			}
+
+			By("Get cluster z stream available version")
+			yStreamVersions, zStreamVersions, err := FindUpgradeVersions(availableUpgrades, clusterVersion)
+			Expect(err).To(BeNil())
+			if len(yStreamVersions) != 0 {
+				yStreamVersion = yStreamVersions[len(yStreamVersions)-1]
+			}
+			if len(zStreamVersions) != 0 {
+				zStreamVersion = zStreamVersions[len(zStreamVersions)-1]
+			}
+			log.Logger.Infof("The available y stream latest %s version:", yStreamVersions)
+			log.Logger.Infof("The available z stream latest %s version:", zStreamVersions)
+		})
+
+		It("automatic upgrade for HCP cluster  - [id:64187", labels.Critical, labels.Runtime.Upgrade, func() {
+			By("Check the help message for 'upgrade cluster'")
+			output, err := upgradeService.Upgrade(
+				"-c", clusterID,
+				"-h",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.String()).To(ContainSubstring("--control-plane"))
+
+			By("List the available ugrades for cluster")
+			output, err = upgradeService.ListUpgrades(clusterID)
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("%s", zStreamVersion))
+			Expect(output.String()).To(ContainSubstring("%s", yStreamVersion))
+
+			By("Describe the upgrades of the cluster which has no upgrade")
+			output, err = upgradeService.DescribeUpgrade(clusterID)
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("INFO: No scheduled upgrades for cluster '%s", clusterID))
+
+			By("Try to upgrade the cluster with available version")
+			scheduled := "20 20 * * *"
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--mode", "auto",
+				"--schedule", scheduled,
+				"--control-plane",
+				"-y",
+			)
+			defer upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+			By("Describe the upgrades of the cluster")
+			upgDesResp, err := upgradeService.DescribeUpgradeAndReflect(clusterID)
+			Expect(err).To(BeNil())
+			Expect(upgDesResp.ClusterID).To(Equal(clusterID))
+			Expect(upgDesResp.ScheduleAt).To(Equal(scheduled))
+			Expect(upgDesResp.ScheduleType).To(Equal("automatic"))
+			Expect(upgDesResp.EnableMinorVersionUpgrades).To(Equal("false"))
+			if zStreamVersion != "" {
+				By("Check upgrade state")
+				err = WaitForUpgradeToState(upgradeService, clusterID, con.Scheduled, 4)
+				Expect(err).To(BeNil())
+				Expect(upgDesResp.Version).To(Equal(zStreamVersion))
+				Expect(upgDesResp.UpgradeState).To(Equal("scheduled"))
+				Expect(upgDesResp.StateMesage).To(ContainSubstring("Upgrade scheduled"))
+			} else {
+				Expect(upgDesResp.Version).To(Equal(""))
+				Expect(upgDesResp.UpgradeState).To(Equal("pending"))
+				Expect(upgDesResp.StateMesage).To(ContainSubstring("pending scheduling"))
+			}
+
+			By("List the upgrades of the cluster")
+			output, err = upgradeService.ListUpgrades(clusterID)
+			Expect(err).To(BeNil())
+			if zStreamVersion != "" {
+				Expect(output.String()).To(ContainSubstring("scheduled for %s", upgDesResp.NextRun))
+			}
+
+			By("Delete the upgrade policies")
+			output, err = upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(
+				ContainSubstring("INFO: Successfully canceled scheduled upgrade on cluster '%s'",
+					clusterID))
+		})
+	})
+
 func FindUpperYStreamVersion(v rosacli.VersionService, channelGroup string, clusterVersion string) (string, string,
 	error) {
 	clusterVersionList, err := v.ListAndReflectVersions(channelGroup, false)
@@ -535,4 +663,27 @@ func WaitForUpgradeToState(u rosacli.UpgradeService, clusterID string, state str
 	}
 	return fmt.Errorf("ERROR!Timeout after %d minutes to wait for the upgrade into status %s of cluster %s",
 		timeout, state, clusterID)
+}
+
+func FindUpgradeVersions(versionList []string, clusterVersion string) (
+	yStreamVersions []string, zStreamVersions []string, err error) {
+	clusterBaseVersionSemVer, err := semver.NewVersion(clusterVersion)
+	if err != nil {
+		return yStreamVersions, zStreamVersions, err
+	}
+
+	for _, version := range versionList {
+		baseVersionSemVer, err := semver.NewVersion(version)
+		if err != nil {
+			return yStreamVersions, zStreamVersions, err
+		}
+		if baseVersionSemVer.Minor() == clusterBaseVersionSemVer.Minor() {
+			zStreamVersions = append(zStreamVersions, version)
+		}
+
+		if baseVersionSemVer.Minor() > clusterBaseVersionSemVer.Minor() {
+			yStreamVersions = append(yStreamVersions, version)
+		}
+	}
+	return yStreamVersions, zStreamVersions, err
 }
