@@ -18,6 +18,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -1644,6 +1645,146 @@ var _ = Describe("HCP cluster creation negative testing",
 					To(
 						ContainSubstring(
 							"ERR: Additional Allowed Principals is supported only for Hosted Control Planes"))
+			})
+
+		It("HCP cluster creation subnets validation - [id:72538]",
+			labels.High, labels.Runtime.Day1Negative,
+			func() {
+				if profile.ClusterConfig.Private {
+					rosalCommand.DeleteFlag("--private", false)
+					rosalCommand.DeleteFlag("--private-link", false)
+				}
+				if profile.ClusterConfig.Autoscale {
+					Skip("Test do not work with autoscaling enabled")
+				}
+				log.Logger.Debug(profile.Name)
+				log.Logger.Debug(strings.Split(rosalCommand.GetFullCommand(), " "))
+
+				clusterName := "ocp-72538"
+				vpcName := "vpc-72538"
+				region := "us-west-2"
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+					"--region":        region,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				if rosalCommand.CheckFlagExist("--subnet-ids") {
+					rosalCommand.DeleteFlag("--subnet-ids", true)
+				}
+
+				By("Prepare a vpc for the testing")
+				vpc, err := vpc_client.PrepareVPC(vpcName, region, "", false, "")
+				Expect(err).ToNot(HaveOccurred())
+				defer vpc.DeleteVPCChain()
+
+				subnetMap, err := profilehandler.PrepareSubnets(vpc, region, []string{}, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				availabilityZone := vpc.SubnetList[0].Zone
+
+				additionalPrivateSubnet, err := vpc.CreatePrivateSubnet(availabilityZone, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				additionalPublicSubnet, err := vpc.CreatePublicSubnet(availabilityZone)
+				Expect(err).ToNot(HaveOccurred())
+
+				successOutput := "Creating cluster '" + clusterName +
+					"' should succeed. Run without the '--dry-run' flag to create the cluster"
+				failOutput := "Creating cluster '" + clusterName + "' should fail: " +
+					"Availability zone " + availabilityZone +
+					" has more than one private subnet. Check the subnets and try again"
+
+				By("Create a public cluster with 1 private subnet and 1 public subnet")
+				subnets := []string{subnetMap["private"][0], subnetMap["public"][0]}
+				rosalCommand.AddFlags("--dry-run", "--subnet-ids", strings.Join(subnets, ","))
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(successOutput))
+
+				By("Create a public cluster with 3 private subnets and 1 public subnet")
+				subnets = []string{
+					subnetMap["private"][0],
+					subnetMap["private"][1],
+					subnetMap["private"][2],
+					subnetMap["public"][0],
+				}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(successOutput))
+
+				By("Create a public cluster with 2 private subnets from same AZ and 1 public subnet")
+				subnets = []string{subnetMap["private"][0], additionalPrivateSubnet.ID, subnetMap["public"][0]}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(failOutput))
+
+				By("Create a public cluster with 4 private subnets (2 subnets from same AZ) and 1 public subnet")
+				subnets = []string{
+					subnetMap["private"][0],
+					additionalPrivateSubnet.ID,
+					subnetMap["private"][1],
+					subnetMap["private"][2],
+					subnetMap["public"][0],
+				}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(failOutput))
+
+				By("Create a public cluster with 1 private subnet and 2 public subnet from same AZ")
+				subnets = []string{subnetMap["private"][0], subnetMap["public"][0], additionalPublicSubnet.ID}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(successOutput))
+
+				By("Create a private cluster with 1 private subnet")
+				rosalCommand.AddFlags("--private")
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": subnetMap["private"][0]})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(successOutput))
+
+				By("Create a private cluster with 3 private subnets")
+				subnets = []string{subnetMap["private"][0], subnetMap["private"][1], subnetMap["private"][2]}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(successOutput))
+
+				By("Create a private cluster with 2 private subnets from same AZ")
+				subnets = []string{subnetMap["private"][0], additionalPrivateSubnet.ID}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(failOutput))
+
+				By("Create a private cluster with 4 private subnets (2 subnets from same AZ)")
+				subnets = []string{
+					subnetMap["private"][0],
+					additionalPrivateSubnet.ID,
+					subnetMap["private"][1],
+					subnetMap["private"][2],
+				}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(failOutput))
+
+				By("Create a private cluster with 1 private subnet and 1 public subnet")
+				subnets = []string{subnetMap["private"][0], subnetMap["public"][0]}
+				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(
+					"The following subnets have been excluded because they have an " +
+						"Internet Gateway Targetded Route and the Cluster choice is private: [" + subnetMap["public"][0] + "]"))
+				Expect(out.String()).To(ContainSubstring(
+					"Could not find the following subnet provided in region 'us-west-2': " + subnetMap["public"][0]))
 			})
 	})
 
