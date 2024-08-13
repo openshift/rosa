@@ -604,3 +604,18 @@ var _ = Describe("Cluster Roles/Policies", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
+
+var _ = Describe("Validates isAwsManagedPolicy function", func() {
+	var (
+		awsManagedPolicyArn = "arn:aws:iam::aws:policy/service-role/ROSAInstallerPolicy"
+		customPolicyArn     = "arn:aws:iam::765374464689:policy/test-policy"
+	)
+	It("check aws managed policy", func() {
+		result := isAwsManagedPolicy(awsManagedPolicyArn)
+		Expect(result).To(Equal(true))
+	})
+	It("check custom policy", func() {
+		result := isAwsManagedPolicy(customPolicyArn)
+		Expect(result).To(Equal(false))
+	})
+})

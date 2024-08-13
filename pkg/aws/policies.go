@@ -35,9 +35,18 @@ import (
 	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
-var DefaultPrefix = "ManagedOpenShift"
+const (
+	awsManagedPolicyRegexPattern = `^arn:aws:iam::aws:policy/.*$`
+	awsManagedPolicyUrlPrefix    = "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/"
+)
+
+var (
+	awsManagedPolicyRegex = regexp.MustCompile(awsManagedPolicyRegexPattern)
+	DefaultPrefix         = "ManagedOpenShift"
+)
 
 type Operator struct {
 	Name                string
@@ -445,7 +454,7 @@ func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []iamtypes.Tag, v
 	return false, nil
 }
 
-func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
+func (c *awsClient) AttachRolePolicy(reporter *reporter.Object, roleName string, policyARN string) error {
 	_, err := c.iamClient.AttachRolePolicy(context.Background(), &iam.AttachRolePolicyInput{
 		RoleName:  aws.String(roleName),
 		PolicyArn: aws.String(policyARN),
@@ -453,6 +462,12 @@ func (c *awsClient) AttachRolePolicy(roleName string, policyARN string) error {
 	if err != nil {
 		return err
 	}
+	if isAwsManagedPolicy(policyARN) {
+		policyARNArr := strings.Split(policyARN, "/")
+		policyName := policyARNArr[len(policyARNArr)-1]
+		policyARN = fmt.Sprintf("%s(%s)", policyName, awsManagedPolicyUrlPrefix+policyName)
+	}
+	reporter.Infof("Attached policy '%s' to role '%s'\n", policyARN, roleName)
 	return nil
 }
 
@@ -2138,4 +2153,8 @@ func getOperatorRolePolicyTags(c client.IamApiClient, roleName string) (map[stri
 		}
 	}
 	return tagmap, nil
+}
+
+func isAwsManagedPolicy(policyArn string) bool {
+	return awsManagedPolicyRegex.MatchString(policyArn)
 }
