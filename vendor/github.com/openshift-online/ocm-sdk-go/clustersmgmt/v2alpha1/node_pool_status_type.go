@@ -40,6 +40,7 @@ type NodePoolStatus struct {
 	href            string
 	currentReplicas int
 	message         string
+	state           *NodePoolState
 }
 
 // Kind returns the name of the type of the object.
@@ -141,6 +142,29 @@ func (o *NodePoolStatus) GetMessage() (value string, ok bool) {
 	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.message
+	}
+	return
+}
+
+// State returns the value of the 'state' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The Current NodePool state.
+func (o *NodePoolStatus) State() *NodePoolState {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.state
+	}
+	return nil
+}
+
+// GetState returns the value of the 'state' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The Current NodePool state.
+func (o *NodePoolStatus) GetState() (value *NodePoolState, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.state
 	}
 	return
 }
