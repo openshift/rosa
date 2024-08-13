@@ -314,7 +314,7 @@ func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialReques
 
 	r.Reporter.Debugf("Creating role '%s'", roleName)
 
-	roleARN, err := r.AWSClient.EnsureRole(roleName, assumePolicy, "", "",
+	roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, assumePolicy, "", "",
 		map[string]string{
 			tags.ClusterID:    cluster.ID(),
 			"addon_namespace": cr.Namespace(),

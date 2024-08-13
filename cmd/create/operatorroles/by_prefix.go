@@ -372,7 +372,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			tagsList[tags.HypershiftPolicies] = helper.True
 		}
 
-		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, defaultPolicyVersion,
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, policy, permissionsBoundary, defaultPolicyVersion,
 			tagsList, path, managedPolicies)
 		if err != nil {
 			return err
