@@ -46,6 +46,7 @@ type Client struct {
 	Policy               PolicyService
 	AutoScaler           AutoScalerService
 	Upgrade              UpgradeService
+	Verify               VerifyService
 }
 
 func NewClient() *Client {
@@ -74,6 +75,7 @@ func NewClient() *Client {
 	client.Policy = NewPolicyService(client)
 	client.AutoScaler = NewAutoScalerService(client)
 	client.Upgrade = NewUpgradeService(client)
+	client.Verify = NewVerifyService(client)
 
 	return client
 }
