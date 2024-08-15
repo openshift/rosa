@@ -54,6 +54,7 @@ type Config struct {
 	Scopes       []string `json:"scopes,omitempty" doc:"OpenID scope."`
 	TokenURL     string   `json:"token_url,omitempty" doc:"OpenID token URL."`
 	URL          string   `json:"url,omitempty" doc:"URL of the API gateway."`
+	UserAgent    string   `json:"user_agent,omitempty" doc:"OCM clients UserAgent. Default value is used if not set."`
 	FedRAMP      bool     `json:"fedramp,omitempty" doc:"Indicates FedRAMP."`
 }
 

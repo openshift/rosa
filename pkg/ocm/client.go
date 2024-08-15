@@ -118,7 +118,12 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 	// values in the configuration, so that default values won't be overridden:
 	builder := sdk.NewConnectionBuilder()
 	builder.Logger(logger)
-	builder.Agent(info.UserAgent + "/" + info.Version + " " + sdk.DefaultAgent)
+
+	userAgent := info.DefaultUserAgent
+	if b.cfg.UserAgent != "" {
+		userAgent = b.cfg.UserAgent
+	}
+	builder.Agent(userAgent + "/" + info.Version + " " + sdk.DefaultAgent)
 	if b.cfg.TokenURL != "" {
 		builder.TokenURL(b.cfg.TokenURL)
 	}

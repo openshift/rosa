@@ -53,6 +53,7 @@ var _ = Describe("Config", Ordered, func() {
 		"scopes":        "OpenID scope.",
 		"token_url":     "OpenID token URL.",
 		"url":           "URL of the API gateway.",
+		"user_agent":    "OCM clients UserAgent. Default value is used if not set.",
 		"fedramp":       "Indicates FedRAMP.",
 	}
 
