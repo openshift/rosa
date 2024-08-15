@@ -1206,14 +1206,28 @@ var _ = Describe("Classic cluster creation negative testing",
 		defer GinkgoRecover()
 
 		var (
-			rosaClient     *rosacli.Client
-			clusterService rosacli.ClusterService
+			rosaClient               *rosacli.Client
+			clusterService           rosacli.ClusterService
+			accountRolePrefixToClean string
+			ocmResourceService       rosacli.OCMResourceService
 		)
 		BeforeEach(func() {
 
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+		})
+		AfterEach(func() {
+			By("Delete the resources for testing")
+			if accountRolePrefixToClean != "" {
+				By("Delete the account-roles")
+				rosaClient.Runner.UnsetArgs()
+				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefixToClean,
+					"-y")
+				Expect(err).To(BeNil())
+			}
 		})
 
 		It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]",
@@ -1279,6 +1293,69 @@ var _ = Describe("Classic cluster creation negative testing",
 				Expect(out.String()).To(ContainSubstring("is not compatible with version"))
 				Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
 			})
+		It("to validate to create sts cluster with invalid role arn and operator IAM roles prefix - [id:41824]",
+			labels.Low, labels.Runtime.Day1Negative,
+			func() {
+				By("Create account-roles for testing")
+				accountRolePrefixToClean = "testAr41824"
+				output, err := ocmResourceService.CreateAccountRole(
+					"--mode", "auto",
+					"--prefix", accountRolePrefixToClean,
+					"-y")
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Created role"))
+
+				arl, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				ar := arl.DigAccountRoles(accountRolePrefixToClean, false)
+
+				By("Create cluster with operator roles prefix longer than 32 characters")
+				clusterName := "test41824"
+				oprPrefixExceed32Chars := "opPrefix45742opPrefix45742opPrefix45742"
+				output, err, _ = clusterService.Create(
+					clusterName, "--sts",
+					"--mode", "auto",
+					"--role-arn", ar.InstallerRole,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.ControlPlaneRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"--operator-roles-prefix", oprPrefixExceed32Chars,
+					"-y",
+				)
+				Expect(err).ToNot(BeNil())
+				Expect(output.String()).To(ContainSubstring("Expected a prefix with no more than 32 characters"))
+
+				By("Create cluster with operator roles prefix with invalid format")
+				oprPrefixInvaliad := "%%%###@@@"
+				output, err, _ = clusterService.Create(
+					clusterName, "--sts",
+					"--mode", "auto",
+					"--role-arn", ar.InstallerRole,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.ControlPlaneRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"--operator-roles-prefix", oprPrefixInvaliad,
+					"-y",
+				)
+				Expect(err).ToNot(BeNil())
+				Expect(output.String()).To(ContainSubstring("Expected valid operator roles prefix matching"))
+
+				By("Create cluster with account roles with invalid format")
+				invalidArn := "invalidaArnFormat"
+				output, err, _ = clusterService.Create(
+					clusterName, "--sts",
+					"--mode", "auto",
+					"--role-arn", invalidArn,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.ControlPlaneRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"--operator-roles-prefix", clusterName,
+					"-y",
+				)
+				Expect(err).ToNot(BeNil())
+				Expect(output.String()).To(ContainSubstring("Expected a valid Role ARN"))
+			})
 
 		It("to validate creating a cluster with invalid subnets - [id:72657]",
 			labels.Low, labels.Runtime.Day1Negative,
@@ -1293,6 +1370,38 @@ var _ = Describe("Classic cluster creation negative testing",
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
 
+			})
+		It("to validate to create sts cluster with dulicated role arns- [id:74620]",
+			labels.Low, labels.Runtime.Day1Negative,
+			func() {
+				By("Create account-roles for testing")
+				accountRolePrefixToClean = "testAr74620"
+				output, err := ocmResourceService.CreateAccountRole(
+					"--mode", "auto",
+					"--prefix", accountRolePrefixToClean,
+					"-y")
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Created role"))
+
+				arl, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				ar := arl.DigAccountRoles(accountRolePrefixToClean, false)
+
+				By("Create cluster with operator roles prefix longer than 32 characters")
+				clusterName := "test41824"
+				output, err, _ = clusterService.Create(
+					clusterName, "--sts",
+					"--mode", "auto",
+					"--role-arn", ar.InstallerRole,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.SupportRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"--operator-roles-prefix", clusterName,
+					"-y",
+				)
+				Expect(err).ToNot(BeNil())
+				Expect(output.String()).To(ContainSubstring("ROSA IAM roles must have unique ARNs"))
 			})
 	})
 
