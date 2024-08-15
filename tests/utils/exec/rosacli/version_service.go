@@ -365,44 +365,42 @@ func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersio
 	log.Logger.Debugf("FindZStreamUpgradableVersion with throttle = %v and step %v", throttleVersion, step)
 
 	if step <= 0 {
-		log.Logger.Errorf("optionsub must be equal or greater than 1")
+		log.Logger.Errorf("step must be equal or greater than 1")
+		err = fmt.Errorf("step must be equal or greater than 1")
 		return
 	}
-	throttleSemVer, err := semver.NewVersion(throttleVersion)
-	if err != nil {
-		return nil, err
-	}
 
-	// Filter lower versions
-	vl, err = vl.FilterVersionsLowerThan(throttleVersion)
-	if err != nil {
-		return nil, err
+	if throttleVersion != "" {
+		log.Logger.Debugf("Got throttle version %s for version scan", throttleVersion)
+		vl, err = vl.FilterVersionsLowerThan(throttleVersion)
+		if err != nil {
+			return nil, err
+		}
 	}
-	vl, _ = vl.Sort(true)
-
+	log.Logger.Debugf("Got %d versions for version scan", vl.Len())
 	for _, version := range vl.OpenShiftVersions {
 		log.Logger.Debugf("Analyze version = %v", version.Version)
 		semVersion, err := semver.NewVersion(version.Version)
 		if err != nil {
 			return nil, err
 		}
-		if semVersion.Minor() != throttleSemVer.Minor() ||
-			semVersion.Patch() > throttleSemVer.Patch()+int64(step) {
-			log.Logger.Debugf("Version %v is ignored", version.Version)
-			continue
-		}
 		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
-		for _, availableUpgradeVersion := range common.ParseCommaSeparatedStrings(version.AvailableUpgrades) {
-			semAV, err := semver.NewVersion(availableUpgradeVersion)
+		availableUpgrades := common.ParseCommaSeparatedStrings(version.AvailableUpgrades)
+		for _, availabelUpgrade := range availableUpgrades {
+			auVersion, err := semver.NewVersion(availabelUpgrade)
 			if err != nil {
 				return nil, err
 			}
-			if throttleSemVer.Equal(semAV) {
-				vs = version
-				return vs, nil
+			if semVersion.Minor() == auVersion.Minor() &&
+				semVersion.Patch()+int64(step) == auVersion.Patch() {
+				log.Logger.Debugf(
+					"Got the version %s match condition of lower than %s, and z stream with steps %d upgrade",
+					version.Version, throttleVersion, step)
+				return version, nil
 			}
 		}
-		log.Logger.Debugf("No upgrade found")
+
+		log.Logger.Debugf("Skip version %s which is not match", version.Version)
 	}
 	return
 }
