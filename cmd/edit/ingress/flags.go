@@ -11,6 +11,8 @@ import (
 	. "github.com/openshift/rosa/pkg/ingress"
 )
 
+type stringTransformation func(source string) string
+
 const (
 	privateFlag    = "private"
 	labelMatchFlag = "label-match"
@@ -100,6 +102,14 @@ func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder,
 			len(components),
 		)
 	}
+	transformations := []stringTransformation{
+		func(source string) string {
+			return strings.TrimSpace(source)
+		},
+		func(source string) string {
+			return strings.Trim(source, "\"")
+		},
+	}
 	for _, component := range components {
 		component = strings.TrimSpace(component)
 		parsedComponent := strings.Split(component, ":")
@@ -143,7 +153,10 @@ func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder,
 					helper.SliceToSortedString(expectedParameters),
 				)
 			}
-			parameterValue := strings.TrimSpace(parsedValues[1])
+			parameterValue := parsedValues[1]
+			for _, t := range transformations {
+				parameterValue = t(parameterValue)
+			}
 			// TODO: use reflection, couldn't get it to work
 			if parameterName == hostnameParameter {
 				componentRouteBuilder.Hostname(parameterValue)
