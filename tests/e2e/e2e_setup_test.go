@@ -1,7 +1,8 @@
 package e2e
 
 import (
-	"fmt"
+	"path"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,17 +43,23 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					breakGlassCredList, err := client.BreakGlassCredential.ListBreakGlassCredentialsAndReflect(clusterID)
 					Expect(err).To(BeNil())
 					testDir := config.Test.OutputDir
-					kubeconfigFile := fmt.Sprintf("%s/%s.kubeconfig", testDir, clusterID)
+					kubeconfigFile := path.Join("%s/%s.kubeconfig", testDir, clusterID)
 
 					By("Get the issued credential")
 					for _, i := range breakGlassCredList.BreakGlassCredentials {
-						if i.Status == "issued" {
-							output, err := client.BreakGlassCredential.GetIssuedCredential(clusterID, i.ID)
-							Expect(err).ToNot(HaveOccurred())
-							_, err = common.CreateFileWithContent(kubeconfigFile, output.String())
-							Expect(err).ToNot(HaveOccurred())
-							break
-						}
+						Eventually(
+							client.BreakGlassCredential.WaitForBreakGlassCredentialToStatus(
+								clusterID,
+								"issued",
+								i.Username),
+							time.Minute*1,
+						).Should(BeTrue())
+						output, err := client.BreakGlassCredential.GetIssuedCredential(clusterID, i.ID)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(output.String()).ToNot(BeEmpty())
+						_, err = common.CreateFileWithContent(kubeconfigFile, output.String())
+						Expect(err).ToNot(HaveOccurred())
+						break
 					}
 					hostPrefix, podCIDR := "", ""
 					for _, networkLine := range clusterDetails.Network {
