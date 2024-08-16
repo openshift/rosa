@@ -120,10 +120,14 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 	builder.Logger(logger)
 
 	userAgent := info.DefaultUserAgent
+	version := info.DefaultVersion
 	if b.cfg.UserAgent != "" {
 		userAgent = b.cfg.UserAgent
 	}
-	builder.Agent(userAgent + "/" + info.Version + " " + sdk.DefaultAgent)
+	if b.cfg.Version != "" {
+		version = b.cfg.Version
+	}
+	builder.Agent(userAgent + "/" + version + " " + sdk.DefaultAgent)
 	if b.cfg.TokenURL != "" {
 		builder.TokenURL(b.cfg.TokenURL)
 	}

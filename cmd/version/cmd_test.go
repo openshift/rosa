@@ -145,7 +145,7 @@ var _ = Describe("RosaVersionOptions", func() {
 			stdout, _ = io.ReadAll(rout)
 
 			// Verify the outputs
-			Expect(string(stdout)).To(ContainSubstring(info.Version))
+			Expect(string(stdout)).To(ContainSubstring(info.DefaultVersion))
 
 			if opts.args.verbose {
 				expectedVerboseInfo := fmt.Sprintf("Information and download locations:\n\t%s\n\t%s\n",

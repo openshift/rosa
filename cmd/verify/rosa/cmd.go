@@ -87,7 +87,7 @@ type VerifyRosaOptions struct {
 }
 
 func (o *VerifyRosaOptions) Verify() error {
-	latestVersion, isLatest, err := o.rosaVersion.IsLatest(info.Version)
+	latestVersion, isLatest, err := o.rosaVersion.IsLatest(info.DefaultVersion)
 	if err != nil {
 		return fmt.Errorf("there was a problem verifying if version is latest: %v", err)
 	}
