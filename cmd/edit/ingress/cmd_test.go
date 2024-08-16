@@ -24,21 +24,31 @@ import (
 )
 
 var _ = Describe("Parse component routes", func() {
-	It("Parses input string for component routes", func() {
-		componentRouteBuilder, err := parseComponentRoutes(
-			//nolint:lll
-			"oauth: hostname=oauth-host;tlsSecretRef=oauth-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret,console: hostname=console-host;tlsSecretRef=console-secret",
-		)
-		Expect(err).To(BeNil())
-		for key, builder := range componentRouteBuilder {
-			expectedHostname := fmt.Sprintf("%s-host", key)
-			expectedTlsRef := fmt.Sprintf("%s-secret", key)
-			componentRoute, err := builder.Build()
+	DescribeTable(
+		"Parses input string for component routes",
+		func(input string) {
+			componentRouteBuilder, err := parseComponentRoutes(input)
 			Expect(err).To(BeNil())
-			Expect(componentRoute.Hostname()).To(Equal(expectedHostname))
-			Expect(componentRoute.TlsSecretRef()).To(Equal(expectedTlsRef))
-		}
-	})
+			for key, builder := range componentRouteBuilder {
+				expectedHostname := fmt.Sprintf("%s-host", key)
+				expectedTlsRef := fmt.Sprintf("%s-secret", key)
+				componentRoute, err := builder.Build()
+				Expect(err).To(BeNil())
+				Expect(componentRoute.Hostname()).To(Equal(expectedHostname))
+				Expect(componentRoute.TlsSecretRef()).To(Equal(expectedTlsRef))
+			}
+		},
+		//nolint:lll
+		Entry(
+			"base",
+			"oauth: hostname=oauth-host;tlsSecretRef=oauth-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret,console: hostname=console-host;tlsSecretRef=console-secret",
+		),
+		//nolint:lll
+		Entry(
+			"includes \"",
+			"oauth: hostname=\"oauth-host\";tlsSecretRef=\"oauth-secret\",downloads: hostname=\"downloads-host\";tlsSecretRef=\"downloads-secret\",console: hostname=\"console-host\";tlsSecretRef=\"console-secret\"",
+		),
+	)
 	Context("Fails to parse input string for component routes", func() {
 		It("fails due to invalid component route", func() {
 			_, err := parseComponentRoutes(
