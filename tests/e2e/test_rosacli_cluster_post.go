@@ -355,7 +355,12 @@ var _ = Describe("Healthy check",
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
 				if isHosted {
-					Expect(jsonData.DigBool("multi_arch_enabled")).To(BeTrue())
+					clusterVersion := jsonData.DigString("openshift_version")
+					if clusterVersion >= "4.14" {
+						Expect(jsonData.DigBool("multi_arch_enabled")).To(BeTrue())
+					} else {
+						Expect(jsonData.DigBool("multi_arch_enabled")).To(BeFalse())
+					}
 				} else {
 					Expect(jsonData.DigBool("multi_arch_enabled")).To(BeFalse())
 				}
