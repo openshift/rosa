@@ -1638,7 +1638,9 @@ var _ = Describe("HCP cluster creation negative testing",
 							"ERR: Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix"))
 
 				By("Create classic cluster with additional allowed principals")
-				output, err := clusterService.CreateDryRun(clusterName, "--additional-allowed-principals", "zzzz", "-y")
+				output, err := clusterService.CreateDryRun(clusterName,
+					"--additional-allowed-principals", "zzzz",
+					"-y", "--debug")
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(
