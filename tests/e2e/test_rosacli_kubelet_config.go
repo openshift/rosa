@@ -3,6 +3,7 @@ package e2e
 import (
 	"strings"
 
+	"github.com/Masterminds/semver"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -209,13 +210,17 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 	labels.Feature.KubeletConfig,
 	func() {
 		var (
-			clusterID          string
-			rosaClient         *rosacli.Client
-			kubeletService     rosacli.KubeletConfigService
-			machinePoolService rosacli.MachinePoolService
+			clusterID           string
+			rosaClient          *rosacli.Client
+			kubeletService      rosacli.KubeletConfigService
+			machinePoolService  rosacli.MachinePoolService
+			meetThrottleVersion bool
 		)
 
 		BeforeEach(func() {
+			By("Init the throttle version")
+			throttleVersion, _ := semver.NewVersion("4.14.0-a.0")
+
 			By("Get the cluster")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
@@ -229,8 +234,14 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 			hosted, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 			if !hosted {
-				SkipNotHosted()
+				Skip("Classic kubelet config is covered by 68828")
 			}
+
+			clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			cVersion, err := semver.NewVersion(clusterDescription.OpenshiftVersion)
+			Expect(err).ToNot(HaveOccurred())
+			meetThrottleVersion = !cVersion.LessThan(throttleVersion)
 		})
 
 		AfterEach(func() {
@@ -247,23 +258,30 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 		It("can be created/updated/deleted successfully - [id:73753]",
 			labels.High, labels.Runtime.Day2,
 			func() {
-				isHosted, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				if !isHosted {
-					Skip("Classic kubelet config is covered by 68828")
-				}
 				By("List the kubeletconfig with not existing cluster")
 				out, err := kubeletService.ListKubeletConfigs(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"There are no KubeletConfigs for cluster '%s'",
-						clusterID))
+				if !meetThrottleVersion {
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).Should(
+						ContainSubstring("KubeletConfig management is only supported on clusters with OCP '4.14' onwards"))
+				} else {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).
+						Should(ContainSubstring(
+							"There are no KubeletConfigs for cluster '%s'",
+							clusterID))
+				}
 
 				By("Create kubeletconfig with name specified without flag --name")
 				out, err = kubeletService.CreateKubeletConfig(clusterID,
 					"--pod-pids-limit", "4096",
 				)
+				if !meetThrottleVersion {
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).Should(
+						ContainSubstring("KubeletConfig management is only supported on clusters with OCP '4.14' onwards"))
+					return
+				}
 
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).Should(ContainSubstring("Name?"))
@@ -413,6 +431,11 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 		It("can be attach to machinepool successfully - [id:73765]",
 			labels.High, labels.Runtime.Day2,
 			func() {
+				By("Skip the test if cluster version is lower than the supported throttle version")
+				if !meetThrottleVersion {
+					SkipTestOnFeature("kubelet-config")
+				}
+
 				By("Prepare kubeletconfigs")
 				kubeName1, kubeName2 := "kube-73765", "kube-73765-2"
 				for name, pidValue := range map[string]string{
