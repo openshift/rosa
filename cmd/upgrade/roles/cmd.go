@@ -1089,7 +1089,7 @@ func upgradeMissingOperatorRole(
 			return err
 		}
 		r.Reporter.Debugf("Creating role '%s'", roleName)
-		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, "", "",
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, policy, "", "",
 			map[string]string{
 				tags.ClusterID:         cluster.ID(),
 				tags.OperatorNamespace: operator.Namespace(),

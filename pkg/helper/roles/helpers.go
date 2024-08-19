@@ -266,7 +266,7 @@ func upgradeMissingOperatorRole(missingRoles map[string]*cmv1.STSOperator, clust
 			tagsList[awsCommonValidations.ManagedPolicies] = "true"
 		}
 		r.Reporter.Debugf("Creating role '%s'", roleName)
-		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, "", "",
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, policy, "", "",
 			tagsList, unifiedPath, false)
 		if err != nil {
 			return err

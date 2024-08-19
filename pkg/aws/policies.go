@@ -155,14 +155,14 @@ var roleTypeMap = map[string]string{
 	WorkerAccountRole:       WorkerAccountRoleType,
 }
 
-func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary string,
+func (c *awsClient) EnsureRole(reporter *reporter.Object, name string, policy string, permissionsBoundary string,
 	version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
 	output, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
 	if err != nil {
 		if awserr.IsNoSuchEntityException(err) {
-			return c.createRole(name, policy, permissionsBoundary, tagList, path)
+			return c.createRole(reporter, name, policy, permissionsBoundary, tagList, path)
 		}
 		return "", err
 	}
@@ -216,6 +216,7 @@ func (c *awsClient) EnsureRole(name string, policy string, permissionsBoundary s
 		if err != nil {
 			return roleArn, err
 		}
+		reporter.Infof("Attached trust policy to role '%s': %s", name, policy)
 
 		_, err = c.iamClient.TagRole(context.Background(), &iam.TagRoleInput{
 			RoleName: aws.String(name),
@@ -248,8 +249,8 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 	return fmt.Errorf("Error validating role name '%s': %v", name, err)
 }
 
-func (c *awsClient) createRole(name string, policy string, permissionsBoundary string,
-	tagList map[string]string, path string) (string, error) {
+func (c *awsClient) createRole(reporter *reporter.Object, name string, policy string,
+	permissionsBoundary string, tagList map[string]string, path string) (string, error) {
 	if !RoleNameRE.MatchString(name) {
 		return "", fmt.Errorf("Role name is invalid")
 	}
@@ -271,6 +272,7 @@ func (c *awsClient) createRole(name string, policy string, permissionsBoundary s
 		}
 		return "", err
 	}
+	reporter.Infof("Attached trust policy to role '%s': %s", name, policy)
 	return aws.ToString(output.Role.Arn), nil
 }
 

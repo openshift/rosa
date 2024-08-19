@@ -88,7 +88,7 @@ func (mp *managedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRol
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
 		tagsList := mp.getRoleTags(file, input)
 		r.Reporter.Debugf("start to EnsureRole")
-		roleARN, err := r.AWSClient.EnsureRole(accRoleName, assumeRolePolicy, input.permissionsBoundary,
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, accRoleName, assumeRolePolicy, input.permissionsBoundary,
 			input.defaultPolicyVersion, tagsList, input.path, true)
 		if err != nil {
 			return err
@@ -268,7 +268,7 @@ func (db *doubleRolesCreator) getAccountRolesMap() map[string]aws.AccountRole {
 func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput, accRoleName string,
 	assumeRolePolicy string, tagsList map[string]string, filename string) error {
 	r.Reporter.Debugf("Creating role '%s'", accRoleName)
-	roleARN, err := r.AWSClient.EnsureRole(accRoleName, assumeRolePolicy, input.permissionsBoundary,
+	roleARN, err := r.AWSClient.EnsureRole(r.Reporter, accRoleName, assumeRolePolicy, input.permissionsBoundary,
 		input.defaultPolicyVersion, tagsList, input.path, false)
 	if err != nil {
 		return err
@@ -315,7 +315,7 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
 		tagsList := hcp.getRoleTags(file, input)
-		roleARN, err := r.AWSClient.EnsureRole(accRoleName, assumeRolePolicy, input.permissionsBoundary,
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, accRoleName, assumeRolePolicy, input.permissionsBoundary,
 			input.defaultPolicyVersion, tagsList, input.path, true)
 		if err != nil {
 			return err

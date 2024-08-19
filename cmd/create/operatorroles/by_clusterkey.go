@@ -253,7 +253,7 @@ func createRoles(
 			tagsList[tags.HypershiftPolicies] = helper.True
 		}
 
-		roleARN, err := r.AWSClient.EnsureRole(roleName, policy, permissionsBoundary, accountRoleVersion,
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, policy, permissionsBoundary, accountRoleVersion,
 			tagsList, path, managedPolicies)
 		if err != nil {
 			return err

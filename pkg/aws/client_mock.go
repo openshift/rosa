@@ -377,18 +377,18 @@ func (mr *MockClientMockRecorder) EnsurePolicy(policyArn, document, version, tag
 }
 
 // EnsureRole mocks base method.
-func (m *MockClient) EnsureRole(name, policy, permissionsBoundary, version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
+func (m *MockClient) EnsureRole(reporter *reporter.Object, name, policy, permissionsBoundary, version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnsureRole", name, policy, permissionsBoundary, version, tagList, path, managedPolicies)
+	ret := m.ctrl.Call(m, "EnsureRole", reporter, name, policy, permissionsBoundary, version, tagList, path, managedPolicies)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EnsureRole indicates an expected call of EnsureRole.
-func (mr *MockClientMockRecorder) EnsureRole(name, policy, permissionsBoundary, version, tagList, path, managedPolicies any) *gomock.Call {
+func (mr *MockClientMockRecorder) EnsureRole(reporter, name, policy, permissionsBoundary, version, tagList, path, managedPolicies any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureRole", reflect.TypeOf((*MockClient)(nil).EnsureRole), name, policy, permissionsBoundary, version, tagList, path, managedPolicies)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureRole", reflect.TypeOf((*MockClient)(nil).EnsureRole), reporter, name, policy, permissionsBoundary, version, tagList, path, managedPolicies)
 }
 
 // FetchPublicSubnetMap mocks base method.
