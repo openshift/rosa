@@ -45,6 +45,7 @@ func GetFocusCaseIDs(commitMessage string) (string, error) {
 	}
 
 	focus = strings.Join(ids, "|")
+	fmt.Printf("The focused IDs will be: %s\n", focus)
 	_, err := common.CreateFileWithContent(config.Test.TestFocusFile, focus)
 	return focus, err
 }
