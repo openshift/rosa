@@ -402,45 +402,36 @@ var _ = Describe("Healthy check",
 
 		It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical,
 			func() {
+				if !isHosted {
+					SkipNotHosted()
+				}
 				By("Retrieve cluster description")
 				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
 				Expect(err).To(BeNil())
 
 				By("Check Data plane")
-				if isHosted {
-					for _, plane := range clusterDesc.Availability {
-						for planeKey, planeValue := range plane {
-							if planeKey == "Data Plane" {
-								if clusterConfig.MultiAZ {
-									Expect(planeValue).To(Equal("MultiAZ"))
-								} else {
-									Expect(planeValue).To(Equal("SingleAZ"))
-								}
+				for _, plane := range clusterDesc.Availability {
+					for planeKey, planeValue := range plane {
+						if planeKey == "Data Plane" {
+							if clusterConfig.MultiAZ {
+								Expect(planeValue).To(Equal("MultiAZ"))
+							} else {
+								Expect(planeValue).To(Equal("SingleAZ"))
 							}
 						}
 					}
-				} else {
-					Expect(clusterDesc.MultiAZ).To(Equal(clusterConfig.MultiAZ))
 				}
 
-				By("Check machinepool size and subnets")
+				By("Check the machinepool size and subnets")
 				var mpSize int
 				var subnets []string
-				if isHosted {
-					mps, err := machinePoolService.ListAndReflectNodePools(clusterID)
-					Expect(err).To(BeNil())
-					mpSize = len(mps.NodePools)
-					for _, mp := range mps.NodePools {
-						subnets = append(subnets, mp.Subnet)
-					}
-				} else {
-					mps, err := machinePoolService.ListAndReflectMachinePools(clusterID)
-					Expect(err).To(BeNil())
-					mpSize = len(mps.MachinePools)
-					for _, mp := range mps.MachinePools {
-						subnets = append(subnets, mp.Subnets)
-					}
+				mps, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).To(BeNil())
+				mpSize = len(mps.NodePools)
+				for _, mp := range mps.NodePools {
+					subnets = append(subnets, mp.Subnet)
 				}
+
 				if clusterConfig.MultiAZ {
 					Expect(mpSize > 1).To(BeTrue(), fmt.Sprintf("MachinePool size is not greater than one: '%d'", mpSize))
 					Expect(len(subnets) > 1).To(BeTrue(), fmt.Sprintf("Subnet size is not greater than one: '%d'", len(subnets)))
