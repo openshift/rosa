@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
@@ -617,5 +618,76 @@ var _ = Describe("Validates isAwsManagedPolicy function", func() {
 	It("check custom policy", func() {
 		result := isAwsManagedPolicy(customPolicyArn)
 		Expect(result).To(Equal(false))
+	})
+})
+
+var _ = Describe("CheckIfROSAOperatorRole", func() {
+
+	var (
+		credRequest map[string]*cmv1.STSOperator
+		role        iamtypes.Role
+		result      bool
+	)
+
+	BeforeEach(func() {
+		stsOperator1, err := cmv1.NewSTSOperator().Namespace("namespace-1").Build()
+		Expect(err).NotTo(HaveOccurred())
+		stsOperator2, err := cmv1.NewSTSOperator().Namespace("namespace-2").Build()
+		Expect(err).NotTo(HaveOccurred())
+		credRequest = map[string]*cmv1.STSOperator{
+			"operator-1": stsOperator1,
+			"operator-2": stsOperator2,
+		}
+	})
+
+	When("the role has matching tags", func() {
+		It("should return true", func() {
+			role = iamtypes.Role{
+				RoleName: aws.String("test-role-name"),
+				Tags: []iamtypes.Tag{
+					{
+						Key:   aws.String("operator_namespace"),
+						Value: aws.String("namespace-1"),
+					},
+				},
+			}
+			result = checkIfROSAOperatorRole(role, credRequest)
+			Expect(result).To(BeTrue())
+		})
+	})
+
+	Context("the role name contains the namespace", func() {
+		BeforeEach(func() {
+			role = iamtypes.Role{
+				RoleName: aws.String("test-role-namespace-2"),
+				Tags:     []iamtypes.Tag{},
+			}
+			result = checkIfROSAOperatorRole(role, credRequest)
+		})
+
+		It("should return true", func() {
+			role = iamtypes.Role{
+				RoleName: aws.String("test-role-namespace-2"),
+				Tags:     []iamtypes.Tag{},
+			}
+			result = checkIfROSAOperatorRole(role, credRequest)
+			Expect(result).To(BeTrue())
+		})
+	})
+
+	When("the role has no matching tags or name", func() {
+		It("should return false", func() {
+			role = iamtypes.Role{
+				RoleName: aws.String("test-role-name"),
+				Tags: []iamtypes.Tag{
+					{
+						Key:   aws.String("operator_namespace"),
+						Value: aws.String("non-matching-namespace"),
+					},
+				},
+			}
+			result = checkIfROSAOperatorRole(role, credRequest)
+			Expect(result).To(BeFalse())
+		})
 	})
 })
