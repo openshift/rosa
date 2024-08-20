@@ -41,6 +41,7 @@ import (
 const (
 	awsManagedPolicyRegexPattern = `^arn:aws:iam::aws:policy/.*$`
 	awsManagedPolicyUrlPrefix    = "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/"
+	roleUrlPrefix                = "https://console.aws.amazon.com/iam/home?#/roles/"
 )
 
 var (
@@ -216,7 +217,7 @@ func (c *awsClient) EnsureRole(reporter *reporter.Object, name string, policy st
 		if err != nil {
 			return roleArn, err
 		}
-		reporter.Infof("Attached trust policy to role '%s': %s", name, policy)
+		reporter.Infof("Attached trust policy to role '%s(%s)': %s", name, roleUrlPrefix+name, policy)
 
 		_, err = c.iamClient.TagRole(context.Background(), &iam.TagRoleInput{
 			RoleName: aws.String(name),
@@ -272,7 +273,7 @@ func (c *awsClient) createRole(reporter *reporter.Object, name string, policy st
 		}
 		return "", err
 	}
-	reporter.Infof("Attached trust policy to role '%s': %s", name, policy)
+	reporter.Infof("Attached trust policy to role '%s(%s)': %s", name, roleUrlPrefix+name, policy)
 	return aws.ToString(output.Role.Arn), nil
 }
 
@@ -469,7 +470,7 @@ func (c *awsClient) AttachRolePolicy(reporter *reporter.Object, roleName string,
 		policyName := policyARNArr[len(policyARNArr)-1]
 		policyARN = fmt.Sprintf("%s(%s)", policyName, awsManagedPolicyUrlPrefix+policyName)
 	}
-	reporter.Infof("Attached policy '%s' to role '%s'\n", policyARN, roleName)
+	reporter.Infof("Attached policy '%s' to role '%s(%s)'\n", policyARN, roleName, roleUrlPrefix+roleName)
 	return nil
 }
 
