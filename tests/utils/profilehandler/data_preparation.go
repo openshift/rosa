@@ -254,14 +254,22 @@ func PrepareAccountRoles(client *rosacli.Client,
 	if err != nil {
 		return
 	}
-	accRoleList, output, err := client.OCMResource.ListAccountRole()
-	if err != nil {
-		err = fmt.Errorf("error happens when list account-roles, %s", output.String())
-		return
+	var accoutRoles *rosacli.AccountRolesUnit
+	maxRetries := 3
+	for i := 0; i < maxRetries; i++ {
+		accRoleList, output, err := client.OCMResource.ListAccountRole()
+		if err != nil && strings.Contains(err.Error(), "cannot be found") {
+			log.Logger.Infof("Some IAM role cannot be found, Retrying... (%d/%d)\n", i+1, maxRetries)
+			continue
+		} else if err != nil && !strings.Contains(err.Error(), "cannot be found") {
+			err = fmt.Errorf("error happens when list account-roles, %s", output.String())
+			return &rosacli.AccountRolesUnit{}, err
+		} else {
+			accoutRoles = accRoleList.DigAccountRoles(namePrefix, hcp)
+			break
+		}
 	}
-	roleDig := accRoleList.DigAccountRoles(namePrefix, hcp)
-
-	return roleDig, nil
+	return accoutRoles, nil
 
 }
 
