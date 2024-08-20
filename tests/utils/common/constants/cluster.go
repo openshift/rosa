@@ -2,6 +2,7 @@ package constants
 
 import (
 	"regexp"
+	"time"
 )
 
 const (
@@ -57,4 +58,21 @@ var (
 // instance type
 const (
 	DefaultInstanceType = "m5.xlarge"
+
+	M5XLarge  = "m5.xlarge"
+	M52XLarge = "m5.2xlarge"
+	M6gXLarge = "m6g.xlarge"
+)
+
+// cpu architecture
+const (
+	AMD = "amd64"
+	ARM = "arm64"
+)
+
+// timeout for hcp node pool
+const (
+	// NodePoolCheckTimeout The timeout may depend on the resource
+	NodePoolCheckTimeout = 30 * time.Minute
+	NodePoolCheckPoll    = 10 * time.Second
 )
