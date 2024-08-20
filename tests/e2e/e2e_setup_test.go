@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"fmt"
 	"path"
 	"time"
 
@@ -43,7 +44,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					breakGlassCredList, err := client.BreakGlassCredential.ListBreakGlassCredentialsAndReflect(clusterID)
 					Expect(err).To(BeNil())
 					testDir := config.Test.OutputDir
-					kubeconfigFile := path.Join("%s/%s.kubeconfig", testDir, clusterID)
+					kubeconfigFile := path.Join(testDir, fmt.Sprintf("%s.kubeconfig", clusterID))
 
 					By("Get the issued credential")
 					for _, i := range breakGlassCredList.BreakGlassCredentials {
