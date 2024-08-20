@@ -554,7 +554,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			log.Logger.Infof("The available z stream latest %s version:", zStreamVersions)
 		})
 
-		It("automatic upgrade for HCP cluster  - [id:64187", labels.Critical, labels.Runtime.Upgrade, func() {
+		It("automatic upgrade for HCP cluster  - [id:64187]", labels.Critical, labels.Runtime.Upgrade, func() {
 			By("Check the help message for 'upgrade cluster'")
 			output, err := upgradeService.Upgrade(
 				"-c", clusterID,
@@ -597,6 +597,8 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			if zStreamVersion != "" {
 				By("Check upgrade state")
 				err = WaitForUpgradeToState(upgradeService, clusterID, con.Scheduled, 4)
+				Expect(err).To(BeNil())
+				upgDesResp, err := upgradeService.DescribeUpgradeAndReflect(clusterID)
 				Expect(err).To(BeNil())
 				Expect(upgDesResp.Version).To(Equal(zStreamVersion))
 				Expect(upgDesResp.UpgradeState).To(Equal("scheduled"))
