@@ -584,36 +584,39 @@ var _ = Describe("Classic cluster creation validation",
 					Expect(stdout.String()).To(ContainSubstring(v))
 				}
 				if rosalCommand.CheckFlagExist("--multi-az") {
-					invalidReplicasErrorMapMultiAZ := map[string]string{
-						"2":  "Multi AZ cluster requires at least 3 compute nodes",
-						"0":  "Multi AZ cluster requires at least 3 compute nodes",
-						"-3": "must be non-negative",
-						"5":  "Multi AZ clusters require that the number of compute nodes be a multiple of 3",
-					}
-					for k, v := range invalidReplicasErrorMapMultiAZ {
-						rosalCommand.ReplaceFlagValue(map[string]string{
-							"--replicas": k,
-						})
-						stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-						Expect(err).NotTo(BeNil())
-						Expect(stdout.String()).To(ContainSubstring(v))
+					if !profile.ClusterConfig.AutoscalerEnabled {
+						invalidReplicasErrorMapMultiAZ := map[string]string{
+							"2":  "Multi AZ cluster requires at least 3 compute nodes",
+							"0":  "Multi AZ cluster requires at least 3 compute nodes",
+							"-3": "must be non-negative",
+							"5":  "Multi AZ clusters require that the number of compute nodes be a multiple of 3",
+						}
+						for k, v := range invalidReplicasErrorMapMultiAZ {
+							rosalCommand.ReplaceFlagValue(map[string]string{
+								"--replicas": k,
+							})
+							stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+							Expect(err).NotTo(BeNil())
+							Expect(stdout.String()).To(ContainSubstring(v))
+						}
 					}
 				} else {
-					invalidReplicasErrorMapSingeAZ := map[string]string{
-						"1":  "requires at least 2 compute nodes",
-						"0":  "requires at least 2 compute nodes",
-						"-1": "must be non-negative",
-					}
-					for k, v := range invalidReplicasErrorMapSingeAZ {
-						rosalCommand.ReplaceFlagValue(map[string]string{
-							"--replicas": k,
-						})
-						stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-						Expect(err).NotTo(BeNil())
-						Expect(stdout.String()).To(ContainSubstring(v))
+					if !profile.ClusterConfig.AutoscalerEnabled {
+						invalidReplicasErrorMapSingeAZ := map[string]string{
+							"1":  "requires at least 2 compute nodes",
+							"0":  "requires at least 2 compute nodes",
+							"-1": "must be non-negative",
+						}
+						for k, v := range invalidReplicasErrorMapSingeAZ {
+							rosalCommand.ReplaceFlagValue(map[string]string{
+								"--replicas": k,
+							})
+							stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+							Expect(err).NotTo(BeNil())
+							Expect(stdout.String()).To(ContainSubstring(v))
+						}
 					}
 				}
-
 				By("Check the validation for region")
 				invalidRegion := "not-exist-region"
 				rosalCommand.ReplaceFlagValue(map[string]string{
@@ -2150,6 +2153,11 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			By("Check if it is using oidc config")
 			if profile.ClusterConfig.OIDCConfig == "" {
 				Skip("Skip this case as it is only for byo oidc cluster")
+			}
+
+			By("Skip if the cluster is shared vpc cluster")
+			if profile.ClusterConfig.SharedVPC {
+				Skip("Skip this case as it is not supported for byo oidc cluster")
 			}
 			By("Prepare creation command")
 			var originalOidcConfigID string

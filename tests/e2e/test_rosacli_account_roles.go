@@ -1,9 +1,13 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -545,6 +549,23 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				Expect(err).To(BeNil())
 				policiesArn = append(policiesArn, pArn)
 			}
+			err = wait.PollUntilContextTimeout(
+				context.Background(),
+				20*time.Second,
+				200*time.Second,
+				false,
+				func(context.Context) (bool, error) {
+					hasPoliciWaitSync := false
+					for _, arn := range policiesArn {
+						policy, err := awsClient.GetIAMPolicy(arn)
+						if err != nil || policy == nil {
+							hasPoliciWaitSync = true
+							break
+						}
+					}
+					return !hasPoliciWaitSync, err
+				})
+			common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
 			By("Prepare verson for testing")
 			versionService := rosaClient.Version

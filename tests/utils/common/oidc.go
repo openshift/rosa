@@ -109,15 +109,17 @@ func ParseIssuerURLFromCommand(command string) string {
 
 // Extract oidc provider from the 'OIDC Endpoint URL' field of `rosa describe cluster`
 func ExtractOIDCProviderFromOidcUrl(urlString string) (string, error) {
+	var oidcProvider string
+	urlString = strings.TrimSpace(strings.Split(urlString, " ")[0])
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
 		return "", err
 	}
 	host := parsedURL.Host
 	path := strings.TrimPrefix(parsedURL.Path, "/")
-	fmt.Printf("The past host and path is %s and %s\n", host, path)
-	oidcProvider := fmt.Sprintf("%s/%s", host, path)
-	oidcProvider = strings.Split(oidcProvider, " ")[0]
-
+	oidcProvider = host
+	if path != "" {
+		oidcProvider = fmt.Sprintf("%s/%s", host, path)
+	}
 	return oidcProvider, nil
 }
