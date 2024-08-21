@@ -755,7 +755,7 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 	}
 
 	clusterProperties[ocmConsts.CreatorArn] = config.AWSCreator.ARN
-	clusterProperties[properties.CLIVersion] = info.Version
+	clusterProperties[properties.CLIVersion] = info.DefaultVersion
 
 	// Create the cluster:
 	clusterBuilder := cmv1.NewCluster().

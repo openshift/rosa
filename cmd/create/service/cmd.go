@@ -172,7 +172,7 @@ func run(cmd *cobra.Command, argv []string) {
 	args.AwsAccountID = r.Creator.AccountID
 	args.Properties = map[string]string{
 		ocmConsts.CreatorArn:  r.Creator.ARN,
-		properties.CLIVersion: info.Version,
+		properties.CLIVersion: info.DefaultVersion,
 	}
 
 	if args.FakeCluster {

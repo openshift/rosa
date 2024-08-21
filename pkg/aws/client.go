@@ -330,7 +330,7 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 		config.WithClientLogMode(logLevel),
 		config.WithAPIOptions([]func(stack *middleware.Stack) error{
 			smithyhttp.AddHeaderValue("User-Agent",
-				strings.Join([]string{"ROSACLI", info.Version}, ";")),
+				strings.Join([]string{"ROSACLI", info.DefaultVersion}, ";")),
 		}),
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
@@ -358,7 +358,7 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (aws
 		config.WithClientLogMode(logLevel),
 		config.WithAPIOptions([]func(stack *middleware.Stack) error{
 			smithyhttp.AddHeaderValue("User-Agent",
-				strings.Join([]string{"ROSACLI", info.Version}, ";")),
+				strings.Join([]string{"ROSACLI", info.DefaultVersion}, ";")),
 		}),
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)

@@ -39,7 +39,7 @@ func NewRosaVersionOptions() (*RosaVersionOptions, error) {
 }
 
 func (o *RosaVersionOptions) Version() error {
-	o.reporter.Infof("%s", info.Version)
+	o.reporter.Infof("%s", info.DefaultVersion)
 
 	if o.args.verbose {
 		o.reporter.Infof("Information and download locations:\n\t%s\n\t%s\n",

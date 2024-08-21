@@ -42,7 +42,7 @@ var _ = Describe("Get CLI version",
 				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
 				By("Check the version output")
 				Expect(stdout).NotTo(ContainSubstring("Not logged in"))
-				Expect(stdout).To(ContainSubstring(info.Version))
+				Expect(stdout).To(ContainSubstring(info.DefaultVersion))
 
 				By("Get the client version output")
 				buf, err = rosaClient.Runner.Cmd("version", "--client").Run()
@@ -50,7 +50,7 @@ var _ = Describe("Get CLI version",
 				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
 				By("Check the client version output")
 				Expect(stdout).NotTo(ContainSubstring("Not logged in"))
-				Expect(stdout).To(ContainSubstring(info.Version))
+				Expect(stdout).To(ContainSubstring(info.DefaultVersion))
 			},
 		)
 	})
