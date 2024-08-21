@@ -80,7 +80,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// Allow the command to be called programmatically
 	isProgmaticallyCalled := false
 	shouldUseClusterKey := true
-	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
+	if len(argv) >= 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		interactive.SetModeKey(argv[1])
 
