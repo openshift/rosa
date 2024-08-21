@@ -1,8 +1,14 @@
 package interactive
 
 import (
-	. "github.com/onsi/ginkgo/v2/dsl/core"
+	"go.uber.org/mock/gomock"
+
+	"github.com/AlecAivazis/survey/v2/core"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	mock "github.com/openshift/rosa/pkg/aws"
 )
 
 var _ = Describe("Validation", func() {
@@ -102,4 +108,89 @@ var _ = Describe("Validation", func() {
 		})
 	})
 
+})
+
+var _ = Describe("SubnetsValidator", func() {
+	var (
+		mockClient *mock.MockClient
+		validator  Validator
+		subnetIDs  = []string{"subnet-public-1", "subnet-private-2", "subnet-private-3"}
+	)
+
+	BeforeEach(func() {
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient = mock.NewMockClient(mockCtrl)
+	})
+
+	Context("When cluster is hosted", func() {
+		It("Returns an error when the number of subnets is not at least two", func() {
+			validator = SubnetsValidator(mockClient, false, false, true)
+			answers := []core.OptionAnswer{
+				{Value: "subnet-public-1 (us-west-2a)"},
+			}
+
+			err := validator(answers)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("The number of subnets for a public hosted " +
+				"cluster should be at least two"))
+		})
+
+		It("Returns an error when the number of public subnets is not at least one", func() {
+			validator = SubnetsValidator(mockClient, false, false, true)
+			answers := []core.OptionAnswer{
+				{Value: "subnet-private-2 (us-west-2a)"},
+				{Value: "subnet-private-3 (us-west-2b)"},
+			}
+
+			mockClient.EXPECT().GetVPCSubnets(subnetIDs[1]).Return([]ec2types.Subnet{
+				{SubnetId: &subnetIDs[1]},
+				{SubnetId: &subnetIDs[2]},
+			}, nil)
+			mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{
+				{SubnetId: &subnetIDs[0]},
+				{SubnetId: &subnetIDs[2]},
+			}, nil)
+
+			err := validator(answers)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("The number of public subnets for a public hosted " +
+				"cluster should be at least one"))
+		})
+
+	})
+
+	Context("When cluster is not hosted", func() {
+		It("Returns and error when the number of subnets is not correct", func() {
+			validator = SubnetsValidator(mockClient, true, true, false)
+			answers := []core.OptionAnswer{
+				{Value: "subnet-123 (us-west-2a)"},
+				{Value: "subnet-456 (us-west-2b)"},
+			}
+
+			err := validator(answers)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("The number of subnets for a 'multi-AZ'"+
+				" 'private link cluster' should be '3', instead received: '%d'", len(answers)))
+		})
+
+		It("Should not return an error when the number of subnets is correct", func() {
+			validator = SubnetsValidator(mockClient, true, true, false)
+			answers := []core.OptionAnswer{
+				{Value: "subnet-123 (us-west-2a)"},
+				{Value: "subnet-456 (us-west-2b)"},
+				{Value: "subnet-789 (us-west-2b)"},
+			}
+
+			err := validator(answers)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("When the input is invalid", func() {
+		It("Returns an error for invalid input", func() {
+			err := validator("invalid input")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("can only validate a slice of string"))
+		})
+	})
 })
