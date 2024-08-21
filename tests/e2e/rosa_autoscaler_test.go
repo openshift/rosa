@@ -471,7 +471,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 							"--ignore-daemonsets-utilization",
 							"--max-node-provision-time", "10m",
 							"--balancing-ignored-labels", "aaa",
-							"--max-nodes-total", "1000",
+							"--max-nodes-total", "100",
 							"--min-cores", "0",
 							"--scale-down-delay-after-add", "10s",
 							"--max-cores", "100",
