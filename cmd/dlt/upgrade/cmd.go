@@ -24,9 +24,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
-	"github.com/openshift/rosa/pkg/upgrade"
 )
 
 var args struct {
@@ -39,7 +39,7 @@ var Cmd = &cobra.Command{
 	Short:   "Cancel cluster upgrade",
 	Long:    "Cancel scheduled cluster upgrade",
 	Run:     run,
-	Args:    upgrade.NewUpgradeArgsFunction(true),
+	Args:    machinepool.NewMachinepoolArgsFunction(true),
 }
 
 func init() {

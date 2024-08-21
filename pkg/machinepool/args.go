@@ -1,11 +1,9 @@
-package upgrade
+package machinepool
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/openshift/rosa/pkg/machinepool"
 )
 
 var (
@@ -14,7 +12,7 @@ var (
 	machinepoolFlagName             = "machinepool"
 )
 
-func NewUpgradeArgsFunction(flagSource bool) func(cmd *cobra.Command, argv []string) error {
+func NewMachinepoolArgsFunction(flagSource bool) func(cmd *cobra.Command, argv []string) error {
 	return func(cmd *cobra.Command, argv []string) error {
 		var machinepoolID string
 		var err error
@@ -34,7 +32,7 @@ func NewUpgradeArgsFunction(flagSource bool) func(cmd *cobra.Command, argv []str
 			machinepoolID = argv[0]
 		}
 
-		if !machinepool.MachinePoolKeyRE.MatchString(machinepoolID) {
+		if !MachinePoolKeyRE.MatchString(machinepoolID) {
 			return ErrInvalidMachinePoolIdentifier
 		}
 		return nil

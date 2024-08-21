@@ -52,7 +52,7 @@ func NewEditMachinePoolCommand() *cobra.Command {
 		Long:    long,
 		Aliases: aliases,
 		Example: example,
-		Args:    cobra.MinimumNArgs(1),
+		Args:    machinepool.NewMachinepoolArgsFunction(false),
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), EditMachinePoolRunner(options)),
 	}
 
