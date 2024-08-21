@@ -294,23 +294,31 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	oidcConfigStrategy.execute(r)
+	oidcConfigId := oidcConfigStrategy.execute(r)
 	if !args.rawFiles {
 		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
-		oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, oidcConfigInput.IssuerUrl})
+		providerArgs := []string{"", mode, oidcConfigInput.IssuerUrl}
+		if oidcConfigId != "" {
+			providerArgs = append(providerArgs, "--oidc-config-id", oidcConfigId)
+		} else {
+			r.Reporter.Errorf("Unable to attempt creation of OIDC provider; oidc config ID"+
+				" not found / not created successfully: %s", err)
+			os.Exit(1)
+		}
+		oidcprovider.Cmd.Run(oidcprovider.Cmd, providerArgs)
 		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	}
 }
 
 type CreateOidcConfigStrategy interface {
-	execute(r *rosa.Runtime)
+	execute(r *rosa.Runtime) string
 }
 
 type CreateUnmanagedOidcConfigRawStrategy struct {
 	oidcConfig *oidcconfigs.OidcConfigInput
 }
 
-func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
+func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) string {
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
 	jwks := s.oidcConfig.Jwks
@@ -338,6 +346,7 @@ func (s *CreateUnmanagedOidcConfigRawStrategy) execute(r *rosa.Runtime) {
 			"Please refer to documentation to use generated files to create an OIDC compliant configuration.",
 		)
 	}
+	return ""
 }
 
 type CreateUnmanagedOidcConfigAutoStrategy struct {
@@ -349,7 +358,7 @@ const (
 	jwksKey              = "keys.json"
 )
 
-func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) string {
 	bucketUrl := s.oidcConfig.IssuerUrl
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
@@ -425,13 +434,14 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
+	return oidcConfig.ID()
 }
 
 type CreateUnmanagedOidcConfigManualStrategy struct {
 	oidcConfig *oidcconfigs.OidcConfigInput
 }
 
-func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
+func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) string {
 	commands := []string{}
 	bucketName := s.oidcConfig.BucketName
 	discoveryDocument := s.oidcConfig.DiscoveryDocument
@@ -534,13 +544,14 @@ func (s *CreateUnmanagedOidcConfigManualStrategy) execute(r *rosa.Runtime) {
 			"rosa register oidc-config\n" +
 			"For more information please refer to the documentation")
 	}
+	return ""
 }
 
 type CreateManagedOidcConfigAutoStrategy struct {
 	oidcConfigInput *oidcconfigs.OidcConfigInput
 }
 
-func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
+func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) string {
 	var spin *spinner.Spinner
 	if !output.HasFlag() && r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -578,6 +589,7 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) {
 		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
+	return oidcConfig.ID()
 }
 
 func getOidcConfigStrategy(mode string, input *oidcconfigs.OidcConfigInput) (CreateOidcConfigStrategy, error) {
