@@ -1120,14 +1120,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 			if billingAccount == "" && !interactive.Enabled() {
 				// if a billing account is not provided we will try to use the infrastructure account as default
-				if helper.ContainsPrefix(billingAccounts, awsCreator.AccountID) {
-					billingAccount = awsCreator.AccountID
-					r.Reporter.Infof("Using '%s' as billing account", billingAccount)
-					r.Reporter.Infof(
-						"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
-					)
-				} else {
-					r.Reporter.Errorf("A billing account is required for Hosted Control Plane clusters. %s", listBillingAccountMessage)
+				billingAccount, err = provideBillingAccount(billingAccounts, awsCreator.AccountID, r)
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
 				}
 			}
 
@@ -3348,6 +3344,21 @@ func validateBillingAccount(billingAccount string) error {
 			listBillingAccountMessage)
 	}
 	return nil
+}
+
+func provideBillingAccount(billingAccounts []string, accountID string, r *rosa.Runtime) (string, error) {
+	if !helper.ContainsPrefix(billingAccounts, accountID) {
+		return "", fmt.Errorf("A billing account is required for Hosted Control Plane clusters. %s",
+			listBillingAccountMessage)
+	}
+
+	billingAccount := accountID
+
+	r.Reporter.Infof("Using '%s' as billing account", billingAccount)
+	r.Reporter.Infof(
+		"To use a different billing account, add --billing-account xxxxxxxxxx to previous command",
+	)
+	return billingAccount, nil
 }
 
 // validateNetworkType ensure user passes a valid network type parameter at creation

@@ -445,6 +445,34 @@ var _ = Describe("validateBillingAccount()", func() {
 
 })
 
+var _ = Describe("provideBillingAccount()", func() {
+
+	var (
+		r               *rosa.Runtime
+		billingAccounts = []string{"123456789012", "987654321098"}
+	)
+
+	BeforeEach(func() {
+		r = rosa.NewRuntime()
+	})
+
+	It("OK: returns the the billing account if accountID is found in billingAccounts", func() {
+		accountID := "123456789012"
+		billingAccount, err := provideBillingAccount(billingAccounts, accountID, r)
+		Expect(billingAccount).To(Equal(billingAccount))
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("KO: fails with an error message if accountID is not found in billingAccounts", func() {
+		accountID := "000"
+		billingAccount, err := provideBillingAccount(billingAccounts, accountID, r)
+		Expect(billingAccount).To(Equal(""))
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("A billing account is required for Hosted Control Plane clusters." +
+			" To see the list of billing account options, you can use interactive mode by passing '-i'."))
+	})
+})
+
 var _ = Describe("getInitialValidSubnets()", func() {
 
 	var (
