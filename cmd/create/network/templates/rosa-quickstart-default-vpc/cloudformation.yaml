@@ -1,0 +1,346 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create a ROSA Quickstart default VPC
+
+Parameters:
+  Name:
+    Type: String
+    Description: Prefix for naming resources
+  VpcCidr:
+    Type: String
+    Description: CIDR block for the VPC
+    Default: '10.0.0.0/16'
+  AvailabilityZonesCount:
+    Type: Number
+    Description: Number of availability zones
+    Default: 2
+    MinValue: 2
+  Region:
+    Type: String
+    Description: AWS region to deploy resources in
+    Default: 'us-west-2'
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PublicRouteTable
+        - !Ref PrivateRouteTable
+
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, !Ref AvailabilityZonesCount, 8]]
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'kubernetes.io/role/elb'
+          Value: '1'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, !Ref AvailabilityZonesCount, 8]]
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-private"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'kubernetes.io/role/internal-elb'
+          Value: '1'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  ElasticIP1:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  ElasticIP2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt ElasticIP1.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+  PublicRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateRoutes:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGateway
+
+  PrivateRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Authorize inbound VPC traffic"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: "10.8.0.0/16"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIpv6: "::/0"
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'service'
+          Value: 'ROSA'
+
+  EC2VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.ec2"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  KMSVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.kms"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  STSVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.sts"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  EcrApiVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.ecr.api"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  EcrDkrVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.ecr.dkr"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+Outputs:
+  VPCId:
+    Description: The ID of the VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${Name}-VPCId"
+
+  InternetGatewayId:
+    Description: The ID of the Internet Gateway
+    Value: !Ref InternetGateway
+    Export:
+      Name: !Sub "${Name}-InternetGatewayId"
+
+  PublicRouteTableId:
+    Description: The ID of the public route table
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub "${Name}-PublicRouteTableId"
+
+  VPCEndpointId:
+    Description: The ID of the VPC Endpoint
+    Value: !Ref S3VPCEndpoint
+    Export:
+      Name: !Sub "${Name}-VPCEndpointId"
+
+  PublicSubnet:
+    Description: The ID of the public subnet
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${Name}-PublicSubnet"
+
+  PrivateSubnet:
+    Description: The ID of the private subnet
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: !Sub "${Name}-PrivateSubnet"
+
+  EIP1AllocationId:
+    Description: Allocation ID for ElasticIP1
+    Value: !GetAtt ElasticIP1.AllocationId
+    Export:
+      Name: !Sub "${Name}-EIP1-AllocationId"
+
+  EIP2AllocationId:
+    Description: Allocation ID for ElasticIP2
+    Value: !GetAtt ElasticIP2.AllocationId
+    Export:
+      Name: !Sub "${Name}-EIP2-AllocationId"
+
+  NatGatewayIds:
+    Description: The NAT Gateway ID
+    Value: !Ref NATGateway
+
+  PrivateRouteTableId:
+    Description: The Private Route Table IDs
+    Value: !Ref PrivateRouteTable
+
+  PrivateRouteIDs:
+    Description: IDs of the created private routes
+    Value: !Ref PrivateRoutes
+    
