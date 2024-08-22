@@ -66,7 +66,8 @@ func init() {
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
-	Cmd.AddCommand(autoscaler.Cmd)
+	autoscalerCommand := autoscaler.NewDeleteAutoscalerCommand()
+	Cmd.AddCommand(autoscalerCommand)
 	kubeletconfig := kubeletconfig.NewDeleteKubeletConfigCommand()
 	Cmd.AddCommand(kubeletconfig)
 	Cmd.AddCommand(externalauthprovider.Cmd)
@@ -80,7 +81,7 @@ func init() {
 		accountroles.Cmd, operatorrole.Cmd,
 		userrole.Cmd, ocmrole.Cmd,
 		oidcprovider.Cmd, upgrade.Cmd, admin.Cmd,
-		service.Cmd, autoscaler.Cmd, idp.Cmd,
+		service.Cmd, autoscalerCommand, idp.Cmd,
 		cluster.Cmd, dnsdomains.Cmd, externalauthprovider.Cmd,
 		kubeletconfig, machinepoolCommand, tuningconfigs.Cmd,
 	}
