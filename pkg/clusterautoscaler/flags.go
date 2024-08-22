@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -871,4 +873,75 @@ func getValidMaxRangeValidator(min int) func(interface{}) error {
 
 		return nil
 	}
+}
+
+// PrefillAutoscalerArgs prefill autoscaler args from existing autoscaler in edit flow
+func PrefillAutoscalerArgs(cmd *cobra.Command, autoscalerArgs *AutoscalerArgs,
+	autoscaler *cmv1.ClusterAutoscaler) (*AutoscalerArgs, error) {
+
+	if !cmd.Flags().Changed(balanceSimilarNodeGroupsFlag) {
+		autoscalerArgs.BalanceSimilarNodeGroups = autoscaler.BalanceSimilarNodeGroups()
+	}
+	if !cmd.Flags().Changed(skipNodesWithLocalStorageFlag) {
+		autoscalerArgs.SkipNodesWithLocalStorage = autoscaler.SkipNodesWithLocalStorage()
+	}
+	if !cmd.Flags().Changed(logVerbosityFlag) {
+		autoscalerArgs.LogVerbosity = autoscaler.LogVerbosity()
+	}
+	if !cmd.Flags().Changed(maxPodGracePeriodFlag) {
+		autoscalerArgs.MaxPodGracePeriod = autoscaler.MaxPodGracePeriod()
+	}
+	if !cmd.Flags().Changed(podPriorityThresholdFlag) {
+		autoscalerArgs.PodPriorityThreshold = autoscaler.PodPriorityThreshold()
+	}
+	if !cmd.Flags().Changed(ignoreDaemonsetsUtilizationFlag) {
+		autoscalerArgs.IgnoreDaemonsetsUtilization = autoscaler.IgnoreDaemonsetsUtilization()
+	}
+	if !cmd.Flags().Changed(maxNodeProvisionTimeFlag) {
+		autoscalerArgs.MaxNodeProvisionTime = autoscaler.MaxNodeProvisionTime()
+	}
+	if !cmd.Flags().Changed(balancingIgnoredLabelsFlag) {
+		autoscalerArgs.BalancingIgnoredLabels = autoscaler.BalancingIgnoredLabels()
+	}
+	if !cmd.Flags().Changed(maxNodesTotalFlag) {
+		autoscalerArgs.ResourceLimits.MaxNodesTotal = autoscaler.ResourceLimits().MaxNodesTotal()
+	}
+	if !cmd.Flags().Changed(minCoresFlag) {
+		autoscalerArgs.ResourceLimits.Cores.Min = autoscaler.ResourceLimits().Cores().Min()
+	}
+	if !cmd.Flags().Changed(maxCoresFlag) {
+		autoscalerArgs.ResourceLimits.Cores.Max = autoscaler.ResourceLimits().Cores().Max()
+	}
+	if !cmd.Flags().Changed(minMemoryFlag) {
+		autoscalerArgs.ResourceLimits.Memory.Min = autoscaler.ResourceLimits().Memory().Min()
+	}
+	if !cmd.Flags().Changed(maxMemoryFlag) {
+		autoscalerArgs.ResourceLimits.Memory.Max = autoscaler.ResourceLimits().Memory().Max()
+	}
+	if !cmd.Flags().Changed(scaleDownEnabledFlag) {
+		autoscalerArgs.ScaleDown.Enabled = autoscaler.ScaleDown().Enabled()
+	}
+	if !cmd.Flags().Changed(scaleDownUnneededTimeFlag) {
+		autoscalerArgs.ScaleDown.UnneededTime = autoscaler.ScaleDown().UnneededTime()
+	}
+	if !cmd.Flags().Changed(scaleDownDelayAfterAddFlag) {
+		autoscalerArgs.ScaleDown.DelayAfterAdd = autoscaler.ScaleDown().DelayAfterAdd()
+	}
+	if !cmd.Flags().Changed(scaleDownDelayAfterDeleteFlag) {
+		autoscalerArgs.ScaleDown.DelayAfterDelete = autoscaler.ScaleDown().DelayAfterDelete()
+	}
+	if !cmd.Flags().Changed(scaleDownDelayAfterFailureFlag) {
+		autoscalerArgs.ScaleDown.DelayAfterFailure = autoscaler.ScaleDown().DelayAfterFailure()
+	}
+	if !cmd.Flags().Changed(scaleDownUtilizationThresholdFlag) {
+		utilizationThreshold, err := strconv.ParseFloat(
+			autoscaler.ScaleDown().UtilizationThreshold(),
+			commonUtils.MaxByteSize,
+		)
+		if err != nil {
+			return autoscalerArgs, err
+		}
+		autoscalerArgs.ScaleDown.UtilizationThreshold = utilizationThreshold
+	}
+	return autoscalerArgs, nil
 }
