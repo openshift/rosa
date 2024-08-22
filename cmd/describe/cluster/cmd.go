@@ -477,11 +477,17 @@ func run(cmd *cobra.Command, argv []string) {
 	if isHypershift {
 		str = fmt.Sprintf("%s"+
 			"Audit Log Forwarding:       %s\n", str, getAuditLogForwardingStatus(cluster))
-		str = fmt.Sprintf("%s"+
-			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
 		if cluster.AWS().AuditLog().RoleArn() != "" {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
+		}
+		str = fmt.Sprintf("%s"+
+			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
+		str = fmt.Sprintf("%s"+
+			"Etcd Encryption:            %s\n", str, getEtcdStatus(cluster))
+		if cluster.AWS().EtcdEncryption().KMSKeyARN() != "" {
+			str = fmt.Sprintf("%s"+
+				"KMS key ARN:                %s\n", str, cluster.AWS().EtcdEncryption().KMSKeyARN())
 		}
 		if len(cluster.AWS().AdditionalAllowedPrincipals()) > 0 {
 			// Omitted the 'Allowed' due to formatting
@@ -837,6 +843,14 @@ func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {
 		externalAuthConfigStatus = EnabledOutput
 	}
 	return externalAuthConfigStatus
+}
+
+func getEtcdStatus(cluster *cmv1.Cluster) string {
+	etcdStatus := DisabledOutput
+	if cluster.EtcdEncryption() {
+		etcdStatus = EnabledOutput
+	}
+	return etcdStatus
 }
 
 func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.PolicyDetail,
