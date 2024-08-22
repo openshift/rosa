@@ -2202,7 +2202,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Options:  options,
 				Default:  defaultOptions,
 				Validators: []interactive.Validator{
-					interactive.SubnetsCountValidator(multiAZ, privateLink, isHostedCP),
+					interactive.SubnetsValidator(awsClient, multiAZ, privateLink, isHostedCP),
 				},
 			})
 			if err != nil {
