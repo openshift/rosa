@@ -3261,7 +3261,10 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
 			}
-			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
+			if oidcConfig != nil {
+				oidcprovider.Cmd.Flags().Set(oidcprovider.OidcConfigIdFlag, oidcConfig.ID())
+			}
+			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, ""})
 		} else {
 			output := ""
 			if len(operatorRoles) == 0 {
