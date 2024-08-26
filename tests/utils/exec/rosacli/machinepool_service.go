@@ -2,10 +2,19 @@ package rosacli
 
 import (
 	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"strconv"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
-	common "github.com/openshift/rosa/tests/utils/common"
+	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/common/constants"
+	"github.com/openshift/rosa/tests/utils/config"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -21,12 +30,22 @@ type MachinePoolService interface {
 	ReflectMachinePoolList(result bytes.Buffer) (mpl MachinePoolList, err error)
 	ReflectMachinePoolDescription(result bytes.Buffer) (*MachinePoolDescription, error)
 	ListAndReflectMachinePools(clusterID string) (mpl MachinePoolList, err error)
+	DescribeAndReflectMachinePool(clusterID string, name string) (*MachinePoolDescription, error)
 
 	ReflectNodePoolList(result bytes.Buffer) (*NodePoolList, error)
 	ListAndReflectNodePools(clusterID string) (*NodePoolList, error)
 	ReflectNodePoolDescription(result bytes.Buffer) (npd *NodePoolDescription, err error)
 	DescribeAndReflectNodePool(clusterID string, name string) (*NodePoolDescription, error)
-	DescribeAndReflectMachinePool(clusterID string, name string) (*MachinePoolDescription, error)
+	GetNodePoolAutoScaledReplicas(clusterID string, mpName string) (map[string]int, error)
+	WaitNodePoolReplicasReady(clusterID string, mpName string, isAutoscale bool, interval, timeout time.Duration) error
+	ScaleNodePool(clusterID string, mpName string, updateReplicas int, waitForNPInstancesReady bool) error
+	ScaleAutoScaledNodePool(
+		clusterID string,
+		mpName string,
+		minReplicas int,
+		maxReplicas int,
+		waitForNPInstancesReady bool,
+	) error
 
 	RetrieveHelpForCreate() (bytes.Buffer, error)
 	RetrieveHelpForEdit() (bytes.Buffer, error)
@@ -103,9 +122,11 @@ type NodePoolList struct {
 }
 
 type NodePoolDescription struct {
-	ID                         string              `yaml:"ID,omitempty"`
-	ClusterID                  string              `yaml:"Cluster ID,omitempty"`
-	AutoScaling                string              `yaml:"Autoscaling,omitempty"`
+	ID          string `yaml:"ID,omitempty"`
+	ClusterID   string `yaml:"Cluster ID,omitempty"`
+	AutoScaling string `yaml:"Autoscaling,omitempty"`
+	// autoscale enabled nodepool return `[]interface{}`, which interface{} here is map[string]string
+	// autoscale disabled nodepool return `int`
 	DesiredReplicas            interface{}         `yaml:"Desired replicas,omitempty"`
 	CurrentReplicas            string              `yaml:"Current replicas,omitempty"`
 	InstanceType               string              `yaml:"Instance type,omitempty"`
@@ -304,6 +325,159 @@ func (m *machinepoolService) ReflectNodePoolDescription(result bytes.Buffer) (*N
 	npd := new(NodePoolDescription)
 	err = yaml.Unmarshal(data, npd)
 	return npd, err
+}
+
+// GetNodePoolAutoScaledReplicas Get autoscaled replicas of node pool
+func (m *machinepoolService) GetNodePoolAutoScaledReplicas(clusterID string, mpName string) (map[string]int, error) {
+	mpDesc, err := m.DescribeAndReflectNodePool(clusterID, mpName)
+	if err != nil {
+		return nil, err
+	}
+
+	desiredReplicaList := mpDesc.DesiredReplicas.([]interface{})
+	// Parse replicas of autoscaled machine/node pool
+	replicas, err := parseAutoscaledReplicas(desiredReplicaList)
+	// For node pool, it has current replicas which will be used to compare.
+	replicas["Current replicas"], _ = strconv.Atoi(fmt.Sprintf("%v", mpDesc.CurrentReplicas))
+	return replicas, err
+}
+
+// Parse replicas(Min replicas and Max replicas) of autoscaled machine/node pool
+func parseAutoscaledReplicas(desiredReplicaList []interface{}) (map[string]int, error) {
+	// Parse replicas of autoscaled machine pool
+	replicas := make(map[string]int)
+	for _, data := range desiredReplicaList {
+		valMap := data.(map[string]interface{})
+		for key, value := range valMap {
+			replica, err := strconv.Atoi(fmt.Sprintf("%v", value))
+			if err != nil {
+				return nil, err
+			}
+			replicas[key] = replica
+		}
+	}
+
+	return replicas, nil
+}
+
+// WaitNodePoolReplicasReady Wait node pool replicas ready
+func (m *machinepoolService) WaitNodePoolReplicasReady(
+	clusterID string,
+	mpName string,
+	isAutoscale bool,
+	interval, timeout time.Duration,
+) error {
+	err := wait.PollUntilContextTimeout(
+		context.Background(),
+		interval,
+		timeout,
+		true,
+		func(context.Context) (bool, error) {
+			if isAutoscale {
+				replicas, err := m.GetNodePoolAutoScaledReplicas(clusterID, mpName)
+				if err != nil {
+					return false, err
+				}
+
+				if replicas["Current replicas"] == replicas["Min replicas"] {
+					return true, nil
+				}
+
+			} else {
+				mpDesc, err := m.DescribeAndReflectNodePool(clusterID, mpName)
+				if err != nil {
+					return false, err
+				}
+
+				if mpDesc.CurrentReplicas == fmt.Sprintf("%v", mpDesc.DesiredReplicas) {
+					return true, nil
+				}
+			}
+			return false, nil
+		})
+	return err
+}
+
+// ScaleNodePool Scale node pool and return its check result
+func (m *machinepoolService) ScaleNodePool(
+	clusterID string,
+	mpName string,
+	updateReplicas int,
+	waitForNPInstancesReady bool,
+) error {
+	_, err := m.EditMachinePool(clusterID, mpName,
+		"--replicas", fmt.Sprintf("%v", updateReplicas),
+		"-y",
+	)
+	if err != nil {
+		return err
+	}
+
+	// Check the machinepool replicas after scale
+	mpDesc, err := m.DescribeAndReflectNodePool(clusterID, mpName)
+	if err != nil {
+		return err
+	}
+
+	if mpDesc.DesiredReplicas != updateReplicas {
+		return errors.New("replicas does not match when scaling node pool")
+	}
+
+	if waitForNPInstancesReady && config.IsNodePoolGlobalCheck() {
+		// Check current replicas reach the desired replicas after scale
+		err = m.WaitNodePoolReplicasReady(
+			clusterID,
+			mpName,
+			false,
+			constants.NodePoolCheckPoll,
+			constants.NodePoolCheckTimeout,
+		)
+	}
+	return err
+}
+
+// ScaleAutoScaledNodePool Scale autoscaled node pool and return its check result
+func (m *machinepoolService) ScaleAutoScaledNodePool(
+	clusterID string,
+	mpName string,
+	minReplicas int,
+	maxReplicas int,
+	waitForNPInstancesReady bool,
+) error {
+	_, err := m.EditMachinePool(clusterID, mpName,
+		"--enable-autoscaling",
+		"--min-replicas", fmt.Sprintf("%v", minReplicas),
+		"--max-replicas", fmt.Sprintf("%v", maxReplicas),
+		"-y",
+	)
+	if err != nil {
+		return err
+	}
+
+	// Check the machinepool min_replica and max_replica after scale
+	desiredReplicas, err := m.GetNodePoolAutoScaledReplicas(clusterID, mpName)
+	if err != nil {
+		return err
+	}
+
+	if desiredReplicas["Min replicas"] != minReplicas {
+		return errors.New("min replicas does not match when scaling autoscaled node pool")
+	}
+	if desiredReplicas["Max replicas"] != maxReplicas {
+		return errors.New("max replicas does not match when scaling autoscaled node pool")
+	}
+
+	if waitForNPInstancesReady && config.IsNodePoolGlobalCheck() {
+		// Check current replicas reach the min_replica in desired replicas after scale
+		err = m.WaitNodePoolReplicasReady(
+			clusterID,
+			mpName,
+			true,
+			constants.NodePoolCheckPoll,
+			constants.NodePoolCheckTimeout,
+		)
+	}
+	return err
 }
 
 // Get specified nodepool by nodepool id

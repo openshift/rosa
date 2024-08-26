@@ -29,11 +29,11 @@ type ClusterService interface {
 	EditCluster(clusterID string, flags ...string) (bytes.Buffer, error)
 	InstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
 	UnInstallLog(clusterID string, flags ...string) (bytes.Buffer, error)
-
 	IsHostedCPCluster(clusterID string) (bool, error)
 	IsSTSCluster(clusterID string) (bool, error)
 	IsPrivateCluster(clusterID string) (bool, error)
 	IsUsingReusableOIDCConfig(clusterID string) (bool, error)
+	IsMultiArch(clusterID string) (bool, error)
 	GetClusterVersion(clusterID string) (config.Version, error)
 	IsBYOVPCCluster(clusterID string) (bool, error)
 	IsExternalAuthenticationEnabled(clusterID string) (bool, error)
@@ -298,6 +298,15 @@ func (c *clusterService) IsUsingReusableOIDCConfig(clusterID string) (bool, erro
 		return false, err
 	}
 	return jsonData.DigBool("aws", "sts", "oidc_config", "reusable"), nil
+}
+
+// IsMultiArch Check if the cluster is multi arch
+func (c *clusterService) IsMultiArch(clusterID string) (bool, error) {
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
+	if err != nil {
+		return false, err
+	}
+	return jsonData.DigBool("multi_arch_enabled"), nil
 }
 
 // Get cluster version

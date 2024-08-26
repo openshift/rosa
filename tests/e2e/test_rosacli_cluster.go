@@ -2000,7 +2000,8 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 				By("Create one sts cluster in manual mode")
 				rosaClient.Runner.SetDir(dirToClean)
 				clusterNameToClean = "test-43053"
-				operatorRolePreifx := "opPrefix43053"
+				// Configure with a random str, which can solve the rerun failure
+				operatorRolePreifx := common.GenerateRandomName("opPrefix43053", 2)
 				_, err, _ = clusterService.Create(
 					clusterNameToClean, "--sts",
 					"--mode", "manual",
