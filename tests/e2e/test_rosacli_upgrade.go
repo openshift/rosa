@@ -33,6 +33,7 @@ var _ = Describe("Cluster Upgrade testing",
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
 			profile                  *profilehandler.Profile
+			roleUrlPrefix            = "https://console.aws.amazon.com/iam/home?#/roles/"
 		)
 
 		BeforeEach(func() {
@@ -127,7 +128,8 @@ var _ = Describe("Cluster Upgrade testing",
 					}
 				}()
 				for _, policyArn := range policyArns {
-					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+						policyArn, roleName, roleUrlPrefix+roleName))
 				}
 			}
 
@@ -153,7 +155,8 @@ var _ = Describe("Cluster Upgrade testing",
 					}
 				}()
 				for _, policyArn := range policyArns {
-					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+						policyArn, roleName, roleUrlPrefix+roleName))
 				}
 
 			}
@@ -181,7 +184,8 @@ var _ = Describe("Cluster Upgrade testing",
 					}
 				}()
 				for _, policyArn := range policyArns {
-					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+						policyArn, roleName, roleUrlPrefix+roleName))
 				}
 
 			}
