@@ -1869,7 +1869,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create acount-roles")
-				accountRolePrefix = "testAr45742"
+				accountRolePrefix = common.GenerateRandomName("ar45742", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -1883,8 +1883,8 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 				ar := arl.DigAccountRoles(accountRolePrefix, false)
 
 				By("Create one sts cluster")
-				clusterNameToClean = "test-45742"
-				operatorRolePreifx := "opPrefix45742"
+				clusterNameToClean = common.GenerateRandomName("test-45742", 2)
+				operatorRolePreifx := common.GenerateRandomName("opPre45742", 2)
 				_, err, _ = clusterService.Create(
 					clusterNameToClean, "--sts",
 					"--mode", "auto",
@@ -1898,7 +1898,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 				Expect(err).To(BeNil())
 
 				By("Create another cluster with the same operator-roless-prefix")
-				clusterName := "test-45742b"
+				clusterName := common.GenerateRandomName("test-45742b", 2)
 				out, err, _ := clusterService.Create(
 					clusterName, "--sts",
 					"--mode", "auto",
@@ -1983,7 +1983,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create acount-roles")
-				accountRolePrefix = "testAr43053"
+				accountRolePrefix = common.GenerateRandomName("ar43053", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -2002,9 +2002,9 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 
 				By("Create one sts cluster in manual mode")
 				rosaClient.Runner.SetDir(dirToClean)
-				clusterNameToClean = "test-43053"
 				// Configure with a random str, which can solve the rerun failure
-				operatorRolePreifx := common.GenerateRandomName("opPrefix43053", 2)
+				clusterNameToClean = common.GenerateRandomName("test-43053", 2)
+				operatorRolePreifx := common.GenerateRandomName("opPre43053", 2)
 				_, err, _ = clusterService.Create(
 					clusterNameToClean, "--sts",
 					"--mode", "manual",
