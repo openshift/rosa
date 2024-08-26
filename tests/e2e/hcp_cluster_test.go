@@ -138,7 +138,7 @@ var _ = Describe("HCP cluster testing",
 				//It is hiddened now
 				helpOutput, err, _ := clusterService.Create("", "-h")
 				Expect(err).To(BeNil())
-				Expect(helpOutput.String()).ToNot(ContainSubstring("--no-cni"))
+				Expect(helpOutput.String()).To(ContainSubstring("--no-cni"))
 
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
