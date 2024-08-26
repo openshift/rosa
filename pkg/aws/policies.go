@@ -630,7 +630,7 @@ func isAccountRoleVersionCompatible(tagsList []iamtypes.Tag, roleType string,
 }
 
 func (c *awsClient) ListRoles() ([]iamtypes.Role, error) {
-	roles := []iamtypes.Role{}
+	var roles []iamtypes.Role
 	paginator := iam.NewListRolesPaginator(c.iamClient, &iam.ListRolesInput{})
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(context.TODO())
@@ -994,6 +994,18 @@ func (c *awsClient) ListOperatorRoles(targetVersion string,
 	return operatorMap, nil
 }
 
+func (c *awsClient) ValidateIfRosaOperatorRole(role iamtypes.Role,
+	credRequest map[string]*cmv1.STSOperator) (bool, error) {
+	listRoleTags, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
+		RoleName: role.RoleName,
+	})
+	if err != nil {
+		return false, err
+	}
+	role.Tags = listRoleTags.Tags
+	return checkIfROSAOperatorRole(role, credRequest), nil
+}
+
 // Check if it is one of the ROSA account roles
 func checkIfAccountRole(roleName *string) bool {
 	for _, prefix := range AccountRoles {
@@ -1005,9 +1017,16 @@ func checkIfAccountRole(roleName *string) bool {
 }
 
 // Check if it is one of the ROSA account roles
-func checkIfROSAOperatorRole(roleName *string, credRequest map[string]*cmv1.STSOperator) bool {
+func checkIfROSAOperatorRole(role iamtypes.Role, credRequest map[string]*cmv1.STSOperator) bool {
 	for _, operatorRole := range credRequest {
-		if strings.Contains(aws.ToString(roleName), operatorRole.Namespace()) {
+		for _, tag := range role.Tags {
+			if aws.ToString(tag.Key) == "operator_namespace" {
+				if strings.Contains(aws.ToString(tag.Value), operatorRole.Namespace()) {
+					return true
+				}
+			}
+		}
+		if strings.Contains(aws.ToString(role.RoleName), operatorRole.Namespace()) {
 			return true
 		}
 	}
@@ -1341,15 +1360,20 @@ func (c *awsClient) detachOperatorRolePolicies(role *string) error {
 
 func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 	credRequest map[string]*cmv1.STSOperator) ([]string, error) {
-	roleList := []string{}
+	var roleList []string
 	roles, err := c.ListRoles()
 	if err != nil {
 		return roleList, err
 	}
 	for _, role := range roles {
-		if !checkIfROSAOperatorRole(role.RoleName, credRequest) {
+		isValidOperatorRole, err := c.ValidateIfRosaOperatorRole(role, credRequest)
+		if err != nil {
+			return roleList, err
+		}
+		if !isValidOperatorRole {
 			continue
 		}
+
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(),
 			&iam.ListRoleTagsInput{
 				RoleName: role.RoleName,
@@ -1376,19 +1400,24 @@ func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 
 func (c *awsClient) GetOperatorRolesFromAccountByPrefix(prefix string,
 	credRequest map[string]*cmv1.STSOperator) ([]string, error) {
-	roleList := []string{}
+	var roleList []string
 	roles, err := c.ListRoles()
 	if err != nil {
 		return roleList, err
 	}
 	prefixOperatorRoleRE := regexp.MustCompile(("(?i)" + fmt.Sprintf("(%s)-(openshift|kube-system)", prefix)))
 	for _, role := range roles {
-		if !checkIfROSAOperatorRole(role.RoleName, credRequest) {
+		if !prefixOperatorRoleRE.MatchString(*role.RoleName) {
 			continue
 		}
-		if prefixOperatorRoleRE.MatchString(*role.RoleName) {
-			roleList = append(roleList, aws.ToString(role.RoleName))
+		isValidOperatorRole, err := c.ValidateIfRosaOperatorRole(role, credRequest)
+		if err != nil {
+			return roleList, err
 		}
+		if !isValidOperatorRole {
+			continue
+		}
+		roleList = append(roleList, aws.ToString(role.RoleName))
 	}
 	return roleList, nil
 }
