@@ -502,6 +502,7 @@ var _ = Describe("Account roles with attaching arbitrary policies",
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
 			err                      error
+			roleUrlPrefix            = "https://console.aws.amazon.com/iam/home?#/roles/"
 		)
 
 		BeforeEach(func() {
@@ -605,9 +606,14 @@ var _ = Describe("Account roles with attaching arbitrary policies",
 			for roleName, policyArns := range accountRolePoliciesMap1 {
 				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 				Expect(err).To(BeNil())
-				for _, policyArn := range policyArns {
-					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
-				}
+				Expect(out.String()).To(
+					Or(
+						ContainSubstring(fmt.Sprintf(
+							"Attached policy '%s' to role '%s(%s)'", policyArns[0], roleName, roleUrlPrefix+roleName)),
+						ContainSubstring(fmt.Sprintf(
+							"Attached policy '%s' to role '%s(%s)'", policyArns[1], roleName, roleUrlPrefix+roleName)),
+					),
+				)
 			}
 
 			By("Detach and delete redhat managed policies from worker role")
@@ -631,7 +637,7 @@ var _ = Describe("Account roles with attaching arbitrary policies",
 				for _, policyArn := range policyArns {
 					Expect(out.String()).
 						To(
-							ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+							ContainSubstring("Attached policy '%s' to role '%s(%s)'", policyArn, roleName, roleUrlPrefix+roleName))
 				}
 			}
 			By("Upgrade account-roles in auto mode")
