@@ -17,7 +17,8 @@ limitations under the License.
 package autoscaler
 
 import (
-	"os"
+	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -26,44 +27,54 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var Cmd = &cobra.Command{
-	Use:   "autoscaler",
-	Short: "Delete autoscaler for cluster",
-	Long:  "Delete autoscaler configuration for a given cluster.",
-	Example: `  # Delete the autoscaler config for cluster named "mycluster"
-  rosa delete autoscaler --cluster=mycluster`,
-	Run:  run,
-	Args: cobra.NoArgs,
+const (
+	use     = "autoscaler"
+	short   = "Delete autoscaler for cluster"
+	long    = "Delete autoscaler configuration for a given cluster."
+	example = `  # Delete the autoscaler config for cluster named "mycluster"
+  rosa delete autoscaler --cluster=mycluster`
+)
+
+func NewDeleteAutoscalerCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     use,
+		Short:   short,
+		Long:    long,
+		Example: example,
+		Args:    cobra.NoArgs,
+		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DeleteAutoscalerRunner()),
+	}
+
+	flags := cmd.Flags()
+	ocm.AddClusterFlag(cmd)
+	confirm.AddFlag(flags)
+	return cmd
 }
 
-func init() {
-	ocm.AddClusterFlag(Cmd)
-	confirm.AddFlag(Cmd.Flags())
-}
+func DeleteAutoscalerRunner() rosa.CommandRunner {
+	return func(ctx context.Context, r *rosa.Runtime, _ *cobra.Command, _ []string) error {
+		clusterKey := r.GetClusterKey()
+		cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
+		if err != nil {
+			return err
+		}
 
-func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
+		if cluster.Hypershift().Enabled() {
+			return fmt.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
+		}
 
-	clusterKey := r.GetClusterKey()
-	cluster := r.FetchCluster()
+		if !confirm.Confirm("delete cluster autoscaler?") {
+			return nil
+		}
 
-	if cluster.Hypershift().Enabled() {
-		r.Reporter.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
-		os.Exit(1)
+		r.Reporter.Debugf("Deleting autoscaler for cluster '%s''", clusterKey)
+
+		err = r.OCMClient.DeleteClusterAutoscaler(cluster.ID())
+		if err != nil {
+			return fmt.Errorf("Failed to delete autoscaler configuration for cluster '%s': %s",
+				cluster.ID(), err)
+		}
+		r.Reporter.Infof("Successfully deleted autoscaler configuration for cluster '%s'", cluster.ID())
+		return nil
 	}
-
-	if !confirm.Confirm("delete cluster autoscaler?") {
-		os.Exit(0)
-	}
-
-	r.Reporter.Debugf("Deleting autoscaler for cluster '%s''", clusterKey)
-
-	err := r.OCMClient.DeleteClusterAutoscaler(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed to delete autoscaler configuration for cluster '%s': %s",
-			cluster.ID(), err)
-		os.Exit(1)
-	}
-	r.Reporter.Infof("Successfully deleted autoscaler configuration for cluster '%s'", cluster.ID())
 }

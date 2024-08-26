@@ -62,7 +62,8 @@ func init() {
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
 	Cmd.AddCommand(dnsdomains.Cmd)
-	Cmd.AddCommand(autoscaler.Cmd)
+	autoscalerCommand := autoscaler.NewCreateAutoscalerCommand()
+	Cmd.AddCommand(autoscalerCommand)
 	kubeletConfig := kubeletconfig.NewCreateKubeletConfigCommand()
 	Cmd.AddCommand(kubeletConfig)
 	Cmd.AddCommand(externalauthprovider.Cmd)
@@ -77,7 +78,7 @@ func init() {
 		accountroles.Cmd, operatorroles.Cmd,
 		userrole.Cmd, ocmrole.Cmd,
 		oidcprovider.Cmd, breakglasscredential.Cmd,
-		admin.Cmd, autoscaler.Cmd, dnsdomains.Cmd,
+		admin.Cmd, autoscalerCommand, dnsdomains.Cmd,
 		externalauthprovider.Cmd, idp.Cmd, kubeletConfig, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)

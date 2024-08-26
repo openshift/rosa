@@ -46,8 +46,8 @@ func init() {
 	Cmd.AddCommand(ingress.Cmd)
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
-	autoScaler := autoscaler.NewEditAutoscalerCommand()
-	Cmd.AddCommand(autoScaler)
+	autoscalerCommand := autoscaler.NewEditAutoscalerCommand()
+	Cmd.AddCommand(autoscalerCommand)
 	kubeletConfig := kubeletconfig.NewEditKubeletConfigCommand()
 	Cmd.AddCommand(kubeletConfig)
 
@@ -60,7 +60,7 @@ func init() {
 	machinepoolCommand := machinepool.NewEditMachinePoolCommand()
 	Cmd.AddCommand(machinepoolCommand)
 	globallyAvailableCommands := []*cobra.Command{
-		autoScaler, addon.Cmd,
+		autoscalerCommand, addon.Cmd,
 		service.Cmd, cluster.Cmd,
 		ingress.Cmd, kubeletConfig,
 		machinepoolCommand, tuningconfigs.Cmd,

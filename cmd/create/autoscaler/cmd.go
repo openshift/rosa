@@ -17,7 +17,8 @@ limitations under the License.
 package autoscaler
 
 import (
-	"os"
+	"context"
+	"fmt"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -28,15 +29,13 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-const argsPrefix string = ""
-
-var Cmd = &cobra.Command{
-	Use:     "autoscaler",
-	Aliases: []string{"cluster-autoscaler"},
-	Short:   "Create an autoscaler for a cluster",
-	Long: "Configuring cluster-wide autoscaling behavior. At least one machine-pool should " +
-		"have autoscaling enabled for the configuration to be active",
-	Example: `  # Interactively create an autoscaler to a cluster named "mycluster"
+const (
+	argsPrefix = ""
+	use        = "autoscaler"
+	short      = "Create an autoscaler for a cluster"
+	long       = "Configuring cluster-wide autoscaling behavior. At least one machine-pool should " +
+		"have autoscaling enabled for the configuration to be active"
+	example = `  # Interactively create an autoscaler to a cluster named "mycluster"
   rosa create autoscaler --cluster=mycluster --interactive
 
   # Create a cluster-autoscaler where it should skip nodes with local storage
@@ -46,79 +45,84 @@ var Cmd = &cobra.Command{
   rosa create autoscaler --cluster=mycluster --log-verbosity 3
 
   # Create a cluster-autoscaler with total CPU constraints
-  rosa create autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`,
-	Run:  run,
-	Args: cobra.NoArgs,
-}
+  rosa create autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`
+)
 
-var autoscalerArgs *clusterautoscaler.AutoscalerArgs
+var aliases = []string{"cluster-autoscaler"}
 
-func init() {
-	flags := Cmd.Flags()
+func NewCreateAutoscalerCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     use,
+		Aliases: aliases,
+		Short:   short,
+		Long:    long,
+		Example: example,
+		Args:    cobra.NoArgs,
+	}
+
+	flags := cmd.Flags()
 	flags.SortFlags = false
 
-	ocm.AddClusterFlag(Cmd)
+	ocm.AddClusterFlag(cmd)
 	interactive.AddFlag(flags)
-	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(Cmd, argsPrefix)
+	autoscalerArgs := clusterautoscaler.AddClusterAutoscalerFlags(cmd, argsPrefix)
+	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCM(), CreateAutoscalerRunner(autoscalerArgs))
+	return cmd
 }
 
-func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
-	defer r.Cleanup()
+func CreateAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa.CommandRunner {
+	return func(ctx context.Context, r *rosa.Runtime, command *cobra.Command, _ []string) error {
+		clusterKey := r.GetClusterKey()
+		cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
+		if err != nil {
+			return err
+		}
 
-	clusterKey := r.GetClusterKey()
-	cluster := r.FetchCluster()
+		if cluster.Hypershift().Enabled() {
+			return fmt.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
+		}
 
-	if cluster.Hypershift().Enabled() {
-		r.Reporter.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
-		os.Exit(1)
+		if cluster.State() != cmv1.ClusterStateReady {
+			return fmt.Errorf("Cluster '%s' is not yet ready. Current state is '%s'", clusterKey, cluster.State())
+		}
+
+		autoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
+		if err != nil {
+			return fmt.Errorf("Failed getting autoscaler configuration for cluster '%s': %s",
+				cluster.ID(), err)
+		}
+
+		if autoscaler != nil {
+			return fmt.Errorf("Autoscaler for cluster '%s' already exists. "+
+				"You should edit it via 'rosa edit autoscaler'", clusterKey)
+		}
+
+		if !clusterautoscaler.IsAutoscalerSetViaCLI(command.Flags(), argsPrefix) && !interactive.Enabled() {
+			interactive.Enable()
+			r.Reporter.Infof("Enabling interactive mode")
+		}
+
+		r.Reporter.Debugf("Creating autoscaler for cluster '%s'", clusterKey)
+
+		autoscalerArgs, err := clusterautoscaler.GetAutoscalerOptions(command.Flags(), "", false, autoscalerArgs)
+		if err != nil {
+			return fmt.Errorf("Failed creating autoscaler configuration for cluster '%s': %s",
+				cluster.ID(), err)
+		}
+
+		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(autoscalerArgs)
+		if err != nil {
+			return fmt.Errorf("Failed creating autoscaler configuration for cluster '%s': %s",
+				cluster.ID(), err)
+		}
+
+		_, err = r.OCMClient.CreateClusterAutoscaler(cluster.ID(), autoscalerConfig)
+		if err != nil {
+			return fmt.Errorf("Failed creating autoscaler configuration for cluster '%s': %s",
+				cluster.ID(), err)
+		}
+
+		r.Reporter.Infof("Successfully created autoscaler configuration for cluster '%s'", cluster.ID())
+		return nil
 	}
-
-	if cluster.State() != cmv1.ClusterStateReady {
-		r.Reporter.Errorf("Cluster '%s' is not yet ready. Current state is '%s'", clusterKey, cluster.State())
-		os.Exit(1)
-	}
-
-	autoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
-	if err != nil {
-		r.Reporter.Errorf("Failed getting autoscaler configuration for cluster '%s': %s",
-			cluster.ID(), err)
-		os.Exit(1)
-	}
-
-	if autoscaler != nil {
-		r.Reporter.Errorf("Autoscaler for cluster '%s' already exists. "+
-			"You should edit it via 'rosa edit autoscaler'", clusterKey)
-		os.Exit(1)
-	}
-
-	if !clusterautoscaler.IsAutoscalerSetViaCLI(cmd.Flags(), argsPrefix) && !interactive.Enabled() {
-		interactive.Enable()
-		r.Reporter.Infof("Enabling interactive mode")
-	}
-
-	r.Reporter.Debugf("Creating autoscaler for cluster '%s'", clusterKey)
-
-	autoscalerArgs, err := clusterautoscaler.GetAutoscalerOptions(cmd.Flags(), "", false, autoscalerArgs)
-	if err != nil {
-		r.Reporter.Errorf("Failed creating autoscaler configuration for cluster '%s': %s",
-			cluster.ID(), err)
-		os.Exit(1)
-	}
-
-	autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(autoscalerArgs)
-	if err != nil {
-		r.Reporter.Errorf("Failed creating autoscaler configuration for cluster '%s': %s",
-			cluster.ID(), err)
-		os.Exit(1)
-	}
-
-	_, err = r.OCMClient.CreateClusterAutoscaler(cluster.ID(), autoscalerConfig)
-	if err != nil {
-		r.Reporter.Errorf("Failed creating autoscaler configuration for cluster '%s': %s",
-			cluster.ID(), err)
-		os.Exit(1)
-	}
-
-	r.Reporter.Infof("Successfully created autoscaler configuration for cluster '%s'", cluster.ID())
 }
