@@ -3263,8 +3263,10 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			if oidcConfig != nil {
 				oidcprovider.Cmd.Flags().Set(oidcprovider.OidcConfigIdFlag, oidcConfig.ID())
+			} else {
+				oidcprovider.Cmd.Flags().Set("cluster", clusterName)
 			}
-			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, ""})
+			oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{clusterName, mode, ""})
 		} else {
 			output := ""
 			if len(operatorRoles) == 0 {
