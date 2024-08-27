@@ -550,7 +550,7 @@ var _ = Describe("create operator-roles forcely testing",
 				By("Detach and Delete one operator-role policy,openshift-cluster-csi-drivers-ebs")
 				var deletingPolicyRoleName string
 				for roleName := range rolePolicyMap {
-					if strings.Contains(roleName, "openshift-cluster-csi-drivers-ebs") {
+					if strings.Contains(roleName, "openshift-cluster-csi-driver") {
 						deletingPolicyRoleName = roleName
 						break
 					}

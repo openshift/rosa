@@ -67,6 +67,14 @@ var _ = Describe("Cluster Upgrade testing",
 		})
 
 		It("to upgrade roles/operator-roles and cluster - [id:73731]", labels.Critical, labels.Runtime.Upgrade, func() {
+			By("Skip if the cluster is non-sts")
+			isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).To(BeNil())
+			IsSTS, err := clusterService.IsSTSCluster(clusterID)
+			Expect(err).To(BeNil())
+			if !(isHostedCP || IsSTS) {
+				Skip("Skip this case as it doesn't supports on not-sts clusters")
+			}
 			By("Check the cluster version and compare with the profile to decide if skip this case")
 			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 			Expect(err).To(BeNil())
@@ -273,9 +281,13 @@ var _ = Describe("Cluster Upgrade testing",
 				)
 			}
 			Expect(err).To(BeNil())
-			Expect(output.String()).To(ContainSubstring("are already up-to-date"))
 			Expect(output.String()).To(ContainSubstring("are compatible with upgrade"))
 			Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+			if isHosted {
+				Expect(output.String()).To(ContainSubstring("have attached managed policies. An upgrade isn't needed"))
+			} else {
+				Expect(output.String()).To(ContainSubstring("are already up-to-date"))
+			}
 		})
 
 		It("to upgrade NON-STS rosa cluster across Y stream - [id:37499]", labels.Critical, labels.Runtime.Upgrade, func() {
