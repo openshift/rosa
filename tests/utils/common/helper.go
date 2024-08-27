@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"math/big"
 	"os"
+
+	"github.com/openshift/rosa/tests/utils/common/constants"
 )
 
 func ReadENVWithDefaultValue(envName string, fallback string) string {
@@ -19,4 +21,15 @@ func RandomInt(max int) int {
 		panic(err)
 	}
 	return int(val.Int64())
+}
+
+func GetConsoleUrlBasedOnEnv(ocmApi string) string {
+	switch ocmApi {
+	case constants.StageEnv:
+		return constants.StageURL
+	case constants.ProductionEnv:
+		return constants.ProductionURL
+	default:
+		return ""
+	}
 }

@@ -18,3 +18,10 @@ var JumpAccounts = map[string]string{
 	"production": "710019948333",
 	"staging":    "644306948063",
 }
+
+const (
+	StageURL      = "https://console.dev.redhat.com/openshift/details/s/"
+	ProductionURL = "https://console.redhat.com/openshift/details/s/"
+	StageEnv      = "https://api.stage.openshift.com"
+	ProductionEnv = "https://api.openshift.com"
+)
