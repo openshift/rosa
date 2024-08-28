@@ -25,6 +25,7 @@ type WifGcp struct {
 	impersonatorEmail    string
 	projectId            string
 	projectNumber        string
+	rolePrefix           string
 	serviceAccounts      []*WifServiceAccount
 	workloadIdentityPool *WifPool
 }
@@ -103,13 +104,36 @@ func (o *WifGcp) GetProjectNumber() (value string, ok bool) {
 	return
 }
 
+// RolePrefix returns the value of the 'role_prefix' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Prefix for naming GCP custom roles configured.
+func (o *WifGcp) RolePrefix() string {
+	if o != nil && o.bitmap_&8 != 0 {
+		return o.rolePrefix
+	}
+	return ""
+}
+
+// GetRolePrefix returns the value of the 'role_prefix' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Prefix for naming GCP custom roles configured.
+func (o *WifGcp) GetRolePrefix() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&8 != 0
+	if ok {
+		value = o.rolePrefix
+	}
+	return
+}
+
 // ServiceAccounts returns the value of the 'service_accounts' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The list of service accounts and their associated roles that will need to be
 // configured on the user's GCP project.
 func (o *WifGcp) ServiceAccounts() []*WifServiceAccount {
-	if o != nil && o.bitmap_&8 != 0 {
+	if o != nil && o.bitmap_&16 != 0 {
 		return o.serviceAccounts
 	}
 	return nil
@@ -121,7 +145,7 @@ func (o *WifGcp) ServiceAccounts() []*WifServiceAccount {
 // The list of service accounts and their associated roles that will need to be
 // configured on the user's GCP project.
 func (o *WifGcp) GetServiceAccounts() (value []*WifServiceAccount, ok bool) {
-	ok = o != nil && o.bitmap_&8 != 0
+	ok = o != nil && o.bitmap_&16 != 0
 	if ok {
 		value = o.serviceAccounts
 	}
@@ -134,7 +158,7 @@ func (o *WifGcp) GetServiceAccounts() (value []*WifServiceAccount, ok bool) {
 // The workload identity configuration data that will be used to create the
 // workload identity pool on the user's account.
 func (o *WifGcp) WorkloadIdentityPool() *WifPool {
-	if o != nil && o.bitmap_&16 != 0 {
+	if o != nil && o.bitmap_&32 != 0 {
 		return o.workloadIdentityPool
 	}
 	return nil
@@ -146,7 +170,7 @@ func (o *WifGcp) WorkloadIdentityPool() *WifPool {
 // The workload identity configuration data that will be used to create the
 // workload identity pool on the user's account.
 func (o *WifGcp) GetWorkloadIdentityPool() (value *WifPool, ok bool) {
-	ok = o != nil && o.bitmap_&16 != 0
+	ok = o != nil && o.bitmap_&32 != 0
 	if ok {
 		value = o.workloadIdentityPool
 	}

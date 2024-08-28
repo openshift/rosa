@@ -272,3 +272,22 @@ func MachinePoolRootDiskSizeValidator(version string) Validator {
 		return diskValidator.ValidateMachinePoolRootDiskSize(version, size)
 	}
 }
+
+func NodePoolRootDiskSizeValidator() Validator {
+	return func(val interface{}) error {
+		// We expect GigiByte as the unit for the root volume size
+
+		// Validate the worker root volume size is an integer
+		nodePoolRootDiskSize, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("node pool root disk size must be an string, got %T", nodePoolRootDiskSize)
+		}
+
+		// parse it to validate it is a valid unit
+		size, err := ocm.ParseDiskSizeToGigibyte(nodePoolRootDiskSize)
+		if err != nil {
+			return fmt.Errorf("failed to parse machine pool root disk size '%s': %v", nodePoolRootDiskSize, err)
+		}
+		return diskValidator.ValidateNodePoolRootDiskSize(size)
+	}
+}

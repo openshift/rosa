@@ -127,6 +127,7 @@ type Cluster struct {
 	provisionShard                    *ProvisionShard
 	proxy                             *Proxy
 	region                            *CloudRegion
+	registryConfig                    *ClusterRegistryConfig
 	state                             ClusterState
 	status                            *ClusterStatus
 	storageQuota                      *Value
@@ -1452,12 +1453,35 @@ func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
 	return
 }
 
+// RegistryConfig returns the value of the 'registry_config' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Registry configuration for the cluster
+func (o *Cluster) RegistryConfig() *ClusterRegistryConfig {
+	if o != nil && o.bitmap_&72057594037927936 != 0 {
+		return o.registryConfig
+	}
+	return nil
+}
+
+// GetRegistryConfig returns the value of the 'registry_config' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Registry configuration for the cluster
+func (o *Cluster) GetRegistryConfig() (value *ClusterRegistryConfig, ok bool) {
+	ok = o != nil && o.bitmap_&72057594037927936 != 0
+	if ok {
+		value = o.registryConfig
+	}
+	return
+}
+
 // State returns the value of the 'state' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Overall state of the cluster.
 func (o *Cluster) State() ClusterState {
-	if o != nil && o.bitmap_&72057594037927936 != 0 {
+	if o != nil && o.bitmap_&144115188075855872 != 0 {
 		return o.state
 	}
 	return ClusterState("")
@@ -1468,7 +1492,7 @@ func (o *Cluster) State() ClusterState {
 //
 // Overall state of the cluster.
 func (o *Cluster) GetState() (value ClusterState, ok bool) {
-	ok = o != nil && o.bitmap_&72057594037927936 != 0
+	ok = o != nil && o.bitmap_&144115188075855872 != 0
 	if ok {
 		value = o.state
 	}
@@ -1480,7 +1504,7 @@ func (o *Cluster) GetState() (value ClusterState, ok bool) {
 //
 // Status of cluster
 func (o *Cluster) Status() *ClusterStatus {
-	if o != nil && o.bitmap_&144115188075855872 != 0 {
+	if o != nil && o.bitmap_&288230376151711744 != 0 {
 		return o.status
 	}
 	return nil
@@ -1491,7 +1515,7 @@ func (o *Cluster) Status() *ClusterStatus {
 //
 // Status of cluster
 func (o *Cluster) GetStatus() (value *ClusterStatus, ok bool) {
-	ok = o != nil && o.bitmap_&144115188075855872 != 0
+	ok = o != nil && o.bitmap_&288230376151711744 != 0
 	if ok {
 		value = o.status
 	}
@@ -1503,7 +1527,7 @@ func (o *Cluster) GetStatus() (value *ClusterStatus, ok bool) {
 //
 // Storage quota to be assigned to the cluster.
 func (o *Cluster) StorageQuota() *Value {
-	if o != nil && o.bitmap_&288230376151711744 != 0 {
+	if o != nil && o.bitmap_&576460752303423488 != 0 {
 		return o.storageQuota
 	}
 	return nil
@@ -1514,7 +1538,7 @@ func (o *Cluster) StorageQuota() *Value {
 //
 // Storage quota to be assigned to the cluster.
 func (o *Cluster) GetStorageQuota() (value *Value, ok bool) {
-	ok = o != nil && o.bitmap_&288230376151711744 != 0
+	ok = o != nil && o.bitmap_&576460752303423488 != 0
 	if ok {
 		value = o.storageQuota
 	}
@@ -1527,7 +1551,7 @@ func (o *Cluster) GetStorageQuota() (value *Value, ok bool) {
 // Link to the subscription that comes from the account management service when the cluster
 // is registered.
 func (o *Cluster) Subscription() *Subscription {
-	if o != nil && o.bitmap_&576460752303423488 != 0 {
+	if o != nil && o.bitmap_&1152921504606846976 != 0 {
 		return o.subscription
 	}
 	return nil
@@ -1539,7 +1563,7 @@ func (o *Cluster) Subscription() *Subscription {
 // Link to the subscription that comes from the account management service when the cluster
 // is registered.
 func (o *Cluster) GetSubscription() (value *Subscription, ok bool) {
-	ok = o != nil && o.bitmap_&576460752303423488 != 0
+	ok = o != nil && o.bitmap_&1152921504606846976 != 0
 	if ok {
 		value = o.subscription
 	}
@@ -1551,7 +1575,7 @@ func (o *Cluster) GetSubscription() (value *Subscription, ok bool) {
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
 func (o *Cluster) Version() *Version {
-	if o != nil && o.bitmap_&1152921504606846976 != 0 {
+	if o != nil && o.bitmap_&2305843009213693952 != 0 {
 		return o.version
 	}
 	return nil
@@ -1562,7 +1586,7 @@ func (o *Cluster) Version() *Version {
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
 func (o *Cluster) GetVersion() (value *Version, ok bool) {
-	ok = o != nil && o.bitmap_&1152921504606846976 != 0
+	ok = o != nil && o.bitmap_&2305843009213693952 != 0
 	if ok {
 		value = o.version
 	}

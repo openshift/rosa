@@ -68,33 +68,49 @@ var _ = Describe("Machine pool helper", func() {
 				securityGroupIds,
 				"optional",
 				awsTags,
+				300,
 			)
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(Equal(securityGroupIds))
 			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
 			Expect(awsNodePool.Tags()).To(Equal(awsTags))
+			Expect(awsNodePool.RootVolume().Size()).To(Equal(300))
 		})
 		It("Create AWS node pool with security group IDs when provided", func() {
 			instanceType := "123"
 			securityGroupIds := []string{"123"}
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, securityGroupIds, "optional", map[string]string{})
+			awsNpBuilder := createAwsNodePoolBuilder(
+				instanceType,
+				securityGroupIds,
+				"optional",
+				map[string]string{},
+				300,
+			)
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(Equal(securityGroupIds))
 			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
 			Expect(awsNodePool.Tags()).To(HaveLen(0))
+			Expect(awsNodePool.RootVolume().Size()).To(Equal(300))
 		})
 		It("Create AWS node pool without security group IDs if not provided", func() {
 			instanceType := "123"
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, []string{}, "optional", map[string]string{})
+			awsNpBuilder := createAwsNodePoolBuilder(
+				instanceType,
+				[]string{},
+				"optional",
+				map[string]string{},
+				300,
+			)
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(HaveLen(0))
 			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
 			Expect(awsNodePool.Tags()).To(HaveLen(0))
+			Expect(awsNodePool.RootVolume().Size()).To(Equal(300))
 		})
 	})
 
@@ -390,7 +406,7 @@ var _ = Describe("CreateAwsNodePoolBuilder", func() {
 		awsTags := map[string]string{"env": "test"}
 		httpTokens := "required"
 
-		builder := createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags)
+		builder := createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags, 300)
 		built, err := builder.Build()
 
 		Expect(err).ToNot(HaveOccurred())
@@ -398,6 +414,7 @@ var _ = Describe("CreateAwsNodePoolBuilder", func() {
 		Expect(built.AdditionalSecurityGroupIds()).To(ConsistOf(securityGroupIds))
 		Expect(string(built.Ec2MetadataHttpTokens())).To(Equal(httpTokens))
 		Expect(built.Tags()).To(Equal(awsTags))
+		Expect(built.RootVolume().Size()).To(Equal(300))
 	})
 })
 

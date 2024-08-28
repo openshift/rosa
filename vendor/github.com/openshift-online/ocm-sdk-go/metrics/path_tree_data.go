@@ -371,6 +371,9 @@ var pathTreeData = `{
         "provision_shards": {
           "-": null
         },
+        "registry_allowlists": {
+          "-": null
+        },
         "storage_quota_values": null,
         "trusted_ip_addresses": null,
         "version_gates": {
@@ -583,6 +586,9 @@ var pathTreeData = `{
           }
         },
         "provision_shards": {
+          "-": null
+        },
+        "registry_allowlists": {
           "-": null
         },
         "storage_quota_values": null,

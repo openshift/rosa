@@ -813,7 +813,57 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		return fmt.Errorf("Expected a valid http tokens value : %v", err)
 	}
 
-	npBuilder.AWSNodePool(createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags))
+	var rootDiskSize int
+	_, _, _, _, defaultRootDiskSize, _ :=
+		r.OCMClient.GetDefaultClusterFlavors(cluster.Flavour().ID())
+
+	if args.RootDiskSize != "" || interactive.Enabled() {
+		var rootDiskSizeStr string
+		if args.RootDiskSize == "" {
+			// We don't need to parse the default since it's returned from the OCM API and AWS
+			// always defaults to GiB
+			rootDiskSizeStr = helper.GigybyteStringer(defaultRootDiskSize)
+		} else {
+			rootDiskSizeStr = args.RootDiskSize
+		}
+		if interactive.Enabled() {
+			// In order to avoid confusion, we want to display to the user what was passed as an
+			// argument
+			// Even if it was not valid, we want to display it to the user, then the CLI will show an
+			// error and the value can be corrected
+			// Also, if nothing is given, we want to display the default value fetched from the OCM API
+			rootDiskSizeStr, err = interactive.GetString(interactive.Input{
+				Question: "Root disk size (GiB or TiB)",
+				Help:     cmd.Flags().Lookup("disk-size").Usage,
+				Default:  rootDiskSizeStr,
+				Validators: []interactive.Validator{
+					interactive.NodePoolRootDiskSizeValidator(),
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("Expected a valid node pool root disk size value: %v", err)
+			}
+		}
+
+		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
+		rootDiskSize, err = ocm.ParseDiskSizeToGigibyte(rootDiskSizeStr)
+		if err != nil {
+			return fmt.Errorf("Expected a valid node pool root disk size value '%s': %v", rootDiskSizeStr, err)
+		}
+
+		err = diskValidator.ValidateNodePoolRootDiskSize(rootDiskSize)
+		if err != nil {
+			return err
+		}
+	}
+
+	npBuilder.AWSNodePool(createAwsNodePoolBuilder(
+		instanceType,
+		securityGroupIds,
+		httpTokens,
+		awsTags,
+		238,
+	))
 
 	nodeDrainGracePeriod := args.NodeDrainGracePeriod
 	if interactive.Enabled() {

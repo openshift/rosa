@@ -33,7 +33,9 @@ func (vpc *VPC) TerminateVPCInstances(nonClusterOnly bool) error {
 	keyPairNames := []string{}
 	for _, inst := range insts {
 		needTermination = append(needTermination, *inst.InstanceId)
-		keyPairNames = append(keyPairNames, *inst.KeyName)
+		if inst.KeyName != nil {
+			keyPairNames = append(keyPairNames, *inst.KeyName)
+		}
 	}
 	err = vpc.AWSClient.TerminateInstances(needTermination, true, 20)
 	if err != nil {

@@ -1372,6 +1372,8 @@ var _ = Describe("NodePools", func() {
 			args.KubeletConfigs = "test"
 			args.NodeDrainGracePeriod = "30"
 
+			args.RootDiskSize = "256GB"
+
 			v := cmv1.VersionBuilder{}
 			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
 				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
@@ -1402,6 +1404,11 @@ var _ = Describe("NodePools", func() {
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList(
 				[]*cmv1.KubeletConfig{kubeConfig})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
 			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
@@ -1677,6 +1684,10 @@ func FormatResources(resource interface{}) string {
 	case "*v1.NodePool":
 		if res, ok := resource.(*cmv1.NodePool); ok {
 			err = cmv1.MarshalNodePool(res, &outputJson)
+		}
+	case "*v1.Flavour":
+		if res, ok := resource.(*cmv1.Flavour); ok {
+			err = cmv1.MarshalFlavour(res, &outputJson)
 		}
 	default:
 		{
