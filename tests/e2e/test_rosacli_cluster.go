@@ -1294,6 +1294,19 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
 			})
 
+		It("validate use-local-credentials won't work with sts - [id:76481]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := "ocp-76481"
+
+				By("Create cluster with use-local-credentials flag but with sts")
+				errorOutput, err := clusterService.CreateDryRun(
+					clusterName, "--use-local-credentials", "--sts", "--mode=auto", "-y",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(errorOutput.String()).To(ContainSubstring("Local credentials are not supported for STS clusters"))
+			})
+
 		It("Create rosa cluster with additional security groups will validate well via rosacli - [id:68971]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
