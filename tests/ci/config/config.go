@@ -61,16 +61,17 @@ type GlobalENVVariables struct {
 	OCM_LOGIN_ENV         string `env:"OCM_LOGIN_ENV" default:""`
 }
 type ClusterENVVariables struct {
-	ComputeMachineType string `env:"COMPUTE_MACHINE_TYPE" default:""`
-	BYOVPC             string `env:"BYOVPC" default:""`
-	Private            string `env:"PRIVATE" default:""`
-	Autoscale          string `env:"AUTOSCALE" default:""`
-	ProxyEnabled       string `env:"PROXY_ENABLED" default:""`
-	FipsEnabled        string `env:"FIPS_ENABLED" default:""`
-	VolumeSize         string `env:"VOLUME_SIZE" default:""`
-	Replicas           string `env:"REPLICAS" default:""`
-	MultiAZ            string `env:"MULTI_AZ" default:""`
-	AllowRegistries    string `env:"ALLOW_REGISTRIES" default:""`
+	ComputeMachineType  string `env:"COMPUTE_MACHINE_TYPE" default:""`
+	BYOVPC              string `env:"BYOVPC" default:""`
+	Private             string `env:"PRIVATE" default:""`
+	Autoscale           string `env:"AUTOSCALE" default:""`
+	ProxyEnabled        string `env:"PROXY_ENABLED" default:""`
+	FipsEnabled         string `env:"FIPS_ENABLED" default:""`
+	VolumeSize          string `env:"VOLUME_SIZE" default:""`
+	Replicas            string `env:"REPLICAS" default:""`
+	MultiAZ             string `env:"MULTI_AZ" default:""`
+	AllowRegistries     string `env:"ALLOW_REGISTRIES" default:""`
+	UseLocalCredentials bool   `env:"USE_LOCAL_CREDENTIALS" default:"false"`
 }
 
 func init() {
@@ -120,6 +121,7 @@ func init() {
 		panic(fmt.Errorf("env variable CLUSTER_TIMEOUT must be set to an integer"))
 	}
 	waitSetupClusterReady, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("WAIT_SETUP_CLUSTER_READY", "true"))
+	useLocalCredentials, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("USE_LOCAL_CREDENTIALS", "false"))
 	Test.GlobalENV = &GlobalENVVariables{
 		ChannelGroup:          os.Getenv("CHANNEL_GROUP"),
 		Version:               os.Getenv("VERSION"),
@@ -134,16 +136,17 @@ func init() {
 		WaitSetupClusterReady: waitSetupClusterReady,
 	}
 	Test.ClusterENV = &ClusterENVVariables{
-		ComputeMachineType: os.Getenv("COMPUTE_MACHINE_TYPE"),
-		BYOVPC:             os.Getenv("BYOVPC"),
-		Private:            os.Getenv("PRIVATE"),
-		Autoscale:          os.Getenv("AUTOSCALE"),
-		ProxyEnabled:       os.Getenv("PROXY_ENABLED"),
-		FipsEnabled:        os.Getenv("FIPS_ENABLED"),
-		VolumeSize:         os.Getenv("VOLUME_SIZE"),
-		Replicas:           os.Getenv("REPLICAS"),
-		MultiAZ:            os.Getenv("MULTI_AZ"),
-		AllowRegistries:    os.Getenv("ALLOW_REGISTRIES"),
+		ComputeMachineType:  os.Getenv("COMPUTE_MACHINE_TYPE"),
+		BYOVPC:              os.Getenv("BYOVPC"),
+		Private:             os.Getenv("PRIVATE"),
+		Autoscale:           os.Getenv("AUTOSCALE"),
+		ProxyEnabled:        os.Getenv("PROXY_ENABLED"),
+		FipsEnabled:         os.Getenv("FIPS_ENABLED"),
+		VolumeSize:          os.Getenv("VOLUME_SIZE"),
+		Replicas:            os.Getenv("REPLICAS"),
+		MultiAZ:             os.Getenv("MULTI_AZ"),
+		AllowRegistries:     os.Getenv("ALLOW_REGISTRIES"),
+		UseLocalCredentials: useLocalCredentials,
 	}
 
 }
