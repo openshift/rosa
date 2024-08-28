@@ -5,7 +5,6 @@
 //
 //	mockgen -source=retriever.go -package=version -destination=./retriever_mock.go
 //
-
 // Package version is a generated GoMock package.
 package version
 

@@ -2,7 +2,6 @@ package machinepool
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -12,13 +11,33 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/interactive"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+// Parse labels if the 'labels' flag is set
+func ValidateLabels(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions) error {
+	if cmd.Flags().Changed("labels") {
+		if _, err := mpHelpers.ParseLabels(args.Labels); err != nil {
+			return fmt.Errorf("%s", err)
+		}
+	}
+	return nil
+}
+
+// Validate the cluster's state is ready
+func ValidateClusterState(cluster *cmv1.Cluster, clusterKey string) error {
+	if cluster.State() != cmv1.ClusterStateReady {
+		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+	}
+	return nil
+}
+
 func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
-	cluster *cmv1.Cluster, args MachinePoolArgs) string {
+	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
 	var selectSubnet bool
 	var subnet string
 	var err error
@@ -39,8 +58,7 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf(questionError)
-			os.Exit(1)
+			return "", fmt.Errorf(questionError)
 		}
 	} else {
 		subnet = args.Subnet
@@ -49,8 +67,7 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 	if selectSubnet {
 		subnetOptions, err := getSubnetOptions(r, cluster)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return "", err
 		}
 
 		subnetOption, err := interactive.GetOption(interactive.Input{
@@ -61,13 +78,12 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 			Required: true,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid AWS subnet: %s", err)
-			os.Exit(1)
+			return "", fmt.Errorf("Expected a valid AWS subnet: %s", err)
 		}
 		subnet = aws.ParseOption(subnetOption)
 	}
 
-	return subnet
+	return subnet, nil
 }
 
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
@@ -217,7 +233,7 @@ func spotMaxPriceValidator(val interface{}) error {
 }
 
 func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvailabilityZoneSet bool,
-	cluster *cmv1.Cluster, args MachinePoolArgs) (string, error) {
+	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
 
 	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
 	if err != nil {
@@ -262,7 +278,10 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 		}
 		r.Reporter.Infof("There are several subnets for availability zone '%s'", availabilityZone)
 		interactive.Enable()
-		subnet := getSubnetFromUser(cmd, r, false, cluster, args)
+		subnet, err := getSubnetFromUser(cmd, r, false, cluster, args)
+		if err != nil {
+			return "", err
+		}
 		return subnet, nil
 	}
 

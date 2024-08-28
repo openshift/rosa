@@ -5,7 +5,6 @@
 //
 //	mockgen -source=version.go -package=version -destination=./version_mock.go
 //
-
 // Package version is a generated GoMock package.
 package version
 
