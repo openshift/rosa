@@ -4128,24 +4128,27 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 
 func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 	isHostedCP bool, defaultMachinePoolRootDiskSize int) (machinePoolRootDisk *ocm.Volume, err error) {
-
-	isVersionCompatibleMachinePoolRootDisk, err := versions.IsGreaterThanOrEqual(
-		version, ocm.MinVersionForMachinePoolRootDisk)
-	if err != nil {
-		return nil, fmt.Errorf("There was a problem checking version compatibility: %v", err)
-	}
-	if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
-		formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
+	var isVersionCompatibleMachinePoolRootDisk bool
+	if !isHostedCP {
+		isVersionCompatibleMachinePoolRootDisk, err = versions.IsGreaterThanOrEqual(
+			version, ocm.MinVersionForMachinePoolRootDisk)
 		if err != nil {
-			r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
-			os.Exit(1)
+			return nil, fmt.Errorf("There was a problem checking version compatibility: %v", err)
 		}
-		return nil, fmt.Errorf(
-			"Updating Worker disk size is not supported for versions prior to '%s'",
-			formattedVersion,
-		)
+		if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
+			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
+			if err != nil {
+				r.Reporter.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
+				os.Exit(1)
+			}
+			return nil, fmt.Errorf(
+				"Updating Worker disk size is not supported for versions prior to '%s'",
+				formattedVersion,
+			)
+		}
 	}
-	if isVersionCompatibleMachinePoolRootDisk && !isHostedCP &&
+
+	if (isVersionCompatibleMachinePoolRootDisk || isHostedCP) &&
 		(args.machinePoolRootDiskSize != "" || interactive.Enabled()) {
 		var machinePoolRootDiskSizeStr string
 		if args.machinePoolRootDiskSize == "" {
@@ -4161,14 +4164,25 @@ func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 			// Even if it was not valid, we want to display it to the user, then the CLI will show an
 			// error and the value can be corrected
 			// Also, if nothing is given, we want to display the default value fetched from the OCM API
-			machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
-				Question: "Machine pool root disk size (GiB or TiB)",
-				Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
-				Default:  machinePoolRootDiskSizeStr,
-				Validators: []interactive.Validator{
-					interactive.MachinePoolRootDiskSizeValidator(version),
-				},
-			})
+			if isHostedCP {
+				machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
+					Question: "Machine pool root disk size (GiB or TiB)",
+					Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
+					Default:  machinePoolRootDiskSizeStr,
+					Validators: []interactive.Validator{
+						interactive.NodePoolRootDiskSizeValidator(),
+					},
+				})
+			} else {
+				machinePoolRootDiskSizeStr, err = interactive.GetString(interactive.Input{
+					Question: "Machine pool root disk size (GiB or TiB)",
+					Help:     cmd.Flags().Lookup(workerDiskSizeFlag).Usage,
+					Default:  machinePoolRootDiskSizeStr,
+					Validators: []interactive.Validator{
+						interactive.MachinePoolRootDiskSizeValidator(version),
+					},
+				})
+			}
 			if err != nil {
 				return nil, fmt.Errorf("Expected a valid machine pool root disk size value: %v", err)
 			}
@@ -4182,7 +4196,11 @@ func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 
 		}
 
-		err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
+		if isHostedCP {
+			err = diskValidator.ValidateNodePoolRootDiskSize(machinePoolRootDiskSize)
+		} else {
+			err = diskValidator.ValidateMachinePoolRootDiskSize(version, machinePoolRootDiskSize)
+		}
 		if err != nil {
 			return nil, err
 		}

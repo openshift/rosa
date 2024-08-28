@@ -17,7 +17,7 @@ import (
 
 	"github.com/openshift-online/ocm-common/pkg/log"
 
-	elb "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing"
+	elb "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 
 	CON "github.com/openshift-online/ocm-common/pkg/aws/consts"

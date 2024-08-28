@@ -115,6 +115,7 @@ type ClusterBuilder struct {
 	provisionShard                    *ProvisionShardBuilder
 	proxy                             *ProxyBuilder
 	region                            *CloudRegionBuilder
+	registryConfig                    *ClusterRegistryConfigBuilder
 	state                             ClusterState
 	status                            *ClusterStatusBuilder
 	storageQuota                      *ValueBuilder
@@ -716,12 +717,41 @@ func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 	return b
 }
 
+// RegistryConfig sets the value of the 'registry_config' attribute to the given value.
+//
+// ClusterRegistryConfig describes the configuration of registries for the cluster.
+// Its format reflects the OpenShift Image Configuration, for which docs are available on
+// [docs.openshift.com](https://docs.openshift.com/container-platform/4.16/openshift_images/image-configuration.html)
+// ```json
+//
+//	{
+//	   "registry_config": {
+//	     "registry_sources": {
+//	       "blocked_registries": [
+//	         "badregistry.io",
+//	         "badregistry8.io"
+//	       ]
+//	     }
+//	   }
+//	}
+//
+// ```
+func (b *ClusterBuilder) RegistryConfig(value *ClusterRegistryConfigBuilder) *ClusterBuilder {
+	b.registryConfig = value
+	if value != nil {
+		b.bitmap_ |= 72057594037927936
+	} else {
+		b.bitmap_ &^= 72057594037927936
+	}
+	return b
+}
+
 // State sets the value of the 'state' attribute to the given value.
 //
 // Overall state of a cluster.
 func (b *ClusterBuilder) State(value ClusterState) *ClusterBuilder {
 	b.state = value
-	b.bitmap_ |= 72057594037927936
+	b.bitmap_ |= 144115188075855872
 	return b
 }
 
@@ -731,9 +761,9 @@ func (b *ClusterBuilder) State(value ClusterState) *ClusterBuilder {
 func (b *ClusterBuilder) Status(value *ClusterStatusBuilder) *ClusterBuilder {
 	b.status = value
 	if value != nil {
-		b.bitmap_ |= 144115188075855872
+		b.bitmap_ |= 288230376151711744
 	} else {
-		b.bitmap_ &^= 144115188075855872
+		b.bitmap_ &^= 288230376151711744
 	}
 	return b
 }
@@ -761,9 +791,9 @@ func (b *ClusterBuilder) Status(value *ClusterStatusBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) StorageQuota(value *ValueBuilder) *ClusterBuilder {
 	b.storageQuota = value
 	if value != nil {
-		b.bitmap_ |= 288230376151711744
+		b.bitmap_ |= 576460752303423488
 	} else {
-		b.bitmap_ &^= 288230376151711744
+		b.bitmap_ &^= 576460752303423488
 	}
 	return b
 }
@@ -774,9 +804,9 @@ func (b *ClusterBuilder) StorageQuota(value *ValueBuilder) *ClusterBuilder {
 func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilder {
 	b.subscription = value
 	if value != nil {
-		b.bitmap_ |= 576460752303423488
+		b.bitmap_ |= 1152921504606846976
 	} else {
-		b.bitmap_ &^= 576460752303423488
+		b.bitmap_ &^= 1152921504606846976
 	}
 	return b
 }
@@ -787,9 +817,9 @@ func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilde
 func (b *ClusterBuilder) Version(value *VersionBuilder) *ClusterBuilder {
 	b.version = value
 	if value != nil {
-		b.bitmap_ |= 1152921504606846976
+		b.bitmap_ |= 2305843009213693952
 	} else {
-		b.bitmap_ &^= 1152921504606846976
+		b.bitmap_ &^= 2305843009213693952
 	}
 	return b
 }
@@ -1001,6 +1031,11 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.region = NewCloudRegion().Copy(object.region)
 	} else {
 		b.region = nil
+	}
+	if object.registryConfig != nil {
+		b.registryConfig = NewClusterRegistryConfig().Copy(object.registryConfig)
+	} else {
+		b.registryConfig = nil
 	}
 	b.state = object.state
 	if object.status != nil {
@@ -1261,6 +1296,12 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 	}
 	if b.region != nil {
 		object.region, err = b.region.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.registryConfig != nil {
+		object.registryConfig, err = b.registryConfig.Build()
 		if err != nil {
 			return
 		}

@@ -68,6 +68,7 @@ var _ = Describe("Machine pool helper", func() {
 				securityGroupIds,
 				"optional",
 				awsTags,
+				nil,
 			)
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
@@ -79,7 +80,13 @@ var _ = Describe("Machine pool helper", func() {
 			instanceType := "123"
 			securityGroupIds := []string{"123"}
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, securityGroupIds, "optional", map[string]string{})
+			awsNpBuilder := createAwsNodePoolBuilder(
+				instanceType,
+				securityGroupIds,
+				"optional",
+				map[string]string{},
+				nil,
+			)
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(Equal(securityGroupIds))
@@ -89,12 +96,36 @@ var _ = Describe("Machine pool helper", func() {
 		It("Create AWS node pool without security group IDs if not provided", func() {
 			instanceType := "123"
 
-			awsNpBuilder := createAwsNodePoolBuilder(instanceType, []string{}, "optional", map[string]string{})
+			awsNpBuilder := createAwsNodePoolBuilder(
+				instanceType,
+				[]string{},
+				"optional",
+				map[string]string{},
+				nil,
+			)
 			awsNodePool, err := awsNpBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(HaveLen(0))
 			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
 			Expect(awsNodePool.Tags()).To(HaveLen(0))
+		})
+		It("Create AWS node pool with aws tags when provided", func() {
+			instanceType := "123"
+			securityGroupIds := []string{"123"}
+			npSize := 300
+
+			awsNpBuilder := createAwsNodePoolBuilder(
+				instanceType,
+				securityGroupIds,
+				"optional",
+				map[string]string{},
+				&npSize,
+			)
+			awsNodePool, err := awsNpBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(awsNodePool.AdditionalSecurityGroupIds()).To(Equal(securityGroupIds))
+			Expect(awsNodePool.InstanceType()).To(Equal(instanceType))
+			Expect(awsNodePool.RootVolume().Size()).To(Equal(300))
 		})
 	})
 
@@ -389,8 +420,9 @@ var _ = Describe("CreateAwsNodePoolBuilder", func() {
 		securityGroupIds := []string{"sg-12345"}
 		awsTags := map[string]string{"env": "test"}
 		httpTokens := "required"
+		size := 300
 
-		builder := createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags)
+		builder := createAwsNodePoolBuilder(instanceType, securityGroupIds, httpTokens, awsTags, &size)
 		built, err := builder.Build()
 
 		Expect(err).ToNot(HaveOccurred())
@@ -398,6 +430,7 @@ var _ = Describe("CreateAwsNodePoolBuilder", func() {
 		Expect(built.AdditionalSecurityGroupIds()).To(ConsistOf(securityGroupIds))
 		Expect(string(built.Ec2MetadataHttpTokens())).To(Equal(httpTokens))
 		Expect(built.Tags()).To(Equal(awsTags))
+		Expect(built.RootVolume().Size()).To(Equal(300))
 	})
 })
 

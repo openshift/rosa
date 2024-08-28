@@ -289,6 +289,37 @@ func (client *AWSClient) GetInstancesByInfraID(infraID string) ([]types.Instance
 	return instances, err
 }
 
+// GetInstancesByNodePoolID will return the instances with tag tag:api.openshift.com/nodepool-ocm:<nodepool_id>
+func (client *AWSClient) GetInstancesByNodePoolID(nodePoolID string, clusterID string) ([]types.Instance, error) {
+	filter1 := types.Filter{
+		Name: aws.String("tag:api.openshift.com/nodepool-ocm"),
+		Values: []string{
+			nodePoolID,
+		},
+	}
+	filter2 := types.Filter{
+		Name: aws.String("tag:api.openshift.com/id"),
+		Values: []string{
+			clusterID,
+		},
+	}
+	output, err := client.Ec2Client.DescribeInstances(context.TODO(), &ec2.DescribeInstancesInput{
+		Filters: []types.Filter{
+			filter1,
+			filter2,
+		},
+		MaxResults: aws.Int32(100),
+	})
+	if err != nil {
+		return nil, err
+	}
+	var instances []types.Instance
+	for _, reservation := range output.Reservations {
+		instances = append(instances, reservation.Instances...)
+	}
+	return instances, err
+}
+
 func (client *AWSClient) ListAvaliableRegionsFromAWS() ([]types.Region, error) {
 	optInStatus := "opt-in-status"
 	optInNotRequired := "opt-in-not-required"

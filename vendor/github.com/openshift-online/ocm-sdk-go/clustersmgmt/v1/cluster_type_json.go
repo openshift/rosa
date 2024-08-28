@@ -588,7 +588,16 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = object.bitmap_&72057594037927936 != 0
+	present_ = object.bitmap_&72057594037927936 != 0 && object.registryConfig != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("registry_config")
+		writeClusterRegistryConfig(object.registryConfig, stream)
+		count++
+	}
+	present_ = object.bitmap_&144115188075855872 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -597,7 +606,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(string(object.state))
 		count++
 	}
-	present_ = object.bitmap_&144115188075855872 != 0 && object.status != nil
+	present_ = object.bitmap_&288230376151711744 != 0 && object.status != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -606,7 +615,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeClusterStatus(object.status, stream)
 		count++
 	}
-	present_ = object.bitmap_&288230376151711744 != 0 && object.storageQuota != nil
+	present_ = object.bitmap_&576460752303423488 != 0 && object.storageQuota != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -615,7 +624,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeValue(object.storageQuota, stream)
 		count++
 	}
-	present_ = object.bitmap_&576460752303423488 != 0 && object.subscription != nil
+	present_ = object.bitmap_&1152921504606846976 != 0 && object.subscription != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -624,7 +633,7 @@ func writeCluster(object *Cluster, stream *jsoniter.Stream) {
 		writeSubscription(object.subscription, stream)
 		count++
 	}
-	present_ = object.bitmap_&1152921504606846976 != 0 && object.version != nil
+	present_ = object.bitmap_&2305843009213693952 != 0 && object.version != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -1033,27 +1042,31 @@ func readCluster(iterator *jsoniter.Iterator) *Cluster {
 			value := readCloudRegion(iterator)
 			object.region = value
 			object.bitmap_ |= 36028797018963968
+		case "registry_config":
+			value := readClusterRegistryConfig(iterator)
+			object.registryConfig = value
+			object.bitmap_ |= 72057594037927936
 		case "state":
 			text := iterator.ReadString()
 			value := ClusterState(text)
 			object.state = value
-			object.bitmap_ |= 72057594037927936
+			object.bitmap_ |= 144115188075855872
 		case "status":
 			value := readClusterStatus(iterator)
 			object.status = value
-			object.bitmap_ |= 144115188075855872
+			object.bitmap_ |= 288230376151711744
 		case "storage_quota":
 			value := readValue(iterator)
 			object.storageQuota = value
-			object.bitmap_ |= 288230376151711744
+			object.bitmap_ |= 576460752303423488
 		case "subscription":
 			value := readSubscription(iterator)
 			object.subscription = value
-			object.bitmap_ |= 576460752303423488
+			object.bitmap_ |= 1152921504606846976
 		case "version":
 			value := readVersion(iterator)
 			object.version = value
-			object.bitmap_ |= 1152921504606846976
+			object.bitmap_ |= 2305843009213693952
 		default:
 			iterator.ReadAny()
 		}

@@ -25,6 +25,7 @@ type WifGcpBuilder struct {
 	impersonatorEmail    string
 	projectId            string
 	projectNumber        string
+	rolePrefix           string
 	serviceAccounts      []*WifServiceAccountBuilder
 	workloadIdentityPool *WifPoolBuilder
 }
@@ -60,11 +61,18 @@ func (b *WifGcpBuilder) ProjectNumber(value string) *WifGcpBuilder {
 	return b
 }
 
+// RolePrefix sets the value of the 'role_prefix' attribute to the given value.
+func (b *WifGcpBuilder) RolePrefix(value string) *WifGcpBuilder {
+	b.rolePrefix = value
+	b.bitmap_ |= 8
+	return b
+}
+
 // ServiceAccounts sets the value of the 'service_accounts' attribute to the given values.
 func (b *WifGcpBuilder) ServiceAccounts(values ...*WifServiceAccountBuilder) *WifGcpBuilder {
 	b.serviceAccounts = make([]*WifServiceAccountBuilder, len(values))
 	copy(b.serviceAccounts, values)
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
@@ -72,9 +80,9 @@ func (b *WifGcpBuilder) ServiceAccounts(values ...*WifServiceAccountBuilder) *Wi
 func (b *WifGcpBuilder) WorkloadIdentityPool(value *WifPoolBuilder) *WifGcpBuilder {
 	b.workloadIdentityPool = value
 	if value != nil {
-		b.bitmap_ |= 16
+		b.bitmap_ |= 32
 	} else {
-		b.bitmap_ &^= 16
+		b.bitmap_ &^= 32
 	}
 	return b
 }
@@ -88,6 +96,7 @@ func (b *WifGcpBuilder) Copy(object *WifGcp) *WifGcpBuilder {
 	b.impersonatorEmail = object.impersonatorEmail
 	b.projectId = object.projectId
 	b.projectNumber = object.projectNumber
+	b.rolePrefix = object.rolePrefix
 	if object.serviceAccounts != nil {
 		b.serviceAccounts = make([]*WifServiceAccountBuilder, len(object.serviceAccounts))
 		for i, v := range object.serviceAccounts {
@@ -111,6 +120,7 @@ func (b *WifGcpBuilder) Build() (object *WifGcp, err error) {
 	object.impersonatorEmail = b.impersonatorEmail
 	object.projectId = b.projectId
 	object.projectNumber = b.projectNumber
+	object.rolePrefix = b.rolePrefix
 	if b.serviceAccounts != nil {
 		object.serviceAccounts = make([]*WifServiceAccount, len(b.serviceAccounts))
 		for i, v := range b.serviceAccounts {
