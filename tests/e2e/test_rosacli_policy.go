@@ -29,6 +29,7 @@ var _ = Describe("Attach and Detach arbitrary policies",
 			awsClient                *aws_client.AWSClient
 			err                      error
 			profile                  *ph.Profile
+			roleUrlPrefix            = "https://console.aws.amazon.com/iam/home?#/roles/"
 		)
 
 		BeforeEach(func() {
@@ -99,7 +100,8 @@ var _ = Describe("Attach and Detach arbitrary policies",
 					out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 					Expect(err).To(BeNil())
 					for _, policyArn := range policyArns {
-						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+							policyArn, roleName, roleUrlPrefix+roleName))
 					}
 
 				}
@@ -116,7 +118,8 @@ var _ = Describe("Attach and Detach arbitrary policies",
 					out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 					Expect(err).To(BeNil())
 					for _, policyArn := range policyArns {
-						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+							policyArn, roleName, roleUrlPrefix+roleName))
 					}
 
 				}
@@ -209,7 +212,8 @@ var _ = Describe("Attach and Detach arbitrary policies",
 					out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 					Expect(err).To(BeNil())
 					for _, policyArn := range policyArns {
-						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+							policyArn, roleName, roleUrlPrefix+roleName))
 					}
 
 				}
@@ -218,7 +222,8 @@ var _ = Describe("Attach and Detach arbitrary policies",
 					out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 					Expect(err).To(BeNil())
 					for _, policyArn := range policyArns {
-						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+						Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+							policyArn, roleName, roleUrlPrefix+roleName))
 					}
 
 				}
@@ -681,6 +686,7 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 			err                      error
 			managedOIDCConfigID      string
 			ocmResourceService       rosacli.OCMResourceService
+			roleUrlPrefix            = "https://console.aws.amazon.com/iam/home?#/roles/"
 		)
 
 		BeforeEach(func() {
@@ -845,14 +851,16 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 				Expect(err).To(BeNil())
 				for _, policyArn := range policyArns {
-					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+						policyArn, roleName, roleUrlPrefix+roleName))
 				}
 			}
 			for roleName, policyArns := range operatorRolePoliciesMap2 {
 				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 				Expect(err).To(BeNil())
 				for _, policyArn := range policyArns {
-					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+						policyArn, roleName, roleUrlPrefix+roleName))
 				}
 			}
 
@@ -867,7 +875,8 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 				out, err := arbitraryPolicyService.AttachPolicy(roleName, policyArns, "--mode", "auto")
 				Expect(err).To(BeNil())
 				for _, policyArn := range policyArns {
-					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s'", policyArn, roleName))
+					Expect(out.String()).To(ContainSubstring("Attached policy '%s' to role '%s(%s)'",
+						policyArn, roleName, roleUrlPrefix+roleName))
 				}
 			}
 		})
