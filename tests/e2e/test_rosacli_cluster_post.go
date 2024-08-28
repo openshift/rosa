@@ -587,6 +587,14 @@ var _ = Describe("Healthy check",
 						Expect(jsonData.DigBool("multi_arch_enabled")).To(BeFalse())
 					}
 				})
+			It("with use-local-credentials will work - [id:65900]", labels.Runtime.Day1Post, labels.High,
+				func() {
+					By("Check that the 'use_local_credentials' property matches the profile")
+					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(jsonData.DigBool("properties", "use_local_credentials")).
+						To(Equal(profile.ClusterConfig.UseLocalCredentials))
+				})
 
 			It("with policy path will work - [id:75525]", labels.Runtime.Day1Post, labels.High,
 				func() {
