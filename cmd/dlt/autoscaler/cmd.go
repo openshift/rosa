@@ -35,9 +35,12 @@ const (
   rosa delete autoscaler --cluster=mycluster`
 )
 
+var aliases = []string{"cluster-autoscaler"}
+
 func NewDeleteAutoscalerCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     use,
+		Aliases: aliases,
 		Short:   short,
 		Long:    long,
 		Example: example,

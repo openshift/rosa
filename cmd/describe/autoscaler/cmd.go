@@ -20,9 +20,12 @@ const (
 rosa describe autoscaler --cluster foo`
 )
 
+var aliases = []string{"cluster-autoscaler"}
+
 func NewDescribeAutoscalerCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     use,
+		Aliases: aliases,
 		Short:   short,
 		Long:    long,
 		Example: example,
