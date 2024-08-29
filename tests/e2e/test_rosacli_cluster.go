@@ -1493,10 +1493,10 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(output.String()).To(ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
 			})
 
-		It("to validate creating a hosted cluster with invalid subnets - [id:72657]",
+		It("to validate creating a hosted cluster with invalid subnets - [id:75916]",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
-				clusterName := "ocp-72657"
+				clusterName := "ocp-75916"
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
