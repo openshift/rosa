@@ -338,14 +338,14 @@ func GetAutoscalerOptions(
 			Default:  result.LogVerbosity,
 			Required: false,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err := ocm.NonNegativeIntValidator(result.LogVerbosity); err != nil {
+	if err := ocm.NonNegativeInt32Validator(result.LogVerbosity); err != nil {
 		return nil, fmt.Errorf("Error validating log-verbosity: %s", err)
 	}
 
@@ -408,14 +408,14 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.MaxPodGracePeriod,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err := ocm.NonNegativeIntValidator(result.MaxPodGracePeriod); err != nil {
+	if err := ocm.NonNegativeInt32Validator(result.MaxPodGracePeriod); err != nil {
 		return nil, fmt.Errorf("Error validating max-pod-grace-period: %s", err)
 	}
 
@@ -426,7 +426,7 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.PodPriorityThreshold,
 			Validators: []interactive.Validator{
-				ocm.IntValidator,
+				ocm.Int32Validator,
 			},
 		})
 		if err != nil {
@@ -441,14 +441,14 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.ResourceLimits.MaxNodesTotal,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err := ocm.NonNegativeIntValidator(result.ResourceLimits.MaxNodesTotal); err != nil {
+	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.MaxNodesTotal); err != nil {
 		return nil, fmt.Errorf("Error validating max-nodes-total: %s", err)
 	}
 
@@ -459,14 +459,14 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.ResourceLimits.Cores.Min,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err = ocm.NonNegativeIntValidator(result.ResourceLimits.Cores.Min); err != nil {
+	if err = ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Min); err != nil {
 		return nil, fmt.Errorf("Error validating min-cores: %s", err)
 	}
 
@@ -477,7 +477,7 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.ResourceLimits.Cores.Max,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 				getValidMaxRangeValidator(result.ResourceLimits.Cores.Min),
 			},
 		})
@@ -485,7 +485,7 @@ func GetAutoscalerOptions(
 			return nil, err
 		}
 	}
-	if err := ocm.NonNegativeIntValidator(result.ResourceLimits.Cores.Max); err != nil {
+	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Max); err != nil {
 		return nil, fmt.Errorf("Error validating max-cores: %s", err)
 	}
 
@@ -500,14 +500,14 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.ResourceLimits.Memory.Min,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err := ocm.NonNegativeIntValidator(result.ResourceLimits.Memory.Min); err != nil {
+	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Min); err != nil {
 		return nil, fmt.Errorf("Error validating min-memory: %s", err)
 	}
 
@@ -518,7 +518,7 @@ func GetAutoscalerOptions(
 			Required: false,
 			Default:  result.ResourceLimits.Memory.Max,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 				getValidMaxRangeValidator(result.ResourceLimits.Memory.Min),
 			},
 		})
@@ -526,7 +526,7 @@ func GetAutoscalerOptions(
 			return nil, err
 		}
 	}
-	if err := ocm.NonNegativeIntValidator(result.ResourceLimits.Memory.Max); err != nil {
+	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Max); err != nil {
 		return nil, fmt.Errorf("Error validating max-memory: %s", err)
 	}
 
@@ -542,7 +542,7 @@ func GetAutoscalerOptions(
 			Default:  0,
 			Required: false,
 			Validators: []interactive.Validator{
-				ocm.NonNegativeIntValidator,
+				ocm.NonNegativeInt32Validator,
 			},
 		})
 
@@ -566,7 +566,7 @@ func GetAutoscalerOptions(
 				Help: "An integer stating the minimum number of GPUs of the given type to deploy in the cluster. " +
 					"Must always be smaller than or equal to the maximal value.",
 				Validators: []interactive.Validator{
-					ocm.NonNegativeIntValidator,
+					ocm.NonNegativeInt32Validator,
 				},
 			})
 
@@ -579,7 +579,7 @@ func GetAutoscalerOptions(
 				Help: "An integer stating the maximum number of GPUs of the given type to deploy in the cluster. " +
 					"Must always be smaller than or equal to the maximal value.",
 				Validators: []interactive.Validator{
-					ocm.NonNegativeIntValidator,
+					ocm.NonNegativeInt32Validator,
 					getValidMaxRangeValidator(gpuLimitMin),
 				},
 			})
