@@ -8,41 +8,49 @@ import (
 var _ = Describe("Input Validators", Ordered, func() {
 	Context("int validator", func() {
 		It("succeeds if got an empty string", func() {
-			Expect(IntValidator("")).To(BeNil())
+			Expect(Int32Validator("")).To(BeNil())
 		})
 
 		It("raises an error if it fails to parse the input into an integer", func() {
-			Expect(IntValidator("something")).ToNot(BeNil())
+			Expect(Int32Validator("something")).ToNot(BeNil())
 		})
 
 		It("raises an error if it got a float", func() {
-			Expect(IntValidator("1.0")).ToNot(BeNil())
+			Expect(Int32Validator("1.0")).ToNot(BeNil())
+		})
+
+		It("raises an error if it got an integer out of range", func() {
+			Expect(Int32Validator("1152000000000")).ToNot(BeNil())
 		})
 
 		It("successfully parses an input that contains an integer", func() {
-			Expect(IntValidator("1")).To(BeNil())
+			Expect(Int32Validator("1")).To(BeNil())
 		})
 	})
 
 	Context("non-negative int validator", func() {
 		It("succeeds if got an empty string", func() {
-			Expect(NonNegativeIntValidator("")).To(BeNil())
+			Expect(NonNegativeInt32Validator("")).To(BeNil())
 		})
 
 		It("raises an error if it fails to parse the input into an integer", func() {
-			Expect(NonNegativeIntValidator("something")).ToNot(BeNil())
+			Expect(NonNegativeInt32Validator("something")).ToNot(BeNil())
 		})
 
 		It("raises an error if it got a float", func() {
-			Expect(NonNegativeIntValidator("1.0")).ToNot(BeNil())
+			Expect(NonNegativeInt32Validator("1.0")).ToNot(BeNil())
+		})
+
+		It("raises an error if it got an integer out of range", func() {
+			Expect(NonNegativeInt32Validator("1152000000000")).ToNot(BeNil())
 		})
 
 		It("raises an error if it got a negative number", func() {
-			Expect(NonNegativeIntValidator("-1")).ToNot(BeNil())
+			Expect(NonNegativeInt32Validator("-1")).ToNot(BeNil())
 		})
 
 		It("successfully parses an input that contains an integer", func() {
-			Expect(NonNegativeIntValidator("1")).To(BeNil())
+			Expect(NonNegativeInt32Validator("1")).To(BeNil())
 		})
 	})
 
