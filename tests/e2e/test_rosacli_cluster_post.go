@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	nets "net/http"
-	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -574,13 +573,13 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
 
 				By("Get oidc endpoint URL from cluster detail json file")
-				clusterDetail, err := profilehandler.ParserClusterDetail()
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				oidcEndpointUrlC = clusterDetail.OIDCEndpointURL
-				parsedUrl, err := url.Parse(oidcEndpointUrlC)
 				Expect(err).To(BeNil())
-				oidcEndpointUrl := parsedUrl.String()
-				_, err = common.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrl)
+				_, err = common.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrlC)
 				Expect(err).To(BeNil())
 
 				By("Check the cluster is deleted")
