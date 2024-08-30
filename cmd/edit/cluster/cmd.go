@@ -57,6 +57,14 @@ var args struct {
 
 	// Other options
 	additionalAllowedPrincipals []string
+
+	// Configurable registry
+	insecureRegistries         []string
+	blockedRegistries          []string
+	allowedRegistries          []string
+	allowedRegistriesForImport []string
+	// additionalTrustedCa        string
+	// platformAllowList
 }
 
 var Cmd = &cobra.Command{
@@ -163,6 +171,35 @@ func init() {
 			"to be added to the Hosted Control Plane's VPC Endpoint Service to enable additional "+
 			"VPC Endpoint connection requests to be automatically accepted.",
 	)
+
+	flags.StringSliceVar(
+		&args.insecureRegistries,
+		"insecure-registries",
+		nil,
+		"A comma-separated list of registries which do not have a valid TLS certificate or only support HTTP connections.",
+	)
+
+	flags.StringSliceVar(
+		&args.blockedRegistries,
+		"blocked-registries",
+		nil,
+		"A comma-separated list of registries for which image pull and push actions are denied.",
+	)
+
+	flags.StringSliceVar(
+		&args.allowedRegistries,
+		"allowed-registries",
+		nil,
+		"A comma-separated list of registries for which image pull and push actions are allowed",
+	)
+
+	flags.StringSliceVar(
+		&args.allowedRegistriesForImport,
+		"allowed-registries-for-import",
+		nil,
+		"A comma-separated list of registries that limits the container image registries that normal users may import",
+	)
+
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -249,6 +286,24 @@ func run(cmd *cobra.Command, _ []string) {
 	var additionalAllowedPrincipals []string
 	if cmd.Flags().Changed("additional-allowed-principals") {
 		additionalAllowedPrincipals = args.additionalAllowedPrincipals
+	}
+
+	var insecureRegistries []string
+	var blockedRegistries []string
+	var allowedRegistries []string
+	var allowedRegistriesForImport []string
+
+	if cmd.Flags().Changed("insecure-registries") {
+		insecureRegistries = args.insecureRegistries
+	}
+	if cmd.Flags().Changed("blocked-registries") {
+		blockedRegistries = args.blockedRegistries
+	}
+	if cmd.Flags().Changed("allowed-registries") {
+		allowedRegistries = args.allowedRegistries
+	}
+	if cmd.Flags().Changed("insecure-registries") {
+		allowedRegistriesForImport = args.allowedRegistriesForImport
 	}
 
 	var private *bool
@@ -613,6 +668,10 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if additionalAllowedPrincipals != nil {
 		clusterConfig.AdditionalAllowedPrincipals = additionalAllowedPrincipals
+	}
+
+	if insecureRegistries != nil {
+		// tbd
 	}
 
 	if auditLogRole != nil {
