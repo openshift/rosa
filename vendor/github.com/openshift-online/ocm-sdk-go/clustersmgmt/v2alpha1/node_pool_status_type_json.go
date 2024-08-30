@@ -81,6 +81,15 @@ func writeNodePoolStatus(object *NodePoolStatus, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("message")
 		stream.WriteString(object.message)
+		count++
+	}
+	present_ = object.bitmap_&32 != 0 && object.state != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("state")
+		writeNodePoolState(object.state, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -125,6 +134,10 @@ func readNodePoolStatus(iterator *jsoniter.Iterator) *NodePoolStatus {
 			value := iterator.ReadString()
 			object.message = value
 			object.bitmap_ |= 16
+		case "state":
+			value := readNodePoolState(iterator)
+			object.state = value
+			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()
 		}
