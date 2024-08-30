@@ -145,6 +145,7 @@ var _ = Describe("Edit ocm role", labels.Feature.OCMRole,
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Created role"))
 				Expect(textData).Should(ContainSubstring("Successfully linked role"))
+				Expect(textData).Should(ContainSubstring("Attached trust policy to role"))
 
 				By("Get the ocm-role info")
 				ocmRoleList, output, err = ocmResourceService.ListOCMRole()

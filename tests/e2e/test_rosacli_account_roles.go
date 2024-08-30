@@ -2,19 +2,24 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
@@ -829,6 +834,122 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 		ocmResourceService = rosaClient.OCMResource
 	})
 
+	AfterEach(func() {
+		By("Cleanup account-roles")
+		if len(accountRolePrefixesNeedCleanup) > 0 {
+			for _, v := range accountRolePrefixesNeedCleanup {
+				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", v,
+					"-y")
+
+				Expect(err).To(BeNil())
+			}
+		}
+	})
+	It("to check the trust policy attach information when create account-roles multiple times - [id:75904]",
+		labels.High, labels.Runtime.OCMResources,
+		func() {
+			accountRoleNames := []string{
+				"ControlPlane-Role",
+				"Worker-Role",
+				"Support-Role",
+				"Installer-Role",
+				"HCP-ROSA-Installer-Role",
+				"HCP-ROSA-Support-Role",
+				"HCP-ROSA-Worker-Role",
+			}
+
+			By("Create account roles")
+			accrolePrefix := common.GenerateRandomString(5)
+			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"-y")
+			Expect(err).To(BeNil())
+			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix)
+			for _, roleName := range accountRoleNames {
+				Expect(output.String()).To(ContainSubstring(fmt.Sprintf(
+					"Attached trust policy to role '%s-%s", accrolePrefix, roleName)))
+			}
+
+			By("Create account roles with the same configuration again")
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"-y")
+			Expect(err).To(BeNil())
+			for _, roleName := range accountRoleNames {
+				Expect(output.String()).NotTo(ContainSubstring(fmt.Sprintf(
+					"Attached trust policy to role '%s-%s", accrolePrefix, roleName)))
+			}
+
+			By("Update the trust relationship")
+			awsClient, err := aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			roleName := fmt.Sprintf("%s-Support-Role", accrolePrefix)
+			opRole, err := awsClient.IamClient.GetRole(
+				context.TODO(),
+				&iam.GetRoleInput{
+					RoleName: &roleName,
+				})
+			Expect(err).To(BeNil())
+
+			decodedPolicyDocument, err := url.QueryUnescape(*opRole.Role.AssumeRolePolicyDocument)
+			Expect(err).To(BeNil())
+
+			By("update the trust relationship")
+			var policyDocument map[string]interface{}
+
+			err = json.Unmarshal([]byte(decodedPolicyDocument), &policyDocument)
+			Expect(err).To(BeNil())
+
+			newPrincipal := fmt.Sprintf(
+				"arn:aws:iam::%s:role/RH-Technical-Support-13849960", constants.JumpAccounts["production"])
+
+			statements := policyDocument["Statement"].([]interface{})
+			for _, statement := range statements {
+				stmt := statement.(map[string]interface{})
+				principal := stmt["Principal"].(map[string]interface{})
+				principal["AWS"] = newPrincipal
+			}
+			updatedPolicyDocument, err := json.Marshal(policyDocument)
+			Expect(err).To(BeNil())
+
+			_, err = awsClient.IamClient.UpdateAssumeRolePolicy(context.TODO(), &iam.UpdateAssumeRolePolicyInput{
+				RoleName:       aws.String(roleName),
+				PolicyDocument: aws.String(string(updatedPolicyDocument)),
+			})
+			Expect(err).To(BeNil())
+
+			By("Create account roles with the same configuration again after the trust relationship update")
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"-y")
+			Expect(err).To(BeNil())
+			for _, roleName := range accountRoleNames {
+				if roleName == "Support-Role" {
+					Expect(output.String()).To(ContainSubstring(fmt.Sprintf(
+						"Attached trust policy to role '%s-%s", accrolePrefix, roleName)))
+				} else {
+					Expect(output.String()).NotTo(ContainSubstring(fmt.Sprintf(
+						"Attached trust policy to role '%s-%s", accrolePrefix, roleName)))
+				}
+			}
+			By("Check the role trust relationship again")
+			opRole, err = awsClient.IamClient.GetRole(
+				context.TODO(),
+				&iam.GetRoleInput{
+					RoleName: &roleName,
+				})
+			Expect(err).To(BeNil())
+
+			for _, accountID := range constants.JumpAccounts {
+				Expect(*opRole.Role.AssumeRolePolicyDocument).To(ContainSubstring(accountID))
+			}
+
+		})
+
 	It("to create account-roles with invalid version/channel group - [id:75246]",
 		labels.High, labels.Runtime.OCMResources,
 		func() {
@@ -871,19 +992,6 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 	It("to create/Upgrade account-roles by setting version and channel-group via rosacli - [id:54469]",
 		labels.High, labels.Runtime.OCMResources,
 		func() {
-			defer func() {
-				By("Cleanup account-roles")
-				if len(accountRolePrefixesNeedCleanup) > 0 {
-					for _, v := range accountRolePrefixesNeedCleanup {
-						_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
-							"--prefix", v,
-							"-y")
-
-						Expect(err).To(BeNil())
-					}
-				}
-			}()
-
 			By("Prepare y-1 version for testing")
 			versionService := rosaClient.Version
 			// get stable channel version
