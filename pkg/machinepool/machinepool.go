@@ -489,6 +489,11 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	args *mpOpts.CreateMachinepoolUserOptions) error {
 
 	var err error
+	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
+	if isMultiAvailabilityZoneSet {
+		return fmt.Errorf("Setting `multi-availability-zone` flag is not supported for HCP clusters.")
+	}
+
 	isAvailabilityZoneSet := cmd.Flags().Changed("availability-zone")
 	isSubnetSet := cmd.Flags().Changed("subnet")
 	if isSubnetSet && isAvailabilityZoneSet {
