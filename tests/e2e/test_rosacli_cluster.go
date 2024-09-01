@@ -6,6 +6,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -511,7 +512,6 @@ var _ = Describe("Classic cluster creation validation",
 				}
 			}
 			profile = profilesMap[profilesNames[common.RandomInt(len(profilesNames))]]
-			profile.NamePrefix = constants.DefaultNamePrefix
 
 		})
 
@@ -526,6 +526,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
+				profile.NamePrefix = "ci-38770"
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -646,6 +647,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
+				profile.NamePrefix = "ci-45161"
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -907,6 +909,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
+				profile.NamePrefix = "ci-71329"
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -1165,6 +1168,213 @@ var _ = Describe("Classic cluster creation validation",
 						flagName))
 				}
 			})
+
+	})
+
+var _ = Describe("Create cluster with invalid options will",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+		)
+
+		BeforeEach(func() {
+			// Init the client
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+		})
+
+		It("to validate subnet well when create cluster - [id:37177]", labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				By("Setup vpc with list azs")
+				testingTegion := "us-east-2"
+				By("Prepare subnets for the coming testing")
+				vpc, err := vpc_client.PrepareVPC("rosacli-37177", testingTegion, "", true, "")
+				Expect(err).ToNot(HaveOccurred())
+				defer vpc.DeleteVPCChain(true)
+
+				azs, err := vpc.AWSClient.ListAvaliableZonesForRegion(testingTegion, "availability-zone")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(azs).ToNot(BeEmpty())
+
+				subnetMap, err := vpc.PreparePairSubnetByZone(azs[0])
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Create cluster with non-existed subnets on AWS")
+				clusterName := "cluster-37177"
+
+				output, err, _ := clusterService.Create(clusterName,
+					"--subnet-ids", "subnet-nonexisting",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("he subnet ID 'subnet-nonexisting' does not exist"))
+
+				By("Create multi_az cluster with subnet which only support 1 zone")
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", subnetMap["private"].ID,
+					"--multi-az",
+					"--region", testingTegion,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("The number of subnets for a 'multi-AZ' 'cluster' should be '6'," +
+						" instead received: '1'"))
+
+				// Can only test when az number is bigger than 2
+				if len(azs) > 2 {
+					By("Create single_az cluster with multiple zones set")
+					subnetMap2, err := vpc.PreparePairSubnetByZone(azs[1])
+					Expect(err).ToNot(HaveOccurred())
+					output, err, _ = clusterService.Create(clusterName,
+						"--subnet-ids", strings.Join(
+							[]string{
+								subnetMap["private"].ID,
+								subnetMap2["private"].ID},
+							","),
+						"--region", testingTegion,
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("Only a single availability zone can be provided" +
+							" to a single-availability-zone cluster, instead received 2"))
+				}
+
+				By("Create multi_az cluster with 5 subnet set")
+				// This test is only available for multi-az with at least 3 zones
+				if len(azs) >= 3 {
+					fitZoneSubnets := []string{}
+					for _, az := range azs[0:3] {
+						subnetMap, err := vpc.PreparePairSubnetByZone(az)
+						Expect(err).ToNot(HaveOccurred())
+						fitZoneSubnets = append(fitZoneSubnets,
+							subnetMap["private"].ID,
+							subnetMap["public"].ID)
+					}
+					fiveSubnetsList := fitZoneSubnets[0:5]
+					output, err, _ = clusterService.Create(clusterName,
+						"--subnet-ids", strings.Join(
+							fiveSubnetsList,
+							","),
+						"--region", testingTegion,
+						"--multi-az",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("The number of subnets for a 'multi-AZ' 'cluster' should be '6', instead received: '%d'",
+							len(fiveSubnetsList)))
+				}
+
+				By("Create with subnets in same zone")
+				// pick the first az for testing
+				additionalSubnetsNumber := 2
+				sameZoneSubnets := []string{
+					subnetMap["private"].ID,
+					subnetMap["public"].ID,
+				}
+				for additionalSubnetsNumber > 0 {
+					_, subnet, err := vpc.CreatePairSubnet(azs[0])
+					Expect(err).ToNot(HaveOccurred())
+					Expect(len(subnet)).To(Equal(2))
+					sameZoneSubnets = append(sameZoneSubnets, subnet[0].ID, subnet[1].ID)
+					additionalSubnetsNumber--
+				}
+
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join(
+						sameZoneSubnets, ","),
+					"--region", testingTegion,
+					"--multi-az",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Failed to create cluster:" +
+						" The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
+			})
+		It("to validate the network when create cluster - [id:38857]", labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := "rosaci-38857"
+				By("illegal machine/service/pod cidr when create cluster")
+				illegalCIDRMap := map[string]string{
+					"--machine-cidr": "10111.0.0.0/16",
+					"--service-cidr": "10111.0.0.0/16",
+					"--pod-cidr":     "10111.0.0.0/16",
+				}
+				for flag, invalidValue := range illegalCIDRMap {
+					output, err, _ := clusterService.Create(clusterName,
+						flag, invalidValue,
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring(`invalid argument "%s" for "%s" flag: invalid CIDR address: %s`,
+							invalidValue, flag, invalidValue))
+				}
+				By("Check the overlapped CIDR block validation")
+				output, err, _ := clusterService.Create(clusterName,
+					"--service-cidr", "1.0.0.0/16",
+					"--pod-cidr", "1.0.0.0/16",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Service CIDR '1.0.0.0/16' and pod CIDR '1.0.0.0/16' overlap"))
+
+				By("Check the invalid machine/service/pod CIDR")
+				invalidCIDRMap := map[string]string{
+					"--machine-cidr": "2.0.0.0/8",
+					"--service-cidr": "1.0.0.0/25",
+					"--pod-cidr":     "1.0.0.0/28",
+				}
+				for flag, invalidValue := range invalidCIDRMap {
+					output, err, _ := clusterService.Create(clusterName,
+						flag, invalidValue,
+					)
+					Expect(err).To(HaveOccurred())
+					switch flag {
+					case "--machine-cidr":
+						Expect(output.String()).Should(
+							ContainSubstring("The allowed block size must be between a /16 netmask and /25"))
+					case "--service-cidr":
+						Expect(output.String()).Should(
+							ContainSubstring("Service CIDR value range is too small for correct provisioning."))
+					case "--pod-cidr":
+						Expect(output.String()).Should(
+							ContainSubstring("Pod CIDR value range is too small for correct provisioning"))
+					}
+					time.Sleep(3 * time.Second) // sleep 3 seconds for next round run
+
+				}
+				By("Check the invalid machine CIDR for multi az")
+				output, err, _ = clusterService.Create(clusterName,
+					"--machine-cidr", "2.0.0.0/25",
+					"--multi-az",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("The allowed block size must be between a /16 netmask and /24"))
+
+				By("Check illegal host prefix")
+				output, err, _ = clusterService.Create(clusterName,
+					"--machine-cidr", "2.0.0.0/25",
+					"--host-prefix", "28",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Subnet length should be between 23 and 26"))
+
+				By("Check invalid host prefix")
+				output, err, _ = clusterService.Create(clusterName,
+					"--machine-cidr", "2.0.0.0/25",
+					"--host-prefix", "invalid",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring(`invalid argument "invalid" for "--host-prefix" flag`))
+
+			})
+
 	})
 
 var _ = Describe("Classic cluster deletion validation",

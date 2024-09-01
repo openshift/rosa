@@ -442,3 +442,70 @@ var _ = Describe("Edit default ingress",
 				}
 			})
 	})
+
+var _ = Describe("Edit ingress",
+	labels.Feature.Ingress,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			clusterID string
+			// profile        ph.Profile
+			rosaClient     *rosacli.Client
+			ingressService rosacli.IngressService
+			// isHosted       bool
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ingressService = rosaClient.Ingress
+
+			By("Check cluster is hosted")
+			// var err error
+			// isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			// Expect(err).ToNot(HaveOccurred())
+
+			// By("Load the profile")
+			// profile = *ph.LoadProfileYamlFileByENV()
+		})
+
+		It("can validate well - [id:38837]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Run command to edit ingress with invalid label")
+				output, err := ingressService.EditIngress(clusterID, "apps",
+					"--label-match", "invalid",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Expected key=value format for label-match"))
+
+				By("Run command with non-allowed flag")
+				output, err = ingressService.EditIngress(clusterID, "apps",
+					"--not-allowe-flag", "invalid",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("unknown flag: --not-allowe-flag"))
+
+				By("Edit non-existing ingress")
+				output, err = ingressService.EditIngress(clusterID, "notexisting",
+					"--label-match", "invalid=invalidvalue",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Ingress  identifier 'notexisting' isn't valid"))
+
+				By("Edit ingress with invalid LB-type")
+				output, err = ingressService.EditIngress(clusterID, "apps",
+					"--lb-type", "invalid",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("'load_balancer_type' field needs to be one of [nlb, classic]"))
+
+			})
+	})

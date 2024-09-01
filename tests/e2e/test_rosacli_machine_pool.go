@@ -804,8 +804,126 @@ var _ = Describe("Create machinepool",
 						" maximum size exceeded"))
 
 				})
+
 		})
 
+	})
+var _ = Describe("Create machinepool will validate", labels.Feature.Machinepool,
+	func() {
+		defer GinkgoRecover()
+		var (
+			clusterID          string
+			rosaClient         *rosacli.Client
+			machinePoolService rosacli.MachinePoolService
+
+			clusterConfig *config.ClusterConfig
+			profile       *ph.Profile
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			machinePoolService = rosaClient.MachinePool
+
+			By("Parse the cluster config")
+			var err error
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Load cluster profile configuration")
+			profile = profilehandler.LoadProfileYamlFileByENV()
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			rosaClient.CleanResources(clusterID)
+
+		})
+		It("will validate the security groups correctly - [id:68219]", func() {
+			mpName := "mp-68219"
+			By("Create machinepool with additional sg to non-byovpc cluster")
+			if !profile.ClusterConfig.BYOVPC {
+				output, err := machinePoolService.CreateMachinePool(
+					clusterID, mpName,
+					"--replicas", "0",
+					"--additional-security-group-ids", "sg-fakesg",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("the cluster is non-byo vpc cluster"))
+				return
+			}
+
+			By("Create machinepool with sg with red-hat-managed:true tag")
+			subnets := common.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
+			vpc, err := vpc_client.GenerateVPCBySubnet(subnets[0], profile.Region)
+			Expect(err).ToNot(HaveOccurred())
+
+			sgs, err := vpc.CreateAdditionalSecurityGroups(1, "68219", "testing for case 68219")
+			Expect(err).ToNot(HaveOccurred())
+			for _, sg := range sgs {
+				defer vpc.AWSClient.DeleteSecurityGroup(sg)
+			}
+
+			_, err = vpc.AWSClient.TagResource(sgs[0], map[string]string{
+				"red-hat-managed": "true",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			output, err := machinePoolService.CreateMachinePool(
+				clusterID, mpName,
+				"--replicas", "0",
+				"--additional-security-group-ids", sgs[0],
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("Provided Additional Security Group '%s' is Red Hat managed", sgs[0]))
+
+			By("Create with sg not attahed to the vpc")
+			anotherVPC, err := vpc_client.PrepareVPC("rosaci-68219", profile.Region, "", true, "")
+			Expect(err).ToNot(HaveOccurred())
+			defer anotherVPC.DeleteVPCChain(true)
+			otherSgs, err := anotherVPC.CreateAdditionalSecurityGroups(
+				1,
+				"anothersg-68219",
+				"test for rosacli 68219",
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			output, err = machinePoolService.CreateMachinePool(
+				clusterID, mpName,
+				"--replicas", "0",
+				"--additional-security-group-ids", otherSgs[0],
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("Provided Additional Security Group '%s' is not attached to VPC", otherSgs[0]))
+
+			By("Create with 10+ sgs")
+			morethan10sgs, err := vpc.CreateAdditionalSecurityGroups(
+				11,
+				"morethan10-68219-2",
+				"more than 10 sg test in rosaci 68219",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			for _, sg := range morethan10sgs {
+				defer vpc.AWSClient.DeleteSecurityGroup(sg)
+			}
+
+			output, err = machinePoolService.CreateMachinePool(
+				clusterID, mpName,
+				"--replicas", "0",
+				"--additional-security-group-ids", strings.Join(morethan10sgs, ","),
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("The limit for Additional Security Groups is '10'," +
+					" but '11' have been supplied"))
+
+		})
 	})
 
 var _ = Describe("Edit machinepool",
