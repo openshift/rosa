@@ -1080,3 +1080,170 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
 			})
 	})
+
+var _ = Describe("Upgrade operator roles in auto mode",
+	labels.Feature.Cluster, func() {
+		defer GinkgoRecover()
+		var (
+			rosaClient         *rosacli.Client
+			clusterService     rosacli.ClusterService
+			customProfile      *profilehandler.Profile
+			ocmResourceService rosacli.OCMResourceService
+			upgradeService     rosacli.UpgradeService
+			clusterName        string
+			clusterID          string
+		)
+
+		BeforeEach(func() {
+			By("Init client and service")
+			rosaClient = rosacli.NewClient()
+			ocmResourceService = rosaClient.OCMResource
+			clusterService = rosaClient.Cluster
+			upgradeService = rosaClient.Upgrade
+
+			By("Prepare custom profile")
+			customProfile = &profilehandler.Profile{
+				ClusterConfig: &profilehandler.ClusterConfig{
+					STS: true,
+				},
+				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+					Path:               "",
+					PermissionBoundary: "",
+				},
+				Version:      "y-1",
+				ChannelGroup: "candidate",
+				Region:       "us-west-2",
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+		})
+
+		AfterEach(func() {
+			if clusterID != "" {
+				By("Delete cluster")
+				rosaClient.Runner.UnsetArgs()
+				_, err := clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+				Expect(err).To(BeNil())
+			}
+
+			By("Clean resource")
+			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		It("to create and upgrade operator roles in auto mode - [id:45745]",
+			labels.Critical, labels.Runtime.Day1Supplemental, func() {
+				By("Create classic STS cluster")
+				clusterName = "rosa45745"
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ")
+				rosaCommand := config.GenerateCommand(command)
+
+				rosaCommand.AddFlags("--mode", "auto")
+
+				By("Execute the create commands to create cluster")
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosaCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(Not(BeEmpty()))
+
+				By("Get cluster ID")
+				rosaClient.Runner.UnsetArgs()
+				clusterListOut, err := clusterService.List()
+				Expect(err).To(BeNil())
+
+				clusterList, err := clusterService.ReflectClusterList(clusterListOut)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(clusterName).ID
+
+				By("wait cluster ready")
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
+				Expect(err).To(BeNil())
+
+				By("Get cluster upgrade version")
+				versionService := rosaClient.Version
+				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, true)
+				Expect(err).To(BeNil())
+				defaultVersion := versionList.DefaultVersion()
+				Expect(defaultVersion).ToNot(BeNil())
+				_, _, upgradeVersion, err := defaultVersion.MajorMinor()
+				Expect(err).To(BeNil())
+				Expect(upgradeVersion).NotTo(BeEmpty())
+
+				By("Upgrade cluster to verify if there are any prompts to upgrade account roles firstly")
+				scheduledDate := time.Now().Format("2006-01-02")
+				scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+				output, err := upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", defaultVersion.Version,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"-m", "auto",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(output.String()).To(ContainSubstring("Account roles need to be upgraded to proceed"))
+
+				By("Upgrade account roles in auto mode")
+				accountRolePrefix := customProfile.ClusterConfig.Name
+				_, err = ocmResourceService.UpgradeAccountRole(
+					"--prefix", accountRolePrefix,
+					"--mode", "auto",
+					"--version", upgradeVersion,
+					"--channel-group", "candidate",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+
+				By("Upgrade operator roles in auto mode")
+				output, err = ocmResourceService.UpgradeOperatorRoles(
+					"--cluster", clusterName,
+					"--version", defaultVersion.Version,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Starting to upgrade the operator IAM roles and " +
+					"policies"))
+				Expect(output.String()).To(ContainSubstring(
+					"policy/%s-openshift-image-registry-installer-cloud-credent' to version '%s'",
+					accountRolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring(
+					"policy/%s-openshift-ingress-operator-cloud-credentials' to version '%s'",
+					accountRolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring(
+					"policy/%s-openshift-cluster-csi-drivers-ebs-cloud-credenti' to version '%s'",
+					accountRolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring(
+					"policy/%s-openshift-cloud-network-config-controller-cloud-' to version '%s'",
+					accountRolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring(
+					"policy/%s-openshift-machine-api-aws-cloud-credentials' to version '%s'",
+					accountRolePrefix, upgradeVersion))
+				Expect(output.String()).To(ContainSubstring(
+					"policy/%s-openshift-cloud-credential-operator-cloud-creden' to version '%s'",
+					accountRolePrefix, upgradeVersion))
+
+				By("Upgrade cluster")
+				scheduledDate = time.Now().Format("2006-01-02")
+				scheduledTime = time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", defaultVersion.Version,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+				By("Check upgrade state")
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 5)
+				Expect(err).To(BeNil())
+			})
+	})

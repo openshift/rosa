@@ -906,7 +906,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 			Expect(defaultVersionC).ToNot(BeNil())
 			_, _, upgradeVersionC, err := defaultVersionC.MajorMinor()
 			Expect(err).To(BeNil())
-			versionC, err := versionListS.FindNearestBackwardMinorVersion(defaultVersionC.Version, 1, true)
+			versionC, err := versionListC.FindNearestBackwardMinorVersion(defaultVersionC.Version, 1, true)
 			Expect(err).To(BeNil())
 			Expect(versionC).NotTo(BeNil())
 			_, _, versionCandidate, err := versionC.MajorMinor()
