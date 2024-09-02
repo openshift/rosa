@@ -68,7 +68,7 @@ func (vpc *VPC) DeleteVPCChain(totalClean ...bool) error {
 		return fmt.Errorf("got empty vpc ID to clean. Make sure you loaded it from AWS")
 	}
 	log.LogInfo("Going to delete the vpc and follow resources by ID: %s", vpcID)
-	log.LogInfo("Going to terminate proxy instances if existing")
+	log.LogInfo("Going to terminate proxy instances if exists")
 	err := vpc.TerminateVPCInstances(true)
 	if err != nil {
 		log.LogError("Delete vpc instances meets error: %s", err.Error())
@@ -105,11 +105,22 @@ func (vpc *VPC) DeleteVPCChain(totalClean ...bool) error {
 	}
 	if len(totalClean) == 1 && totalClean[0] {
 		log.LogInfo("Got total clean set, going to delete other possible resource leak")
+		// Delete leak instances
+		log.LogInfo("Going to terminate the leak instances if exist")
+		err = vpc.TerminateVPCInstances(false)
+		if err != nil {
+			log.LogError("Terminate vpc instances meets error: %s", err.Error())
+			return err
+		}
+
+		// Delete leak ELBs
 		err = vpc.DeleteVPCELBs()
 		if err != nil {
 			log.LogError("Delete vpc load balancers meets error: %s", err.Error())
 			return err
 		}
+
+		// Delete leak security groups
 		err = vpc.DeleteVPCSecurityGroups(false)
 		if err != nil {
 			log.LogError("Delete vpc security groups meets error: %s", err.Error())

@@ -14,7 +14,8 @@ func (vpc *VPC) DeleteVPCSecurityGroups(customizedOnly bool) error {
 	if customizedOnly {
 		for _, sg := range securityGroups {
 			for _, tag := range sg.Tags {
-				if *tag.Key == "Name" && (*tag.Value == con.ProxySecurityGroupName || *tag.Value == con.AdditionalSecurityGroupName) {
+				if *tag.Key == "Name" && (*tag.Value == con.ProxySecurityGroupName ||
+					*tag.Value == con.AdditionalSecurityGroupName) {
 					needCleanGroups = append(needCleanGroups, sg)
 				}
 			}

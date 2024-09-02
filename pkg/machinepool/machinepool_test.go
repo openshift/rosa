@@ -1372,6 +1372,8 @@ var _ = Describe("NodePools", func() {
 			args.KubeletConfigs = "test"
 			args.NodeDrainGracePeriod = "30"
 
+			args.RootDiskSize = "256GB"
+
 			v := cmv1.VersionBuilder{}
 			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
 				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
@@ -1402,11 +1404,91 @@ var _ = Describe("NodePools", func() {
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList(
 				[]*cmv1.KubeletConfig{kubeConfig})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
 			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(Not(HaveOccurred()))
+		})
+		It("should fail if disk size is invalid", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			isVersionSet := cmd.Flags().Changed("version")
+			Expect(isVersionSet).To(BeTrue())
+
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.AutoscalingEnabled = true
+			args.InstanceType = "t3.small"
+			args.TuningConfigs = "test"
+			args.KubeletConfigs = "test"
+			args.NodeDrainGracePeriod = "30"
+
+			args.RootDiskSize = "200000000000GB"
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			tuningConfig, err := cmv1.NewTuningConfig().ID("test").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatTuningConfigList(
+				[]*cmv1.TuningConfig{tuningConfig})))
+			kubeConfig, err := cmv1.NewKubeletConfig().Name("test").ID("test").PodPidsLimit(5000).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList(
+				[]*cmv1.KubeletConfig{kubeConfig})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
+			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+
+			Expect(err.Error()).To(ContainSubstring("Expected a valid node pool root disk size value"))
 		})
 	})
 })
@@ -1677,6 +1759,10 @@ func FormatResources(resource interface{}) string {
 	case "*v1.NodePool":
 		if res, ok := resource.(*cmv1.NodePool); ok {
 			err = cmv1.MarshalNodePool(res, &outputJson)
+		}
+	case "*v1.Flavour":
+		if res, ok := resource.(*cmv1.Flavour); ok {
+			err = cmv1.MarshalFlavour(res, &outputJson)
 		}
 	default:
 		{

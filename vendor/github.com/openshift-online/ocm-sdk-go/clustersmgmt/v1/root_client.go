@@ -241,6 +241,16 @@ func (c *Client) ProvisionShards() *ProvisionShardsClient {
 	)
 }
 
+// RegistryAllowlists returns the target 'registry_allowlists' resource.
+//
+// Reference to the resource that manages the collection of registry allowlists.
+func (c *Client) RegistryAllowlists() *RegistryAllowlistsClient {
+	return NewRegistryAllowlistsClient(
+		c.transport,
+		path.Join(c.path, "registry_allowlists"),
+	)
+}
+
 // StorageQuotaValues returns the target 'storage_quota_values' resource.
 //
 // Reference to the resource that manages the storage quota values.

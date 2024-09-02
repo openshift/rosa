@@ -331,6 +331,18 @@ var _ = Describe("getMachinePoolRootDisk()", func() {
 			"maximum size exceeded"))
 		Expect(machinePoolRootDisk).To(BeNil())
 	})
+
+	It("OK: bad disk size argument and hcp", func() {
+		args.machinePoolRootDiskSize = "200000000000000000000TiB"
+
+		machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd,
+			version, true, defaultMachinePoolRootDiskSize)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Expected a valid machine pool root disk size value" +
+			" '200000000000000000000TiB': invalid disk size: '200000000000000000000Ti'. " +
+			"maximum size exceeded"))
+		Expect(machinePoolRootDisk).To(BeNil())
+	})
 })
 
 var _ = Describe("Validations", func() {

@@ -17,6 +17,9 @@ const (
 	// machinePoolRootVolumeSizeMaxAsOf414 is the maximum size of the root volume as of 4.14
 	// 16 TiB - limit as of 4.14
 	machinePoolRootVolumeSizeMaxAsOf414 = 16384
+	// constants for node pool root size validation
+	nodePoolRootAWSVolumeSizeMin = 128
+	nodePoolRootAWSVolumeSizeMax = 16384
 )
 
 // ValidateMachinePoolRootDiskSize validates the root volume size for a machine pool in AWS.
@@ -32,6 +35,19 @@ func ValidateMachinePoolRootDiskSize(version string, machinePoolRootVolumeSize i
 			machinePoolRootVolumeSize,
 			machinePoolRootAWSVolumeSizeMin,
 			machinePoolRootVolumeSizeMax)
+	}
+
+	return nil
+}
+
+// ValidateNodePoolRootDiskSize validates the root volume size for a node pool in AWS.
+func ValidateNodePoolRootDiskSize(nodePoolRootVolumeSize int) error {
+	if nodePoolRootVolumeSize < nodePoolRootAWSVolumeSizeMin ||
+		nodePoolRootVolumeSize > nodePoolRootAWSVolumeSizeMax {
+		return fmt.Errorf("Invalid root disk size: %d GiB. Must be between %d GiB and %d GiB.",
+			nodePoolRootVolumeSize,
+			nodePoolRootAWSVolumeSizeMin,
+			nodePoolRootAWSVolumeSizeMax)
 	}
 
 	return nil
