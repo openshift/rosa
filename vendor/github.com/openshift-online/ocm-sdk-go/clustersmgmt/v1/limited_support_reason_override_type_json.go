@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v2alpha1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v2alpha1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
 import (
 	"io"
@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalNodePoolStatus writes a value of the 'node_pool_status' type to the given writer.
-func MarshalNodePoolStatus(object *NodePoolStatus, writer io.Writer) error {
+// MarshalLimitedSupportReasonOverride writes a value of the 'limited_support_reason_override' type to the given writer.
+func MarshalLimitedSupportReasonOverride(object *LimitedSupportReasonOverride, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeNodePoolStatus(object, stream)
+	writeLimitedSupportReasonOverride(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,15 +37,15 @@ func MarshalNodePoolStatus(object *NodePoolStatus, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeNodePoolStatus writes a value of the 'node_pool_status' type to the given stream.
-func writeNodePoolStatus(object *NodePoolStatus, stream *jsoniter.Stream) {
+// writeLimitedSupportReasonOverride writes a value of the 'limited_support_reason_override' type to the given stream.
+func writeLimitedSupportReasonOverride(object *LimitedSupportReasonOverride, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	if object.bitmap_&1 != 0 {
-		stream.WriteString(NodePoolStatusLinkKind)
+		stream.WriteString(LimitedSupportReasonOverrideLinkKind)
 	} else {
-		stream.WriteString(NodePoolStatusKind)
+		stream.WriteString(LimitedSupportReasonOverrideKind)
 	}
 	count++
 	if object.bitmap_&2 != 0 {
@@ -70,45 +70,27 @@ func writeNodePoolStatus(object *NodePoolStatus, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("current_replicas")
-		stream.WriteInt(object.currentReplicas)
-		count++
-	}
-	present_ = object.bitmap_&16 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("message")
-		stream.WriteString(object.message)
-		count++
-	}
-	present_ = object.bitmap_&32 != 0 && object.state != nil
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("state")
-		writeNodePoolState(object.state, stream)
+		stream.WriteObjectField("enabled")
+		stream.WriteBool(object.enabled)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalNodePoolStatus reads a value of the 'node_pool_status' type from the given
+// UnmarshalLimitedSupportReasonOverride reads a value of the 'limited_support_reason_override' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalNodePoolStatus(source interface{}) (object *NodePoolStatus, err error) {
+func UnmarshalLimitedSupportReasonOverride(source interface{}) (object *LimitedSupportReasonOverride, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readNodePoolStatus(iterator)
+	object = readLimitedSupportReasonOverride(iterator)
 	err = iterator.Error
 	return
 }
 
-// readNodePoolStatus reads a value of the 'node_pool_status' type from the given iterator.
-func readNodePoolStatus(iterator *jsoniter.Iterator) *NodePoolStatus {
-	object := &NodePoolStatus{}
+// readLimitedSupportReasonOverride reads a value of the 'limited_support_reason_override' type from the given iterator.
+func readLimitedSupportReasonOverride(iterator *jsoniter.Iterator) *LimitedSupportReasonOverride {
+	object := &LimitedSupportReasonOverride{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
@@ -117,7 +99,7 @@ func readNodePoolStatus(iterator *jsoniter.Iterator) *NodePoolStatus {
 		switch field {
 		case "kind":
 			value := iterator.ReadString()
-			if value == NodePoolStatusLinkKind {
+			if value == LimitedSupportReasonOverrideLinkKind {
 				object.bitmap_ |= 1
 			}
 		case "id":
@@ -126,18 +108,10 @@ func readNodePoolStatus(iterator *jsoniter.Iterator) *NodePoolStatus {
 		case "href":
 			object.href = iterator.ReadString()
 			object.bitmap_ |= 4
-		case "current_replicas":
-			value := iterator.ReadInt()
-			object.currentReplicas = value
+		case "enabled":
+			value := iterator.ReadBool()
+			object.enabled = value
 			object.bitmap_ |= 8
-		case "message":
-			value := iterator.ReadString()
-			object.message = value
-			object.bitmap_ |= 16
-		case "state":
-			value := readNodePoolState(iterator)
-			object.state = value
-			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()
 		}
