@@ -189,6 +189,9 @@ func run(cmd *cobra.Command, argv []string) {
 		if !confirm.Prompt(true, confirmPromptMessage) {
 			os.Exit(0)
 		}
+		if clusterId == "" {
+			clusterId = cmd.Flag("cluster").Value.String()
+		}
 		err = createProvider(r, oidcEndpointURL, clusterId)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the OIDC provider: %s", err)
