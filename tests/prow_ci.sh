@@ -39,7 +39,7 @@ override_rosacli_build () {
 # usage: configure_aws <aws file path> <region> 
 configure_aws () {
   # configure aws region
-  if [[ -z "$1"]] || [[ -z "$2" ]]; then
+  if [[ -z "$1" ]] || [[ -z "$2" ]]; then
     echo "ERROR: aws credential file path and region is required. Please call command like $ configure_aws <credential path> <region>"
     exit 1
   fi
@@ -155,7 +155,8 @@ generate_running_cmd () {
   if [ -z $JUNIT_XML ]; then
     echo "JUNIT_XML is empty, please define it and call generate_junit to generate the value"
     exit 1
-  fi [ -z $TEST_TIMEOUT ]; then
+  fi 
+  if [ -z $TEST_TIMEOUT ]; then
     # set a default value in case it is empty
     TEST_TIMEOUT="4h"
   fi
