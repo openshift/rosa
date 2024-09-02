@@ -464,7 +464,7 @@ var _ = Describe("Describe/List rosa upgrade",
 						hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 						Expect(err).ToNot(HaveOccurred())
 						if !hostedCluster {
-							_, errSTSUpgrade := upgradeService.Upgrade(
+							output, errSTSUpgrade := upgradeService.Upgrade(
 								"-c", clusterID,
 								"--version", upgradingVersion,
 								"--schedule-date", scheduledDate,
@@ -473,8 +473,9 @@ var _ = Describe("Describe/List rosa upgrade",
 								"-y",
 							)
 							Expect(errSTSUpgrade).To(BeNil())
+							Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
 						} else {
-							_, errHCPUpgrade := upgradeService.Upgrade(
+							output, errHCPUpgrade := upgradeService.Upgrade(
 								"-c", clusterID,
 								"--version", upgradingVersion,
 								"--schedule-date", scheduledDate,
@@ -484,9 +485,10 @@ var _ = Describe("Describe/List rosa upgrade",
 								"-y",
 							)
 							Expect(errHCPUpgrade).To(BeNil())
+							Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
 						}
 					} else {
-						_, errUpgrade := upgradeService.Upgrade(
+						output, errUpgrade := upgradeService.Upgrade(
 							"-c", clusterID,
 							"--version", upgradingVersion,
 							"--schedule-date", scheduledDate,
@@ -494,6 +496,7 @@ var _ = Describe("Describe/List rosa upgrade",
 							"-y",
 						)
 						Expect(errUpgrade).To(BeNil())
+						Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
 					}
 
 					time.Sleep(2 * time.Minute)
