@@ -53,6 +53,14 @@ var _ = Describe("Cluster Upgrade testing",
 		})
 
 		AfterEach(func() {
+			if profile.Version == con.YStreamPreviousVersion {
+				By("Delete cluster upgrade")
+				output, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring(
+					"Successfully canceled scheduled upgrade on cluster '%s'", clusterID))
+			}
+
 			By("Clean remaining resources")
 			err := rosaClient.CleanResources(clusterID)
 			Expect(err).ToNot(HaveOccurred())
