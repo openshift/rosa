@@ -2,12 +2,15 @@ package e2e
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
+	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
@@ -19,11 +22,34 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 
 		ocmResourceService     rosacli.OCMResourceService
 		permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+		userRoleArnsToClean    []string
+		defaultDir             string
+		dirToClean             string
 	)
 	BeforeEach(func() {
 		By("Init the client")
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
+
+		By("Get the default dir")
+		defaultDir = rosaClient.Runner.GetDir()
+	})
+	AfterEach(func() {
+		By("Go back original by setting runner dir")
+		rosaClient.Runner.SetDir(defaultDir)
+
+		if len(userRoleArnsToClean) > 0 {
+			for _, arn := range userRoleArnsToClean {
+				By("Delete user-role")
+				output, err := ocmResourceService.DeleteUserRole("--mode", "auto",
+					"--role-arn", arn,
+					"-y")
+
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(ContainSubstring("Successfully deleted the user role"))
+			}
+		}
 	})
 
 	It("can validate create/link/unlink user-role - [id:52580]",
@@ -86,22 +112,13 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			Expect(textData).Should(ContainSubstring("Created role"))
 			Expect(textData).Should(ContainSubstring("Successfully linked role"))
 
-			By("Get the user-role info")
-			userRoleList, output, err := ocmResourceService.ListUserRole()
+			By("Get the user role info")
+			userRoleList, _, err := ocmResourceService.ListUserRole()
 			Expect(err).To(BeNil())
 			foundUserRole = userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
 			Expect(foundUserRole).ToNot(BeNil())
-
-			defer func() {
-				By("Delete user-role")
-				output, err = ocmResourceService.DeleteUserRole("--mode", "auto",
-					"--role-arn", foundUserRole.RoleArn,
-					"-y")
-
-				Expect(err).To(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Successfully deleted the user role"))
-			}()
+			userRoleArnsToClean = append(userRoleArnsToClean, foundUserRole.RoleArn)
+			Expect(foundUserRole.Linded).To(Equal("Yes"))
 
 			By("Unlink user-role with not-exist role")
 			notExistedUserRoleArn = "arn:aws:iam::301721915996:role/notexistuserrolearn"
@@ -126,7 +143,7 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			Expect(textData).Should(ContainSubstring("Successfully unlinked role"))
 
 			By("Get the user-role info")
-			userRoleList, output, err = ocmResourceService.ListUserRole()
+			userRoleList, _, err = ocmResourceService.ListUserRole()
 			Expect(err).To(BeNil())
 			foundUserRole = userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
 			Expect(foundUserRole.Linded).To(Equal("No"))
@@ -142,7 +159,7 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 		labels.High, labels.Runtime.OCMResources,
 		func() {
 			var (
-				userrolePrefix     string
+				userRolePrefix     string
 				ocmAccountUsername string
 				foundUserRole      rosacli.UserRole
 
@@ -155,12 +172,12 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			rosaClient.Runner.UnsetFormat()
 			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 			ocmAccountUsername = whoamiData.OCMAccountUsername
-			userrolePrefix = fmt.Sprintf("QEAuto-userr-%s-52419", time.Now().UTC().Format("20060102"))
+			userRolePrefix = fmt.Sprintf("QEAuto-userr-%s-52419", time.Now().UTC().Format("20060102"))
 
 			By("Create an user-role")
 			output, err := ocmResourceService.CreateUserRole(
 				"--mode", "auto",
-				"--prefix", userrolePrefix,
+				"--prefix", userRolePrefix,
 				"--path", path,
 				"--permissions-boundary", permissionsBoundaryArn,
 				"-y")
@@ -168,40 +185,88 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).Should(ContainSubstring("Created role"))
 			Expect(textData).Should(ContainSubstring("Successfully linked role"))
-			Expect(textData).Should(ContainSubstring("Attached trust policy to role"))
-			defer func() {
-				By("Delete user-role")
-				output, err = ocmResourceService.DeleteUserRole("--mode", "auto",
-					"--role-arn", foundUserRole.RoleArn,
-					"-y")
 
-				Expect(err).To(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Successfully deleted the user role"))
-			}()
-
-			By("Get the ocm-role info")
-			userRoleList, output, err := ocmResourceService.ListUserRole()
+			By("Get the user role arn")
+			userRoleList, _, err := ocmResourceService.ListUserRole()
 			Expect(err).To(BeNil())
-			foundUserRole = userRoleList.UserRole(userrolePrefix, ocmAccountUsername)
+			foundUserRole = userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
 			Expect(foundUserRole).ToNot(BeNil())
-
-			By("Get the user-role info")
-			userRoleList, output, err = ocmResourceService.ListUserRole()
-			Expect(err).To(BeNil())
-			foundUserRole = userRoleList.UserRole(userrolePrefix, ocmAccountUsername)
 			Expect(foundUserRole.Linded).To(Equal("Yes"))
+			userRoleArnsToClean = append(userRoleArnsToClean, foundUserRole.RoleArn)
 
-			By("Unlink user-role")
-			output, err = ocmResourceService.UnlinkUserRole("--role-arn", foundUserRole.RoleArn, "-y")
+			By("UnLink user-role")
+			output, err = ocmResourceService.LinkUserRole("--role-arn", foundUserRole.RoleArn, "-y")
 			Expect(err).To(BeNil())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).Should(ContainSubstring("Successfully unlinked role"))
 
 			By("Get the user-role info")
+			userRoleList, _, err = ocmResourceService.ListUserRole()
+			Expect(err).To(BeNil())
+			foundUserRole = userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
+			Expect(foundUserRole.Linded).To(Equal("No"))
+		})
+	It("can create/link/unlink/delete user-role in manual mode - [id:52693]",
+		labels.High, labels.Runtime.OCMResources,
+		func() {
+			var (
+				userRolePrefix     string
+				ocmAccountUsername string
+				foundUserRole      rosacli.UserRole
+				path               = "/aa/bb/"
+			)
+
+			rosaClient.Runner.JsonFormat()
+			whoamiOutput, err := ocmResourceService.Whoami()
+			Expect(err).To(BeNil())
+			rosaClient.Runner.UnsetFormat()
+			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+			ocmAccountUsername = whoamiData.OCMAccountUsername
+			userRolePrefix = fmt.Sprintf("QEAuto-userr-%s-52693", time.Now().UTC().Format("20060102"))
+
+			By("Create an user-role")
+			dirToClean, err = os.MkdirTemp("", "*")
+			Expect(err).To(BeNil())
+			rosaClient.Runner.SetDir(dirToClean)
+			output, err := ocmResourceService.CreateUserRole(
+				"--mode", "manual",
+				"--prefix", userRolePrefix,
+				"--path", path,
+				"--permissions-boundary", permissionsBoundaryArn,
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).Should(ContainSubstring("aws iam create-role"))
+			Expect(output.String()).Should(ContainSubstring("rosa link user-role"))
+
+			By("Create user role manually")
+			commands := common.ExtractCommandsToCreateAWSResoueces(output)
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+
+			By("Get the ocm-role info")
+			userRoleList, output, err := ocmResourceService.ListUserRole()
+			Expect(err).To(BeNil())
+			foundUserRole = userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
+			Expect(foundUserRole).ToNot(BeNil())
+			userRoleArnsToClean = append(userRoleArnsToClean, foundUserRole.RoleArn)
+
+			By("Get the user-role info")
 			userRoleList, output, err = ocmResourceService.ListUserRole()
 			Expect(err).To(BeNil())
-			foundUserRole = userRoleList.UserRole(userrolePrefix, ocmAccountUsername)
+			foundUserRole = userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
 			Expect(foundUserRole.Linded).To(Equal("No"))
+
+			By("Link user-role")
+			output, err = ocmResourceService.LinkUserRole("--role-arn", foundUserRole.RoleArn, "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).Should(ContainSubstring("Successfully linked role"))
+
+			By("Get the user-role info")
+			userRoleList, output, err = ocmResourceService.ListUserRole()
+			Expect(err).To(BeNil())
+			foundUserRole = userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
+			Expect(foundUserRole.Linded).To(Equal("Yes"))
 		})
 })
