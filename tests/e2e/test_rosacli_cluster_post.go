@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	nets "net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -631,13 +632,15 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
 
 				By("Get oidc endpoint URL from cluster detail json file")
-				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
-				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				clusterDetail, err := profilehandler.ParserClusterDetail()
 				Expect(err).To(BeNil())
 				oidcEndpointUrlC = clusterDetail.OIDCEndpointURL
+				parts := strings.Split(oidcEndpointUrlC, " ")
+				oidcEndpointUrlC = parts[0]
+				parsedUrl, err := url.Parse(oidcEndpointUrlC)
 				Expect(err).To(BeNil())
-				_, err = common.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrlC)
+				oidcEndpointUrl := parsedUrl.String()
+				oidcEndpointUrl, err = common.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrl)
 				Expect(err).To(BeNil())
 
 				By("Check the cluster is deleted")
@@ -654,7 +657,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				Expect(out).To(Equal(rosacli.OIDCConfig{}))
 
 				By("Check oidc provider is deleted")
-				oidcProviderArn = fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", AWSAccountID, oidcEndpointUrlC)
+				oidcProviderArn = fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", AWSAccountID, oidcEndpointUrl)
 				_, err = awsClient.IamClient.GetOpenIDConnectProvider(
 					context.TODO(),
 					&iam.GetOpenIDConnectProviderInput{
