@@ -13,3 +13,8 @@ const (
 	RequiredEc2MetadataHttpTokens = "required"
 	OptionalEc2MetadataHttpTokens = "optional"
 )
+
+var JumpAccounts = map[string]string{
+	"production": "710019948333",
+	"staging":    "644306948063",
+}

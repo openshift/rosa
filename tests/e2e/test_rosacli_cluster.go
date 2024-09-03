@@ -2701,3 +2701,208 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			}
 		})
 })
+var _ = Describe("HCP cluster creation supplemental testing",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+
+			customProfile      *profilehandler.Profile
+			clusterID          string
+			ocmResourceService rosacli.OCMResourceService
+			AWSAccountID       string
+			testingClusterName string
+		)
+		BeforeEach(func() {
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+
+			By("Get AWS account id")
+			rosaClient.Runner.JsonFormat()
+			whoamiOutput, err := ocmResourceService.Whoami()
+			Expect(err).To(BeNil())
+			rosaClient.Runner.UnsetFormat()
+			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+			AWSAccountID = whoamiData.AWSAccountID
+
+			By("Prepare custom profile")
+			customProfile = &profilehandler.Profile{
+				ClusterConfig: &profilehandler.ClusterConfig{
+					HCP:           true,
+					MultiAZ:       true,
+					STS:           true,
+					OIDCConfig:    "managed",
+					NetworkingSet: true,
+					BYOVPC:        true,
+					Zones:         "",
+				},
+				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+					Path:               "",
+					PermissionBoundary: "",
+				},
+				Version:      "latest",
+				ChannelGroup: "candidate",
+				Region:       "us-west-2",
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+
+		})
+
+		AfterEach(func() {
+			By("Delete cluster")
+			rosaClient.Runner.UnsetArgs()
+			_, err := clusterService.DeleteCluster(clusterID, "-y")
+			Expect(err).To(BeNil())
+
+			rosaClient.Runner.UnsetArgs()
+			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+			Expect(err).To(BeNil())
+
+			By("Delete operator-roles")
+			_, err = ocmResourceService.DeleteOperatorRoles(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+
+			By("Clean resource")
+			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		It("Check the output of the STS cluster creation with new oidc flow - [id:75925]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Create hcp cluster in auto mode")
+				testingClusterName = "rosa75925"
+				testOperatorRolePrefix := "ros75925opp"
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--operator-roles-prefix": testOperatorRolePrefix,
+				})
+
+				rosalCommand.AddFlags("--mode", "auto")
+				rosalCommand.AddFlags("--billing-account", AWSAccountID)
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
+			})
+	})
+var _ = Describe("Sts cluster creation supplemental testing",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+
+			customProfile      *profilehandler.Profile
+			clusterID          string
+			ocmResourceService rosacli.OCMResourceService
+			testingClusterName string
+		)
+		BeforeEach(func() {
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+
+			By("Get AWS account id")
+			rosaClient.Runner.JsonFormat()
+			rosaClient.Runner.UnsetFormat()
+
+			By("Prepare custom profile")
+			customProfile = &profilehandler.Profile{
+				ClusterConfig: &profilehandler.ClusterConfig{
+					HCP:           false,
+					MultiAZ:       true,
+					STS:           true,
+					OIDCConfig:    "",
+					NetworkingSet: false,
+					BYOVPC:        false,
+				},
+				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+					Path:               "/aa/bb/",
+					PermissionBoundary: "",
+				},
+				Version:      "latest",
+				ChannelGroup: "candidate",
+				Region:       "us-east-2",
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+
+		})
+
+		AfterEach(func() {
+			By("Delete cluster")
+			rosaClient.Runner.UnsetArgs()
+			_, err := clusterService.DeleteCluster(clusterID, "-y")
+			Expect(err).To(BeNil())
+
+			rosaClient.Runner.UnsetArgs()
+			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+			Expect(err).To(BeNil())
+
+			By("Delete operator-roles")
+			_, err = ocmResourceService.DeleteOperatorRoles(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+
+			By("Clean resource")
+			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Create hcp cluster in auto mode")
+				testingClusterName = "rosa75927"
+				testOperatorRolePrefix := "rosa75927opp"
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--operator-roles-prefix": testOperatorRolePrefix,
+				})
+
+				rosalCommand.AddFlags("--mode", "auto")
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
+			})
+	})

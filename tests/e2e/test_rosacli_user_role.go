@@ -168,6 +168,7 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).Should(ContainSubstring("Created role"))
 			Expect(textData).Should(ContainSubstring("Successfully linked role"))
+			Expect(textData).Should(ContainSubstring("Attached trust policy to role"))
 			defer func() {
 				By("Delete user-role")
 				output, err = ocmResourceService.DeleteUserRole("--mode", "auto",

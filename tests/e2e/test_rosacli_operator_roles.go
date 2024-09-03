@@ -344,6 +344,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			Expect(err).ToNot(HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).Should(ContainSubstring("Created role"))
+			Expect(textData).To(ContainSubstring("Attached trust policy"))
 			operatorRolePrefixedNeedCleanup = append(operatorRolePrefixedNeedCleanup, classicSTSOperatorRolesPrefix)
 
 			defer func() {
@@ -1075,6 +1076,7 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
 				Expect(err).To(BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
 				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
