@@ -1,13 +1,18 @@
 package e2e
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
@@ -2701,6 +2706,162 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			}
 		})
 })
+var _ = Describe("Sts cluster creation with external id",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+
+			customProfile      *profilehandler.Profile
+			clusterID          string
+			ocmResourceService rosacli.OCMResourceService
+			testingClusterName string
+		)
+		BeforeEach(func() {
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+
+			By("Get AWS account id")
+			rosaClient.Runner.JsonFormat()
+			rosaClient.Runner.UnsetFormat()
+
+			By("Prepare custom profile")
+			customProfile = &profilehandler.Profile{
+				ClusterConfig: &profilehandler.ClusterConfig{
+					HCP:           false,
+					MultiAZ:       false,
+					STS:           true,
+					OIDCConfig:    "",
+					NetworkingSet: false,
+					BYOVPC:        false,
+				},
+				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+					Path:               "/aa/bb/",
+					PermissionBoundary: "",
+				},
+				Version:      "latest",
+				ChannelGroup: "candidate",
+				Region:       "us-east-2",
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+
+		})
+
+		AfterEach(func() {
+			By("Delete cluster")
+			rosaClient.Runner.UnsetArgs()
+			_, err := clusterService.DeleteCluster(clusterID, "-y")
+			Expect(err).To(BeNil())
+
+			rosaClient.Runner.UnsetArgs()
+			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+			Expect(err).To(BeNil())
+
+			By("Delete operator-roles")
+			_, err = ocmResourceService.DeleteOperatorRoles(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+
+			By("Clean resource")
+			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		It("Creating cluster with sts external id should succeed - [id:75603]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Create classic cluster in auto mode")
+				testingClusterName = "rosa75603"
+				testOperatorRolePrefix := "rosa75603opp"
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--operator-roles-prefix": testOperatorRolePrefix,
+				})
+
+				rosalCommand.AddFlags("--mode", "auto")
+
+				By("Update installer role")
+				ExternalId := "223B9588-36A5-ECA4-BE8D-7C673B77CEC1"
+				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
+				_, roleName, err := common.ParseRoleARN(installRoleArn)
+				Expect(err).To(BeNil())
+
+				awsClient, err := aws_client.CreateAWSClient("", "")
+				Expect(err).To(BeNil())
+				opRole, err := awsClient.IamClient.GetRole(
+					context.TODO(),
+					&iam.GetRoleInput{
+						RoleName: &roleName,
+					})
+				Expect(err).To(BeNil())
+
+				decodedPolicyDocument, err := url.QueryUnescape(*opRole.Role.AssumeRolePolicyDocument)
+				Expect(err).To(BeNil())
+
+				By("update the trust relationship")
+				var policyDocument map[string]interface{}
+
+				err = json.Unmarshal([]byte(decodedPolicyDocument), &policyDocument)
+				Expect(err).To(BeNil())
+
+				newCondition := map[string]interface{}{
+					"StringEquals": map[string]interface{}{
+						"sts:ExternalId": ExternalId,
+					},
+				}
+
+				statements := policyDocument["Statement"].([]interface{})
+				for _, statement := range statements {
+					stmt := statement.(map[string]interface{})
+					stmt["Condition"] = newCondition
+				}
+				updatedPolicyDocument, err := json.Marshal(policyDocument)
+				Expect(err).To(BeNil())
+
+				_, err = awsClient.IamClient.UpdateAssumeRolePolicy(context.TODO(), &iam.UpdateAssumeRolePolicyInput{
+					RoleName:       aws.String(roleName),
+					PolicyDocument: aws.String(string(updatedPolicyDocument)),
+				})
+				Expect(err).To(BeNil())
+
+				By("Create cluster with external id not same with the role setting one")
+				notMatchExternalId := "333B9588-36A5-ECA4-BE8D-7C673B77CDCD"
+				rosalCommand.AddFlags("--external-id", notMatchExternalId)
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(
+					"An error occurred while trying to create an AWS client: Failed to assume role with ARN"))
+
+				By("Create cluster with external id")
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--external-id": ExternalId,
+				})
+				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 20)
+				Expect(err).To(BeNil())
+			})
+	})
 var _ = Describe("HCP cluster creation supplemental testing",
 	labels.Feature.Cluster,
 	func() {
