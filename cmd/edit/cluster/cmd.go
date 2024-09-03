@@ -291,7 +291,7 @@ func run(cmd *cobra.Command, _ []string) {
 	var insecureRegistries []string
 	var blockedRegistries []string
 	var allowedRegistries []string
-	var allowedRegistriesForImport []string
+	// var allowedRegistriesForImport []string
 
 	if cmd.Flags().Changed("insecure-registries") {
 		insecureRegistries = args.insecureRegistries
@@ -302,9 +302,9 @@ func run(cmd *cobra.Command, _ []string) {
 	if cmd.Flags().Changed("allowed-registries") {
 		allowedRegistries = args.allowedRegistries
 	}
-	if cmd.Flags().Changed("insecure-registries") {
-		allowedRegistriesForImport = args.allowedRegistriesForImport
-	}
+	// if cmd.Flags().Changed("insecure-registries") {
+	// 	allowedRegistriesForImport = args.allowedRegistriesForImport
+	// }
 
 	var private *bool
 	var privateValue bool
@@ -518,6 +518,79 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	/*******  Allowed Registries *******/
+	updateAllowedRegistries := false
+	if allowedRegistries != nil {
+		updateAllowedRegistries = true
+	}
+
+	if !updateAllowedRegistries && interactive.Enabled() {
+		updateAllowedRegistriesValue, err := interactive.GetBool(interactive.Input{
+			Question: "Update allowed registries",
+			Default:  updateAllowedRegistries,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+		updateAllowedRegistries = updateAllowedRegistriesValue
+	}
+
+	if updateAllowedRegistries && interactive.Enabled() {
+		allowedRegistriesInputs, err := interactive.GetString(interactive.Input{
+			Question: "Allowed Registries",
+			Help:     cmd.Flags().Lookup("allowed-registries").Usage,
+			Default:  allowedRegistries,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for allowed registries: %s", err)
+			os.Exit(1)
+		}
+		allowedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(allowedRegistriesInputs, ","))
+	}
+
+	/*******  Registries Config *******/
+	updateRegistriesConfig := false
+	if insecureRegistries != nil || blockedRegistries != nil {
+		updateRegistriesConfig = true
+	}
+
+	if !updateRegistriesConfig && interactive.Enabled() {
+		updateRegistriesConfigValue, err := interactive.GetBool(interactive.Input{
+			Question: "Update registries config",
+			Default:  updateRegistriesConfig,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+		updateRegistriesConfig = updateRegistriesConfigValue
+	}
+
+	if updateRegistriesConfig && interactive.Enabled() {
+		blockedRegistriesInputs, err := interactive.GetString(interactive.Input{
+			Question: "Blocked Registries",
+			Help:     cmd.Flags().Lookup("blocked-registries").Usage,
+			Default:  blockedRegistries,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for blocked registries: %s", err)
+			os.Exit(1)
+		}
+		blockedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(blockedRegistriesInputs, ","))
+
+		insecureRegistriesInputs, err := interactive.GetString(interactive.Input{
+			Question: "Insecure Registries",
+			Help:     cmd.Flags().Lookup("insecure-registries").Usage,
+			Default:  insecureRegistries,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for insecure registries: %s", err)
+			os.Exit(1)
+		}
+		insecureRegistries = helper.HandleEmptyStringOnSlice(strings.Split(insecureRegistriesInputs, ","))
+	}
+
 	/*******  AdditionalTrustBundle *******/
 	updateAdditionalTrustBundle := false
 	if additionalTrustBundleFile != nil {
@@ -670,8 +743,15 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.AdditionalAllowedPrincipals = additionalAllowedPrincipals
 	}
 
-	if insecureRegistries != nil {
-		// tbd
+	if updateRegistriesConfig {
+		registryResources := cmv1.NewRegistrySources().
+			InsecureRegistries(insecureRegistries...).AllowedRegistries(allowedRegistries...).BlockedRegistries(blockedRegistries...)
+		clusterRegistryConfig, err := cmv1.NewClusterRegistryConfig().RegistrySources(registryResources).Build()
+		if err != nil {
+			r.Reporter.Errorf("Failed to build cluster registry config: %v", err)
+			os.Exit(1)
+		}
+		clusterConfig.ClusterRegistryConfig = *clusterRegistryConfig
 	}
 
 	if auditLogRole != nil {
@@ -719,6 +799,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
+	fmt.Print(clusterConfig.ClusterRegistryConfig.RegistrySources().AllowedRegistries())
 	r.Reporter.Infof("Updated cluster '%s'", clusterKey)
 }
 

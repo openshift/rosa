@@ -174,6 +174,10 @@ type Spec struct {
 
 	// Control Plane Machine Pool attributes
 	AdditionalControlPlaneSecurityGroupIds []string
+
+	// Registry Config
+	ClusterRegistryConfig cmv1.ClusterRegistryConfig
+	RegistryAllowList     cmv1.RegistryAllowlist
 }
 
 // Volume represents a volume property for a disk

@@ -495,6 +495,15 @@ func run(cmd *cobra.Command, argv []string) {
 				"Additional Principals:      %s\n", str,
 				strings.Join(cluster.AWS().AdditionalAllowedPrincipals(), ","))
 		}
+
+		str = fmt.Sprintf("%s"+
+			"Allowed Registries:      %s\n", str,
+			strings.Join(cluster.RegistryConfig().RegistrySources().AllowedRegistries(), ","))
+		// There's no cluster.RegistryAllowlist for the above
+
+		str = fmt.Sprintf("%s"+
+			"Platform Allowlist:      %s\n", str,
+			strings.Join(cluster.RegistryConfig().PlatformAllowlist().Registries(), ","))
 	}
 
 	if cluster.Status().State() == cmv1.ClusterStateError {
