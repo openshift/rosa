@@ -1617,6 +1617,70 @@ var _ = Describe("Classic cluster creation negative testing",
 				Expect(err).ToNot(BeNil())
 				Expect(output.String()).To(ContainSubstring("ROSA IAM roles must have unique ARNs"))
 			})
+
+		It("to validate creating a cluster with invalid autoscaler - [id:66761]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterService := rosaClient.Cluster
+				clusterName := "ocp-66761"
+
+				By("Create cluster with invalid subnets")
+				basicFlags := []string{"--enable-autoscaling", "--min-replicas", "3", "--max-replicas", "3"}
+
+				errAndFlagMap := map[string][]string{
+					"Error validating log-verbosity: " +
+						"Number must be greater or equal " +
+						"to zero": {"--autoscaler-log-verbosity", "-2"},
+
+					"Error validating utilization-threshold: Expecting" +
+						" a floating-point number between " +
+						"0 and 1": {"--autoscaler-scale-down-utilization-threshold", "1.3"},
+
+					"Error validating delay-after-add: " +
+						"time: invalid duration \"e\"": {"--autoscaler-scale-down-delay-after-add", "e"},
+
+					"Error validating delay-after-delete: " +
+						"time: missing unit in duration \"3.3\"": {"--autoscaler-scale-down-delay-after-delete",
+						"3.3"},
+					"Error validating min-cores: Number " +
+						"must be greater or equal to zero": {"--autoscaler-min-cores", "-5",
+						"--autoscaler-max-cores", "0"},
+
+					"Error validating max-cores: Number" +
+						" must be greater or equal to zero": {"--autoscaler-min-cores", "0",
+						"--autoscaler-max-cores", "-5"},
+
+					"Error validating cores range: max" +
+						" value must be greater or equal than min value 100": {"--autoscaler-min-cores", "100",
+						"--autoscaler-max-cores", "5"},
+
+					"Error validating max-cores: Should" +
+						" provide an integer number between 0 to 2147483647": {"--autoscaler-min-cores", "5",
+						"--autoscaler-max-cores", "1152000000000"},
+
+					"Error validating memory range: max value" +
+						" must be greater or equal than min value 1000": {"--autoscaler-min-memory", "1000",
+						"--autoscaler-max-memory", "100"},
+
+					"Error validating GPU range: max value " +
+						"must be greater or equal than min value 15": {
+						"--autoscaler-gpu-limit", "nvidia.com/gpu,0,10",
+						"--autoscaler-gpu-limit", "amd.com/gpu,15,5"},
+				}
+
+				for errMsg, flag := range errAndFlagMap {
+
+					flag = append(flag, basicFlags...)
+					out, err := clusterService.CreateDryRun(
+						clusterName,
+						flag...,
+					)
+					Expect(err).NotTo(BeNil())
+					Expect(err).To(HaveOccurred())
+					textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+					Expect(textData).To(ContainSubstring(errMsg))
+				}
+			})
 	})
 
 var _ = Describe("HCP cluster creation negative testing",
@@ -1998,6 +2062,44 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(out.String()).To(ContainSubstring(
 					"Could not find the following subnet provided in region 'us-west-2': " + subnetMap["public"][0]))
 			})
+
+		It("to validate create cluster with audit log forwarding - [id:73672]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				By("Create non-HCP cluster with --audit-log-arn")
+				clusterName := common.GenerateRandomName("ocp-73672", 2)
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "-y")
+				log.Logger.Debug(profile.Name)
+				log.Logger.Debug(strings.Split(rosalCommand.GetFullCommand(), " "))
+
+				By("Create classic cluster with  audit log arn")
+				if rosalCommand.CheckFlagExist("--audit-log-arn") {
+					rosalCommand.DeleteFlag("--audit-log-arn", true)
+				}
+
+				output, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "-y")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).
+					To(
+						ContainSubstring(
+							"ERR: Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters"))
+
+				By("Create HCP cluster with incorrect format audit log arn")
+				rosalCommand.AddFlags("--audit-log-arn", "qwertyugf234543234")
+				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).
+					To(
+						ContainSubstring(
+							"ERR: Expected a valid value for audit log arn matching ^arn:aws"))
+			})
+
 	})
 
 var _ = Describe("Create cluster with availability zones testing",
