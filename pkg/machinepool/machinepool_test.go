@@ -515,7 +515,7 @@ var _ = Describe("Utility Functions", func() {
 		var validator interactive.Validator
 
 		BeforeEach(func() {
-			validator = minReplicaValidator(true) // or false for non-multiAZ
+			validator = minReplicaValidator(true, false) // or false for non-multiAZ
 		})
 
 		When("input is non-integer", func() {
@@ -842,7 +842,7 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
 			args.AutoscalingEnabled = true
-
+			args.Replicas = 3
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Replicas can't be set when autoscaling is enabled"))
@@ -858,11 +858,13 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("multi-availability-zone", "true")
 			cmd.Flags().Bool("enable-autoscaling", true, "")
 			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
 			args.AutoscalingEnabled = true
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("You must supply a valid instance type"))
@@ -876,10 +878,12 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Autoscaling must be enabled in order to set min and max replicas"))
@@ -892,8 +896,9 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
+			args.Replicas = 3
 			args.InstanceType = "test"
 			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
 			Expect(err).ToNot(HaveOccurred())
@@ -918,8 +923,9 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
+			args.Replicas = 3
 			cmd.Flags().BoolVar(&args.UseSpotInstances, "use-spot-instances", false, "")
 			cmd.Flags().Set("use-spot-instances", "false")
 			cmd.Flags().Changed("use-spot-instances")
@@ -949,8 +955,9 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
+			args.Replicas = 3
 			args.InstanceType = "t3.small"
 			args.UseSpotInstances = true
 			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
@@ -978,8 +985,9 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
+			args.Replicas = 3
 			args.InstanceType = "t3.small"
 			args.UseSpotInstances = true
 			args.SpotMaxPrice = "1.00"
@@ -1009,8 +1017,9 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
+			args.Replicas = 3
 			args.InstanceType = "t3.small"
 			args.UseSpotInstances = true
 			args.SpotMaxPrice = "1.00"
@@ -1040,8 +1049,9 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("name", "mp-1")
 			cmd.Flags().Bool("multi-availability-zone", true, "")
 			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().IntVar(&args.Replicas, "replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "3")
+			args.Replicas = 3
 			args.InstanceType = "t3.small"
 			args.UseSpotInstances = true
 			args.SpotMaxPrice = "1.00"
@@ -1073,10 +1083,12 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("multi-availability-zone", "true")
 			cmd.Flags().Bool("enable-autoscaling", true, "")
 			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 			args.InstanceType = "t3.small"
 			args.UseSpotInstances = true
 			args.SpotMaxPrice = "1.00"
@@ -1208,10 +1220,12 @@ var _ = Describe("NodePools", func() {
 
 			cmd.Flags().Bool("enable-autoscaling", true, "")
 			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 			args.AutoscalingEnabled = true
 
 			versionObj, err := v.Build()
@@ -1246,10 +1260,12 @@ var _ = Describe("NodePools", func() {
 
 			cmd.Flags().Bool("enable-autoscaling", true, "")
 			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 			args.AutoscalingEnabled = true
 			args.InstanceType = "t3.small"
 
@@ -1308,11 +1324,12 @@ var _ = Describe("NodePools", func() {
 
 			cmd.Flags().Bool("enable-autoscaling", true, "")
 			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
-
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 			args.AutoscalingEnabled = true
 			args.InstanceType = "t3.small"
 			args.TuningConfigs = "test"
@@ -1364,10 +1381,12 @@ var _ = Describe("NodePools", func() {
 
 			cmd.Flags().Bool("enable-autoscaling", true, "")
 			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 			args.AutoscalingEnabled = true
 			args.InstanceType = "t3.small"
 			args.TuningConfigs = "test"
@@ -1437,15 +1456,17 @@ var _ = Describe("NodePools", func() {
 
 			cmd.Flags().Bool("enable-autoscaling", true, "")
 			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
 			args.AutoscalingEnabled = true
 			args.InstanceType = "t3.small"
 			args.TuningConfigs = "test"
 			args.KubeletConfigs = "test"
 			args.NodeDrainGracePeriod = "30"
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
 
 			args.RootDiskSize = "200000000000GB"
 
@@ -1499,32 +1520,32 @@ var _ = Describe("ManageReplicas", func() {
 	var cmd *cobra.Command
 	var args *mpOpts.CreateMachinepoolUserOptions
 	var multiAZMachinePool bool
-	var isMachinePool bool
 
 	BeforeEach(func() {
 		cmd = &cobra.Command{}
 		args = &mpOpts.CreateMachinepoolUserOptions{}
 		multiAZMachinePool = true
-		isMachinePool = true
 	})
 
 	When("when autoscaling is enabled", func() {
 		It("should not allow setting replicas directly", func() {
 			args.AutoscalingEnabled = true
-			cmd.Flags().Int32("replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "1")
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
 			Expect(autoscaling).To(BeTrue())
 		})
 		It("should pass successfully", func() {
 			args.AutoscalingEnabled = true
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
-			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
-			cmd.Flags().Set("max-replicas", "3")
-			_, _, _, _, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			cmd.Flags().Int32("min-replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "3")
+			cmd.Flags().Int32("max-replicas", 6, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "6")
+			args.MinReplicas = 3
+			args.MaxReplicas = 6
+			_, _, _, _, err := manageReplicas(cmd, args, multiAZMachinePool)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -1532,20 +1553,22 @@ var _ = Describe("ManageReplicas", func() {
 	When("when autoscaling is not enabled", func() {
 		It("should not allow setting min and max replicas", func() {
 			args.AutoscalingEnabled = false
-			cmd.Flags().Int32("min-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
 			cmd.Flags().Set("max-replicas", "3")
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
 			Expect(autoscaling).To(BeFalse())
 		})
 		It("should pass successfully", func() {
 			args.AutoscalingEnabled = false
-			cmd.Flags().Int32("replicas", 0, "Replicas of the machine pool")
+			cmd.Flags().Int32("replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "1")
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, isMachinePool)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(autoscaling).To(BeFalse())
 		})
@@ -1571,7 +1594,7 @@ var _ = Describe("Utility Functions", func() {
 		var validator interactive.Validator
 
 		BeforeEach(func() {
-			validator = minReplicaValidator(true) // or false for non-multiAZ
+			validator = minReplicaValidator(true, false) // or false for non-multiAZ
 		})
 
 		It("should return error for non-integer input", func() {

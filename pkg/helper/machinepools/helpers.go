@@ -38,38 +38,6 @@ var allowedTaintEffects = []string{
 	"PreferNoSchedule",
 }
 
-func MinNodePoolReplicaValidator(autoscaling bool) interactive.Validator {
-	return func(val interface{}) error {
-		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-		if autoscaling {
-			if minReplicas < 1 {
-				return fmt.Errorf("min-replicas must be greater than zero")
-			}
-		} else {
-			if minReplicas < 0 {
-				return fmt.Errorf("replicas must be a non-negative integer")
-			}
-		}
-		return nil
-	}
-}
-
-func MaxNodePoolReplicaValidator(minReplicas int) interactive.Validator {
-	return func(val interface{}) error {
-		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-		if minReplicas > maxReplicas {
-			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
-		}
-		return nil
-	}
-}
-
 func ParseLabels(labels string) (map[string]string, error) {
 	labelMap := make(map[string]string)
 	if labels == "" || labels == interactiveModeEmptyLabels {
