@@ -102,11 +102,13 @@ For the test cases, we need `$ make install` to make the rosa command line insta
 
 2. Export the profile name as an environment variable
   * `$ export TEST_PROFILE=<PROFILE NAME>`
+3. Export the name prefix of the cluster and resources created, no longer than 15 chars.
+  * `$ export NAME_PREFIX=<your alias>`
 
-3. Create cluster according to the profile configuration
+4. Create cluster according to the profile configuration
   * `$ ginkgo run --label-filter day1 tests/e2e --timeout 2h`
 
-4. Wait for the cluster preparation finished
+5. Wait for the cluster preparation finished
 
 > [!CAUTION]
 > **The profiles with a _TODO_ is not supported yet**
@@ -131,8 +133,8 @@ For the test cases, we need `$ make install` to make the rosa command line insta
 
 This feature allows for running tests through a case filter to simulate CI. Anyone can customize the case label filter to select the specific cases that would be run. 
 
-1. To declare the cluster id, use the below variable
-  * ```$ export CLUSTER_ID=<cluster_id>```
+1. To declare the cluster profile again, use the below variable
+  * `$ export TEST_PROFILE=<PROFILE NAME>`
 
 2. Run cases with the profile
     * Running cases based on label filter which to simulate CI jobs

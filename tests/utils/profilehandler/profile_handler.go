@@ -29,10 +29,6 @@ func LoadProfileYamlFile(profileName string) *Profile {
 		log.Logger.Infof("Loaded cluster profile configuration from original account-roles %s : %v",
 			profileName, *p.AccountRoleConfig)
 	}
-
-	if p.NamePrefix == "" {
-		p.NamePrefix = con.DefaultNamePrefix
-	}
 	return p
 }
 
@@ -68,6 +64,7 @@ func LoadProfileYamlFileByENV() *Profile {
 			config.Test.GlobalENV.NamePrefix)
 		profile.NamePrefix = config.Test.GlobalENV.NamePrefix
 	}
+
 	if config.Test.GlobalENV.ComputeMachineType != "" {
 		log.Logger.Infof("Got global env settings for INSTANCE_TYPE, overwritten the profile setting with value %s",
 			config.Test.GlobalENV.ComputeMachineType)
@@ -116,6 +113,9 @@ func GenerateAccountRoleCreationFlag(client *rosacli.Client,
 func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]string, error) {
 	if profile.ClusterConfig.NameLegnth == 0 {
 		profile.ClusterConfig.NameLegnth = con.DefaultNameLength //Set to a default value when it is not set
+	}
+	if profile.NamePrefix == "" {
+		panic("The profile name prefix is empty. Please set with env variable NAME_PREFIX")
 	}
 	clusterName := PreparePrefix(profile.NamePrefix, profile.ClusterConfig.NameLegnth)
 	profile.ClusterConfig.Name = clusterName
