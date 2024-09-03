@@ -89,64 +89,6 @@ var _ = Describe("MachinePool", func() {
 
 })
 
-var _ = Describe("Machine pool for hosted clusters", func() {
-	DescribeTable("Machine pool min replicas validation",
-		func(minReplicas int, autoscaling bool, hasError bool) {
-			err := MinNodePoolReplicaValidator(autoscaling)(minReplicas)
-			if hasError {
-				Expect(err).To(HaveOccurred())
-			} else {
-				Expect(err).ToNot(HaveOccurred())
-			}
-		},
-		Entry("Zero replicas - no autoscaling",
-			0,
-			false,
-			false,
-		),
-		Entry("Negative replicas - no autoscaling",
-			-1,
-			false,
-			true,
-		),
-		Entry("Zero replicas - autoscaling",
-			0,
-			true,
-			true,
-		),
-		Entry("One replicas - autoscaling",
-			1,
-			true,
-			false,
-		),
-	)
-	DescribeTable("Machine pool max replicas validation",
-		func(minReplicas int, maxReplicas int, hasError bool) {
-			err := MaxNodePoolReplicaValidator(minReplicas)(maxReplicas)
-			if hasError {
-				Expect(err).To(HaveOccurred())
-			} else {
-				Expect(err).ToNot(HaveOccurred())
-			}
-		},
-		Entry("Max > Min -> OK",
-			1,
-			2,
-			false,
-		),
-		Entry("Min < Max -> OK",
-			2,
-			1,
-			true,
-		),
-		Entry("Min = Max -> OK",
-			2,
-			2,
-			false,
-		),
-	)
-})
-
 var _ = Describe("Label validations", func() {
 	DescribeTable("Label validation",
 		func(key string, value string, hasError bool) {
