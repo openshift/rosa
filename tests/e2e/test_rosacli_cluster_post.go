@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	nets "net/http"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -330,6 +331,7 @@ var _ = Describe("Healthy check",
 					Expect(des.FIPSMod).To(Equal("Enabled"))
 				}
 			})
+
 		It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical,
 			func() {
 				private := constants.No
@@ -349,6 +351,7 @@ var _ = Describe("Healthy check",
 				Expect(ingress.Private).To(Equal(ingressPrivate))
 
 			})
+
 		It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High,
 			func() {
 				By("Check cluster is multiarch")
@@ -477,6 +480,61 @@ var _ = Describe("Healthy check",
 				}
 			})
 
+		It("with subnets will work - [id:37176]", labels.Runtime.Day1Post, labels.Critical,
+			func() {
+				By("Check the creation command help")
+				output, err, _ := clusterService.Create("cluster-37176", "-h")
+				Expect(err).ToNot(HaveOccurred())
+				flag := "--subnet-ids strings"
+				description := "The Subnet IDs to use when installing the cluster." +
+					" Format should be a comma-separated list." +
+					" Leave empty for installer provisioned subnet IDs"
+				Expect(output.String()).Should(MatchRegexp(fmt.Sprintf(`%s[\s\t]*%s`, flag, description)))
+
+				By("Check that cluster is created with the correct subnets")
+				clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterSubnets := []string{}
+
+				for _, item := range clusterDescription.Network {
+					if value, ok := item["Subnets"]; ok {
+						clusterSubnets = common.ParseCommaSeparatedStrings(value)
+						break
+					}
+				}
+				configuredPrivateSubnets := []string{}
+				if !profile.ClusterConfig.BYOVPC {
+					Expect(len(clusterSubnets)).To(BeZero())
+				} else {
+					configuredPrivateSubnets = common.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
+					configuredPublicSubnets := common.ParseCommaSeparatedStrings(clusterConfig.Subnets.PublicSubnetIds)
+					Expect(len(clusterSubnets)).To(BeNumerically("==",
+						len(configuredPrivateSubnets)+
+							len(configuredPublicSubnets)))
+					Expect(clusterSubnets).Should(ContainElements(configuredPrivateSubnets))
+					Expect(clusterSubnets).Should(ContainElements(configuredPublicSubnets))
+				}
+
+				By("Check the default worker pool")
+				if isHosted {
+					mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					for _, mp := range mpList.MachinePools {
+						// Only check the machinepool has workers which is default worker pool
+						if regexp.MustCompile("workers-?[0-9]?").MatchString(mp.ID) {
+							Expect(mp.Subnets).To(BeElementOf(configuredPrivateSubnets))
+						}
+					}
+				} else {
+					mp, err := machinePoolService.DescribeAndReflectMachinePool(
+						clusterID, constants.DefaultClassicWorkerPool)
+					Expect(err).ToNot(HaveOccurred())
+					workerPoolSubnets := common.ParseCommaSeparatedStrings(mp.Subnets)
+					Expect(len(workerPoolSubnets)).To(Equal(len(configuredPrivateSubnets)))
+					Expect(workerPoolSubnets).Should(ContainElements(configuredPrivateSubnets))
+				}
+
+			})
 	})
 
 var _ = Describe("Create cluster with the version in some channel group testing",
