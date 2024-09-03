@@ -26,6 +26,9 @@ type VersionService interface {
 		hostedCP bool,
 		flags ...string,
 	) (*OpenShiftVersionTableList, error)
+	ListAndReflectJsonVersions(
+		channelGroup string, hostedCP bool, flags ...string,
+	) ([]*OpenShiftVersionJsonOutput, error)
 }
 
 type versionService struct {
@@ -47,9 +50,10 @@ type OpenShiftVersionTableOutput struct {
 }
 
 type OpenShiftVersionJsonOutput struct {
-	ID                string   `json:"VERSION,omitempty"`
+	ID                string   `json:"id,omitempty"`
 	RAWID             string   `json:"raw_id,omitempty"`
 	ChannelGroup      string   `json:"channel_group,omitempty"`
+	Enabled           bool     `json:"enabled,omitempty"`
 	HCPDefault        bool     `json:"hosted_control_plane_default,omitempty"`
 	HCPEnabled        bool     `json:"hosted_control_plane_enabled,omitempty"`
 	Default           bool     `json:"default,omitempty"`
@@ -122,14 +126,15 @@ func (v *versionService) ListAndReflectVersions(
 	return versionList, err
 }
 func (v *versionService) ListAndReflectJsonVersions(
-	channelGroup string, hostedCP bool, flags ...string) (versionList *OpenShiftVersionTableList, err error) {
+	channelGroup string, hostedCP bool, flags ...string) (versionList []*OpenShiftVersionJsonOutput, err error) {
 	var output bytes.Buffer
+	flags = append(flags, "-ojson")
 	output, err = v.ListVersions(channelGroup, hostedCP, flags...)
 	if err != nil {
 		return versionList, err
 	}
 
-	versionList, err = v.ReflectVersions(output)
+	versionList, err = v.ReflectJsonVersions(output)
 	return versionList, err
 }
 
