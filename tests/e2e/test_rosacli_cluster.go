@@ -531,7 +531,8 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
-				profile.NamePrefix = "ci-38770"
+				profile.NamePrefix = common.GenerateRandomName("ci38770", 2)
+
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -652,7 +653,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
-				profile.NamePrefix = "ci-45161"
+				profile.NamePrefix = common.GenerateRandomName("ci45161", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -914,7 +915,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
-				profile.NamePrefix = "ci-71329"
+				profile.NamePrefix = common.GenerateRandomName("ci71329", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -2329,7 +2330,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create acount-roles")
-				accountRolePrefix = "testAr45742"
+				accountRolePrefix = common.GenerateRandomName("ar45742", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -2443,7 +2444,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create acount-roles")
-				accountRolePrefix = "testAr43053"
+				accountRolePrefix = common.GenerateRandomName("ar43053", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -2462,7 +2463,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 
 				By("Create one sts cluster in manual mode")
 				rosaClient.Runner.SetDir(dirToClean)
-				clusterNameToClean = "test-43053"
+				clusterNameToClean = common.GenerateRandomName("c43053", 2)
 				// Configure with a random str, which can solve the rerun failure
 				operatorRolePreifx := common.GenerateRandomName("opPrefix43053", 2)
 				_, err, _ = clusterService.Create(
@@ -2780,8 +2781,8 @@ var _ = Describe("Sts cluster creation with external id",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create classic cluster in auto mode")
-				testingClusterName = "rosa75603"
-				testOperatorRolePrefix := "rosa75603opp"
+				testingClusterName = common.GenerateRandomName("c75603", 2)
+				testOperatorRolePrefix := common.GenerateRandomName("opp75603", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -2942,8 +2943,8 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create hcp cluster in auto mode")
-				testingClusterName = "rosa75925"
-				testOperatorRolePrefix := "ros75925opp"
+				testingClusterName = common.GenerateRandomName("c75925", 2)
+				testOperatorRolePrefix := common.GenerateRandomName("opp75925", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -3042,8 +3043,8 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create hcp cluster in auto mode")
-				testingClusterName = "rosa75927"
-				testOperatorRolePrefix := "rosa75927opp"
+				testingClusterName = common.GenerateRandomName("c75927", 2)
+				testOperatorRolePrefix := common.GenerateRandomName("opp75927", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
