@@ -2121,11 +2121,7 @@ var _ = Describe("Create cluster with availability zones testing",
 
 		BeforeEach(func() {
 			By("Get the cluster")
-			var clusterDetail *profilehandler.ClusterDetail
-			var err error
-			clusterDetail, err = profilehandler.ParserClusterDetail()
-			Expect(err).ToNot(HaveOccurred())
-			clusterID = clusterDetail.ClusterID
+			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 
 			By("Init the client")
@@ -2981,6 +2977,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			customProfile      *profilehandler.Profile
 			clusterID          string
 			ocmResourceService rosacli.OCMResourceService
+			rolePrefix         string
 			testingClusterName string
 		)
 		BeforeEach(func() {
@@ -3034,9 +3031,13 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			)
 			Expect(err).To(BeNil())
 
-			By("Clean resource")
-			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
+			By("Delete account-roles")
+			_, err = ocmResourceService.DeleteAccountRole(
+				"--prefix", rolePrefix,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
 		})
 
 		It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
@@ -3066,5 +3067,40 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				Expect(err).To(BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 				Expect(clusterID).ToNot(BeNil())
+			})
+
+		It("User can set availability zones to create rosa multi-az STS cluster - [id:56224]",
+			labels.Critical, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Create classic sts cluster in auto mode")
+				customProfile.ClusterConfig.Zones = "us-east-2a,us-east-2b,us-east-2c"
+				customProfile.NamePrefix = "rosa56224"
+				testingClusterName = "cluster56224"
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+				rolePrefix = flags[16]
+
+				flags = append(flags, "-m")
+				flags = append(flags, "auto")
+				_, err, _ = clusterService.Create(testingClusterName, flags[:]...)
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListOut, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListOut)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
+
+				By("Describe cluster in json format")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+
+				zones := jsonData.DigString("nodes", "availability_zones")
+				Expect(zones).To(Equal("[us-east-2a us-east-2b us-east-2c]"))
 			})
 	})
