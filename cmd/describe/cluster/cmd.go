@@ -499,7 +499,10 @@ func run(cmd *cobra.Command, argv []string) {
 		str = fmt.Sprintf("%s"+
 			"Allowed Registries:      %s\n", str,
 			strings.Join(cluster.RegistryConfig().RegistrySources().AllowedRegistries(), ","))
-		// There's no cluster.RegistryAllowlist for the above
+
+		str = fmt.Sprintf("%s"+
+			"Blocked Registries:      %s\n", str,
+			strings.Join(cluster.RegistryConfig().RegistrySources().BlockedRegistries(), ","))
 
 		str = fmt.Sprintf("%s"+
 			"Platform Allowlist:      %s\n", str,

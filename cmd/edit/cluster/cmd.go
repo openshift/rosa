@@ -63,8 +63,8 @@ var args struct {
 	blockedRegistries          []string
 	allowedRegistries          []string
 	allowedRegistriesForImport []string
-	// additionalTrustedCa        string
-	// platformAllowList
+	additionalTrustedCa        string
+	platformAllowlist          []string
 }
 
 var Cmd = &cobra.Command{
@@ -194,12 +194,26 @@ func init() {
 	)
 
 	flags.StringSliceVar(
+		&args.platformAllowlist,
+		"platform-allowlist",
+		nil,
+		"A comma-separated list of internal registries that needs to be whitelisted for the platform to work. "+
+			"It can be omitted at creation and updating and its lifecycle can be managed separately if needed.",
+	)
+
+	flags.StringSliceVar(
 		&args.allowedRegistriesForImport,
 		"allowed-registries-for-import",
 		nil,
 		"A comma-separated list of registries that limits the container image registries that normal users may import",
 	)
 
+	flags.StringVar(
+		&args.additionalTrustedCa,
+		"additional-trusted-ca",
+		"",
+		"A map containing the registry hostname as the key,"+
+			" and the PEM-encoded certificate as the value, for each additional registry CA to trust.")
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -291,7 +305,9 @@ func run(cmd *cobra.Command, _ []string) {
 	var insecureRegistries []string
 	var blockedRegistries []string
 	var allowedRegistries []string
-	// var allowedRegistriesForImport []string
+	var allowedRegistriesForImport []string
+	var platformAllowlist []string
+	var additionalTrustedCa string
 
 	if cmd.Flags().Changed("insecure-registries") {
 		insecureRegistries = args.insecureRegistries
@@ -302,9 +318,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if cmd.Flags().Changed("allowed-registries") {
 		allowedRegistries = args.allowedRegistries
 	}
-	// if cmd.Flags().Changed("insecure-registries") {
-	// 	allowedRegistriesForImport = args.allowedRegistriesForImport
-	// }
+	if cmd.Flags().Changed("allowed-registries-for-import") {
+		allowedRegistriesForImport = args.allowedRegistriesForImport
+	}
+	if cmd.Flags().Changed("platform-allowlist") {
+		platformAllowlist = args.platformAllowlist
+	}
+
+	if cmd.Flags().Changed("additional-trusted-ca") {
+		additionalTrustedCa = args.additionalTrustedCa
+	}
 
 	var private *bool
 	var privateValue bool
@@ -518,40 +541,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	/*******  Allowed Registries *******/
-	updateAllowedRegistries := false
-	if allowedRegistries != nil {
-		updateAllowedRegistries = true
-	}
-
-	if !updateAllowedRegistries && interactive.Enabled() {
-		updateAllowedRegistriesValue, err := interactive.GetBool(interactive.Input{
-			Question: "Update allowed registries",
-			Default:  updateAllowedRegistries,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
-		}
-		updateAllowedRegistries = updateAllowedRegistriesValue
-	}
-
-	if updateAllowedRegistries && interactive.Enabled() {
-		allowedRegistriesInputs, err := interactive.GetString(interactive.Input{
-			Question: "Allowed Registries",
-			Help:     cmd.Flags().Lookup("allowed-registries").Usage,
-			Default:  allowedRegistries,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value for allowed registries: %s", err)
-			os.Exit(1)
-		}
-		allowedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(allowedRegistriesInputs, ","))
-	}
-
 	/*******  Registries Config *******/
 	updateRegistriesConfig := false
-	if insecureRegistries != nil || blockedRegistries != nil {
+	if insecureRegistries != nil || blockedRegistries != nil || allowedRegistriesForImport != nil ||
+		allowedRegistries != nil || platformAllowlist != nil || additionalTrustedCa != "" {
 		updateRegistriesConfig = true
 	}
 
@@ -568,6 +561,17 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if updateRegistriesConfig && interactive.Enabled() {
+		allowedRegistriesInputs, err := interactive.GetString(interactive.Input{
+			Question: "Allowed Registries",
+			Help:     cmd.Flags().Lookup("allowed-registries").Usage,
+			Default:  allowedRegistries,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for allowed registries: %s", err)
+			os.Exit(1)
+		}
+		allowedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(allowedRegistriesInputs, ","))
+
 		blockedRegistriesInputs, err := interactive.GetString(interactive.Input{
 			Question: "Blocked Registries",
 			Help:     cmd.Flags().Lookup("blocked-registries").Usage,
@@ -589,7 +593,40 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		insecureRegistries = helper.HandleEmptyStringOnSlice(strings.Split(insecureRegistriesInputs, ","))
+
+		platformAllowlistInputs, err := interactive.GetString(interactive.Input{
+			Question: "Platform Allowlist",
+			Help:     cmd.Flags().Lookup("platform-allowlist").Usage,
+			Default:  platformAllowlist,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for platform allowlist: %s", err)
+			os.Exit(1)
+		}
+		platformAllowlist = helper.HandleEmptyStringOnSlice(strings.Split(platformAllowlistInputs, ","))
+
+		additionalTrustedCa, err = interactive.GetCert(interactive.Input{
+			Question: "Additional Trusted CA file path",
+			Help:     cmd.Flags().Lookup("additional-trusted-ca").Usage,
+			Default:  additionalTrustedCa,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid certificate: %s", err)
+			os.Exit(1)
+		}
 	}
+
+	// tbd once figure out the logic
+	// // Get additional trusted ca contents
+	// additionalTrustedCaContent := ""
+	// if additionalTrustedCa != "" {
+	// 	cert, err := os.ReadFile(additionalTrustedCa)
+	// 	if err != nil {
+	// 		r.Reporter.Errorf("Expected a valid certificate: %s", err)
+	// 		os.Exit(1)
+	// 	}
+	// 	additionalTrustedCaContent = string(cert)
+	// }
 
 	/*******  AdditionalTrustBundle *******/
 	updateAdditionalTrustBundle := false
@@ -745,13 +782,39 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if updateRegistriesConfig {
 		registryResources := cmv1.NewRegistrySources().
-			InsecureRegistries(insecureRegistries...).AllowedRegistries(allowedRegistries...).BlockedRegistries(blockedRegistries...)
-		clusterRegistryConfig, err := cmv1.NewClusterRegistryConfig().RegistrySources(registryResources).Build()
+			InsecureRegistries(insecureRegistries...).AllowedRegistries(allowedRegistries...).
+			BlockedRegistries(blockedRegistries...)
+		clusterRegistryConfig := cmv1.NewClusterRegistryConfig()
+
+		// if allowedRegistriesForImport != nil {
+		// 	importRegistry := cmv1.NewRegistryLocationList()
+		// 	for _, registry := range allowedRegistriesForImport {
+		// 		importRegistry.Items(cmv1.NewRegistryLocation().DomainName(registry))
+		// 	}
+		// 	importRegistryOutput, err := importRegistry.Build()
+		// 	if err != nil {
+		// 		r.Reporter.Errorf("Failed to build registry location: %v", err)
+		// 		os.Exit(1)
+		// 	}
+		// 	test = test.AllowedRegistriesForImport(*importRegistryOutput)
+		// }
+
+		// if additionalTrustedCa != "" {
+		// 	// need to figure out the logic
+		// 	// clusterRegistryConfig = clusterRegistryConfig.AdditionalTrustedCa()
+		// }
+
+		if platformAllowlist != nil {
+			clusterRegistryConfig = clusterRegistryConfig.PlatformAllowlist(cmv1.NewRegistryAllowlist().
+				Registries(platformAllowlist...))
+		}
+
+		config, err := clusterRegistryConfig.RegistrySources(registryResources).Build()
 		if err != nil {
 			r.Reporter.Errorf("Failed to build cluster registry config: %v", err)
 			os.Exit(1)
 		}
-		clusterConfig.ClusterRegistryConfig = *clusterRegistryConfig
+		clusterConfig.RegistryConfig = config
 	}
 
 	if auditLogRole != nil {
@@ -799,7 +862,6 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to update cluster: %v", err)
 		os.Exit(1)
 	}
-	fmt.Print(clusterConfig.ClusterRegistryConfig.RegistrySources().AllowedRegistries())
 	r.Reporter.Infof("Updated cluster '%s'", clusterKey)
 }
 
