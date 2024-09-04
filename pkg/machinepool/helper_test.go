@@ -414,6 +414,95 @@ var _ = Describe("getSecurityGroupsOption", func() {
 	})
 })
 
+var _ = Describe("Machine pool min/max replicas validation", func() {
+	DescribeTable("Machine pool min replicas validation",
+		func(minReplicas int, autoscaling bool, multiAZ bool, hasError bool) {
+			err := minReplicaValidator(multiAZ, autoscaling)(minReplicas)
+			if hasError {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Zero replicas - no autoscaling",
+			0,
+			false,
+			false,
+			false,
+		),
+		Entry("Negative replicas - no autoscaling",
+			-1,
+			false,
+			false,
+			true,
+		),
+		Entry("Zero replicas - autoscaling",
+			0,
+			true,
+			false,
+			true,
+		),
+		Entry("One replicas - autoscaling",
+			1,
+			true,
+			false,
+			false,
+		),
+		Entry("Multi-AZ - 3 replicas",
+			3,
+			true,
+			true,
+			false,
+		),
+		Entry("Multi-AZ - 2 replicas",
+			2,
+			true,
+			true,
+			true,
+		),
+	)
+	DescribeTable("Machine pool max replicas validation",
+		func(minReplicas int, maxReplicas int, multiAZ bool, hasError bool) {
+			err := maxReplicaValidator(minReplicas, multiAZ)(maxReplicas)
+			if hasError {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Max > Min -> OK",
+			1,
+			2,
+			false,
+			false,
+		),
+		Entry("Min < Max -> OK",
+			2,
+			1,
+			false,
+			true,
+		),
+		Entry("Min = Max -> OK",
+			2,
+			2,
+			false,
+			false,
+		),
+		Entry("Not % 3 -> NOT OK",
+			2,
+			4,
+			true,
+			true,
+		),
+		Entry("Multi-AZ -> OK",
+			3,
+			6,
+			true,
+			false,
+		),
+	)
+})
+
 var _ = Describe("CreateAwsNodePoolBuilder", func() {
 	It("correctly initializes AWSNodePoolBuilder with given parameters", func() {
 		instanceType := "t2.micro"

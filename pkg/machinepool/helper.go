@@ -189,22 +189,6 @@ func getMachinePoolAvailabilityZones(r *rosa.Runtime, cluster *cmv1.Cluster, mul
 	return cluster.Nodes().AvailabilityZones(), nil
 }
 
-func minReplicaValidator(multiAZMachinePool bool) interactive.Validator {
-	return func(val interface{}) error {
-		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-		if minReplicas < 0 {
-			return fmt.Errorf("min-replicas must be a non-negative integer")
-		}
-		if multiAZMachinePool && minReplicas%3 != 0 {
-			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
-		}
-		return nil
-	}
-}
-
 func maxReplicaValidator(minReplicas int, multiAZMachinePool bool) interactive.Validator {
 	return func(val interface{}) error {
 		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
@@ -215,6 +199,25 @@ func maxReplicaValidator(minReplicas int, multiAZMachinePool bool) interactive.V
 			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
 		}
 		if multiAZMachinePool && maxReplicas%3 != 0 {
+			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+		}
+		return nil
+	}
+}
+
+func minReplicaValidator(multiAZMachinePool bool, autoscaling bool) interactive.Validator {
+	return func(val interface{}) error {
+		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
+		if err != nil {
+			return err
+		}
+		if autoscaling && minReplicas < 1 {
+			return fmt.Errorf("min-replicas must be greater than zero")
+		}
+		if !autoscaling && minReplicas < 0 {
+			return fmt.Errorf("Replicas must be a non-negative integer")
+		}
+		if multiAZMachinePool && minReplicas%3 != 0 {
 			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
 		}
 		return nil
