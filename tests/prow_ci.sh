@@ -38,6 +38,10 @@ override_rosacli_build () {
 # the third one for second aws cred info for shared vpc scenario which is optional
 # usage: configure_aws <aws file path> <region> 
 configure_aws () {
+  if [[ $# != 2 ]]; then
+    echo "ERROR: There must be two parameter passed. usage configure_aws <aws file path> <region>"
+    exit 1
+  fi
   # configure aws region
   if [[ -z "$1" ]] || [[ -z "$2" ]]; then
     echo "ERROR: aws credential file path and region is required. Please call command like $ configure_aws <credential path> <region>"
@@ -58,7 +62,7 @@ configure_aws () {
 # configure_aws_shared_vpc will configure the aws account for shared vpc scenario
 # usage: configure_aws_shared_vpc <shared vpc aws credential file>
 configure_aws_shared_vpc () {
-  if [[ -z "$1" ]]; then
+  if [[ $# == 0 ]] || [[ -z "$1" ]]; then
     echo "ERROR: please provide the shared vpc credential file when call configure_aws_shared_vpc"
     exit 1
   fi
@@ -78,6 +82,10 @@ configure_aws_shared_vpc () {
 # second parameter should be token which is required
 # usage: rosa_login <env> <token>
 rosa_login () {
+  if [[ $# != 2 ]]; then
+    echo "ERROR: There must be two parameter passed. usage rosa_login <env> <token>"
+    exit 1
+  fi
   if [[ -z "$1" ]] || [[ -z "$2" ]]; then
     echo "ERROR: both env and token are required for rosa login"
     exit 1
@@ -96,9 +104,10 @@ rosa_login () {
 # Need to clarify the LABEL_FILTER_SWITCH in steps script 
 generate_label_filter_switch () {
   label_filter=${LABEL_FILTER}
-  if [ ! -z "$1" ]; then
-    echo "[CI] Got parameter label filter: $1 . Override the global setting now."
+  if [ $# != 0 ] && [ ! -z "$1" ]; then
     label_filter=$1
+    echo "[CI] Got parameter label filter: $label_filter . Override the global setting now."
+    
   fi
   if [[ ! -z "$IMPORTANCE" ]]; then
     label_filter="$label_filter&&${IMPORTANCE}" 
@@ -115,8 +124,8 @@ generate_label_filter_switch () {
 # there is usage accepts a parameter to override the default usage
 generate_junit () {
   usage="e2e"
-  if [ ! -z $1 ];then
-    usage="$1"
+  if [ $# != 0 ] && [ ! -z "$1" ];then
+    usage=$1
   fi
   JUNIT_TEMP_DIR=$(mktemp -d)
   junit_file_name="junit-$usage"
@@ -137,7 +146,7 @@ generate_junit () {
 # It will extract all of the tar.gz files started with junit-
 # usage: extract_existing_junit <SHARED_DIR>
 extract_existing_junit () {
-  if [[ -z "$1" ]];then
+  if [[ $# == 0 ]] || [[ -z "$1" ]];then
     echo "ERROR: at least 1 parameter of uploaded dir is required to scan"
     exit 1
   fi
@@ -182,6 +191,10 @@ generate_running_cmd () {
 # usage: upload_junit_result <junit file path> <SHARED_DIR> <ARCHIVE_DIR>
 upload_junit_result () {
   echo "[CI] tar and uploading the the testing result"
+  if [[ $# != 3 ]]; then
+    echo "ERROR: There must be 3 parameters passed. Usage upload_junit_result <junit file path> <SHARED_DIR> <ARCHIVE_DIR>"
+    exit 1
+  fi
   # tar and upload the junit.xml files
   if [[ -z "$1" ]]|| [[ -z "$2" ]]|| [[ -z "$3" ]]; then
     echo "ERROR: the usage should be upload_junit_result <junit file path> <SHARED_DIR> <ARCHIVE_DIR>"
