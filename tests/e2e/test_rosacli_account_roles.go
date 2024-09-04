@@ -235,7 +235,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				}
 			}()
 			var (
-				accrolePrefix = "accrolep57441"
+				accrolePrefix = common.GenerateRandomName("arp57441", 2)
 				path          = "/aa/vv/"
 				modes         = []string{"auto", "manual"}
 			)
@@ -296,7 +296,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				}
 			}()
 
-			var accrolePrefix = "accrolep62083"
+			var accrolePrefix = common.GenerateRandomName("arp62083", 2)
 
 			By("Create advanced account-roles of both hosted-cp and classic")
 			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
@@ -500,8 +500,8 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		func() {
 
 			var (
-				rolePrefixAuto      = "ar57408a"
-				rolePrefixManual    = "ar57408m"
+				rolePrefixAuto      = common.GenerateRandomName("ar57408a", 2)
+				rolePrefixManual    = common.GenerateRandomName("ar57408m", 2)
 				roleVersion         string
 				path                = "/fd/sd/"
 				policiesArn         []string

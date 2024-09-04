@@ -652,8 +652,8 @@ var _ = Describe("create IAM roles forcely testing",
 		})
 		It("to create account-roles and prior-to-cluster operator-roles forcely - [id:59551]",
 			labels.Critical, labels.Runtime.OCMResources, func() {
-				accountRolePrefix = "ar59551"
-				operatorRolePrefix = "op59551"
+				accountRolePrefix = common.GenerateRandomName("ar59551", 2)
+				operatorRolePrefix = common.GenerateRandomName("op59551", 2)
 				accountRoleNamePermissionMap := map[string]string{
 					fmt.Sprintf("%s-Installer-Role", accountRolePrefix):    "AssumeRole",
 					fmt.Sprintf("%s-Support-Role", accountRolePrefix):      "DescribeInstances",
@@ -662,12 +662,12 @@ var _ = Describe("create IAM roles forcely testing",
 				}
 
 				operatorRoleNamePermissionMap := map[string]string{
-					fmt.Sprintf("%s-openshift-image-registry-installer-cloud-credentials", operatorRolePrefix):     "GetObject",
-					fmt.Sprintf("%s-openshift-ingress-operator-cloud-credentials", operatorRolePrefix):             "ListHostedZones",
-					fmt.Sprintf("%s-openshift-cluster-csi-drivers-ebs-cloud-credentials", operatorRolePrefix):      "CreateTags",
-					fmt.Sprintf("%s-openshift-cloud-network-config-controller-cloud-credenti", operatorRolePrefix): "DescribeSubnets",
-					fmt.Sprintf("%s-openshift-machine-api-aws-cloud-credentials", operatorRolePrefix):              "DescribeImages",
-					fmt.Sprintf("%s-openshift-cloud-credential-operator-cloud-credential-ope", operatorRolePrefix): "GetUserPolicy",
+					fmt.Sprintf("%s-openshift-image-registry-installer-cloud-credentials", operatorRolePrefix):  "GetObject",
+					fmt.Sprintf("%s-openshift-ingress-operator-cloud-credentials", operatorRolePrefix):          "ListHostedZones",
+					fmt.Sprintf("%s-openshift-cluster-csi-drivers-ebs-cloud-credentials", operatorRolePrefix):   "CreateTags",
+					fmt.Sprintf("%s-openshift-cloud-network-config-controller-cloud-crede", operatorRolePrefix): "DescribeSubnets",
+					fmt.Sprintf("%s-openshift-machine-api-aws-cloud-credentials", operatorRolePrefix):           "DescribeImages",
+					fmt.Sprintf("%s-openshift-cloud-credential-operator-cloud-credential-", operatorRolePrefix): "GetUserPolicy",
 				}
 
 				accountRolePolicyMap := map[string]string{}
@@ -756,7 +756,6 @@ var _ = Describe("create IAM roles forcely testing",
 						VersionId: policy.DefaultVersionId,
 					})
 					Expect(err).To(BeNil())
-					fmt.Println(*policyVersion.PolicyVersion.Document)
 					Expect(*policyVersion.PolicyVersion.Document).To(ContainSubstring(accountRoleNamePermissionMap[roleName]))
 				}
 				By("Update operator-role policy permission")
@@ -770,7 +769,7 @@ var _ = Describe("create IAM roles forcely testing",
 				}
 
 				By("Detach and Delete one operator-role policy")
-				policyToDel := fmt.Sprintf("%s-openshift-cloud-network-config-controller-cloud-credenti", operatorRolePrefix)
+				policyToDel := fmt.Sprintf("%s-openshift-cloud-network-config-controller-cloud-crede", operatorRolePrefix)
 				err = awsClient.DetachRolePolicies(policyToDel)
 				Expect(err).To(BeNil())
 				err = awsClient.DeleteIAMPolicy(operatorRolePolicyMap[policyToDel])
@@ -872,7 +871,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 	It("to delete operator-roles and byo oidc-config in manual mode - [id:60956]",
 		labels.Critical, labels.Runtime.OCMResources, func() {
 			By("Create account-roles")
-			accountRolePrefix = "arp60956"
+			accountRolePrefix = common.GenerateRandomName("arp60956", 2)
 			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accountRolePrefix,
 				"-y",
@@ -898,7 +897,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			Expect(err).To(BeNil())
 
 			By("Create hosted-cp operator-roles")
-			operatorRolePrefixH = "opp60956h"
+			operatorRolePrefixH = common.GenerateRandomName("opp60956h", 2)
 			output, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", managedOIDCConfigID,
 				"--installer-role-arn", installerRoleArnH,
@@ -925,7 +924,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			}
 
 			By("Create classic operator-roles")
-			operatorRolePrefixC = "opp60956c"
+			operatorRolePrefixC = common.GenerateRandomName("opp60956c", 2)
 			output, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", managedOIDCConfigID,
 				"--installer-role-arn", installerRoleArnC,
@@ -1034,8 +1033,8 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 		It("to create and delete operatorroles attaching managed policies in manual mode - [id:75504]",
 			labels.Critical, labels.Runtime.Day1Supplemental, func() {
 				By("Create hcp cluster in manual mode")
-				testingClusterName = "rosa75504"
-				testOperatorRolePrefix := "rosa75504opp"
+				testingClusterName = common.GenerateRandomName("c75504", 2)
+				testOperatorRolePrefix := common.GenerateRandomName("opp75504", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -1139,7 +1138,7 @@ var _ = Describe("Upgrade operator roles in auto mode",
 		It("to create and upgrade operator roles in auto mode - [id:45745]",
 			labels.Critical, labels.Runtime.Day1Supplemental, func() {
 				By("Create classic STS cluster")
-				clusterName = "rosa45745"
+				clusterName = common.GenerateRandomName("c45745", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
