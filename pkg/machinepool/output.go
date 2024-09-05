@@ -65,7 +65,7 @@ func machinePoolOutput(clusterId string, machinePool *cmv1.MachinePool) string {
 }
 
 func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
-	return fmt.Sprintf(nodePoolOutputString,
+	output := fmt.Sprintf(nodePoolOutputString,
 		nodePool.ID(),
 		clusterId,
 		ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
@@ -87,4 +87,13 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		ocmOutput.PrintNodePoolManagementUpgrade(nodePool.ManagementUpgrade()),
 		ocmOutput.PrintNodePoolMessage(nodePool.Status()),
 	)
+
+	if nodePool.AWSNodePool() != nil && nodePool.AWSNodePool().RootVolume() != nil {
+		diskSize, ok := nodePool.AWSNodePool().RootVolume().GetSize()
+		if ok {
+			output += fmt.Sprintf("Disk size:                             %d\n", diskSize)
+		}
+	}
+
+	return output
 }
