@@ -1193,9 +1193,9 @@ func getMachinePoolsString(machinePools []*cmv1.MachinePool) string {
 
 func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 	outputString := "ID\tAUTOSCALING\tREPLICAS\t" +
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\t\n"
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"
 	for _, nodePool := range nodePools {
-		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t\n",
+		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
 			ocmOutput.PrintNodePoolReplicasShort(
@@ -1207,6 +1207,7 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 			ocmOutput.PrintTaints(nodePool.Taints()),
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
+			ocmOutput.PrintNodePoolDiskSize(nodePool.AWSNodePool()),
 			ocmOutput.PrintNodePoolVersion(nodePool.Version()),
 			ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
 		)
