@@ -149,14 +149,15 @@ var _ = Describe("Machinepool and nodepool", func() {
 			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
 				Hypershift(cmv1.NewHypershift().Enabled(true)).NodePools(cmv1.NewNodePoolList().
 				Items(cmv1.NewNodePool().ID("np").Replicas(8).AvailabilityZone("az").
+					AWSNodePool(cmv1.NewAWSNodePool().RootVolume(cmv1.NewAWSVolume().Size(256))).
 					Subnet("sn").Version(cmv1.NewVersion().ID("1")).AutoRepair(false)))
 			cluster, err := clusterBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
 			out := getNodePoolsString(cluster.NodePools().Slice())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out).To(Equal(fmt.Sprintf("ID\tAUTOSCALING\tREPLICAS\t"+
-				"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tVERSION\tAUTOREPAIR\t\n"+
-				"%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t\n",
+				"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"+
+				"%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
 				cluster.NodePools().Get(0).ID(),
 				ocmOutput.PrintNodePoolAutoscaling(cluster.NodePools().Get(0).Autoscaling()),
 				ocmOutput.PrintNodePoolReplicasShort(
@@ -169,6 +170,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 				ocmOutput.PrintTaints(cluster.NodePools().Get(0).Taints()),
 				cluster.NodePools().Get(0).AvailabilityZone(),
 				cluster.NodePools().Get(0).Subnet(),
+				ocmOutput.PrintNodePoolDiskSize(cluster.NodePools().Get(0).AWSNodePool()),
 				ocmOutput.PrintNodePoolVersion(cluster.NodePools().Get(0).Version()),
 				ocmOutput.PrintNodePoolAutorepair(cluster.NodePools().Get(0).AutoRepair()))))
 		})
