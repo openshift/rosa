@@ -141,5 +141,24 @@ var _ = Describe("Output", Ordered, func() {
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
 		})
+		It("nodepool output with custom disk size", func() {
+			awsNodePoolBuilder := cmv1.NewAWSNodePool().RootVolume(cmv1.NewAWSVolume().Size(256))
+			nodePoolBuilder := cmv1.NewNodePool().ID("test-mp").Replicas(4).AWSNodePool(awsNodePoolBuilder).
+				AvailabilityZone("test-az").Subnet("test-subnets").Version(cmv1.NewVersion().
+				ID("1")).AutoRepair(false).TuningConfigs("test-tc").
+				KubeletConfigs("test-kc").Labels(labels).Taints(taintsBuilder)
+			nodePool, err := nodePoolBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			labelsOutput := ocmOutput.PrintLabels(labels)
+			taintsOutput := ocmOutput.PrintTaints([]*cmv1.Taint{taint})
+
+			out := fmt.Sprintf(nodePoolOutputString,
+				"test-mp", "test-cluster", "No", "4", "", "", labelsOutput, "", taintsOutput, "test-az",
+				"test-subnets", "1", "optional", "No", "test-tc", "test-kc", "", "", "", "")
+			out += "Disk size:                             256\n"
+
+			result := nodePoolOutput("test-cluster", nodePool)
+			Expect(out).To(Equal(result))
+		})
 	})
 })
