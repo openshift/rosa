@@ -100,3 +100,9 @@
 - name: interactive
 - name: output
 - name: "yes"
+- name: registry-config-allowed-registries
+- name: registry-config-insecure-registries
+- name: registry-config-blocked-registries
+- name: registry-config-allowed-registries-for-import
+- name: registry-config-platform-allowlist
+- name: registry-config-additional-trusted-ca

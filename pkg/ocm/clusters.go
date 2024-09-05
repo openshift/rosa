@@ -174,6 +174,15 @@ type Spec struct {
 
 	// Control Plane Machine Pool attributes
 	AdditionalControlPlaneSecurityGroupIds []string
+
+	// Registry Config
+	AllowedRegistries          []string
+	BlockedRegistries          []string
+	InsecureRegistries         []string
+	AllowedRegistriesForImport string
+	PlatformAllowlist          string
+	AdditionalTrustedCaFile    string
+	AdditionalTrustedCa        map[string]string
 }
 
 // Volume represents a volume property for a disk
@@ -629,6 +638,14 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder.Hypershift(hyperShiftBuilder)
 	}
 
+	registryConfigBuilder, err := BuildRegistryConfig(config)
+	if err != nil {
+		return err
+	}
+	if registryConfigBuilder != nil {
+		clusterBuilder.RegistryConfig(registryConfigBuilder)
+	}
+
 	if config.AuditLogRoleARN != nil || config.AdditionalAllowedPrincipals != nil {
 		awsBuilder := cmv1.NewAWS()
 		if config.AdditionalAllowedPrincipals != nil {
@@ -779,6 +796,14 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	if config.DisableWorkloadMonitoring != nil {
 		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
+	}
+
+	registryConfigBuilder, err := BuildRegistryConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	if registryConfigBuilder != nil {
+		clusterBuilder.RegistryConfig(registryConfigBuilder)
 	}
 
 	if config.Flavour != "" {

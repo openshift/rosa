@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/clusterregistryconfig"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/input"
@@ -57,7 +58,17 @@ var args struct {
 
 	// Other options
 	additionalAllowedPrincipals []string
+
+	// Cluster Registry
+	allowedRegistries          []string
+	blockedRegistries          []string
+	insecureRegistries         []string
+	allowedRegistriesForImport string
+	platformAllowlist          string
+	additionalTrustedCa        string
 }
+
+var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
 
 var Cmd = &cobra.Command{
 	Use:   "cluster",
@@ -163,6 +174,8 @@ func init() {
 			"to be added to the Hosted Control Plane's VPC Endpoint Service to enable additional "+
 			"VPC Endpoint connection requests to be automatically accepted.",
 	)
+
+	clusterRegistryConfigArgs = clusterregistryconfig.AddClusterRegistryConfigFlags(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -176,9 +189,13 @@ func run(cmd *cobra.Command, _ []string) {
 		changedFlags := false
 		for _, flag := range []string{"expiration-time", "expiration", "private",
 			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy",
-			"additional-trust-bundle-file", "additional-allowed-principals", "audit-log-arn"} {
+			"additional-trust-bundle-file", "additional-allowed-principals", "audit-log-arn",
+			"registry-config-allowed-registries", "registry-config-blocked-registries",
+			"registry-config-insecure-registries", "allowed-registries-for-import",
+			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
+				break
 			}
 		}
 		if !changedFlags {
@@ -615,6 +632,30 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.AdditionalAllowedPrincipals = additionalAllowedPrincipals
 	}
 
+	clusterRegistryConfigArgs, err = clusterregistryconfig.GetClusterRegistryConfigOptions(
+		cmd.Flags(), clusterRegistryConfigArgs, aws.IsHostedCP(cluster), cluster)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if clusterRegistryConfigArgs != nil {
+		allowedRegistries, blockedRegistries, insecureRegistries,
+			additionalTrustedCa, allowedRegistriesForImport := clusterregistryconfig.GetClusterRegistryConfigArgs(
+			clusterRegistryConfigArgs)
+		clusterConfig.AllowedRegistries = allowedRegistries
+		clusterConfig.BlockedRegistries = blockedRegistries
+		clusterConfig.InsecureRegistries = insecureRegistries
+		if additionalTrustedCa != "" {
+			ca, err := clusterregistryconfig.BuildAdditionalTrustedCAFromInputFile(additionalTrustedCa)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			clusterConfig.AdditionalTrustedCa = ca
+			clusterConfig.AdditionalTrustedCaFile = additionalTrustedCa
+		}
+		clusterConfig.AllowedRegistriesForImport = allowedRegistriesForImport
+	}
 	if auditLogRole != nil {
 		clusterConfig.AuditLogRoleARN = new(string)
 		*clusterConfig.AuditLogRoleARN = *auditLogRole

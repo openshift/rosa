@@ -27,6 +27,24 @@ var _ = Describe("New Operator Iam Role From Cmv1", func() {
 	})
 })
 
+var _ = Context("Generate a query", func() {
+	Describe("getClusterFilter", func() {
+		It("Should return the default value", func() {
+			output := getClusterFilter(nil)
+			Expect(output).To(Equal("product.id = 'rosa'"))
+		})
+
+		It("Should construct a proper string if creator is not nil", func() {
+			creator := &aws.Creator{AccountID: "test-account-id"}
+			output := getClusterFilter(creator)
+			Expect(output).To(Equal(
+				"product.id = 'rosa' AND (properties.rosa_creator_arn LIKE '%:test-account-id:%' OR " +
+					"aws.sts.role_arn LIKE '%:test-account-id:%')"))
+		})
+	})
+
+})
+
 var _ = Context("List Clusters", func() {
 	Describe("List Clusters using Account Role", func() {
 
