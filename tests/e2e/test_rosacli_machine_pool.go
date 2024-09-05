@@ -660,12 +660,20 @@ var _ = Describe("Create machinepool",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create temporary account-roles for instance type list")
-				accountRoles, err := ph.PrepareAccountRoles(rosaClient, "test-55979",
-					false,
-					clusterConfig.Version.RawID,
-					clusterConfig.Version.ChannelGroup,
-					"", "")
+				namePrefix := common.GenerateRandomName("test-55979", 2)
+				majorVersion := common.SplitMajorVersion(clusterConfig.Version.RawID)
+				_, err = rosaClient.OCMResource.CreateAccountRole("--mode", "auto",
+					"--prefix", namePrefix,
+					"--version", majorVersion,
+					"--channel-group", clusterConfig.Version.ChannelGroup,
+					"-y")
 				Expect(err).ToNot(HaveOccurred())
+
+				var accountRoles *rosacli.AccountRolesUnit
+				accRoleList, _, err := rosaClient.OCMResource.ListAccountRole()
+				Expect(err).ToNot(HaveOccurred())
+				accountRoles = accRoleList.DigAccountRoles(namePrefix, false)
+
 				defer rosaClient.OCMResource.DeleteAccountRole(
 					"--prefix", "test-55979",
 					"--mode", "auto",
