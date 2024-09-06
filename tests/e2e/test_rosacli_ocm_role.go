@@ -115,7 +115,7 @@ var _ = Describe("Edit ocm role", labels.Feature.OCMRole,
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Invalid mode. Allowed values are [auto manual]"))
 
-				By("Create an ocm-role with invalid permision boundady")
+				By("Create an ocm-role with invalid permission boundary")
 				invalidPermisionBoundary = "arn-permission-boundary"
 				output, err = ocmResourceService.CreateOCMRole("--mode", "auto",
 					"--permissions-boundary", invalidPermisionBoundary,
@@ -125,7 +125,7 @@ var _ = Describe("Edit ocm role", labels.Feature.OCMRole,
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("Expected a valid policy ARN for permissions boundary"))
 
-				By("Create ocm-role with the permision boundady under another aws account")
+				By("Create ocm-role with the permission boundary under another aws account")
 				notExistedPermissionBoundaryUnderDifferentAWS = "arn:aws:iam::aws:policy/notexisted"
 				output, err = ocmResourceService.CreateOCMRole("--mode", "auto",
 					"--permissions-boundary", notExistedPermissionBoundaryUnderDifferentAWS,

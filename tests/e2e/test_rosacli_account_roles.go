@@ -110,6 +110,9 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).To(ContainSubstring("Creating classic account roles"))
 			Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
 			Expect(textData).To(ContainSubstring("Created role"))
+			Expect(textData).To(ContainSubstring("with ARN 'arn:aws:iam::"))
+			Expect(textData).To(ContainSubstring("Attached policy 'arn:aws:iam::"))
+			Expect(textData).To(ContainSubstring("Attached trust policy to role"))
 
 			By("Create advance account-roles of only hosted-cp")
 			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
@@ -126,6 +129,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).ToNot(ContainSubstring("Creating classic account roles"))
 			Expect(textData).To(ContainSubstring("Creating hosted CP account roles"))
 			Expect(textData).To(ContainSubstring("Created role"))
+			Expect(textData).To(ContainSubstring("Attached trust policy to role"))
 
 			By("Create advance account-roles of only classic")
 			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
@@ -142,6 +146,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).To(ContainSubstring("Creating classic account roles"))
 			Expect(textData).ToNot(ContainSubstring("Creating hosted CP account roles"))
 			Expect(textData).To(ContainSubstring("Created role"))
+			Expect(textData).ToNot(ContainSubstring("Attached trust policy to role"))
 
 			By("List account-roles and check the result are expected")
 			accountRoleList, _, err := ocmResourceService.ListAccountRole()
