@@ -487,7 +487,7 @@ func run(cmd *cobra.Command, argv []string) {
 			"Etcd Encryption:            %s\n", str, getEtcdStatus(cluster))
 		if cluster.AWS().EtcdEncryption().KMSKeyARN() != "" {
 			str = fmt.Sprintf("%s"+
-				"Etcd KMS key ARN:                %s\n", str, cluster.AWS().EtcdEncryption().KMSKeyARN())
+				"Etcd KMS key ARN:           %s\n", str, cluster.AWS().EtcdEncryption().KMSKeyARN())
 		}
 		if len(cluster.AWS().AdditionalAllowedPrincipals()) > 0 {
 			// Omitted the 'Allowed' due to formatting
