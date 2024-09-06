@@ -536,6 +536,35 @@ var _ = Describe("Healthy check",
 				}
 
 			})
+
+		It("with proxy set will work - [id:45502]", labels.Runtime.Day1Post, labels.Critical,
+			func() {
+				By("Check the help message of proxy")
+				output, err, _ := clusterService.Create("cl-45502", "-h")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp(`-{2}http-proxy string[\s\t]+A proxy URL to use for creating HTTP connections`))
+				Expect(output.String()).Should(
+					MatchRegexp(`-{2}https-proxy string[\s\t]+A proxy URL to use for creating HTTPS connections`))
+				Expect(output.String()).Should(
+					MatchRegexp(`-{2}no-proxy strings[\s\t]+A comma-separated list of destination domain names`))
+				Expect(output.String()).Should(
+					MatchRegexp(`-{2}additional-trust-bundle-file string[\s\t]+A file`))
+
+				By("Check the proxy is set correctly")
+				clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if profile.ClusterConfig.ProxyEnabled {
+					clusterHTTPProxy, clusterHTTPSProxy, clusterNoProxy :=
+						clusterService.DetectProxy(clusterDescription)
+					Expect(clusterConfig.Proxy.Http).To(Equal(clusterHTTPProxy))
+					Expect(clusterConfig.Proxy.Https).To(Equal(clusterHTTPSProxy))
+					Expect(clusterConfig.Proxy.NoProxy).To(Equal(clusterNoProxy))
+					Expect(clusterDescription.AdditionalTrustBundle).To(Equal("REDACTED"))
+				} else {
+					Expect(clusterDescription.Proxy).To(BeEmpty())
+				}
+			})
 	})
 
 var _ = Describe("Create cluster with the version in some channel group testing",
