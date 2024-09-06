@@ -15,7 +15,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
-var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
+var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 
 	var rosaClient *rosacli.Client
 	var clusterService rosacli.ClusterService
@@ -39,7 +39,7 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("tuning config can be created/updated/deleted to hosted cluster - [id:63164]",
+	It("can be created/updated/deleted to hosted cluster - [id:63164]",
 		labels.Critical, labels.Runtime.Day2,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
@@ -56,7 +56,7 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 			By("Create tuning configs to the cluster")
 			tc1JSON, err := json.Marshal(tc1Spec)
 			Expect(err).ToNot(HaveOccurred())
-			resp, err := tuningConfigService.CreateTuningConfig(
+			resp, err := tuningConfigService.CreateTuningConfigFromSpecContent(
 				clusterID,
 				tc1Name,
 				string(tc1JSON))
@@ -68,7 +68,7 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 
 			tc2YAML, err := yaml.Marshal(tc2Spec)
 			Expect(err).ToNot(HaveOccurred())
-			resp, err = tuningConfigService.CreateTuningConfig(
+			resp, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 				clusterID,
 				tc2Name,
 				string(tc2YAML))
@@ -81,10 +81,11 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 			By("List all tuning configs")
 			tuningConfigList, err := tuningConfigService.ListTuningConfigsAndReflect(clusterID)
 			Expect(err).ToNot(HaveOccurred())
+			expectDescriptionTemplate := "the tuningconfig %s is not in output"
 			Expect(tuningConfigList.IsPresent(tc1Name)).
-				To(BeTrue(), "the tuningconfig %s is not in output", tc1Name)
+				To(BeTrue(), expectDescriptionTemplate, tc1Name)
 			Expect(tuningConfigList.IsPresent(tc2Name)).
-				To(BeTrue(), "the tuningconfig %s is not in output", tc2Name)
+				To(BeTrue(), expectDescriptionTemplate, tc2Name)
 
 			By("Update a tuning config of the cluster")
 			tc2Spec.Profile[0].Data = rosacli.NewTuningConfigSpecProfileData(secondVMDirtyRatio)
@@ -122,5 +123,143 @@ var _ = Describe("Create Tuning Config", labels.Feature.TuningConfigs, func() {
 				To(BeTrue(), "the tuningconfig %s is not in output", tc1Name)
 			Expect(tuningConfigList.IsPresent(tc2Name)).
 				To(BeFalse(), "the tuningconfig %s is in the output", tc2Name)
+		})
+
+	It("can validate creation - [id:63169]",
+		labels.Medium, labels.Runtime.Day2,
+		func() {
+			tuningConfigService := rosaClient.TuningConfig
+
+			By("Create tuning config")
+			tcName := common.GenerateRandomName("c63169", 2)
+			firstPriority := 10
+			firstVMDirtyRatio := 25
+			tcSpec := rosacli.NewTuningConfigSpecRootStub(tcName, firstVMDirtyRatio, firstPriority)
+			tcSpecJSON, err := json.Marshal(tcSpec)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				tcName,
+				string(tcSpecJSON))
+			Expect(err).ToNot(HaveOccurred())
+			textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tcName, clusterID)))
+
+			By("Create another tuning config with same name")
+			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				tcName,
+				string(tcSpecJSON))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("A tuning config with name '%s'", tcName)))
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("already exists for cluster '%s'", clusterID)))
+
+			By("Create tuning config with no name")
+			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				"",
+				string(tcSpecJSON))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid name"))
+
+			By("Create tuning config with no spec")
+			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				common.GenerateRandomName("c63169", 2),
+				"")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Attribute 'spec' must be set"))
+
+			By("Create tuning config with invalid name")
+			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				"c63169%^",
+				string(tcSpecJSON))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).
+				To(
+					ContainSubstring("Name 'c63169%^' is not valid. The name must be a lowercase RFC 1123 subdomain"))
+
+			By("Create tuning config with invalid spec file")
+			_, err = tuningConfigService.CreateTuningConfigFromSpecFile(
+				clusterID,
+				common.GenerateRandomName("c63169", 2),
+				"wrong_file")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).
+				To(
+					ContainSubstring("Expected a valid TuneD spec file: open wrong_file: no such file or directory"))
+
+			By("Create tuning config with invalid spec content")
+			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				common.GenerateRandomName("c63169", 2),
+				"Spec%^")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid TuneD spec file: error unmarshaling"))
+
+			By("Create more than 100 tuning configs")
+			tcs, err := tuningConfigService.ListTuningConfigsAndReflect(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			maxTcNb := 100 - len(tcs.TuningConfigs)
+			for i := 1; i <= maxTcNb; i++ {
+				_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
+					clusterID,
+					common.GenerateRandomName(fmt.Sprintf("c63169%d", i), 2),
+					string(tcSpecJSON))
+				Expect(err).ToNot(HaveOccurred())
+			}
+			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				common.GenerateRandomName("c63169", 2),
+				string(tcSpecJSON))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).
+				To(
+					ContainSubstring("Maximum number of TuningConfigs per cluster reached. " +
+						"Maximum allowed is '100'. Current count is '100'."))
+		})
+
+	It("can validate update - [id:63174]",
+		labels.Medium, labels.Runtime.Day2,
+		func() {
+			tuningConfigService := rosaClient.TuningConfig
+
+			By("Create tuning config")
+			tcName := common.GenerateRandomName("c63174", 2)
+			firstPriority := 10
+			firstVMDirtyRatio := 25
+			tcSpec := rosacli.NewTuningConfigSpecRootStub(tcName, firstVMDirtyRatio, firstPriority)
+			tcSpecJSON, err := json.Marshal(tcSpec)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := tuningConfigService.CreateTuningConfigFromSpecContent(
+				clusterID,
+				tcName,
+				string(tcSpecJSON))
+			Expect(err).ToNot(HaveOccurred())
+			textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					fmt.Sprintf("Tuning config '%s' has been created on cluster '%s'", tcName, clusterID)))
+
+			By("Update tuning config with incorrect name")
+			_, err = tuningConfigService.EditTuningConfig(clusterID, "wrong_name")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Tuning config 'wrong_name' does not exist"))
+
+			By("Update tuning config with incorrect spec file")
+			_, err = tuningConfigService.EditTuningConfig(clusterID, tcName, "--spec-path", "wrong_file")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid spec file: open wrong_file: no such file or directory"))
+
+			By("Update tuning config with incorrect spec content")
+			specPath, err := common.CreateTempFileWithContent("Spec%^")
+			defer os.Remove(specPath)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = tuningConfigService.EditTuningConfig(clusterID, tcName, "--spec-path", specPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid spec file: error unmarshaling"))
 		})
 })

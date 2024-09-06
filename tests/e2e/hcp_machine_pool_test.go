@@ -370,6 +370,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"-y",
 			)
 			expectErrMsg := "The number of machine pool min-replicas needs to be a non-negative integer"
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
 			By("Scale up a machine pool max replica too large")
@@ -379,6 +380,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"-y",
 			)
 			expectErrMsg = "exceeds the maximum allowed"
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
 			By("Scale a machine pool min replica > max replica")
@@ -388,6 +390,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"-y",
 			)
 			expectErrMsg = "min-replicas needs to be less than the number of machine pool max-replicas"
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
 			By("Scale down a machine pool min replica to -1")
@@ -397,6 +400,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"-y",
 			)
 			expectErrMsg = "Min replicas must be a non-negative number when autoscaling is set"
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
 			By("Scale a machine pool with min replica and max replica a char")
@@ -406,7 +410,170 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"-y",
 			)
 			expectErrMsg = "invalid syntax"
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
+		})
+	})
+
+	Describe("Validate machinepool", func() {
+		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, func() {
+			By("with negative replicas number")
+			_, err := machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "-9")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Replicas must be a non-negative integer"))
+
+			By("with replicas > 180")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "181")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).
+				Should(
+					ContainSubstring("Replicas+Autoscaling.Min: The total number of compute nodes for a single cluster"))
+			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed: 180"))
+
+			By("with invalid name")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything%^#@", "--replicas", "2")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected a valid name for the machine pool"))
+
+			By("with replicas and enable-autoscaling at the same time")
+			_, err = machinePoolService.CreateMachinePool(
+				clusterID,
+				"anything",
+				"--replicas", "2",
+				"--enable-autoscaling",
+				"--min-replicas", "3",
+				"--max-replicas", "3")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
+
+			By("with min-replicas larger than max-replicas")
+			_, err = machinePoolService.CreateMachinePool(
+				clusterID,
+				"anything",
+				"--enable-autoscaling",
+				"--min-replicas", "6",
+				"--max-replicas", "3")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).
+				Should(
+					ContainSubstring("Invalid autoscaling range: 6 - 3. 'min_replica' must be less than or equal to 'max_replica'"))
+
+			By("with min-replicas and max-replicas but without enable-autoscaling")
+			_, err = machinePoolService.CreateMachinePool(
+				clusterID,
+				"anything",
+				"--min-replicas", "3",
+				"--max-replicas", "3")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
+
+			By("with max-replicas > 180")
+			_, err = machinePoolService.CreateMachinePool(
+				clusterID,
+				"anything",
+				"--enable-autoscaling",
+				"--min-replicas", "3",
+				"--max-replicas", "181")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).
+				Should(
+					ContainSubstring("Replicas+Autoscaling.Max: The total number of compute nodes for a single cluster"))
+			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed: 180"))
+
+			By("with wrong instance-type")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--instance-type", "wrong")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected a valid instance type"))
+
+			By("with non existing subnet")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--subnet", "subnet-xxx")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+
+			By("with subnet not in VPC")
+			vpcPrefix := common.TrimNameByLength("c56786", 20)
+			vpc, err := vpc_client.PrepareVPC(vpcPrefix, profile.Region, constants.DefaultVPCCIDRValue, false, "")
+			Expect(err).ToNot(HaveOccurred())
+			defer vpc.DeleteVPCChain(true)
+			zones, err := vpc.AWSClient.ListAvaliableZonesForRegion(profile.Region, "availability-zone")
+			Expect(err).ToNot(HaveOccurred())
+			subnet, err := vpc.CreateSubnet(zones[0])
+			Expect(err).ToNot(HaveOccurred())
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--subnet", subnet.ID)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("found but expected on VPC"))
+
+			By("with label no key")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--labels", "v")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected key=value format for labels"))
+
+			By("with taint no key")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "v")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected key=value:scheduleType format for taints. Got 'v'"))
+
+			By("with taint no schedule type")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "k=v")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected key=value:scheduleType format for taints. Got 'k=v'"))
+
+			By("with taint empty schedule type")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "k=v:")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected a not empty effect"))
+
+			By("with auto-repair wrong value")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--autorepair=v")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("strconv.ParseBool: parsing \"v\": invalid syntax"))
+
+			By("with unsupported version")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--version", "4.12.1")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected a valid OpenShift version"))
+
+			By("with unsupported flag")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--multi-availability-zone")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).
+				Should(
+					ContainSubstring("Setting `multi-availability-zone` flag is not supported for HCP clusters"))
+		})
+
+		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, func() {
+			By("with no machinepool id")
+			_, err := machinePoolService.DeleteMachinePool(clusterID, "")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("You need to specify a machine pool name"))
+
+			By("with non existing machinepool id")
+			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Machine pool 'anything' does not exist"))
+
+			By("with invalid machinepool id")
+			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything%^")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("Expected a valid identifier for the machine pool"))
+
+			By("with unknown flag --interactive")
+			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything", "--interactive")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("unknown flag: --interactive"))
+
+			if !profile.ClusterConfig.MultiAZ {
+				By("Delete last remaining machinepool")
+				_, err = machinePoolService.DeleteMachinePool(clusterID, constants.DefaultHostedWorkerPool)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).
+					Should(
+						ContainSubstring(
+							fmt.Sprintf("Failed to delete machine pool '%s' on hosted cluster", constants.DefaultHostedWorkerPool)))
+				Expect(err.Error()).
+					Should(
+						ContainSubstring("The last node pool can not be deleted from a cluster"))
+			}
 		})
 	})
 })

@@ -1120,7 +1120,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("Validate --worker-mp-labels option for ROSA cluster creation - [id:71329]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				var (
 					clusterName        = "cluster-71329"
@@ -1740,7 +1740,7 @@ var _ = Describe("Classic cluster deletion validation",
 		})
 
 		It("to validate the ROSA cluster deletion will work via rosacli	- [id:38778]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterService := rosaClient.Cluster
 				notExistID := "no-exist-cluster-id"
@@ -2696,7 +2696,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 				)
 				Expect(err).To(BeNil())
 
-				By("Create another cluster with the same operator-roless-prefix")
+				By("Create another cluster with the same operator-roles-prefix")
 				clusterName := "test-45742b"
 				out, err, _ := clusterService.Create(
 					clusterName, "--sts",
@@ -3255,22 +3255,30 @@ var _ = Describe("HCP cluster creation supplemental testing",
 		})
 
 		AfterEach(func() {
-			By("Delete cluster")
-			rosaClient.Runner.UnsetArgs()
-			_, err := clusterService.DeleteCluster(clusterID, "-y")
-			Expect(err).To(BeNil())
+			if clusterID != "" {
+				By("Delete cluster by id")
+				rosaClient.Runner.UnsetArgs()
+				_, err := clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
 
-			rosaClient.Runner.UnsetArgs()
-			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-			Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+				Expect(err).To(BeNil())
 
-			By("Delete operator-roles")
-			_, err = ocmResourceService.DeleteOperatorRoles(
-				"-c", clusterID,
-				"--mode", "auto",
-				"-y",
-			)
-			Expect(err).To(BeNil())
+				By("Delete operator-roles")
+				_, err = ocmResourceService.DeleteOperatorRoles(
+					"-c", clusterID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+			} else {
+				// At least try to delete testing cluster
+				By("Delete cluster by name")
+				rosaClient.Runner.UnsetArgs()
+				_, err := clusterService.DeleteCluster(testingClusterName, "-y")
+				Expect(err).To(BeNil())
+			}
 
 			By("Clean resource")
 			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
@@ -3305,6 +3313,49 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				Expect(err).To(BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 				Expect(clusterID).ToNot(BeNil())
+			})
+
+		It("Check single AZ hosted cluster can be created - [id:54413]",
+			labels.Critical, labels.Runtime.Day1Supplemental,
+			func() {
+				testingClusterName = common.GenerateRandomName("c54413", 2)
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				if rosalCommand.CheckFlagExist("--multi-az") {
+					rosalCommand.DeleteFlag("--multi-az", false)
+				}
+				if rosalCommand.CheckFlagExist("--subnet-ids") {
+					subnets := strings.Split(rosalCommand.GetFlagValue("--subnet-ids", true), ",")
+					var newSubnets []string
+					if customProfile.ClusterConfig.Private && customProfile.ClusterConfig.PrivateLink {
+						newSubnets = append(newSubnets, subnets[0])
+					} else {
+						index := len(subnets) / 2
+						newSubnets = append(newSubnets, subnets[0], subnets[index])
+					}
+					flags := map[string]string{}
+					flags["--subnet-ids"] = strings.Join(newSubnets, ",")
+					rosalCommand.ReplaceFlagValue(flags)
+				}
+
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+
+				By("Retrieve cluster ID")
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+
+				By("Wait for Cluster")
+				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
+				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
 			})
 	})
 var _ = Describe("Sts cluster creation supplemental testing",

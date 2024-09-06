@@ -332,7 +332,7 @@ var _ = Describe("Edit nodepool",
 				By("Prepare tuning configs")
 				tc1JSON, err := json.Marshal(tc1Spec)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = tuningConfigService.CreateTuningConfig(
+				_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 					clusterID,
 					tuningConfig1Name,
 					string(tc1JSON))
@@ -340,7 +340,7 @@ var _ = Describe("Edit nodepool",
 
 				tc2JSON, err := json.Marshal(tc2Spec)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = tuningConfigService.CreateTuningConfig(
+				_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 					clusterID,
 					tuningConfig2Name,
 					string(tc2JSON))
@@ -348,7 +348,7 @@ var _ = Describe("Edit nodepool",
 
 				tc3JSON, err := json.Marshal(tc3Spec)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = tuningConfigService.CreateTuningConfig(
+				_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 					clusterID,
 					tuningConfig3Name,
 					string(tc3JSON))
@@ -399,7 +399,7 @@ var _ = Describe("Edit nodepool",
 				By("Prepare tuning configs")
 				tcJSON, err := json.Marshal(tcSpec)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = tuningConfigService.CreateTuningConfig(
+				_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 					clusterID,
 					tuningConfigName,
 					string(tcJSON))

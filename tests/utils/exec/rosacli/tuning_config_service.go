@@ -15,7 +15,16 @@ import (
 type TuningConfigService interface {
 	ResourcesCleaner
 
-	CreateTuningConfig(clusterID string, tcName string, specContent string, flags ...string) (bytes.Buffer, error)
+	CreateTuningConfigFromSpecFile(
+		clusterID string,
+		tcName string,
+		specFile string,
+		flags ...string) (bytes.Buffer, error)
+	CreateTuningConfigFromSpecContent(
+		clusterID string,
+		tcName string,
+		specContent string,
+		flags ...string) (bytes.Buffer, error)
 	EditTuningConfig(clusterID string, tcName string, flags ...string) (bytes.Buffer, error)
 	DeleteTuningConfig(clusterID string, tcName string) (bytes.Buffer, error)
 
@@ -97,7 +106,7 @@ func NewTuningConfigSpecProfileData(vmDirtyRatio int) string {
 		vmDirtyRatio)
 }
 
-func (tcs *tuningConfigService) CreateTuningConfig(
+func (tcs *tuningConfigService) CreateTuningConfigFromSpecContent(
 	clusterID string, tcName string, specContent string, flags ...string) (output bytes.Buffer, err error) {
 	Logger.Debugf("Create tc %s with content %s", tcName, specContent)
 	specPath, err := common.CreateTempFileWithContent(specContent)
@@ -105,9 +114,15 @@ func (tcs *tuningConfigService) CreateTuningConfig(
 	if err != nil {
 		return *bytes.NewBufferString(""), err
 	}
+	output, err = tcs.CreateTuningConfigFromSpecFile(clusterID, tcName, specPath, flags...)
+	return
+}
+
+func (tcs *tuningConfigService) CreateTuningConfigFromSpecFile(
+	clusterID string, tcName string, specFile string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = tcs.client.Runner.
 		Cmd("create", "tuning-config").
-		CmdFlags(append(flags, "-c", clusterID, "--name", tcName, "--spec-path", specPath)...).
+		CmdFlags(append(flags, "-c", clusterID, "--name", tcName, "--spec-path", specFile)...).
 		Run()
 	if err == nil {
 		tcs.tuningConfigs[clusterID] = append(tcs.tuningConfigs[clusterID], tcName)
