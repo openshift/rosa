@@ -22,6 +22,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 )
@@ -133,4 +134,16 @@ func PrintNodePoolManagementUpgrade(upgrade *cmv1.NodePoolManagementUpgrade) str
 	}
 
 	return ""
+}
+
+func PrintNodePoolDiskSize(aws *cmv1.AWSNodePool) string {
+	diskSizeStr := "default"
+	if aws != nil && aws.RootVolume() != nil {
+		diskSize, ok := aws.RootVolume().GetSize()
+		if ok {
+			diskSizeStr = helper.GigybyteStringer(diskSize)
+		}
+	}
+
+	return diskSizeStr
 }

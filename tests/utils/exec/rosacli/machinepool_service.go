@@ -111,6 +111,7 @@ type NodePool struct {
 	Taints           string `json:"TAINTS,omitempty"`
 	AvalaiblityZones string `json:"AVAILABILITY ZONES,omitempty"`
 	Subnet           string `json:"SUBNET,omitempty"`
+	DiskSize         string `json:"DISK SIZE,omitempty"`
 	Version          string `json:"VERSION,omitempty"`
 	AutoRepair       string `json:"AUTOREPAIR,omitempty"`
 	TuningConfigs    string `json:"TUNING CONFIGS,omitempty"`
@@ -145,6 +146,7 @@ type NodePoolDescription struct {
 	ScheduledUpgrade           string              `yaml:"Scheduled upgrade,omitempty"`
 	AdditionalSecurityGroupIDs string              `yaml:"Additional security group IDs,omitempty"`
 	NodeDrainGracePeriod       string              `yaml:"Node drain grace period,omitempty"`
+	DiskSize                   string              `yaml:"Disk size,omitempty"`
 }
 
 // Create MachinePool
