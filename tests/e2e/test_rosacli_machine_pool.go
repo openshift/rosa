@@ -733,7 +733,7 @@ var _ = Describe("Create machinepool",
 						"-y",
 					)
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("min-replicas must be a non-negative integer"))
+					Expect(output.String()).Should(ContainSubstring("Replicas must be a non-negative integer"))
 
 					By("Create with invalid labels will fail")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
