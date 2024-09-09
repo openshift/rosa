@@ -891,6 +891,82 @@ var _ = Describe("ROSA HCP cluster upgrade",
 				ContainSubstring("INFO: Successfully canceled scheduled upgrade on cluster '%s'",
 					clusterID))
 		})
+
+		It("to validate role's policy when upgrade hcp cluster - [id:62161]",
+			labels.Medium, labels.Runtime.Day2, labels.Runtime.Upgrade,
+			func() {
+				By("update operator-roles for hcp cluster")
+				ocmResourceService := rosaClient.OCMResource
+				output, err := ocmResourceService.UpgradeOperatorRoles(
+					"--cluster", clusterID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("operator roles have attached managed policies. " +
+					"An upgrade isn't needed"))
+
+				var arbitraryPolicyService rosacli.PolicyService
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				awsClient, err := aws_client.CreateAWSClient("", "")
+				Expect(err).To(BeNil())
+				var rolePolicyMap = make(map[string]string)
+				roles := []string{CD.STSRoleArn, CD.SupportRoleARN, CD.InstanceIAMRoles[0]["Worker"]}
+				for _, policyArn := range roles {
+					_, accountRoleName, err := common.ParseRoleARN(policyArn)
+					Expect(err).To(BeNil())
+					attachedPolicy, err := awsClient.ListAttachedRolePolicies(accountRoleName)
+					Expect(err).To(BeNil())
+					rolePolicyMap[accountRoleName] = *attachedPolicy[0].PolicyArn
+				}
+
+				for _, policyArn := range CD.OperatorIAMRoles {
+					_, operatorRoleName, err := common.ParseRoleARN(policyArn)
+					Expect(err).To(BeNil())
+					attachedPolicy, err := awsClient.ListAttachedRolePolicies(operatorRoleName)
+					Expect(err).To(BeNil())
+					rolePolicyMap[operatorRoleName] = *attachedPolicy[0].PolicyArn
+				}
+
+				By("detach managed policies from account role and operator role and update cluster")
+				arbitraryPolicyService = rosaClient.Policy
+				upgradeVersion := zStreamVersion
+				if zStreamVersion == "" {
+					upgradeVersion = yStreamVersion
+				}
+				for r, p := range rolePolicyMap {
+					_, err := arbitraryPolicyService.DetachPolicy(r, []string{p}, "--mode", "auto")
+					Expect(err).To(BeNil())
+					defer arbitraryPolicyService.AttachPolicy(r, []string{p}, "--mode", "auto")
+
+					By("upgrade cluster with account roles which is detached managed policies")
+					scheduledDate := time.Now().Format("2006-01-02")
+					scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+					output, err = upgradeService.Upgrade(
+						"-c", clusterID,
+						"--version", upgradeVersion,
+						"--schedule-date", scheduledDate,
+						"--schedule-time", scheduledTime,
+						"--control-plane",
+						"--mode", "manual",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).
+						To(
+							ContainSubstring(
+								fmt.Sprintf("Failed while validating managed policies: role"+
+									" '%s' is missing the attached managed policy '%s'", r, p)))
+
+					By("Attach the deleted managed policies")
+					_, err = arbitraryPolicyService.AttachPolicy(r, []string{p}, "--mode", "auto")
+					Expect(err).To(BeNil())
+				}
+			})
 	})
 
 func FindUpperYStreamVersion(v rosacli.VersionService, channelGroup string, clusterVersion string) (string, string,
