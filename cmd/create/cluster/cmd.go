@@ -721,7 +721,7 @@ func initFlags(cmd *cobra.Command) {
 		&args.billingAccount,
 		"billing-account",
 		"",
-		"Account used for billing subscriptions purchased via the AWS marketplace",
+		"Account ID used for billing subscriptions purchased via the AWS marketplace",
 	)
 
 	flags.BoolVar(
