@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"go.uber.org/mock/gomock"
 
@@ -30,9 +31,40 @@ import (
 	ocmCommonValidations "github.com/openshift-online/ocm-common/pkg/ocm/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
 	mock "github.com/openshift/rosa/pkg/aws"
 )
+
+var _ = Describe("Error Handler", func() {
+	sendError := fmt.Errorf("response errored")
+	It("Populates error message from ocm response", func() {
+		now := time.Now().UTC()
+		ocmError, err := ocmerrors.NewError().
+			Code("404").
+			OperationID("123").
+			Reason("test").
+			Timestamp(&now).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+		err = handleErr(ocmError, sendError)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(ocmError.Error()))
+	})
+	It("Populates error message from send error", func() {
+		now := time.Now().UTC()
+		ocmError, err := ocmerrors.NewError().
+			Code("404").
+			OperationID("123").
+			Reason("").
+			Timestamp(&now).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+		err = handleErr(ocmError, sendError)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(sendError.Error()))
+	})
+})
 
 var _ = Describe("Http tokens", func() {
 	Context("Http tokens variable validations", func() {
@@ -361,7 +393,9 @@ var _ = Describe("ValidateSubnetsCount", func() {
 			It("should return an error if subnetsInputCount is not equal to privateLinkMultiAZSubnetsCount", func() {
 				err := ValidateSubnetsCount(true, true, privateLinkMultiAZSubnetsCount+1)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'private link cluster' should be"+
+				Expect(
+					err.Error(),
+				).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'private link cluster' should be"+
 					" '%d', instead received: '%d'", privateLinkMultiAZSubnetsCount, privateLinkMultiAZSubnetsCount+1)))
 			})
 
@@ -375,7 +409,9 @@ var _ = Describe("ValidateSubnetsCount", func() {
 			It("should return an error if subnetsInputCount is not equal to privateLinkSingleAZSubnetsCount", func() {
 				err := ValidateSubnetsCount(false, true, privateLinkSingleAZSubnetsCount+1)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'private link cluster' should be"+
+				Expect(
+					err.Error(),
+				).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'private link cluster' should be"+
 					" '%d', instead received: '%d'", privateLinkSingleAZSubnetsCount, privateLinkSingleAZSubnetsCount+1)))
 			})
 
