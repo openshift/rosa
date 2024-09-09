@@ -26,5 +26,7 @@ const (
 	//
 	WifAccessMethodImpersonate WifAccessMethod = "impersonate"
 	//
+	WifAccessMethodVm WifAccessMethod = "vm"
+	//
 	WifAccessMethodWif WifAccessMethod = "wif"
 )
