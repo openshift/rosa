@@ -752,7 +752,7 @@ var _ = Describe("Describe/List rosa upgrade",
 					By("Check list upgrade")
 					out, err := upgradeService.ListUpgrades(clusterID)
 					Expect(err).To(BeNil())
-					Expect(out.String()).To(MatchRegexp(`%s\s+recommended\s+-\s+scheduled for %s %s UTC`,
+					Expect(out.String()).To(MatchRegexp(`%s\s+recommended\s+-\s+(scheduled|started) for %s %s UTC`,
 						upgradingVersion, scheduledDate, scheduledTime))
 
 					By("Check describe upgrade")
