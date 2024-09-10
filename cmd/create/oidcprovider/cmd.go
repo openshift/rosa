@@ -78,14 +78,14 @@ func run(cmd *cobra.Command, argv []string) {
 	defer r.Cleanup()
 
 	// Allow the command to be called programmatically
-	isProgmaticallyCalled := false
+	isProgrammaticallyCalled := false
 	shouldUseClusterKey := true
 	if len(argv) >= 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
 		interactive.SetModeKey(argv[1])
 
 		if argv[1] != "" {
-			isProgmaticallyCalled = true
+			isProgrammaticallyCalled = true
 		}
 
 		if argv[2] != "" {
@@ -107,14 +107,14 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Determine if interactive mode is needed
-	if !isProgmaticallyCalled && !interactive.Enabled() &&
+	if !isProgrammaticallyCalled && !interactive.Enabled() &&
 		(!cmd.Flags().Changed("cluster") || !cmd.Flags().Changed("mode")) {
 		interactive.Enable()
 	}
 
 	var cluster *cmv1.Cluster
 	clusterKey := ""
-	if cmd.Flags().Changed("cluster") || (isProgmaticallyCalled && shouldUseClusterKey) {
+	if cmd.Flags().Changed("cluster") || (isProgrammaticallyCalled && shouldUseClusterKey) {
 		clusterKey = r.GetClusterKey()
 		cluster = r.FetchCluster()
 		if !ocm.IsSts(cluster) {
@@ -123,7 +123,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if !cmd.Flags().Changed("mode") && interactive.Enabled() && !isProgmaticallyCalled {
+	if !cmd.Flags().Changed("mode") && interactive.Enabled() && !isProgrammaticallyCalled {
 		mode, err = interactive.GetOptionMode(cmd, mode, "OIDC provider creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
@@ -135,7 +135,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if cluster != nil {
 		oidcEndpointURL = cluster.AWS().STS().OIDCEndpointURL()
 	} else {
-		if isProgmaticallyCalled && args.oidcEndpointUrl != "" {
+		if isProgrammaticallyCalled && args.oidcEndpointUrl != "" {
 			oidcEndpointURL = args.oidcEndpointUrl
 		} else {
 			if args.oidcConfigId == "" {
@@ -192,7 +192,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if clusterId == "" {
 			clusterId = cmd.Flag("cluster").Value.String()
 		}
-		err = createProvider(r, oidcEndpointURL, clusterId)
+		err = createProvider(r, oidcEndpointURL, clusterId, isProgrammaticallyCalled)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the OIDC provider: %s", err)
 			r.OCMClient.LogEvent("ROSACreateOIDCProviderModeAuto", map[string]string{
@@ -228,8 +228,14 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
-func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) error {
-	input, err := cmv1.NewOidcThumbprintInput().OidcConfigId(args.oidcConfigId).ClusterId(clusterId).Build()
+func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string, isProgrammaticallyCalled bool) error {
+	inputBuilder := cmv1.NewOidcThumbprintInput()
+	if isProgrammaticallyCalled || clusterId == "" {
+		inputBuilder.OidcConfigId(args.oidcConfigId)
+	} else {
+		inputBuilder.ClusterId(clusterId)
+	}
+	input, err := inputBuilder.Build()
 	if err != nil {
 		return err
 	}
