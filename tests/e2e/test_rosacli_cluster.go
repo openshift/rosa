@@ -3047,7 +3047,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 				err = awsClient.TagPolicy(operatorPolicyArn, tags)
 				Expect(err).To(BeNil())
 
-				By("Reuse operatot-role prefix and oidc config to create cluster with not-compatible version")
+				By("Reuse operatot-role prefix and oidc config to create cluster with non-compatible version")
 
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--oidc-config-id": originalOidcConfigID,

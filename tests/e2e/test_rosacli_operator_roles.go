@@ -561,7 +561,7 @@ var _ = Describe("create operator-roles forcely testing",
 				err = awsClient.DeleteIAMPolicy(rolePolicyMap[deletingPolicyRoleName])
 				Expect(err).To(BeNil())
 
-				By("Create operator-role forcely")
+				By("Create operator-role forcefully")
 				output, err = ocmResourceService.CreateOperatorRoles(
 					"-c", clusterID,
 					"--mode", "auto",
@@ -570,6 +570,8 @@ var _ = Describe("create operator-roles forcely testing",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("Created role"))
+				Expect(output.String()).Should(ContainSubstring("Attached trust policy to role"))
+				Expect(output.String()).Should(ContainSubstring("Attached policy 'arn:aws:iam::"))
 
 				By("Check the operator role policies are regenerated")
 
@@ -695,6 +697,8 @@ var _ = Describe("create IAM roles forcely testing",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("Created role"))
+				Expect(output.String()).Should(ContainSubstring("Attached trust policy to role"))
+				Expect(output.String()).Should(ContainSubstring("Attached policy 'arn:aws:iam::"))
 
 				By("Get test policies")
 				for k := range accountRoleNamePermissionMap {
