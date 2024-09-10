@@ -82,6 +82,13 @@ var _ = Describe("Edit cluster",
 				rosaClient.Runner.UnsetFormat()
 				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
 
+				By("Get OCM Environment")
+				rosaClient.Runner.JsonFormat()
+				userInfo, err := rosaClient.OCMResource.UserInfo()
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				ocmApi := userInfo.OCMApi
+
 				By("Compare the text result with the json result")
 				Expect(CD.ID).To(Equal(jsonData.DigString("id")))
 				Expect(CD.ExternalID).To(Equal(jsonData.DigString("external_id")))
@@ -94,7 +101,13 @@ var _ = Describe("Edit cluster",
 
 				Expect(CD.State).To(Equal(jsonData.DigString("status", "state")))
 				Expect(CD.Created).NotTo(BeEmpty())
-				Expect(CD.DetailsPage).NotTo(BeEmpty())
+
+				By("Get details page console url")
+				consoleURL := common.GetConsoleUrlBasedOnEnv(ocmApi)
+				subscriptionID := jsonData.DigString("subscription", "id")
+				if consoleURL != "" {
+					Expect(CD.DetailsPage).To(Equal(consoleURL + subscriptionID))
+				}
 
 				if jsonData.DigBool("aws", "private_link") {
 					Expect(CD.Private).To(Equal("Yes"))
