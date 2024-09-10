@@ -449,11 +449,10 @@ var _ = Describe("Edit ingress",
 		defer GinkgoRecover()
 
 		var (
-			clusterID string
-			// profile        ph.Profile
+			clusterID      string
 			rosaClient     *rosacli.Client
 			ingressService rosacli.IngressService
-			// isHosted       bool
+			isHosted       bool
 		)
 
 		BeforeEach(func() {
@@ -466,17 +465,17 @@ var _ = Describe("Edit ingress",
 			ingressService = rosaClient.Ingress
 
 			By("Check cluster is hosted")
-			// var err error
-			// isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
-			// Expect(err).ToNot(HaveOccurred())
-
-			// By("Load the profile")
-			// profile = *ph.LoadProfileYamlFileByENV()
+			var err error
+			isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("can validate well - [id:38837]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
+				if isHosted {
+					SkipNotClassic()
+				}
 				By("Run command to edit ingress with invalid label")
 				output, err := ingressService.EditIngress(clusterID, "apps",
 					"--label-match", "invalid",
