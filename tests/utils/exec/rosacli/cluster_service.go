@@ -37,6 +37,7 @@ type ClusterService interface {
 	GetClusterVersion(clusterID string) (config.Version, error)
 	IsBYOVPCCluster(clusterID string) (bool, error)
 	IsExternalAuthenticationEnabled(clusterID string) (bool, error)
+	DetectProxy(clusterDescription *ClusterDescription) (string, string, string)
 	GetJSONClusterDescription(clusterID string) (*jsonData, error)
 	HibernateCluster(clusterID string, flags ...string) (bytes.Buffer, error)
 	ResumeCluster(clusterID string, flags ...string) (bytes.Buffer, error)
@@ -355,6 +356,23 @@ func (c *clusterService) IsBYOVPCCluster(clusterID string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func (c *clusterService) DetectProxy(clusterDescription *ClusterDescription) (string, string, string) {
+	clusterHTTPProxy, clusterHTTPSProxy, clusterNoProxy := "", "", ""
+	for _, itemMap := range clusterDescription.Proxy {
+		if value, ok := itemMap["HTTPProxy"]; ok {
+			clusterHTTPProxy = value
+		}
+		if value, ok := itemMap["HTTPSProxy"]; ok {
+			clusterHTTPSProxy = value
+		}
+		if value, ok := itemMap["NoProxy"]; ok {
+			clusterNoProxy = value
+		}
+
+	}
+	return clusterHTTPProxy, clusterHTTPSProxy, clusterNoProxy
 }
 
 func RetrieveDesiredComputeNodes(clusterDescription *ClusterDescription) (nodesNb int, err error) {

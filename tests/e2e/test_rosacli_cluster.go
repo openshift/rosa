@@ -37,8 +37,9 @@ var _ = Describe("Edit cluster",
 			clusterID      string
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
-			upgradeService rosacli.UpgradeService
-			clusterConfig  *config.ClusterConfig
+			// upgradeService rosacli.UpgradeService
+			clusterConfig *config.ClusterConfig
+			profile       *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
@@ -49,12 +50,15 @@ var _ = Describe("Edit cluster",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
-			upgradeService = rosaClient.Upgrade
+			// upgradeService = rosaClient.Upgrade
 
 			By("Load the original cluster config")
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
+
+			By("Load the profile")
+			profile = profilehandler.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
@@ -234,118 +238,7 @@ var _ = Describe("Edit cluster",
 				Expect(clusterDetail.UserWorkloadMonitoring).To(Equal(expectedUWMValue))
 			})
 
-		It("can validate for deletion of upgrade policy of rosa cluster - [id:38787]",
-			labels.Medium, labels.Runtime.Day2,
-			func() {
-				By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
-				output, err := upgradeService.DeleteUpgrade()
-				Expect(err).To(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`required flag(s) "cluster" not set`))
-
-				By("Delete an non-existent upgrade when cluster has no scheduled policy")
-				output, err = upgradeService.DeleteUpgrade("-c", clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`There are no scheduled upgrades on cluster '%s'`, clusterID))
-
-				By("Delete with unknown flag --interactive")
-				output, err = upgradeService.DeleteUpgrade("-c", clusterID, "--interactive")
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("Error: unknown flag: --interactive"))
-			})
-
-		It("validation for create/delete upgrade policies for hypershift clusters via rosacli should work well - [id:73814]",
-			labels.Medium, labels.Runtime.Day2,
-			func() {
-				defer func() {
-					_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
-					Expect(err).ToNot(HaveOccurred())
-				}()
-
-				By("Skip testing if the cluster is not a HCP cluster")
-				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				if !hostedCluster {
-					SkipNotHosted()
-				}
-
-				By("Upgrade cluster without --control-plane flag")
-				output, err := upgradeService.Upgrade("-c", clusterID)
-				Expect(err).To(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					To(ContainSubstring(
-						"ERR: The '--control-plane' option is currently mandatory for Hosted Control Planes"))
-
-				By("Upgrade cluster with invalid cluster id")
-				invalidClusterID := common.GenerateRandomString(30)
-				output, err = upgradeService.Upgrade("-c", invalidClusterID)
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					To(ContainSubstring(
-						"ERR: Failed to get cluster '%s': There is no cluster with identifier or name '%s'",
-						invalidClusterID,
-						invalidClusterID))
-
-				By("Upgrade cluster with incorrect format of the date and time")
-				output, err = upgradeService.Upgrade(
-					"-c", clusterID,
-					"--control-plane",
-					"--mode=auto",
-					"--schedule-date=\"2024-06\"",
-					"--schedule-time=\"09:00:12\"",
-					"-y")
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("ERR: schedule date should use the format 'yyyy-mm-dd'"))
-
-				By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
-				output, err = upgradeService.Upgrade(
-					"-c", clusterID,
-					"--control-plane",
-					"--mode=auto",
-					"--schedule-date=\"2024-06-24\"",
-					"--schedule-time=\"09:00\"",
-					"--schedule=\"5 5 * * *\"",
-					"-y")
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					To(ContainSubstring(
-						"ERR: The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
-
-				By("Upgrade cluster using --schedule and --version flags at the same time")
-				output, err = upgradeService.Upgrade(
-					"-c", clusterID,
-					"--control-plane",
-					"--mode=auto",
-					"--schedule=\"5 5 * * *\"",
-					"--version=4.15.10",
-					"-y")
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					To(ContainSubstring(
-						"ERR: The '--schedule' option is mutually exclusive with '--version'"))
-
-				By("Upgrade cluster with value not match the cron epression")
-				output, err = upgradeService.Upgrade(
-					"-c", clusterID,
-					"--control-plane",
-					"--mode=auto",
-					"--schedule=\"5 5\"",
-					"-y")
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					To(ContainSubstring(
-						"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
-			})
-
-		It("can via rosa-cli - [id:60275]",
+		It("can edit privacy and workload monitoring via rosa-cli - [id:60275]",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
 				By("Check the cluster is private cluster")
@@ -490,8 +383,342 @@ var _ = Describe("Edit cluster",
 				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
 			})
+
+		It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2,
+			func() {
+				var verifyProxy = func(httpProxy string, httpsProxy string, noProxy string, caFile string) {
+					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+
+					clusterHTTPProxy, clusterHTTPSProxy, clusterNoProxy := clusterService.DetectProxy(clusterDescription)
+					Expect(httpProxy).To(Equal(clusterHTTPProxy), "http proxy not match")
+					Expect(httpsProxy).To(Equal(clusterHTTPSProxy), "https proxy not match")
+					Expect(noProxy).To(Equal(clusterNoProxy), "no proxy not match")
+					if caFile == "" {
+						Expect(clusterDescription.AdditionalTrustBundle).To(BeEmpty())
+					} else {
+						Expect(clusterDescription.AdditionalTrustBundle).To(Equal("REDACTED"))
+					}
+				}
+
+				By("Check if cluster is BYOVPC")
+				if !profile.ClusterConfig.ProxyEnabled {
+					Skip("This feature only work for BYO VPC")
+				}
+				originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile := "", "", "", ""
+				if clusterConfig.Proxy.Enabled {
+					originalHttpProxy,
+						originalHTTPSProxy,
+						originalNoProxy, originalCAFile =
+						clusterConfig.Proxy.Http,
+						clusterConfig.Proxy.Https,
+						clusterConfig.Proxy.NoProxy,
+						clusterConfig.Proxy.TrustBundleFile
+				}
+
+				By("Edit cluster with https_proxy, http_proxy, no_proxy and trust-bundle-file")
+				updateHttpProxy := "http://example.com"
+				updateHttpsProxy := "https://example.com"
+				updatedNoProxy := "example.com"
+				updatedCA := ""
+				_, err := clusterService.EditCluster(clusterID,
+					"--http-proxy", updateHttpProxy,
+					"--https-proxy", updateHttpsProxy,
+					"--no-proxy", updatedNoProxy,
+					"--additional-trust-bundle-file", updatedCA,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer clusterService.EditCluster(clusterID,
+					"--http-proxy", originalHttpProxy,
+					"--https-proxy", originalHTTPSProxy,
+					"--no-proxy", originalNoProxy,
+					"--additional-trust-bundle-file", originalCAFile,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
+
+				By("Edit cluster for removing cluster-wide proxy")
+				updateHttpProxy = ""
+				updateHttpsProxy = ""
+				updatedNoProxy = ""
+				updatedCA = originalCAFile
+				_, err = clusterService.EditCluster(clusterID,
+					"--http-proxy", updateHttpProxy,
+					"--https-proxy", updateHttpsProxy,
+					"--no-proxy", updatedNoProxy,
+					"--additional-trust-bundle-file", updatedCA,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
+
+				By("Edit cluster with https_proxy and no_proxy with different valid value")
+				updateHttpsProxy = "https://test-46308.com"
+				updatedNoProxy = "rosacli-46308.com"
+				_, err = clusterService.EditCluster(clusterID,
+					"--https-proxy", updateHttpsProxy,
+					"--no-proxy", updatedNoProxy,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
+
+				By("Edit cluster with only http_proxy")
+				updateHttpProxy = "http://test-46308.com"
+				_, err = clusterService.EditCluster(clusterID,
+					"--http-proxy", updateHttpProxy,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
+			})
+	})
+var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func() {
+	defer GinkgoRecover()
+
+	var (
+		clusterID      string
+		rosaClient     *rosacli.Client
+		clusterService rosacli.ClusterService
+		upgradeService rosacli.UpgradeService
+		clusterConfig  *config.ClusterConfig
+		profile        *profilehandler.Profile
+	)
+
+	BeforeEach(func() {
+		By("Get the cluster")
+		clusterID = config.GetClusterID()
+		Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		clusterService = rosaClient.Cluster
+		upgradeService = rosaClient.Upgrade
+
+		By("Load the original cluster config")
+		var err error
+		clusterConfig, err = config.ParseClusterProfile()
+		Expect(err).ToNot(HaveOccurred())
+
+		By("Load the profile")
+		profile = profilehandler.LoadProfileYamlFileByENV()
 	})
 
+	AfterEach(func() {
+		By("Clean the cluster")
+		rosaClient.CleanResources(clusterID)
+	})
+	It("can validate for deletion of upgrade policy of rosa cluster - [id:38787]",
+		labels.Medium, labels.Runtime.Day2,
+		func() {
+			By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
+			output, err := upgradeService.DeleteUpgrade()
+			Expect(err).To(HaveOccurred())
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).Should(ContainSubstring(`required flag(s) "cluster" not set`))
+
+			By("Delete an non-existent upgrade when cluster has no scheduled policy")
+			output, err = upgradeService.DeleteUpgrade("-c", clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).Should(ContainSubstring(`There are no scheduled upgrades on cluster '%s'`, clusterID))
+
+			By("Delete with unknown flag --interactive")
+			output, err = upgradeService.DeleteUpgrade("-c", clusterID, "--interactive")
+			Expect(err).To(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).Should(ContainSubstring("Error: unknown flag: --interactive"))
+		})
+
+	It("can validate create/delete upgrade policies for HCP clusters - [id:73814]",
+		labels.Medium, labels.Runtime.Day2,
+		func() {
+			defer func() {
+				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+				Expect(err).ToNot(HaveOccurred())
+			}()
+
+			By("Skip testing if the cluster is not a HCP cluster")
+			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !hostedCluster {
+				SkipNotHosted()
+			}
+
+			By("Upgrade cluster without --control-plane flag")
+			output, err := upgradeService.Upgrade("-c", clusterID)
+			Expect(err).To(HaveOccurred())
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					"ERR: The '--control-plane' option is currently mandatory for Hosted Control Planes"))
+
+			By("Upgrade cluster with invalid cluster id")
+			invalidClusterID := common.GenerateRandomString(30)
+			output, err = upgradeService.Upgrade("-c", invalidClusterID)
+			Expect(err).To(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					"ERR: Failed to get cluster '%s': There is no cluster with identifier or name '%s'",
+					invalidClusterID,
+					invalidClusterID))
+
+			By("Upgrade cluster with incorrect format of the date and time")
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--control-plane",
+				"--mode=auto",
+				"--schedule-date=\"2024-06\"",
+				"--schedule-time=\"09:00:12\"",
+				"-y")
+			Expect(err).To(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("ERR: schedule date should use the format 'yyyy-mm-dd'"))
+
+			By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--control-plane",
+				"--mode=auto",
+				"--schedule-date=\"2024-06-24\"",
+				"--schedule-time=\"09:00\"",
+				"--schedule=\"5 5 * * *\"",
+				"-y")
+			Expect(err).To(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					"ERR: The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+
+			By("Upgrade cluster using --schedule and --version flags at the same time")
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--control-plane",
+				"--mode=auto",
+				"--schedule=\"5 5 * * *\"",
+				"--version=4.15.10",
+				"-y")
+			Expect(err).To(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					"ERR: The '--schedule' option is mutually exclusive with '--version'"))
+
+			By("Upgrade cluster with value not match the cron epression")
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--control-plane",
+				"--mode=auto",
+				"--schedule=\"5 5\"",
+				"-y")
+			Expect(err).To(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
+		})
+
+	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2,
+		func() {
+			By("Edit cluster with invalid http_proxy set")
+			if !profile.ClusterConfig.BYOVPC {
+				output, err := clusterService.EditCluster(clusterID,
+					"--http-proxy", "http://test-proxy.com",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("ERR: Cluster-wide proxy is not supported on clusters using the default VPC"))
+				return
+			}
+			originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile := "", "", "", ""
+			if clusterConfig.Proxy.Enabled {
+				originalHttpProxy,
+					originalHTTPSProxy,
+					originalNoProxy, originalCAFile =
+					clusterConfig.Proxy.Http,
+					clusterConfig.Proxy.Https,
+					clusterConfig.Proxy.NoProxy,
+					clusterConfig.Proxy.TrustBundleFile
+			}
+			fmt.Println(originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile)
+
+			By("Edit cluster with invalid http_proxy not started with http")
+			invalidHTTPProxy := map[string]string{
+				"invalidvalue":           "ERR: Invalid http-proxy value 'invalidvalue'",
+				"https://test-proxy.com": "ERR: Expected http-proxy to have an http:// scheme",
+			}
+			for illegalHttpProxy, errMessage := range invalidHTTPProxy {
+				output, err := clusterService.EditCluster(clusterID,
+					"--http-proxy", illegalHttpProxy,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(errMessage))
+			}
+
+			By("Edit cluster with invalid https_proxy set")
+			output, err := clusterService.EditCluster(clusterID,
+				"--https-proxy", "invalid",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring(`ERR: parse "invalid": invalid URI for request`))
+
+			By("Edit cluster with invalid no_proxy ")
+			output, err = clusterService.EditCluster(clusterID,
+				"--no-proxy", "*",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring(`ERR: expected a valid user no-proxy value`))
+
+			By("Edit cluster with invalid additional_trust_bundle set")
+			tempDir, err := os.MkdirTemp("", "*")
+			Expect(err).ToNot(HaveOccurred())
+			defer os.RemoveAll(tempDir)
+			tempFile, err := common.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
+			Expect(err).ToNot(HaveOccurred())
+			output, err = clusterService.EditCluster(clusterID,
+				"--additional-trust-bundle-file", tempFile,
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring(`ERR: Failed to parse additional trust bundle`))
+
+			By("Edit wide-proxy cluster with invalid additional_trust_bundle set path")
+			output, err = clusterService.EditCluster(clusterID,
+				"--additional-trust-bundle-file", "/not/existing",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(ContainSubstring(`ERR: open /not/existing: no such file or directory`))
+
+			By("Edit cluster which is set no-proxy but others empty")
+			output, err = clusterService.EditCluster(clusterID,
+				"--http-proxy", "",
+				"--https-proxy", "",
+				"--no-proxy", "example.com",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("ERR: Failed to update cluster: Cannot set 'proxy.no_proxy' attribute 'example.com'" +
+					" while removing 'proxy.http_proxy' and 'proxy.https_proxy' attributes"))
+
+			By("Set all http settings to empty")
+			output, err = clusterService.EditCluster(clusterID,
+				"--http-proxy", "",
+				"--https-proxy", "",
+				"--no-proxy", "",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			defer clusterService.EditCluster(clusterID,
+				"--http-proxy", originalHttpProxy,
+				"--https-proxy", originalHTTPSProxy,
+				"--no-proxy", originalNoProxy,
+			)
+			By("Edit cluster which is not set http-proxy and http-proxy  with the command")
+			output, err = clusterService.EditCluster(clusterID,
+				"--no-proxy", "example.com",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
+
+		})
+})
 var _ = Describe("Classic cluster creation validation",
 	labels.Feature.Cluster,
 	func() {
@@ -1300,6 +1527,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("Failed to create cluster:" +
 						" The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
 			})
+
 		It("to validate the network when create cluster - [id:38857]", labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "rosaci-38857"
@@ -1381,6 +1609,120 @@ var _ = Describe("Create cluster with invalid options will",
 
 			})
 
+		It("to validate the invalid proxy when create cluster - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				zone := constants.CommonAWSRegion + "a"
+				clusterName := "rosacli-45509"
+				By("Create rosa cluster which has proxy without subnets set by command ")
+				output, err, _ := clusterService.Create(
+					"cl-45509",
+					"--http-proxy", "http://example.com",
+					"--https-proxy", "https://example.com",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("The number of subnets for a"))
+
+				By("Prepare vpc with subnets")
+				vpc, err := vpc_client.PrepareVPC(clusterName, constants.CommonAWSRegion, "", true, "")
+				Expect(err).ToNot(HaveOccurred())
+				defer vpc.DeleteVPCChain(true)
+
+				subnetMap, err := vpc.PreparePairSubnetByZone(zone)
+				Expect(err).ToNot(HaveOccurred())
+				privateSubnet := subnetMap["private"].ID
+				publicSubnet := subnetMap["public"].ID
+
+				By("Create ccs existing cluster with invalid http_proxy set")
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join([]string{
+						privateSubnet,
+						publicSubnet,
+					}, ","),
+					"--http-proxy", "invalid",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("ERR: Invalid http-proxy value 'invalid'"))
+
+				By("Create ccs existing cluster with invalid http_proxy not started with http")
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join([]string{
+						privateSubnet,
+						publicSubnet,
+					}, ","),
+					"--http-proxy", "nohttp.prefix.com",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("ERR: Invalid http-proxy value 'nohttp.prefix.com'"))
+
+				By("Create ccs existing cluster with invalid https_proxy set")
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join([]string{
+						privateSubnet,
+						publicSubnet,
+					}, ","),
+					"--https-proxy", "invalid",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring(`ERR: parse "invalid": invalid URI for request`))
+
+				By("Create wide-proxy cluster with invalid additional_trust_bundle set")
+				tempDir, err := os.MkdirTemp("", "*")
+				Expect(err).ToNot(HaveOccurred())
+				defer os.RemoveAll(tempDir)
+				tempFile, err := common.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
+				Expect(err).ToNot(HaveOccurred())
+
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join([]string{
+						privateSubnet,
+						publicSubnet,
+					}, ","),
+					"--additional-trust-bundle-file", tempFile,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("ERR: Failed to parse additional trust bundle"))
+
+				By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join([]string{
+						privateSubnet,
+						publicSubnet,
+					}, ","),
+					"--additional-trust-bundle-file", "/not/existing",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("ERR: open /not/existing: no such file or directory"))
+
+				By("Create wide-proxy cluster with only no_proxy set")
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join([]string{
+						privateSubnet,
+						publicSubnet,
+					}, ","),
+					"--no-proxy", "nohttp.prefix.com",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
+
+				output, err, _ = clusterService.Create(clusterName,
+					"--subnet-ids", strings.Join([]string{
+						privateSubnet,
+						publicSubnet,
+					}, ","),
+					"--http-proxy", "http://example.com",
+					"--https-proxy", "https://example.com",
+					"--no-proxy", "*",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("ERR: expected a valid user no-proxy value"))
+
+			})
 	})
 
 var _ = Describe("Classic cluster deletion validation",
@@ -1944,12 +2286,11 @@ var _ = Describe("HCP cluster creation negative testing",
 
 				clusterName := "ocp-72538"
 				vpcName := "vpc-72538"
-				region := "us-west-2"
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
 					"--domain-prefix": clusterName,
-					"--region":        region,
+					"--region":        constants.CommonAWSRegion,
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				if rosalCommand.CheckFlagExist("--subnet-ids") {
@@ -1957,11 +2298,11 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 
 				By("Prepare a vpc for the testing")
-				vpc, err := vpc_client.PrepareVPC(vpcName, region, "", false, "")
+				vpc, err := vpc_client.PrepareVPC(vpcName, constants.CommonAWSRegion, "", false, "")
 				Expect(err).ToNot(HaveOccurred())
 				defer vpc.DeleteVPCChain()
 
-				subnetMap, err := profilehandler.PrepareSubnets(vpc, region, []string{}, true)
+				subnetMap, err := profilehandler.PrepareSubnets(vpc, constants.CommonAWSRegion, []string{}, true)
 				Expect(err).ToNot(HaveOccurred())
 
 				availabilityZone := vpc.SubnetList[0].Zone
@@ -2066,7 +2407,8 @@ var _ = Describe("HCP cluster creation negative testing",
 					"The following subnets have been excluded because they have an " +
 						"Internet Gateway Targetded Route and the Cluster choice is private: [" + subnetMap["public"][0] + "]"))
 				Expect(out.String()).To(ContainSubstring(
-					"Could not find the following subnet provided in region 'us-west-2': " + subnetMap["public"][0]))
+					"Could not find the following subnet provided in region '%s': "+subnetMap["public"][0],
+					constants.CommonAWSRegion))
 			})
 
 		It("to validate create cluster with audit log forwarding - [id:73672]",
@@ -2906,7 +3248,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				},
 				Version:      "latest",
 				ChannelGroup: "candidate",
-				Region:       "us-west-2",
+				Region:       constants.CommonAWSRegion,
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 
