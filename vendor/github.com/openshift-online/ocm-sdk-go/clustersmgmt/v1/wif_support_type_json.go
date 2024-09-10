@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalHypershiftConfig writes a value of the 'hypershift_config' type to the given writer.
-func MarshalHypershiftConfig(object *HypershiftConfig, writer io.Writer) error {
+// MarshalWifSupport writes a value of the 'wif_support' type to the given writer.
+func MarshalWifSupport(object *WifSupport, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeHypershiftConfig(object, stream)
+	writeWifSupport(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalHypershiftConfig(object *HypershiftConfig, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeHypershiftConfig writes a value of the 'hypershift_config' type to the given stream.
-func writeHypershiftConfig(object *HypershiftConfig, stream *jsoniter.Stream) {
+// writeWifSupport writes a value of the 'wif_support' type to the given stream.
+func writeWifSupport(object *WifSupport, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,63 +47,50 @@ func writeHypershiftConfig(object *HypershiftConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("hcp_namespace")
-		stream.WriteString(object.hcpNamespace)
+		stream.WriteObjectField("principal")
+		stream.WriteString(object.principal)
 		count++
 	}
-	present_ = object.bitmap_&2 != 0
+	present_ = object.bitmap_&2 != 0 && object.roles != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("enabled")
-		stream.WriteBool(object.enabled)
-		count++
-	}
-	present_ = object.bitmap_&4 != 0
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("management_cluster")
-		stream.WriteString(object.managementCluster)
+		stream.WriteObjectField("roles")
+		writeWifRoleList(object.roles, stream)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalHypershiftConfig reads a value of the 'hypershift_config' type from the given
+// UnmarshalWifSupport reads a value of the 'wif_support' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalHypershiftConfig(source interface{}) (object *HypershiftConfig, err error) {
+func UnmarshalWifSupport(source interface{}) (object *WifSupport, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = readHypershiftConfig(iterator)
+	object = readWifSupport(iterator)
 	err = iterator.Error
 	return
 }
 
-// readHypershiftConfig reads a value of the 'hypershift_config' type from the given iterator.
-func readHypershiftConfig(iterator *jsoniter.Iterator) *HypershiftConfig {
-	object := &HypershiftConfig{}
+// readWifSupport reads a value of the 'wif_support' type from the given iterator.
+func readWifSupport(iterator *jsoniter.Iterator) *WifSupport {
+	object := &WifSupport{}
 	for {
 		field := iterator.ReadObject()
 		if field == "" {
 			break
 		}
 		switch field {
-		case "hcp_namespace":
+		case "principal":
 			value := iterator.ReadString()
-			object.hcpNamespace = value
+			object.principal = value
 			object.bitmap_ |= 1
-		case "enabled":
-			value := iterator.ReadBool()
-			object.enabled = value
+		case "roles":
+			value := readWifRoleList(iterator)
+			object.roles = value
 			object.bitmap_ |= 2
-		case "management_cluster":
-			value := iterator.ReadString()
-			object.managementCluster = value
-			object.bitmap_ |= 4
 		default:
 			iterator.ReadAny()
 		}

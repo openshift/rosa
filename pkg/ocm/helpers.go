@@ -194,16 +194,21 @@ func isCompatible(relatedResource *amsv1.RelatedResource) bool {
 }
 
 func handleErr(res *ocmerrors.Error, err error) error {
-	msg := res.Reason()
-	if msg == "" {
-		msg = err.Error()
+	msg := err.Error()
+	// Need to check nil as .Error will try to access internal values of the pointer
+	if res != nil && res.Reason() != "" {
+		msg = res.Error()
 	}
+	// This works because the following gets return zero value for their type
+	// string->""
+	// int->0
 	// Hack to always display the correct terms and conditions message
 	if res.Code() == "CLUSTERS-MGMT-451" {
 		msg = "You must accept the Terms and Conditions in order to continue.\n" +
 			"Go to https://www.redhat.com/wapps/tnc/ackrequired?site=ocm&event=register\n" +
 			"Once you accept the terms, you will need to retry the action that was blocked."
 	}
+	// The error type set will be No Type though
 	errType := errors.ErrorType(res.Status())
 	return errType.Set(errors.Errorf("%s", msg))
 }
@@ -916,7 +921,11 @@ func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient
 				return err
 			}
 			if !isCompatible {
-				return errors.Errorf("Operator role '%s' is not compatible with cluster version '%s'", roleARN, clusterVersion)
+				return errors.Errorf(
+					"Operator role '%s' is not compatible with cluster version '%s'",
+					roleARN,
+					clusterVersion,
+				)
 			}
 		}
 	}
@@ -1065,8 +1074,10 @@ func ValidateClaimValidationRules(input interface{}) error {
 		}
 	case reflect.Slice:
 		if reflect.TypeOf(input).Elem().Kind() != reflect.String {
-			return fmt.Errorf("unable to verify claim validation rules, incompatible type, expected slice of string got: '%s'",
-				inputType.String())
+			return fmt.Errorf(
+				"unable to verify claim validation rules, incompatible type, expected slice of string got: '%s'",
+				inputType.String(),
+			)
 		}
 	default:
 		return fmt.Errorf("can only validate string types, got %v", inputType.String())

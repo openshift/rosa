@@ -87,7 +87,16 @@ func writeWifGcp(object *WifGcp, stream *jsoniter.Stream) {
 		writeWifServiceAccountList(object.serviceAccounts, stream)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0 && object.workloadIdentityPool != nil
+	present_ = object.bitmap_&32 != 0 && object.support != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("support")
+		writeWifSupport(object.support, stream)
+		count++
+	}
+	present_ = object.bitmap_&64 != 0 && object.workloadIdentityPool != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -139,10 +148,14 @@ func readWifGcp(iterator *jsoniter.Iterator) *WifGcp {
 			value := readWifServiceAccountList(iterator)
 			object.serviceAccounts = value
 			object.bitmap_ |= 16
+		case "support":
+			value := readWifSupport(iterator)
+			object.support = value
+			object.bitmap_ |= 32
 		case "workload_identity_pool":
 			value := readWifPool(iterator)
 			object.workloadIdentityPool = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		default:
 			iterator.ReadAny()
 		}

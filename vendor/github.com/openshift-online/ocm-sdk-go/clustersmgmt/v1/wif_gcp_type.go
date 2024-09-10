@@ -27,6 +27,7 @@ type WifGcp struct {
 	projectNumber        string
 	rolePrefix           string
 	serviceAccounts      []*WifServiceAccount
+	support              *WifSupport
 	workloadIdentityPool *WifPool
 }
 
@@ -152,13 +153,36 @@ func (o *WifGcp) GetServiceAccounts() (value []*WifServiceAccount, ok bool) {
 	return
 }
 
+// Support returns the value of the 'support' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Defines the access configuration for support.
+func (o *WifGcp) Support() *WifSupport {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.support
+	}
+	return nil
+}
+
+// GetSupport returns the value of the 'support' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Defines the access configuration for support.
+func (o *WifGcp) GetSupport() (value *WifSupport, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.support
+	}
+	return
+}
+
 // WorkloadIdentityPool returns the value of the 'workload_identity_pool' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The workload identity configuration data that will be used to create the
 // workload identity pool on the user's account.
 func (o *WifGcp) WorkloadIdentityPool() *WifPool {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.workloadIdentityPool
 	}
 	return nil
@@ -170,7 +194,7 @@ func (o *WifGcp) WorkloadIdentityPool() *WifPool {
 // The workload identity configuration data that will be used to create the
 // workload identity pool on the user's account.
 func (o *WifGcp) GetWorkloadIdentityPool() (value *WifPool, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.workloadIdentityPool
 	}

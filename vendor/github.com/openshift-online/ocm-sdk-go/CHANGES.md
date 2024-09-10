@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.440
+- Update model version v0.0.393
+  - Include missing field to hypershift model
+  - Include new fields to manifest model
+  - Remove v2alpha1 resources
+
+## 0.1.439
+- Update model version v0.0.392
+  - Add `vm` WIF access type
+  - Add `support` field to WifConfig resource
+
 ## 0.1.438
 - Update model version v0.0.391
   - Add `RegistryConfig` attribute to `Cluster` model
