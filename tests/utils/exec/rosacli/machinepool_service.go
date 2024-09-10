@@ -152,9 +152,15 @@ type NodePoolDescription struct {
 // Create MachinePool
 func (m *machinepoolService) CreateMachinePool(
 	clusterID string, name string, flags ...string) (output bytes.Buffer, err error) {
+	if len(clusterID) > 0 {
+		flags = append(flags, "-c", clusterID)
+	}
+	if len(name) > 0 {
+		flags = append(flags, "--name", name)
+	}
 	output, err = m.client.Runner.
 		Cmd("create", "machinepool").
-		CmdFlags(append(flags, "-c", clusterID, "--name", name)...).
+		CmdFlags(flags...).
 		Run()
 	if err == nil {
 		m.machinePools[clusterID] = append(m.machinePools[clusterID], name)
