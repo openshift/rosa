@@ -8,10 +8,10 @@ import (
 
 type Command interface {
 	GetFullCommand() string
-	GetFlagValue(flag string, flagWithVaue bool) string
+	GetFlagValue(flag string, flagWithValue bool) string
 	AddFlags(flags ...string)
 	ReplaceFlagValue(flags map[string]string)
-	DeleteFlag(flag string, flagWithVaue bool) error
+	DeleteFlag(flag string, flagWithValue bool) error
 	CheckFlagExist(flag string) bool
 }
 
@@ -53,11 +53,11 @@ func (c *command) ReplaceFlagValue(flags map[string]string) {
 }
 
 // a function to delete any flag in the command
-func (c *command) DeleteFlag(flag string, flagWithVaue bool) error {
+func (c *command) DeleteFlag(flag string, flagWithValue bool) error {
 	elements := strings.Split(c.cmd, " ")
 	for i, e := range elements {
 		if e == flag {
-			if flagWithVaue {
+			if flagWithValue {
 				elements = append(elements[:i], elements[i+2:]...)
 			} else {
 				elements = append(elements[:i], elements[i+1:]...)
@@ -70,11 +70,11 @@ func (c *command) DeleteFlag(flag string, flagWithVaue bool) error {
 }
 
 // Get the value of a flag from the command
-func (c *command) GetFlagValue(flag string, flagWithVaue bool) string {
+func (c *command) GetFlagValue(flag string, flagWithValue bool) string {
 	elements := strings.Split(c.cmd, " ")
 	for i, e := range elements {
 		if e == flag {
-			if flagWithVaue {
+			if flagWithValue {
 				return elements[i+1]
 			} else {
 				return ""

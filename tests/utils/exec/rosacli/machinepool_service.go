@@ -25,7 +25,7 @@ type MachinePoolService interface {
 	DescribeMachinePool(clusterID string, mpID string) (bytes.Buffer, error)
 	CreateMachinePool(clusterID string, name string, flags ...string) (bytes.Buffer, error)
 	EditMachinePool(clusterID string, machinePoolName string, flags ...string) (bytes.Buffer, error)
-	DeleteMachinePool(clusterID string, machinePoolName string) (bytes.Buffer, error)
+	DeleteMachinePool(clusterID string, machinePoolName string, flags ...string) (bytes.Buffer, error)
 
 	ReflectMachinePoolList(result bytes.Buffer) (mpl MachinePoolList, err error)
 	ReflectMachinePoolDescription(result bytes.Buffer) (*MachinePoolDescription, error)
@@ -190,10 +190,10 @@ func (m *machinepoolService) DescribeAndReflectMachinePool(
 
 // Delete MachinePool
 func (m *machinepoolService) DeleteMachinePool(
-	clusterID string, machinePoolName string) (output bytes.Buffer, err error) {
+	clusterID string, machinePoolName string, flags ...string) (output bytes.Buffer, err error) {
 	output, err = m.client.Runner.
 		Cmd("delete", "machinepool").
-		CmdFlags("-c", clusterID, machinePoolName, "-y").
+		CmdFlags(append(flags, "-c", clusterID, machinePoolName, "-y")...).
 		Run()
 	if err == nil {
 		m.machinePools[clusterID] = common.RemoveFromStringSlice(m.machinePools[clusterID], machinePoolName)
