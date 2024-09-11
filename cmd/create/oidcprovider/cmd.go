@@ -230,7 +230,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string, isProgrammaticallyCalled bool) error {
 	inputBuilder := cmv1.NewOidcThumbprintInput()
-	if isProgrammaticallyCalled || clusterId == "" {
+	if (isProgrammaticallyCalled || clusterId == "") && args.oidcConfigId != "" {
 		inputBuilder.OidcConfigId(args.oidcConfigId)
 	} else {
 		inputBuilder.ClusterId(clusterId)
