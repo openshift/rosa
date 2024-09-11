@@ -1041,9 +1041,10 @@ var _ = Describe("Classic cluster creation validation",
 			labels.Medium,
 			labels.Runtime.Day1Negative,
 			func() {
-				minSize := 128
-				maxSize := 16384
-				clusterName := "ocp-66372"
+
+				minSize := constants.MinClassicDiskSize
+				maxSize := constants.MaxDiskSize
+				clusterName := helper.GenerateRandomName("ocp-66372", 2)
 				client := rosacli.NewClient()
 
 				By("Try a worker disk size that's too small")
@@ -1053,23 +1054,29 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).To(HaveOccurred())
 				stdout := client.Parser.TextData.Input(out).Parse().Tip()
 				Expect(stdout).
-					To(
-						ContainSubstring(
-							"Invalid root disk size: %d GiB. Must be between %d GiB and %d GiB.", minSize-1, minSize, maxSize))
+					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
 
-				By("Try a worker disk size that's too big")
+				By("Try a worker disk size that's a little bigger")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", maxSize+1),
 				)
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
 				Expect(stdout).
-					To(
-						ContainSubstring(
-							"Invalid root disk size: %d GiB. Must be between %d GiB and %d GiB.",
-							maxSize+1,
-							minSize,
-							maxSize))
+					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
+
+				By("Try a worker disk size that's very big")
+				veryBigData := "34567865467898765789"
+				out, err = clusterService.CreateDryRun(
+					clusterName, "--worker-disk-size", fmt.Sprintf("%sGiB", veryBigData),
+				)
+				Expect(err).To(HaveOccurred())
+				stdout = client.Parser.TextData.Input(out).Parse().Tip()
+				Expect(stdout).
+					To(ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
+						"invalid disk size: '%sGi'. maximum size exceeded",
+						veryBigData,
+						veryBigData))
 
 				By("Try a worker disk size that's negative")
 				out, err = clusterService.CreateDryRun(
@@ -1080,21 +1087,24 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(stdout).
 					To(
 						ContainSubstring(
-							"Expected a valid machine pool root disk size value '-1GiB': invalid disk size: " +
-								"'-1Gi'. positive size required"))
+							"Expected a valid machine pool root disk size value '-1GiB': " +
+								"invalid disk size: '-1Gi'. positive size required"))
 
 				By("Try a worker disk size that's a string")
+				invalidStr := "invalid"
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--worker-disk-size", "invalid",
+					clusterName, "--worker-disk-size", invalidStr,
 				)
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
 				Expect(stdout).
 					To(
 						ContainSubstring(
-							"Expected a valid machine pool root disk size value 'invalid': invalid disk size " +
-								"format: 'invalid'. accepted units are Giga or Tera in the form of " +
-								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti"))
+							"Expected a valid machine pool root disk size value '%s': invalid disk size "+
+								"format: '%s'. accepted units are Giga or Tera in the form of "+
+								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
+							invalidStr,
+							invalidStr))
 			})
 
 		It("to validate to create cluster with availability zones - [id:52692]",
@@ -2157,6 +2167,87 @@ var _ = Describe("HCP cluster creation negative testing",
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+			})
+
+		It("Create a hosted cluster cluster with invalid volume size [id:66372]",
+			labels.Medium,
+			labels.Runtime.Day1Negative,
+			func() {
+				minSize := constants.MinHCPDiskSize
+				maxSize := constants.MaxDiskSize
+				clusterName := helper.GenerateRandomName("ocp-66372", 2)
+				client := rosacli.NewClient()
+
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+
+				By("Try a worker disk size that's too small")
+				rosalCommand.AddFlags(
+					"--dry-run",
+					"--worker-disk-size",
+					fmt.Sprintf("%dGiB", minSize-1),
+					"-y")
+
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).NotTo(BeNil())
+				stdout := client.Parser.TextData.Input(out).Parse().Tip()
+				Expect(stdout).
+					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
+
+				By("Try a worker disk size that's a little bigger")
+				replacingFlags["--worker-disk-size"] = fmt.Sprintf("%dGiB", maxSize+1)
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				stdout = client.Parser.TextData.Input(out).Parse().Tip()
+				Expect(stdout).
+					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
+
+				By("Try a worker disk size that's very big")
+				veryBigData := "34567865467898765789"
+				replacingFlags["--worker-disk-size"] = fmt.Sprintf("%sGiB", veryBigData)
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				stdout = client.Parser.TextData.Input(out).Parse().Tip()
+				Expect(stdout).
+					To(ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
+						"invalid disk size: '%sGi'. maximum size exceeded",
+						veryBigData,
+						veryBigData))
+
+				By("Try a worker disk size that's negative")
+				replacingFlags["--worker-disk-size"] = "-1GiB"
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				stdout = client.Parser.TextData.Input(out).Parse().Tip()
+				Expect(stdout).
+					To(
+						ContainSubstring(
+							"Expected a valid machine pool root disk size value '-1GiB': " +
+								"invalid disk size: '-1Gi'. positive size required"))
+
+				By("Try a worker disk size that's a string")
+				invalidStr := "invalid"
+				replacingFlags["--worker-disk-size"] = invalidStr
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				stdout = client.Parser.TextData.Input(out).Parse().Tip()
+				Expect(stdout).
+					To(
+						ContainSubstring(
+							"Expected a valid machine pool root disk size value '%s': invalid disk size "+
+								"format: '%s'. accepted units are Giga or Tera in the form of "+
+								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
+							invalidStr,
+							invalidStr))
 			})
 
 		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
