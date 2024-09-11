@@ -32,6 +32,7 @@ Tags:
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional
 Autorepair:                            No
@@ -57,6 +58,7 @@ Tags:
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional
 Autorepair:                            No
@@ -83,6 +85,7 @@ Tags:                                  foo=bar
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional
 Autorepair:                            No
@@ -102,6 +105,8 @@ Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
 aws_node_pool:
   instance_type: m5.xlarge
   kind: AWSNodePool
+  root_volume:
+    size: 300
 id: nodepool85
 kind: NodePool
 management_upgrade:
@@ -426,7 +431,7 @@ var _ = Describe("Upgrade machine pool", func() {
 // formatNodePool simulates the output of APIs for a fake node pool
 func formatNodePool() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
-	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge")
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").RootVolume(cmv1.NewAWSVolume().Size(300))
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
@@ -439,7 +444,8 @@ func formatNodePool() string {
 // formatNodePool simulates the output of APIs for a fake node pool with AWS tags
 func formatNodePoolWithTags() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
-	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").Tags(map[string]string{"foo": "bar"})
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").Tags(map[string]string{"foo": "bar"}).
+		RootVolume(cmv1.NewAWSVolume().Size(300))
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).

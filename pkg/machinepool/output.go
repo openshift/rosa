@@ -21,6 +21,7 @@ var nodePoolOutputString string = "\n" +
 	"Taints:                                %s\n" +
 	"Availability zone:                     %s\n" +
 	"Subnet:                                %s\n" +
+	"Disk Size:                             %s\n" +
 	"Version:                               %s\n" +
 	"EC2 Metadata Http Tokens:              %s\n" +
 	"Autorepair:                            %s\n" +
@@ -77,6 +78,7 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		ocmOutput.PrintTaints(nodePool.Taints()),
 		nodePool.AvailabilityZone(),
 		nodePool.Subnet(),
+		ocmOutput.PrintNodePoolDiskSize(nodePool.AWSNodePool()),
 		ocmOutput.PrintNodePoolVersion(nodePool.Version()),
 		ocmOutput.PrintEC2MetadataHttpTokens(nodePool.AWSNodePool()),
 		ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
@@ -87,13 +89,6 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		ocmOutput.PrintNodePoolManagementUpgrade(nodePool.ManagementUpgrade()),
 		ocmOutput.PrintNodePoolMessage(nodePool.Status()),
 	)
-
-	if nodePool.AWSNodePool() != nil && nodePool.AWSNodePool().RootVolume() != nil {
-		diskSize, ok := nodePool.AWSNodePool().RootVolume().GetSize()
-		if ok {
-			output += fmt.Sprintf("Disk size:                             %d\n", diskSize)
-		}
-	}
 
 	return output
 }
