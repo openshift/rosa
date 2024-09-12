@@ -3510,3 +3510,117 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				Expect(zones).To(Equal("[us-east-2a us-east-2b us-east-2c]"))
 			})
 	})
+
+var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient         *rosacli.Client
+			clusterService     rosacli.ClusterService
+			customProfile      *profilehandler.Profile
+			clusterID          string
+			ocmResourceService rosacli.OCMResourceService
+			testingClusterName string
+		)
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+
+			By("Prepare custom profile")
+			customProfile = &profilehandler.Profile{
+				ClusterConfig: &profilehandler.ClusterConfig{
+					HCP:           false,
+					MultiAZ:       false,
+					STS:           true,
+					OIDCConfig:    "managed",
+					NetworkingSet: false,
+					BYOVPC:        false,
+				},
+				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+					Path:               "/aa/bb/",
+					PermissionBoundary: "",
+				},
+				Version:      "latest",
+				ChannelGroup: "candidate",
+				Region:       "us-east-2",
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+
+		})
+
+		AfterEach(func() {
+			By("Delete the cluster")
+			if clusterID != "" {
+				rosaClient.Runner.UnsetArgs()
+				_, err := clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterDeleted(clusterID, 3, 35)
+				Expect(err).To(BeNil())
+			}
+			By("Clean resource")
+			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		It("Create STS cluster with oidc config id but no oidc provider via rosacli in auto mode - [id:76093]",
+			labels.Critical, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Prepare command for custom cluster creation")
+				testingClusterName = common.GenerateRandomName("c76093", 2)
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				rosalCommand.AddFlags("--mode", "auto", "-y")
+
+				By("Delete the oidc provider")
+				ocmResourceService = rosaClient.OCMResource
+				rosaClient.Runner.JsonFormat()
+				whoamiOutput, err := ocmResourceService.Whoami()
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+				AWSAccountID := whoamiData.AWSAccountID
+
+				ud, err := profilehandler.ParseUserData()
+				Expect(err).To(BeNil())
+				Expect(ud).NotTo(BeNil())
+				oidcConfigID := ud.OIDCConfigID
+				oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
+				Expect(err).To(BeNil())
+				foundOIDCConfig := oidcConfigList.OIDCConfig(oidcConfigID)
+				Expect(foundOIDCConfig).ToNot(Equal(rosacli.OIDCConfig{}))
+				issueURL := foundOIDCConfig.IssuerUrl
+				oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s",
+					AWSAccountID, strings.TrimPrefix(issueURL, "https://"))
+
+				awsClient, err := aws_client.CreateAWSClient("", "")
+				Expect(err).To(BeNil())
+				_, err = awsClient.IamClient.DeleteOpenIDConnectProvider(context.TODO(), &iam.DeleteOpenIDConnectProviderInput{
+					OpenIDConnectProviderArn: aws.String(oidcProviderARN),
+				})
+				Expect(err).To(BeNil())
+
+				By("Create the custom cluster")
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
+
+				By("Wait cluster to instaling status")
+				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
+				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+			})
+	})
