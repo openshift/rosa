@@ -189,8 +189,8 @@ func run(cmd *cobra.Command, argv []string) {
 		if !confirm.Prompt(true, confirmPromptMessage) {
 			os.Exit(0)
 		}
-		if clusterId == "" {
-			clusterId = cmd.Flag("cluster").Value.String()
+		if clusterId == "" && clusterKey != "" {
+			clusterId = r.FetchCluster().ID()
 		}
 		err = createProvider(r, oidcEndpointURL, clusterId, isProgrammaticallyCalled)
 		if err != nil {
