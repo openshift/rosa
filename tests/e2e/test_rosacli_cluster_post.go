@@ -518,12 +518,12 @@ var _ = Describe("Healthy check",
 
 				By("Check the default worker pool")
 				if isHosted {
-					mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+					npList, err := machinePoolService.ListAndReflectNodePools(clusterID)
 					Expect(err).ToNot(HaveOccurred())
-					for _, mp := range mpList.MachinePools {
+					for _, np := range npList.NodePools {
 						// Only check the machinepool has workers which is default worker pool
-						if regexp.MustCompile("workers-?[0-9]?").MatchString(mp.ID) {
-							Expect(mp.Subnets).To(BeElementOf(configuredPrivateSubnets))
+						if regexp.MustCompile("workers-?[0-9]?").MatchString(np.ID) {
+							Expect(np.Subnet).To(BeElementOf(configuredPrivateSubnets))
 						}
 					}
 				} else {
