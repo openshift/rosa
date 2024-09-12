@@ -544,6 +544,65 @@ var _ = Describe("Delete ingress validations",
 				By("Fail to delete ingress when no ingress or cluster are passed")
 				output, err := ingressService.DeleteIngress("", "")
 				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Expected exactly one command line parameter containing the id of the ingress"))
+
+				By("Fail to delete ingress when cluster is passed in but not the ingress id")
+				output, err = ingressService.DeleteIngress(clusterID, "")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("Expected exactly one command line parameter containing the id of the ingress"))
+
+				By("Fail to delete a non-existent ingress")
+				fakeIngress := "fake"
+				output, err = ingressService.DeleteIngress(clusterID, fakeIngress)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Ingress '%s' does not exist on cluster", fakeIngress))
+
+				By("Fail to delete an invalid ingress")
+				invalidIngress := "invalidIngress"
+				output, err = ingressService.DeleteIngress(clusterID, invalidIngress)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("identifier '%s' isn't valid: it must contain only four letters or digits", invalidIngress))
+
+			})
+	})
+var _ = Describe("Delete ingress validations",
+	labels.Feature.Ingress,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			clusterID      string
+			rosaClient     *rosacli.Client
+			ingressService rosacli.IngressService
+			isHosted       bool
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			ingressService = rosaClient.Ingress
+
+			By("Check cluster is hosted")
+			var err error
+			isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("will fail as expected on incorrect deletions (negative) - [id:38780]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				if isHosted {
+					SkipNotClassic()
+				}
+				By("Fail to delete ingress when no ingress or cluster are passed")
+				output, err := ingressService.DeleteIngress("", "")
+				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("Expected exactly one command line parameter containing the id of the ingress"))
 
 				By("Fail to delete ingress when cluster is passed in but not the ingress id")
