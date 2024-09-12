@@ -767,6 +767,86 @@ var _ = Describe("Create machinepool",
 
 				})
 
+			It("will validate machine pool creation - [id:38775]",
+				labels.Runtime.Day2, labels.Medium,
+				func() {
+					mpName := "mp-38775"
+					fakeClusterName := "fake_38775"
+					By("Create machine pool with no flags")
+					output, err := rosaClient.MachinePool.CreateMachinePool("", "")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("required flag(s) \"cluster\" not set"))
+
+					By("Create machine pool with non-existent cluster")
+					output, err = rosaClient.MachinePool.CreateMachinePool(fakeClusterName, mpName)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("There is no cluster with identifier or name '%s'", fakeClusterName))
+
+					By("Create machine pool with negative replicas")
+					output, err = rosaClient.MachinePool.CreateMachinePool(
+						clusterID, mpName,
+						"--replicas", "-1")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("min-replicas must be a non-negative integer"))
+
+					By("Create machine pool with invalid name")
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, "%^#@")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("Expected a valid name for the machine pool"))
+
+					By("Create machine pool with invalid instance type")
+					fakeInstanceType := "fakeType"
+					output, err = rosaClient.MachinePool.CreateMachinePool(
+						clusterID, mpName,
+						"--replicas", "0",
+						"--instance-type", fakeInstanceType)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("Expected a valid instance type: Machine type '%s' not found", fakeInstanceType))
+
+					By("Set replicas and enable-autoscaling at the same time")
+					output, err = rosaClient.MachinePool.CreateMachinePool(
+						clusterID, mpName,
+						"--min-replicas", "3",
+						"--max-replicas", "6",
+						"--enable-autoscaling",
+						"--replicas", "0")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
+
+					By("Set min-replicas large than max-replicas")
+					output, err = rosaClient.MachinePool.CreateMachinePool(
+						clusterID, mpName,
+						"--min-replicas", "6",
+						"--max-replicas", "3",
+						"--enable-autoscaling")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("max-replicas must be greater or equal to min-replicas"))
+
+					By("Set min-replicas and max-replicas without set --enable-autoscaling")
+					output, err = rosaClient.MachinePool.CreateMachinePool(
+						clusterID, mpName,
+						"--min-replicas", "3",
+						"--max-replicas", "3")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
+
+					By("set min-replicas and max-replicas not multiple 3 for multi-az")
+					output, err = rosaClient.MachinePool.CreateMachinePool(
+						clusterID, mpName,
+						"--min-replicas", "2",
+						"--max-replicas", "4",
+						"--enable-autoscaling")
+					if clusterConfig.MultiAZ {
+						Expect(err).To(HaveOccurred())
+						Expect(output.String()).Should(ContainSubstring("Multi AZ clusters require that the replicas be a multiple of 3"))
+					} else {
+						Expect(err).ToNot(HaveOccurred())
+					}
+				})
+
 			It("will validate root volume size - [id:66874]",
 				labels.Runtime.Day2, labels.Medium,
 				func() {
