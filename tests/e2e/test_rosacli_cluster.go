@@ -2461,6 +2461,82 @@ var _ = Describe("HCP cluster creation negative testing",
 							"ERR: Expected a valid value for audit log arn matching ^arn:aws"))
 			})
 
+		It("to validate role's managed policy when creating hcp cluster - [id:59547]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				By("Create managed account-roles and make sure some ones are not attached the managed policies.")
+				clusterService = rosaClient.Cluster
+				ocmResourceService := rosaClient.OCMResource
+				var arbitraryPolicyService rosacli.PolicyService
+				accountRolePrefix := "test-59547"
+				_, err := ocmResourceService.CreateAccountRole(
+					"--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"--hosted-cp",
+					"-y")
+				Expect(err).To(BeNil())
+				defer func() {
+					if accountRolePrefix != "" {
+						By("Delete the account-roles")
+						rosaClient.Runner.UnsetArgs()
+						_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+							"--hosted-cp",
+							"--prefix", accountRolePrefix,
+							"-y")
+						Expect(err).To(BeNil())
+					}
+				}()
+
+				arl, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				ar := arl.DigAccountRoles(accountRolePrefix, true)
+
+				By("Create cluster with the account roles ")
+				clusterName := common.GenerateRandomName("ocp-59547", 2)
+				replacingFlags := map[string]string{
+					"-c":                 clusterName,
+					"--cluster-name":     clusterName,
+					"--domain-prefix":    clusterName,
+					"--role-arn":         ar.InstallerRole,
+					"--support-role-arn": ar.SupportRole,
+					"--worker-iam-role":  ar.WorkerRole,
+				}
+				var accountRoles = make(map[string]string)
+				arnPrefix := "arn:aws:iam::aws:policy/service-role"
+				for _, r := range arl.AccountRoles(accountRolePrefix) {
+					switch r.RoleType {
+					case "Installer":
+						accountRoles[r.RoleName] = fmt.Sprintf("%s/ROSAInstallerPolicy",
+							arnPrefix)
+					case "Support":
+						accountRoles[r.RoleName] = fmt.Sprintf("%s/ROSASRESupportPolicy",
+							arnPrefix)
+					case "Worker": // nolint:goconst
+						accountRoles[r.RoleName] = fmt.Sprintf("%s/ROSAWorkerInstancePolicy",
+							arnPrefix)
+					}
+				}
+
+				arbitraryPolicyService = rosaClient.Policy
+				for r, p := range accountRoles {
+					_, err := arbitraryPolicyService.DetachPolicy(r, []string{p}, "--mode", "auto")
+					Expect(err).To(BeNil())
+					By("Create cluster with the account roles")
+					rosalCommand.ReplaceFlagValue(replacingFlags)
+
+					out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).
+						To(
+							ContainSubstring(
+								fmt.Sprintf("Failed while validating account roles: role"+
+									" '%s' is missing the attached managed policy '%s'", r, p)))
+
+					By("Attach the deleted managed policies")
+					_, err = arbitraryPolicyService.AttachPolicy(r, []string{p}, "--mode", "auto")
+					Expect(err).To(BeNil())
+				}
+			})
 	})
 
 var _ = Describe("Create cluster with availability zones testing",
