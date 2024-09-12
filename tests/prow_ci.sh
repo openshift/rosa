@@ -221,12 +221,14 @@ upload_junit_result () {
     exit 1
   fi
   filePath=$1
+  fileParantPath=$(dirname $filePath)
   uploadDir=$2
   archiveDir=$3
   filename=$(echo "${filePath%.*}" | awk -F "/" '{print $NF}')
+  fullFileName=$(basename $filePath)
   tarPath=${uploadDir}/${filename}.tar.gz
   echo "[CI] going to zip the junit file $filePath to $tarPath"
-  tar -zcvf $tarPath $filePath
+  tar -C $fileParantPath -zcvf $tarPath $fullFileName
   echo "[CI] archiving the the testing result"
   # copy the junit.tar.gz to ARTIFACT_DIR
   cp $tarPath ${archiveDir}

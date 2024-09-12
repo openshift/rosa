@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -133,7 +134,7 @@ func GenerateReportXMLFile() (int, int, map[string][]Testcase, map[string][]Test
 	passedNum := 0
 	issuedNum := 0
 
-	xmlFileList := ListFiles(config.Test.ArtifactDir, ".xml")
+	xmlFileList := ListFiles(config.Test.OutputDir, ".xml")
 	for _, xmlFile := range xmlFileList {
 		xmlFilename := path.Base(xmlFile)
 		xmlFilePrefix := strings.TrimSuffix(xmlFilename, ".xml")
@@ -183,21 +184,20 @@ func GenerateReportXMLFile() (int, int, map[string][]Testcase, map[string][]Test
 	return passedNum, issuedNum, issuedTCList, successedTCList
 }
 
-func ListFiles(dir string, subfix string) []string {
+func ListFiles(dir string, suffix string) []string {
 	var Files []string
-	fs, err := os.ReadDir(dir)
+	if _, err := os.Stat(dir); err != nil {
+		panic(fmt.Sprintf("provided dir %s not exist", dir))
+	}
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if strings.HasSuffix(info.Name(), suffix) {
+			Files = append(Files, path)
+		}
+		return nil
+	})
 	if err != nil {
 		panic(fmt.Sprintf("Failed to open the directory %s: %v\n", dir, err))
 	}
-	for _, f := range fs {
-		if path.Ext(f.Name()) != subfix {
-			continue
-		}
-
-		filename := path.Join(dir, f.Name())
-		Files = append(Files, filename)
-	}
-
 	return Files
 }
 
