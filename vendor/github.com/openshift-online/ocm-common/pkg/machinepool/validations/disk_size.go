@@ -18,7 +18,7 @@ const (
 	// 16 TiB - limit as of 4.14
 	machinePoolRootVolumeSizeMaxAsOf414 = 16384
 	// constants for node pool root size validation
-	nodePoolRootAWSVolumeSizeMin = 128
+	nodePoolRootAWSVolumeSizeMin = 75
 	nodePoolRootAWSVolumeSizeMax = 16384
 )
 
