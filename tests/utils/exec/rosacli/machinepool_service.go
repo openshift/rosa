@@ -197,9 +197,16 @@ func (m *machinepoolService) DescribeAndReflectMachinePool(
 // Delete MachinePool
 func (m *machinepoolService) DeleteMachinePool(
 	clusterID string, machinePoolName string, flags ...string) (output bytes.Buffer, err error) {
+	if len(clusterID) > 0 {
+		flags = append(flags, "-c", clusterID)
+	}
+	if len(machinePoolName) > 0 {
+		flags = append(flags, machinePoolName)
+	}
+
 	output, err = m.client.Runner.
 		Cmd("delete", "machinepool").
-		CmdFlags(append(flags, "-c", clusterID, machinePoolName, "-y")...).
+		CmdFlags(append(flags, "-y")...).
 		Run()
 	if err == nil {
 		m.machinePools[clusterID] = common.RemoveFromStringSlice(m.machinePools[clusterID], machinePoolName)
