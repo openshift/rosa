@@ -210,7 +210,7 @@ func (c *clusterService) ReflectClusterDescription(result bytes.Buffer) (res *Cl
 }
 
 func (c *clusterService) List() (bytes.Buffer, error) {
-	list := c.client.Runner.Cmd("list", "cluster")
+	list := c.client.Runner.Cmd("list", "cluster").CmdFlags()
 	return list.Run()
 }
 

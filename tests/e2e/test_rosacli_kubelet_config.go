@@ -247,6 +247,12 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 		AfterEach(func() {
 			By("Clean the cluster")
 			kubes, err := kubeletService.ListKubeletConfigsAndReflect(clusterID)
+			if !meetThrottleVersion {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(
+					ContainSubstring("KubeletConfig management is only supported on clusters with OCP '4.14' onwards"))
+				return
+			}
 			Expect(err).NotTo(HaveOccurred())
 			for _, kube := range kubes.KubeletConfigs {
 				kubeletService.DeleteKubeletConfig(clusterID,
@@ -264,6 +270,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					Expect(err).To(HaveOccurred())
 					Expect(out.String()).Should(
 						ContainSubstring("KubeletConfig management is only supported on clusters with OCP '4.14' onwards"))
+					return
 				} else {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).
@@ -276,12 +283,6 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				out, err = kubeletService.CreateKubeletConfig(clusterID,
 					"--pod-pids-limit", "4096",
 				)
-				if !meetThrottleVersion {
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).Should(
-						ContainSubstring("KubeletConfig management is only supported on clusters with OCP '4.14' onwards"))
-					return
-				}
 
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).Should(ContainSubstring("Name?"))

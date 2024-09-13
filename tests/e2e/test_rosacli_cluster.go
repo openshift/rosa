@@ -2069,7 +2069,6 @@ var _ = Describe("HCP cluster creation negative testing",
 			}
 			profile = profilesMap[profilesNames[common.RandomInt(len(profilesNames))]]
 			profile.NamePrefix = constants.DefaultNamePrefix
-
 			By("Prepare creation command")
 			flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 			Expect(err).To(BeNil())
@@ -3546,9 +3545,10 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				testOperatorRolePrefix := common.GenerateRandomName("opp75927", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
-
+				
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
+				rolePrefix = rosalCommand.GetFlagValue("--operator-roles-prefix", true)
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--operator-roles-prefix": testOperatorRolePrefix,
 				})
