@@ -847,6 +847,33 @@ var _ = Describe("Create machinepool",
 					}
 				})
 
+			It("will validate machine pool deletion - [id: 38783]",
+				labels.Runtime.Day2, labels.Medium,
+				func() {
+					By("Delete machine pool with no flags")
+					output, err := rosaClient.MachinePool.DeleteMachinePool("", "")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("required flag(s) \"cluster\" not set"))
+
+					By("Delete machinepool without specifying machinepool")
+					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, "")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("You need to specify a machine pool name"))
+
+					By("Delete a non-existent machinepool")
+					fakeMachinePool := "fakemachinepool"
+					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, fakeMachinePool)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("Failed to get machine pool '%s' for cluster '%s'", fakeMachinePool, clusterID))
+
+					By("Delete machine pool with invalid id")
+					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, "%^#@")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("Expected a valid identifier for the machine pool"))
+
+				})
+
 			It("will validate root volume size - [id:66874]",
 				labels.Runtime.Day2, labels.Medium,
 				func() {

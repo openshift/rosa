@@ -134,9 +134,17 @@ func (i *ingressService) ReflectIngressList(result bytes.Buffer) (res *IngressLi
 
 // Delete the ingress
 func (i *ingressService) DeleteIngress(clusterID string, ingressID string) (output bytes.Buffer, err error) {
+	flags := []string{"-y"}
+
+	if len(clusterID) > 0 {
+		flags = append(flags, "-c", clusterID)
+	}
+	if len(ingressID) > 0 {
+		flags = append(flags, ingressID)
+	}
 	output, err = i.client.Runner.
-		Cmd("delete", "ingress", ingressID).
-		CmdFlags("-c", clusterID, "-y").
+		Cmd("delete", "ingress").
+		CmdFlags(flags...).
 		Run()
 	if err == nil {
 		i.ingress[clusterID] = common.RemoveFromStringSlice(i.ingress[clusterID], ingressID)
