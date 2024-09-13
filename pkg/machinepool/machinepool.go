@@ -1534,7 +1534,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		return fmt.Errorf("Failed to get autoscaling or replicas: '%s'", err)
 	}
 
-	if validateNodePoolEdit(cmd, autoscaling, replicas, minReplicas, maxReplicas) != nil {
+	err = validateNodePoolEdit(cmd, autoscaling, replicas, minReplicas, maxReplicas)
+	if err != nil {
 		return err
 	}
 
