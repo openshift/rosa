@@ -677,6 +677,7 @@ var _ = Describe("Edit nodepool",
 				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
 				Expect(err).ToNot(HaveOccurred())
 
+				clusterSemVer := semver.MustParse(clusterVersion)
 				var lVersion string = clusterVersion
 				var upgradeVersion string
 				for {
@@ -685,7 +686,15 @@ var _ = Describe("Edit nodepool",
 					lVersion = lowerVersion.Version
 					if lowerVersion.AvailableUpgrades != "" {
 						upgrades := common.ParseCommaSeparatedStrings(lowerVersion.AvailableUpgrades)
-						upgradeVersion = upgrades[len(upgrades)-1]
+
+						// We need to find the biggest upgradeVersion which is lower or equal to clusterVersion
+						for i := len(upgrades) - 1; i < 0; i-- {
+							upgradeVersion = upgrades[i]
+							upSemVer := semver.MustParse(upgradeVersion)
+							if upSemVer.LessThan(clusterSemVer) || upSemVer.Equal(clusterSemVer) {
+								break
+							}
+						}
 						break
 					}
 					Logger.Debugf("The lower version %s has no available upgrades continue to find next one\n", lVersion)
@@ -694,7 +703,9 @@ var _ = Describe("Edit nodepool",
 					Logger.Warn("Cannot find a version with available upgrades")
 					return
 				}
+
 				Logger.Infof("Using previous version %s", lVersion)
+				Logger.Infof("Final upgrade version should be %s", upgradeVersion)
 
 				By("Prepare a node pool with optional-1 version with manual upgrade")
 				nodePoolManualName := common.GenerateRandomName("np-67414", 2)
