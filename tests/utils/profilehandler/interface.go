@@ -70,6 +70,7 @@ type UserData struct {
 	KMSKey               string `json:"kms_key,omitempty"`
 	OperatorRolesPrefix  string `json:"operator_roles_prefix,omitempty"`
 	OIDCConfigID         string `json:"oidc_config_id,omitempty"`
+	MissingPolicyArn     string `json:"missing_policy_arn,omitempty"`
 	ResourceShareArn     string `json:"resource_share,omitempty"`
 	SharedVPCRole        string `json:"shared_vpc_role,omitempty"`
 	VpcID                string `json:"vpc_id,omitempty"`

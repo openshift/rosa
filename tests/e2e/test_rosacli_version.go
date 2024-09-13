@@ -7,7 +7,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
@@ -23,9 +22,6 @@ var _ = Describe("Get CLI version",
 		BeforeEach(func() {
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
-			configFile, err := common.CreateTempOCMConfig()
-			Expect(err).ToNot(HaveOccurred())
-			rosaClient.Runner.AddEnvVar("OCM_CONFIG", configFile)
 		})
 
 		It("can get the version of rosa CLI while logged out - [id:73743]",
@@ -104,4 +100,136 @@ var _ = Describe("Get CLI version",
 
 			},
 		)
+
+		It("list versions can work correctly via ROSA cli - [id:38810]",
+			labels.High, labels.Runtime.OCMResources,
+			func() {
+
+				const STABLE_CHANNEL = "stable"
+				const CANDIDATE_CHANNEL = "candidate"
+<<<<<<< HEAD
+
+<<<<<<< HEAD
+				By("Init the client")
+				rosaClient = rosacli.NewClient()
+<<<<<<< HEAD
+=======
+				//By("Init the client")
+				//rosaClient = rosacli.NewClient()
+>>>>>>> 9c77fb00 (Fixed BeforeEach and removed client creation in test)
+=======
+>>>>>>> e79cde49 (Removed commented code)
+				versionService := rosaClient.Version
+=======
+>>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+
+				By("Display the version help page")
+				buf, err := rosaClient.Runner.Cmd("list", "version", "-h").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout := rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the help page")
+				Expect(stdout).To(ContainSubstring("rosa list versions [flags]"))
+				Expect(stdout).To(ContainSubstring("versions, version"))
+				Expect(stdout).To(ContainSubstring("--channel-group string"))
+
+				By("Display the version on the stable channel")
+<<<<<<< HEAD
+				rosaClient.Runner.UnsetArgs()
+=======
+>>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+				buf, err = rosaClient.Runner.Cmd("list", "version").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the stable versions")
+				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
+<<<<<<< HEAD
+<<<<<<< HEAD
+				verList, err := versionService.ListAndReflectJsonVersions("stable", false)
+=======
+				verList, err := versionService.ListAndReflectJsonVersions(STABLE_CHANNEL, false)
+>>>>>>> 272b07df (OCM-11297 | test: automated cases id:38810)
+				Expect(err).ToNot(HaveOccurred())
+				for _, v := range verList {
+					Expect(v.ChannelGroup).To(Equal(STABLE_CHANNEL))
+					baseVersionSemVer, err := semver.NewVersion(v.RAWID)
+					Expect(err).ToNot(HaveOccurred())
+					if baseVersionSemVer.Major() == 4 {
+						Expect(baseVersionSemVer.Minor()).To(BeNumerically(">=", 7))
+					}
+				}
+
+				By("Display the version on the candidate channel")
+				rosaClient.Runner.UnsetArgs()
+<<<<<<< HEAD
+=======
+				Expect(stdout).To(ContainSubstring("4.16.10"))
+				Expect(stdout).To(ContainSubstring("4.7.36"))
+
+				By("Display the version on the candidate channel")
+>>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--channel-group", "candidate").Run()
+=======
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--channel-group", CANDIDATE_CHANNEL).Run()
+>>>>>>> 272b07df (OCM-11297 | test: automated cases id:38810)
+				Expect(err).ToNot(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the candidate versions")
+				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
+<<<<<<< HEAD
+<<<<<<< HEAD
+				verList, err = versionService.ListAndReflectJsonVersions("candidate", false)
+=======
+				verList, err = versionService.ListAndReflectJsonVersions(CANDIDATE_CHANNEL, false)
+>>>>>>> 272b07df (OCM-11297 | test: automated cases id:38810)
+				Expect(err).ToNot(HaveOccurred())
+				for _, v := range verList {
+					Expect(v.ChannelGroup).To(Equal(CANDIDATE_CHANNEL))
+					baseVersionSemVer, err := semver.NewVersion(v.RAWID)
+					Expect(err).ToNot(HaveOccurred())
+					if baseVersionSemVer.Major() == 4 {
+						Expect(baseVersionSemVer.Minor()).To(BeNumerically(">=", 7))
+					}
+				}
+
+				By("Display the version on the stable channel with the debug flag")
+				rosaClient.Runner.UnsetArgs()
+=======
+				Expect(stdout).To(ContainSubstring("4.17.0-rc.3"))
+				Expect(stdout).To(ContainSubstring("4.8.0-fc.0"))
+
+				By("Display the version on the stable channel with the debug flag")
+>>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--debug").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the stable versions with the debug flag")
+				Expect(stdout).To(ContainSubstring("level=debug"))
+				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
+<<<<<<< HEAD
+
+				By("Display the version on the stable channel with an invalid flag")
+				rosaClient.Runner.UnsetArgs()
+=======
+				Expect(stdout).To(ContainSubstring("4.16.10"))
+				Expect(stdout).To(ContainSubstring("4.7.36"))
+
+				By("Display the version on the stable channel with an invalid flag")
+>>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--invalidflag").Run()
+				Expect(err).To(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the stable versions with an invalid flag")
+				Expect(stdout).To(ContainSubstring("unknown flag"))
+				Expect(stdout).To(ContainSubstring("rosa list versions [flags]"))
+				Expect(stdout).To(ContainSubstring("versions, version"))
+				Expect(stdout).To(ContainSubstring("--channel-group string"))
+
+			},
+		)
+
 	})

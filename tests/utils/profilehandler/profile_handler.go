@@ -259,6 +259,16 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			clusterConfiguration.Aws.Sts.OidcConfigID = oidcConfigID
 			userData.OIDCConfigID = oidcConfigID
 		}
+		// Adding temporary policy to capa controller manager operator role,  please remove it once OSD-25117 closed
+		if profile.ClusterConfig.HCP && strings.HasPrefix(profile.Version, "4.17.") {
+			capaControllerOperatorRoleName := fmt.Sprintf("%s-kube-system-capa-controller-manager",
+				operatorRolePrefix)
+			missingPolicyArn, err := PrepareTemporaryPolicyFor417(profile.Region, capaControllerOperatorRoleName)
+			if err != nil {
+				return flags, err
+			}
+			userData.MissingPolicyArn = missingPolicyArn
+		}
 
 		flags = append(flags, "--operator-roles-prefix", operatorRolePrefix)
 		clusterConfiguration.Aws.Sts.OperatorRolesPrefix = operatorRolePrefix
@@ -935,13 +945,19 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 	)
 	ocmResourceService = client.OCMResource
 
+	awsClient, err := aws_client.CreateAWSClient("", region)
+	if err != nil {
+		errors = append(errors, err)
+		return errors
+	}
+
 	awsSharedCredentialFile := ""
 	if isSharedVPC || isAdditionalPrincipalAllowed {
 		awsSharedCredentialFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
 	}
 
 	// get user data from resource file
-	ud, err := ParseUserData()
+	ud, err = ParseUserData()
 	if err != nil {
 		errors = append(errors, err)
 		return errors
@@ -1089,6 +1105,15 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 			success := destroyLog(err, "account roles")
 			if success {
 				ud.AccountRolesPrefix = ""
+			}
+		}
+		// delete misssing operator role policy
+		if ud.MissingPolicyArn != "" {
+			log.Logger.Infof("Find the policy with policy arn %s", ud.MissingPolicyArn)
+			err := awsClient.DeletePolicy(ud.MissingPolicyArn)
+			success := destroyLog(err, "missing operator role policy")
+			if success {
+				ud.MissingPolicyArn = ""
 			}
 		}
 	}
