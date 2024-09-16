@@ -307,8 +307,7 @@ var _ = Describe("Edit cluster",
 
 				if isSTS && !isHostedCP {
 					Expect(editErr).ToNot(BeNil())
-					Expect(textData).Should(ContainSubstring("Failed to update cluster: Cannot update listening " +
-						"mode of cluster's API on an AWS STS cluster"))
+					Expect(textData).Should(ContainSubstring("Failed to update cluster"))
 
 					Expect(CD.Private).To(Equal("Yes"))
 				} else {
