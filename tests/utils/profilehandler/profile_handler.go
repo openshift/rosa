@@ -605,11 +605,12 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	if profile.ClusterConfig.HCP {
 		flags = append(flags, "--hosted-cp")
 	}
+	clusterConfiguration.Nodes = &ClusterConfigure.Nodes{}
 	if profile.ClusterConfig.InstanceType != "" {
 		flags = append(flags, "--compute-machine-type", profile.ClusterConfig.InstanceType)
-		clusterConfiguration.Nodes = &ClusterConfigure.Nodes{
-			ComputeInstanceType: profile.ClusterConfig.InstanceType,
-		}
+		clusterConfiguration.Nodes.ComputeInstanceType = profile.ClusterConfig.InstanceType
+	} else {
+		clusterConfiguration.Nodes.ComputeInstanceType = con.DefaultInstanceType
 	}
 	if profile.ClusterConfig.KMSKey {
 		kmsKeyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP, false)
