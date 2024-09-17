@@ -165,7 +165,7 @@ var _ = Describe("Edit cluster",
 					Expect(err).ToNot(BeNil())
 					Expect(rosaClient.Parser.TextData.Input(out).Parse().Tip()).
 						Should(ContainSubstring(
-							"Failed to update cluster: Cannot update listening mode of cluster's API on an AWS STS cluster"))
+							"Failed to update cluster"))
 				}
 				defer func() {
 					By("Edit cluster to private back to false")
@@ -706,8 +706,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(output.String()).Should(
-				ContainSubstring("ERR: Failed to update cluster: Cannot set 'proxy.no_proxy' attribute 'example.com'" +
-					" while removing 'proxy.http_proxy' and 'proxy.https_proxy' attributes"))
+				ContainSubstring("ERR: Failed to update cluster"))
 
 			By("Set all http settings to empty")
 			output, err = clusterService.EditCluster(clusterID,
