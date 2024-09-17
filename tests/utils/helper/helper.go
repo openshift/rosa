@@ -1,11 +1,11 @@
-package common
+package helper
 
 import (
 	"crypto/rand"
 	"math/big"
 	"os"
 
-	"github.com/openshift/rosa/tests/utils/common/constants"
+	"github.com/openshift/rosa/tests/utils/constants"
 )
 
 func ReadENVWithDefaultValue(envName string, fallback string) string {

@@ -11,10 +11,10 @@ import (
 
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/tests/ci/config"
-	"github.com/openshift/rosa/tests/utils/common"
-	con "github.com/openshift/rosa/tests/utils/common/constants"
-	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
+	cluster_config "github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -88,7 +88,7 @@ func GenerateAccountRoleCreationFlag(client *rosacli.Client,
 		"-y",
 	}
 	if openshiftVersion != "" {
-		majorVersion := common.SplitMajorVersion(openshiftVersion)
+		majorVersion := helper.SplitMajorVersion(openshiftVersion)
 		flags = append(flags, "--version", majorVersion)
 	}
 	if channelGroup != "" {
@@ -112,14 +112,14 @@ func GenerateAccountRoleCreationFlag(client *rosacli.Client,
 // GenerateClusterCreateFlags will generate cluster creation flags
 func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]string, error) {
 	if profile.ClusterConfig.NameLegnth == 0 {
-		profile.ClusterConfig.NameLegnth = con.DefaultNameLength //Set to a default value when it is not set
+		profile.ClusterConfig.NameLegnth = constants.DefaultNameLength //Set to a default value when it is not set
 	}
 	if profile.NamePrefix == "" {
 		panic("The profile name prefix is empty. Please set with env variable NAME_PREFIX")
 	}
 	clusterName := PreparePrefix(profile.NamePrefix, profile.ClusterConfig.NameLegnth)
 	profile.ClusterConfig.Name = clusterName
-	var clusterConfiguration = new(ClusterConfigure.ClusterConfig)
+	var clusterConfiguration = new(cluster_config.ClusterConfig)
 	var userData = new(UserData)
 	sharedVPCRoleArn := ""
 	sharedVPCRolePrefix := ""
@@ -128,7 +128,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	defer func() {
 
 		// Record userdata
-		_, err := common.CreateFileWithContent(config.Test.UserDataFile, userData)
+		_, err := helper.CreateFileWithContent(config.Test.UserDataFile, userData)
 		if err != nil {
 			log.Logger.Errorf("Cannot record user data: %s", err.Error())
 			panic(fmt.Errorf("cannot record user data: %s", err.Error()))
@@ -136,7 +136,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 		// Record cluster configuration
 
-		_, err = common.CreateFileWithContent(config.Test.ClusterConfigFile, clusterConfiguration)
+		_, err = helper.CreateFileWithContent(config.Test.ClusterConfigFile, clusterConfiguration)
 		if err != nil {
 			log.Logger.Errorf("Cannot record cluster configuration: %s", err.Error())
 			panic(fmt.Errorf("cannot record cluster configuration: %s", err.Error()))
@@ -159,7 +159,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		profile.Version = version.Version
 		flags = append(flags, "--version", version.Version)
 
-		clusterConfiguration.Version = &ClusterConfigure.Version{
+		clusterConfiguration.Version = &cluster_config.Version{
 			ChannelGroup: profile.ChannelGroup,
 			RawID:        version.Version,
 		}
@@ -167,7 +167,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	if profile.ChannelGroup != "" {
 		flags = append(flags, "--channel-group", profile.ChannelGroup)
 		if clusterConfiguration.Version == nil {
-			clusterConfiguration.Version = &ClusterConfigure.Version{}
+			clusterConfiguration.Version = &cluster_config.Version{}
 		}
 		clusterConfiguration.Version.ChannelGroup = profile.ChannelGroup
 	}
@@ -177,13 +177,13 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	}
 	if profile.ClusterConfig.DomainPrefixEnabled {
 		flags = append(flags,
-			"--domain-prefix", common.TrimNameByLength(clusterName, ocm.MaxClusterDomainPrefixLength),
+			"--domain-prefix", helper.TrimNameByLength(clusterName, ocm.MaxClusterDomainPrefixLength),
 		)
 	}
 	if profile.ClusterConfig.STS {
 		var accRoles *rosacli.AccountRolesUnit
 		var oidcConfigID string
-		accountRolePrefix := common.TrimNameByLength(clusterName, con.MaxRolePrefixLength)
+		accountRolePrefix := helper.TrimNameByLength(clusterName, constants.MaxRolePrefixLength)
 		log.Logger.Infof("Got sts set to true. Going to prepare Account roles with prefix %s", accountRolePrefix)
 		accRoles, err := PrepareAccountRoles(
 			client, accountRolePrefix,
@@ -205,8 +205,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		)
 
 		clusterConfiguration.Sts = true
-		clusterConfiguration.Aws = &ClusterConfigure.AWS{
-			Sts: ClusterConfigure.Sts{
+		clusterConfiguration.Aws = &cluster_config.AWS{
+			Sts: cluster_config.Sts{
 				RoleArn:        accRoles.InstallerRole,
 				SupportRoleArn: accRoles.SupportRole,
 				WorkerRoleArn:  accRoles.WorkerRole,
@@ -238,7 +238,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 		operatorRolePrefix := accountRolePrefix
 		if profile.ClusterConfig.OIDCConfig != "" {
-			oidcConfigPrefix := common.TrimNameByLength(clusterName, con.MaxOIDCConfigPrefixLength)
+			oidcConfigPrefix := helper.TrimNameByLength(clusterName, constants.MaxOIDCConfigPrefixLength)
 			log.Logger.Infof("Got  oidc config setting, going to prepare the %s oidc with prefix %s",
 				profile.ClusterConfig.OIDCConfig, oidcConfigPrefix)
 			oidcConfigID, err = PrepareOIDCConfig(client, profile.ClusterConfig.OIDCConfig,
@@ -332,7 +332,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			"--cluster-admin-password", password,
 			// "--cluster-admin-user", userName,
 		)
-		common.CreateFileWithContent(config.Test.ClusterAdminFile, fmt.Sprintf("%s:%s", userName, password))
+		helper.CreateFileWithContent(config.Test.ClusterAdminFile, fmt.Sprintf("%s:%s", userName, password))
 	}
 
 	if profile.ClusterConfig.Autoscale {
@@ -343,23 +343,23 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			"--min-replicas", minReplicas,
 			"--max-replicas", maxRelicas,
 		)
-		clusterConfiguration.Autoscaling = &ClusterConfigure.Autoscaling{
+		clusterConfiguration.Autoscaling = &cluster_config.Autoscaling{
 			Enabled: true,
 		}
-		clusterConfiguration.Nodes = &ClusterConfigure.Nodes{
+		clusterConfiguration.Nodes = &cluster_config.Nodes{
 			MinReplicas: minReplicas,
 			MaxReplicas: maxRelicas,
 		}
 	}
 	if profile.ClusterConfig.WorkerPoolReplicas != 0 {
 		flags = append(flags, "--replicas", fmt.Sprintf("%v", profile.ClusterConfig.WorkerPoolReplicas))
-		clusterConfiguration.Nodes = &ClusterConfigure.Nodes{
+		clusterConfiguration.Nodes = &cluster_config.Nodes{
 			Replicas: fmt.Sprintf("%v", profile.ClusterConfig.WorkerPoolReplicas),
 		}
 	}
 
 	if profile.ClusterConfig.IngressCustomized {
-		clusterConfiguration.IngressConfig = &ClusterConfigure.IngressConfig{
+		clusterConfiguration.IngressConfig = &cluster_config.IngressConfig{
 			DefaultIngressRouteSelector:            "app1=test1,app2=test2",
 			DefaultIngressExcludedNamespaces:       "test-ns1,test-ns2",
 			DefaultIngressWildcardPolicy:           "WildcardsDisallowed",
@@ -380,7 +380,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		if !profile.ClusterConfig.Autoscale {
 			return nil, errors.New("Autoscaler is enabled without having enabled the autoscale field") // nolint
 		}
-		autoscaler := &ClusterConfigure.Autoscaler{
+		autoscaler := &cluster_config.Autoscaler{
 			AutoscalerBalanceSimilarNodeGroups:    true,
 			AutoscalerSkipNodesWithLocalStorage:   true,
 			AutoscalerLogVerbosity:                "4",
@@ -428,7 +428,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.Autoscaler = autoscaler
 	}
 	if profile.ClusterConfig.NetworkingSet {
-		networking := &ClusterConfigure.Networking{
+		networking := &cluster_config.Networking{
 			MachineCIDR: "10.0.0.0/16",
 			PodCIDR:     "192.168.0.0/18",
 			ServiceCIDR: "172.31.0.0/24",
@@ -445,9 +445,9 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	if profile.ClusterConfig.BYOVPC {
 		var vpc *vpc_client.VPC
 		var err error
-		vpcPrefix := common.TrimNameByLength(clusterName, 20)
+		vpcPrefix := helper.TrimNameByLength(clusterName, 20)
 		log.Logger.Info("Got BYOVPC set to true. Going to prepare subnets")
-		cidrValue := con.DefaultVPCCIDRValue
+		cidrValue := constants.DefaultVPCCIDRValue
 		if profile.ClusterConfig.NetworkingSet {
 			cidrValue = clusterConfiguration.Networking.MachineCIDR
 		}
@@ -463,20 +463,20 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 
 		userData.VpcID = vpc.VpcID
 		zones := strings.Split(profile.ClusterConfig.Zones, ",")
-		zones = common.RemoveFromStringSlice(zones, "")
+		zones = helper.RemoveFromStringSlice(zones, "")
 		subnets, err := PrepareSubnets(vpc, profile.Region, zones, profile.ClusterConfig.MultiAZ)
 		if err != nil {
 			return flags, err
 		}
 		subnetsFlagValue := strings.Join(append(subnets["private"], subnets["public"]...), ",")
-		clusterConfiguration.Subnets = &ClusterConfigure.Subnets{
+		clusterConfiguration.Subnets = &cluster_config.Subnets{
 			PrivateSubnetIds: strings.Join(subnets["private"], ","),
 			PublicSubnetIds:  strings.Join(subnets["public"], ","),
 		}
 		if profile.ClusterConfig.PrivateLink {
 			log.Logger.Info("Got private link set to true. Only set private subnets to cluster flags")
 			subnetsFlagValue = strings.Join(subnets["private"], ",")
-			clusterConfiguration.Subnets = &ClusterConfigure.Subnets{
+			clusterConfiguration.Subnets = &cluster_config.Subnets{
 				PrivateSubnetIds: strings.Join(subnets["private"], ","),
 			}
 		}
@@ -496,7 +496,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 				"--additional-control-plane-security-group-ids", controlPlaneSGs,
 				"--additional-compute-security-group-ids", computeSGs,
 			)
-			clusterConfiguration.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
+			clusterConfiguration.AdditionalSecurityGroups = &cluster_config.AdditionalSecurityGroups{
 				ControlPlaneSecurityGroups: controlPlaneSGs,
 				InfraSecurityGroups:        infraSGs,
 				WorkerSecurityGroups:       computeSGs,
@@ -512,7 +512,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 				return flags, err
 			}
 
-			clusterConfiguration.Proxy = &ClusterConfigure.Proxy{
+			clusterConfiguration.Proxy = &cluster_config.Proxy{
 				Enabled:         profile.ClusterConfig.ProxyEnabled,
 				Http:            proxy.HTTPProxy,
 				Https:           proxy.HTTPsProxy,
@@ -580,7 +580,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			"--etcd-encryption-kms-arn", keyArn,
 		)
 		if clusterConfiguration.Encryption == nil {
-			clusterConfiguration.Encryption = &ClusterConfigure.Encryption{}
+			clusterConfiguration.Encryption = &cluster_config.Encryption{}
 		}
 		clusterConfiguration.Encryption.EtcdEncryptionKmsArn = keyArn
 	}
@@ -605,12 +605,12 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	if profile.ClusterConfig.HCP {
 		flags = append(flags, "--hosted-cp")
 	}
-	clusterConfiguration.Nodes = &ClusterConfigure.Nodes{}
+	clusterConfiguration.Nodes = &cluster_config.Nodes{}
 	if profile.ClusterConfig.InstanceType != "" {
 		flags = append(flags, "--compute-machine-type", profile.ClusterConfig.InstanceType)
 		clusterConfiguration.Nodes.ComputeInstanceType = profile.ClusterConfig.InstanceType
 	} else {
-		clusterConfiguration.Nodes.ComputeInstanceType = con.DefaultInstanceType
+		clusterConfiguration.Nodes.ComputeInstanceType = constants.DefaultInstanceType
 	}
 	if profile.ClusterConfig.KMSKey {
 		kmsKeyArn, err := PrepareKMSKey(profile.Region, false, "rosacli", profile.ClusterConfig.HCP, false)
@@ -623,7 +623,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			"--enable-customer-managed-key",
 		)
 		if clusterConfiguration.Encryption == nil {
-			clusterConfiguration.Encryption = &ClusterConfigure.Encryption{}
+			clusterConfiguration.Encryption = &cluster_config.Encryption{}
 		}
 		clusterConfiguration.EnableCustomerManagedKey = profile.ClusterConfig.KMSKey
 		clusterConfiguration.Encryption.KmsKeyArn = kmsKeyArn
@@ -645,7 +645,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	}
 	if profile.ClusterConfig.ProvisionShard != "" {
 		flags = append(flags, "--properties", fmt.Sprintf("provision_shard_id:%s", profile.ClusterConfig.ProvisionShard))
-		clusterConfiguration.Properties = &ClusterConfigure.Properties{
+		clusterConfiguration.Properties = &cluster_config.Properties{
 			ProvisionShardID: profile.ClusterConfig.ProvisionShard,
 		}
 	}
@@ -681,7 +681,7 @@ func WaitForClusterPassWaiting(client *rosacli.Client, cluster string, timeoutMi
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(output.State, con.Waiting) {
+		if !strings.Contains(output.State, constants.Waiting) {
 			log.Logger.Infof("Cluster %s is not in waiting state anymore", cluster)
 			return nil
 		}
@@ -700,11 +700,11 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 	}
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
-		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
+		helper.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
 		// Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)
-		common.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL)
-		common.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)
+		helper.CreateFileWithContent(config.Test.APIURLFile, description.APIURL)
+		helper.CreateFileWithContent(config.Test.ConsoleUrlFile, description.ConsoleURL)
+		helper.CreateFileWithContent(config.Test.InfraIDFile, description.InfraID)
 		// End of temporary
 	}()
 	err = WaitForClusterPassWaiting(client, cluster, 2)
@@ -722,27 +722,27 @@ func WaitForClusterReady(client *rosacli.Client, cluster string, timeoutMin int)
 		clusterDetail.ConsoleURL = description.ConsoleURL
 		clusterDetail.InfraID = description.InfraID
 		switch description.State {
-		case con.Ready:
+		case constants.Ready:
 			log.Logger.Infof("Cluster %s is ready now.", cluster)
 			return nil
-		case con.Uninstalling:
+		case constants.Uninstalling:
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready",
-				cluster, con.Uninstalling)
+				cluster, constants.Uninstalling)
 		default:
-			if strings.Contains(description.State, con.Error) {
-				log.Logger.Errorf("Cluster is in %s status now. Recording the installation log", con.Error)
+			if strings.Contains(description.State, constants.Error) {
+				log.Logger.Errorf("Cluster is in %s status now. Recording the installation log", constants.Error)
 				RecordClusterInstallationLog(client, cluster)
 				return fmt.Errorf("cluster %s is in %s state with reason: %s",
-					cluster, con.Error, description.State)
+					cluster, constants.Error, description.State)
 			}
-			if strings.Contains(description.State, con.Pending) ||
-				strings.Contains(description.State, con.Installing) ||
-				strings.Contains(description.State, con.Validating) {
+			if strings.Contains(description.State, constants.Pending) ||
+				strings.Contains(description.State, constants.Installing) ||
+				strings.Contains(description.State, constants.Validating) {
 				time.Sleep(2 * time.Minute)
 				continue
 			}
-			if strings.Contains(description.State, con.Waiting) {
-				log.Logger.Infof("Cluster is in status of %v, wait for ready", con.Waiting)
+			if strings.Contains(description.State, constants.Waiting) {
+				log.Logger.Infof("Cluster is in status of %v, wait for ready", constants.Waiting)
 				if sleepTime >= 6 {
 					return fmt.Errorf("cluster stuck to %s status for more than 6 mins. "+
 						"Check the user data preparation for roles", description.State)
@@ -770,7 +770,7 @@ func RecordClusterInstallationLog(client *rosacli.Client, cluster string) error 
 	if err != nil {
 		return err
 	}
-	_, err = common.CreateFileWithContent(config.Test.ClusterInstallLogArtifactFile, output.String())
+	_, err = helper.CreateFileWithContent(config.Test.ClusterInstallLogArtifactFile, output.String())
 	return err
 }
 
@@ -790,7 +790,7 @@ func CreateClusterByProfileWithoutWaiting(
 	if err != nil {
 		return nil, err
 	}
-	common.CreateFileWithContent(config.Test.CreateCommandFile, createCMD)
+	helper.CreateFileWithContent(config.Test.CreateCommandFile, createCMD)
 	log.Logger.Info("Cluster created successfully")
 	description, err := client.Cluster.DescribeClusterAndReflect(profile.ClusterConfig.Name)
 	if err != nil {
@@ -798,11 +798,11 @@ func CreateClusterByProfileWithoutWaiting(
 	}
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
-		common.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
+		helper.CreateFileWithContent(config.Test.ClusterDetailFile, clusterDetail)
 		// Temporary recoding file to make it compatible to existing jobs
-		common.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)
-		common.CreateFileWithContent(config.Test.ClusterNameFile, description.Name)
-		common.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")
+		helper.CreateFileWithContent(config.Test.ClusterIDFile, description.ID)
+		helper.CreateFileWithContent(config.Test.ClusterNameFile, description.Name)
+		helper.CreateFileWithContent(config.Test.ClusterTypeFile, "rosa")
 		// End of temporary
 	}()
 	clusterDetail.ClusterID = description.ID
@@ -875,7 +875,7 @@ func WaitForClusterUninstalled(client *rosacli.Client, cluster string, timeoutMi
 		if err != nil {
 			return err
 		}
-		if strings.Contains(desc.State, con.Uninstalling) {
+		if strings.Contains(desc.State, constants.Uninstalling) {
 			time.Sleep(2 * time.Minute)
 			continue
 		}
@@ -949,7 +949,7 @@ func DestroyPreparedUserData(client *rosacli.Client, clusterID string, region st
 	defer func() {
 		log.Logger.Info("Rewrite User data file")
 		// rewrite user data
-		_, err = common.CreateFileWithContent(config.Test.UserDataFile, ud)
+		_, err = helper.CreateFileWithContent(config.Test.UserDataFile, ud)
 	}()
 
 	destroyLog := func(err error, resource string) bool {

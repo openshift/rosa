@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -61,15 +61,15 @@ func init() {
 	currentDir, _ := os.Getwd()
 	project := "rosa"
 
-	Test.TestProfile = common.ReadENVWithDefaultValue("TEST_PROFILE", "")
-	Test.RootDir = common.ReadENVWithDefaultValue("WORKSPACE", strings.SplitAfter(currentDir, project)[0])
-	Test.YAMLProfilesDir = common.ReadENVWithDefaultValue("TEST_PROFILE_DIR",
+	Test.TestProfile = helper.ReadENVWithDefaultValue("TEST_PROFILE", "")
+	Test.RootDir = helper.ReadENVWithDefaultValue("WORKSPACE", strings.SplitAfter(currentDir, project)[0])
+	Test.YAMLProfilesDir = helper.ReadENVWithDefaultValue("TEST_PROFILE_DIR",
 		path.Join(Test.RootDir, "tests", "ci", "data", "profiles"))
-	Test.OutputDir = common.ReadENVWithDefaultValue("SHARED_DIR",
+	Test.OutputDir = helper.ReadENVWithDefaultValue("SHARED_DIR",
 		path.Join(Test.RootDir, "tests", "output", Test.TestProfile))
-	Test.ResourcesDir = common.ReadENVWithDefaultValue("RESOURCES_DIR",
+	Test.ResourcesDir = helper.ReadENVWithDefaultValue("RESOURCES_DIR",
 		path.Join(Test.RootDir, "tests", "ci", "data", "resources"))
-	Test.ArtifactDir = common.ReadENVWithDefaultValue("ARTIFACT_DIR", Test.OutputDir)
+	Test.ArtifactDir = helper.ReadENVWithDefaultValue("ARTIFACT_DIR", Test.OutputDir)
 	err := os.MkdirAll(Test.OutputDir, 0777)
 	if err != nil {
 		Logger.Errorf("Meet error %s when create output dirs", err.Error())
@@ -95,11 +95,11 @@ func init() {
 	Test.ProxySSHPemFile = "ocm-test-proxy"
 	Test.ProxyCABundleFile = path.Join(Test.OutputDir, "proxy-bundle.ca")
 
-	waitingTime, err := strconv.Atoi(common.ReadENVWithDefaultValue("CLUSTER_TIMEOUT", "60"))
+	waitingTime, err := strconv.Atoi(helper.ReadENVWithDefaultValue("CLUSTER_TIMEOUT", "60"))
 	if err != nil {
 		panic(fmt.Errorf("env variable CLUSTER_TIMEOUT must be set to an integer"))
 	}
-	waitSetupClusterReady, _ := strconv.ParseBool(common.ReadENVWithDefaultValue("WAIT_SETUP_CLUSTER_READY", "true"))
+	waitSetupClusterReady, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("WAIT_SETUP_CLUSTER_READY", "true"))
 	Test.GlobalENV = &GlobalENVVariables{
 		ChannelGroup:          os.Getenv("CHANNEL_GROUP"),
 		Version:               os.Getenv("VERSION"),

@@ -3,7 +3,7 @@ package rosacli
 import (
 	"bytes"
 
-	common "github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -97,7 +97,7 @@ func (is *idpService) DeleteIDP(clusterID string, idpName string) (output bytes.
 		CmdFlags("-c", clusterID, "-y").
 		Run()
 	if err == nil {
-		is.idps[clusterID] = common.RemoveFromStringSlice(is.idps[clusterID], idpName)
+		is.idps[clusterID] = helper.RemoveFromStringSlice(is.idps[clusterID], idpName)
 	}
 	return
 }

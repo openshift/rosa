@@ -12,9 +12,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -209,7 +209,7 @@ func (m *machinepoolService) DeleteMachinePool(
 		CmdFlags(append(flags, "-y")...).
 		Run()
 	if err == nil {
-		m.machinePools[clusterID] = common.RemoveFromStringSlice(m.machinePools[clusterID], machinePoolName)
+		m.machinePools[clusterID] = helper.RemoveFromStringSlice(m.machinePools[clusterID], machinePoolName)
 	}
 	return
 }

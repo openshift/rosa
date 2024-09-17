@@ -3,7 +3,7 @@ package rosacli
 import (
 	"bytes"
 
-	common "github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -132,7 +132,7 @@ func (us *userService) CreateAdmin(clusterID string) (output bytes.Buffer, err e
 
 	output, err = createAdmin.Run()
 	if err == nil {
-		us.adminCreated = common.AppendToStringSliceIfNotExist(us.adminCreated, clusterID)
+		us.adminCreated = helper.AppendToStringSliceIfNotExist(us.adminCreated, clusterID)
 		Logger.Infof("Add admin to Cluster %v", clusterID)
 		Logger.Infof("Admin created =  %v", us.adminCreated)
 	}
@@ -156,13 +156,13 @@ func (us *userService) DeleteAdmin(clusterID string) (output bytes.Buffer, err e
 
 	output, err = deleteAdmin.Run()
 	if err == nil {
-		us.adminCreated = common.RemoveFromStringSlice(us.adminCreated, clusterID)
+		us.adminCreated = helper.RemoveFromStringSlice(us.adminCreated, clusterID)
 	}
 	return
 }
 
 func (us *userService) CleanResources(clusterID string) (errors []error) {
-	if common.SliceContains(us.adminCreated, clusterID) {
+	if helper.SliceContains(us.adminCreated, clusterID) {
 		Logger.Infof("Remove remaining admin")
 		if _, err := us.DeleteAdmin(clusterID); err != nil {
 			errors = append(errors, err)

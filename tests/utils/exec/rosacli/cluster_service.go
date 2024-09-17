@@ -62,8 +62,8 @@ func NewClusterService(client *Client) ClusterService {
 type ClusterListItem struct {
 	ID       string `yaml:"ID,omitempty"`
 	Name     string `yaml:"NAME,omitempty"`
-	STATE    string `yaml:"STATE,omitempty"`
-	TOPOLOGY string `yaml:"TOPOLOGY,omitempty"`
+	State    string `yaml:"STATE,omitempty"`
+	Topology string `yaml:"TOPOLOGY,omitempty"`
 }
 type ClusterList struct {
 	Clusters []ClusterListItem `yaml:"Clusters,omitempty"`
@@ -435,7 +435,7 @@ func (c *clusterService) WaitClusterStatus(clusterID string, status string, inte
 			if err != nil {
 				return false, err
 			}
-			if clusterItem.STATE == status {
+			if clusterItem.State == status {
 				return true, nil
 			}
 			return false, err

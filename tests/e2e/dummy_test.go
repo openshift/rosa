@@ -8,9 +8,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
@@ -44,7 +44,7 @@ var _ = Describe("ROSA CLI Test", func() {
 		})
 		It("TestRemovingFunc", func() {
 			s := strings.Split("", ",")
-			s = common.RemoveFromStringSlice(s, "")
+			s = helper.RemoveFromStringSlice(s, "")
 			fmt.Println(len(s))
 		})
 	})

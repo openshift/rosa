@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -325,7 +325,7 @@ var _ = Describe("Edit IDP",
 				Expect(textData).Should(ContainSubstring("Admin account has been added"))
 
 				By("Create one htpasswd idp with multiple users")
-				_, singleUserName, singleUserPasswd, err = common.GenerateHtpasswdPair("user1", "pass1")
+				_, singleUserName, singleUserPasswd, err = helper.GenerateHtpasswdPair("user1", "pass1")
 				Expect(err).To(BeNil())
 				output, err = idpService.CreateIDP(
 					clusterID, idpNames[0],
@@ -338,7 +338,7 @@ var _ = Describe("Edit IDP",
 				validateIDPOutput(textData, clusterID, idpNames[0])
 
 				By("Create one htpasswd idp with single users")
-				multipleuserPasswd, err = common.GenerateMultipleHtpasswdPairs(2)
+				multipleuserPasswd, err = helper.GenerateMultipleHtpasswdPairs(2)
 				Expect(err).To(BeNil())
 				output, err = idpService.CreateIDP(
 					clusterID, idpNames[1],
@@ -350,9 +350,9 @@ var _ = Describe("Edit IDP",
 				validateIDPOutput(textData, clusterID, idpNames[1])
 
 				By("Create one htpasswd idp with multiple users from the file")
-				multipleuserPasswd, err = common.GenerateMultipleHtpasswdPairs(3)
+				multipleuserPasswd, err = helper.GenerateMultipleHtpasswdPairs(3)
 				Expect(err).To(BeNil())
-				location, err := common.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
+				location, err := helper.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(location)
 				output, err = idpService.CreateIDP(
@@ -389,7 +389,7 @@ var _ = Describe("Edit IDP",
 				)
 
 				By("Create one htpasswd idp with single user")
-				_, validUserName, validUserPasswd, err := common.GenerateHtpasswdPair(validUserName, validUserPasswd)
+				_, validUserName, validUserPasswd, err := helper.GenerateHtpasswdPair(validUserName, validUserPasswd)
 				Expect(err).To(BeNil())
 				output, err := idpService.CreateIDP(
 					clusterID, idpNames[0],
@@ -402,7 +402,7 @@ var _ = Describe("Edit IDP",
 				validateIDPOutput(textData, clusterID, idpNames[0])
 
 				By("Try to create another htpasswd idp with single user")
-				_, validUserName, validUserPasswd, err = common.GenerateHtpasswdPair(validUserName, validUserPasswd)
+				_, validUserName, validUserPasswd, err = helper.GenerateHtpasswdPair(validUserName, validUserPasswd)
 				Expect(err).To(BeNil())
 				output, err = idpService.CreateIDP(
 					clusterID, idpNames[1],
@@ -507,7 +507,7 @@ var _ = Describe("Edit IDP",
 
 				//Htpasswd
 				By("Try creating htpasswd idp with invalid idp type")
-				_, UserName, UserPasswd, err := common.GenerateHtpasswdPair(UserName, UserPasswd)
+				_, UserName, UserPasswd, err := helper.GenerateHtpasswdPair(UserName, UserPasswd)
 				Expect(err).To(BeNil())
 				output, err := idpService.CreateIDP(
 					clusterID, idp[idpHtpasswd].name,
@@ -764,9 +764,9 @@ var _ = Describe("Edit IDP",
 						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[0]))
 
 						By("Create one htpasswd idp with --from-file")
-						multipleuserPasswd, err := common.GenerateMultipleHtpasswdPairs(3)
+						multipleuserPasswd, err := helper.GenerateMultipleHtpasswdPairs(3)
 						Expect(err).To(BeNil())
-						location, err := common.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
+						location, err := helper.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
 						Expect(err).To(BeNil())
 						defer os.RemoveAll(location)
 						output, err = idpService.CreateIDP(
@@ -809,9 +809,9 @@ var _ = Describe("Edit IDP",
 					func() {
 
 						By("Create one htpasswd idp with --from-file")
-						multipleuserPasswd, err := common.GenerateMultipleHtpasswdPairs(3)
+						multipleuserPasswd, err := helper.GenerateMultipleHtpasswdPairs(3)
 						Expect(err).To(BeNil())
-						location, err := common.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
+						location, err := helper.CreateTempFileWithPrefixAndContent("htpasswdfile", strings.Join(multipleuserPasswd, "\n"))
 						Expect(err).To(BeNil())
 						defer os.RemoveAll(location)
 						output, err := idpService.CreateIDP(

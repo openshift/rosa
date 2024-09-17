@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	common "github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -21,9 +21,9 @@ type MachinePoolUpgradeService interface {
 	// Create a manual upgrade. `version`, `scheduleDate` and `scheduleTime` are optional.
 	// `schedule*` if provided MUST be both at the same time provided.
 	CreateManualUpgrade(clusterID string, mpID string, version string,
-		scheduleDate string, scheduleTime string) (bytes.Buffer, error)
+		scheduleDate string, scheduleTime string, flags ...string) (bytes.Buffer, error)
 	// Create an automatic upgrade based on the given cron.
-	CreateAutomaticUpgrade(clusterID string, mpID string, scheduleCron string) (bytes.Buffer, error)
+	CreateAutomaticUpgrade(clusterID string, mpID string, scheduleCron string, flags ...string) (bytes.Buffer, error)
 
 	DescribeUpgrade(clusterID string, mpID string) (bytes.Buffer, error)
 	ReflectUpgradeDescription(result bytes.Buffer) (*MachinePoolUpgradeDescription, error)
@@ -107,8 +107,7 @@ func (mpus *machinePoolUpgradeService) ListAndReflectUpgrades(
 }
 
 func (mpus *machinePoolUpgradeService) CreateManualUpgrade(clusterID string, mpID string,
-	version string, scheduleDate string, scheduleTime string) (output bytes.Buffer, err error) {
-	var flags []string
+	version string, scheduleDate string, scheduleTime string, flags ...string) (output bytes.Buffer, err error) {
 	if version != "" {
 		flags = append(flags, "--version", version)
 	}
@@ -122,8 +121,9 @@ func (mpus *machinePoolUpgradeService) CreateManualUpgrade(clusterID string, mpI
 }
 
 func (mpus *machinePoolUpgradeService) CreateAutomaticUpgrade(
-	clusterID string, mpID string, scheduleCron string) (output bytes.Buffer, err error) {
-	return mpus.create(clusterID, mpID, "--schedule", scheduleCron)
+	clusterID string, mpID string, scheduleCron string, flags ...string) (output bytes.Buffer, err error) {
+	flags = append(flags, "--schedule", scheduleCron)
+	return mpus.create(clusterID, mpID, flags...)
 }
 
 func (mpus *machinePoolUpgradeService) create(
@@ -176,7 +176,7 @@ func (mpus *machinePoolUpgradeService) DeleteUpgrade(clusterID string, mpID stri
 		Cmd("delete", "upgrade").
 		CmdFlags("-c", clusterID, "--machinepool", mpID, "-y").Run()
 	if err == nil {
-		mpus.machinePools[clusterID] = common.RemoveFromStringSlice(mpus.machinePools[clusterID], mpID)
+		mpus.machinePools[clusterID] = helper.RemoveFromStringSlice(mpus.machinePools[clusterID], mpID)
 	}
 	return
 }

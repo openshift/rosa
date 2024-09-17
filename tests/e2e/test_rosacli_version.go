@@ -7,8 +7,8 @@ import (
 
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Get CLI version",
@@ -23,7 +23,7 @@ var _ = Describe("Get CLI version",
 		BeforeEach(func() {
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
-			configFile, err := common.CreateTempOCMConfig()
+			configFile, err := helper.CreateTempOCMConfig()
 			Expect(err).ToNot(HaveOccurred())
 			rosaClient.Runner.AddEnvVar("OCM_CONFIG", configFile)
 		})
