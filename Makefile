@@ -144,4 +144,4 @@ release:
 			exit 1; \
 		fi \
 	fi; \
-	$(GORELEASER) release --snapshot --clean
+	$(GORELEASER) release --clean
