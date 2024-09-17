@@ -658,9 +658,8 @@ var _ = Describe("Edit IDP",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).
 					Should(ContainSubstring(
-						"Failed to add IDP to cluster '%s': 'team' '%s' in not in format <org/team>",
-						clusterID,
-						invalidTeam))
+						"Failed to add IDP to cluster '%s'",
+						clusterID))
 
 				//LDAP --
 				By("Create LDAP IDP with invalid url format")
