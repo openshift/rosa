@@ -64,7 +64,7 @@ var _ = Describe("Create machinepool",
 
 		})
 
-		It("can create/list/delete machinepool - [id:36293]",
+		It("can create/list machinepool - [id:36293]",
 			labels.Critical,
 			labels.Runtime.Day2,
 			func() {
