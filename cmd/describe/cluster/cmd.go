@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
@@ -495,6 +496,11 @@ func run(cmd *cobra.Command, argv []string) {
 				"Additional Principals:      %s\n", str,
 				strings.Join(cluster.AWS().AdditionalAllowedPrincipals(), ","))
 		}
+		if cluster.RegistryConfig() != nil {
+			str = fmt.Sprintf("%s"+
+				"Registry Configuration:\n"+
+				"%s\n", str, getClusterRegistryConfig(cluster))
+		}
 	}
 
 	if cluster.Status().State() == cmv1.ClusterStateError {
@@ -835,6 +841,47 @@ func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
 		auditLogForwardingStatus = EnabledOutput
 	}
 	return auditLogForwardingStatus
+}
+
+func getClusterRegistryConfig(cluster *cmv1.Cluster) string {
+	var output string
+	if cluster.RegistryConfig().RegistrySources() != nil {
+		registryResources := cluster.RegistryConfig().RegistrySources()
+		if registryResources.AllowedRegistries() != nil {
+			output = fmt.Sprintf("%s"+
+				" - Allowed Registries:      %s\n", output,
+				strings.Join(registryResources.AllowedRegistries(), ","))
+		}
+		if registryResources.BlockedRegistries() != nil {
+			output = fmt.Sprintf("%s"+
+				" - Blocked Registries:      %s\n", output,
+				strings.Join(registryResources.BlockedRegistries(), ","))
+
+		}
+		if registryResources.InsecureRegistries() != nil {
+			output = fmt.Sprintf("%s"+
+				" - Insecure Registries:     %s\n", output,
+				strings.Join(registryResources.InsecureRegistries(), ","))
+		}
+	}
+	if cluster.RegistryConfig().AllowedRegistriesForImport() != nil {
+		output = fmt.Sprintf("%s"+
+			" - Allowed Registries for Import:         \n", output,
+		)
+		allowedRegistriesForImport := cluster.RegistryConfig().AllowedRegistriesForImport()
+		for _, registry := range allowedRegistriesForImport {
+			output = fmt.Sprintf("%s"+
+				"    - Domain Name: %s\n    - Insecure: %s\n", output,
+				registry.DomainName(), strconv.FormatBool(registry.Insecure()))
+		}
+	}
+	if cluster.RegistryConfig().PlatformAllowlist().ID() != "" {
+		output = fmt.Sprintf("%s"+
+			" - Platform Allowlist:      %s\n", output,
+			cluster.RegistryConfig().PlatformAllowlist().ID())
+	}
+
+	return output
 }
 
 func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {

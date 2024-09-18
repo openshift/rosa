@@ -136,6 +136,29 @@ var _ = Describe("Cluster description", Ordered, func() {
 	})
 })
 
+var _ = Describe("getClusterRegistryConfig", func() {
+	It("Should return expected output", func() {
+		mockCluster, err := cmv1.NewCluster().RegistryConfig(cmv1.NewClusterRegistryConfig().
+			RegistrySources(cmv1.NewRegistrySources().
+				AllowedRegistries([]string{"allow1.com", "allow2.com"}...).
+				InsecureRegistries([]string{"insecure1.com", "insecure2.com"}...).
+				BlockedRegistries([]string{"block1.com", "block2.com"}...)).
+			AllowedRegistriesForImport(cmv1.NewRegistryLocation().
+				DomainName("quay.io").Insecure(true)).
+			PlatformAllowlist(cmv1.NewRegistryAllowlist().ID("test-id"))).Build()
+		Expect(err).NotTo(HaveOccurred())
+		output := getClusterRegistryConfig(mockCluster)
+		expectedOutput := " - Allowed Registries:      allow1.com,allow2.com\n" +
+			" - Blocked Registries:      block1.com,block2.com\n" +
+			" - Insecure Registries:     insecure1.com,insecure2.com\n" +
+			" - Allowed Registries for Import:         \n" +
+			"    - Domain Name: quay.io\n" +
+			"    - Insecure: true\n" +
+			" - Platform Allowlist:      test-id\n"
+		Expect(output).To(Equal(expectedOutput))
+	})
+})
+
 func printJson(cluster func() *cmv1.Cluster,
 	upgrade func() *cmv1.UpgradePolicy,
 	state func() *cmv1.UpgradePolicyState,
