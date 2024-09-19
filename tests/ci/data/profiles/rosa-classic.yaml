@@ -71,7 +71,7 @@ profiles:
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
 - as: rosa-shared-vpc
   version: latest
-  channel_group: candidate
+  channel_group: stable
   region: "us-east-1"
   cluster:
     multi_az: true
@@ -104,7 +104,7 @@ profiles:
     permission_boundary: ""  
 - as: rosa-non-sts-advanced
   version: latest
-  channel_group: candidate
+  channel_group: stable
   region: "us-east-1"
   cluster:
     multi_az: true
@@ -133,7 +133,7 @@ profiles:
     additional_sg_number: 2
 - as: rosa-upgrade-z-stream
   version: "z-1"
-  channel_group: candidate
+  channel_group: stable
   region: "us-east-1"
   cluster:
     multi_az: false
@@ -162,7 +162,7 @@ profiles:
     permission_boundary: ""  
 - as: rosa-upgrade-y-stream
   version: "y-1"
-  channel_group: candidate
+  channel_group: stable
   region: "us-east-1"
   cluster:
     multi_az: false
@@ -191,7 +191,7 @@ profiles:
     permission_boundary: ""
 - as: rosa-non-sts-upgrade-y-stream
   version: "y-1"
-  channel_group: candidate
+  channel_group: stable
   region: "us-east-1"
   cluster:
     multi_az: false
