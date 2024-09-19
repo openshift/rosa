@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
@@ -43,10 +43,10 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 		labels.Critical, labels.Runtime.Day2,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
-			tc1Name := common.GenerateRandomName("tuned01", 2)
+			tc1Name := helper.GenerateRandomName("tuned01", 2)
 			firstPriority := 10
 			firstVMDirtyRatio := 25
-			tc2Name := common.GenerateRandomName("tuned02", 2)
+			tc2Name := helper.GenerateRandomName("tuned02", 2)
 			secondPriority := 20
 			secondVMDirtyRatio := 65
 
@@ -92,7 +92,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			tc2Spec.Recommend[0].Priority = secondPriority
 			tc2JSON, err := json.Marshal(tc2Spec)
 			Expect(err).ToNot(HaveOccurred())
-			specPath, err := common.CreateTempFileWithContent(string(tc2JSON))
+			specPath, err := helper.CreateTempFileWithContent(string(tc2JSON))
 			defer os.Remove(specPath)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = tuningConfigService.EditTuningConfig(clusterID, tc2Name, "--spec-path", specPath)
@@ -131,7 +131,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			tuningConfigService := rosaClient.TuningConfig
 
 			By("Create tuning config")
-			tcName := common.GenerateRandomName("c63169", 2)
+			tcName := helper.GenerateRandomName("c63169", 2)
 			firstPriority := 10
 			firstVMDirtyRatio := 25
 			tcSpec := rosacli.NewTuningConfigSpecRootStub(tcName, firstVMDirtyRatio, firstPriority)
@@ -167,7 +167,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			By("Create tuning config with no spec")
 			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 				clusterID,
-				common.GenerateRandomName("c63169", 2),
+				helper.GenerateRandomName("c63169", 2),
 				"")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Attribute 'spec' must be set"))
@@ -185,7 +185,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			By("Create tuning config with invalid spec file")
 			_, err = tuningConfigService.CreateTuningConfigFromSpecFile(
 				clusterID,
-				common.GenerateRandomName("c63169", 2),
+				helper.GenerateRandomName("c63169", 2),
 				"wrong_file")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
@@ -195,7 +195,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			By("Create tuning config with invalid spec content")
 			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 				clusterID,
-				common.GenerateRandomName("c63169", 2),
+				helper.GenerateRandomName("c63169", 2),
 				"Spec%^")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Expected a valid TuneD spec file: error unmarshaling"))
@@ -207,13 +207,13 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			for i := 1; i <= maxTcNb; i++ {
 				_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 					clusterID,
-					common.GenerateRandomName(fmt.Sprintf("c63169%d", i), 2),
+					helper.GenerateRandomName(fmt.Sprintf("c63169%d", i), 2),
 					string(tcSpecJSON))
 				Expect(err).ToNot(HaveOccurred())
 			}
 			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 				clusterID,
-				common.GenerateRandomName("c63169", 2),
+				helper.GenerateRandomName("c63169", 2),
 				string(tcSpecJSON))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
@@ -228,7 +228,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			tuningConfigService := rosaClient.TuningConfig
 
 			By("Create tuning config")
-			tcName := common.GenerateRandomName("c63174", 2)
+			tcName := helper.GenerateRandomName("c63174", 2)
 			firstPriority := 10
 			firstVMDirtyRatio := 25
 			tcSpec := rosacli.NewTuningConfigSpecRootStub(tcName, firstVMDirtyRatio, firstPriority)
@@ -255,7 +255,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 			Expect(err.Error()).To(ContainSubstring("Expected a valid spec file: open wrong_file: no such file or directory"))
 
 			By("Update tuning config with incorrect spec content")
-			specPath, err := common.CreateTempFileWithContent("Spec%^")
+			specPath, err := helper.CreateTempFileWithContent("Spec%^")
 			defer os.Remove(specPath)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = tuningConfigService.EditTuningConfig(clusterID, tcName, "--spec-path", specPath)

@@ -20,10 +20,10 @@ import (
 
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
@@ -103,7 +103,7 @@ var _ = Describe("Edit cluster",
 				Expect(CD.Created).NotTo(BeEmpty())
 
 				By("Get details page console url")
-				consoleURL := common.GetConsoleUrlBasedOnEnv(ocmApi)
+				consoleURL := helper.GetConsoleUrlBasedOnEnv(ocmApi)
 				subscriptionID := jsonData.DigString("subscription", "id")
 				if consoleURL != "" {
 					Expect(CD.DetailsPage).To(Equal(consoleURL + subscriptionID))
@@ -563,7 +563,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 					"ERR: The '--control-plane' option is currently mandatory for Hosted Control Planes"))
 
 			By("Upgrade cluster with invalid cluster id")
-			invalidClusterID := common.GenerateRandomString(30)
+			invalidClusterID := helper.GenerateRandomString(30)
 			output, err = upgradeService.Upgrade("-c", invalidClusterID)
 			Expect(err).To(HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
@@ -683,7 +683,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			tempDir, err := os.MkdirTemp("", "*")
 			Expect(err).ToNot(HaveOccurred())
 			defer os.RemoveAll(tempDir)
-			tempFile, err := common.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
+			tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
 			Expect(err).ToNot(HaveOccurred())
 			output, err = clusterService.EditCluster(clusterID,
 				"--additional-trust-bundle-file", tempFile,
@@ -754,7 +754,7 @@ var _ = Describe("Classic cluster creation validation",
 					profilesNames = append(profilesNames, k)
 				}
 			}
-			profile = profilesMap[profilesNames[common.RandomInt(len(profilesNames))]]
+			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
 
 		})
 
@@ -769,7 +769,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
-				profile.NamePrefix = common.GenerateRandomName("ci38770", 2)
+				profile.NamePrefix = helper.GenerateRandomName("ci38770", 2)
 
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
@@ -891,7 +891,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
-				profile.NamePrefix = common.GenerateRandomName("ci45161", 2)
+				profile.NamePrefix = helper.GenerateRandomName("ci45161", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -1153,7 +1153,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
-				profile.NamePrefix = common.GenerateRandomName("ci71329", 2)
+				profile.NamePrefix = helper.GenerateRandomName("ci71329", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
 				Expect(err).To(BeNil())
 
@@ -1387,8 +1387,8 @@ var _ = Describe("Classic cluster creation validation",
 						"--installer-role-arn", installerRoleArn,
 						"-y")
 					Expect(err).To(BeNil())
-					oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
-					oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+					oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+					oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 					unmanagedOIDCConfigID, err := ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 					Expect(err).To(BeNil())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
@@ -1682,7 +1682,7 @@ var _ = Describe("Create cluster with invalid options will",
 				tempDir, err := os.MkdirTemp("", "*")
 				Expect(err).ToNot(HaveOccurred())
 				defer os.RemoveAll(tempDir)
-				tempFile, err := common.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
+				tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
 				Expect(err).ToNot(HaveOccurred())
 
 				output, err, _ = clusterService.Create(clusterName,
@@ -2067,7 +2067,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			for k := range profilesMap {
 				profilesNames = append(profilesNames, k)
 			}
-			profile = profilesMap[profilesNames[common.RandomInt(len(profilesNames))]]
+			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
 			profile.NamePrefix = constants.DefaultNamePrefix
 
 			By("Prepare creation command")
@@ -2086,7 +2086,7 @@ var _ = Describe("HCP cluster creation negative testing",
 		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				clusterName := common.GenerateRandomName("cluster-73725", 2)
+				clusterName := helper.GenerateRandomName("cluster-73725", 2)
 				By("Create HCP cluster with --no-cni and \"--network-type={OVNKubernetes, OpenshiftSDN}\" at the same time")
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
@@ -2172,7 +2172,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				By("Create non-HCP cluster with --external-auth-providers-enabled")
-				clusterName := common.GenerateRandomName("ocp-73755", 2)
+				clusterName := helper.GenerateRandomName("ocp-73755", 2)
 				output, err := clusterService.CreateDryRun(clusterName, "--external-auth-providers-enabled")
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).
@@ -2286,7 +2286,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
 				By("Create hcp cluster using non-default ingress settings")
-				clusterName := common.GenerateRandomName("cluster-71174", 2)
+				clusterName := helper.GenerateRandomName("cluster-71174", 2)
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -2444,7 +2444,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				By("Create non-HCP cluster with --audit-log-arn")
-				clusterName := common.GenerateRandomName("ocp-73672", 2)
+				clusterName := helper.GenerateRandomName("ocp-73672", 2)
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -2508,7 +2508,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				ar := arl.DigAccountRoles(accountRolePrefix, true)
 
 				By("Create cluster with the account roles ")
-				clusterName := common.GenerateRandomName("ocp-59547", 2)
+				clusterName := helper.GenerateRandomName("ocp-59547", 2)
 				replacingFlags := map[string]string{
 					"-c":                 clusterName,
 					"--cluster-name":     clusterName,
@@ -2608,7 +2608,7 @@ var _ = Describe("Create cluster with availability zones testing",
 				Expect(err).To(BeNil())
 				mp := mpList.Machinepool(constants.DefaultClassicWorkerPool)
 				Expect(err).To(BeNil())
-				Expect(common.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
+				Expect(helper.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
 
 				By("Create another machinepool")
 				_, err = machinePoolService.CreateMachinePool(clusterID, mpID,
@@ -2624,7 +2624,7 @@ var _ = Describe("Create cluster with availability zones testing",
 				Expect(err).To(BeNil())
 				mp = mpList.Machinepool(mpID)
 				Expect(err).To(BeNil())
-				Expect(common.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
+				Expect(helper.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
 			})
 	})
 var _ = Describe("Create sts and hcp cluster with the IAM roles with path setting", labels.Feature.Cluster, func() {
@@ -2692,7 +2692,7 @@ var _ = Describe("Create sts and hcp cluster with the IAM roles with path settin
 				awsClient, err = aws_client.CreateAWSClient("", "")
 				Expect(err).To(BeNil())
 				for _, pArn := range operatorRolesArns {
-					_, roleName, err := common.ParseRoleARN(pArn)
+					_, roleName, err := helper.ParseRoleARN(pArn)
 					Expect(err).To(BeNil())
 					attachedPolicy, err := awsClient.ListRoleAttachedPolicies(roleName)
 					Expect(err).To(BeNil())
@@ -2773,7 +2773,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create acount-roles")
-				accountRolePrefix = common.GenerateRandomName("ar45742", 2)
+				accountRolePrefix = helper.GenerateRandomName("ar45742", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -2887,7 +2887,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create acount-roles")
-				accountRolePrefix = common.GenerateRandomName("ar43053", 2)
+				accountRolePrefix = helper.GenerateRandomName("ar43053", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
@@ -2906,9 +2906,9 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 
 				By("Create one sts cluster in manual mode")
 				rosaClient.Runner.SetDir(dirToClean)
-				clusterNameToClean = common.GenerateRandomName("c43053", 2)
+				clusterNameToClean = helper.GenerateRandomName("c43053", 2)
 				// Configure with a random str, which can solve the rerun failure
-				operatorRolePreifx := common.GenerateRandomName("opPrefix43053", 2)
+				operatorRolePreifx := helper.GenerateRandomName("opPrefix43053", 2)
 				_, err, _ = clusterService.Create(
 					clusterNameToClean, "--sts",
 					"--mode", "manual",
@@ -2935,7 +2935,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands := common.ExtractCommandsToCreateAWSResoueces(output)
+				commands := helper.ExtractCommandsToCreateAWSResoueces(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
@@ -2948,7 +2948,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands = common.ExtractCommandsToCreateAWSResoueces(output)
+				commands = helper.ExtractCommandsToCreateAWSResoueces(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
@@ -2975,7 +2975,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands = common.ExtractCommandsToDeleteAWSResoueces(output)
+				commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
@@ -2988,7 +2988,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands = common.ExtractCommandsToDeleteAWSResoueces(output)
+				commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
@@ -3093,8 +3093,8 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			By("Reuse the operator prefix to create cluster but using different oidc config")
 			output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
 			Expect(err).To(BeNil())
-			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
-			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+			oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 			oidcConfigToClean, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 			Expect(err).To(BeNil())
 
@@ -3115,7 +3115,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			versionOutput, err := clusterService.GetClusterVersion(clusterID)
 			Expect(err).To(BeNil())
 			clusterVersion := versionOutput.RawID
-			major, minor, _, err := common.ParseVersion(clusterVersion)
+			major, minor, _, err := helper.ParseVersion(clusterVersion)
 			Expect(err).To(BeNil())
 			originalMajorMinorVerson = fmt.Sprintf("%d.%d", major, minor)
 			testingRoleVersion := fmt.Sprintf("%d.%d", major, minor-1)
@@ -3124,7 +3124,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			Expect(err).ToNot(HaveOccurred())
 			if !isHosted {
 				By("Update the all operator policies tags to low version")
-				_, roleName, err := common.ParseRoleARN(operatorRolesArns[1])
+				_, roleName, err := helper.ParseRoleARN(operatorRolesArns[1])
 				Expect(err).To(BeNil())
 				policies, err := awsClient.ListAttachedRolePolicies(roleName)
 				Expect(err).To(BeNil())
@@ -3224,8 +3224,8 @@ var _ = Describe("Sts cluster creation with external id",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create classic cluster in auto mode")
-				testingClusterName = common.GenerateRandomName("c75603", 2)
-				testOperatorRolePrefix := common.GenerateRandomName("opp75603", 2)
+				testingClusterName = helper.GenerateRandomName("c75603", 2)
+				testOperatorRolePrefix := helper.GenerateRandomName("opp75603", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -3240,7 +3240,7 @@ var _ = Describe("Sts cluster creation with external id",
 				By("Update installer role")
 				ExternalId := "223B9588-36A5-ECA4-BE8D-7C673B77CEC1"
 				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
-				_, roleName, err := common.ParseRoleARN(installRoleArn)
+				_, roleName, err := helper.ParseRoleARN(installRoleArn)
 				Expect(err).To(BeNil())
 
 				awsClient, err := aws_client.CreateAWSClient("", "")
@@ -3394,8 +3394,8 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create hcp cluster in auto mode")
-				testingClusterName = common.GenerateRandomName("c75925", 2)
-				testOperatorRolePrefix := common.GenerateRandomName("opp75925", 2)
+				testingClusterName = helper.GenerateRandomName("c75925", 2)
+				testOperatorRolePrefix := helper.GenerateRandomName("opp75925", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -3423,7 +3423,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 		It("Check single AZ hosted cluster can be created - [id:54413]",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
-				testingClusterName = common.GenerateRandomName("c54413", 2)
+				testingClusterName = helper.GenerateRandomName("c54413", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -3542,8 +3542,8 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create hcp cluster in auto mode")
-				testingClusterName = common.GenerateRandomName("c75927", 2)
-				testOperatorRolePrefix := common.GenerateRandomName("opp75927", 2)
+				testingClusterName = helper.GenerateRandomName("c75927", 2)
+				testOperatorRolePrefix := helper.GenerateRandomName("opp75927", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -3663,7 +3663,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Prepare command for custom cluster creation")
-				testingClusterName = common.GenerateRandomName("c76093", 2)
+				testingClusterName = helper.GenerateRandomName("c76093", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 

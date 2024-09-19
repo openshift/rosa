@@ -8,7 +8,7 @@ import (
 
 	"github.com/Masterminds/semver"
 
-	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -390,7 +390,7 @@ func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersio
 			return nil, err
 		}
 		log.Logger.Debugf("Available upgrades are: %v", version.AvailableUpgrades)
-		availableUpgrades := common.ParseCommaSeparatedStrings(version.AvailableUpgrades)
+		availableUpgrades := helper.ParseCommaSeparatedStrings(version.AvailableUpgrades)
 		for _, availabelUpgrade := range availableUpgrades {
 			auVersion, err := semver.NewVersion(availabelUpgrade)
 			if err != nil {
@@ -436,7 +436,7 @@ func (vl *OpenShiftVersionTableList) FindYStreamUpgradableVersion(throttleVersio
 		if err != nil {
 			return nil, err
 		}
-		availableUpgrades := common.ParseCommaSeparatedStrings(version.AvailableUpgrades)
+		availableUpgrades := helper.ParseCommaSeparatedStrings(version.AvailableUpgrades)
 		for _, av := range availableUpgrades {
 			parsedAV, _ := semver.NewVersion(av)
 			if parsedAV.Minor() == semVersion.Minor()+1 {

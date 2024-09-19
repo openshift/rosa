@@ -7,8 +7,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Tuning Config(s) on Classic cluster", labels.Feature.TuningConfigs, func() {
@@ -39,7 +39,7 @@ var _ = Describe("Tuning Config(s) on Classic cluster", labels.Feature.TuningCon
 		labels.Medium, labels.Runtime.Day2,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
-			tcName := common.GenerateRandomName("tuned01", 2)
+			tcName := helper.GenerateRandomName("tuned01", 2)
 			tcSpec := rosacli.NewTuningConfigSpecRootStub(tcName, 25, 10)
 
 			By("Create tuning config should fail")

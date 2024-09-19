@@ -15,10 +15,10 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -318,8 +318,8 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			Expect(err).To(BeNil())
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
-			oidcPrivodeARNFromOutputMessage = common.ExtractOIDCProviderARN(output.String())
-			oidcPrivodeIDFromOutputMessage = common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+			oidcPrivodeARNFromOutputMessage = helper.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage = helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 
 			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 			Expect(err).To(BeNil())
@@ -519,7 +519,7 @@ var _ = Describe("create operator-roles forcely testing",
 				Expect(err).To(BeNil())
 				operatorRolesArns := CD.OperatorIAMRoles
 				for _, policyArn := range operatorRolesArns {
-					_, operatorRoleName, err := common.ParseRoleARN(policyArn)
+					_, operatorRoleName, err := helper.ParseRoleARN(policyArn)
 					Expect(err).To(BeNil())
 					attachedPolicy, err := awsClient.ListAttachedRolePolicies(operatorRoleName)
 					Expect(err).To(BeNil())
@@ -618,8 +618,8 @@ var _ = Describe("create IAM roles forcely testing",
 			output, err = ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("Created OIDC provider with ARN"))
-			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
-			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+			oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 
 			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 			Expect(err).To(BeNil())
@@ -654,8 +654,8 @@ var _ = Describe("create IAM roles forcely testing",
 		})
 		It("to create account-roles and prior-to-cluster operator-roles forcely - [id:59551]",
 			labels.Critical, labels.Runtime.OCMResources, func() {
-				accountRolePrefix = common.GenerateRandomName("ar59551", 2)
-				operatorRolePrefix = common.GenerateRandomName("op59551", 2)
+				accountRolePrefix = helper.GenerateRandomName("ar59551", 2)
+				operatorRolePrefix = helper.GenerateRandomName("op59551", 2)
 				accountRoleNamePermissionMap := map[string]string{
 					fmt.Sprintf("%s-Installer-Role", accountRolePrefix):    "AssumeRole",
 					fmt.Sprintf("%s-Support-Role", accountRolePrefix):      "DescribeInstances",
@@ -858,7 +858,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			"-y",
 		)
 		Expect(err).To(BeNil())
-		commands := common.ExtractCommandsToDeleteAWSResoueces(output)
+		commands := helper.ExtractCommandsToDeleteAWSResoueces(output)
 		for k, v := range commands {
 			fmt.Printf("the %d command is %s\n", k, v)
 		}
@@ -875,7 +875,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 	It("to delete operator-roles and byo oidc-config in manual mode - [id:60956]",
 		labels.Critical, labels.Runtime.OCMResources, func() {
 			By("Create account-roles")
-			accountRolePrefix = common.GenerateRandomName("arp60956", 2)
+			accountRolePrefix = helper.GenerateRandomName("arp60956", 2)
 			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accountRolePrefix,
 				"-y",
@@ -894,14 +894,14 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			output, err = ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("Created OIDC provider with ARN"))
-			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
-			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+			oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 
 			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 			Expect(err).To(BeNil())
 
 			By("Create hosted-cp operator-roles")
-			operatorRolePrefixH = common.GenerateRandomName("opp60956h", 2)
+			operatorRolePrefixH = helper.GenerateRandomName("opp60956h", 2)
 			output, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", managedOIDCConfigID,
 				"--installer-role-arn", installerRoleArnH,
@@ -921,14 +921,14 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			rosaClient.Runner.SetDir(dirToClean)
 			output, err = ocmResourceService.DeleteOperatorRoles("--prefix", operatorRolePrefixH, "-y", "--mode", "manual")
 			Expect(err).NotTo(HaveOccurred())
-			commands := common.ExtractCommandsToDeleteAWSResoueces(output)
+			commands := helper.ExtractCommandsToDeleteAWSResoueces(output)
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
 			}
 
 			By("Create classic operator-roles")
-			operatorRolePrefixC = common.GenerateRandomName("opp60956c", 2)
+			operatorRolePrefixC = helper.GenerateRandomName("opp60956c", 2)
 			output, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", managedOIDCConfigID,
 				"--installer-role-arn", installerRoleArnC,
@@ -943,7 +943,7 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 			By("Delete the classic operator-roles by prefix in manual mode")
 			output, err = ocmResourceService.DeleteOperatorRoles("--prefix", operatorRolePrefixC, "-y", "--mode", "manual")
 			Expect(err).NotTo(HaveOccurred())
-			commands = common.ExtractCommandsToDeleteAWSResoueces(output)
+			commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
@@ -1037,8 +1037,8 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 		It("to create and delete operatorroles attaching managed policies in manual mode - [id:75504]",
 			labels.Critical, labels.Runtime.Day1Supplemental, func() {
 				By("Create hcp cluster in manual mode")
-				testingClusterName = common.GenerateRandomName("c75504", 2)
-				testOperatorRolePrefix := common.GenerateRandomName("opp75504", 2)
+				testingClusterName = helper.GenerateRandomName("c75504", 2)
+				testOperatorRolePrefix := helper.GenerateRandomName("opp75504", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -1059,7 +1059,7 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
 
-				commands := common.ExtractAWSCmdsForClusterCreation(stdout)
+				commands := helper.ExtractAWSCmdsForClusterCreation(stdout)
 				hasCreatePolicyFlag := false
 				for _, command := range commands {
 					if strings.Contains(command, "aws iam create-policy") {
@@ -1142,7 +1142,7 @@ var _ = Describe("Upgrade operator roles in auto mode",
 		It("to create and upgrade operator roles in auto mode - [id:45745]",
 			labels.Critical, labels.Runtime.Day1Supplemental, func() {
 				By("Create classic STS cluster")
-				clusterName = common.GenerateRandomName("c45745", 2)
+				clusterName = helper.GenerateRandomName("c45745", 2)
 				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
 				Expect(err).ToNot(HaveOccurred())
 

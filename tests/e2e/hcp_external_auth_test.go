@@ -13,8 +13,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, func() {
@@ -61,9 +61,9 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				userNameList := []string{}
 
 				reqBody := map[string][]string{
-					"full":            {"--username", common.GenerateRandomName("userName1", 2), "--expiration", "15m"},
+					"full":            {"--username", helper.GenerateRandomName("userName1", 2), "--expiration", "15m"},
 					"emptyUsername":   {"--expiration", "15m"},
-					"emptyExpiration": {"--username", common.GenerateRandomName("userName2", 2)},
+					"emptyExpiration": {"--username", helper.GenerateRandomName("userName2", 2)},
 					"empty":           {},
 				}
 
@@ -172,13 +172,13 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				providerNameList := []string{}
 				var providerName string
 
-				caPath, err := common.CreateTempFileWithContent(ca)
+				caPath, err := helper.CreateTempFileWithContent(ca)
 				defer os.Remove(caPath)
 				Expect(err).ToNot(HaveOccurred())
 
 				reqBody := map[string][]string{
 					"simple": {
-						"--name", common.GenerateRandomName("provider1", 2),
+						"--name", helper.GenerateRandomName("provider1", 2),
 						"--issuer-url", issuerURL,
 						"--issuer-audiences", issuerAudience,
 						"--claim-mapping-username-claim", userNameClaim,
@@ -186,7 +186,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						"--claim-validation-rule", claimValidationRuleClaim,
 					},
 					"with_ca": {
-						"--name", common.GenerateRandomName("provider2", 2),
+						"--name", helper.GenerateRandomName("provider2", 2),
 						"--issuer-url", issuerURL,
 						"--issuer-audiences", issuerAudience,
 						"--claim-mapping-username-claim", userNameClaim,
@@ -194,7 +194,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						"--issuer-ca-file", caPath,
 					},
 					"with_client_parameters": {
-						"--name", common.GenerateRandomName("provider3", 2),
+						"--name", helper.GenerateRandomName("provider3", 2),
 						"--issuer-url", issuerURL,
 						"--issuer-audiences", issuerAudience,
 						"--claim-mapping-username-claim", userNameClaim,
@@ -282,7 +282,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 
 				if !hosted {
 					By("Create a break-glass-credential to the cluster")
-					userName := common.GenerateRandomName("bgc-user-classic", 2)
+					userName := helper.GenerateRandomName("bgc-user-classic", 2)
 
 					resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 						clusterID,
@@ -317,7 +317,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 					Expect(err).ToNot(HaveOccurred())
 					if !externalAuthProvider {
 						By("Create a break-glass-credential to the cluster")
-						userName := common.GenerateRandomName("bgc-user-non-external", 2)
+						userName := helper.GenerateRandomName("bgc-user-non-external", 2)
 
 						resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 							clusterID,
@@ -351,7 +351,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 					} else if externalAuthProvider {
 
 						By("Create break-glass-credential with invalid --username")
-						userName := common.GenerateRandomName("bgc-user_", 2)
+						userName := helper.GenerateRandomName("bgc-user_", 2)
 
 						resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 							clusterID,
@@ -367,7 +367,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 								userName))
 
 						By("Create break-glass-credential with invalid --expiration")
-						userName = common.GenerateRandomName("bgc-user-invalid-exp", 2)
+						userName = helper.GenerateRandomName("bgc-user-invalid-exp", 2)
 						expirationTime := "2may"
 
 						resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
@@ -382,7 +382,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 								expirationTime))
 
 						By("Create break-glass-credential with invalid expiration")
-						userName = common.GenerateRandomName("bgc-user-exp-1s", 2)
+						userName = helper.GenerateRandomName("bgc-user-exp-1s", 2)
 
 						resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 							clusterID,
@@ -433,7 +433,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						"ERR: Deleting the 'cluster-admin' user is not supported for clusters with external authentication configured."))
 
 				By("Create idp on --external-auth-providers-enabled cluster")
-				idpName := common.GenerateRandomName("cluster-idp", 2)
+				idpName := helper.GenerateRandomName("cluster-idp", 2)
 				output, err = rosaClient.IDP.CreateIDP(clusterID, idpName, "--type", "htpasswd")
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()

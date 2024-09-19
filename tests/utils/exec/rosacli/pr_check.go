@@ -9,7 +9,7 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
-	common "github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func GetCommitAuthor() (string, error) {
@@ -41,12 +41,12 @@ func GetFocusCaseIDs(commitMessage string) (string, error) {
 	focus := ""
 	var ids = []string{}
 	for _, matched := range idsMatched {
-		ids = append(ids, common.ParseCommaSeparatedStrings(matched[1])...)
+		ids = append(ids, helper.ParseCommaSeparatedStrings(matched[1])...)
 	}
 
 	focus = strings.Join(ids, "|")
 	fmt.Printf("The focused IDs will be: %s\n", focus)
-	_, err := common.CreateFileWithContent(config.Test.TestFocusFile, focus)
+	_, err := helper.CreateFileWithContent(config.Test.TestFocusFile, focus)
 	return focus, err
 }
 
@@ -57,7 +57,7 @@ func GetFeatureLabelFilter(commitMessage string) (*Labels, error) {
 	}
 	for label, regexpMatch := range featureFilterMap {
 		if regexpMatch.MatchString(commitMessage) {
-			_, err := common.CreateFileWithContent(config.Test.TestLabelFilterFile, *label)
+			_, err := helper.CreateFileWithContent(config.Test.TestLabelFilterFile, *label)
 			return label, err
 		}
 	}

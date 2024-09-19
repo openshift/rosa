@@ -16,10 +16,10 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -194,13 +194,13 @@ var _ = Describe("Healthy check",
 						if value, ok := addSgGroups.(map[string]interface{})["Control Plane"]; ok {
 							Expect(value).
 								To(Equal(
-									common.ReplaceCommaWithCommaSpace(
+									helper.ReplaceCommaWithCommaSpace(
 										clusterConfig.AdditionalSecurityGroups.ControlPlaneSecurityGroups)))
 						} else {
 							value = addSgGroups.(map[string]interface{})["Infra"]
 							Expect(value).
 								To(Equal(
-									common.ReplaceCommaWithCommaSpace(
+									helper.ReplaceCommaWithCommaSpace(
 										clusterConfig.AdditionalSecurityGroups.InfraSecurityGroups)))
 						}
 					}
@@ -214,7 +214,7 @@ var _ = Describe("Healthy check",
 				} else {
 					Expect(mp.SecurityGroupIDs).
 						To(Equal(
-							common.ReplaceCommaWithCommaSpace(
+							helper.ReplaceCommaWithCommaSpace(
 								clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
 				}
 
@@ -439,7 +439,7 @@ var _ = Describe("Healthy check",
 				if clusterConfig.MultiAZ {
 					Expect(mpSize > 1).To(BeTrue(), fmt.Sprintf("MachinePool size is not greater than one: '%d'", mpSize))
 					Expect(len(subnets) > 1).To(BeTrue(), fmt.Sprintf("Subnet size is not greater than one: '%d'", len(subnets)))
-					Expect(len(subnets)).To(Equal(len(common.UniqueStringValues(subnets))), "Subnet is duplicated")
+					Expect(len(subnets)).To(Equal(len(helper.UniqueStringValues(subnets))), "Subnet is duplicated")
 				} else {
 					Expect(mpSize).To(Equal(1))
 					Expect(len(subnets)).To(Equal(1))
@@ -499,7 +499,7 @@ var _ = Describe("Healthy check",
 
 				for _, item := range clusterDescription.Network {
 					if value, ok := item["Subnets"]; ok {
-						clusterSubnets = common.ParseCommaSeparatedStrings(value)
+						clusterSubnets = helper.ParseCommaSeparatedStrings(value)
 						break
 					}
 				}
@@ -507,8 +507,8 @@ var _ = Describe("Healthy check",
 				if !profile.ClusterConfig.BYOVPC {
 					Expect(len(clusterSubnets)).To(BeZero())
 				} else {
-					configuredPrivateSubnets = common.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
-					configuredPublicSubnets := common.ParseCommaSeparatedStrings(clusterConfig.Subnets.PublicSubnetIds)
+					configuredPrivateSubnets = helper.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
+					configuredPublicSubnets := helper.ParseCommaSeparatedStrings(clusterConfig.Subnets.PublicSubnetIds)
 					Expect(len(clusterSubnets)).To(BeNumerically("==",
 						len(configuredPrivateSubnets)+
 							len(configuredPublicSubnets)))
@@ -530,7 +530,7 @@ var _ = Describe("Healthy check",
 					mp, err := machinePoolService.DescribeAndReflectMachinePool(
 						clusterID, constants.DefaultClassicWorkerPool)
 					Expect(err).ToNot(HaveOccurred())
-					workerPoolSubnets := common.ParseCommaSeparatedStrings(mp.Subnets)
+					workerPoolSubnets := helper.ParseCommaSeparatedStrings(mp.Subnets)
 					Expect(len(workerPoolSubnets)).To(Equal(len(configuredPrivateSubnets)))
 					Expect(workerPoolSubnets).Should(ContainElements(configuredPrivateSubnets))
 				}
@@ -669,7 +669,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				parsedUrl, err := url.Parse(oidcEndpointUrlC)
 				Expect(err).To(BeNil())
 				oidcEndpointUrl := parsedUrl.String()
-				oidcEndpointUrl, err = common.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrl)
+				oidcEndpointUrl, err = helper.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrl)
 				Expect(err).To(BeNil())
 
 				By("Check the cluster is deleted")
@@ -706,7 +706,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 
 				operatorRolesArn := clusterDetail.OperatorRoleArns
 				for _, v := range operatorRolesArn {
-					_, roleName, err := common.ParseRoleARN(v)
+					_, roleName, err := helper.ParseRoleARN(v)
 					Expect(err).To(BeNil())
 					opRole, err := awsClient.IamClient.GetRole(
 						context.TODO(),
@@ -734,7 +734,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				}
 
 				for _, v := range accountRoleArns {
-					_, roleName, err := common.ParseRoleARN(v)
+					_, roleName, err := helper.ParseRoleARN(v)
 					Expect(err).To(BeNil())
 					opRole, err := awsClient.IamClient.GetRole(
 						context.TODO(),
@@ -807,7 +807,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 				By("Get operator roles from cluster")
 				operatorRolesArns := CD.OperatorIAMRoles
 				for _, operatorRoleARN := range operatorRolesArns {
-					_, roleName, err := common.ParseRoleARN(operatorRoleARN)
+					_, roleName, err := helper.ParseRoleARN(operatorRoleARN)
 					Expect(err).To(BeNil())
 					opRole, err := awsClient.GetRole(roleName)
 					Expect(err).To(BeNil())
@@ -866,7 +866,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 				operatorRolesArns := CD.OperatorIAMRoles
 				for _, policyArn := range operatorRolesArns {
 					By("Check role tag")
-					_, operatorRoleName, err := common.ParseRoleARN(policyArn)
+					_, operatorRoleName, err := helper.ParseRoleARN(policyArn)
 					Expect(err).To(BeNil())
 					roleTags, err := awsClient.IamClient.ListRoleTags(context.TODO(), &iam.ListRoleTagsInput{
 						RoleName: aws.String(operatorRoleName),

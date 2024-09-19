@@ -12,10 +12,10 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
-	con "github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
@@ -60,7 +60,7 @@ var _ = Describe("Cluster Upgrade testing",
 		})
 
 		AfterEach(func() {
-			if profile.Version == con.YStreamPreviousVersion {
+			if profile.Version == constants.YStreamPreviousVersion {
 				By("Delete cluster upgrade")
 				output, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
 				Expect(err).ToNot(HaveOccurred())
@@ -95,7 +95,7 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).To(BeNil())
 			clusterVersion := jsonData.DigString("version", "raw_id")
 
-			if profile.Version != con.YStreamPreviousVersion {
+			if profile.Version != constants.YStreamPreviousVersion {
 				Skip("Skip this case as the version defined in profile is not y-1 for upgrading testing")
 			}
 
@@ -109,7 +109,7 @@ var _ = Describe("Cluster Upgrade testing",
 			}
 			for i := 0; i < 2; i++ {
 				arn, err := awsClient.CreatePolicy(
-					fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
+					fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
 					statement,
 				)
 				Expect(err).To(BeNil())
@@ -125,13 +125,13 @@ var _ = Describe("Cluster Upgrade testing",
 			operatorRolesArns := clusterDetail.OperatorIAMRoles
 
 			for _, rolearn := range operatorRolesArns {
-				_, roleName, err := common.ParseRoleARN(rolearn)
+				_, roleName, err := helper.ParseRoleARN(rolearn)
 				Expect(err).To(BeNil())
 				policies, err := awsClient.ListAttachedRolePolicies(roleName)
 				Expect(err).To(BeNil())
 				operatorRolePolicies = append(operatorRolePolicies, *policies[0].PolicyArn)
 			}
-			_, operatorRoleName1, err := common.ParseRoleARN(operatorRolesArns[2])
+			_, operatorRoleName1, err := helper.ParseRoleARN(operatorRolesArns[2])
 			Expect(err).To(BeNil())
 			operatorRolePoliciesMap1 := make(map[string][]string)
 			operatorRolePoliciesMap1[operatorRoleName1] = arbitraryPoliciesToClean[0:2]
@@ -156,7 +156,7 @@ var _ = Describe("Cluster Upgrade testing",
 				}
 			}
 
-			_, operatorRoleName2, err := common.ParseRoleARN(operatorRolesArns[4])
+			_, operatorRoleName2, err := helper.ParseRoleARN(operatorRolesArns[4])
 			Expect(err).To(BeNil())
 			operatorRolePoliciesMap2 := make(map[string][]string)
 			operatorRolePoliciesMap2[operatorRoleName2] = append(
@@ -186,7 +186,7 @@ var _ = Describe("Cluster Upgrade testing",
 
 			By("Get account-roles arns for testing")
 			supportRoleARN := clusterDetail.SupportRoleARN
-			_, supportRoleName, err := common.ParseRoleARN(supportRoleARN)
+			_, supportRoleName, err := helper.ParseRoleARN(supportRoleARN)
 			Expect(err).To(BeNil())
 
 			accountRolePoliciesMap := make(map[string][]string)
@@ -247,7 +247,7 @@ var _ = Describe("Cluster Upgrade testing",
 			if !isHosted {
 				By("Update the all operator policies tags to low version")
 				tagName := "rosa_openshift_version"
-				clusterMajorVersion := common.SplitMajorVersion(clusterVersion)
+				clusterMajorVersion := helper.SplitMajorVersion(clusterVersion)
 				keysToUntag := []string{tagName}
 
 				for _, operatorRoleArn := range operatorRolePolicies {
@@ -307,7 +307,7 @@ var _ = Describe("Cluster Upgrade testing",
 
 		It("to upgrade NON-STS rosa cluster across Y stream - [id:37499]", labels.Critical, labels.Runtime.Upgrade, func() {
 			By("Check the cluster version and compare with the profile to decide if skip this case")
-			if profile.Version != con.YStreamPreviousVersion || profile.ClusterConfig.STS {
+			if profile.Version != constants.YStreamPreviousVersion || profile.ClusterConfig.STS {
 				Skip("Skip this case as the version defined in profile is not y-1 for non-sts cluster upgrading testing")
 			}
 
@@ -336,15 +336,15 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
 
 			By("Check upgrade state")
-			err = WaitForUpgradeToState(upgradeService, clusterID, con.Scheduled, 4)
+			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
 			Expect(err).To(BeNil())
-			err = WaitForUpgradeToState(upgradeService, clusterID, con.Started, 70)
+			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Started, 70)
 			Expect(err).To(BeNil())
 		})
 
 		It("to upgrade STS rosa cluster across Y stream - [id:55883]", labels.Critical, labels.Runtime.Upgrade, func() {
 			By("Check the cluster version and compare with the profile to decide if skip this case")
-			if profile.Version != con.YStreamPreviousVersion || !profile.ClusterConfig.STS {
+			if profile.Version != constants.YStreamPreviousVersion || !profile.ClusterConfig.STS {
 				Skip("Skip this case as the version defined in profile is not y-1 for sts cluster upgrading testing")
 			}
 
@@ -390,16 +390,16 @@ var _ = Describe("Cluster Upgrade testing",
 			}
 
 			By("Check upgrade state")
-			err = WaitForUpgradeToState(upgradeService, clusterID, con.Scheduled, 4)
+			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
 			Expect(err).To(BeNil())
-			err = WaitForUpgradeToState(upgradeService, clusterID, con.Started, 70)
+			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Started, 70)
 			Expect(err).To(BeNil())
 		})
 
 		It("to upgrade wide AMI roles with the managed policies in auto mode - [id:57444]",
 			labels.Critical, labels.Runtime.Upgrade, func() {
 				By("Check the cluster version and compare with the profile to decide if skip this case")
-				if !profile.ClusterConfig.STS || profile.Version != con.YStreamPreviousVersion {
+				if !profile.ClusterConfig.STS || profile.Version != constants.YStreamPreviousVersion {
 					Skip("Skip this case as the version defined in profile is not y-1 or non-sts cluster for " +
 						"upgrading testing")
 				}
@@ -446,9 +446,9 @@ var _ = Describe("Cluster Upgrade testing",
 					description, err := clusterService.DescribeClusterAndReflect(clusterID)
 					Expect(err).ToNot(HaveOccurred())
 
-					_, installerRoleName, err := common.ParseRoleARN(description.STSRoleArn)
+					_, installerRoleName, err := helper.ParseRoleARN(description.STSRoleArn)
 					Expect(err).To(BeNil())
-					_, supportRoleName, err := common.ParseRoleARN(description.SupportRoleARN)
+					_, supportRoleName, err := helper.ParseRoleARN(description.SupportRoleARN)
 					Expect(err).To(BeNil())
 
 					accountRoles = append(accountRoles, installerRoleName)
@@ -456,14 +456,14 @@ var _ = Describe("Cluster Upgrade testing",
 
 					for _, i := range description.InstanceIAMRoles {
 						for _, v := range i {
-							_, accountRoleName, err := common.ParseRoleARN(v)
+							_, accountRoleName, err := helper.ParseRoleARN(v)
 							Expect(err).To(BeNil())
 							accountRoles = append(accountRoles, accountRoleName)
 						}
 					}
 
 					for _, v := range description.OperatorIAMRoles {
-						_, operatorRoleName, err := common.ParseRoleARN(v)
+						_, operatorRoleName, err := helper.ParseRoleARN(v)
 						Expect(err).To(BeNil())
 						operatorRoles = append(operatorRoles, operatorRoleName)
 					}
@@ -504,7 +504,7 @@ var _ = Describe("Cluster Upgrade testing",
 		It("to upgrade wide AMI roles with the managed policies in manual mode - [id:75445]",
 			labels.Critical, labels.Runtime.Upgrade, func() {
 				By("Check the cluster version and compare with the profile to decide if skip this case")
-				if !profile.ClusterConfig.STS || profile.Version != con.YStreamPreviousVersion {
+				if !profile.ClusterConfig.STS || profile.Version != constants.YStreamPreviousVersion {
 					Skip("Skip this case as the version defined in profile is not y-1 or non-sts cluster for " +
 						"upgrading testing")
 				}
@@ -559,7 +559,7 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(output2.String()).To(ContainSubstring("Ensuring account role/policies compatibility " +
 						"for upgrade"))
 
-					commands := common.ExtractCommandsToCreateAWSResoueces(output2)
+					commands := helper.ExtractCommandsToCreateAWSResoueces(output2)
 					for _, command := range commands {
 						info := "INFO: Ensuring operator role/policies compatibility for upgrade"
 						if strings.Contains(command, info) {
@@ -661,7 +661,7 @@ var _ = Describe("Describe/List rosa upgrade",
 		})
 
 		AfterEach(func() {
-			if profile.Version == con.YStreamPreviousVersion {
+			if profile.Version == constants.YStreamPreviousVersion {
 				By("Delete cluster upgrade")
 				output, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
 				Expect(err).ToNot(HaveOccurred())
@@ -694,7 +694,7 @@ var _ = Describe("Describe/List rosa upgrade",
 						"'%s'", clusterID))
 				}
 
-				if profile.Version == con.YStreamPreviousVersion {
+				if profile.Version == constants.YStreamPreviousVersion {
 					By("Upgrade cluster and check list/describe upgrade")
 					scheduledDate := time.Now().Format("2006-01-02")
 					scheduledTime := time.Now().Add(20 * time.Minute).UTC().Format("15:04")
@@ -864,7 +864,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			Expect(upgDesResp.EnableMinorVersionUpgrades).To(Equal("false"))
 			if zStreamVersion != "" {
 				By("Check upgrade state")
-				err = WaitForUpgradeToState(upgradeService, clusterID, con.Scheduled, 4)
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
 				Expect(err).To(BeNil())
 				upgDesResp, err := upgradeService.DescribeUpgradeAndReflect(clusterID)
 				Expect(err).To(BeNil())
@@ -917,7 +917,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 				var rolePolicyMap = make(map[string]string)
 				roles := []string{CD.STSRoleArn, CD.SupportRoleARN, CD.InstanceIAMRoles[0]["Worker"]}
 				for _, policyArn := range roles {
-					_, accountRoleName, err := common.ParseRoleARN(policyArn)
+					_, accountRoleName, err := helper.ParseRoleARN(policyArn)
 					Expect(err).To(BeNil())
 					attachedPolicy, err := awsClient.ListAttachedRolePolicies(accountRoleName)
 					Expect(err).To(BeNil())
@@ -925,7 +925,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 				}
 
 				for _, policyArn := range CD.OperatorIAMRoles {
-					_, operatorRoleName, err := common.ParseRoleARN(policyArn)
+					_, operatorRoleName, err := helper.ParseRoleARN(policyArn)
 					Expect(err).To(BeNil())
 					attachedPolicy, err := awsClient.ListAttachedRolePolicies(operatorRoleName)
 					Expect(err).To(BeNil())
@@ -988,7 +988,7 @@ func FindUpperYStreamVersion(v rosacli.VersionService, channelGroup string, clus
 		return "", "", nil
 	} else {
 		upgradingVersion := versions[len(versions)-1]
-		upgradingMajorVersion := common.SplitMajorVersion(upgradingVersion)
+		upgradingMajorVersion := helper.SplitMajorVersion(upgradingVersion)
 		return upgradingVersion, upgradingMajorVersion, nil
 	}
 }

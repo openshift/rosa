@@ -17,10 +17,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
@@ -76,7 +76,7 @@ var _ = Describe("Edit nodepool",
 		It("can create/edit/list/delete nodepool - [id:56782]",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
-				nodePoolName := common.GenerateRandomName("np-56782", 2)
+				nodePoolName := helper.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
 				taints := "t1=v1:NoSchedule,l2=:NoSchedule"
 				instanceType := "m5.2xlarge"
@@ -111,10 +111,10 @@ var _ = Describe("Edit nodepool",
 				Expect(np.Subnet).ToNot(BeNil())
 				Expect(np.Version).To(Equal(cpVersion))
 				Expect(np.AutoRepair).To(Equal("Yes"))
-				Expect(len(common.ParseLabels(np.Labels))).To(Equal(len(common.ParseLabels(labels))))
-				Expect(common.ParseLabels(np.Labels)).To(ContainElements(common.ParseLabels(labels)))
-				Expect(len(common.ParseTaints(np.Taints))).To(Equal(len(common.ParseTaints(taints))))
-				Expect(common.ParseTaints(np.Taints)).To(ContainElements(common.ParseTaints(taints)))
+				Expect(len(helper.ParseLabels(np.Labels))).To(Equal(len(helper.ParseLabels(labels))))
+				Expect(helper.ParseLabels(np.Labels)).To(ContainElements(helper.ParseLabels(labels)))
+				Expect(len(helper.ParseTaints(np.Taints))).To(Equal(len(helper.ParseTaints(taints))))
+				Expect(helper.ParseTaints(np.Taints)).To(ContainElements(helper.ParseTaints(taints)))
 
 				By("Edit nodepool")
 				newLabels := "l3=v3"
@@ -137,10 +137,10 @@ var _ = Describe("Edit nodepool",
 				np = npList.Nodepool(nodePoolName)
 				Expect(np).ToNot(BeNil())
 				Expect(np.Replicas).To(Equal(fmt.Sprintf("0/%s", replicasNb)))
-				Expect(len(common.ParseLabels(np.Labels))).To(Equal(len(common.ParseLabels(newLabels))))
-				Expect(common.ParseLabels(np.Labels)).To(BeEquivalentTo(common.ParseLabels(newLabels)))
-				Expect(len(common.ParseTaints(np.Taints))).To(Equal(len(common.ParseTaints(newTaints))))
-				Expect(common.ParseTaints(np.Taints)).To(BeEquivalentTo(common.ParseTaints(newTaints)))
+				Expect(len(helper.ParseLabels(np.Labels))).To(Equal(len(helper.ParseLabels(newLabels))))
+				Expect(helper.ParseLabels(np.Labels)).To(BeEquivalentTo(helper.ParseLabels(newLabels)))
+				Expect(len(helper.ParseTaints(np.Taints))).To(Equal(len(helper.ParseTaints(newTaints))))
+				Expect(helper.ParseTaints(np.Taints)).To(BeEquivalentTo(helper.ParseTaints(newTaints)))
 
 				By("Check describe nodepool")
 				npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
@@ -156,10 +156,10 @@ var _ = Describe("Edit nodepool",
 				Expect(npDesc.Subnet).ToNot(BeNil())
 				Expect(npDesc.Version).To(Equal(cpVersion))
 				Expect(npDesc.AutoRepair).To(Equal("Yes"))
-				Expect(len(common.ParseLabels(npDesc.Labels))).To(Equal(len(common.ParseLabels(newLabels))))
-				Expect(common.ParseLabels(npDesc.Labels)).To(BeEquivalentTo(common.ParseLabels(newLabels)))
-				Expect(len(common.ParseTaints(npDesc.Taints))).To(Equal(len(common.ParseTaints(newTaints))))
-				Expect(common.ParseTaints(npDesc.Taints)).To(BeEquivalentTo(common.ParseTaints(newTaints)))
+				Expect(len(helper.ParseLabels(npDesc.Labels))).To(Equal(len(helper.ParseLabels(newLabels))))
+				Expect(helper.ParseLabels(npDesc.Labels)).To(BeEquivalentTo(helper.ParseLabels(newLabels)))
+				Expect(len(helper.ParseTaints(npDesc.Taints))).To(Equal(len(helper.ParseTaints(newTaints))))
+				Expect(helper.ParseTaints(npDesc.Taints)).To(BeEquivalentTo(helper.ParseTaints(newTaints)))
 
 				By("Delete nodepool")
 				output, err = machinePoolService.DeleteMachinePool(clusterID, nodePoolName)
@@ -180,7 +180,7 @@ var _ = Describe("Edit nodepool",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
 				var subnets []string
-				nodePoolName := common.GenerateRandomName("np-60202", 2)
+				nodePoolName := helper.GenerateRandomName("np-60202", 2)
 				replicasNumber := 3
 				maxReplicasNumber := 6
 
@@ -290,7 +290,7 @@ var _ = Describe("Edit nodepool",
 				Expect(newNodesNumber).To(Equal(initialNodesNumber))
 
 				By("Create new nodepool with replicas 0")
-				replicas0NPName := common.GenerateRandomName(nodePoolName, 2)
+				replicas0NPName := helper.GenerateRandomName(nodePoolName, 2)
 				_, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					replicas0NPName,
@@ -304,7 +304,7 @@ var _ = Describe("Edit nodepool",
 				Expect(np.Replicas).To(Equal("0/0"))
 
 				By("Create new nodepool with min replicas 0")
-				minReplicas0NPName := common.GenerateRandomName(nodePoolName, 2)
+				minReplicas0NPName := helper.GenerateRandomName(nodePoolName, 2)
 				_, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					minReplicas0NPName,
@@ -320,12 +320,12 @@ var _ = Describe("Edit nodepool",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
-				nodePoolName := common.GenerateRandomName("np-63178", 2)
-				tuningConfig1Name := common.GenerateRandomName("tuned01", 2)
+				nodePoolName := helper.GenerateRandomName("np-63178", 2)
+				tuningConfig1Name := helper.GenerateRandomName("tuned01", 2)
 				tc1Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig1Name, 25, 10)
-				tuningConfig2Name := common.GenerateRandomName("tuned02", 2)
+				tuningConfig2Name := helper.GenerateRandomName("tuned02", 2)
 				tc2Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig2Name, 25, 10)
-				tuningConfig3Name := common.GenerateRandomName("tuned03", 2)
+				tuningConfig3Name := helper.GenerateRandomName("tuned03", 2)
 				tc3Spec := rosacli.NewTuningConfigSpecRootStub(tuningConfig2Name, 25, 10)
 				allTuningConfigNames := []string{tuningConfig1Name, tuningConfig2Name, tuningConfig3Name}
 
@@ -364,8 +364,8 @@ var _ = Describe("Edit nodepool",
 				By("Describe nodepool")
 				np, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(common.ParseTuningConfigs(np.TuningConfigs))).To(Equal(3))
-				Expect(common.ParseTuningConfigs(np.TuningConfigs)).To(ContainElements(allTuningConfigNames))
+				Expect(len(helper.ParseTuningConfigs(np.TuningConfigs))).To(Equal(3))
+				Expect(helper.ParseTuningConfigs(np.TuningConfigs)).To(ContainElements(allTuningConfigNames))
 
 				By("Update nodepool with only one tuning config")
 				_, err = machinePoolService.EditMachinePool(clusterID, nodePoolName,
@@ -374,8 +374,8 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 				np, err = machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(common.ParseTuningConfigs(np.TuningConfigs))).To(Equal(1))
-				Expect(common.ParseTuningConfigs(np.TuningConfigs)).To(ContainElements([]string{tuningConfig1Name}))
+				Expect(len(helper.ParseTuningConfigs(np.TuningConfigs))).To(Equal(1))
+				Expect(helper.ParseTuningConfigs(np.TuningConfigs)).To(ContainElements([]string{tuningConfig1Name}))
 
 				By("Update nodepool with no tuning config")
 				_, err = machinePoolService.EditMachinePool(clusterID, nodePoolName,
@@ -384,17 +384,17 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 				np, err = machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(common.ParseTuningConfigs(np.TuningConfigs))).To(Equal(0))
+				Expect(len(helper.ParseTuningConfigs(np.TuningConfigs))).To(Equal(0))
 			})
 
 		It("create nodepool with tuning config will validate well - [id:63179]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
-				nodePoolName := common.GenerateRandomName("np-63179", 2)
-				tuningConfigName := common.GenerateRandomName("tuned01", 2)
+				nodePoolName := helper.GenerateRandomName("np-63179", 2)
+				tuningConfigName := helper.GenerateRandomName("tuned01", 2)
 				tcSpec := rosacli.NewTuningConfigSpecRootStub(tuningConfigName, 25, 10)
-				nonExistingTuningConfigName := common.GenerateRandomName("fake_tuning_config", 2)
+				nonExistingTuningConfigName := helper.GenerateRandomName("fake_tuning_config", 2)
 
 				By("Prepare tuning configs")
 				tcJSON, err := json.Marshal(tcSpec)
@@ -463,7 +463,7 @@ var _ = Describe("Edit nodepool",
 		It("does support 'version' parameter on nodepool - [id:61138]",
 			labels.High, labels.Runtime.Day2,
 			func() {
-				nodePoolName := common.GenerateRandomName("np-61138", 2)
+				nodePoolName := helper.GenerateRandomName("np-61138", 2)
 
 				By("Get previous version")
 				clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
@@ -518,13 +518,13 @@ var _ = Describe("Edit nodepool",
 						}
 						return npDesc.CurrentReplicas == defaultNodePoolReplicas, nil
 					})
-				common.AssertWaitPollNoErr(err, "Replicas are not ready after 600")
+				helper.AssertWaitPollNoErr(err, "Replicas are not ready after 600")
 
 				nodePoolVersion, err := versionList.FindNearestBackwardMinorVersion(clusterVersion, 1, true)
 				Expect(err).ToNot(HaveOccurred())
 				if nodePoolVersion != nil {
 					By("Create NodePool with version minor - 1")
-					nodePoolName = common.GenerateRandomName("np-61138-m1", 2)
+					nodePoolName = helper.GenerateRandomName("np-61138-m1", 2)
 					_, err = machinePoolService.CreateMachinePool(clusterID,
 						nodePoolName,
 						"--replicas", defaultNodePoolReplicas,
@@ -540,7 +540,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 				if nodePoolVersion != nil {
 					By("Create NodePool with version minor - 2")
-					nodePoolName = common.GenerateRandomName("np-61138-m1", 2)
+					nodePoolName = helper.GenerateRandomName("np-61138-m1", 2)
 					_, err = machinePoolService.CreateMachinePool(clusterID,
 						nodePoolName,
 						"--replicas", defaultNodePoolReplicas,
@@ -557,7 +557,7 @@ var _ = Describe("Edit nodepool",
 				if nodePoolVersion != nil {
 					By("Create NodePool with version minor - 3 should fail")
 					_, err = machinePoolService.CreateMachinePool(clusterID,
-						common.GenerateRandomName("np-61138-m3", 2),
+						helper.GenerateRandomName("np-61138-m3", 2),
 						"--replicas", defaultNodePoolReplicas,
 						"--version", nodePoolVersion.Version,
 					)
@@ -572,7 +572,7 @@ var _ = Describe("Edit nodepool",
 					Logger.Infof("Creating nodepool with flags %v", flags)
 					output, err := machinePoolService.CreateMachinePool(
 						clusterID,
-						common.GenerateRandomName("np-61139", 2),
+						helper.GenerateRandomName("np-61139", 2),
 						flags...)
 					Expect(err).To(HaveOccurred())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
@@ -685,7 +685,7 @@ var _ = Describe("Edit nodepool",
 					Expect(err).ToNot(HaveOccurred())
 					lVersion = lowerVersion.Version
 					if lowerVersion.AvailableUpgrades != "" {
-						upgrades := common.ParseCommaSeparatedStrings(lowerVersion.AvailableUpgrades)
+						upgrades := helper.ParseCommaSeparatedStrings(lowerVersion.AvailableUpgrades)
 
 						// We need to find the biggest upgradeVersion which is lower or equal to clusterVersion
 						for i := len(upgrades) - 1; i < 0; i-- {
@@ -708,7 +708,7 @@ var _ = Describe("Edit nodepool",
 				Logger.Infof("Final upgrade version should be %s", upgradeVersion)
 
 				By("Prepare a node pool with optional-1 version with manual upgrade")
-				nodePoolManualName := common.GenerateRandomName("np-67414", 2)
+				nodePoolManualName := helper.GenerateRandomName("np-67414", 2)
 				output, err := machinePoolService.CreateMachinePool(clusterID, nodePoolManualName,
 					"--replicas", "2",
 					"--version", lVersion)
@@ -727,7 +727,7 @@ var _ = Describe("Edit nodepool",
 						clusterID))
 
 				By("Prepare a node pool with lower version with automatic upgrade")
-				nodePoolAutoName := common.GenerateRandomName("np-67414", 2)
+				nodePoolAutoName := helper.GenerateRandomName("np-67414", 2)
 				output, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
 					"--replicas", "2",
 					"--version", lVersion)
@@ -818,12 +818,12 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create a machinepool with the upgradable version")
-				nodePoolAutoName := common.GenerateRandomName("np-67412", 2)
+				nodePoolAutoName := helper.GenerateRandomName("np-67412", 2)
 				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
 					"--replicas", "0",
 					"--version", upgradableVersion.Version)
 				Expect(err).ToNot(HaveOccurred())
-				availableUpgradeVersions := common.ParseCommaSeparatedStrings(upgradableVersion.AvailableUpgrades)
+				availableUpgradeVersions := helper.ParseCommaSeparatedStrings(upgradableVersion.AvailableUpgrades)
 
 				By("Schedule the upgrade without time scheduled")
 				_, err = machinePoolUpgradeService.CreateManualUpgrade(
@@ -865,7 +865,7 @@ var _ = Describe("Edit nodepool",
 				for _, nodnodeDrainGracePeriod := range nodeDrainGracePeriodsReqAndRes {
 					for req, res := range nodnodeDrainGracePeriod {
 
-						nodePoolName := common.GenerateRandomName("np-72715", 2)
+						nodePoolName := helper.GenerateRandomName("np-72715", 2)
 						By("Create nodepool with node-drain-grace-period")
 						_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
 							"--replicas", "3",
@@ -881,7 +881,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Create nodepool without node-drain-grace-period")
-				nodePoolName := common.GenerateRandomName("np-72715", 3)
+				nodePoolName := helper.GenerateRandomName("np-72715", 3)
 				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
 					"--replicas", "3",
 				)
@@ -932,8 +932,8 @@ var _ = Describe("Edit nodepool",
 		It("validations will work for editing machinepool via rosa cli - [id:73391]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
-				nonExistingMachinepoolName := common.GenerateRandomName("mp-fake", 2)
-				machinepoolName := common.GenerateRandomName("mp-73391", 2)
+				nonExistingMachinepoolName := helper.GenerateRandomName("mp-fake", 2)
+				machinepoolName := helper.GenerateRandomName("mp-73391", 2)
 
 				By("Try to edit machinepool with the name not present in cluster")
 				output, err := machinePoolService.EditMachinePool(clusterID, nonExistingMachinepoolName, "--replicas", "3")
@@ -1046,7 +1046,7 @@ var _ = Describe("Edit nodepool",
 					clusterNamePrefix = clusterName
 				}
 				clusterTagsString := jsonData.DigString("aws", "tags")
-				clusterTags := common.ParseTagsFronJsonOutput(clusterTagsString)
+				clusterTags := helper.ParseTagsFronJsonOutput(clusterTagsString)
 
 				By("Get the managed tags for the nodepool")
 				var managedTags = func(npID string) map[string]interface{} {
@@ -1065,7 +1065,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Create a machinepool without tags to the cluster")
-				machinePoolName_1 := common.GenerateRandomName("np-73492", 2)
+				machinePoolName_1 := helper.GenerateRandomName("np-73492", 2)
 				requiredTags := managedTags(machinePoolName_1)
 				if len(clusterTags) > 0 {
 					By("Attach cluster AWS tags")
@@ -1088,13 +1088,13 @@ var _ = Describe("Edit nodepool",
 				rosaClient.Runner.UnsetFormat()
 				jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
 				tagsString := jsonData.DigString("aws_node_pool", "tags")
-				tags := common.ParseTagsFronJsonOutput(tagsString)
+				tags := helper.ParseTagsFronJsonOutput(tagsString)
 				for k, v := range requiredTags {
 					Expect(tags[k]).To(Equal(v))
 				}
 
 				By("Create a machinepool with tags to the cluster")
-				machinePoolName_2 := common.GenerateRandomName("mp-73492-1", 2)
+				machinePoolName_2 := helper.GenerateRandomName("mp-73492-1", 2)
 				tagsReq := "foo:bar, testKey:testValue"
 				tagsRequestMap := map[string]interface{}{
 					"foo":     "bar",
@@ -1126,7 +1126,7 @@ var _ = Describe("Edit nodepool",
 				rosaClient.Runner.UnsetFormat()
 				jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
 				tagsString = jsonData.DigString("aws_node_pool", "tags")
-				tags = common.ParseTagsFronJsonOutput(tagsString)
+				tags = helper.ParseTagsFronJsonOutput(tagsString)
 				for k, v := range requiredTags {
 					Expect(tags[k]).To(Equal(v))
 				}
@@ -1135,7 +1135,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Create machinepool with invalid tags")
-				machinePoolName_3 := common.GenerateRandomName("mp-73492-2", 2)
+				machinePoolName_3 := helper.GenerateRandomName("mp-73492-2", 2)
 				output, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					machinePoolName_3,
@@ -1203,7 +1203,7 @@ var _ = Describe("Edit nodepool",
 				for _, flags := range reqBody {
 
 					By("Create nodepool with max-surge/max-unavailable set with different values")
-					machinePoolName := common.GenerateRandomName("ocp-74387", 2)
+					machinePoolName := helper.GenerateRandomName("ocp-74387", 2)
 					output, err = machinePoolService.CreateMachinePool(
 						clusterID,
 						machinePoolName,
@@ -1231,7 +1231,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Create a nodepool with just max surge set")
-				machinePool_Name := common.GenerateRandomName("ocp-74387", 2)
+				machinePool_Name := helper.GenerateRandomName("ocp-74387", 2)
 				output, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					machinePool_Name,
@@ -1252,7 +1252,7 @@ var _ = Describe("Edit nodepool",
 				Expect(out.ManagementUpgrade[2]["Max unavailable"]).To(Equal("0"))
 
 				By("Create a nodepool with just max unavailable set")
-				machinePool_Name = common.GenerateRandomName("ocp-74387", 2)
+				machinePool_Name = helper.GenerateRandomName("ocp-74387", 2)
 				output, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					machinePool_Name,
@@ -1500,7 +1500,7 @@ var _ = Describe("Edit nodepool",
 				for _, flags := range reqCreateBody {
 
 					By("Create nodepool with max-surge/max-unavailable set with different inavlid values")
-					machinePoolName := common.GenerateRandomName("ocp-74387", 2)
+					machinePoolName := helper.GenerateRandomName("ocp-74387", 2)
 					output, err := machinePoolService.CreateMachinePool(
 						clusterID,
 						machinePoolName,
@@ -1513,7 +1513,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Create a nodepool to check edit validation")
-				machinePoolName := common.GenerateRandomName("ocp-74430", 2)
+				machinePoolName := helper.GenerateRandomName("ocp-74430", 2)
 				res, err := machinePoolService.CreateMachinePool(clusterID, machinePoolName, "--replicas", "3")
 				Expect(err).ToNot(HaveOccurred())
 				defer machinePoolService.DeleteMachinePool(clusterID, machinePoolName)
@@ -1677,7 +1677,7 @@ var _ = Describe("Edit nodepool",
 				MatchRegexp(`--min-replicas int[\s\t]*Minimum number of machines for the machine pool.`))
 
 			By("Prepare a machinepool")
-			mpName := common.GenerateRandomName("np-59430", 2)
+			mpName := helper.GenerateRandomName("np-59430", 2)
 			_, err = machinePoolService.CreateMachinePool(
 				clusterID, mpName,
 				"--replicas", "0",
@@ -1752,7 +1752,7 @@ var _ = Describe("Edit nodepool",
 					constants.RequiredEc2MetadataHttpTokens}
 
 				for _, imdsv2Value := range imdsv2Values {
-					machinePool_Name := common.GenerateRandomName("ocp-75227", 2)
+					machinePool_Name := helper.GenerateRandomName("ocp-75227", 2)
 					By("Create a machinepool with --ec2-metadata-http-tokens = " + imdsv2Value)
 					output, err := machinePoolService.CreateMachinePool(clusterID,
 						machinePool_Name,
@@ -1775,7 +1775,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Try to create machinepool to the cluster by setting invalid value of --ec2-metadata-http-tokens")
-				machinePool_Name := common.GenerateRandomName("ocp-75227", 2)
+				machinePool_Name := helper.GenerateRandomName("ocp-75227", 2)
 				output, err := machinePoolService.CreateMachinePool(clusterID,
 					machinePool_Name,
 					"--replicas", "3",
@@ -1792,7 +1792,7 @@ var _ = Describe("Edit nodepool",
 			func() {
 				var (
 					replicas         string
-					machinepoolNames = []string{common.GenerateRandomName("np-56778", 2), common.GenerateRandomName("np-56778", 2)}
+					machinepoolNames = []string{helper.GenerateRandomName("np-56778", 2), helper.GenerateRandomName("np-56778", 2)}
 					np               *rosacli.NodePool
 				)
 

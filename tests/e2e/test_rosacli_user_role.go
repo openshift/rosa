@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
@@ -239,7 +239,7 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			Expect(output.String()).Should(ContainSubstring("rosa link user-role"))
 
 			By("Create user role manually")
-			commands := common.ExtractCommandsToCreateAWSResoueces(output)
+			commands := helper.ExtractCommandsToCreateAWSResoueces(output)
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())

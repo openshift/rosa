@@ -11,10 +11,10 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/common/constants"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -70,7 +70,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("Prepare security groups")
 			// Configure with a random str, which can solve the rerun failure
-			sgPrefix := common.GenerateRandomName("72195", 2)
+			sgPrefix := helper.GenerateRandomName("72195", 2)
 			sgIDs, err := vpcClient.CreateAdditionalSecurityGroups(3, sgPrefix, "testing for case 72195")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -119,7 +119,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		func() {
 
 			By("Check the help message of machinepool creation")
-			mpID := common.GenerateRandomName("mp-73638", 2)
+			mpID := helper.GenerateRandomName("mp-73638", 2)
 			out, err := machinePoolService.CreateMachinePool(clusterID, mpID, "-h")
 			Expect(err).ToNot(HaveOccurred(), out.String())
 			Expect(out.String()).Should(ContainSubstring("--tags strings"))
@@ -219,7 +219,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("Create machinepool with " + amdOrArm + " instance " + instanceType)
 			mpPrefix := fmt.Sprintf("%v-60278", amdOrArm)
-			mpName := common.GenerateRandomName(mpPrefix, 2)
+			mpName := helper.GenerateRandomName(mpPrefix, 2)
 			desiredReplicas := 1
 			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 				"--instance-type", instanceType,
@@ -272,7 +272,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Critical, labels.Runtime.Day2,
 		func(instanceType string, updatedReplicas string, expectedErrMsg string) {
 			By("Create machinepool with instance " + instanceType)
-			mpName := common.GenerateRandomName("mp-60278", 2)
+			mpName := helper.GenerateRandomName("mp-60278", 2)
 			desiredReplicas := 1
 			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 				"--instance-type", instanceType,
@@ -300,7 +300,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("Create machinepool with " + " instance " + instanceType + " and enable autoscale")
 
 			mpPrefix := "autoscale"
-			mpName := common.GenerateRandomName(mpPrefix, 2)
+			mpName := helper.GenerateRandomName(mpPrefix, 2)
 			minReplica := 1
 			maxReplica := 3
 			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
@@ -350,7 +350,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("Create machinepool with" + " instance " + instanceType + " and enable autoscale")
 
 			mpPrefix := "autoscale"
-			mpName := common.GenerateRandomName(mpPrefix, 2)
+			mpName := helper.GenerateRandomName(mpPrefix, 2)
 			minReplica := 1
 			maxReplica := 2
 			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
@@ -491,7 +491,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err.Error()).Should(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
 
 			By("with subnet not in VPC")
-			vpcPrefix := common.TrimNameByLength("c56786", 20)
+			vpcPrefix := helper.TrimNameByLength("c56786", 20)
 			vpc, err := vpc_client.PrepareVPC(vpcPrefix, profile.Region, constants.DefaultVPCCIDRValue, false, "")
 			Expect(err).ToNot(HaveOccurred())
 			defer vpc.DeleteVPCChain(true)

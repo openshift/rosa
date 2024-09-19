@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	common "github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -109,7 +109,7 @@ func NewTuningConfigSpecProfileData(vmDirtyRatio int) string {
 func (tcs *tuningConfigService) CreateTuningConfigFromSpecContent(
 	clusterID string, tcName string, specContent string, flags ...string) (output bytes.Buffer, err error) {
 	Logger.Debugf("Create tc %s with content %s", tcName, specContent)
-	specPath, err := common.CreateTempFileWithContent(specContent)
+	specPath, err := helper.CreateTempFileWithContent(specContent)
 	defer os.Remove(specPath)
 	if err != nil {
 		return *bytes.NewBufferString(""), err
@@ -144,7 +144,7 @@ func (tcs *tuningConfigService) DeleteTuningConfig(clusterID string, tcName stri
 		CmdFlags("-c", clusterID, "-y").
 		Run()
 	if err == nil {
-		tcs.tuningConfigs[clusterID] = common.RemoveFromStringSlice(tcs.tuningConfigs[clusterID], tcName)
+		tcs.tuningConfigs[clusterID] = helper.RemoveFromStringSlice(tcs.tuningConfigs[clusterID], tcName)
 	}
 	return
 }

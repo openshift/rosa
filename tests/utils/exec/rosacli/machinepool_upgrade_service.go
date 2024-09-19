@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	common "github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -176,7 +176,7 @@ func (mpus *machinePoolUpgradeService) DeleteUpgrade(clusterID string, mpID stri
 		Cmd("delete", "upgrade").
 		CmdFlags("-c", clusterID, "--machinepool", mpID, "-y").Run()
 	if err == nil {
-		mpus.machinePools[clusterID] = common.RemoveFromStringSlice(mpus.machinePools[clusterID], mpID)
+		mpus.machinePools[clusterID] = helper.RemoveFromStringSlice(mpus.machinePools[clusterID], mpID)
 	}
 	return
 }
