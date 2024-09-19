@@ -12,6 +12,7 @@ import (
 var _ = Describe("Cluster destroy", labels.Feature.Cluster, func() {
 	It("by profile",
 		labels.Runtime.Destroy,
+		labels.Critical,
 		func() {
 			client := rosacli.NewClient()
 			profile := profilehandler.LoadProfileYamlFileByENV()

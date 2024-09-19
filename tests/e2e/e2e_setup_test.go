@@ -21,6 +21,7 @@ import (
 var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 	It("by profile",
 		labels.Runtime.Day1,
+		labels.Critical,
 		func() {
 			client := rosacli.NewClient()
 			profile := profilehandler.LoadProfileYamlFileByENV()
