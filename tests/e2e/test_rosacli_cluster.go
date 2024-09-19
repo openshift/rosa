@@ -2282,6 +2282,24 @@ var _ = Describe("HCP cluster creation negative testing",
 							"ERR: Additional Allowed Principals is supported only for Hosted Control Planes"))
 			})
 
+		It("Updating default ingress settings is not supported for HCP clusters - [id:71174]",
+			labels.Low, labels.Runtime.Day1Negative,
+			func() {
+				By("Create hcp cluster using non-default ingress settings")
+				clusterName := common.GenerateRandomName("cluster-71174", 2)
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--default-ingress-route-selector", "10.0.0.1", "-y")
+				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring(
+					"Updating default ingress settings is not supported for Hosted Control Plane clusters"))
+			})
+
 		It("HCP cluster creation subnets validation - [id:72538]",
 			labels.High, labels.Runtime.Day1Negative,
 			func() {
