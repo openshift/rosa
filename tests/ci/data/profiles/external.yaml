@@ -1,7 +1,7 @@
 profiles:
 - as: rosa-non-fips
   version: latest
-  channel_group: candidate
+  channel_group: stable
   region: "us-east-1"
   cluster:
     multi_az: true
