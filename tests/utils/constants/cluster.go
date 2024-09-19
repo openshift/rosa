@@ -40,6 +40,11 @@ const (
 	Validating   = "validating"
 )
 
+// cluster topology
+const (
+	HostedCP = "Hosted CP"
+)
+
 // cluster upgrade status
 const (
 	Scheduled = "scheduled"
