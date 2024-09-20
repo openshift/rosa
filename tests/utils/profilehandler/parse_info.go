@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/openshift/rosa/tests/ci/config"
-	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -13,7 +13,7 @@ import (
 func ParseUserData() (*UserData, error) {
 	var ud *UserData
 
-	udContent, err := common.ReadFileContent(config.Test.UserDataFile)
+	udContent, err := helper.ReadFileContent(config.Test.UserDataFile)
 	if err != nil {
 		log.Logger.Errorf("Error happened when read user data: %s", err.Error())
 		return nil, err
@@ -35,7 +35,7 @@ func ParserClusterDetail() (*ClusterDetail, error) {
 		log.Logger.Warn("Cluster detail file not exists")
 		return nil, nil
 	}
-	cdContent, err := common.ReadFileContent(config.Test.ClusterDetailFile)
+	cdContent, err := helper.ReadFileContent(config.Test.ClusterDetailFile)
 	if err != nil {
 		log.Logger.Errorf("Error happened when read cluster detail: %s", err.Error())
 		return nil, err

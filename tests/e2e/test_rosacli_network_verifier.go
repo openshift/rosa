@@ -11,9 +11,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Network verifier",
@@ -92,7 +92,7 @@ var _ = Describe("Network verifier",
 						}
 						return true, err
 					})
-				common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
+				helper.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
 				By("Check the network verifier with tags attributes")
 				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID,
@@ -115,7 +115,7 @@ var _ = Describe("Network verifier",
 						}
 						return true, err
 					})
-				common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
+				helper.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
 				By("Run network verifier vith subnet id")
 				if installerRoleArn == "" {

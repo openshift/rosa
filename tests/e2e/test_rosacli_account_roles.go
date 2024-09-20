@@ -18,9 +18,9 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
-	"github.com/openshift/rosa/tests/utils/common/constants"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
@@ -156,8 +156,8 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			accountRoleSetH := accountRoleList.AccountRoles(userRolePrefixH)
 			accountRoleSetC := accountRoleList.AccountRoles(userRolePrefixC)
 
-			selectedRoleH := accountRoleSetH[common.RandomInt(len(accountRoleSetH))]
-			selectedRoleC := accountRoleSetC[common.RandomInt(len(accountRoleSetC))]
+			selectedRoleH := accountRoleSetH[helper.RandomInt(len(accountRoleSetH))]
+			selectedRoleC := accountRoleSetC[helper.RandomInt(len(accountRoleSetC))]
 
 			Expect(len(accountRoleSetB)).To(Equal(7))
 			Expect(len(accountRoleSetH)).To(Equal(3))
@@ -240,7 +240,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				}
 			}()
 			var (
-				accrolePrefix = common.GenerateRandomName("arp57441", 2)
+				accrolePrefix = helper.GenerateRandomName("arp57441", 2)
 				path          = "/aa/vv/"
 				modes         = []string{"auto", "manual"}
 			)
@@ -301,7 +301,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				}
 			}()
 
-			var accrolePrefix = common.GenerateRandomName("arp62083", 2)
+			var accrolePrefix = helper.GenerateRandomName("arp62083", 2)
 
 			By("Create advanced account-roles of both hosted-cp and classic")
 			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
@@ -445,8 +445,8 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			accountRoleSetStable := accountRoleList.AccountRoles(rolePrefixStable)
 			accountRoleSetCandidate := accountRoleList.AccountRoles(rolePrefixCandidate)
 
-			selectedRoleStable := accountRoleSetStable[common.RandomInt(len(accountRoleSetStable))]
-			selectedRoleCandidate := accountRoleSetCandidate[common.RandomInt(len(accountRoleSetCandidate))]
+			selectedRoleStable := accountRoleSetStable[helper.RandomInt(len(accountRoleSetStable))]
+			selectedRoleCandidate := accountRoleSetCandidate[helper.RandomInt(len(accountRoleSetCandidate))]
 
 			By("Check 3 roles are created for hosted CP account roles")
 			Expect(len(accountRoleSetStable)).To(Equal(3))
@@ -505,8 +505,8 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		func() {
 
 			var (
-				rolePrefixAuto      = common.GenerateRandomName("ar57408a", 2)
-				rolePrefixManual    = common.GenerateRandomName("ar57408m", 2)
+				rolePrefixAuto      = helper.GenerateRandomName("ar57408a", 2)
+				rolePrefixManual    = helper.GenerateRandomName("ar57408m", 2)
 				roleVersion         string
 				path                = "/fd/sd/"
 				policiesArn         []string
@@ -575,7 +575,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 					}
 					return !hasPoliciWaitSync, err
 				})
-			common.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
+			helper.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
 			By("Prepare verson for testing")
 			versionService := rosaClient.Version
@@ -603,7 +603,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				"--managed-policies",
 				"-y")
 			Expect(err).To(BeNil())
-			commands := common.ExtractCommandsToCreateAWSResoueces(output)
+			commands := helper.ExtractCommandsToCreateAWSResoueces(output)
 
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
@@ -625,7 +625,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				"-y")
 
 			Expect(err).To(BeNil())
-			commands = common.ExtractCommandsToDeleteAccountRoles(output)
+			commands = helper.ExtractCommandsToDeleteAccountRoles(output)
 
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
@@ -865,7 +865,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 			}
 
 			By("Create account roles")
-			accrolePrefix := common.GenerateRandomString(5)
+			accrolePrefix := helper.GenerateRandomString(5)
 			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accrolePrefix,
 				"--path", path,
@@ -1030,7 +1030,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 			By("Create/upgrade account role with version and channel group in auto mode")
 			for c, v := range channelVersion {
 				By("Create account roles in auto mode with channel group and version")
-				accrolePrefix := common.GenerateRandomString(5)
+				accrolePrefix := helper.GenerateRandomString(5)
 				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 					"--prefix", accrolePrefix,
 					"--version", v,
@@ -1078,7 +1078,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 			By("Create/upgrade account role with version and channel group in manual mode")
 			for c, v := range channelVersion {
 				By("Create account roles in manual mode with channel group and version")
-				accrolePrefix := common.GenerateRandomString(5)
+				accrolePrefix := helper.GenerateRandomString(5)
 				output, err := ocmResourceService.CreateAccountRole("--mode", "manual",
 					"--prefix", accrolePrefix,
 					"--path", path,
@@ -1088,7 +1088,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				Expect(err).To(BeNil())
 				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix)
 
-				commands := common.ExtractCommandsToCreateAWSResoueces(output)
+				commands := helper.ExtractCommandsToCreateAWSResoueces(output)
 
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
@@ -1118,7 +1118,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				)
 				Expect(err).To(BeNil())
 
-				commands = common.ExtractCommandsToCreateAWSResoueces(output)
+				commands = helper.ExtractCommandsToCreateAWSResoueces(output)
 
 				for _, command := range commands {
 					cmd := strings.Split(command, " ")

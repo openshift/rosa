@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -216,9 +216,9 @@ func (r *runner) Run() (bytes.Buffer, error) {
 		if err != nil {
 			err = fmt.Errorf("%s: %s", err.Error(), output.String())
 		}
-		if common.SliceContains(cmdElements, "access_token") ||
-			common.SliceContains(cmdElements, "token") ||
-			common.SliceContains(cmdElements, "refresh_token") {
+		if helper.SliceContains(cmdElements, "access_token") ||
+			helper.SliceContains(cmdElements, "token") ||
+			helper.SliceContains(cmdElements, "refresh_token") {
 			log.Logger.Warnf("There is sensitive output possibility with token keyword in command line. Hide the output.")
 		} else {
 			log.Logger.Infof("Get Combining Stdout and Stderr is :\n%s", output.String())

@@ -16,9 +16,9 @@ import (
 
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/tests/ci/config"
-	"github.com/openshift/rosa/tests/utils/common"
-	con "github.com/openshift/rosa/tests/utils/common/constants"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -30,7 +30,7 @@ func RecordUserDataInfo(filePath string, key string, value string) error {
 	}
 	valueOfUserData := reflect.ValueOf(userData).Elem()
 	valueOfUserData.FieldByName(key).SetString(value)
-	_, err := common.CreateFileWithContent(filePath, userData)
+	_, err := helper.CreateFileWithContent(filePath, userData)
 	return err
 
 }
@@ -43,17 +43,17 @@ func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGr
 		return nil, err
 	}
 
-	if con.VersionLatestPattern.MatchString(versionRequirement) {
+	if constants.VersionLatestPattern.MatchString(versionRequirement) {
 		return versionList.Latest()
-	} else if con.VersionMajorMinorPattern.MatchString(versionRequirement) {
+	} else if constants.VersionMajorMinorPattern.MatchString(versionRequirement) {
 		version, err := versionList.FindNearestBackwardMinorVersion(versionRequirement, 0, true)
 		return version, err
-	} else if con.VersionRawPattern.MatchString(versionRequirement) {
+	} else if constants.VersionRawPattern.MatchString(versionRequirement) {
 		return &rosacli.OpenShiftVersionTableOutput{
 			Version: versionRequirement,
 		}, nil
-	} else if con.VersionFlexyPattern.MatchString(versionRequirement) {
-		log.Logger.Debugf("Version requirement matched %s", con.VersionFlexyPattern.String())
+	} else if constants.VersionFlexyPattern.MatchString(versionRequirement) {
+		log.Logger.Debugf("Version requirement matched %s", constants.VersionFlexyPattern.String())
 		latestVersion, err := versionList.Latest()
 		if err != nil {
 			return nil, err
@@ -82,19 +82,19 @@ func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGr
 }
 
 // PrepareNames will generate the name for cluster creation
-// if longname is set, it will generate the long name with con.DefaultLongClusterNamelength
+// if longname is set, it will generate the long name with constants.DefaultLongClusterNamelength
 func PreparePrefix(profilePrefix string, nameLength int) string {
 	if nameLength > ocm.MaxClusterNameLength {
 		panic(fmt.Errorf("name length %d is longer than allowed max name length %d", nameLength, ocm.MaxClusterNameLength))
 	}
 
 	if len(profilePrefix) > nameLength {
-		newProfilePrefix := common.TrimNameByLength(profilePrefix, nameLength-4)
+		newProfilePrefix := helper.TrimNameByLength(profilePrefix, nameLength-4)
 		log.Logger.Warnf("Profile name prefix %s is longer than "+
 			"the nameLength for random generated. Trimed it to %s", profilePrefix, newProfilePrefix)
 		profilePrefix = newProfilePrefix
 	}
-	return strings.TrimSuffix(common.GenerateRandomName(profilePrefix, nameLength-len(profilePrefix)-1), "-")
+	return strings.TrimSuffix(helper.GenerateRandomName(profilePrefix, nameLength-len(profilePrefix)-1), "-")
 }
 
 // PrepareVPC will prepare a single vpc
@@ -154,7 +154,7 @@ func PrepareProxy(vpcClient *vpc_client.VPC,
 	if err != nil {
 		return nil, err
 	}
-	_, err = common.CreateFileWithContent(caFile, caContent)
+	_, err = helper.CreateFileWithContent(caFile, caContent)
 	if err != nil {
 		return nil, err
 	}
@@ -308,8 +308,8 @@ func PrepareOperatorRolesByOIDCConfig(client *rosacli.Client,
 }
 
 func PrepareAdminUser() (string, string) {
-	userName := common.GenerateRandomString(10)
-	password := common.GenerateRandomStringWithSymbols(14)
+	userName := helper.GenerateRandomString(10)
+	password := helper.GenerateRandomStringWithSymbols(14)
 	return userName, password
 }
 
@@ -443,7 +443,7 @@ func PrepareTemporaryPolicyFor417(region string, capaControllerOperatorRoleName 
 	if err != nil {
 		return "", err
 	}
-	policyName := common.GenerateRandomName("ROSANodePoolMissingPolicy", 2)
+	policyName := helper.GenerateRandomName("ROSANodePoolMissingPolicy", 2)
 	policyDocument := map[string]interface{}{
 		"Version": "2012-10-17",
 		"Statement": []map[string]interface{}{
@@ -587,7 +587,7 @@ func PrepareHostedZone(clusterName string, dnsDomain string, vpcID string, regio
 	}
 
 	hostedZoneName := fmt.Sprintf("%s.%s", clusterName, dnsDomain)
-	callerReference := common.GenerateRandomString(10)
+	callerReference := helper.GenerateRandomString(10)
 	hostedZoneOutput, err := awsClient.CreateHostedZone(hostedZoneName, callerReference, vpcID, region, private)
 	if err != nil {
 		log.Logger.Errorf("Error happens when prepare hosted zone: %s", err.Error())

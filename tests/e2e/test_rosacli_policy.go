@@ -9,9 +9,9 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -58,7 +58,7 @@ var _ = Describe("Attach and Detach arbitrary policies",
 			}
 			for i := 0; i < 2; i++ {
 				arn, err := awsClient.CreatePolicy(
-					fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
+					fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
 					statement,
 				)
 				Expect(err).To(BeNil())
@@ -90,7 +90,7 @@ var _ = Describe("Attach and Detach arbitrary policies",
 				CD, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				operatorRolesArns := CD.OperatorIAMRoles
-				_, operatorRoleName1, err := common.ParseRoleARN(operatorRolesArns[2])
+				_, operatorRoleName1, err := helper.ParseRoleARN(operatorRolesArns[2])
 				Expect(err).To(BeNil())
 				operatorRolePoliciesMap1 := make(map[string][]string)
 				operatorRolePoliciesMap1[operatorRoleName1] = arbitraryPoliciesToClean[0:2]
@@ -106,7 +106,7 @@ var _ = Describe("Attach and Detach arbitrary policies",
 
 				}
 
-				_, operatorRoleName2, err := common.ParseRoleARN(operatorRolesArns[4])
+				_, operatorRoleName2, err := helper.ParseRoleARN(operatorRolesArns[4])
 				Expect(err).To(BeNil())
 				operatorRolePoliciesMap2 := make(map[string][]string)
 				operatorRolePoliciesMap2[operatorRoleName2] = append(
@@ -193,9 +193,9 @@ var _ = Describe("Attach and Detach arbitrary policies",
 						}
 					}
 				}
-				_, workerRoleName, err := common.ParseRoleARN(workerRoleARN)
+				_, workerRoleName, err := helper.ParseRoleARN(workerRoleARN)
 				Expect(err).To(BeNil())
-				_, supportRoleName, err := common.ParseRoleARN(supportRoleARN)
+				_, supportRoleName, err := helper.ParseRoleARN(supportRoleARN)
 				Expect(err).To(BeNil())
 
 				accountRolePoliciesMap1 := make(map[string][]string)
@@ -330,7 +330,7 @@ var _ = Describe("Validation testing",
 			}
 			for i := 0; i < 10; i++ {
 				arn, err := awsClient.CreatePolicy(
-					fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
+					fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
 					statement,
 				)
 				Expect(err).To(BeNil())
@@ -374,7 +374,7 @@ var _ = Describe("Validation testing",
 					Skip("This feature only works for STS cluster")
 				}
 				By("Prepare a role wihtout red-hat-managed=true label for testing")
-				notRHManagedRoleName := fmt.Sprintf("ocmqe-role-%s", common.GenerateRandomString(3))
+				notRHManagedRoleName := fmt.Sprintf("ocmqe-role-%s", helper.GenerateRandomString(3))
 
 				statement := map[string]interface{}{
 					"Effect":   "Allow",
@@ -396,7 +396,7 @@ var _ = Describe("Validation testing",
 
 				for i := 0; i < 10; i++ {
 					arn, err := awsClient.CreatePolicy(
-						fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
+						fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
 						statement,
 					)
 					Expect(err).To(BeNil())
@@ -409,7 +409,7 @@ var _ = Describe("Validation testing",
 				CD, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				supportRoleARN := CD.SupportRoleARN
-				_, supportRoleName, err := common.ParseRoleARN(supportRoleARN)
+				_, supportRoleName, err := helper.ParseRoleARN(supportRoleARN)
 				Expect(err).To(BeNil())
 
 				By("policy arn with invalid format when attach")
@@ -544,7 +544,7 @@ var _ = Describe("Account roles with attaching arbitrary policies",
 			}
 			for i := 0; i < 2; i++ {
 				arn, err := awsClient.CreatePolicy(
-					fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
+					fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
 					statement,
 				)
 				Expect(err).To(BeNil())
@@ -600,9 +600,9 @@ var _ = Describe("Account roles with attaching arbitrary policies",
 			supportRoleArn := ars.SupportRole
 			workerRoleArn := ars.WorkerRole
 
-			_, supportRoleName, err := common.ParseRoleARN(supportRoleArn)
+			_, supportRoleName, err := helper.ParseRoleARN(supportRoleArn)
 			Expect(err).To(BeNil())
-			_, workerRoleName, err := common.ParseRoleARN(workerRoleArn)
+			_, workerRoleName, err := helper.ParseRoleARN(workerRoleArn)
 			Expect(err).To(BeNil())
 
 			By("Attach two arbitrary policies to Support roles")
@@ -734,7 +734,7 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 			}
 			for i := 0; i < 2; i++ {
 				arn, err := awsClient.CreatePolicy(
-					fmt.Sprintf("ocmqe-arpolicy-%s-%d", common.GenerateRandomString(3), i),
+					fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
 					statement,
 				)
 				Expect(err).To(BeNil())
@@ -793,8 +793,8 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 			Expect(err).To(BeNil())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
-			oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
-			oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+			oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 
 			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 			Expect(err).To(BeNil())
@@ -866,7 +866,7 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 
 			By("Attach two arbitrary policies to one account role")
 			supportRoleArn := ars.SupportRole
-			_, supportRoleName, err := common.ParseRoleARN(supportRoleArn)
+			_, supportRoleName, err := helper.ParseRoleARN(supportRoleArn)
 			Expect(err).To(BeNil())
 
 			accountRolePoliciesMap := make(map[string][]string)

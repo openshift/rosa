@@ -10,10 +10,10 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	utilConfig "github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/occli"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
@@ -59,7 +59,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 						output, err := client.BreakGlassCredential.GetIssuedCredential(clusterID, i.ID)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(output.String()).ToNot(BeEmpty())
-						_, err = common.CreateFileWithContent(kubeconfigFile, output.String())
+						_, err = helper.CreateFileWithContent(kubeconfigFile, output.String())
 						Expect(err).ToNot(HaveOccurred())
 						break
 					}

@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Edit OIDC config",
@@ -100,8 +100,8 @@ var _ = Describe("Edit OIDC config",
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
 
-				oidcPrivodeARNFromOutputMessage := common.ExtractOIDCProviderARN(output.String())
-				oidcPrivodeIDFromOutputMessage := common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+				oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+				oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 
 				unmanagedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 				Expect(err).To(BeNil())
@@ -122,8 +122,8 @@ var _ = Describe("Edit OIDC config",
 				Expect(err).To(BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
-				oidcPrivodeARNFromOutputMessage = common.ExtractOIDCProviderARN(output.String())
-				oidcPrivodeIDFromOutputMessage = common.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+				oidcPrivodeARNFromOutputMessage = helper.ExtractOIDCProviderARN(output.String())
+				oidcPrivodeIDFromOutputMessage = helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 
 				managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 				Expect(err).To(BeNil())
@@ -273,20 +273,20 @@ var _ = Describe("Register ummanaged oidc config testing",
 				"--managed=false",
 				"-y")
 			Expect(err).To(BeNil())
-			commands := common.ExtractCommandsFromOIDCRegister(output)
+			commands := helper.ExtractCommandsFromOIDCRegister(output)
 
 			By("Execute commands to create unmanaged oidc-config")
 			var commandArgs []string
 			for _, command := range commands {
 				if strings.Contains(command, "aws secretsmanager create-secret") {
-					commandArgs = common.ParseCommandToArgs(command)
+					commandArgs = helper.ParseCommandToArgs(command)
 					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
 					Expect(err).To(BeNil())
-					secretArn = common.ParseSecretArnFromOutput(stdout.String())
+					secretArn = helper.ParseSecretArnFromOutput(stdout.String())
 					continue
 				}
 				if strings.Contains(command, "aws iam create-open-id-connect-provider") {
-					issuerUrl = common.ParseIssuerURLFromCommand(command)
+					issuerUrl = helper.ParseIssuerURLFromCommand(command)
 				}
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())

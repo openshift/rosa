@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	common "github.com/openshift/rosa/tests/utils/common"
+	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -147,7 +147,7 @@ func (i *ingressService) DeleteIngress(clusterID string, ingressID string) (outp
 		CmdFlags(flags...).
 		Run()
 	if err == nil {
-		i.ingress[clusterID] = common.RemoveFromStringSlice(i.ingress[clusterID], ingressID)
+		i.ingress[clusterID] = helper.RemoveFromStringSlice(i.ingress[clusterID], ingressID)
 	}
 	return
 }

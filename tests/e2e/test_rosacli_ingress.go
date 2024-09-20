@@ -8,9 +8,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -313,7 +313,7 @@ var _ = Describe("Edit default ingress",
 				// Recover the ingress
 				defer func() {
 					flags := []string{"--excluded-namespaces", ingress.ExcludeNamespace,
-						"--route-selector", common.ReplaceCommaSpaceWithComma(ingress.RouteSelectors),
+						"--route-selector", helper.ReplaceCommaSpaceWithComma(ingress.RouteSelectors),
 						"--namespace-ownership-policy", ingress.NamespaceOwnershipPolicy,
 						"--wildcard-policy", ingress.WildcardPolicy,
 					}
@@ -390,7 +390,7 @@ var _ = Describe("Edit default ingress",
 					Expect(err).ToNot(HaveOccurred())
 					defer rosaClient.Ingress.EditIngress(clusterID,
 						"apps",
-						"--label-match", common.ReplaceCommaSpaceWithComma(originalRouteSelectors),
+						"--label-match", helper.ReplaceCommaSpaceWithComma(originalRouteSelectors),
 						"-y",
 					)
 
@@ -405,7 +405,7 @@ var _ = Describe("Edit default ingress",
 						ingressRouteSelectors[index] = wgString
 					}
 					// Workaround finished
-					expectedRouteSelectors := common.ParseCommaSeparatedStrings(labelMatch)
+					expectedRouteSelectors := helper.ParseCommaSeparatedStrings(labelMatch)
 
 					Expect(len(ingressRouteSelectors)).To(Equal(len(expectedRouteSelectors)))
 
@@ -418,7 +418,7 @@ var _ = Describe("Edit default ingress",
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.Ingress.EditIngress(clusterID,
 					"apps",
-					"--label-match", common.ReplaceCommaSpaceWithComma(originalRouteSelectors),
+					"--label-match", helper.ReplaceCommaSpaceWithComma(originalRouteSelectors),
 					fmt.Sprintf("--private=%v", originalPrivate),
 					"-y",
 				)
@@ -432,8 +432,8 @@ var _ = Describe("Edit default ingress",
 				defaultIngress = ingressList.Ingresses[0]
 				Expect(defaultIngress.Private == YES).To(Equal(!originalPrivate))
 
-				ingressRouteSelectors := common.ParseCommaSeparatedStrings(defaultIngress.RouteSelectors)
-				expectedRouteSelectors := common.ParseCommaSeparatedStrings(labelMatch)
+				ingressRouteSelectors := helper.ParseCommaSeparatedStrings(defaultIngress.RouteSelectors)
+				expectedRouteSelectors := helper.ParseCommaSeparatedStrings(labelMatch)
 
 				Expect(len(ingressRouteSelectors)).To(Equal(len(expectedRouteSelectors)))
 

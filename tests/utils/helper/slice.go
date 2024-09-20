@@ -1,4 +1,4 @@
-package common
+package helper
 
 func RemoveFromStringSlice(slice []string, value string) []string {
 	var newSlice []string
