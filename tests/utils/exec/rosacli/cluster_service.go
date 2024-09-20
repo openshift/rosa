@@ -115,6 +115,8 @@ type ClusterDescription struct {
 	FailedInflightChecks     string              `yaml:"Failed Inflight Checks,omitempty"`
 	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
 	EnableDeleteProtection   string              `yaml:"Delete Protection,omitempty"`
+	EnableEtcdEncryption     string              `yaml:"Etcd Encryption,omitempty"`
+	EtcdKmsKeyARN            string              `yaml:"Etcd KMS key ARN,omitempty"`
 }
 
 // Pasrse the result of 'rosa list cluster' to the ClusterList struct
