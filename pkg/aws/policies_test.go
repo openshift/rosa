@@ -691,3 +691,120 @@ var _ = Describe("CheckIfROSAOperatorRole", func() {
 		})
 	})
 })
+
+var _ = Describe("isPolicyHasTags", func() {
+	var (
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+	testRoleArn := "fake-role-arn"
+	testePolicyArn := "fake-policy-arn"
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+	})
+	It("Should have a red-hat-managed policy identified", func() {
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(tags.OperatorName),
+					Value: aws.String("ebs-cloud-credentials"),
+				},
+				{
+					Key:   aws.String(tags.OperatorNamespace),
+					Value: aws.String("openshift-cluster-csi-drivers"),
+				},
+				{
+					Key:   aws.String(tags.RedHatManaged),
+					Value: aws.String("true"),
+				},
+			},
+			IsTruncated: false,
+		}, nil)
+		filter, err := getOperatorRolePolicyTags(mockIamAPI, testRoleArn)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(filter).To(HaveLen(3))
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(&iam.ListPolicyTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(tags.OperatorName),
+					Value: aws.String("ebs-cloud-credentials"),
+				},
+				{
+					Key:   aws.String(tags.OperatorNamespace),
+					Value: aws.String("openshift-cluster-csi-drivers"),
+				},
+				{
+					Key:   aws.String(tags.RedHatManaged),
+					Value: aws.String("true"),
+				},
+				{
+					Key:   aws.String("t1"),
+					Value: aws.String("v1"),
+				},
+				{
+					Key:   aws.String("t2"),
+					Value: aws.String("v2"),
+				},
+				{
+					Key:   aws.String("t3"),
+					Value: aws.String("v3"),
+				},
+				{
+					Key:   aws.String("t4"),
+					Value: aws.String("v4"),
+				},
+			},
+			IsTruncated: false,
+		}, nil)
+		result, err := doesPolicyHaveTags(mockIamAPI, &testePolicyArn, filter)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(BeTrue())
+	})
+	It("Should not have a red-hat-managed policy identified", func() {
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(&iam.ListRoleTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String(tags.OperatorName),
+					Value: aws.String("ebs-cloud-credentials"),
+				},
+				{
+					Key:   aws.String(tags.OperatorNamespace),
+					Value: aws.String("openshift-cluster-csi-drivers"),
+				},
+				{
+					Key:   aws.String(tags.RedHatManaged),
+					Value: aws.String("true"),
+				},
+			},
+			IsTruncated: false,
+		}, nil)
+		filter, err := getOperatorRolePolicyTags(mockIamAPI, testRoleArn)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(filter).To(HaveLen(3))
+		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(&iam.ListPolicyTagsOutput{
+			Tags: []iamtypes.Tag{
+				{
+					Key:   aws.String("t1"),
+					Value: aws.String("v1"),
+				},
+				{
+					Key:   aws.String("t2"),
+					Value: aws.String("v2"),
+				},
+				{
+					Key:   aws.String("t3"),
+					Value: aws.String("v3"),
+				},
+				{
+					Key:   aws.String("t4"),
+					Value: aws.String("v4"),
+				},
+			},
+			IsTruncated: false,
+		}, nil)
+		result, err := doesPolicyHaveTags(mockIamAPI, &testePolicyArn, filter)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(BeFalse())
+	})
+})

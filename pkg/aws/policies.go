@@ -1320,7 +1320,7 @@ func (c *awsClient) GetAttachedPolicyWithTags(role *string,
 	}
 
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
-		hasTags, err := isPolicyHasTags(c.iamClient, policy.PolicyArn, tagFilter)
+		hasTags, err := doesPolicyHaveTags(c.iamClient, policy.PolicyArn, tagFilter)
 		if err != nil {
 			return policies, excludedPolicies, err
 		}
@@ -2111,7 +2111,7 @@ func (c *awsClient) listRoleAttachedPolicies(roleName string) ([]iamtypes.Attach
 }
 
 // check whether the policy contains specified tags
-func isPolicyHasTags(c client.IamApiClient, poilcyArn *string, tagFilter map[string]string) (bool, error) {
+func doesPolicyHaveTags(c client.IamApiClient, poilcyArn *string, tagFilter map[string]string) (bool, error) {
 	if len(tagFilter) != 0 {
 		tags, err := c.ListPolicyTags(context.Background(),
 			&iam.ListPolicyTagsInput{
@@ -2121,19 +2121,18 @@ func isPolicyHasTags(c client.IamApiClient, poilcyArn *string, tagFilter map[str
 		if err != nil {
 			return false, err
 		}
-		fitTagSize := 0
+		foundTagsCounter := 0
 		for _, tag := range tags.Tags {
 			value, ok := tagFilter[aws.ToString(tag.Key)]
-			if ok && value != aws.ToString(tag.Value) {
-				return false, nil
+			if ok && value == aws.ToString(tag.Value) {
+				foundTagsCounter++
 			}
-			fitTagSize++
 		}
-		if fitTagSize < len(tagFilter) {
-			return false, nil
+		if foundTagsCounter == len(tagFilter) {
+			return true, nil
 		}
 	}
-	return true, nil
+	return false, nil
 }
 
 func getAttachedPolicies(c client.IamApiClient, role string,
@@ -2148,7 +2147,7 @@ func getAttachedPolicies(c client.IamApiClient, role string,
 		return policyArr, excludedPolicyArr, err
 	}
 	for _, policy := range policiesOutput.AttachedPolicies {
-		hasTags, err := isPolicyHasTags(c, policy.PolicyArn, tagFilter)
+		hasTags, err := doesPolicyHaveTags(c, policy.PolicyArn, tagFilter)
 		if err != nil {
 			return policyArr, excludedPolicyArr, err
 		}
