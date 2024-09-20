@@ -130,6 +130,7 @@ const (
 	InstallerCoreKey        = "sts_installer_core_permission_policy"
 	InstallerVPCKey         = "sts_installer_vpc_permission_policy"
 	InstallerPrivateLinkKey = "sts_installer_privatelink_permission_policy"
+	WorkerEC2RegistryKey    = "sts_hcp_ec2_registry_permission_policy"
 )
 
 var AccountRoles = map[string]AccountRole{
