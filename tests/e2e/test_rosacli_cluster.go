@@ -626,6 +626,20 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			Expect(textData).
 				To(ContainSubstring(
 					"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
+
+			By("Upgrade cluster with node_drain_grace_period")
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--control-plane",
+				"--mode=auto",
+				"--schedule", "20 20 * * *",
+				"--node-drain-grace-period", "60",
+				"-y")
+			Expect(err).To(HaveOccurred())
+			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).
+				To(ContainSubstring(
+					"ERR: node-drain-grace-period flag is not supported to hosted clusters"))
 		})
 
 	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2,
