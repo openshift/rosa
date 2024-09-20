@@ -104,4 +104,67 @@ var _ = Describe("Get CLI version",
 
 			},
 		)
+
+		It("list versions can work correctly via ROSA cli - [id:38810]",
+			labels.High,
+			func() {
+
+				By("Init the client")
+				rosaClient = rosacli.NewClient()
+
+				By("Display the version help page")
+				buf, err := rosaClient.Runner.Cmd("list", "version", "-h").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout := rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the help page")
+				Expect(stdout).To(ContainSubstring("rosa list versions [flags]"))
+				Expect(stdout).To(ContainSubstring("versions, version"))
+				Expect(stdout).To(ContainSubstring("--channel-group string"))
+
+				By("Display the version on the stable channel")
+				buf, err = rosaClient.Runner.Cmd("list", "version").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the stable versions")
+				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
+				Expect(stdout).To(ContainSubstring("4.16.10"))
+				Expect(stdout).To(ContainSubstring("4.7.36"))
+
+				By("Display the version on the candidate channel")
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--channel-group", "candidate").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the candidate versions")
+				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
+				Expect(stdout).To(ContainSubstring("4.17.0-rc.3"))
+				Expect(stdout).To(ContainSubstring("4.8.0-fc.0"))
+
+				By("Display the version on the stable channel with the debug flag")
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--debug").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the stable versions with the debug flag")
+				Expect(stdout).To(ContainSubstring("level=debug"))
+				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
+				Expect(stdout).To(ContainSubstring("4.16.10"))
+				Expect(stdout).To(ContainSubstring("4.7.36"))
+
+				By("Display the version on the stable channel with an invalid flag")
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--invalidflag").Run()
+				Expect(err).To(HaveOccurred())
+				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
+
+				By("Check the output of the stable versions with an invalid flag")
+				Expect(stdout).To(ContainSubstring("unknown flag"))
+				Expect(stdout).To(ContainSubstring("rosa list versions [flags]"))
+				Expect(stdout).To(ContainSubstring("versions, version"))
+				Expect(stdout).To(ContainSubstring("--channel-group string"))
+
+			},
+		)
+
 	})
