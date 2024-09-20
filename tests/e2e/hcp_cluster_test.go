@@ -116,8 +116,24 @@ var _ = Describe("HCP cluster testing",
 				Expect(output.String()).To(ContainSubstring("--enable-customer-managed-key"))
 
 				By("Get cluster description")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				if clusterConfig.EtcdEncryption {
+					Expect(clusterDetail.EnableEtcdEncryption).To(Equal("Enabled"))
+					Expect(clusterDetail.EtcdKmsKeyARN).To(Equal(clusterConfig.Encryption.EtcdEncryptionKmsArn))
+				} else {
+					Expect(clusterDetail.EnableEtcdEncryption).To(Equal("Disabled"))
+				}
+
+				By("Get cluster description in JSON format")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
+
+				enableEtcdEncryption := jsonData.DigBool("etcd_encryption")
+				Expect(clusterConfig.EtcdEncryption).To(Equal(enableEtcdEncryption))
 
 				ectdKMS := jsonData.DigString("aws", "etcd_encryption", "kms_key_arn")
 				npKMS := jsonData.DigString("aws", "kms_key_arn")
