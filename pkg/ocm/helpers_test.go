@@ -509,6 +509,42 @@ var _ = Describe("ClusterNameValidator()", func() {
 		Entry("should not error when name valid", strings.Repeat("h", 25), false))
 })
 
+var _ = Describe("ValidateRegistryAdditionalCa", func() {
+	DescribeTable("ValidateRegistryAdditionalCa() test cases", func(input map[string]string, shouldErr bool) {
+		err := ValidateRegistryAdditionalCa(input)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when the value is not a PEM certificate", map[string]string{
+			"registry.io": "abc",
+		}, true),
+		Entry("should not error when the value is a PEM certificate", map[string]string{
+			"registry.io": "-----BEGIN CERTIFICATE-----\n/abc\n-----END CERTIFICATE-----",
+		}, false),
+	)
+})
+
+var _ = Describe("ValidateAllowedRegistriesForImport", func() {
+	DescribeTable("ValidateAllowedRegistriesForImport() test case", func(input interface{}, shouldErr bool) {
+		err := ValidateAllowedRegistriesForImport(input)
+		if shouldErr {
+			Expect(err).To(HaveOccurred())
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("should error when boolean type was passed", true, true),
+		Entry("should error when regex doesn't match", "registry.iolala", true),
+		Entry("should not error when input with port is valid", "registry.io:80:false", false),
+		Entry("should not error when input is valid", "registry.io:true", false),
+		Entry("should not error when long input is valid", "registry.io:true,registry2.io:false", false),
+		Entry("should not error when long input with port is valid", "registry.io:80:true,registry2.io:90:false", false))
+
+})
+
 var _ = Describe("IsValidClusterDomainPrefix()", func() {
 	DescribeTable("IsValidClusterDomainPrefix() test cases", func(domainPrefix string, expected bool) {
 		valid := IsValidClusterDomainPrefix(domainPrefix)

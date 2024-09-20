@@ -48,6 +48,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
+	"github.com/openshift/rosa/pkg/clusterregistryconfig"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
@@ -221,8 +222,17 @@ var args struct {
 
 	// Control Plane machine pool attributes
 	additionalControlPlaneSecurityGroupIds []string
+
+	// Cluster Registry
+	allowedRegistries          []string
+	blockedRegistries          []string
+	insecureRegistries         []string
+	allowedRegistriesForImport string
+	platformAllowlist          string
+	additionalTrustedCa        string
 }
 
+var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
 var userSpecifiedAutoscalerValues []*pflag.Flag
 
@@ -569,7 +579,7 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Enable autoscaling of compute nodes.",
 	)
-
+	clusterRegistryConfigArgs = clusterregistryconfig.AddClusterRegistryConfigFlags(cmd)
 	autoscalerArgs = clusterautoscaler.AddClusterAutoscalerFlags(cmd, clusterAutoscalerFlagsPrefix)
 	// iterates through all autoscaling flags and stores them in slice to track user input
 	flags.VisitAll(func(f *pflag.Flag) {
@@ -3186,6 +3196,31 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.AutoscalerConfig = autoscalerConfig
 	}
 
+	clusterRegistryConfigArgs, err = clusterregistryconfig.GetClusterRegistryConfigOptions(
+		cmd.Flags(), clusterRegistryConfigArgs, isHostedCP, nil)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if clusterRegistryConfigArgs != nil {
+		allowedRegistries, blockedRegistries, insecureRegistries,
+			additionalTrustedCa, allowedRegistriesForImport := clusterregistryconfig.GetClusterRegistryConfigArgs(
+			clusterRegistryConfigArgs)
+		clusterConfig.AllowedRegistries = allowedRegistries
+		clusterConfig.BlockedRegistries = blockedRegistries
+		clusterConfig.InsecureRegistries = insecureRegistries
+		if additionalTrustedCa != "" {
+			ca, err := clusterregistryconfig.BuildAdditionalTrustedCAFromInputFile(additionalTrustedCa)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+			clusterConfig.AdditionalTrustedCa = ca
+			clusterConfig.AdditionalTrustedCaFile = additionalTrustedCa
+		}
+		clusterConfig.AllowedRegistriesForImport = allowedRegistriesForImport
+	}
+
 	props := args.properties
 	if args.fakeCluster {
 		props = append(props, properties.FakeCluster)
@@ -3931,6 +3966,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	command += clusterautoscaler.BuildAutoscalerOptions(spec.AutoscalerConfig, clusterAutoscalerFlagsPrefix)
+	command += clusterregistryconfig.BuildRegistryConfigOptions(spec)
 
 	if len(spec.AdditionalComputeSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",

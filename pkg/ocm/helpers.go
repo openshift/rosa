@@ -151,6 +151,45 @@ func ValidateHTTPProxy(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
 
+func ValidateRegistryAdditionalCa(input map[string]string) error {
+	var caRE = regexp.MustCompile(
+		`(-----BEGIN CERTIFICATE-----\n)([^-----]*)(-----END CERTIFICATE-----)`)
+	for _, ca := range input {
+		if !caRE.MatchString(ca) {
+			return fmt.Errorf("invalid PEM-encoded certificate.' ")
+		}
+	}
+	return nil
+}
+
+func ValidateAllowedRegistriesForImport(input interface{}) error {
+	var idRE = regexp.MustCompile(`^([a-z0-9-]+\.[a-z]{2,})(:\d{1,5})?:(true|false)$`)
+	var registries []string
+	inputType := reflect.TypeOf(input).Kind()
+	switch inputType {
+	case reflect.String:
+		if input.(string) == "" {
+			return nil
+		}
+		registries = strings.Split(input.(string), ",")
+		for _, registry := range registries {
+			if !idRE.MatchString(registry) {
+				return fmt.Errorf("invalid identifier '%s' for 'allowed registries for import.' "+
+					"Should be in a <registry>:<boolean> format. "+
+					"The boolean indicates whether the registry is secure or not.", registry)
+			}
+		}
+	case reflect.Slice:
+		if reflect.TypeOf(input).Elem().Kind() != reflect.String {
+			return fmt.Errorf("unable to verify allowed element, incompatible type, expected slice of string got: '%s'",
+				inputType.String())
+		}
+	default:
+		return fmt.Errorf("can only validate string types, got %v", inputType.String())
+	}
+	return nil
+}
+
 func ValidateAdditionalTrustBundle(val interface{}) error {
 	if additionalTrustBundleFile, ok := val.(string); ok {
 		if additionalTrustBundleFile == "" {
