@@ -35,6 +35,10 @@ done <<< "$commit_output"
 # Create a comma-separated list of Jira tickets
 jira_list=$(IFS=, ; echo "${jira_tickets[*]}")
 
+# Create a space-separated list of capitalized Jira tickets
+errata_list=$(IFS=' ' ; echo "${jira_tickets[@]^^}")
+echo -e "List of JIRA's to be used in Errata \n$errata_list"
+
 # Create the JQL query for the list of Jira tickets
 jql="project = \"Openshift Cluster Manager\" AND issue in ($jira_list) AND labels not in (no-qe) AND (fixVersion is EMPTY OR fixVersion = $current_release)"
 
