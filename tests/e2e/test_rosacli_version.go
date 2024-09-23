@@ -7,7 +7,6 @@ import (
 
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/tests/ci/labels"
-	"github.com/openshift/rosa/tests/utils/common"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
@@ -23,9 +22,9 @@ var _ = Describe("Get CLI version",
 		BeforeEach(func() {
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
-			configFile, err := common.CreateTempOCMConfig()
-			Expect(err).ToNot(HaveOccurred())
-			rosaClient.Runner.AddEnvVar("OCM_CONFIG", configFile)
+			//configFile, err := common.CreateTempOCMConfig()
+			//Expect(err).ToNot(HaveOccurred())
+			//rosaClient.Runner.AddEnvVar("OCM_CONFIG", configFile)
 		})
 
 		It("can get the version of rosa CLI while logged out - [id:73743]",
@@ -112,8 +111,8 @@ var _ = Describe("Get CLI version",
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
 
-				By("Init the client")
-				rosaClient = rosacli.NewClient()
+				//By("Init the client")
+				//rosaClient = rosacli.NewClient()
 				versionService := rosaClient.Version
 
 				By("Display the version help page")
