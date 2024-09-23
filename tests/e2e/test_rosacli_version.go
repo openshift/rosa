@@ -106,8 +106,11 @@ var _ = Describe("Get CLI version",
 		)
 
 		It("list versions can work correctly via ROSA cli - [id:38810]",
-			labels.High,
+			labels.High, labels.Runtime.OCMResources,
 			func() {
+
+				const STABLE_CHANNEL = "stable"
+				const CANDIDATE_CHANNEL = "candidate"
 
 				By("Init the client")
 				rosaClient = rosacli.NewClient()
@@ -131,10 +134,10 @@ var _ = Describe("Get CLI version",
 
 				By("Check the output of the stable versions")
 				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
-				verList, err := versionService.ListAndReflectJsonVersions("stable", false)
+				verList, err := versionService.ListAndReflectJsonVersions(STABLE_CHANNEL, false)
 				Expect(err).ToNot(HaveOccurred())
 				for _, v := range verList {
-					Expect(v.ChannelGroup).To(Equal("stable"))
+					Expect(v.ChannelGroup).To(Equal(STABLE_CHANNEL))
 					baseVersionSemVer, err := semver.NewVersion(v.RAWID)
 					Expect(err).ToNot(HaveOccurred())
 					if baseVersionSemVer.Major() == 4 {
@@ -144,16 +147,16 @@ var _ = Describe("Get CLI version",
 
 				By("Display the version on the candidate channel")
 				rosaClient.Runner.UnsetArgs()
-				buf, err = rosaClient.Runner.Cmd("list", "version", "--channel-group", "candidate").Run()
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--channel-group", CANDIDATE_CHANNEL).Run()
 				Expect(err).ToNot(HaveOccurred())
 				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
 
 				By("Check the output of the candidate versions")
 				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
-				verList, err = versionService.ListAndReflectJsonVersions("candidate", false)
+				verList, err = versionService.ListAndReflectJsonVersions(CANDIDATE_CHANNEL, false)
 				Expect(err).ToNot(HaveOccurred())
 				for _, v := range verList {
-					Expect(v.ChannelGroup).To(Equal("candidate"))
+					Expect(v.ChannelGroup).To(Equal(CANDIDATE_CHANNEL))
 					baseVersionSemVer, err := semver.NewVersion(v.RAWID)
 					Expect(err).ToNot(HaveOccurred())
 					if baseVersionSemVer.Major() == 4 {
