@@ -166,6 +166,16 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 
 				}
 
+				By("Describe the autoscaler of the cluster and the origin value")
+				rosaClient.Runner.YamlFormat()
+				yamlOutput, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				rosaClient.Runner.UnsetFormat()
+
+				oldAutoscaler := rosacli.Autoscaler{}
+				err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().YamlToObj(&oldAutoscaler)
+				Expect(err).ToNot(HaveOccurred())
+
 				By("Edit the autoscaler of the cluster")
 				resp, err := rosaClient.AutoScaler.EditAutoScaler(clusterID, "--ignore-daemonsets-utilization",
 					"--min-cores", "0",
@@ -181,7 +191,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 
 				By("Describe autoscaler to check the edited value is correct")
 				rosaClient.Runner.YamlFormat()
-				yamlOutput, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+				yamlOutput, err = rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				rosaClient.Runner.UnsetFormat()
 
@@ -197,21 +207,21 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				Expect(autoscaler.ScaleDown.DelayAfterAdd).To(Equal("0s"))
 
 				By("Describe autoscaler to check the non-edited value is not changed")
-				Expect(autoscaler.BalanceSimilarNodeGroups).To(Equal(true))
-				Expect(autoscaler.SkipNodesWithLocalStorage).To(Equal(true))
-				Expect(autoscaler.LogVerbosity).To(Equal(4))
-				Expect(autoscaler.BalancingIgnoredLabels).To(ContainElement("aaa"))
-				Expect(autoscaler.MaxNodeProvisionTime).To(Equal("10m"))
-				Expect(autoscaler.MaxPodGracePeriod).To(Equal(0))
-				Expect(autoscaler.PodPriorityThresold).To(Equal(1))
-				Expect(autoscaler.ResourcesLimits.Memory.Min).To(Equal(0))
-				Expect(autoscaler.ResourcesLimits.Memory.Max).To(Equal(4096))
-				Expect(autoscaler.ResourcesLimits.MaxNodesTotal).To(Equal(100))
-				Expect(autoscaler.ScaleDown.DelayAfterDelete).To(Equal("10s"))
-				Expect(autoscaler.ScaleDown.DelayAfterFailure).To(Equal("10s"))
-				Expect(autoscaler.ScaleDown.Enabled).To(Equal(true))
-				Expect(autoscaler.ScaleDown.UnneededTime).To(Equal("10s"))
-				Expect(autoscaler.ScaleDown.UtilizationThreshold).To(Equal("1.000000"))
+				Expect(autoscaler.BalanceSimilarNodeGroups).To(Equal(oldAutoscaler.BalanceSimilarNodeGroups))
+				Expect(autoscaler.SkipNodesWithLocalStorage).To(Equal(oldAutoscaler.SkipNodesWithLocalStorage))
+				Expect(autoscaler.LogVerbosity).To(Equal(oldAutoscaler.LogVerbosity))
+				Expect(autoscaler.BalancingIgnoredLabels).To(Equal(oldAutoscaler.BalancingIgnoredLabels))
+				Expect(autoscaler.MaxNodeProvisionTime).To(Equal(oldAutoscaler.MaxNodeProvisionTime))
+				Expect(autoscaler.MaxPodGracePeriod).To(Equal(oldAutoscaler.MaxPodGracePeriod))
+				Expect(autoscaler.PodPriorityThresold).To(Equal(oldAutoscaler.PodPriorityThresold))
+				Expect(autoscaler.ResourcesLimits.Memory.Min).To(Equal(oldAutoscaler.ResourcesLimits.Memory.Min))
+				Expect(autoscaler.ResourcesLimits.Memory.Max).To(Equal(oldAutoscaler.ResourcesLimits.Memory.Max))
+				Expect(autoscaler.ResourcesLimits.MaxNodesTotal).To(Equal(oldAutoscaler.ResourcesLimits.MaxNodesTotal))
+				Expect(autoscaler.ScaleDown.DelayAfterDelete).To(Equal(oldAutoscaler.ScaleDown.DelayAfterDelete))
+				Expect(autoscaler.ScaleDown.DelayAfterFailure).To(Equal(oldAutoscaler.ScaleDown.DelayAfterFailure))
+				Expect(autoscaler.ScaleDown.Enabled).To(Equal(oldAutoscaler.ScaleDown.Enabled))
+				Expect(autoscaler.ScaleDown.UnneededTime).To(Equal(oldAutoscaler.ScaleDown.UnneededTime))
+				Expect(autoscaler.ScaleDown.UtilizationThreshold).To(Equal(oldAutoscaler.ScaleDown.UtilizationThreshold))
 
 				By("Delete the autoscaler of the cluster")
 				resp, err = rosaClient.AutoScaler.DeleteAutoScaler(clusterID)
