@@ -17,9 +17,12 @@ limitations under the License.
 package clusterregistryconfig
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/pkg/ocm"
 )
@@ -42,7 +45,9 @@ var _ = Describe("Cluster Registry Config tests", func() {
 		It("KO: fail if the content type is incorrect", func() {
 			caPath := "specRegistryAdditionalTrustedCaInvalid.json"
 			_, err := BuildAdditionalTrustedCAFromInputFile(caPath)
-			Expect(err).To(MatchError("the value for key 'userRegistry.io' is 'true'. Expect value to be string, got bool"))
+			Expect(
+				err,
+			).To(MatchError("the value for key 'userRegistry.io' is 'true'. Expect value to be string, got bool"))
 
 		})
 	})
@@ -73,16 +78,31 @@ var _ = Describe("Cluster Registry Config tests", func() {
 	})
 
 	Context("GetClusterRegistryConfigOptions", func() {
-		cmd := &cobra.Command{}
-		flags := cmd.Flags()
 		args := &ClusterRegistryConfigArgs{}
+		cmd := &cobra.Command{}
 		cmd.Flags().StringSliceVar(
 			&args.allowedRegistries,
 			allowedRegistriesFlag,
 			nil,
 			"A comma-separated list of registries for which image pull and push actions are allowed.",
 		)
-		It("KO: throw error for classic clusters", func() {
+		flags := cmd.Flags()
+		BeforeEach(func() {
+			args.allowedRegistries = []string{}
+			flags.VisitAll(func(f *pflag.Flag) {
+				if f.Changed {
+					f.Changed = false
+					cmd.SetArgs([]string{fmt.Sprintf("--%s=%s", allowedRegistriesFlag, f.DefValue)})
+				}
+			})
+		})
+		It("OK: classic clusters when no changes to flags", func() {
+			args, err := GetClusterRegistryConfigOptions(flags, args, false, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(args).To(BeNil())
+		})
+		It("KO: throw error for classic clusters when flag set via cli", func() {
+			flags.Set(allowedRegistriesFlag, "test.com")
 			_, err := GetClusterRegistryConfigOptions(flags, args, false, nil)
 			Expect(err).To(MatchError("Setting the registry config is only supported for hosted clusters"))
 		})
