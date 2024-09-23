@@ -65,7 +65,7 @@ func run(_ *cobra.Command, argv []string) {
 	ingressID := argv[0]
 	if !ingressKeyRE.MatchString(ingressID) {
 		r.Reporter.Errorf(
-			"Ingress  identifier '%s' isn't valid: it must contain only four letters or digits",
+			"Ingress identifier '%s' isn't valid: it must contain between three and five lowercase letters or digits",
 			ingressID,
 		)
 		os.Exit(1)

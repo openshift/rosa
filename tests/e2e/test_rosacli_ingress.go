@@ -175,7 +175,9 @@ var _ = Describe("Edit default ingress",
 				By("Get cluster ingress with invalid/non-existing cluster id")
 				out, err := rosaClient.Ingress.DescribeIngress(clusterID, "xxx")
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("ERR: Failed to get ingress 'xxx' for cluster '%s'", clusterID))
+				Expect(
+					out.String(),
+				).Should(ContainSubstring("ERR: Failed to get ingress 'xxx' for cluster '%s'", clusterID))
 			})
 
 		It("change load balancer type - [id:64767]",
@@ -278,7 +280,9 @@ var _ = Describe("Edit default ingress",
 				defaultIngressRouteSelectorList := strings.Split(ingressConfig.DefaultIngressRouteSelector, ",")
 				defaultIngressRouteSelector_1 := defaultIngressRouteSelectorList[1] + ", " + defaultIngressRouteSelectorList[0]
 				defaultIngressRouteSelector_2 := defaultIngressRouteSelectorList[0] + ", " + defaultIngressRouteSelectorList[1]
-				Expect(ingress.RouteSelectors).To(Or(Equal(defaultIngressRouteSelector_1), Equal(defaultIngressRouteSelector_2)))
+				Expect(
+					ingress.RouteSelectors,
+				).To(Or(Equal(defaultIngressRouteSelector_1), Equal(defaultIngressRouteSelector_2)))
 				Expect(ingress.NamespaceOwnershipPolicy).To(Equal(ingressConfig.DefaultIngressNamespaceOwnershipPolicy))
 				Expect(ingress.WildcardPolicy).To(Equal(ingressConfig.DefaultIngressWildcardPolicy))
 			})
@@ -379,7 +383,9 @@ var _ = Describe("Edit default ingress",
 				)
 				if profile.ClusterConfig.PrivateLink && !isHosted {
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Can't update listening mode on an AWS Private Link cluster"))
+					Expect(
+						output.String(),
+					).Should(ContainSubstring("Can't update listening mode on an AWS Private Link cluster"))
 
 					By("Edit label-match only")
 					output, err = rosaClient.Ingress.EditIngress(clusterID,
@@ -496,7 +502,7 @@ var _ = Describe("Edit ingress",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Ingress  identifier 'notexisting' isn't valid"))
+					ContainSubstring("Ingress identifier 'notexisting' isn't valid"))
 
 				By("Edit ingress with invalid LB-type")
 				output, err = ingressService.EditIngress(clusterID, "apps",
@@ -569,7 +575,10 @@ var _ = Describe("Delete ingress validations",
 				output, err = ingressService.DeleteIngress(clusterID, invalidIngress)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("identifier '%s' isn't valid: it must contain only four letters or digits", invalidIngress))
+					ContainSubstring(
+						"identifier '%s' isn't valid: it must contain between three and five lowercase letters or digits",
+						invalidIngress,
+					))
 
 			})
 	})

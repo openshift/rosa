@@ -159,7 +159,7 @@ func run(cmd *cobra.Command, argv []string) {
 	ingressKey := argv[0]
 	if !ingressKeyRE.MatchString(ingressKey) {
 		r.Reporter.Errorf(
-			"Ingress  identifier '%s' isn't valid: it must contain only letters or digits",
+			"Ingress identifier '%s' isn't valid: it must contain between three and five lowercase letters or digits",
 			ingressKey,
 		)
 		os.Exit(1)
