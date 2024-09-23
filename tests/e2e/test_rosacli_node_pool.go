@@ -20,9 +20,9 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit nodepool",
@@ -37,7 +37,7 @@ var _ = Describe("Edit nodepool",
 			machinePoolService        rosacli.MachinePoolService
 			machinePoolUpgradeService rosacli.MachinePoolUpgradeService
 			versionService            rosacli.VersionService
-			profile                   *profilehandler.Profile
+			profile                   *handler.Profile
 		)
 
 		const (
@@ -57,7 +57,7 @@ var _ = Describe("Edit nodepool",
 			machinePoolService = rosaClient.MachinePool
 			machinePoolUpgradeService = rosaClient.MachinePoolUpgrade
 			versionService = rosaClient.Version
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 
 			By("Skip testing if the cluster is not a HCP cluster")
 			hosted, err := clusterService.IsHostedCPCluster(clusterID)
