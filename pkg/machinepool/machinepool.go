@@ -228,7 +228,8 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		}
 	}
 
-	minReplicas, maxReplicas, replicas, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool)
+	minReplicas, maxReplicas, replicas, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool,
+		cluster.Hypershift().Enabled())
 	if err != nil {
 		return err
 	}
@@ -588,7 +589,8 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
-	minReplicas, maxReplicas, replicas, autoscaling, err := manageReplicas(cmd, args, false)
+	minReplicas, maxReplicas, replicas, autoscaling, err := manageReplicas(cmd, args, false,
+		cluster.Hypershift().Enabled())
 	if err != nil {
 		return err
 	}
@@ -1323,7 +1325,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				Default:  minReplicas,
 				Required: replicasRequired,
 				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZ, false),
+					minReplicaValidator(multiAZ, false, false),
 				},
 			})
 			if err != nil {
@@ -1879,7 +1881,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 				Default:  existingAutoscaling.MinReplica(),
 				Required: replicasRequired,
 				Validators: []interactive.Validator{
-					minReplicaValidator(false, true),
+					minReplicaValidator(false, true, true),
 				},
 			})
 			if err != nil {
@@ -1918,7 +1920,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 			Default:  replicas,
 			Required: true,
 			Validators: []interactive.Validator{
-				minReplicaValidator(false, false),
+				minReplicaValidator(false, false, true),
 			},
 		})
 		if err != nil {
@@ -1956,7 +1958,7 @@ func editAutoscaling(nodePool *cmv1.NodePool, minReplicas int, maxReplicas int) 
 	return nil
 }
 func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions,
-	multiAZMachinePool bool) (minReplicas, maxReplicas, replicas int, autoscaling bool, err error) {
+	multiAZMachinePool bool, isHypershift bool) (minReplicas, maxReplicas, replicas int, autoscaling bool, err error) {
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")
 	isAutoscalingSet := cmd.Flags().Changed("enable-autoscaling")
@@ -1996,7 +1998,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 				Default:  minReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZMachinePool, autoscaling),
+					minReplicaValidator(multiAZMachinePool, autoscaling, isHypershift),
 				},
 			})
 			if err != nil {
@@ -2004,7 +2006,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 					fmt.Errorf("Expected a valid number of min replicas: %s", err)
 			}
 		}
-		err = minReplicaValidator(multiAZMachinePool, autoscaling)(minReplicas)
+		err = minReplicaValidator(multiAZMachinePool, autoscaling, isHypershift)(minReplicas)
 		if err != nil {
 			return minReplicas, maxReplicas, replicas, autoscaling, err
 		}
@@ -2044,14 +2046,14 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 				Default:  replicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZMachinePool, autoscaling),
+					minReplicaValidator(multiAZMachinePool, autoscaling, isHypershift),
 				},
 			})
 			if err != nil {
 				return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Expected a valid number of replicas: %s", err)
 			}
 		}
-		err = minReplicaValidator(multiAZMachinePool, autoscaling)(replicas)
+		err = minReplicaValidator(multiAZMachinePool, autoscaling, isHypershift)(replicas)
 		if err != nil {
 			return minReplicas, maxReplicas, replicas, autoscaling, err
 		}

@@ -3,7 +3,7 @@ package machinepool
 import (
 	"fmt"
 
-	gomock "go.uber.org/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -417,7 +417,7 @@ var _ = Describe("getSecurityGroupsOption", func() {
 var _ = Describe("Machine pool min/max replicas validation", func() {
 	DescribeTable("Machine pool min replicas validation",
 		func(minReplicas int, autoscaling bool, multiAZ bool, hasError bool) {
-			err := minReplicaValidator(multiAZ, autoscaling)(minReplicas)
+			err := minReplicaValidator(multiAZ, autoscaling, false)(minReplicas)
 			if hasError {
 				Expect(err).To(HaveOccurred())
 			} else {
@@ -440,7 +440,7 @@ var _ = Describe("Machine pool min/max replicas validation", func() {
 			0,
 			true,
 			false,
-			true,
+			false,
 		),
 		Entry("One replicas - autoscaling",
 			1,
