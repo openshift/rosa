@@ -27,14 +27,21 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	var (
 		rosaClient         *rosacli.Client
 		machinePoolService rosacli.MachinePoolService
+		clusterConfig      *config.ClusterConfig
 		profile            *ph.Profile
 		isMultiArch        bool
 	)
 
 	BeforeEach(func() {
+		var err error
+
 		Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
 		rosaClient = rosacli.NewClient()
 		machinePoolService = rosaClient.MachinePool
+
+		By("Retrieve Cluster config")
+		clusterConfig, err = config.ParseClusterProfile()
+		Expect(err).ToNot(HaveOccurred())
 
 		By("Skip testing if the cluster is not a HCP cluster")
 		hostedCluster, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
@@ -576,5 +583,45 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 						ContainSubstring("The last node pool can not be deleted from a cluster"))
 			}
 		})
+
+		It("creation in local zone subnet - [id:71319]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Prepare a subnet out of the cluster creation subnet")
+				subnets := helper.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
+
+				By("Build vpc client to find a local zone for subnet preparation")
+				var vpcClient *vpc_client.VPC
+				var err error
+				vpcClient, err = vpc_client.GenerateVPCBySubnet(subnets[0], clusterConfig.Region)
+				Expect(err).ToNot(HaveOccurred())
+
+				zones, err := vpcClient.AWSClient.ListAvaliableZonesForRegion(clusterConfig.Region, "local-zone")
+				Expect(err).ToNot(HaveOccurred())
+				if len(zones) == 0 {
+					SkipTestOnFeature("No local zone found in the region skip the testing")
+				}
+				localZone := zones[0]
+
+				By("Prepare the subnet for the picked zone")
+				subNetMap, err := vpcClient.PreparePairSubnetByZone(localZone)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(subNetMap).ToNot(BeNil())
+				privateSubnet := subNetMap["private"]
+
+				By("Create machinepool into the local zone subnet")
+				name := helper.GenerateRandomName("mp-71319", 2)
+				_, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					name,
+					"--replicas", "2",
+					"--subnet", privateSubnet.ID,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).
+					To(
+						ContainSubstring(
+							fmt.Sprintf("Creating a node pool a in local zone '%s' isn't supported", localZone)))
+			})
 	})
 })
