@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -12,6 +14,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/profilehandler"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("HCP cluster testing",
@@ -27,6 +30,7 @@ var _ = Describe("HCP cluster testing",
 			profile            *profilehandler.Profile
 			machinePoolService rosacli.MachinePoolService
 			ocmResourceService rosacli.OCMResourceService
+			customProfile      *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
@@ -50,6 +54,27 @@ var _ = Describe("HCP cluster testing",
 			if !hostedCluster {
 				SkipNotHosted()
 			}
+
+			By("Prepare custom profile")
+			customProfile = &profilehandler.Profile{
+				ClusterConfig: &profilehandler.ClusterConfig{
+					HCP:           true,
+					MultiAZ:       true,
+					STS:           true,
+					OIDCConfig:    "managed",
+					NetworkingSet: true,
+					BYOVPC:        true,
+					Zones:         "",
+				},
+				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+					Path:               "",
+					PermissionBoundary: "",
+				},
+				Version:      "latest",
+				ChannelGroup: "candidate",
+				Region:       constants.CommonAWSRegion,
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
 		})
 
 		AfterEach(func() {
@@ -339,5 +364,58 @@ var _ = Describe("HCP cluster testing",
 
 				Expect(clusterDesc.OperatorIAMRoles).To(HaveEach(MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+")))
 				Expect(clusterDesc.State).To(Equal(constants.Ready))
+			})
+
+		It("ROSA CLI cluster creation should show install/uninstall logs - [id:75534]",
+			labels.Critical,
+			labels.Runtime.Day1Supplemental,
+			func() {
+				clusterName := helper.GenerateRandomName("ocp-75534", 2)
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", clusterName)))
+
+				By("wait for 5 minutes to install logs show up")
+				time.Sleep(5 * time.Minute)
+
+				By("Check the install logs of the hypershift cluster")
+				output, err := clusterService.InstallLog(clusterName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Version", clusterName))
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Release image is valid", clusterName))
+
+				By("Check the install logs of the hypershift cluster with flag --watch")
+				output, err = clusterService.InstallLog(clusterName, "--watch")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Version", clusterName))
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Release image is valid", clusterName))
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' is now ready", clusterName))
+
+				By("Delete the Hypershift cluster")
+				output, err = clusterService.DeleteCluster(clusterName, "-y")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' will start uninstalling now", clusterName))
+
+				By("wait for 2 minutes to uninstall logs show up")
+				time.Sleep(2 * time.Minute)
+
+				By("Check the uninstall log of the hosted cluster")
+				output, err = clusterService.UnInstallLog(clusterName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Reconciliation completed successfully",
+					clusterName))
+
+				By("Check the uninstall log of the hosted cluster with flag --watch")
+				output, err = clusterService.UnInstallLog(clusterName, "--watch")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Reconciliation completed successfully",
+					clusterName))
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' completed uninstallation", clusterName))
 			})
 	})

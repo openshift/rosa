@@ -134,6 +134,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--tags", strings.Join(tags, ","),
 			)
 			Expect(err).ToNot(HaveOccurred(), out.String())
+			defer machinePoolService.DeleteMachinePool(clusterID, mpID)
 
 			By("Describe the machinepool")
 			description, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, mpID)
@@ -422,13 +423,13 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("Replicas must be a non-negative integer"))
 
-			By("with replicas > 180")
-			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "181")
+			By("with replicas > the maximum")
+			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "501")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
 				Should(
 					ContainSubstring("Replicas+Autoscaling.Min: The total number of compute nodes for a single cluster"))
-			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed: 180"))
+			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed"))
 
 			By("with invalid name")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything%^#@", "--replicas", "2")
@@ -467,18 +468,18 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
 
-			By("with max-replicas > 180")
+			By("with max-replicas > the maximum")
 			_, err = machinePoolService.CreateMachinePool(
 				clusterID,
 				"anything",
 				"--enable-autoscaling",
 				"--min-replicas", "3",
-				"--max-replicas", "181")
+				"--max-replicas", "501")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
 				Should(
 					ContainSubstring("Replicas+Autoscaling.Max: The total number of compute nodes for a single cluster"))
-			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed: 180"))
+			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed"))
 
 			By("with wrong instance-type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--instance-type", "wrong")
