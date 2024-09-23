@@ -29,6 +29,9 @@ archives:
 release:
   prerelease: auto
   mode: append
+  github:
+    owner: openshift
+    name: rosa
 
 changelog:
   sort: asc
