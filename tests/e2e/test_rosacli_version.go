@@ -22,9 +22,6 @@ var _ = Describe("Get CLI version",
 		BeforeEach(func() {
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
-			//configFile, err := common.CreateTempOCMConfig()
-			//Expect(err).ToNot(HaveOccurred())
-			//rosaClient.Runner.AddEnvVar("OCM_CONFIG", configFile)
 		})
 
 		It("can get the version of rosa CLI while logged out - [id:73743]",
@@ -110,9 +107,6 @@ var _ = Describe("Get CLI version",
 
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
-
-				//By("Init the client")
-				//rosaClient = rosacli.NewClient()
 				versionService := rosaClient.Version
 
 				By("Display the version help page")
