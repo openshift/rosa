@@ -1,4 +1,4 @@
-package profilehandler
+package handler
 
 // Profile will map the profile settings from the profile yaml file
 type Profile struct {
@@ -28,7 +28,7 @@ type ClusterConfig struct {
 	Zones                         string `yaml:"zones,omitempty" json:"zones,omitempty"`
 	AdditionalSGNumber            int    `yaml:"additional_sg_number,omitempty" json:"additional_sg_number,omitempty"`
 	ExpirationTime                int    `yaml:"expiration_time,omitempty" json:"expiration_time,omitempty"`
-	NameLegnth                    int    `default:"15" yaml:"name_length,omitempty" json:"name_length,omitempty"`
+	NameLength                    int    `default:"15" yaml:"name_length,omitempty" json:"name_length,omitempty"`
 	VolumeSize                    int    `yaml:"volume_size,omitempty" json:"volume_size,omitempty"`
 	WorkerPoolReplicas            int    `yaml:"replicas,omitempty" json:"replicas,omitempty"`
 	AdditionalPrincipals          bool   `yaml:"additional_principals,omitempty" json:"additional_principals,omitempty"`
@@ -63,8 +63,8 @@ type ClusterConfig struct {
 	ManualCreationMode            bool   `yaml:"manual_creation_mode" json:"manual_creation_mode,omitempty"`
 }
 
-// UserData will record the user data prepared for resource clean up
-type UserData struct {
+// Resources will record the resources prepared
+type Resources struct {
 	AccountRolesPrefix   string `json:"account_roles_prefix,omitempty"`
 	AdditionalPrincipals string `json:"additional_principals,omitempty"`
 	AuditLogArn          string `json:"audit_log,omitempty"`
@@ -72,8 +72,10 @@ type UserData struct {
 	EtcdKMSKey           string `json:"etcd_kms_key,omitempty"`
 	HostedZoneID         string `json:"hosted_zone_id,omitempty"`
 	KMSKey               string `json:"kms_key,omitempty"`
-	OperatorRolesPrefix  string `json:"operator_roles_prefix,omitempty"`
 	OIDCConfigID         string `json:"oidc_config_id,omitempty"`
+	OIDCProviderID       string `json:"oidc_provider_id,omitempty"`
+	OperatorRolesPrefix  string `json:"operator_roles_prefix,omitempty"`
+	Region               string `json:"region,omitempty"`
 	ResourceShareArn     string `json:"resource_share,omitempty"`
 	SharedVPCRole        string `json:"shared_vpc_role,omitempty"`
 	VpcID                string `json:"vpc_id,omitempty"`

@@ -12,7 +12,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	config "github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
+	"github.com/openshift/rosa/tests/utils/log"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -44,6 +46,8 @@ type ClusterService interface {
 	ReflectClusterList(result bytes.Buffer) (clusterList ClusterList, err error)
 	WaitClusterStatus(clusterID string, status string, interval int, duration int) error
 	WaitClusterDeleted(clusterID string, interval int, duration int) error
+	WaitForClusterPassUninstalled(clusterID string, interval int, timeoutMin int) error
+	WaitForClusterPassWaiting(clusterID string, interval int, timeoutMin int) error
 }
 
 type clusterService struct {
@@ -468,4 +472,48 @@ func (c *clusterService) WaitClusterDeleted(clusterID string, interval int, dura
 			return !clusterList.IsExist(clusterID), err
 		})
 	return err
+}
+
+func (c *clusterService) WaitForClusterPassUninstalled(clusterID string, interval int, timeoutMin int) error {
+	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
+	for time.Now().Before(endTime) {
+		output, err := c.DescribeCluster(clusterID)
+		if err != nil {
+			if strings.Contains(output.String(),
+				fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterID)) ||
+				strings.Contains(output.String(),
+					fmt.Sprintf("Cluster '%s' not found", clusterID)) {
+				log.Logger.Infof("Cluster %s has been deleted.", clusterID)
+				return nil
+			}
+			log.Logger.Warnf("Issue retrieving cluster: %v.", err)
+			continue
+		}
+		desc, err := c.ReflectClusterDescription(output)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(desc.State, constants.Uninstalling) {
+			time.Sleep(time.Duration(interval))
+			continue
+		}
+		return fmt.Errorf("cluster %s is in status of %s which won't be deleted, stop waiting", clusterID, desc.State)
+	}
+	return fmt.Errorf("timeout for waiting for cluster deletion finished after %d mins", timeoutMin)
+}
+
+func (c *clusterService) WaitForClusterPassWaiting(clusterID string, interval int, timeoutMin int) error {
+	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
+	for time.Now().Before(endTime) {
+		output, err := c.DescribeClusterAndReflect(clusterID)
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(output.State, constants.Waiting) {
+			log.Logger.Infof("Cluster %s is not in waiting state anymore", clusterID)
+			return nil
+		}
+		time.Sleep(time.Duration(interval) * time.Minute)
+	}
+	return fmt.Errorf("timeout for cluster stuck waiting after %d mins", timeoutMin)
 }

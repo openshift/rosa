@@ -11,9 +11,9 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/occli"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("ROSA CLI Test", func() {
@@ -27,7 +27,7 @@ var _ = Describe("ROSA CLI Test", func() {
 	})
 	Describe("Profile test", func() {
 		It("ProfileParserTest", func() {
-			profile := profilehandler.LoadProfileYamlFileByENV()
+			profile := handler.LoadProfileYamlFileByENV()
 			Logger.Infof("Got configured profile: %v", *profile)
 			Logger.Infof("Got configured profile prefix: %v", profile.NamePrefix)
 			Logger.Infof("Got configured cluster profile: %v", *profile.ClusterConfig)
@@ -38,10 +38,13 @@ var _ = Describe("ROSA CLI Test", func() {
 		})
 		It("TestPrepareClusterByProfile", func() {
 			client := rosacli.NewClient()
-			profile := profilehandler.LoadProfileYamlFileByENV()
-			cluster, err := profilehandler.CreateClusterByProfile(profile, client, true)
+			profile := handler.LoadProfileYamlFileByENV()
+			clusterHandler, err := handler.NewTempClusterHandler(client, profile)
 			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(cluster.ID)
+			err = clusterHandler.CreateCluster(true)
+			defer clusterHandler.Destroy()
+			Expect(err).ToNot(HaveOccurred())
+			fmt.Println(clusterHandler.GetClusterDetail().ClusterID)
 		})
 		It("TestRemovingFunc", func() {
 			s := strings.Split("", ",")
@@ -51,10 +54,14 @@ var _ = Describe("ROSA CLI Test", func() {
 	})
 	Describe("ocm-common test", func() {
 		It("VPCClientTesting", func() {
-			vpcClient, err := profilehandler.PrepareVPC("us-east-1", "xueli-test", "10.0.0.0/16", "")
+			client := rosacli.NewClient()
+			region := "us-east-1"
+			resourcesHandler, err := handler.NewTempResourcesHandler(client, region, "")
 			Expect(err).ToNot(HaveOccurred())
-			defer vpcClient.DeleteVPCChain(true)
-			subnets, err := profilehandler.PrepareSubnets(vpcClient, "us-east-1", []string{}, true)
+			vpcClient, err := resourcesHandler.PrepareVPC("xueli-test", "10.0.0.0/16", false)
+			Expect(err).ToNot(HaveOccurred())
+			defer resourcesHandler.DestroyResources()
+			subnets, err := resourcesHandler.PrepareSubnets([]string{}, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(subnets)).To(Equal(2))
 			_, ip, ca, err := vpcClient.LaunchProxyInstance("us-east-1a", "xueli-test", ciConfig.Test.OutputDir)

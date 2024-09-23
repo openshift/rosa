@@ -13,9 +13,9 @@ import (
 	utilConfig "github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/occli"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
@@ -24,14 +24,16 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 		labels.Critical,
 		func() {
 			client := rosacli.NewClient()
-			profile := profilehandler.LoadProfileYamlFileByENV()
-			cluster, err := profilehandler.CreateClusterByProfile(profile, client, config.Test.GlobalENV.WaitSetupClusterReady)
+			profile := handler.LoadProfileYamlFileByENV()
+			clusterHandler, err := handler.NewClusterHandler(client, profile)
 			Expect(err).ToNot(HaveOccurred())
-			log.Logger.Infof("Cluster prepared successfully with id %s", cluster.ID)
+			err = clusterHandler.CreateCluster(config.Test.GlobalENV.WaitSetupClusterReady)
+			Expect(err).ToNot(HaveOccurred())
+			clusterID := clusterHandler.GetClusterDetail().ClusterID
+			log.Logger.Infof("Cluster prepared successfully with id %s", clusterID)
 
 			if profile.ClusterConfig.HCP && profile.ClusterConfig.NetworkType == "other" {
-				clusterID = cluster.ID
-				profilehandler.WaitForClusterReady(client, clusterID, config.Test.GlobalENV.ClusterWaitingTime)
+				clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
 
 				clusterService := client.Cluster
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -79,12 +81,12 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					Expect(err).ToNot(HaveOccurred())
 					err = utilConfig.DeployCilium(ocClient, podCIDR, hostPrefix, testDir, kubeconfigFile)
 					Expect(err).ToNot(HaveOccurred())
-					log.Logger.Infof("Deploy cilium for HCP cluster: %s successfully ", cluster.ID)
+					log.Logger.Infof("Deploy cilium for HCP cluster: %s successfully ", clusterID)
 				} else {
 					By("Create IDP to get kubeconfig")
 					idpType := "htpasswd"
 					idpName := "myhtpasswdKubeconf"
-					name, password := profilehandler.PrepareAdminUser()
+					name, password := clusterHandler.GetResourcesHandler().PrepareAdminUser()
 					usersValue := name + ":" + password
 					_, err := client.IDP.CreateIDP(clusterID, idpName,
 						"--type", idpType,
@@ -103,9 +105,10 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 	It("to wait for cluster ready",
 		labels.Runtime.Day1Readiness,
 		func() {
-			clusterDetail, err := profilehandler.ParserClusterDetail()
-			Expect(err).ToNot(HaveOccurred())
+			profile := handler.LoadProfileYamlFileByENV()
 			client := rosacli.NewClient()
-			profilehandler.WaitForClusterReady(client, clusterDetail.ClusterID, config.Test.GlobalENV.ClusterWaitingTime)
+			clusterHandler, err := handler.NewClusterHandlerFromFilesystem(client, profile)
+			Expect(err).ToNot(HaveOccurred())
+			clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
 		})
 })
