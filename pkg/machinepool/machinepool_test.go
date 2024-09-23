@@ -6,10 +6,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	reflect "reflect"
+	"reflect"
 	"time"
 
-	gomock "go.uber.org/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
@@ -515,7 +515,7 @@ var _ = Describe("Utility Functions", func() {
 		var validator interactive.Validator
 
 		BeforeEach(func() {
-			validator = minReplicaValidator(true, false) // or false for non-multiAZ
+			validator = minReplicaValidator(true, false, false) // or false for non-multiAZ
 		})
 
 		When("input is non-integer", func() {
@@ -1532,7 +1532,7 @@ var _ = Describe("ManageReplicas", func() {
 			args.AutoscalingEnabled = true
 			cmd.Flags().Int32("replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "1")
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, false)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
 			Expect(autoscaling).To(BeTrue())
@@ -1545,7 +1545,7 @@ var _ = Describe("ManageReplicas", func() {
 			cmd.Flags().Set("max-replicas", "6")
 			args.MinReplicas = 3
 			args.MaxReplicas = 6
-			_, _, _, _, err := manageReplicas(cmd, args, multiAZMachinePool)
+			_, _, _, _, err := manageReplicas(cmd, args, multiAZMachinePool, false)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -1559,7 +1559,7 @@ var _ = Describe("ManageReplicas", func() {
 			cmd.Flags().Set("max-replicas", "3")
 			args.MinReplicas = 1
 			args.MaxReplicas = 3
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, false)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
 			Expect(autoscaling).To(BeFalse())
@@ -1568,7 +1568,7 @@ var _ = Describe("ManageReplicas", func() {
 			args.AutoscalingEnabled = false
 			cmd.Flags().Int32("replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "1")
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(autoscaling).To(BeFalse())
 		})
@@ -1594,7 +1594,7 @@ var _ = Describe("Utility Functions", func() {
 		var validator interactive.Validator
 
 		BeforeEach(func() {
-			validator = minReplicaValidator(true, false) // or false for non-multiAZ
+			validator = minReplicaValidator(true, false, false) // or false for non-multiAZ
 		})
 
 		It("should return error for non-integer input", func() {

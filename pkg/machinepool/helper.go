@@ -205,14 +205,18 @@ func maxReplicaValidator(minReplicas int, multiAZMachinePool bool) interactive.V
 	}
 }
 
-func minReplicaValidator(multiAZMachinePool bool, autoscaling bool) interactive.Validator {
+func minReplicaValidator(multiAZMachinePool bool, autoscaling bool, isHypershift bool) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
 			return err
 		}
-		if autoscaling && minReplicas < 1 {
+		if autoscaling && minReplicas < 1 && isHypershift {
 			return fmt.Errorf("min-replicas must be greater than zero")
+		}
+		if autoscaling && minReplicas < 0 && !isHypershift {
+			return fmt.Errorf("min-replicas must be a number that is 0 or greater when autoscaling is" +
+				" enabled")
 		}
 		if !autoscaling && minReplicas < 0 {
 			return fmt.Errorf("Replicas must be a non-negative integer")
