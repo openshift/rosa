@@ -96,8 +96,11 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 	args *ClusterRegistryConfigArgs, isHostedCP bool, cluster *cmv1.Cluster) (
 	*ClusterRegistryConfigArgs, error) {
 
-	if args != nil && !isHostedCP {
-		return nil, fmt.Errorf("Setting the registry config is only supported for hosted clusters")
+	if !isHostedCP {
+		if IsClusterRegistryConfigSetViaCLI(cmd) {
+			return nil, fmt.Errorf("Setting the registry config is only supported for hosted clusters")
+		}
+		return nil, nil
 	}
 
 	result := &ClusterRegistryConfigArgs{}
