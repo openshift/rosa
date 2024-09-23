@@ -139,7 +139,9 @@ Wildcard Policy:            WildcardsAllowed
 			Expect(err).ToNot(BeNil())
 			Expect(
 				err.Error(),
-			).To(Equal("ingress identifier 'A1b2' isn't valid: it must contain only letters or digits"))
+			).To(Equal(
+				"Ingress identifier 'A1b2' isn't valid: it must contain between three and five lowercase letters or digits",
+			))
 		})
 
 		It("Cluster not ready", func() {

@@ -33,7 +33,7 @@ func (i *DescribeIngressOptions) Bind(args DescribeIngressUserOptions) error {
 	ingressKey := args.ingress
 	if !ingressKeyRE.MatchString(ingressKey) {
 		return fmt.Errorf(
-			"ingress identifier '%s' isn't valid: it must contain only letters or digits",
+			"Ingress identifier '%s' isn't valid: it must contain between three and five lowercase letters or digits",
 			ingressKey,
 		)
 	}
