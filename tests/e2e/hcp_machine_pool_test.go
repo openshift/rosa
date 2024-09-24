@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
+	. "github.com/openshift/rosa/tests/utils/log"
 	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
@@ -51,11 +52,11 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		isMultiArch, err = rosaClient.Cluster.IsMultiArch(clusterID)
 		Expect(err).ToNot(HaveOccurred())
 
-		profile = ph.LoadProfileYamlFileByENV()
-
 		if !hostedCluster {
 			SkipNotHosted()
 		}
+
+		profile = ph.LoadProfileYamlFileByENV()
 	})
 
 	Describe("Create/delete/view a machine pool", func() {
@@ -623,5 +624,170 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 						ContainSubstring(
 							fmt.Sprintf("Creating a node pool a in local zone '%s' isn't supported", localZone)))
 			})
+
+		It("upgrade - [id:67419]", labels.Medium, labels.Runtime.Day2, func() {
+			var err error
+
+			clusterService := rosaClient.Cluster
+			machinePoolUpgradeService := rosaClient.MachinePoolUpgrade
+			versionService := rosaClient.Version
+
+			By("Retrieve cluster config")
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+
+			By("without machinepool")
+			_, err = machinePoolUpgradeService.CreateManualUpgrade(
+				clusterID,
+				"",
+				clusterConfig.Version.RawID,
+				"",
+				"")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a valid identifier for the machine pool"))
+
+			By("with wrong machinepool")
+			_, err = machinePoolUpgradeService.CreateManualUpgrade(
+				clusterID,
+				"anything",
+				clusterConfig.Version.RawID,
+				"",
+				"")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Machine pool 'anything' does not exist for hosted cluster"))
+
+			By("for not-ready cluster")
+			var notReadyClusterID string
+			rosaClient.Runner.UnsetArgs()
+			output, err := clusterService.List()
+			Expect(err).To(BeNil())
+			clusterList, err := clusterService.ReflectClusterList(output)
+			Expect(err).To(BeNil())
+			for _, c := range clusterList.Clusters {
+				if c.State != constants.Ready && c.Topology == constants.HostedCP {
+					notReadyClusterID = c.ID
+					break
+				}
+			}
+			if notReadyClusterID != "" {
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					notReadyClusterID,
+					"anything",
+					clusterConfig.Version.RawID,
+					"",
+					"")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' is not yet ready", notReadyClusterID)))
+			} else {
+				Logger.Info("No cluster found in state not-ready. Skipping this step")
+			}
+
+			By("Find a version has available upgrade versions")
+			clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			clusterVersion := clusterVersionInfo.RawID
+			clusterChannelGroup := clusterVersionInfo.ChannelGroup
+			versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			upgradableVersion, err := versionList.FindZStreamUpgradableVersion(clusterVersion, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Create a machinepool with the upgradable version")
+			nodePoolAutoName := helper.GenerateRandomName("np-67419", 2)
+			_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
+				"--replicas", "0",
+				"--version", upgradableVersion.Version)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("with wrong schedule value")
+			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				"anything")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Schedule 'anything' is not a valid cron expression"))
+
+			By("with wrong schedule-time value")
+			_, err = machinePoolUpgradeService.CreateManualUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				clusterConfig.Version.RawID,
+				"2154-12-31",
+				"wrong")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("schedule date should use the format 'yyyy-mm-dd'"))
+
+			By("with wrong schedule-date value")
+			_, err = machinePoolUpgradeService.CreateManualUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				clusterConfig.Version.RawID,
+				"wrong",
+				"10:34")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Schedule time should use the format 'HH:mm'"))
+
+			By("with wrong version value")
+			_, err = machinePoolUpgradeService.CreateManualUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				"wrong",
+				"",
+				"")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected a valid machine pool version"))
+
+			By("with schedule and version")
+			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				"2 5 * * *",
+				"--version", clusterConfig.Version.RawID)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("The '--schedule' option is mutually exclusive with '--version'"))
+
+			By("with schedule and schedule-date")
+			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				"2 5 * * *",
+				"--schedule-date", "2154-12-31")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(
+				ContainSubstring(
+					"The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+
+			By("with schedule and schedule-time")
+			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				"2 5 * * *",
+				"--schedule-time", "10:34")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(
+				ContainSubstring(
+					"The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+
+			By("with already existing upgrade")
+			_, err = machinePoolUpgradeService.CreateManualUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				clusterConfig.Version.RawID,
+				"",
+				"")
+			Expect(err).ToNot(HaveOccurred())
+			defer machinePoolUpgradeService.DeleteUpgrade(clusterID, nodePoolAutoName)
+
+			output, err = machinePoolUpgradeService.CreateManualUpgrade(
+				clusterID,
+				nodePoolAutoName,
+				clusterConfig.Version.RawID,
+				"",
+				"")
+			Expect(err).ToNot(HaveOccurred())
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("WARN: There is already a pending upgrade"))
+		})
 	})
 })

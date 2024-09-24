@@ -1427,3 +1427,74 @@ var _ = Describe("Edit machinepool",
 					ContainSubstring("At least one machine pool able to run OCP workload is required"))
 			})
 	})
+
+var _ = Describe("Upgrade machinepool",
+	labels.Feature.Machinepool,
+	func() {
+		defer GinkgoRecover()
+		var (
+			clusterID                 string
+			rosaClient                *rosacli.Client
+			machinePoolUpgradeService rosacli.MachinePoolUpgradeService
+			clusterConfig             *config.ClusterConfig
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Retrieve cluster config")
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			machinePoolUpgradeService = rosaClient.MachinePoolUpgrade
+
+			By("Skip testing if the cluster is not a Classic cluster")
+			isHostedCP, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if isHostedCP {
+				SkipNotClassic()
+			}
+
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			rosaClient.CleanResources(clusterID)
+		})
+
+		It("should not be supported on Classic clusters - [id:76200]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Try to list upgrades")
+				_, err := machinePoolUpgradeService.ListUpgrades(clusterID, constants.DefaultClassicWorkerPool)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("The '--machinepool' option is only supported for Hosted Control Planes"))
+
+				By("Try to create upgrades")
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
+					constants.DefaultClassicWorkerPool,
+					clusterConfig.Version.RawID,
+					"",
+					"")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("This command is only supported for Hosted Control Planes"))
+
+				By("Try to delete upgrade")
+				_, err = machinePoolUpgradeService.DeleteUpgrade(clusterID, constants.DefaultClassicWorkerPool)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("The '--machinepool' option is only supported for Hosted Control Planes"))
+
+				By("Try to describe upgrade")
+				_, err = machinePoolUpgradeService.DescribeUpgrade(clusterID, constants.DefaultClassicWorkerPool)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("The '--machinepool' option is only supported for Hosted Control Planes"))
+			})
+
+	})
