@@ -497,9 +497,14 @@ func run(cmd *cobra.Command, argv []string) {
 				strings.Join(cluster.AWS().AdditionalAllowedPrincipals(), ","))
 		}
 		if cluster.RegistryConfig() != nil {
+			registryConfigOutput, err := getClusterRegistryConfig(cluster, r.OCMClient)
+			if err != nil {
+				r.Reporter.Errorf("Failed to get cluster registry config for cluster '%s': %v", clusterKey, err)
+				os.Exit(1)
+			}
 			str = fmt.Sprintf("%s"+
 				"Registry Configuration:\n"+
-				"%s\n", str, getClusterRegistryConfig(cluster))
+				"%s\n", str, registryConfigOutput)
 		}
 	}
 
@@ -843,7 +848,7 @@ func getAuditLogForwardingStatus(cluster *cmv1.Cluster) string {
 	return auditLogForwardingStatus
 }
 
-func getClusterRegistryConfig(cluster *cmv1.Cluster) string {
+func getClusterRegistryConfig(cluster *cmv1.Cluster, client *ocm.Client) (string, error) {
 	var output string
 	if cluster.RegistryConfig().RegistrySources() != nil {
 		registryResources := cluster.RegistryConfig().RegistrySources()
@@ -876,12 +881,18 @@ func getClusterRegistryConfig(cluster *cmv1.Cluster) string {
 		}
 	}
 	if cluster.RegistryConfig().PlatformAllowlist().ID() != "" {
+		allowlist, err := client.GetAllowlist(cluster.RegistryConfig().PlatformAllowlist().ID())
+		if err != nil {
+			return output, err
+		}
+
 		output = fmt.Sprintf("%s"+
-			" - Platform Allowlist:      %s\n", output,
-			cluster.RegistryConfig().PlatformAllowlist().ID())
+			" - Platform Allowlist:      %s\n"+
+			"    - Registries:           %s\n", output,
+			cluster.RegistryConfig().PlatformAllowlist().ID(), strings.Join(allowlist.Registries(), ","))
 	}
 
-	return output
+	return output, nil
 }
 
 func getExternalAuthConfigStatus(cluster *cmv1.Cluster) string {
