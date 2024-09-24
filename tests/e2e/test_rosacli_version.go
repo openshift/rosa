@@ -108,6 +108,7 @@ var _ = Describe("Get CLI version",
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 				By("Init the client")
@@ -122,6 +123,9 @@ var _ = Describe("Get CLI version",
 				versionService := rosaClient.Version
 =======
 >>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+=======
+				versionService := rosaClient.Version
+>>>>>>> e79cde497d33b1bf2a2cbf9262b0cb6bead106f4
 
 				By("Display the version help page")
 				buf, err := rosaClient.Runner.Cmd("list", "version", "-h").Run()
@@ -135,9 +139,13 @@ var _ = Describe("Get CLI version",
 
 				By("Display the version on the stable channel")
 <<<<<<< HEAD
+<<<<<<< HEAD
 				rosaClient.Runner.UnsetArgs()
 =======
 >>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+=======
+				rosaClient.Runner.UnsetArgs()
+>>>>>>> e79cde497d33b1bf2a2cbf9262b0cb6bead106f4
 				buf, err = rosaClient.Runner.Cmd("list", "version").Run()
 				Expect(err).ToNot(HaveOccurred())
 				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
@@ -146,10 +154,14 @@ var _ = Describe("Get CLI version",
 				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 				verList, err := versionService.ListAndReflectJsonVersions("stable", false)
 =======
 				verList, err := versionService.ListAndReflectJsonVersions(STABLE_CHANNEL, false)
 >>>>>>> 272b07df (OCM-11297 | test: automated cases id:38810)
+=======
+				verList, err := versionService.ListAndReflectJsonVersions(STABLE_CHANNEL, false)
+>>>>>>> e79cde497d33b1bf2a2cbf9262b0cb6bead106f4
 				Expect(err).ToNot(HaveOccurred())
 				for _, v := range verList {
 					Expect(v.ChannelGroup).To(Equal(STABLE_CHANNEL))
@@ -163,6 +175,7 @@ var _ = Describe("Get CLI version",
 				By("Display the version on the candidate channel")
 				rosaClient.Runner.UnsetArgs()
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 				Expect(stdout).To(ContainSubstring("4.16.10"))
 				Expect(stdout).To(ContainSubstring("4.7.36"))
@@ -173,6 +186,9 @@ var _ = Describe("Get CLI version",
 =======
 				buf, err = rosaClient.Runner.Cmd("list", "version", "--channel-group", CANDIDATE_CHANNEL).Run()
 >>>>>>> 272b07df (OCM-11297 | test: automated cases id:38810)
+=======
+				buf, err = rosaClient.Runner.Cmd("list", "version", "--channel-group", CANDIDATE_CHANNEL).Run()
+>>>>>>> e79cde497d33b1bf2a2cbf9262b0cb6bead106f4
 				Expect(err).ToNot(HaveOccurred())
 				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
 
@@ -180,10 +196,14 @@ var _ = Describe("Get CLI version",
 				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 				verList, err = versionService.ListAndReflectJsonVersions("candidate", false)
 =======
 				verList, err = versionService.ListAndReflectJsonVersions(CANDIDATE_CHANNEL, false)
 >>>>>>> 272b07df (OCM-11297 | test: automated cases id:38810)
+=======
+				verList, err = versionService.ListAndReflectJsonVersions(CANDIDATE_CHANNEL, false)
+>>>>>>> e79cde497d33b1bf2a2cbf9262b0cb6bead106f4
 				Expect(err).ToNot(HaveOccurred())
 				for _, v := range verList {
 					Expect(v.ChannelGroup).To(Equal(CANDIDATE_CHANNEL))
@@ -196,12 +216,15 @@ var _ = Describe("Get CLI version",
 
 				By("Display the version on the stable channel with the debug flag")
 				rosaClient.Runner.UnsetArgs()
+<<<<<<< HEAD
 =======
 				Expect(stdout).To(ContainSubstring("4.17.0-rc.3"))
 				Expect(stdout).To(ContainSubstring("4.8.0-fc.0"))
 
 				By("Display the version on the stable channel with the debug flag")
 >>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+=======
+>>>>>>> e79cde497d33b1bf2a2cbf9262b0cb6bead106f4
 				buf, err = rosaClient.Runner.Cmd("list", "version", "--debug").Run()
 				Expect(err).ToNot(HaveOccurred())
 				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
@@ -209,6 +232,7 @@ var _ = Describe("Get CLI version",
 				By("Check the output of the stable versions with the debug flag")
 				Expect(stdout).To(ContainSubstring("level=debug"))
 				Expect(stdout).To(ContainSubstring("AVAILABLE UPGRADES"))
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 				By("Display the version on the stable channel with an invalid flag")
@@ -219,6 +243,11 @@ var _ = Describe("Get CLI version",
 
 				By("Display the version on the stable channel with an invalid flag")
 >>>>>>> 1f187827 (OCM-11297 | test: automated cases id:38810)
+=======
+
+				By("Display the version on the stable channel with an invalid flag")
+				rosaClient.Runner.UnsetArgs()
+>>>>>>> e79cde497d33b1bf2a2cbf9262b0cb6bead106f4
 				buf, err = rosaClient.Runner.Cmd("list", "version", "--invalidflag").Run()
 				Expect(err).To(HaveOccurred())
 				stdout = rosaClient.Parser.TextData.Input(buf).Parse().Output()
