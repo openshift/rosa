@@ -74,7 +74,7 @@ func AddClusterRegistryConfigFlags(cmd *cobra.Command) *ClusterRegistryConfigArg
 		"A reference to the id of the list of registries that needs to be whitelisted for the platform to work. "+
 			"It can be omitted at creation and updating and its lifecycle can be managed separately if needed.",
 	)
-	cmd.Flags().MarkHidden("platform-allowlist")
+	cmd.Flags().MarkHidden(platformAllowlistFlag)
 
 	cmd.Flags().StringVar(
 		&args.additionalTrustedCa,
