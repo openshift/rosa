@@ -38,8 +38,11 @@ var date time.Time
 
 var _ = Describe("Machinepool and nodepool", func() {
 	var (
-		mockClient *mock.MockClient
-		mockCtrl   *gomock.Controller
+		mockClient  *mock.MockClient
+		mockCtrl    *gomock.Controller
+		testCommand *cobra.Command
+		maxReplicas int
+		minReplicas int
 	)
 	Context("Nodepools", Ordered, func() {
 		BeforeAll(func() {
@@ -52,7 +55,24 @@ var _ = Describe("Machinepool and nodepool", func() {
 				NextRun(date)
 			mockCtrl = gomock.NewController(GinkgoT())
 			mockClient = mock.NewMockClient(mockCtrl)
-
+			testCommand = &cobra.Command{}
+			flags := testCommand.Flags()
+			flags.IntVar(
+				&maxReplicas,
+				"max-replicas",
+				0,
+				"Maximum number of machines for the machine pool.",
+			)
+			flags.IntVar(
+				&minReplicas,
+				"min-replicas",
+				0,
+				"Minimum number of machines for the machine pool.",
+			)
+			testCommand.Flags().Set("min-replicas", "0")
+			testCommand.Flags().Set("max-replicas", "1")
+			testCommand.Flags().Lookup("min-replicas").Changed = true
+			testCommand.Flags().Lookup("max-replicas").Changed = true
 		})
 		It("editAutoscaling should equal nil if nothing is changed", func() {
 			nodepool, err := cmv1.NewNodePool().
@@ -62,7 +82,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 			builder := editAutoscaling(nodepool, 1, 2)
 			Expect(builder).To(BeNil())
 		})
-		It("editAutoscaling should equal the exepcted output", func() {
+		It("editAutoscaling should equal the expected output", func() {
 			nodepool, err := cmv1.NewNodePool().
 				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(2).MinReplica(1)).
 				Build()
@@ -71,7 +91,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(3).MinReplica(2)
 			Expect(builder).To(Equal(asBuilder))
 		})
-		It("editAutoscaling should equal the exepcted output with no min replica value", func() {
+		It("editAutoscaling should equal the expected output with no min replica value", func() {
 			nodepool, err := cmv1.NewNodePool().
 				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(2).MinReplica(1)).
 				Build()
@@ -80,8 +100,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(3).MinReplica(1)
 			Expect(builder).To(Equal(asBuilder))
 		})
-
-		It("editAutoscaling should equal the exepcted output with no max replica value", func() {
+		It("editAutoscaling should equal the expected output with no max replica value", func() {
 			nodepool, err := cmv1.NewNodePool().
 				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(1)).
 				Build()
@@ -90,6 +109,24 @@ var _ = Describe("Machinepool and nodepool", func() {
 			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(2)
 			Expect(builder).To(Equal(asBuilder))
 		})
+		It("Test edit nodepool min-replicas < 1 when autoscaling is set", func() {
+			err := validateNodePoolEdit(testCommand, true, 0, 0, 1)
+			Expect(err.Error()).To(Equal("min-replicas must be greater than zero."))
+		})
+		It("Test edit nodepool !autoscaling and replicas < 0 for nodepools", func() {
+			err := validateNodePoolEdit(testCommand, false, -1, 0, 0)
+			Expect(err.Error()).To(Equal("The number of machine pool replicas needs to be a non-negative integer"))
+		})
+		It("Test edit nodepool autoscaling and minReplicas > maxReplicas", func() {
+			err := validateNodePoolEdit(testCommand, true, 0, 5, 1)
+			Expect(err.Error()).To(Equal("The number of machine pool min-replicas needs to be less " +
+				"than the number of machine pool max-replicas"))
+		})
+		It("Test edit nodepool autoscaling and maxReplicas < 1", func() {
+			err := validateNodePoolEdit(testCommand, true, 0, 1, 0)
+			Expect(err.Error()).To(Equal("max-replicas must be greater than zero."))
+		})
+
 		Context("Prompt For NodePoolNodeRecreate", func() {
 			var mockPromptFuncInvoked bool
 			var t *test.TestingRuntime
