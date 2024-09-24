@@ -344,14 +344,6 @@ var _ = Describe("Validation testing",
 			err := rosaClient.CleanResources(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 
-			By("Delete arbitrary policies")
-			if len(arbitraryPoliciesToClean) > 0 {
-				for _, policyArn := range arbitraryPoliciesToClean {
-					err = awsClient.DeletePolicy(policyArn)
-					Expect(err).To(BeNil())
-				}
-			}
-
 			By("Delete the testing role")
 			if len(testingRolesToClean) > 0 {
 				for _, roleName := range testingRolesToClean {
@@ -362,6 +354,14 @@ var _ = Describe("Validation testing",
 						Expect(err).To(BeNil())
 					}
 					err = awsClient.DeleteRole(roleName)
+					Expect(err).To(BeNil())
+				}
+			}
+
+			By("Delete arbitrary policies")
+			if len(arbitraryPoliciesToClean) > 0 {
+				for _, policyArn := range arbitraryPoliciesToClean {
+					err = awsClient.DeletePolicy(policyArn)
 					Expect(err).To(BeNil())
 				}
 			}
@@ -454,7 +454,7 @@ var _ = Describe("Validation testing",
 				policyArnsWithTen := arbitraryPoliciesToClean[0:10]
 				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithTen, "--mode", "auto")
 				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("Failed to attach policies due to quota limitations (total limit: 10"))
+				Expect(out.String()).To(ContainSubstring("Cannot exceed quota for PoliciesPerRole: 10"))
 
 				By("role has no red-hat-managed=true tag when attach")
 				out, err = arbitraryPolicyService.AttachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
@@ -645,6 +645,7 @@ var _ = Describe("Account roles with attaching arbitrary policies",
 							ContainSubstring("Attached policy '%s' to role '%s(%s)'", policyArn, roleName, roleUrlPrefix+roleName))
 				}
 			}
+
 			By("Upgrade account-roles in auto mode")
 			output, err = ocmResourceService.UpgradeAccountRole(
 				"--prefix", aRolePrefix,
