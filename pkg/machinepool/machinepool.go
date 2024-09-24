@@ -1534,22 +1534,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		return fmt.Errorf("Failed to get autoscaling or replicas: '%s'", err)
 	}
 
-	if !autoscaling && replicas < 0 {
-		return fmt.Errorf("The number of machine pool replicas needs to be a non-negative integer")
-	}
-
-	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1 {
-		return fmt.Errorf("The number of machine pool min-replicas needs to be a non-negative integer")
-	}
-
-	if autoscaling && cmd.Flags().Changed("max-replicas") && maxReplicas < 1 {
-		return fmt.Errorf("The number of machine pool max-replicas needs to be a non-negative integer")
-	}
-
-	if autoscaling && cmd.Flags().Changed("max-replicas") && cmd.Flags().Changed(
-		"min-replicas") && minReplicas > maxReplicas {
-		return fmt.Errorf("The number of machine pool min-replicas needs to be less than the number of " +
-			"machine pool max-replicas")
+	if validateNodePoolEdit(cmd, autoscaling, replicas, minReplicas, maxReplicas) != nil {
+		return err
 	}
 
 	labels := cmd.Flags().Lookup("labels").Value.String()
@@ -1785,6 +1771,27 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 			nodePool.ID(), clusterKey, err)
 	}
 	r.Reporter.Infof("Updated machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
+	return nil
+}
+
+func validateNodePoolEdit(cmd *cobra.Command, autoscaling bool, replicas int, minReplicas int, maxReplicas int) error {
+	if !autoscaling && replicas < 0 {
+		return fmt.Errorf("The number of machine pool replicas needs to be a non-negative integer")
+	}
+
+	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1 {
+		return fmt.Errorf("min-replicas must be greater than zero.")
+	}
+
+	if autoscaling && cmd.Flags().Changed("max-replicas") && maxReplicas < 1 {
+		return fmt.Errorf("max-replicas must be greater than zero.")
+	}
+
+	if autoscaling && cmd.Flags().Changed("max-replicas") && cmd.Flags().Changed(
+		"min-replicas") && minReplicas > maxReplicas {
+		return fmt.Errorf("The number of machine pool min-replicas needs to be less than the number of " +
+			"machine pool max-replicas")
+	}
 	return nil
 }
 
