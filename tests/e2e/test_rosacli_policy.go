@@ -388,20 +388,13 @@ var _ = Describe("Validation testing",
 				Expect(err).To(BeNil())
 				_, err = awsClient.CreateRegularRole(notRHManagedRoleName, notRHManagedRolePolicy)
 				Expect(err).To(BeNil())
-				testingRolesToClean = append(testingRolesToClean, notRHManagedRoleName)
-
-				By("Prepare 10 arbitrary policies for testing")
-				awsClient, err = aws_client.CreateAWSClient("", "")
-				Expect(err).To(BeNil())
-
-				for i := 0; i < 10; i++ {
-					arn, err := awsClient.CreatePolicy(
-						fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
-						statement,
-					)
+				defer func() {
+					By("Detach the attached policy " + notRHManagedRolePolicy + " from role" + notRHManagedRoleName)
+					err := awsClient.DetachIAMPolicy(notRHManagedRoleName, notRHManagedRolePolicy)
 					Expect(err).To(BeNil())
-					arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
-				}
+				}()
+				testingRolesToClean = append(testingRolesToClean, notRHManagedRoleName)
+				arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, notRHManagedRolePolicy)
 
 				By("Get one managed role for testing,using support role in this case")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -451,10 +444,19 @@ var _ = Describe("Validation testing",
 				Expect(out.String()).To(ContainSubstring("role with name %s cannot be found", notExistedRoleName))
 
 				By("number of the attaching policies exceed the quote (L-0DA4ABF3) when attach")
-				policyArnsWithTen := arbitraryPoliciesToClean[0:10]
-				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithTen, "--mode", "auto")
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("Cannot exceed quota for PoliciesPerRole: 10"))
+				policyArnsWithNine := arbitraryPoliciesToClean[0:9]
+				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithNine, "--mode", "auto")
+				Expect(err).To(BeNil())
+				defer func() {
+					By("Detach the attached policies from role " + supportRoleName)
+					out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithNine, "--mode", "auto")
+					Expect(err).To(BeNil())
+				}()
+
+				policyArnWithTen := []string{arbitraryPoliciesToClean[9]}
+				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnWithTen, "--mode", "auto")
+				Expect(err).ToNot(BeNil())
+				Expect(out.String()).To(ContainSubstring("Failed to attach policies due to quota limitations (total limit: 10"))
 
 				By("role has no red-hat-managed=true tag when attach")
 				out, err = arbitraryPolicyService.AttachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
@@ -724,7 +726,7 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 			Expect(textData).To(ContainSubstring("Successfully deleted the OIDC provider"))
 		})
 
-		It("can be deleted successfully - [id:74403]", labels.Critical, labels.Runtime.Day2, func() {
+		It("can be deleted successfully - [id:74403]", labels.Critical, labels.Runtime.OCMResources, func() {
 			By("Prepare * arbitrary policies for testing")
 			awsClient, err = aws_client.CreateAWSClient("", "")
 			Expect(err).To(BeNil())
@@ -800,7 +802,7 @@ var _ = Describe("Operator roles with attaching arbitrary policies",
 			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
 			Expect(err).To(BeNil())
 
-			By("Create operator-roles pror to cluster spec")
+			By("Create operator-roles prior to cluster spec")
 			operatorRolesPrefix := "oproleprefix242424"
 			output, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", oidcPrivodeIDFromOutputMessage,

@@ -323,7 +323,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		Entry("For arm64 cpu architecture [id:60278]", constants.M6gXLarge, constants.ARM),
 	)
 
-	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Critical, labels.Runtime.Day2,
+	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Medium, labels.Runtime.Day2,
 		func(instanceType string, updatedReplicas string, expectedErrMsg string) {
 			By("Create machinepool with instance " + instanceType)
 			mpName := helper.GenerateRandomName("mp-60278", 2)
@@ -399,7 +399,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should raise error message with the invalid parameters [id:60278]", labels.Critical, labels.Runtime.Day2, func() {
+		It("should raise error message with the invalid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, func() {
 			instanceType := constants.M52XLarge
 			By("Create machinepool with" + " instance " + instanceType + " and enable autoscale")
 
@@ -423,7 +423,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", zeroMinReplica),
 				"-y",
 			)
-			expectErrMsg := "The number of machine pool min-replicas needs to be a non-negative integer"
+			expectErrMsg := "ERR: min-replicas must be greater than zero."
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
