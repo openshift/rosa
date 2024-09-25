@@ -146,7 +146,7 @@ type NodePoolDescription struct {
 	ScheduledUpgrade           string              `yaml:"Scheduled upgrade,omitempty"`
 	AdditionalSecurityGroupIDs string              `yaml:"Additional security group IDs,omitempty"`
 	NodeDrainGracePeriod       string              `yaml:"Node drain grace period,omitempty"`
-	DiskSize                   string              `yaml:"Disk size,omitempty"`
+	DiskSize                   string              `yaml:"Disk Size,omitempty"`
 }
 
 // Create MachinePool
@@ -502,6 +502,15 @@ func (npl NodePoolList) Nodepool(id string) (np *NodePool) {
 			np = npItem
 			return
 		}
+	}
+	return
+}
+
+// GetFirstNodePool Get first node pool
+func (npl NodePoolList) GetFirstNodePool() (np *NodePool) {
+	for _, npItem := range npl.NodePools {
+		np = npItem
+		return
 	}
 	return
 }

@@ -67,10 +67,6 @@ var _ = Describe("Healthy check",
 		It("the creation of rosa cluster with volume size will work - [id:66359]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				if isHosted {
-					SkipTestOnFeature("volume size")
-				}
-
 				alignDiskSize := func(diskSize string) string {
 					aligned := strings.Join(strings.Split(diskSize, " "), "")
 					return aligned
@@ -86,20 +82,36 @@ var _ = Describe("Healthy check",
 				output, err := machinePoolService.ListMachinePool(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
-				mplist, err := machinePoolService.ReflectMachinePoolList(output)
-				Expect(err).ToNot(HaveOccurred())
+				if isHosted {
+					npList, err := machinePoolService.ReflectNodePoolList(output)
+					Expect(err).ToNot(HaveOccurred())
 
-				workPool := mplist.Machinepool(constants.DefaultClassicWorkerPool)
-				Expect(workPool).ToNot(BeNil(), "worker pool is not found for the cluster")
-				Expect(alignDiskSize(workPool.DiskSize)).To(Equal(expectedDiskSize))
+					nodePool := npList.GetFirstNodePool()
+					Expect(nodePool).ToNot(BeNil(), "node pool is not found for the cluster")
+					Expect(alignDiskSize(nodePool.DiskSize)).To(Equal(expectedDiskSize))
 
-				By("Check the default worker pool description")
-				output, err = machinePoolService.DescribeMachinePool(clusterID, constants.DefaultClassicWorkerPool)
-				Expect(err).ToNot(HaveOccurred())
-				mpD, err := machinePoolService.ReflectMachinePoolDescription(output)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(alignDiskSize(mpD.DiskSize)).To(Equal(expectedDiskSize))
+					By("Check the default node pool description")
+					output, err = machinePoolService.DescribeMachinePool(clusterID, nodePool.ID)
+					Expect(err).ToNot(HaveOccurred())
+					npD, err := machinePoolService.ReflectNodePoolDescription(output)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(alignDiskSize(npD.DiskSize)).To(Equal(expectedDiskSize))
 
+				} else {
+					mplist, err := machinePoolService.ReflectMachinePoolList(output)
+					Expect(err).ToNot(HaveOccurred())
+
+					workPool := mplist.Machinepool(constants.DefaultClassicWorkerPool)
+					Expect(workPool).ToNot(BeNil(), "worker pool is not found for the cluster")
+					Expect(alignDiskSize(workPool.DiskSize)).To(Equal(expectedDiskSize))
+
+					By("Check the default worker pool description")
+					output, err = machinePoolService.DescribeMachinePool(clusterID, constants.DefaultClassicWorkerPool)
+					Expect(err).ToNot(HaveOccurred())
+					mpD, err := machinePoolService.ReflectMachinePoolDescription(output)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(alignDiskSize(mpD.DiskSize)).To(Equal(expectedDiskSize))
+				}
 			})
 
 		It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",

@@ -137,7 +137,7 @@ var _ = Describe("Create machinepool",
 			labels.Runtime.Day2,
 			labels.Critical,
 			func() {
-				mpID := "mp-66872"
+				mpID := helper.GenerateRandomName("mp-66872", 2)
 				expectedDiskSize := "186 GiB" // it is 200GB
 				machineType := "r5.xlarge"
 
@@ -175,7 +175,7 @@ var _ = Describe("Create machinepool",
 				Expect(mpD.DiskSize).To(Equal(expectedDiskSize))
 
 				By("Create another machinepool with volume size 0.5TiB")
-				mpID = "mp-66872-2"
+				mpID = helper.GenerateRandomName("mp2-66872", 2)
 				expectedDiskSize = "512 GiB" // it is 0.5TiB
 				machineType = "m5.2xlarge"
 				output, err = machinePoolService.CreateMachinePool(clusterID, mpID,
@@ -884,8 +884,13 @@ var _ = Describe("Create machinepool",
 						"-y",
 					)
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Invalid root disk size: 2 GiB." +
-						" Must be between 128 GiB and 16384 GiB"))
+
+					Expect(output.String()).Should(ContainSubstring(
+						fmt.Sprintf(
+							constants.DiskSizeErrRangeMsg,
+							2,
+							constants.MinClassicDiskSize,
+							constants.MaxDiskSize)))
 
 					By("Create with large disk size will fail")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
@@ -894,8 +899,12 @@ var _ = Describe("Create machinepool",
 						"-y",
 					)
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Invalid root disk size: 16385 GiB." +
-						" Must be between 128 GiB and 16384 GiB"))
+					Expect(output.String()).Should(ContainSubstring(
+						fmt.Sprintf(
+							constants.DiskSizeErrRangeMsg,
+							16385,
+							constants.MinClassicDiskSize,
+							constants.MaxDiskSize)))
 
 					By("Create with un-known unit will fail")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,

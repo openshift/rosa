@@ -65,6 +65,7 @@ const (
 	DefaultInstanceType = "m5.xlarge"
 	CommonAWSRegion     = "us-west-2"
 
+	R5XLarge  = "r5.xlarge"
 	M5XLarge  = "m5.xlarge"
 	M52XLarge = "m5.2xlarge"
 	M6gXLarge = "m6g.xlarge"
@@ -81,4 +82,17 @@ const (
 	// NodePoolCheckTimeout The timeout may depend on the resource
 	NodePoolCheckTimeout = 30 * time.Minute
 	NodePoolCheckPoll    = 10 * time.Second
+)
+
+// disk size
+const (
+	MinClassicDiskSize = 128
+	MinHCPDiskSize     = 75
+	MaxDiskSize        = 16384
+)
+
+// disk size invalid message
+const (
+	// DiskSizeErrRangeMsg in order to solve lint issue
+	DiskSizeErrRangeMsg = "Invalid root disk size: %d GiB. Must be between %d GiB and %d GiB"
 )

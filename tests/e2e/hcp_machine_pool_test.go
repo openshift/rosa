@@ -122,6 +122,51 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		})
 	})
 
+	DescribeTable("create machinepool with volume size set - [id:66872]",
+		labels.Runtime.Day2,
+		labels.Critical,
+		func(diskSize, instanceType, expectedDiskSize string) {
+			npID := helper.GenerateRandomName("np-66872", 2)
+
+			By("Create a nodepool with the disk size")
+			output, err := machinePoolService.CreateMachinePool(clusterID, npID,
+				"--replicas", "0",
+				"--disk-size", diskSize,
+				"--instance-type", instanceType,
+			)
+			Expect(err).ToNot(HaveOccurred())
+			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, npID)
+
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).
+				Should(ContainSubstring(
+					"Machine pool '%s' created successfully on hosted cluster '%s'",
+					npID,
+					clusterID))
+
+			By("Check the machinepool list")
+			output, err = machinePoolService.ListMachinePool(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+
+			nplist, err := machinePoolService.ReflectNodePoolList(output)
+			Expect(err).ToNot(HaveOccurred())
+
+			np := nplist.Nodepool(npID)
+			Expect(np).ToNot(BeNil(), "node pool is not found for the cluster")
+			Expect(np.DiskSize).To(Equal(expectedDiskSize))
+			Expect(np.InstanceType).To(Equal(instanceType))
+
+			By("Check the node pool description")
+			output, err = machinePoolService.DescribeMachinePool(clusterID, npID)
+			Expect(err).ToNot(HaveOccurred())
+			npD, err := machinePoolService.ReflectNodePoolDescription(output)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(npD.DiskSize).To(Equal(expectedDiskSize))
+		},
+		Entry("Disk size 200GB", "200GB", constants.R5XLarge, "186 GiB"),
+		Entry("Disk size 0.5TiB", "0.5TiB", constants.M52XLarge, "512 GiB"),
+	)
+
 	It("machinepool AWS preflight tag validation[id:73638]",
 		labels.Medium, labels.Runtime.Day2,
 		func() {
@@ -789,5 +834,54 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).To(ContainSubstring("WARN: There is already a pending upgrade"))
 		})
+
+		It("will validate root volume size - [id:66874]",
+			labels.Runtime.Day2, labels.Medium,
+			func() {
+				npName := helper.GenerateRandomName("np-66874", 2)
+				By("Create with too small disk size will fail")
+				output, err := rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+					"--replicas", "0",
+					"--disk-size", "2GiB",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(
+					fmt.Sprintf(constants.DiskSizeErrRangeMsg, 2, constants.MinHCPDiskSize, constants.MaxDiskSize)))
+
+				By("Create with large disk size will fail")
+				output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+					"--replicas", "0",
+					"--disk-size", "17594GB",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(
+					fmt.Sprintf(
+						constants.DiskSizeErrRangeMsg,
+						16385, // 17594GB --> 16385GiB
+						constants.MinHCPDiskSize,
+						constants.MaxDiskSize)))
+
+				By("Create with un-known unit will fail")
+				output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+					"--replicas", "0",
+					"--disk-size", "2GiiiB",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("invalid disk size format: '2GiiiB'." +
+					" accepted units are Giga or Tera in the form of g, G, GB, GiB, Gi, t, T, TB, TiB, Ti"))
+
+				By("Create with too large value will fail")
+				output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+					"--replicas", "0",
+					"--disk-size", "25678987654567898765456789087654GiB",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("invalid disk size: '25678987654567898765456789087654Gi'." +
+					" maximum size exceeded"))
+			})
 	})
 })
