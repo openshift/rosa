@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/autoscaler"
 	"github.com/openshift/rosa/cmd/create/breakglasscredential"
 	"github.com/openshift/rosa/cmd/create/cluster"
+	"github.com/openshift/rosa/cmd/create/decision"
 	"github.com/openshift/rosa/cmd/create/dnsdomains"
 	"github.com/openshift/rosa/cmd/create/externalauthprovider"
 	"github.com/openshift/rosa/cmd/create/idp"
@@ -69,6 +70,8 @@ func init() {
 	Cmd.AddCommand(kubeletConfig)
 	Cmd.AddCommand(externalauthprovider.Cmd)
 	Cmd.AddCommand(breakglasscredential.Cmd)
+	decisionCommand := decision.NewCreateDecisionCommand()
+	Cmd.AddCommand(decisionCommand)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -81,6 +84,7 @@ func init() {
 		oidcprovider.Cmd, breakglasscredential.Cmd,
 		admin.Cmd, autoscalerCommand, dnsdomains.Cmd,
 		externalauthprovider.Cmd, idp.Cmd, kubeletConfig, tuningconfigs.Cmd,
+		decisionCommand,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

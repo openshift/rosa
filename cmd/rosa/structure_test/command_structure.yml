@@ -30,6 +30,7 @@ children:
     - name: managed-service
     - name: tuning-configs
     - name: user-role
+    - name: decision
 - name: delete
   children:
     - name: account-roles
