@@ -497,12 +497,12 @@ var _ = Describe("Edit ingress",
 				Expect(output.String()).Should(ContainSubstring("unknown flag: --not-allowe-flag"))
 
 				By("Edit non-existing ingress")
-				output, err = ingressService.EditIngress(clusterID, "notexisting",
+				output, err = ingressService.EditIngress(clusterID, "note",
 					"--label-match", "invalid=invalidvalue",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Ingress identifier 'notexisting' isn't valid"))
+					ContainSubstring("Failed to get ingress 'note' for cluster"))
 
 				By("Edit ingress with invalid LB-type")
 				output, err = ingressService.EditIngress(clusterID, "apps",
