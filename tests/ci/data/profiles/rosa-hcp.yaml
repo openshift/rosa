@@ -25,6 +25,7 @@ profiles:
     oidc_config: "managed"
     auditlog_forward: true
     admin_enabled: false
+    volume_size: 75
     disable_uwm: true
     autoscaler_enabled: false
   account-role:
