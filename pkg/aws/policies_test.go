@@ -692,7 +692,7 @@ var _ = Describe("CheckIfROSAOperatorRole", func() {
 	})
 })
 
-var _ = Describe("isPolicyHasTags", func() {
+var _ = Describe("doesPolicyHaveTags", func() {
 	var (
 		mockIamAPI *mocks.MockIamApiClient
 		mockCtrl   *gomock.Controller
@@ -806,5 +806,10 @@ var _ = Describe("isPolicyHasTags", func() {
 		result, err := doesPolicyHaveTags(mockIamAPI, &testePolicyArn, filter)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(BeFalse())
+	})
+	It("Considers the policy have the tags as the filters are empty", func() {
+		result, err := doesPolicyHaveTags(mockIamAPI, &testePolicyArn, nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(BeTrue())
 	})
 })
