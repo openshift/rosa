@@ -3237,12 +3237,12 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 
 				keysToUntag := []string{versionTagName}
 				err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
-				Expect(err).To(BeNil())
+				Expect(err).To(BeNil(), fmt.Sprintf("Expected no error, but got: %v", err))
 
 				tags := map[string]string{versionTagName: testingRoleVersion}
 
 				err = awsClient.TagPolicy(operatorPolicyArn, tags)
-				Expect(err).To(BeNil())
+				Expect(err).To(BeNil(), fmt.Sprintf("Expected no error, but got: %v", err))
 
 				By("Reuse operatot-role prefix and oidc config to create cluster with non-compatible version")
 
