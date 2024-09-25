@@ -787,7 +787,7 @@ var _ = Describe("Create machinepool",
 						clusterID, mpName,
 						"--replicas", "-1")
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("min-replicas must be a non-negative integer"))
+					Expect(output.String()).Should(ContainSubstring("Replicas must be a non-negative integer"))
 
 					By("Create machine pool with invalid name")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, "%^#@")
@@ -814,14 +814,14 @@ var _ = Describe("Create machinepool",
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
 
-					By("Set min-replicas large than max-replicas")
+					By("Set min-replicas larger than max-replicas")
 					output, err = rosaClient.MachinePool.CreateMachinePool(
 						clusterID, mpName,
 						"--min-replicas", "6",
 						"--max-replicas", "3",
 						"--enable-autoscaling")
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("max-replicas must be greater or equal to min-replicas"))
+					Expect(output.String()).Should(ContainSubstring("'min_replicas' must be less than or equal to 'max_replicas'"))
 
 					By("Set min-replicas and max-replicas without set --enable-autoscaling")
 					output, err = rosaClient.MachinePool.CreateMachinePool(
