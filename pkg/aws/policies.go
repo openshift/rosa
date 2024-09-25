@@ -2111,26 +2111,28 @@ func (c *awsClient) listRoleAttachedPolicies(roleName string) ([]iamtypes.Attach
 }
 
 // check whether the policy contains specified tags
-func doesPolicyHaveTags(c client.IamApiClient, poilcyArn *string, tagFilter map[string]string) (bool, error) {
-	if len(tagFilter) != 0 {
-		tags, err := c.ListPolicyTags(context.Background(),
-			&iam.ListPolicyTagsInput{
-				PolicyArn: poilcyArn,
-			},
-		)
-		if err != nil {
-			return false, err
+func doesPolicyHaveTags(c client.IamApiClient, policyArn *string, tagFilter map[string]string) (bool, error) {
+	// If there are no filters than the policy always have wanted tags
+	if len(tagFilter) == 0 {
+		return true, nil
+	}
+	tags, err := c.ListPolicyTags(context.Background(),
+		&iam.ListPolicyTagsInput{
+			PolicyArn: policyArn,
+		},
+	)
+	if err != nil {
+		return false, err
+	}
+	foundTagsCounter := 0
+	for _, tag := range tags.Tags {
+		value, ok := tagFilter[aws.ToString(tag.Key)]
+		if ok && value == aws.ToString(tag.Value) {
+			foundTagsCounter++
 		}
-		foundTagsCounter := 0
-		for _, tag := range tags.Tags {
-			value, ok := tagFilter[aws.ToString(tag.Key)]
-			if ok && value == aws.ToString(tag.Value) {
-				foundTagsCounter++
-			}
-		}
-		if foundTagsCounter == len(tagFilter) {
-			return true, nil
-		}
+	}
+	if foundTagsCounter == len(tagFilter) {
+		return true, nil
 	}
 	return false, nil
 }
