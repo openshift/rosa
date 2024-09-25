@@ -883,7 +883,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 					By("Check policy is aws managed policy")
 					attachedPolicies, err := awsClient.ListAttachedRolePolicies(operatorRoleName)
 					Expect(err).To(BeNil())
-					Expect(*attachedPolicies[0].PolicyArn).To(ContainSubstring("arn:aws:iam::aws"))
+					Expect(*attachedPolicies[0].PolicyArn).To(ContainSubstring("arn:aws:iam::aws"), operatorRoleName)
 				}
 			})
 	})
