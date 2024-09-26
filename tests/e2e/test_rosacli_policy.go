@@ -368,7 +368,7 @@ var _ = Describe("Validation testing",
 		})
 
 		It("to check the validations for attaching and detaching arbitrary policies - [id:74225]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				if !profile.ClusterConfig.STS {
 					Skip("This feature only works for STS cluster")

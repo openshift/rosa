@@ -2875,7 +2875,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 		})
 
 		It("to validate to create cluster with existing operator roles prefix - [id:45742]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
 				By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar45742", 2)

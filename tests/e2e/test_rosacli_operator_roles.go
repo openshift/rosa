@@ -130,7 +130,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				Expect(output.String()).To(ContainSubstring("There are clusters using OIDC config"))
 			})
 		It("can validate when user create operator-roles to cluster - [id:43051]",
-			labels.High, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Check if cluster is sts cluster")
 				clusterService := rosaClient.Cluster
