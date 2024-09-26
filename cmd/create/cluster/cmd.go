@@ -3204,15 +3204,18 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if clusterRegistryConfigArgs != nil {
 		allowedRegistries, blockedRegistries, insecureRegistries,
-			additionalTrustedCa, allowedRegistriesForImport := clusterregistryconfig.GetClusterRegistryConfigArgs(
+			additionalTrustedCa, allowedRegistriesForImport,
+			platformAllowlist := clusterregistryconfig.GetClusterRegistryConfigArgs(
 			clusterRegistryConfigArgs)
 		clusterConfig.AllowedRegistries = allowedRegistries
 		clusterConfig.BlockedRegistries = blockedRegistries
 		clusterConfig.InsecureRegistries = insecureRegistries
+		clusterConfig.PlatformAllowlist = platformAllowlist
+
 		if additionalTrustedCa != "" {
 			ca, err := clusterregistryconfig.BuildAdditionalTrustedCAFromInputFile(additionalTrustedCa)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
+				r.Reporter.Errorf("Failed to build the additional trusted ca from file %s, got error: %s", additionalTrustedCa, err)
 				os.Exit(1)
 			}
 			clusterConfig.AdditionalTrustedCa = ca

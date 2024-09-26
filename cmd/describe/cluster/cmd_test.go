@@ -9,9 +9,6 @@ import (
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-
-	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/ocm"
 )
 
 const (
@@ -140,17 +137,11 @@ var _ = Describe("Cluster description", Ordered, func() {
 })
 
 var _ = Describe("getClusterRegistryConfig", func() {
-	var client *ocm.Client
-	BeforeEach(func() {
-		// todo this test expects and uses a real ocm client
-		// disabling the test until we can mock this to run in prow
-		Skip("disabling test until ocm client is mocked")
-		c, err := ocm.NewClient().Logger(logging.NewLogger()).Build()
-		Expect(err).NotTo(HaveOccurred())
-		client = c
-	})
 	It("Should return expected output", func() {
-		mockCluster, err := cmv1.NewCluster().RegistryConfig(cmv1.NewClusterRegistryConfig().
+		mockCa := make(map[string]string)
+		mockCa["registry.io"] = "-----BEGIN CERTIFICATE-----\nlalala\n-----END CERTIFICATE-----\n"
+		mockCa["registry.io2"] = "-----BEGIN CERTIFICATE-----\nlalala\n-----END CERTIFICATE-----\n"
+		mockCluster, err := cmv1.NewCluster().RegistryConfig(cmv1.NewClusterRegistryConfig().AdditionalTrustedCa(mockCa).
 			RegistrySources(cmv1.NewRegistrySources().
 				AllowedRegistries([]string{"allow1.com", "allow2.com"}...).
 				InsecureRegistries([]string{"insecure1.com", "insecure2.com"}...).
@@ -159,15 +150,22 @@ var _ = Describe("getClusterRegistryConfig", func() {
 				DomainName("quay.io").Insecure(true)).
 			PlatformAllowlist(cmv1.NewRegistryAllowlist().ID("test-id"))).Build()
 		Expect(err).NotTo(HaveOccurred())
-		output, err := getClusterRegistryConfig(mockCluster, client)
+
+		mockAllowlist, err := cmv1.NewRegistryAllowlist().ID("test-id").
+			Registries([]string{"registry1.io", "registry2.io"}...).Build()
 		Expect(err).NotTo(HaveOccurred())
+		output := getClusterRegistryConfig(mockCluster, mockAllowlist)
 		expectedOutput := " - Allowed Registries:      allow1.com,allow2.com\n" +
 			" - Blocked Registries:      block1.com,block2.com\n" +
 			" - Insecure Registries:     insecure1.com,insecure2.com\n" +
 			" - Allowed Registries for Import:         \n" +
-			"    - Domain Name: quay.io\n" +
-			"    - Insecure: true\n" +
-			" - Platform Allowlist:      test-id\n"
+			"    - Domain Name:          quay.io\n" +
+			"    - Insecure:             true\n" +
+			" - Platform Allowlist:      test-id\n" +
+			"    - Registries:           registry1.io,registry2.io\n" +
+			" - Additional Trusted CA:         \n" +
+			"    - registry.io: REDACTED\n" +
+			"    - registry.io2: REDACTED\n"
 		Expect(output).To(Equal(expectedOutput))
 	})
 })
