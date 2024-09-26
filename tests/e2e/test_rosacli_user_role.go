@@ -53,7 +53,7 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 	})
 
 	It("can validate create/link/unlink user-role - [id:52580]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.Medium, labels.Runtime.OCMResources,
 		func() {
 			var (
 				userRolePrefix                                string
