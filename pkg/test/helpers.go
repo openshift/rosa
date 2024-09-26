@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
+	accessv1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
@@ -279,6 +280,10 @@ func FormatResource(resource interface{}) string {
 	case "*v1.Account":
 		if res, ok := resource.(*amsv1.Account); ok {
 			err = amsv1.MarshalAccount(res, &outputJson)
+		}
+	case "*v1.Decision":
+		if res, ok := resource.(*accessv1.Decision); ok {
+			err = accessv1.MarshalDecision(res, &outputJson)
 		}
 	default:
 		{
