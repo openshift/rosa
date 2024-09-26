@@ -639,22 +639,30 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if clusterRegistryConfigArgs != nil {
-		prompt := "Changing any registry related parameter will trigger a rollout across all machinepools " +
-			"(all machinepool nodes will be recreated, following pod draining from each node). Do you want to proceed?"
-		if !confirm.ConfirmRaw(prompt) {
-			r.Reporter.Warnf("You have not changed any registry configuration -- exiting.")
-			os.Exit(0)
-		}
 		allowedRegistries, blockedRegistries, insecureRegistries,
-			additionalTrustedCa, allowedRegistriesForImport := clusterregistryconfig.GetClusterRegistryConfigArgs(
+			additionalTrustedCa, allowedRegistriesForImport,
+			platformAllowlist := clusterregistryconfig.GetClusterRegistryConfigArgs(
 			clusterRegistryConfigArgs)
+
+		// prompt for a warning if any registry config field is set
+		if allowedRegistries != nil || blockedRegistries != nil || insecureRegistries != nil ||
+			additionalTrustedCa != "" || allowedRegistriesForImport != "" || platformAllowlist != "" {
+			prompt := "Changing any registry related parameter will trigger a rollout across all machinepools " +
+				"(all machinepool nodes will be recreated, following pod draining from each node). Do you want to proceed?"
+			if !confirm.ConfirmRaw(prompt) {
+				r.Reporter.Warnf("You have not changed any registry configuration -- exiting.")
+				os.Exit(0)
+			}
+		}
+
 		clusterConfig.AllowedRegistries = allowedRegistries
 		clusterConfig.BlockedRegistries = blockedRegistries
 		clusterConfig.InsecureRegistries = insecureRegistries
+		clusterConfig.PlatformAllowlist = platformAllowlist
 		if additionalTrustedCa != "" {
 			ca, err := clusterregistryconfig.BuildAdditionalTrustedCAFromInputFile(additionalTrustedCa)
 			if err != nil {
-				r.Reporter.Errorf("%s", err)
+				r.Reporter.Errorf("Failed to build the additional trusted ca from file %s, got error: %s", additionalTrustedCa, err)
 				os.Exit(1)
 			}
 			clusterConfig.AdditionalTrustedCa = ca

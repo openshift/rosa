@@ -47,7 +47,7 @@ var _ = Describe("Cluster Registry Config tests", func() {
 			_, err := BuildAdditionalTrustedCAFromInputFile(caPath)
 			Expect(
 				err,
-			).To(MatchError("the value for key 'userRegistry.io' is 'true'. Expect value to be string, got bool"))
+			).To(MatchError("expected a valid value for 'additional_trusted_ca'. Should be in a <registry>:<boolean> format."))
 
 		})
 	})
