@@ -639,6 +639,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	if clusterRegistryConfigArgs != nil {
+		prompt := "Changing any registry related parameter will trigger a rollout across all machinepools " +
+			"(all machinepool nodes will be recreated, following pod draining from each node). Do you want to proceed?"
+		if !confirm.ConfirmRaw(prompt) {
+			r.Reporter.Warnf("You have not changed any registry configuration -- exiting.")
+			os.Exit(0)
+		}
 		allowedRegistries, blockedRegistries, insecureRegistries,
 			additionalTrustedCa, allowedRegistriesForImport := clusterregistryconfig.GetClusterRegistryConfigArgs(
 			clusterRegistryConfigArgs)
