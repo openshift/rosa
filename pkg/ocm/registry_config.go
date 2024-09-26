@@ -98,3 +98,14 @@ func BuildAllowedRegistriesForImport(allowedRegistriesForImport string) (map[str
 	}
 	return obj, nil
 }
+
+func (c *Client) GetAllowlist(id string) (*cmv1.RegistryAllowlist, error) {
+	response, err := c.ocm.ClustersMgmt().V1().RegistryAllowlists().
+		RegistryAllowlist(id).Get().
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+
+	return response.Body(), nil
+}
