@@ -87,14 +87,17 @@ func AddClusterRegistryConfigFlags(cmd *cobra.Command) *ClusterRegistryConfigArg
 }
 
 func GetClusterRegistryConfigArgs(args *ClusterRegistryConfigArgs) (
-	[]string, []string, []string, string, string) {
+	[]string, []string, []string, string, string, string) {
 	return args.allowedRegistries, args.blockedRegistries,
-		args.insecureRegistries, args.additionalTrustedCa, args.allowedRegistriesForImport
+		args.insecureRegistries, args.additionalTrustedCa, args.allowedRegistriesForImport,
+		args.platformAllowlist
 }
 
 func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 	args *ClusterRegistryConfigArgs, isHostedCP bool, cluster *cmv1.Cluster) (
 	*ClusterRegistryConfigArgs, error) {
+
+	var allowedRegistries []string
 
 	if !isHostedCP {
 		if IsClusterRegistryConfigSetViaCLI(cmd) {
@@ -104,10 +107,6 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 	}
 
 	result := &ClusterRegistryConfigArgs{}
-
-	if args.allowedRegistries != nil && args.blockedRegistries != nil {
-		return nil, fmt.Errorf("Allowed registries and blocked registries are mutually exclusive fields")
-	}
 
 	result.allowedRegistries = args.allowedRegistries
 	result.insecureRegistries = args.insecureRegistries
@@ -147,7 +146,7 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 		enableRegistriesConfig = true
 	}
 
-	if !enableRegistriesConfig && interactive.Enabled() && isHostedCP {
+	if interactive.Enabled() && isHostedCP {
 		updateRegistriesConfigValue, err := interactive.GetBool(interactive.Input{
 			Question: "Enable registries config",
 			Default:  enableRegistriesConfig,
@@ -158,9 +157,12 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 		enableRegistriesConfig = updateRegistriesConfigValue
 	}
 
+	isBlockedRegistryNotSet := result.blockedRegistries == nil || strings.Join(result.blockedRegistries, ",") == ""
+	isAllowedRegistryNotSet := result.allowedRegistries == nil || strings.Join(result.allowedRegistries, ",") == ""
+
 	if enableRegistriesConfig && interactive.Enabled() {
 		// Allowed registries and blocked registries are mutually exclusive
-		if result.blockedRegistries == nil {
+		if isBlockedRegistryNotSet {
 			allowedRegistriesInputs, err := interactive.GetString(interactive.Input{
 				Question: "Allowed Registries",
 				Help:     cmd.Lookup(allowedRegistriesFlag).Usage,
@@ -169,10 +171,22 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 			if err != nil {
 				return nil, fmt.Errorf("Expected a comma-separated list of allowed registries: %s", err)
 			}
-			result.allowedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(allowedRegistriesInputs, ","))
+			allowedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(allowedRegistriesInputs, ","))
+
+			if len(allowedRegistries) > 0 {
+				// received double quotes from the user. need to remove the existing value
+				if len(allowedRegistries) == 1 && allowedRegistries[0] == input.DoubleQuotesToRemove {
+					allowedRegistries[0] = ""
+				}
+			}
+			result.allowedRegistries = allowedRegistries
+			isAllowedRegistryNotSet = result.allowedRegistries == nil || strings.Join(result.allowedRegistries, ",") == ""
+		} else {
+			// if blocked registries is set, remove allowed registries
+			result.allowedRegistries = []string{}
 		}
 
-		if result.allowedRegistries == nil {
+		if isAllowedRegistryNotSet {
 			blockedRegistriesInputs, err := interactive.GetString(interactive.Input{
 				Question: "Blocked Registries",
 				Help:     cmd.Lookup(blockedRegistriesFlag).Usage,
@@ -182,6 +196,10 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 				return nil, fmt.Errorf("Expected a comma-separated list of blocked registries: %s", err)
 			}
 			result.blockedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(blockedRegistriesInputs, ","))
+			isBlockedRegistryNotSet = result.blockedRegistries == nil || strings.Join(result.blockedRegistries, ",") == ""
+		} else {
+			// if allowed registries is set, remove blocked registries
+			result.blockedRegistries = []string{}
 		}
 
 		insecureRegistriesInputs, err := interactive.GetString(interactive.Input{
@@ -217,6 +235,10 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 	}
 	if err := ocm.ValidateAllowedRegistriesForImport(result.allowedRegistriesForImport); err != nil {
 		return nil, fmt.Errorf("Expected valid allowed registries for import values: %v", err)
+	}
+
+	if !isBlockedRegistryNotSet && !isAllowedRegistryNotSet {
+		return nil, fmt.Errorf("Allowed registries and blocked registries are mutually exclusive fields")
 	}
 
 	return result, nil
@@ -287,8 +309,8 @@ func BuildAdditionalTrustedCAFromInputFile(specPath string) (map[string]string, 
 	for k, v := range specJson {
 		form[k], ok = v.(string)
 		if !ok {
-			return nil, fmt.Errorf(
-				"the value for key '%s' is '%v'. Expect value to be string, got %T", k, v, v)
+			return nil, fmt.Errorf("expected a valid value for 'additional_trusted_ca'. " +
+				"Should be in a <registry>:<boolean> format.")
 		}
 	}
 
