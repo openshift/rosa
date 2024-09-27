@@ -1,4 +1,4 @@
-package bootstrap
+package network
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestBootstrap(t *testing.T) {
+func TestNetwork(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Bootstrap suite")
+	RunSpecs(t, "Network suite")
 }

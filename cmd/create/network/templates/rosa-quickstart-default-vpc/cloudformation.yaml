@@ -33,12 +33,18 @@ Resources:
           Value: 'true'
         - Key: 'rosa_hcp_policies'
           Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
   S3VPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       VpcId: !Ref VPC
       ServiceName: !Sub "com.amazonaws.${Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PublicRouteTable
+        - !Ref PrivateRouteTable
 
   PublicSubnet:
     Type: 'AWS::EC2::Subnet'
@@ -55,6 +61,8 @@ Resources:
           Value: 'true'
         - Key: 'kubernetes.io/role/elb'
           Value: '1'
+        - Key: 'service'
+          Value: 'ROSA'
 
   PrivateSubnet:
     Type: 'AWS::EC2::Subnet'
@@ -71,6 +79,8 @@ Resources:
           Value: 'true'
         - Key: 'kubernetes.io/role/internal-elb'
           Value: '1'
+        - Key: 'service'
+          Value: 'ROSA'
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -82,6 +92,8 @@ Resources:
           Value: 'true'
         - Key: 'rosa_hcp_policies'
           Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -100,6 +112,8 @@ Resources:
           Value: 'true'
         - Key: 'rosa_hcp_policies'
           Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
   ElasticIP2:
     Type: AWS::EC2::EIP
@@ -112,6 +126,8 @@ Resources:
           Value: 'true'
         - Key: 'rosa_hcp_policies'
           Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
   NATGateway:
     Type: 'AWS::EC2::NatGateway'
@@ -125,6 +141,8 @@ Resources:
           Value: 'true'
         - Key: 'rosa_hcp_policies'
           Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
   PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
@@ -137,6 +155,8 @@ Resources:
           Value: 'true'
         - Key: 'rosa_hcp_policies'
           Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -162,6 +182,8 @@ Resources:
           Value: 'true'
         - Key: 'rosa_hcp_policies'
           Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
   PrivateRoutes:
     Type: AWS::EC2::Route
@@ -175,6 +197,91 @@ Resources:
     Properties:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Authorize inbound VPC traffic"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: "10.8.0.0/16"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIpv6: "::/0"
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'service'
+          Value: 'ROSA'
+
+  EC2VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.ec2"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  KMSVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.kms"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  STSVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.sts"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  EcrApiVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.ecr.api"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
+
+  EcrDkrVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${Region}.ecr.dkr"
+      PrivateDnsEnabled: true
+      VpcEndpointType: Interface
+      SubnetIds: 
+        - !Ref PrivateSubnet
+      SecurityGroupIds: 
+        - !Ref SecurityGroup
 
 Outputs:
   VPCId:

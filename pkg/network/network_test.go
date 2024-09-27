@@ -1,4 +1,4 @@
-package bootstrap
+package network
 
 import (
 	"os"
@@ -9,10 +9,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Bootstrap", func() {
+var _ = Describe("Network", func() {
 	var (
 		mockCtrl     *gomock.Controller
-		bootstrapSvc BootstrapService
+		networkSvc NetworkService
 		params       map[string]string
 		tags         map[string]string
 		templateFile string
@@ -20,7 +20,7 @@ var _ = Describe("Bootstrap", func() {
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
-		bootstrapSvc = NewBootstrapService()
+		networkSvc = NewNetworkService()
 		params = map[string]string{
 			"Name":   "test-stack",
 			"Region": "us-west-2",
@@ -40,7 +40,7 @@ var _ = Describe("Bootstrap", func() {
 	})
 
 	It("should return an error if the template file does not exist", func() {
-		err := bootstrapSvc.CreateStack("nonexistent-template.yaml", params, tags)
+		err := networkSvc.CreateStack("nonexistent-template.yaml", params, tags)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("unable to read template file"))
 	})

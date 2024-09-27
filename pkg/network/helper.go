@@ -1,4 +1,4 @@
-package bootstrap
+package network
 
 import (
 	"context"
@@ -95,5 +95,5 @@ func ParseParams(params []string) (map[string]string, map[string]string) {
 
 // selectTemplate selects the appropriate template file based on the template name
 func SelectTemplate(command string) string {
-	return fmt.Sprintf("cmd/bootstrap/templates/%s/cloudformation.yaml", command)
+	return fmt.Sprintf("cmd/create/network/templates/%s/cloudformation.yaml", command)
 }

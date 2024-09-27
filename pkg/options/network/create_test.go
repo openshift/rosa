@@ -1,4 +1,4 @@
-package Bootstrap
+package Network
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -12,7 +12,7 @@ var _ = Describe("BuildMachinePoolCreateCommandWithOptions", func() {
 	)
 
 	BeforeEach(func() {
-		cmd, _ = BuildBootstrapCommandWithOptions()
+		cmd, _ = BuildNetworkCommandWithOptions()
 	})
 
 	It("should create a command with the expected use, short, long, and example descriptions", func() {

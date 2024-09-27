@@ -1,4 +1,4 @@
-package bootstrap
+package network
 
 import (
 	. "github.com/onsi/ginkgo/v2"

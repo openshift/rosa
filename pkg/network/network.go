@@ -1,4 +1,4 @@
-package bootstrap
+package network
 
 import (
 	"context"
@@ -13,22 +13,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//go:generate mockgen -source=bootstrap.go -package=bootstrap -destination=bootstrap_mock.go
-type BootstrapService interface {
+//go:generate mockgen -source=network.go -package=network -destination=network_mock.go
+type NetworkService interface {
 	CreateStack(templateFile string, params map[string]string, tags map[string]string) error
 }
 
-type bootstrap struct {
+type network struct {
 }
 
-var _ BootstrapService = &bootstrap{}
+var _ NetworkService = &network{}
 
-func NewBootstrapService() BootstrapService {
-	return &bootstrap{}
+func NewNetworkService() NetworkService {
+	return &network{}
 }
 
 // createStack creates a CloudFormation stack
-func (s *bootstrap) CreateStack(templateFile string, params map[string]string, tags map[string]string) error {
+func (s *network) CreateStack(templateFile string, params map[string]string, tags map[string]string) error {
 	// Load the AWS configuration
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)

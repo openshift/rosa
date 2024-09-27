@@ -19,7 +19,7 @@ package create
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/bootstrap"
+	"github.com/openshift/rosa/cmd/create/network"
 	"github.com/openshift/rosa/cmd/create/accountroles"
 	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/autoscaler"
@@ -70,7 +70,7 @@ func init() {
 	Cmd.AddCommand(kubeletConfig)
 	Cmd.AddCommand(externalauthprovider.Cmd)
 	Cmd.AddCommand(breakglasscredential.Cmd)
-	Cmd.AddCommand(bootstrap.NewBootstrapCommand())
+	Cmd.AddCommand(network.NewNetworkCommand())
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
