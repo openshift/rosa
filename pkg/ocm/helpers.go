@@ -163,7 +163,7 @@ func ValidateRegistryAdditionalCa(input map[string]string) error {
 }
 
 func ValidateAllowedRegistriesForImport(input interface{}) error {
-	var idRE = regexp.MustCompile(`^([a-z0-9-]+\.[a-z]{2,})(:\d{1,5})?:(true|false)$`)
+	var idRE = regexp.MustCompile(`^(.+):(true|false)$`)
 	var registries []string
 	inputType := reflect.TypeOf(input).Kind()
 	switch inputType {
