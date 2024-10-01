@@ -416,9 +416,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(textData).
 					To(ContainSubstring(
-						fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': "+
-							"Tuning config with name '%s' does not exist for cluster '%s'",
-							clusterID,
+						fmt.Sprintf("Tuning config with name '%s' does not exist for cluster '%s'",
 							nonExistingTuningConfigName,
 							clusterID)))
 
@@ -433,9 +431,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(textData).
 					To(ContainSubstring(
-						fmt.Sprintf("Failed to add machine pool to hosted cluster '%s': "+
-							"Tuning config with name '%s' is duplicated",
-							clusterID,
+						fmt.Sprintf("Tuning config with name '%s' is duplicated",
 							tuningConfigName)))
 
 				By("Create a nodepool")
@@ -452,10 +448,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(textData).
 					To(ContainSubstring(
-						fmt.Sprintf("Failed to update machine pool '%s' on hosted cluster '%s': "+
-							"Tuning config with name '%s' does not exist for cluster '%s'",
-							nodePoolName,
-							clusterID,
+						fmt.Sprintf("Tuning config with name '%s' does not exist for cluster '%s'",
 							nonExistingTuningConfigName,
 							clusterID)))
 			})
@@ -1363,11 +1356,10 @@ var _ = Describe("Edit nodepool",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				rangeofNumbers := "must be between 0 and 100"
-				parseMsg := "machine pool to hosted cluster '%s': Failed to parse percentage "
-				attributeMsg := "machine pool to hosted cluster '%s': The value of attribute "
+				parseMsg := "Failed to parse percentage "
+				attributeMsg := "The value of attribute "
 				bothMsg := "'management_upgrade.max_unavailable' and 'management_upgrade.max_surge' "
 				eitherMsg := "'management_upgrade.max_unavailable' or 'management_upgrade.max_surge', "
-				createFailMsg := "ERR: Failed to add "
 				zeroMsg := "could be zero, not both"
 				sameUnitMsg := "must both use the same units (absolute value or percentage)"
 				integerMsg := "'1.1' to integer"
@@ -1376,124 +1368,96 @@ var _ = Describe("Edit nodepool",
 					{
 						"max surge":       "0",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							"machine pool to hosted cluster '%s': The value of only one attribute, "+
-							eitherMsg+
-							zeroMsg,
-							clusterID),
+						"errMsg": fmt.Sprintf("The value of only one attribute, " + //nolint
+							eitherMsg +
+							zeroMsg),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							"machine pool to hosted cluster '%s': The value of only one attribute, "+
-							eitherMsg+
-							zeroMsg,
-							clusterID),
+						"errMsg": fmt.Sprint("The value of only one attribute, " + //nolint
+							eitherMsg +
+							zeroMsg),
 					},
 					{
 						"max surge":       "0",
 						"max unavailable": "1%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							"machine pool to hosted cluster '%s': Attribute "+
-							bothMsg+
-							sameUnitMsg,
-							clusterID),
+						"errMsg": fmt.Sprint("Attribute " + //nolint
+							bothMsg +
+							sameUnitMsg),
 					},
 					{
 						"max surge":       "1%",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							"machine pool to hosted cluster '%s': Attribute "+
-							bothMsg+
-							sameUnitMsg,
-							clusterID),
+						"errMsg": fmt.Sprint("Attribute " + //nolint
+							bothMsg +
+							sameUnitMsg),
 					},
 					{
 						"max surge":       "-1",
 						"max unavailable": "1",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_surge' cannot be a negative integer",
-							clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_surge' cannot be a negative integer"),
 					},
 					{
 						"max surge":       "1",
 						"max unavailable": "-1",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_unavailable' cannot be a negative integer",
-							clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_unavailable' cannot be a negative integer"),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "-1%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_unavailable': Value -1 "+
-							rangeofNumbers,
-							clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_unavailable': Value -1 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "-1%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_surge': Value -1 "+
-							rangeofNumbers,
-							clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_surge': Value -1 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "101%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_unavailable': Value 101 "+
-							rangeofNumbers,
-							clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_unavailable': Value 101 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "101%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_surge': Value 101 "+
-							rangeofNumbers,
-							clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_surge': Value 101 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "1.1%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_unavailable': Error converting "+
-							integerMsg,
-							clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_unavailable': Error converting " +
+							integerMsg),
 					},
 					{
 						"max surge":       "1.1%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_surge': Error converting "+
-							integerMsg,
-							clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_surge': Error converting " +
+							integerMsg),
 					},
 					{
 						"max surge":       "1.1",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_surge' must be an integer",
-							clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_surge' must be an integer"),
 					},
 					{
 						"max surge":       "0",
 						"max unavailable": "1.1",
-						"errMsg": fmt.Sprintf(createFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_unavailable' must be an integer",
-							clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_unavailable' must be an integer"),
 					},
 				}
 
@@ -1523,131 +1487,100 @@ var _ = Describe("Edit nodepool",
 						machinePoolName,
 						clusterID))
 
-				parseMsg = "machine pool '%s' on hosted cluster '%s': Failed to parse percentage "
-				attributeMsg = "machine pool '%s' on hosted cluster '%s': The value of attribute "
-				editFailMsg := "ERR: Failed to update "
 				reqEditBody := []map[string]string{
 					{
 						"max surge":       "0",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							"machine pool '%s' on hosted cluster '%s': The value of only one attribute, "+
-							eitherMsg+
-							zeroMsg,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint("The value of only one attribute, " +
+							eitherMsg +
+							zeroMsg),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							"machine pool '%s' on hosted cluster '%s': The value of only one attribute, "+
-							eitherMsg+
-							zeroMsg,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint("The value of only one attribute, " +
+							eitherMsg +
+							zeroMsg),
 					},
 					{
 						"max surge":       "0",
 						"max unavailable": "1%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							"machine pool '%s' on hosted cluster '%s': Attribute "+
-							bothMsg+
-							sameUnitMsg,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint("Attribute " +
+							bothMsg +
+							sameUnitMsg),
 					},
 					{
 						"max surge":       "1%",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							"machine pool '%s' on hosted cluster '%s': Attribute "+
-							bothMsg+
-							sameUnitMsg,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint("Attribute " +
+							bothMsg +
+							sameUnitMsg),
 					},
 					{
 						"max surge":       "-1",
 						"max unavailable": "1",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_surge' cannot be a negative integer",
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_surge' cannot be a negative integer"),
 					},
 					{
 						"max surge":       "1",
 						"max unavailable": "-1",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_unavailable' cannot be a negative integer",
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_unavailable' cannot be a negative integer"),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "-1%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_unavailable': Value -1 "+
-							rangeofNumbers,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_unavailable': Value -1 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "-1%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_surge': Value -1 "+
-							rangeofNumbers,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_surge': Value -1 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "101%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_unavailable': Value 101 "+
-							rangeofNumbers,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_unavailable': Value 101 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "101%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_surge': Value 101 "+
-							rangeofNumbers,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_surge': Value 101 " +
+							rangeofNumbers),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "1.1%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_unavailable': Error converting "+
-							integerMsg,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_unavailable': Error converting " +
+							integerMsg),
 					},
 					{
 						"max surge":       "1.1%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							parseMsg+
-							"value for attribute 'management_upgrade.max_surge': Error converting "+
-							integerMsg,
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(parseMsg +
+							"value for attribute 'management_upgrade.max_surge': Error converting " +
+							integerMsg),
 					},
 					{
 						"max surge":       "1.1",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_surge' must be an integer",
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_surge' must be an integer"),
 					},
 					{
 						"max surge":       "0",
 						"max unavailable": "1.1",
-						"errMsg": fmt.Sprintf(editFailMsg+
-							attributeMsg+
-							"'management_upgrade.max_unavailable' must be an integer",
-							machinePoolName, clusterID),
+						"errMsg": fmt.Sprint(attributeMsg +
+							"'management_upgrade.max_unavailable' must be an integer"),
 					},
 				}
 

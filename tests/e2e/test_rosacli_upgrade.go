@@ -893,7 +893,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 		})
 
 		It("to validate role's policy when upgrade hcp cluster - [id:62161]",
-			labels.Medium, labels.Runtime.Day2, labels.Runtime.Upgrade,
+			labels.Medium, labels.Runtime.Upgrade,
 			func() {
 				By("update operator-roles for hcp cluster")
 				ocmResourceService := rosaClient.OCMResource
