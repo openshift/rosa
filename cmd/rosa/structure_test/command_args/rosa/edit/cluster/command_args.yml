@@ -20,3 +20,4 @@
 - name: registry-config-allowed-registries-for-import
 - name: registry-config-platform-allowlist
 - name: registry-config-additional-trusted-ca
+- name: billing-account

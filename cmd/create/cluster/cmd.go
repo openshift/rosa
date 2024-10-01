@@ -731,7 +731,7 @@ func initFlags(cmd *cobra.Command) {
 		&args.billingAccount,
 		"billing-account",
 		"",
-		"Account ID used for billing subscriptions purchased via the AWS marketplace",
+		"Account ID used for billing subscriptions purchased through the AWS console for ROSA",
 	)
 
 	flags.BoolVar(
@@ -1115,8 +1115,9 @@ func run(cmd *cobra.Command, _ []string) {
 		if !isHcpBillingTechPreview {
 
 			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				r.Reporter.Errorf("Billing account is invalid. Run the command again with a valid billing account. %s",
-					listBillingAccountMessage)
+				r.Reporter.Errorf("Provided billing account number %s is not valid. "+
+					"Rerun the command with a valid billing account number. %s",
+					billingAccount, listBillingAccountMessage)
 				os.Exit(1)
 			}
 
@@ -1155,20 +1156,20 @@ func run(cmd *cobra.Command, _ []string) {
 					billingAccount = aws.ParseOption(billingAccount)
 				}
 
-				err := validateBillingAccount(billingAccount)
+				err := ocm.ValidateBillingAccount(billingAccount)
 				if err != nil {
 					r.Reporter.Errorf("%v", err)
 					os.Exit(1)
 				}
 
 				// Get contract info
-				contracts, isContractEnabled := GetBillingAccountContracts(cloudAccounts, billingAccount)
+				contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
 
 				if billingAccount != awsCreator.AccountID {
 					r.Reporter.Infof(
-						"The selected AWS billing account is a different account than your AWS infrastructure account." +
+						"The AWS billing account you selected is different from your AWS infrastructure account. " +
 							"The AWS billing account will be charged for subscription usage. " +
-							"The AWS infrastructure account will be used for managing the cluster.",
+							"The AWS infrastructure account contains the ROSA infrastructure.",
 					)
 				} else {
 					r.Reporter.Infof("Using '%s' as billing account.",
@@ -3385,14 +3386,6 @@ func clusterConfigFor(
 		}
 	}
 	return clusterConfig, nil
-}
-
-func validateBillingAccount(billingAccount string) error {
-	if billingAccount == "" || !ocm.IsValidAWSAccount(billingAccount) {
-		return fmt.Errorf("billing account is invalid. Run the command again with a valid billing account. %s",
-			listBillingAccountMessage)
-	}
-	return nil
 }
 
 func provideBillingAccount(billingAccounts []string, accountID string, r *rosa.Runtime) (string, error) {
