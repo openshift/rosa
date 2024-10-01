@@ -883,9 +883,21 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// validate flags for cluster admin
 	isHostedCP := args.hostedClusterEnabled
-	if isHostedCP && fedramp.Enabled() {
-		r.Reporter.Errorf("Fedramp does not currently support Hosted Control Plane clusters. Please use classic")
-		os.Exit(1)
+	if isHostedCP {
+		if fedramp.Enabled() {
+			r.Reporter.Errorf("Fedramp does not currently support Hosted Control Plane clusters. Please use classic")
+			os.Exit(1)
+		}
+		if cmd.Flag(securitygroups.InfraSecurityGroupFlag).Changed {
+			r.Reporter.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, only '%s' is "+
+				"supported", securitygroups.InfraSecurityGroupFlag, securitygroups.ComputeSecurityGroupFlag)
+			os.Exit(1)
+		}
+		if cmd.Flag(securitygroups.ControlPlaneSecurityGroupFlag).Changed {
+			r.Reporter.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, only '%s' is "+
+				"supported", securitygroups.ControlPlaneSecurityGroupFlag, securitygroups.ComputeSecurityGroupFlag)
+			os.Exit(1)
+		}
 	}
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
@@ -2571,20 +2583,23 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("There was a problem checking version compatibility: %v", err)
 		os.Exit(1)
 	}
+
 	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		securitygroups.ComputeKind, useExistingVPC, isHostedCP, subnets,
+		securitygroups.ComputeKind, useExistingVPC, subnets,
 		subnetIDs, &additionalComputeSecurityGroupIds)
 
 	additionalInfraSecurityGroupIds := args.additionalInfraSecurityGroupIds
-	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		securitygroups.InfraKind, useExistingVPC, isHostedCP, subnets,
-		subnetIDs, &additionalInfraSecurityGroupIds)
-
 	additionalControlPlaneSecurityGroupIds := args.additionalControlPlaneSecurityGroupIds
-	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		securitygroups.ControlPlaneKind, useExistingVPC, isHostedCP, subnets,
-		subnetIDs, &additionalControlPlaneSecurityGroupIds)
+	if !isHostedCP {
+		getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+			securitygroups.InfraKind, useExistingVPC, subnets,
+			subnetIDs, &additionalInfraSecurityGroupIds)
+
+		getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
+			securitygroups.ControlPlaneKind, useExistingVPC, subnets,
+			subnetIDs, &additionalControlPlaneSecurityGroupIds)
+	}
 
 	// Validate all remaining flags:
 	expiration, err := validateExpiration()
@@ -4119,18 +4134,12 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 }
 
 func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
-	kind string, useExistingVpc bool, isHostedCp bool, currentSubnets []ec2types.Subnet, subnetIds []string,
+	kind string, useExistingVpc bool, currentSubnets []ec2types.Subnet, subnetIds []string,
 	additionalSgIds *[]string) {
 	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
 	if hasChangedSgIdsFlag {
 		if !useExistingVpc {
 			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYO VPC clusters",
-				securitygroups.SgKindFlagMap[kind])
-			os.Exit(1)
-		}
-		// HCP is still unsupported
-		if isHostedCp {
-			r.Reporter.Errorf("Parameter '%s' is not supported for Hosted Control Plane clusters",
 				securitygroups.SgKindFlagMap[kind])
 			os.Exit(1)
 		}
@@ -4146,7 +4155,7 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 				securitygroups.SgKindFlagMap[kind], formattedVersion)
 			os.Exit(1)
 		}
-	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc && !isHostedCp {
+	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc {
 		vpcId := ""
 		for _, subnet := range currentSubnets {
 			if awssdk.ToString(subnet.SubnetId) == subnetIds[0] {
