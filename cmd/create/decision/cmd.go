@@ -38,7 +38,6 @@ func NewCreateDecisionCommand() *cobra.Command {
 	options := NewDecisionOptions()
 	cmd := &cobra.Command{
 		Use:     use,
-		Aliases: []string{"access-request"},
 		Short:   short,
 		Long:    long,
 		Example: example,

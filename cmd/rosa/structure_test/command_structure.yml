@@ -53,6 +53,7 @@ children:
     - name: user-role
 - name: describe
   children:
+    - name: accessrequest
     - name: addon
     - name: admin
     - name: autoscaler
