@@ -138,7 +138,7 @@ func versionCheck(cmd *cobra.Command, _ []string) {
 		return
 	}
 	if !isLatest {
-		rprtr.Warnf("The current version (%s) is not up to date with latest released version (%s).",
+		rprtr.Warnf("The current version (%s) is not up to date with latest rosa cli released version (%s).",
 			info.DefaultVersion,
 			latestVersionFromMirror.Original(),
 		)
