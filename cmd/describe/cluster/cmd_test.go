@@ -2,13 +2,22 @@ package cluster
 
 import (
 	"encoding/json"
+	"net/http"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
+	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift-online/ocm-sdk-go/logging"
+	. "github.com/openshift-online/ocm-sdk-go/testing"
+
+	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 const (
@@ -165,6 +174,119 @@ var _ = Describe("getClusterRegistryConfig", func() {
 			" - Additional Trusted CA:         \n" +
 			"    - registry.io: REDACTED\n"
 		Expect(output).To(Equal(expectedOutput))
+	})
+})
+
+var _ = Describe("getZeroEgressStatus", func() {
+	var (
+		ssoServer, apiServer *ghttp.Server
+		r                    *rosa.Runtime
+
+		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
+		zeroEgressResp = `
+	{
+      "kind":"ProductTechnologyPreview",
+      "id":"hcp-zero-egress",
+      "href":"/api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress",
+      "end_date":"2024-11-16T00:00:00Z",
+      "additional_text":"Zero Egress"
+	}`
+	)
+
+	BeforeEach(func() {
+		ssoServer = MakeTCPServer()
+		apiServer = MakeTCPServer()
+		apiServer.SetAllowUnhandledRequests(true)
+		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
+
+		// Create the token:
+		accessToken := MakeTokenString("Bearer", 15*time.Minute)
+
+		// Prepare the server:
+		ssoServer.AppendHandlers(
+			RespondWithAccessToken(accessToken),
+		)
+		logger, err := logging.NewGoLoggerBuilder().
+			Debug(false).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		// Set up the connection with the fake config
+		connection, err := sdk.NewConnectionBuilder().
+			Logger(logger).
+			Tokens(accessToken).
+			URL(apiServer.URL()).
+			Build()
+		// Initialize client object
+		Expect(err).To(BeNil())
+		ocmClient := ocm.NewClientWithConnection(connection)
+
+		r = rosa.NewRuntime()
+		r.OCMClient = ocmClient
+		r.Creator = &aws.Creator{
+			ARN:       "fake",
+			AccountID: "123",
+			IsSTS:     false,
+		}
+	})
+
+	It("Should include zero egress enabled in the output", func() {
+		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				zeroEgressResp,
+			),
+		)
+
+		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "true"}).Build()
+		Expect(err).NotTo(HaveOccurred())
+		output, err := getZeroEgressStatus(r, mockCluster)
+		Expect(err).NotTo(HaveOccurred())
+		expectedOutput := "Zero Egress:                Enabled\n"
+		Expect(output).To(Equal(expectedOutput))
+	})
+	It("Should include zero egress disabled in the output", func() {
+		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				zeroEgressResp,
+			),
+		)
+
+		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "false"}).Build()
+		Expect(err).NotTo(HaveOccurred())
+		output, err := getZeroEgressStatus(r, mockCluster)
+		Expect(err).NotTo(HaveOccurred())
+		expectedOutput := "Zero Egress:                Disabled\n"
+		Expect(output).To(Equal(expectedOutput))
+	})
+	It("Should not include zero egress in the output", func() {
+		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusNotFound, "",
+			),
+		)
+
+		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "true"}).Build()
+		Expect(err).NotTo(HaveOccurred())
+		output, err := getZeroEgressStatus(r, mockCluster)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(output).To(Equal(""))
+	})
+	It("Should not include zero egress in the output", func() {
+		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusInternalServerError, "",
+			),
+		)
+
+		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "true"}).Build()
+		Expect(err).NotTo(HaveOccurred())
+		_, err = getZeroEgressStatus(r, mockCluster)
+		Expect(err).To(HaveOccurred())
 	})
 })
 
