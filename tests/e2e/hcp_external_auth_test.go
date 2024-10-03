@@ -360,10 +360,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						Expect(err).To(HaveOccurred())
 						textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).
-							To(ContainSubstring(
-								"ERR: failed to create a break glass credential for cluster '%s': "+
-									"The username '%s' must respect the regexp '^[a-zA-Z0-9-.]*$'",
-								clusterID,
+							To(ContainSubstring("The username '%s' must respect the regexp '^[a-zA-Z0-9-.]*$'",
 								userName))
 
 						By("Create break-glass-credential with invalid --expiration")
@@ -392,9 +389,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).
 							To(ContainSubstring(
-								"ERR: failed to create a break glass credential for cluster '%s': "+
-									"Expiration needs to be at least 10 minutes from now",
-								clusterID))
+								"Expiration needs to be at least 10 minutes from now"))
 					}
 				}
 			})

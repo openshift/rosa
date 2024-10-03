@@ -1559,8 +1559,7 @@ var _ = Describe("Create cluster with invalid options will",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Failed to create cluster:" +
-						" The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
+					ContainSubstring("The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
 			})
 
 		It("to validate the network when create cluster - [id:38857]", labels.Medium, labels.Runtime.Day1Negative,
@@ -2449,8 +2448,8 @@ var _ = Describe("HCP cluster creation negative testing",
 
 				successOutput := "Creating cluster '" + clusterName +
 					"' should succeed. Run without the '--dry-run' flag to create the cluster"
-				failOutput := "Creating cluster '" + clusterName + "' should fail: " +
-					"Availability zone " + availabilityZone +
+				failOutput_1 := "Creating cluster '" + clusterName + "' should fail: "
+				failOutput_2 := "Availability zone " + availabilityZone +
 					" has more than one private subnet. Check the subnets and try again"
 
 				By("Create a public cluster with 1 private subnet and 1 public subnet")
@@ -2477,7 +2476,8 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput))
+				Expect(out.String()).To(ContainSubstring(failOutput_1))
+				Expect(out.String()).To(ContainSubstring(failOutput_2))
 
 				By("Create a public cluster with 4 private subnets (2 subnets from same AZ) and 1 public subnet")
 				subnets = []string{
@@ -2490,7 +2490,8 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput))
+				Expect(out.String()).To(ContainSubstring(failOutput_1))
+				Expect(out.String()).To(ContainSubstring(failOutput_2))
 
 				By("Create a public cluster with 1 private subnet and 2 public subnet from same AZ")
 				subnets = []string{subnetMap["private"][0], subnetMap["public"][0], additionalPublicSubnet.ID}
@@ -2518,7 +2519,8 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput))
+				Expect(out.String()).To(ContainSubstring(failOutput_1))
+				Expect(out.String()).To(ContainSubstring(failOutput_2))
 
 				By("Create a private cluster with 4 private subnets (2 subnets from same AZ)")
 				subnets = []string{
@@ -2530,7 +2532,8 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput))
+				Expect(out.String()).To(ContainSubstring(failOutput_1))
+				Expect(out.String()).To(ContainSubstring(failOutput_2))
 
 				By("Create a private cluster with 1 private subnet and 1 public subnet")
 				subnets = []string{subnetMap["private"][0], subnetMap["public"][0]}

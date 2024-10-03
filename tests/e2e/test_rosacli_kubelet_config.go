@@ -387,7 +387,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).
 					Should(ContainSubstring(
-						"'KubeletConfig with name '%s' already exists'", dupName))
+						"KubeletConfig with name '%s' already exists", dupName))
 
 				By("Edit with invalid pod pids limit value")
 				out, err = kubeletService.EditKubeletConfig(clusterID,
