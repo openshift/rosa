@@ -9,6 +9,7 @@ import (
 
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/exec/occli"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
@@ -104,6 +105,20 @@ var _ = Describe("ROSA CLI Test", func() {
 			Logger.Info("--password antyhingoutofordinary endofpassword")
 			Logger.Info("beginning --client-id thisisclient end")
 			Expect(false).To(BeTrue())
+		})
+	})
+})
+
+var _ = Describe("OC CLI Test", func() {
+	Describe("Test created kubeconfig", func() {
+		It("Test", func() {
+			ocClient := occli.NewOCClient()
+			stdout, err := ocClient.Run("oc get nodes", 3)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(stdout).To(SatisfyAll(
+				ContainSubstring("NAME"), ContainSubstring("STATUS"), ContainSubstring("ROLES"),
+				ContainSubstring("AGE"), ContainSubstring("VERSION"),
+			))
 		})
 	})
 })

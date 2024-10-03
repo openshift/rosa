@@ -72,8 +72,3 @@ func DeployCilium(ocClient *occli.Client, podCIDR string, hostPrefix string, out
 
 	return err
 }
-
-func GetKubeconfigDummyFunc() {
-	// TODO: create IDP to get kubeconfig
-	// Refer to OCM-9183
-}

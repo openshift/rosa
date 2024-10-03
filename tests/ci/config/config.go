@@ -37,6 +37,8 @@ type TestConfig struct {
 	ClusterDetailFile             string
 	ClusterInstallLogArtifactFile string
 	ClusterAdminFile              string
+	ClusterKubeconfigIdpFile      string
+	ClusterKubeconfigFile         string
 	TestFocusFile                 string
 	TestLabelFilterFile           string
 	ProxySSHPemFile               string
@@ -90,6 +92,8 @@ func init() {
 	Test.ClusterDetailFile = path.Join(Test.OutputDir, "cluster-detail.json")
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
+	Test.ClusterKubeconfigIdpFile = path.Join(Test.ArtifactDir, ".userkubeconfigidp")
+	Test.ClusterKubeconfigFile = path.Join(Test.ArtifactDir, ".kubeconfigidp")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
 	Test.TestLabelFilterFile = path.Join(Test.RootDir, "tests", "ci", "data", "label-filter")
 	Test.ProxySSHPemFile = "ocm-test-proxy"
