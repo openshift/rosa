@@ -285,6 +285,10 @@ func FormatResource(resource interface{}) string {
 		if res, ok := resource.(*accessv1.Decision); ok {
 			err = accessv1.MarshalDecision(res, &outputJson)
 		}
+	case "*v1.AccessRequest":
+		if res, ok := resource.(*accessv1.AccessRequest); ok {
+			err = accessv1.MarshalAccessRequest(res, &outputJson)
+		}
 	default:
 		{
 			return "NOTIMPLEMENTED"

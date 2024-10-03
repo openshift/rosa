@@ -19,6 +19,7 @@ package describe
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/describe/accessrequest"
 	"github.com/openshift/rosa/cmd/describe/addon"
 	"github.com/openshift/rosa/cmd/describe/admin"
 	"github.com/openshift/rosa/cmd/describe/autoscaler"
@@ -46,12 +47,14 @@ func init() {
 	machinePoolCommand := machinepool.NewDescribeMachinePoolCommand()
 	ingressCommand := ingress.NewDescribeIngressCommand()
 	kubeletconfig := kubeletconfig.NewDescribeKubeletConfigCommand()
+	accessrequestCommand := accessrequest.NewDescribeAccessRequestCommand()
 	cmds := []*cobra.Command{
 		addon.Cmd, admin.Cmd, cluster.Cmd, service.Cmd,
 		installation.Cmd, upgrade.Cmd, tuningconfigs.Cmd,
 		machinePoolCommand, kubeletconfig,
 		autoscaler.NewDescribeAutoscalerCommand(), ingressCommand,
 		externalauthprovider.Cmd, breakglasscredential.Cmd,
+		accessrequestCommand,
 	}
 	for _, cmd := range cmds {
 		Cmd.AddCommand(cmd)
@@ -67,6 +70,7 @@ func init() {
 		admin.Cmd, breakglasscredential.Cmd,
 		externalauthprovider.Cmd, installation.Cmd,
 		kubeletconfig, upgrade.Cmd, ingressCommand,
+		accessrequestCommand,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

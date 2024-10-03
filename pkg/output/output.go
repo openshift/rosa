@@ -27,6 +27,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	arv1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 
@@ -172,6 +173,10 @@ func Print(resource interface{}) error {
 					return err
 				}
 			}
+		}
+	case "*v1.AccessRequest":
+		if accessRequest, ok := resource.(*arv1.AccessRequest); ok {
+			arv1.MarshalAccessRequest(accessRequest, &b)
 		}
 	// default to catch non concrete types
 	default:
