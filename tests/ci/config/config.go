@@ -34,14 +34,15 @@ type TestConfig struct {
 	ConsoleUrlFile  string
 	InfraIDFile     string
 	// End of temporary
-	ClusterDetailFile             string
-	ClusterInstallLogArtifactFile string
-	ClusterAdminFile              string
-	TestFocusFile                 string
-	TestLabelFilterFile           string
-	ProxySSHPemFile               string
-	ProxyCABundleFile             string
-	GlobalENV                     *GlobalENVVariables
+	ClusterDetailFile               string
+	ClusterInstallLogArtifactFile   string
+	ClusterAdminFile                string
+	ClusterIDPAdminUsernamePassword string
+	TestFocusFile                   string
+	TestLabelFilterFile             string
+	ProxySSHPemFile                 string
+	ProxyCABundleFile               string
+	GlobalENV                       *GlobalENVVariables
 }
 type GlobalENVVariables struct {
 	ChannelGroup          string `env:"CHANNEL_GROUP" default:""`
@@ -90,6 +91,7 @@ func init() {
 	Test.ClusterDetailFile = path.Join(Test.OutputDir, "cluster-detail.json")
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
+	Test.ClusterIDPAdminUsernamePassword = path.Join(Test.ArtifactDir, ".idp-admin-username-password")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
 	Test.TestLabelFilterFile = path.Join(Test.RootDir, "tests", "ci", "data", "label-filter")
 	Test.ProxySSHPemFile = "ocm-test-proxy"
