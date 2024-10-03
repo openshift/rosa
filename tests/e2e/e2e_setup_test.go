@@ -80,7 +80,21 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					Expect(err).ToNot(HaveOccurred())
 					log.Logger.Infof("Deploy cilium for HCP cluster: %s successfully ", cluster.ID)
 				} else {
-					utilConfig.GetKubeconfigDummyFunc()
+					By("Create IDP to get kubeconfig")
+					idpType := "htpasswd"
+					idpName := "myhtpasswdKubeconf"
+					name, password := profilehandler.PrepareAdminUser()
+					usersValue := name + ":" + password
+					_, err := client.IDP.CreateIDP(clusterID, idpName,
+						"--type", idpType,
+						"--users", usersValue,
+						"-y")
+					Expect(err).ToNot(HaveOccurred())
+
+					_, err = client.User.GrantUser(clusterID, "dedicated-admins", name)
+					Expect(err).ToNot(HaveOccurred())
+
+					helper.CreateFileWithContent(config.Test.ClusterIDPAdminUsernamePassword, usersValue)
 				}
 			}
 		})
