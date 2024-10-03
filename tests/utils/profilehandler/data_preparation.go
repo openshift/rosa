@@ -2,7 +2,6 @@ package profilehandler
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -436,58 +435,6 @@ func PrepareOIDCProviderByCluster(client *rosacli.Client, cluster string) error 
 		"--cluster", cluster,
 	)
 	return err
-}
-
-func PrepareTemporaryPolicyFor417(region string, capaControllerOperatorRoleName string) (string, error) {
-	awsClient, err := aws_client.CreateAWSClient("", region)
-	if err != nil {
-		return "", err
-	}
-	policyName := helper.GenerateRandomName("ROSANodePoolMissingPolicy", 2)
-	policyDocument := map[string]interface{}{
-		"Version": "2012-10-17",
-		"Statement": []map[string]interface{}{
-			{
-				"Sid":    "CreateTags",
-				"Effect": "Allow",
-				"Action": "ec2:CreateTags",
-				"Resource": []string{
-					"arn:aws:ec2:*:*:instance/*",
-					"arn:aws:ec2:*:*:volume/*",
-					"arn:aws:ec2:*:*:network-interface/*"},
-				"Condition": map[string]interface{}{
-					"StringEquals": map[string]string{
-						"ec2:CreateAction": "RunInstances",
-					},
-				},
-			},
-			{
-				"Sid":    "CreateTagsCAPAControllerNetworkInterface",
-				"Effect": "Allow",
-				"Action": "ec2:CreateTags",
-				"Resource": []string{
-					"arn:aws:ec2:*:*:network-interface/*"},
-				"Condition": map[string]interface{}{
-					"StringEquals": map[string]string{
-						"aws:RequestTag/red-hat-managed": "true",
-					},
-				},
-			},
-		},
-	}
-	policyBytes, _ := json.Marshal(policyDocument)
-	policy, err := awsClient.CreateIAMPolicy(policyName, string(policyBytes),
-		map[string]string{"openshift_version": "4.17"})
-	if err != nil {
-		return "", err
-	}
-	err = awsClient.AttachIAMPolicy(capaControllerOperatorRoleName, *policy.Arn)
-	if err != nil {
-		log.Logger.Errorf("Error happens when attach misssing policy %s to role %s: %s", *policy.Arn,
-			capaControllerOperatorRoleName, err.Error())
-	}
-	log.Logger.Infof("Policy %s is attached to %s", *policy.Arn, capaControllerOperatorRoleName)
-	return *policy.Arn, err
 }
 
 func PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string, ingressOperatorRoleArn string,
