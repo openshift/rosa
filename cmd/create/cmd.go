@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/kubeletconfig"
 	"github.com/openshift/rosa/cmd/create/machinepool"
+	"github.com/openshift/rosa/cmd/create/network"
 	"github.com/openshift/rosa/cmd/create/ocmrole"
 	"github.com/openshift/rosa/cmd/create/oidcconfig"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -72,6 +73,7 @@ func init() {
 	Cmd.AddCommand(breakglasscredential.Cmd)
 	decisionCommand := decision.NewCreateDecisionCommand()
 	Cmd.AddCommand(decisionCommand)
+	Cmd.AddCommand(network.NewNetworkCommand())
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
