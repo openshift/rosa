@@ -30,3 +30,16 @@ func (awsClient AWSClient) DeleteResourceShare(resourceShareArn string) error {
 	_, err := awsClient.RamClient.DeleteResourceShare(context.TODO(), input)
 	return err
 }
+
+func (awsClient AWSClient) PrepareResourceShare(resourceShareName string, resourceArns []string, accountID string) (string, error) {
+	var principles []string
+	principles = append(principles, accountID)
+
+	sharedResourceOutput, err := awsClient.CreateResourceShare(resourceShareName, resourceArns, principles)
+	if err != nil {
+		return "", err
+	}
+	resourceShareArn := *sharedResourceOutput.ResourceShare.ResourceShareArn
+
+	return resourceShareArn, err
+}

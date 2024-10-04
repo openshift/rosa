@@ -459,3 +459,36 @@ func (client *AWSClient) CreateRoleForAdditionalPrincipals(roleName string, inst
 
 	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
 }
+
+func (client *AWSClient) UpdateAssumeRolePolicy(roleName string, assumeRolePolicyDocument string) error {
+	input := &iam.UpdateAssumeRolePolicyInput{
+		RoleName:       &roleName,
+		PolicyDocument: &assumeRolePolicyDocument,
+	}
+
+	_, err := client.IamClient.UpdateAssumeRolePolicy(context.TODO(), input)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (client *AWSClient) UpdateAssumeRolePolicyForSharedVPCRole(roleName string, installerRoleArn string,
+	ingressOperatorRoleArn string) error {
+	statement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Principal": map[string]interface{}{
+			"AWS": []string{installerRoleArn, ingressOperatorRoleArn},
+		},
+		"Action": "sts:AssumeRole",
+	}
+
+	assumeRolePolicyDocument, err := completeRolePolicyDocument(statement)
+	if err != nil {
+		log.LogError("Failed to convert Role Policy Document into JSON: %s", err.Error())
+		return err
+	}
+	err = client.UpdateAssumeRolePolicy(roleName, assumeRolePolicyDocument)
+	return err
+}
