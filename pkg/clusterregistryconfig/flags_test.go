@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/gomega"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -193,6 +194,17 @@ var _ = Describe("Cluster Registry Config tests", func() {
 			flags.Set(additionalTrustedCaPathFlag, "ca.json")
 			isClusterRegistryConfigSetViaCLI := IsClusterRegistryConfigSetViaCLI(flags)
 			Expect(isClusterRegistryConfigSetViaCLI).To(Equal(true))
+		})
+	})
+
+	Context("GetClusterRegistryConfigQuestion", func() {
+		It("Asks to enable config option for new clusters", func() {
+			question := GetClusterRegistryConfigQuestion(nil)
+			Expect(question).To(ContainSubstring("Enable"))
+		})
+		It("Asks to update cluster registry config option for existing clusters", func() {
+			question := GetClusterRegistryConfigQuestion(&cmv1.Cluster{})
+			Expect(question).To(ContainSubstring("Update"))
 		})
 	})
 
