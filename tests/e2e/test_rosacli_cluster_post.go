@@ -392,10 +392,10 @@ var _ = Describe("Healthy check",
 
 		It("with policy path will work - [id:75525]", labels.Runtime.Day1Post, labels.High,
 			func() {
-				path := profile.AccountRoleConfig.Path
-				if path == "" {
+				if profile.AccountRoleConfig == nil || profile.AccountRoleConfig.Path == "" {
 					Skip("No account-role path defined. Skipping ...")
 				}
+				path := profile.AccountRoleConfig.Path
 
 				By("Retrieve cluster description")
 				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
