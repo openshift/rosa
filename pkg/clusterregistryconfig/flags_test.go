@@ -62,17 +62,18 @@ var _ = Describe("Cluster Registry Config tests", func() {
 
 		It("Returns the expected string if set", func() {
 			spec.AllowedRegistries = []string{"abc.com", "efg.com"}
-			spec.InsecureRegistries = []string{"insecure.com"}
+			spec.InsecureRegistries = []string{"insecure.com", "*.insecure.com"}
 			spec.BlockedRegistries = []string{"blocked.com"}
 			spec.AdditionalTrustedCaFile = "ca.json"
 			spec.PlatformAllowlist = "allowlist-id"
-			spec.AllowedRegistriesForImport = "lala.com:true"
+			spec.AllowedRegistriesForImport = "lala.com:true,*.io:false"
 			output := BuildRegistryConfigOptions(spec)
 			expectedOutput := " --registry-config-allowed-registries abc.com,efg.com" +
 				" --registry-config-blocked-registries blocked.com" +
-				" --registry-config-insecure-registries insecure.com --registry-config-additional-trusted-ca ca.json" +
+				" --registry-config-insecure-registries 'insecure.com,*.insecure.com'" +
+				" --registry-config-additional-trusted-ca ca.json" +
 				" --registry-config-platform-allowlist allowlist-id" +
-				" --registry-config-allowed-registries-for-import lala.com:true"
+				" --registry-config-allowed-registries-for-import 'lala.com:true,*.io:false'"
 			Expect(output).To(Equal(expectedOutput))
 		})
 	})
