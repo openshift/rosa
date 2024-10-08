@@ -17,26 +17,27 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 	var rosaClient *rosacli.Client
 	var clusterService rosacli.ClusterService
 	var clusterConfig *config.ClusterConfig
+	var hostedCluster bool
+	var err error
 
 	BeforeEach(func() {
 		Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
 		rosaClient = rosacli.NewClient()
 		clusterService = rosaClient.Cluster
+
+		hostedCluster, err = clusterService.IsHostedCPCluster(clusterID)
+		Expect(err).ToNot(HaveOccurred())
+
+		clusterConfig, err = config.ParseClusterProfile()
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("creation testing", func() {
 		BeforeEach(func() {
-			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-
-			clusterConfig, err = config.ParseClusterProfile()
-			Expect(err).ToNot(HaveOccurred())
-
 			By("Skip testing if the cluster is not a Classic cluster")
 			if hostedCluster {
 				SkipNotClassic()
 			}
-
 		})
 
 		It("create/describe/edit/delete cluster autoscaler by rosacli - [id:67275]",
@@ -242,9 +243,6 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 
 				It("for hcp cluster",
 					func() {
-						hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-						Expect(err).ToNot(HaveOccurred())
-
 						if !hostedCluster {
 							SkipNotHosted()
 						}
@@ -312,12 +310,6 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 
 				It("for classic non-autoscaler cluster",
 					func() {
-						clusterConfig, err := config.ParseClusterProfile()
-						Expect(err).ToNot(HaveOccurred())
-
-						hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-						Expect(err).ToNot(HaveOccurred())
-
 						if hostedCluster {
 							SkipNotClassic()
 						}
@@ -651,12 +643,6 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 		It("create/describe/edit/delete autoscaler for autoscaler enabled cluster - [id:74468]",
 			labels.Medium, labels.Runtime.Day1Post,
 			func() {
-				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-
-				clusterConfig, err := config.ParseClusterProfile()
-				Expect(err).ToNot(HaveOccurred())
-
 				if hostedCluster {
 					SkipNotClassic()
 				}

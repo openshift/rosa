@@ -236,7 +236,7 @@ var _ = Describe("Cluster Upgrade testing",
 			)
 			Expect(err).To(BeNil())
 
-			By("Check th arbitrary policies has no change")
+			By("Check the arbitrary policies has no change")
 			for _, policyArn := range arbitraryPoliciesToClean {
 				policy, err := awsClient.GetIAMPolicy(policyArn)
 				Expect(err).To(BeNil())

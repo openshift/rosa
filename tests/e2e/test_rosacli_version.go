@@ -56,7 +56,7 @@ var _ = Describe("Get CLI version",
 		)
 
 		It("list versions can work correctly for hosted-cp cluster via ROSA cli - [id:62088]",
-			labels.High,
+			labels.High, labels.Runtime.OCMResources,
 			func() {
 				By("Init the client")
 				rosaClient = rosacli.NewClient()

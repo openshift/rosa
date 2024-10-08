@@ -28,7 +28,6 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	var (
 		rosaClient         *rosacli.Client
 		machinePoolService rosacli.MachinePoolService
-		clusterConfig      *config.ClusterConfig
 		profile            *ph.Profile
 		isMultiArch        bool
 	)
@@ -39,10 +38,6 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		Expect(clusterID).ToNot(BeEmpty(), "Cluster ID is empty, please export the env variable CLUSTER_ID")
 		rosaClient = rosacli.NewClient()
 		machinePoolService = rosaClient.MachinePool
-
-		By("Retrieve Cluster config")
-		clusterConfig, err = config.ParseClusterProfile()
-		Expect(err).ToNot(HaveOccurred())
 
 		By("Skip testing if the cluster is not a HCP cluster")
 		hostedCluster, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
@@ -633,12 +628,17 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		It("creation in local zone subnet - [id:71319]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
+				var vpcClient *vpc_client.VPC
+				var err error
+
+				By("Retrieve cluster config")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+
 				By("Prepare a subnet out of the cluster creation subnet")
 				subnets := helper.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
 
 				By("Build vpc client to find a local zone for subnet preparation")
-				var vpcClient *vpc_client.VPC
-				var err error
 				vpcClient, err = vpc_client.GenerateVPCBySubnet(subnets[0], clusterConfig.Region)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -678,7 +678,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			versionService := rosaClient.Version
 
 			By("Retrieve cluster config")
-			clusterConfig, err = config.ParseClusterProfile()
+			clusterConfig, err := config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
 
 			By("without machinepool")
