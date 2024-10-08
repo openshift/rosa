@@ -38,8 +38,7 @@ var _ = Describe("Edit cluster",
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
 			// upgradeService rosacli.UpgradeService
-			clusterConfig *config.ClusterConfig
-			profile       *profilehandler.Profile
+			profile *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
@@ -51,11 +50,6 @@ var _ = Describe("Edit cluster",
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			// upgradeService = rosaClient.Upgrade
-
-			By("Load the original cluster config")
-			var err error
-			clusterConfig, err = config.ParseClusterProfile()
-			Expect(err).ToNot(HaveOccurred())
 
 			By("Load the profile")
 			profile = profilehandler.LoadProfileYamlFileByENV()
@@ -202,6 +196,10 @@ var _ = Describe("Edit cluster",
 		It("can disable workload monitoring on/off - [id:45159]",
 			labels.High, labels.Runtime.Day2,
 			func() {
+				By("Load the original cluster config")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+
 				By("Check the cluster UWM is in expected status")
 				output, err := clusterService.DescribeCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -398,6 +396,10 @@ var _ = Describe("Edit cluster",
 
 		It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2,
 			func() {
+				By("Load the original cluster config")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+
 				var verifyProxy = func(httpProxy string, httpsProxy string, noProxy string, caFile string) {
 					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
 					Expect(err).ToNot(HaveOccurred())
@@ -433,7 +435,7 @@ var _ = Describe("Edit cluster",
 				updateHttpsProxy := "https://example.com"
 				updatedNoProxy := "example.com"
 				updatedCA := ""
-				_, err := clusterService.EditCluster(clusterID,
+				_, err = clusterService.EditCluster(clusterID,
 					"--http-proxy", updateHttpProxy,
 					"--https-proxy", updateHttpsProxy,
 					"--no-proxy", updatedNoProxy,
@@ -490,8 +492,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		rosaClient     *rosacli.Client
 		clusterService rosacli.ClusterService
 		upgradeService rosacli.UpgradeService
-		clusterConfig  *config.ClusterConfig
-		profile        *profilehandler.Profile
 	)
 
 	BeforeEach(func() {
@@ -503,14 +503,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		rosaClient = rosacli.NewClient()
 		clusterService = rosaClient.Cluster
 		upgradeService = rosaClient.Upgrade
-
-		By("Load the original cluster config")
-		var err error
-		clusterConfig, err = config.ParseClusterProfile()
-		Expect(err).ToNot(HaveOccurred())
-
-		By("Load the profile")
-		profile = profilehandler.LoadProfileYamlFileByENV()
 	})
 
 	AfterEach(func() {
@@ -644,6 +636,13 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 
 	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2,
 		func() {
+			By("Load the original cluster config")
+			clusterConfig, err := config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Load the profile")
+			profile := profilehandler.LoadProfileYamlFileByENV()
+
 			By("Edit cluster with invalid http_proxy set")
 			if !profile.ClusterConfig.BYOVPC {
 				output, err := clusterService.EditCluster(clusterID,
@@ -3526,6 +3525,59 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				Expect(err).To(BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 				Expect(clusterID).ToNot(BeNil())
+			})
+
+		It("ROSA CLI cluster creation should show install/uninstall logs - [id:75534]",
+			labels.Critical,
+			labels.Runtime.Day1Supplemental,
+			func() {
+				clusterName := helper.GenerateRandomName("ocp-75534", 2)
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", clusterName)))
+
+				By("wait for 5 minutes to install logs show up")
+				time.Sleep(5 * time.Minute)
+
+				By("Check the install logs of the hypershift cluster")
+				output, err := clusterService.InstallLog(clusterName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Version", clusterName))
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Release image is valid", clusterName))
+
+				By("Check the install logs of the hypershift cluster with flag --watch")
+				output, err = clusterService.InstallLog(clusterName, "--watch")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Version", clusterName))
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Release image is valid", clusterName))
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' is now ready", clusterName))
+
+				By("Delete the Hypershift cluster")
+				output, err = clusterService.DeleteCluster(clusterName, "-y")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' will start uninstalling now", clusterName))
+
+				By("wait for 2 minutes to uninstall logs show up")
+				time.Sleep(2 * time.Minute)
+
+				By("Check the uninstall log of the hosted cluster")
+				output, err = clusterService.UnInstallLog(clusterName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Reconciliation completed successfully",
+					clusterName))
+
+				By("Check the uninstall log of the hosted cluster with flag --watch")
+				output, err = clusterService.UnInstallLog(clusterName, "--watch")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Reconciliation completed successfully",
+					clusterName))
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' completed uninstallation", clusterName))
 			})
 
 		It("Check single AZ hosted cluster can be created - [id:54413]",

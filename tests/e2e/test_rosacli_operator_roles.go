@@ -31,8 +31,6 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 		rosaClient             *rosacli.Client
 		ocmResourceService     rosacli.OCMResourceService
 		permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
-		clusterConfig          *config.ClusterConfig
-		err                    error
 	)
 	BeforeEach(func() {
 		By("Init the client")
@@ -53,10 +51,6 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 			By("Get the default dir")
 			defaultDir = rosaClient.Runner.GetDir()
-
-			By("Get cluster config")
-			clusterConfig, err = config.ParseClusterProfile()
-			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -69,6 +63,10 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 		})
 		It("to delete in-used operator-roles and byo oidc-config  [id:74761]",
 			labels.Critical, labels.Runtime.Day2, func() {
+				By("Get cluster config")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+
 				By("Check if the cluster is using BYO oidc config")
 				profile := profilehandler.LoadProfileYamlFileByENV()
 				if profile.ClusterConfig.OIDCConfig == "" {
