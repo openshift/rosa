@@ -164,47 +164,73 @@ var _ = Describe("Healthy check",
 					Expect(output.String()).Should(ContainSubstring("--additional-infra-security-group-ids"))
 					Expect(output.String()).Should(ContainSubstring("--additional-control-plane-security-group-ids"))
 
-					By("Describe the cluster to check the control plane and infra additional security groups")
-					des, err := clusterService.DescribeClusterAndReflect(clusterID)
-					Expect(err).ToNot(HaveOccurred())
-					var additionalMap []interface{}
-					for _, item := range des.Nodes {
-						if value, ok := item["Additional Security Group IDs"]; ok {
-							additionalMap = value.([]interface{})
-						}
-					}
-					if clusterConfig.AdditionalSecurityGroups == nil {
-						Expect(additionalMap).To(BeNil())
-					} else {
-						Expect(additionalMap).ToNot(BeNil())
-						for _, addSgGroups := range additionalMap {
-							if value, ok := addSgGroups.(map[string]interface{})["Control Plane"]; ok {
-								Expect(value).
-									To(Equal(
-										helper.ReplaceCommaWithCommaSpace(
-											clusterConfig.AdditionalSecurityGroups.ControlPlaneSecurityGroups)))
-							} else {
-								value = addSgGroups.(map[string]interface{})["Infra"]
-								Expect(value).
-									To(Equal(
-										helper.ReplaceCommaWithCommaSpace(
-											clusterConfig.AdditionalSecurityGroups.InfraSecurityGroups)))
+					if isHosted {
+						By("Describe the cluster to check the additional compute security groups")
+						rosaClient.Runner.JsonFormat()
+						output, err := clusterService.DescribeCluster(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+						jsonData := rosaClient.Parser.JsonData.Input(output).Parse()
+						computeSgIDs := jsonData.DigString("aws", "additional_compute_security_group_ids")
+						computeSgIDs = computeSgIDs[1 : len(computeSgIDs)-1]
+						Expect(strings.ReplaceAll(computeSgIDs, " ", ",")).To(
+							Equal(clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups))
+
+						By("Describe the workers nodepool and check the compute security groups")
+						npList, err := machinePoolService.ListAndReflectNodePools(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+						for _, np := range npList.NodePools {
+							Expect(np.ID).ToNot(BeNil())
+							if strings.HasPrefix(np.ID, constants.DefaultHostedWorkerPool) {
+								npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, np.ID)
+								Expect(err).ToNot(HaveOccurred())
+								Expect(npDesc.AdditionalSecurityGroupIDs).To(
+									Equal(helper.ReplaceCommaWithCommaSpace(
+										clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
 							}
 						}
-					}
-
-					By("Describe the worker pool and check the compute security groups")
-					mp, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, constants.DefaultClassicWorkerPool)
-					Expect(err).ToNot(HaveOccurred())
-					if clusterConfig.AdditionalSecurityGroups == nil {
-						Expect(mp.SecurityGroupIDs).To(BeEmpty())
 					} else {
-						Expect(mp.SecurityGroupIDs).
-							To(Equal(
-								helper.ReplaceCommaWithCommaSpace(
-									clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
-					}
 
+						By("Describe the cluster to check the control plane and infra additional security groups")
+						des, err := clusterService.DescribeClusterAndReflect(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+						var additionalMap []interface{}
+						for _, item := range des.Nodes {
+							if value, ok := item["Additional Security Group IDs"]; ok {
+								additionalMap = value.([]interface{})
+							}
+						}
+						if clusterConfig.AdditionalSecurityGroups == nil {
+							Expect(additionalMap).To(BeNil())
+						} else {
+							Expect(additionalMap).ToNot(BeNil())
+							for _, addSgGroups := range additionalMap {
+								if value, ok := addSgGroups.(map[string]interface{})["Control Plane"]; ok {
+									Expect(value).
+										To(Equal(
+											helper.ReplaceCommaWithCommaSpace(
+												clusterConfig.AdditionalSecurityGroups.ControlPlaneSecurityGroups)))
+								} else {
+									value = addSgGroups.(map[string]interface{})["Infra"]
+									Expect(value).
+										To(Equal(
+											helper.ReplaceCommaWithCommaSpace(
+												clusterConfig.AdditionalSecurityGroups.InfraSecurityGroups)))
+								}
+							}
+						}
+
+						By("Describe the worker pool and check the compute security groups")
+						mp, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, constants.DefaultClassicWorkerPool)
+						Expect(err).ToNot(HaveOccurred())
+						if clusterConfig.AdditionalSecurityGroups == nil {
+							Expect(mp.SecurityGroupIDs).To(BeEmpty())
+						} else {
+							Expect(mp.SecurityGroupIDs).
+								To(Equal(
+									helper.ReplaceCommaWithCommaSpace(
+										clusterConfig.AdditionalSecurityGroups.WorkerSecurityGroups)))
+						}
+					}
 				})
 
 			It("bring your own kms key functionality works on cluster creation - [id:60082]",

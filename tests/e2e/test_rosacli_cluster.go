@@ -1304,6 +1304,10 @@ var _ = Describe("Classic cluster creation validation",
 						"--additional-control-plane-security-group-ids": "invalid",
 						"--additional-compute-security-group-ids":       "invalid",
 					}
+					invalidHCPSecurityGroups = map[string]string{
+						"--additional-infra-security-group-ids":         "sg-aisgi",
+						"--additional-control-plane-security-group-ids": "sg-acpsgi",
+					}
 				)
 
 				By("Prepare a vpc for the testing")
@@ -1388,7 +1392,7 @@ var _ = Describe("Classic cluster creation validation",
 				}
 
 				By("Try creating HCP cluster with additional security groups flag")
-				for additionalSecurityGroupFlag := range securityGroups {
+				for additionalSecurityGroupFlag := range invalidHCPSecurityGroups {
 					By("Create account-roles of hosted-cp")
 					_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 						"--prefix", "akanni",

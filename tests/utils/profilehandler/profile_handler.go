@@ -491,15 +491,24 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			computeSGs := strings.Join(securityGroups, ",")
 			infraSGs := strings.Join(securityGroups, ",")
 			controlPlaneSGs := strings.Join(securityGroups, ",")
-			flags = append(flags,
-				"--additional-infra-security-group-ids", infraSGs,
-				"--additional-control-plane-security-group-ids", controlPlaneSGs,
-				"--additional-compute-security-group-ids", computeSGs,
-			)
-			clusterConfiguration.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
-				ControlPlaneSecurityGroups: controlPlaneSGs,
-				InfraSecurityGroups:        infraSGs,
-				WorkerSecurityGroups:       computeSGs,
+			if profile.ClusterConfig.HCP {
+				flags = append(flags,
+					"--additional-compute-security-group-ids", computeSGs,
+				)
+				clusterConfiguration.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
+					WorkerSecurityGroups: computeSGs,
+				}
+			} else {
+				flags = append(flags,
+					"--additional-infra-security-group-ids", infraSGs,
+					"--additional-control-plane-security-group-ids", controlPlaneSGs,
+					"--additional-compute-security-group-ids", computeSGs,
+				)
+				clusterConfiguration.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
+					ControlPlaneSecurityGroups: controlPlaneSGs,
+					InfraSecurityGroups:        infraSGs,
+					WorkerSecurityGroups:       computeSGs,
+				}
 			}
 		}
 		if profile.ClusterConfig.ProxyEnabled {

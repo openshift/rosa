@@ -28,6 +28,7 @@ profiles:
     volume_size: 75
     disable_uwm: true
     autoscaler_enabled: false
+    additional_sg_number: 3
   account-role:
     customized_prefix: true
     path: ""
