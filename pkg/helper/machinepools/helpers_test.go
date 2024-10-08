@@ -33,6 +33,9 @@ var _ = Describe("MachinePool", func() {
 			"2 well formed taints",
 			"node-role.kubernetes.io/infra=bar:NoSchedule,node-role.kubernetes.io/master=val:NoSchedule", "", 2),
 		Entry(
+			"Trailing ',' is parsed correctly",
+			"node-role.kubernetes.io/infra=bar:NoSchedule,node-role.kubernetes.io/master=val:NoSchedule,", "", 2),
+		Entry(
 			"Empty value taint bad format",
 			"node-role.kubernetes.io/infraNoSchedule",
 			"Expected key=value:scheduleType format", 0),
@@ -75,6 +78,9 @@ var _ = Describe("MachinePool", func() {
 		),
 		Entry("Multiple labels are parsed correctly",
 			"com.example.foo=bar,com.example.baz=bob", "", 2,
+		),
+		Entry("Trailing ',' is parsed correctly",
+			"com.example.foo=bar,com.example.baz=bob,", "", 2,
 		),
 		Entry("Labels with no value are parsed correctly",
 			"com.example.foo=,com.example.baz=bob", "", 2,

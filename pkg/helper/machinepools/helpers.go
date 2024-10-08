@@ -43,8 +43,13 @@ func ParseLabels(labels string) (map[string]string, error) {
 	if labels == "" || labels == interactiveModeEmptyLabels {
 		return labelMap, nil
 	}
-
-	for _, label := range strings.Split(labels, ",") {
+	possibleLabels := strings.Split(labels, ",")
+	for i, label := range possibleLabels {
+		// If it is empty and it is the last one
+		// can be disregarded to still continue with the ones up to it
+		if label == "" && i == len(possibleLabels)-1 {
+			continue
+		}
 		if !strings.Contains(label, "=") {
 			return nil, fmt.Errorf("Expected key=value format for labels")
 		}
@@ -105,7 +110,13 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 		return taintBuilders, nil
 	}
 	var errs []error
-	for _, taint := range strings.Split(taints, ",") {
+	possibleTaints := strings.Split(taints, ",")
+	for i, taint := range possibleTaints {
+		// If it is empty and it is the last one
+		// can be disregarded to still continue with the ones up to it
+		if taint == "" && i == len(possibleTaints)-1 {
+			continue
+		}
 		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
 			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints. Got '%s'", taint)
 		}
