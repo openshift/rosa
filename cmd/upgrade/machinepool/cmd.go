@@ -149,6 +149,17 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
 	}
 
+	if !machinepool.MachinePoolKeyRE.MatchString(machinePoolID) {
+		return fmt.Errorf("Expected a valid identifier for the machine pool")
+	}
+	_, exists, err := r.OCMClient.GetNodePool(cluster.ID(), machinePoolID)
+	if err != nil {
+		return fmt.Errorf("Failed to get machine pools for hosted cluster '%s': %v", clusterKey, err)
+	}
+	if !exists {
+		return fmt.Errorf("Machine pool '%s' does not exist for hosted cluster '%s'", machinePoolID, clusterKey)
+	}
+
 	// Enable interactive mode if needed
 	// We need to specify either both date and time or nothing
 	if (currentUpgradeScheduling.ScheduleDate != "" && currentUpgradeScheduling.ScheduleTime == "") ||

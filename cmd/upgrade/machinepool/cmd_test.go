@@ -103,11 +103,11 @@ var _ = Describe("Upgrade machine pool", func() {
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(ContainSubstring(
-				"Failed to get scheduled upgrades for machine pool 'nodepool85': " +
-					"Machine pool 'nodepool85' does not exist for hosted cluster 'cluster1'"))
+				"Machine pool 'nodepool85' does not exist for hosted cluster 'cluster1'"))
 		})
 		It("Cluster is ready and there is a scheduled upgraded", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
 			_, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
@@ -118,6 +118,7 @@ var _ = Describe("Upgrade machine pool", func() {
 		})
 		It("Succeeds if cluster is ready and there is a scheduled upgraded", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolUpgradePolicy))
 			_, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
@@ -131,6 +132,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			args.scheduleDate = invalidScheduleDate
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
@@ -150,6 +152,7 @@ var _ = Describe("Upgrade machine pool", func() {
 				Cmd.Flags().Set("interactive", "false")
 				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
+				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 				testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
 				stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 					Cmd, &[]string{nodePoolName})
@@ -164,6 +167,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			Cmd.Flags().Set("version", "4.12.26")
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
@@ -180,6 +184,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
@@ -194,6 +199,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			args.scheduleDate = validScheduleDate
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusBadRequest, "an error"))
@@ -213,6 +219,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
@@ -228,6 +235,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			args.schedule = cronSchedule
 			Cmd.Flags().Set("interactive", "false")
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatResource(nodePool)))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
