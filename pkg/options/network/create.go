@@ -11,7 +11,7 @@ const (
 	short   = "Network aws cloudformation stack"
 	long    = "Network aws cloudformation stack using predefined yaml templates. "
 	example = `  # Create a aws cloudformation stack
-  rosa network <template-name> --param Param1=Value1 --param Param2=Value2 `
+  rosa create network <template-name> --param Param1=Value1 --param Param2=Value2 `
 )
 
 type NetworkUserOptions struct {
