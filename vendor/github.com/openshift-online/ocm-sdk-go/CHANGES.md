@@ -3,6 +3,23 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.444
+- Update model version v0.0.397
+  - Add `FlapDetection` field to `status_board.statuses` model
+
+## 0.1.443
+- Update model version v0.0.396
+  - Add `FlapDetection` field to `status_board.status_updates` model
+
+## 0.1.442
+- Update model version v0.0.395
+  - Add `ASWShard` struct
+  - Add `WifEnabled` field to `Version` model
+
+## 0.1.441
+- Update model version v0.0.394
+  - Add `WifTemplates` field to `WifConfig` model
+
 ## 0.1.440
 - Update model version v0.0.393
   - Include missing field to hypershift model
