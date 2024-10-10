@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	use     = "accessrequest"
+	use     = "access-request"
 	short   = "Describe an access request"
 	long    = short
 	example = `  # Describe an access request wit id <access_request_id>
-  rosa describe accessrequest --id <access_request_id>
+  rosa describe access-request --id <access_request_id>
   `
 )
 
@@ -33,7 +33,7 @@ func NewDescribeAccessRequestCommand() *cobra.Command {
 	options := NewOptions()
 	cmd := &cobra.Command{
 		Use:     use,
-		Aliases: []string{"access-request"},
+		Aliases: []string{"accessrequest"},
 		Short:   short,
 		Long:    long,
 		Example: example,
@@ -69,7 +69,7 @@ func DescribeAccessRequestRunner(options *Options) rosa.CommandRunner {
 		if accessRequest.Status().State() == v1.AccessRequestStatePending {
 			r.Reporter.Infof("Run the following command to approve or deny the access request:\n\n"+
 				"   rosa create decision --access-request %s --decision Approved\n"+
-				"   rosa create decision --access-request %s --decision Denied\n",
+				"   rosa create decision --access-request %s --decision Denied --justification \"justification\"\n",
 				accessRequest.ID(), accessRequest.ID())
 		}
 		return nil
