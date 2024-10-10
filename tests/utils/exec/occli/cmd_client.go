@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/rosa/tests/ci/config"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -21,7 +23,18 @@ func NewOCClient(kubePath ...string) *Client {
 			KubePath: kubePath[0],
 		}
 	} else {
-		DummyGetKubeConfigFromEnv()
+		usersValue, err := helper.ReadFileContent(config.Test.ClusterKubeconfigIdpFile)
+		if err == nil {
+			kubeconfig, err := GetKubeConfigFromEnv(usersValue)
+			if err != nil {
+				log.Logger.Errorf("Error to get kubeconfig from environment: %s", err)
+			} else {
+				helper.CreateFileWithContent(config.Test.ClusterKubeconfigFile, kubeconfig)
+				ocClient = &Client{
+					KubePath: config.Test.ClusterKubeconfigFile,
+				}
+			}
+		}
 	}
 	return ocClient
 }
@@ -64,7 +77,30 @@ func RunCMD(cmd string) (stdout string, stderr string, err error) {
 	return
 }
 
-func DummyGetKubeConfigFromEnv() {
+func GetKubeConfigFromEnv(usersValue string) (kubeconfig string, err error) {
 	// login with oc cmd and then get the kubeconfig from  ~/.kube/config
 	// Refer to OCM-9183
+	values := strings.Split(usersValue, ":")
+	name := values[0]
+	password := values[1]
+
+	apiUrl, err := helper.ReadFileContent(config.Test.APIURLFile)
+	if err != nil {
+		log.Logger.Errorf("%s", err)
+		return "", err
+	}
+
+	_, stderr, err := RunCMD("oc login " + apiUrl + " -u " + name + " -p " + password)
+	if err != nil {
+		log.Logger.Errorf("%s, %s", err, stderr)
+		return "", err
+	}
+
+	stdout, stderr, err := RunCMD("cat ~/.kube/config")
+	if err != nil {
+		log.Logger.Errorf("%s, %s", err, stderr)
+		return "", err
+	}
+
+	return stdout, err
 }
