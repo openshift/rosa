@@ -344,7 +344,8 @@ var _ = Describe("Cluster Upgrade testing",
 
 		It("to upgrade STS rosa cluster across Y stream - [id:55883]", labels.Critical, labels.Runtime.Upgrade, func() {
 			By("Check the cluster version and compare with the profile to decide if skip this case")
-			if profile.Version != constants.YStreamPreviousVersion || !profile.ClusterConfig.STS {
+			if profile.Version != constants.YStreamPreviousVersion || !profile.ClusterConfig.STS ||
+				profile.ClusterConfig.SharedVPC {
 				Skip("Skip this case as the version defined in profile is not y-1 for sts cluster upgrading testing")
 			}
 
@@ -394,6 +395,45 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).To(BeNil())
 			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Started, 70)
 			Expect(err).To(BeNil())
+		})
+
+		It("to upgrade shared VPC cluster across Y stream - [id:67168]", labels.High, labels.Runtime.Upgrade, func() {
+			By("Check the cluster version and whether it is a shared VPC cluster to decide if skip this case")
+			if profile.Version == constants.YStreamPreviousVersion && profile.ClusterConfig.SharedVPC {
+				By("Check the cluster upgrade version to decide if skip this case")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				clusterVersion := jsonData.DigString("version", "raw_id")
+
+				upgradingVersion, _, err := FindUpperYStreamVersion(versionService, profile.ChannelGroup, clusterVersion)
+				Expect(err).To(BeNil())
+				if upgradingVersion == "" {
+					Skip("Skip this case as no available upgrade version.")
+				}
+
+				By("Upgrade cluster")
+				scheduledDate := time.Now().Format("2006-01-02")
+				scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+
+				output, err := upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", upgradingVersion,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+				By("Check upgrade state")
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
+				Expect(err).To(BeNil())
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Started, 70)
+				Expect(err).To(BeNil())
+			} else {
+				Skip("Skip this case as it is not y-1 for shared VPC cluster upgrading testing")
+			}
 		})
 
 		It("to upgrade wide AMI roles with the managed policies in auto mode - [id:57444]",
