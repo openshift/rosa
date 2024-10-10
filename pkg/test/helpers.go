@@ -240,6 +240,10 @@ func FormatNodePoolUpgradePolicyList(upgrades []*v1.NodePoolUpgradePolicy) strin
 	return FormatList(upgrades, v1.MarshalNodePoolUpgradePolicyList, "NodePoolUpgradePolicyList")
 }
 
+func FormatAccessRequestList(accessRequests []*accessv1.AccessRequest) string {
+	return FormatList(accessRequests, accessv1.MarshalAccessRequestList, "AccessRequestList")
+}
+
 // FormatResource wraps the SDK marshalling and returns a string starting from an object
 func FormatResource(resource interface{}) string {
 	var outputJson bytes.Buffer
