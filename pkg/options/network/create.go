@@ -46,7 +46,7 @@ func BuildNetworkCommandWithOptions() (*cobra.Command, *NetworkUserOptions) {
 		Long:    long,
 		Aliases: []string{"networks"},
 		Example: example,
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		Hidden:  true,
 	}
 

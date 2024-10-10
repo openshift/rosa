@@ -70,6 +70,7 @@ func NewNetworkCommand() *cobra.Command {
 func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		var err error
+		templateCommand := "rosa-quickstart-default-vpc"
 		options := NewNetworkOptions()
 		options.args = userOptions
 
@@ -95,7 +96,6 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		}
 
 		// Extract the first non-`--param` argument to use as the template command
-		var templateCommand string
 		for _, arg := range argv {
 			if !strings.HasPrefix(arg, "--param") {
 				templateCommand = arg
