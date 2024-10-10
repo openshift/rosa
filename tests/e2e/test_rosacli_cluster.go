@@ -768,7 +768,6 @@ var _ = Describe("Classic cluster creation validation",
 				}
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
-
 		})
 
 		AfterEach(func() {
@@ -791,6 +790,10 @@ var _ = Describe("Classic cluster creation validation",
 				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
 				rosalCommand = config.GenerateCommand(command)
 
+				if !rosalCommand.CheckFlagExist("--compute-machine-type") {
+					rosalCommand.AddFlags("--compute-machine-type", constants.DefaultInstanceType)
+				}
+
 				rosalCommand.AddFlags("--dry-run")
 				originalClusterName := rosalCommand.GetFlagValue("--cluster-name", true)
 				originalMachineType := rosalCommand.GetFlagValue("--compute-machine-type", true)
@@ -800,13 +803,25 @@ var _ = Describe("Classic cluster creation validation",
 				}
 				originalReplicas := rosalCommand.GetFlagValue("--replicas", true)
 
+				if rosalCommand.CheckFlagExist("--enable-autoscaling") {
+					rosalCommand.DeleteFlag("--enable-autoscaling", false)
+				}
+
+				if rosalCommand.CheckFlagExist("--min-replicas") {
+					rosalCommand.DeleteFlag("--min-replicas", true)
+				}
+
+				if rosalCommand.CheckFlagExist("--max-replicas") {
+					rosalCommand.DeleteFlag("--max-replicas", true)
+				}
+
 				invalidClusterNames := []string{
 					"1-test-1",
 					"-test-cluster",
 					"test-cluster-",
 				}
 				for _, cn := range invalidClusterNames {
-					By("Check the validation for cluster-name")
+					By("Check the validation for cluster-name " + cn)
 					rosalCommand.ReplaceFlagValue(map[string]string{
 						"--cluster-name": cn,
 					})
