@@ -28,6 +28,8 @@ import (
 
 	"github.com/openshift/rosa/cmd/upgrade/roles"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/aws"
+	rolesHelper "github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -314,8 +316,17 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	// if cluster is sts validate roles are compatible with upgrade version
 	// for automatic upgrades, version is not available
-	if isSTS && !currentUpgradeScheduling.AutomaticUpgrades {
-		checkSTSRolesCompatibility(r, cluster, mode, version, clusterKey)
+	if isSTS {
+		if currentUpgradeScheduling.AutomaticUpgrades {
+			// We do not know the upgrade version client side when scheduling an
+			// automatic upgrade. Passing "" will still perform the role check.
+			err := checkRolesManagedPolicies(r, cluster, mode, "")
+			if err != nil {
+				return fmt.Errorf("%v", err)
+			}
+		} else {
+			checkSTSRolesCompatibility(r, cluster, mode, version, clusterKey)
+		}
 	}
 
 	// Compute drain grace period config
@@ -486,6 +497,29 @@ func checkSTSRolesCompatibility(r *rosa.Runtime, cluster *cmv1.Cluster, mode str
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Account and operator roles for cluster '%s' are compatible with upgrade", clusterKey)
 	}
+}
+
+func checkRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster, mode string,
+	upgradeVersion string) error {
+	ocmClient := r.OCMClient
+
+	credRequests, err := ocmClient.GetCredRequests(cluster.Hypershift().Enabled())
+	if err != nil {
+		return fmt.Errorf("Error getting operator credential request from OCM %v", err)
+	}
+
+	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
+	if err != nil {
+		return fmt.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
+	}
+
+	err = rolesHelper.ValidateAccountAndOperatorRolesManagedPolicies(r, cluster, credRequests, unifiedPath,
+		mode, upgradeVersion)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func buildNodeDrainGracePeriod(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) ocm.Spec {
