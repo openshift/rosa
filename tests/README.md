@@ -128,6 +128,7 @@ For the test cases, we need `$ make install` to make the rosa command line insta
 > * **PROVISION_SHARD** if it is set, a provision shard will be specified for cluster provision
 > * **NAME_PREFIX** if it is set, all resources will be generated based with the name prefix to identify the created cluster created by you. Otherwise _`rosacli-ci`_ will be used. For local testing, we should have it be set with your alias
 > * **CLUSTER_TIMEOUT** if it is set, the process will exit if cluster cannot be ready in setting time. Unit is minute
+> * **USE_LOCAL_CREDENTIALS** if it is set to `true`, then when the cluster is provisioned the `--use-local-credentials` flag will be enabled
 
 ### Running a local CI test simulation
 
