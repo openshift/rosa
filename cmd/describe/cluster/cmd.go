@@ -476,7 +476,16 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	// etcd encryption is shared between classic and hcp
+	str = fmt.Sprintf("%s"+
+		"Etcd Encryption:            %s\n", str, getEtcdStatus(cluster))
+
 	if isHypershift {
+		// kms key should be next to etcd encryption
+		if cluster.AWS().EtcdEncryption().KMSKeyARN() != "" {
+			str = fmt.Sprintf("%s"+
+				"Etcd KMS key ARN:           %s\n", str, cluster.AWS().EtcdEncryption().KMSKeyARN())
+		}
 		str = fmt.Sprintf("%s"+
 			"Audit Log Forwarding:       %s\n", str, getAuditLogForwardingStatus(cluster))
 		if cluster.AWS().AuditLog().RoleArn() != "" {
@@ -485,12 +494,6 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		str = fmt.Sprintf("%s"+
 			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
-		str = fmt.Sprintf("%s"+
-			"Etcd Encryption:            %s\n", str, getEtcdStatus(cluster))
-		if cluster.AWS().EtcdEncryption().KMSKeyARN() != "" {
-			str = fmt.Sprintf("%s"+
-				"Etcd KMS key ARN:           %s\n", str, cluster.AWS().EtcdEncryption().KMSKeyARN())
-		}
 		if len(cluster.AWS().AdditionalAllowedPrincipals()) > 0 {
 			// Omitted the 'Allowed' due to formatting
 			str = fmt.Sprintf("%s"+
