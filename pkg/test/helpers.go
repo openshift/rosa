@@ -244,6 +244,10 @@ func FormatAccessRequestList(accessRequests []*accessv1.AccessRequest) string {
 	return FormatList(accessRequests, accessv1.MarshalAccessRequestList, "AccessRequestList")
 }
 
+func FormatAWSSTSPolicyList(upgrades []*v1.AWSSTSPolicy) string {
+	return FormatList(upgrades, v1.MarshalAWSSTSPolicyList, "AWSSTSPolicyList")
+}
+
 // FormatResource wraps the SDK marshalling and returns a string starting from an object
 func FormatResource(resource interface{}) string {
 	var outputJson bytes.Buffer
