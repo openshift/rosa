@@ -149,6 +149,7 @@ var _ = Describe("getClusterRegistryConfig", func() {
 	It("Should return expected output", func() {
 		mockCa := make(map[string]string)
 		mockCa["registry.io"] = "-----BEGIN CERTIFICATE-----\nlalala\n-----END CERTIFICATE-----\n"
+		mockCa["registry.io2"] = "-----BEGIN CERTIFICATE-----\nlalala\n-----END CERTIFICATE-----\n"
 		mockCluster, err := cmv1.NewCluster().RegistryConfig(cmv1.NewClusterRegistryConfig().AdditionalTrustedCa(mockCa).
 			RegistrySources(cmv1.NewRegistrySources().
 				AllowedRegistries([]string{"allow1.com", "allow2.com"}...).
@@ -172,7 +173,8 @@ var _ = Describe("getClusterRegistryConfig", func() {
 			" - Platform Allowlist:      test-id\n" +
 			"    - Registries:           registry1.io,registry2.io\n" +
 			" - Additional Trusted CA:         \n" +
-			"    - registry.io: REDACTED\n"
+			"    - registry.io: REDACTED\n" +
+			"    - registry.io2: REDACTED\n"
 		Expect(output).To(Equal(expectedOutput))
 	})
 })

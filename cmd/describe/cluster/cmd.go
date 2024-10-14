@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -905,10 +906,17 @@ func getClusterRegistryConfig(cluster *cmv1.Cluster, allowlist *cmv1.RegistryAll
 			cluster.RegistryConfig().PlatformAllowlist().ID(), strings.Join(allowlist.Registries(), ","))
 	}
 	if cluster.RegistryConfig().AdditionalTrustedCa() != nil {
+		additionalTrustedCa := cluster.RegistryConfig().AdditionalTrustedCa()
 		output = fmt.Sprintf("%s"+
 			" - Additional Trusted CA:         \n", output,
 		)
-		for registry := range cluster.RegistryConfig().AdditionalTrustedCa() {
+		keys := make([]string, 0, len(additionalTrustedCa))
+		for k := range additionalTrustedCa {
+			keys = append(keys, k)
+		}
+
+		sort.Strings(keys)
+		for _, registry := range keys {
 			output = fmt.Sprintf("%s"+
 				"    - %s: REDACTED\n", output,
 				registry)
