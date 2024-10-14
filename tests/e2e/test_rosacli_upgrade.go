@@ -932,6 +932,89 @@ var _ = Describe("ROSA HCP cluster upgrade",
 					clusterID))
 		})
 
+		It("manual upgrade for hcp upgrade  - [id:62929]", labels.Critical, labels.Runtime.Upgrade, func() {
+			targetVersion := zStreamVersion
+			if targetVersion == "" {
+				targetVersion = yStreamVersion
+			}
+			By("Try to upgrade the cluster with manual mode and default time ")
+			output, err := upgradeService.Upgrade(
+				"-c", clusterID,
+				"--mode", "manual",
+				"--control-plane",
+				"--version", targetVersion,
+				"-y",
+			)
+			defer upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+			By("Describe the upgrades of the cluster")
+			upgDesResp, err := upgradeService.DescribeUpgradeAndReflect(clusterID)
+			Expect(err).To(BeNil())
+			Expect(upgDesResp.ClusterID).To(Equal(clusterID))
+			Expect(upgDesResp.ScheduleType).To(Equal("manual"))
+
+			By("Check upgrade state")
+			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
+			Expect(err).To(BeNil())
+			upgDesResp, err = upgradeService.DescribeUpgradeAndReflect(clusterID)
+			Expect(err).To(BeNil())
+			Expect(upgDesResp.Version).To(Equal(targetVersion))
+			Expect(upgDesResp.UpgradeState).To(Equal("scheduled"))
+			Expect(upgDesResp.StateMesage).To(ContainSubstring("Upgrade scheduled"))
+
+			By("List the upgrades of the cluster")
+			output, err = upgradeService.ListUpgrades(clusterID)
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("scheduled for %s", upgDesResp.NextRun))
+
+			By("Delete the upgrade policies")
+			output, err = upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(
+				ContainSubstring("INFO: Successfully canceled scheduled upgrade on cluster '%s'",
+					clusterID))
+
+			By("Create manual type upgrade policy with schedule information")
+			scheduledDate := time.Now().Format("2006-01-02")
+			scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--version", targetVersion,
+				"--schedule-date", scheduledDate,
+				"--schedule-time", scheduledTime,
+				"--control-plane",
+				"--mode", "manual",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+			By("Describe the upgrades of the cluster")
+			upgDesResp, err = upgradeService.DescribeUpgradeAndReflect(clusterID)
+			Expect(err).To(BeNil())
+			Expect(upgDesResp.ClusterID).To(Equal(clusterID))
+			Expect(upgDesResp.NextRun).To(Equal(fmt.Sprintf("%s %s UTC", scheduledDate, scheduledTime)))
+			Expect(upgDesResp.ScheduleType).To(Equal("manual"))
+
+			By("Check upgrade state")
+			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
+			Expect(err).To(BeNil())
+			upgDesResp, err = upgradeService.DescribeUpgradeAndReflect(clusterID)
+			Expect(err).To(BeNil())
+			Expect(upgDesResp.Version).To(Equal(targetVersion))
+			Expect(upgDesResp.UpgradeState).To(Equal("scheduled"))
+			Expect(upgDesResp.StateMesage).To(ContainSubstring("Upgrade scheduled"))
+
+			By("Delete the upgrade policies")
+			output, err = upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(
+				ContainSubstring("INFO: Successfully canceled scheduled upgrade on cluster '%s'",
+					clusterID))
+		})
+
 		It("to validate role's policy when upgrade hcp cluster - [id:62161]",
 			labels.Medium, labels.Runtime.Upgrade,
 			func() {
