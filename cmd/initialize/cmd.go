@@ -232,7 +232,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	// Check whether the user can create a basic cluster
 	r.Reporter.Infof("Validating cluster creation...")
-	err = simulateCluster(r.OCMClient, region.Region())
+	err = simulateCluster(cfClient, r.OCMClient, region.Region())
 	if err != nil {
 		r.OCMClient.LogEvent("ROSAInitDryRunFailed", nil)
 		r.Reporter.Warnf("Cluster creation failed. "+
@@ -273,19 +273,33 @@ func deleteStack(awsClient aws.Client, ocmClient *ocm.Client) error {
 	return nil
 }
 
-func simulateCluster(ocmClient *ocm.Client, region string) error {
+func simulateCluster(awsClient aws.Client, ocmClient *ocm.Client, region string) error {
 	dryRun := true
 	if region == "" {
 		region = aws.DefaultRegion
+	}
+
+	awsCreator, err := awsClient.GetCreator()
+	if err != nil {
+		ocmClient.LogEvent("ROSAInitGetCreatorFailed", nil)
+		return fmt.Errorf("Failed to get AWS creator: %v", err)
+	}
+
+	awsAccessKey, err := awsClient.GetLocalAWSAccessKeys()
+	if err != nil {
+		ocmClient.LogEvent("ROSAInitGetLocalAWSAccessKeysFailed", nil)
+		return fmt.Errorf("Failed to get AWS Access Key: %v", err)
 	}
 	spec := ocm.Spec{
 		Name:           "rosa-init",
 		Region:         region,
 		DryRun:         &dryRun,
 		DefaultIngress: ocm.NewDefaultIngressSpec(),
+		AWSCreator:     awsCreator,
+		AWSAccessKey:   awsAccessKey,
 	}
 
-	_, err := ocmClient.CreateCluster(spec)
+	_, err = ocmClient.CreateCluster(spec)
 	if err != nil {
 		return err
 	}
