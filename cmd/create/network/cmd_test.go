@@ -82,7 +82,8 @@ var _ = Describe("Validation functions", func() {
 	Context("selectTemplate", func() {
 		It("input template to directory path", func() {
 			templateFile := "test-template.yaml"
-			templateSelected := network.SelectTemplate(templateFile)
+			templateDir := "cmd/create/network/templates"
+			templateSelected := network.SelectTemplate(templateDir, templateFile)
 			Expect(templateSelected).To(Equal("cmd/create/network/templates/test-template.yaml/cloudformation.yaml"))
 		})
 	})
