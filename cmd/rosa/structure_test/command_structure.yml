@@ -54,7 +54,7 @@ children:
     - name: user-role
 - name: describe
   children:
-    - name: accessrequest
+    - name: access-request
     - name: addon
     - name: admin
     - name: autoscaler
@@ -104,6 +104,7 @@ children:
     - name: user-role
 - name: list
   children:
+    - name: access-request
     - name: account-roles
     - name: addons
     - name: break-glass-credentials

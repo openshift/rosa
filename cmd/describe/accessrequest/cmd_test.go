@@ -50,7 +50,7 @@ var _ = Describe("rosa describe accessrequest", func() {
 			output.SetOutput("")
 		})
 
-		It("Returns an error if access request not found", func() {
+		It("Returns an error if Access Request not found", func() {
 			t.ApiServer.AppendHandlers(
 				testing.RespondWithJSON(
 					http.StatusNotFound, ""))
@@ -60,7 +60,7 @@ var _ = Describe("rosa describe accessrequest", func() {
 			Expect(err.Error()).To(Equal("The Access Request with id 'mock-id' does not exist"))
 		})
 
-		It("Describe access request successfully", func() {
+		It("Describe Access Request successfully", func() {
 			layout := "Jan 2, 2006 at 3:04pm (MST)"
 			mock_time, _ := time.Parse(layout, "Sep 28, 2024 at 8:35pm (PST)")
 			decision := v1.NewDecision().

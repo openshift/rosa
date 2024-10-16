@@ -19,6 +19,7 @@ package list
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/list/accessrequests"
 	"github.com/openshift/rosa/cmd/list/accountroles"
 	"github.com/openshift/rosa/cmd/list/addon"
 	"github.com/openshift/rosa/cmd/list/breakglasscredential"
@@ -80,6 +81,8 @@ func init() {
 	Cmd.AddCommand(breakglasscredential.Cmd)
 	kubeletconfig := kubeletconfig.NewListKubeletConfigsCommand()
 	Cmd.AddCommand(kubeletconfig)
+	accessrequest := accessrequests.NewListAccessRequestsCommand()
+	Cmd.AddCommand(accessrequest)
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
@@ -93,7 +96,7 @@ func init() {
 		gates.Cmd, idp.Cmd, ingress.Cmd, machinePoolCommand,
 		operatorroles.Cmd, region.Cmd, rhRegion.Cmd,
 		service.Cmd, tuningconfigs.Cmd, upgrade.Cmd,
-		user.Cmd, version.Cmd, kubeletconfig,
+		user.Cmd, version.Cmd, kubeletconfig, accessrequest,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

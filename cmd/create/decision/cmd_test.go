@@ -87,7 +87,7 @@ var _ = Describe("rosa attach policy", func() {
 			err = runner(nil, t.RosaRuntime, nil, nil)
 			Expect(err).NotTo(HaveOccurred())
 			stdOut, _ := t.StdOutReader.Read()
-			Expect(stdOut).To(Equal("INFO: Successfully created the decision for access request 'fake-id'\n"))
+			Expect(stdOut).To(Equal("INFO: Successfully created the decision for Access Request 'fake-id'\n"))
 		})
 
 	})
