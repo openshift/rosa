@@ -1,4 +1,4 @@
-package Network
+package network
 
 import (
 	. "github.com/onsi/ginkgo/v2"
