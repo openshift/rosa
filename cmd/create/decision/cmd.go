@@ -16,9 +16,9 @@ import (
 
 const (
 	use     = "decision"
-	short   = "Create a decision for an access request"
+	short   = "Create a decision for an Access Request"
 	long    = short
-	example = `  # Create a decision for an access request to approve it
+	example = `  # Create a decision for an Access Request to approve it
   rosa create decision --access-request <access_request_id> --decision Approved
   `
 )
@@ -58,7 +58,7 @@ func NewCreateDecisionCommand() *cobra.Command {
 		"decision",
 		"d",
 		"",
-		"Decision created for the access request, valid values are 'Approved' or 'Denied' (required).",
+		"Decision created for the Access Request, valid values are 'Approved' or 'Denied' (required).",
 	)
 	flags.StringVarP(
 		&options.justification,
@@ -82,7 +82,7 @@ func CreateDecisionRunner(options *Options) rosa.CommandRunner {
 		if err != nil {
 			return err
 		} else {
-			r.Reporter.Infof("Successfully created the decision for access request '%s'", options.accessRequest)
+			r.Reporter.Infof("Successfully created the decision for Access Request '%s'", options.accessRequest)
 			return nil
 		}
 	}
