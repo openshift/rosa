@@ -8,10 +8,15 @@ import (
 
 const (
 	use     = "network"
-	short   = "Network aws cloudformation stack"
-	long    = "Network aws cloudformation stack using predefined yaml templates. "
-	example = `  # Create a aws cloudformation stack
-  rosa create network <template-name> --param Param1=Value1 --param Param2=Value2 `
+	short   = "Network AWS cloudformation stack"
+	long    = "Network AWS cloudformation stack using predefined yaml templates. "
+	example = `  # Create a AWS cloudformation stack
+  rosa create network <template-name> --param Param1=Value1 --param Param2=Value2 ` +
+		"\n\n" + `  # ROSA quick start HCP VPC example` +
+		"\n" + `  rosa create network rosa-quickstart-default-vpc --param Region=us-west-2` +
+		` --param Name=quickstart-stack --param AvailabilityZoneCount=1 --param VpcCidr=10.0.0.0/16` +
+		"\n\n" + `  # To delete the AWS cloudformation stack` +
+		"\n" + `  aws cloudformation delete-stack --stack-name <name> --region <region>`
 )
 
 type NetworkUserOptions struct {
