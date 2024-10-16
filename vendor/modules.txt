@@ -435,7 +435,7 @@ github.com/openshift-online/ocm-common/pkg/rosa/operatorroles
 github.com/openshift-online/ocm-common/pkg/test/kms_key
 github.com/openshift-online/ocm-common/pkg/test/vpc_client
 github.com/openshift-online/ocm-common/pkg/utils
-# github.com/openshift-online/ocm-sdk-go v0.1.440 => github.com/venkateshsredhat/ocm-sdk-go v0.1.445-test
+# github.com/openshift-online/ocm-sdk-go v0.1.440 => github.com/venkateshsredhat/ocm-sdk-go v0.1.445-newtest
 ## explicit; go 1.21
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accesstransparency
@@ -669,4 +669,4 @@ k8s.io/utils/strings/slices
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
-# github.com/openshift-online/ocm-sdk-go => github.com/venkateshsredhat/ocm-sdk-go v0.1.445-test
+# github.com/openshift-online/ocm-sdk-go => github.com/venkateshsredhat/ocm-sdk-go v0.1.445-newtest

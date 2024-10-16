@@ -136,4 +136,4 @@ require (
 
 replace github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
 
-replace github.com/openshift-online/ocm-sdk-go => github.com/venkateshsredhat/ocm-sdk-go v0.1.445-test
+replace github.com/openshift-online/ocm-sdk-go => github.com/venkateshsredhat/ocm-sdk-go v0.1.445-newtest

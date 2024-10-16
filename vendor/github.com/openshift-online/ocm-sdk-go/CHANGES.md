@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.445
+- Update model version v0.0.398
+  - Add updates for GCP Private Service Connect feature
+  
 ## 0.1.444
 - Update model version v0.0.397
   - Add `FlapDetection` field to `status_board.statuses` model
