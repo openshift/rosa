@@ -658,28 +658,16 @@ func run(cmd *cobra.Command, _ []string) {
 		// prompt for a warning if any registry config field is set
 		if allowedRegistries != nil || blockedRegistries != nil || insecureRegistries != nil ||
 			additionalTrustedCa != "" || allowedRegistriesForImport != "" || platformAllowlist != "" {
-			prompt := "Changing any registry related parameter will trigger a rollout across all machinepools " +
-				"(all machinepool nodes will be recreated, following pod draining from each node). Do you want to proceed?"
-			if !confirm.ConfirmRaw(prompt) {
-				r.Reporter.Warnf("You have not changed any registry configuration -- exiting.")
-				os.Exit(0)
+			if PromptUserToAcceptRegistryChange(r) {
+				clusterConfig, err = BuildClusterConfigWithRegistry(clusterConfig, allowedRegistries,
+					blockedRegistries, insecureRegistries,
+					additionalTrustedCa, allowedRegistriesForImport, platformAllowlist)
 			}
-		}
-
-		clusterConfig.AllowedRegistries = allowedRegistries
-		clusterConfig.BlockedRegistries = blockedRegistries
-		clusterConfig.InsecureRegistries = insecureRegistries
-		clusterConfig.PlatformAllowlist = platformAllowlist
-		if additionalTrustedCa != "" {
-			ca, err := clusterregistryconfig.BuildAdditionalTrustedCAFromInputFile(additionalTrustedCa)
 			if err != nil {
-				r.Reporter.Errorf("Failed to build the additional trusted ca from file %s, got error: %s", additionalTrustedCa, err)
+				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
-			clusterConfig.AdditionalTrustedCa = ca
-			clusterConfig.AdditionalTrustedCaFile = additionalTrustedCa
 		}
-		clusterConfig.AllowedRegistriesForImport = allowedRegistriesForImport
 	}
 	if auditLogRole != nil {
 		clusterConfig.AuditLogRoleARN = new(string)
@@ -965,4 +953,35 @@ func auditLogInteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv
 		}
 	}
 	return
+}
+
+func PromptUserToAcceptRegistryChange(r *rosa.Runtime) bool {
+	prompt := "Changing any registry related parameter will trigger a rollout across all machinepools " +
+		"(all machinepool nodes will be recreated, following pod draining from each node). Do you want to proceed?"
+	if !confirm.ConfirmRaw(prompt) {
+		r.Reporter.Warnf("No changes to registry configuration.")
+		return false
+	}
+	return true
+}
+
+func BuildClusterConfigWithRegistry(clusterConfig ocm.Spec, allowedRegistries []string,
+	blockedRegistries []string, insecureRegistries []string, additionalTrustedCa string,
+	allowedRegistriesForImport string, platformAllowlist string) (ocm.Spec, error) {
+	clusterConfig.AllowedRegistries = allowedRegistries
+	clusterConfig.BlockedRegistries = blockedRegistries
+	clusterConfig.InsecureRegistries = insecureRegistries
+	clusterConfig.PlatformAllowlist = platformAllowlist
+	if additionalTrustedCa != "" {
+		ca, err := clusterregistryconfig.BuildAdditionalTrustedCAFromInputFile(additionalTrustedCa)
+		if err != nil {
+			return clusterConfig, fmt.Errorf(
+				"Failed to build the additional trusted ca from file %s, got error: %s",
+				additionalTrustedCa, err)
+		}
+		clusterConfig.AdditionalTrustedCa = ca
+		clusterConfig.AdditionalTrustedCaFile = additionalTrustedCa
+	}
+	clusterConfig.AllowedRegistriesForImport = allowedRegistriesForImport
+	return clusterConfig, nil
 }
