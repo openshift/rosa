@@ -34,6 +34,7 @@ import (
 	"github.com/openshift/rosa/cmd/logout"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -268,9 +269,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 
 	// Verify environment variables:
 	if !haveReqs && !reAttempt && !fedramp.Enabled() {
-		token = os.Getenv("ROSA_TOKEN")
+		token = os.Getenv(constants.RosaToken)
 		if token == "" {
-			token = os.Getenv("OCM_TOKEN")
+			token = os.Getenv(constants.OcmToken)
 		}
 		haveReqs = token != ""
 	}
