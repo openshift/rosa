@@ -144,6 +144,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Public-Subnet-1"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA' 
+        - Key: 'kubernetes.io/role/elb'
+          Value: '1'
 
   SubnetPrivate1:
     Condition: One
@@ -155,6 +163,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Private-Subnet-1"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA' 
+        - Key: 'kubernetes.io/role/internal-elb'
+          Value: '1'
 
   SubnetPublic2:
     Condition: Two
@@ -167,6 +183,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Public-Subnet-2"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+        - Key: 'kubernetes.io/role/elb'
+          Value: '1'
 
   SubnetPrivate2:
     Condition: Two
@@ -178,6 +202,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Private-Subnet-2"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+        - Key: 'kubernetes.io/role/internal-elb'
+          Value: '1'
 
   SubnetPublic3:
     Condition: HasAZ3
@@ -190,6 +222,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Public-Subnet-3"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+        - Key: 'kubernetes.io/role/elb'
+          Value: '1'
 
   SubnetPrivate3:
     Condition: HasAZ3
@@ -201,6 +241,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Private-Subnet-3"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+        - Key: 'kubernetes.io/role/internal-elb'
+          Value: '1'
 
   PublicSubnetRouteTableAssociation1:
     Condition: One
