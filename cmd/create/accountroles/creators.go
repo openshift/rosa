@@ -322,16 +322,18 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 		}
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
 
-		policyKey := fmt.Sprintf("sts_hcp_%s_permission_policy", file)
-		policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
-		if err != nil {
-			return err
-		}
+		policyKeys := aws.GetHcpAccountRolePolicyKeys(file)
+		for _, policyKey := range policyKeys {
+			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
+			if err != nil {
+				return err
+			}
 
-		r.Reporter.Debugf("Attaching permission policy to role '%s'", policyKey)
-		err = r.AWSClient.AttachRolePolicy(r.Reporter, accRoleName, policyARN)
-		if err != nil {
-			return err
+			r.Reporter.Debugf("Attaching permission policy to role '%s'", policyKey)
+			err = r.AWSClient.AttachRolePolicy(r.Reporter, accRoleName, policyARN)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -346,14 +348,16 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 
 		createRole := buildCreateRoleCommand(accRoleName, file, iamTags, input)
 
-		policyKey := fmt.Sprintf("sts_hcp_%s_permission_policy", file)
-		policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
-		if err != nil {
-			return err
-		}
+		policyKeys := aws.GetHcpAccountRolePolicyKeys(file)
+		for _, policyKey := range policyKeys {
+			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
+			if err != nil {
+				return err
+			}
 
-		attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
-		commands = append(commands, createRole, attachRolePolicy)
+			attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
+			commands = append(commands, createRole, attachRolePolicy)
+		}
 	}
 
 	r.Reporter.Infof("Run the following commands to create the hosted CP account roles and policies:\n")

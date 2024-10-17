@@ -130,6 +130,7 @@ const (
 	InstallerCoreKey        = "sts_installer_core_permission_policy"
 	InstallerVPCKey         = "sts_installer_vpc_permission_policy"
 	InstallerPrivateLinkKey = "sts_installer_privatelink_permission_policy"
+	WorkerEC2RegistryKey    = "sts_hcp_ec2_registry_permission_policy"
 )
 
 var AccountRoles = map[string]AccountRole{
@@ -2003,10 +2004,12 @@ func (c *awsClient) ValidateHCPAccountRolesManagedPolicies(prefix string,
 	for roleType, accountRole := range HCPAccountRoles {
 		roleName := common.GetRoleName(prefix, accountRole.Name)
 
-		policyKey := fmt.Sprintf("sts_hcp_%s_permission_policy", roleType)
-		err := c.validateManagedPolicy(policies, policyKey, roleName)
-		if err != nil {
-			return err
+		policyKeys := GetHcpAccountRolePolicyKeys(roleType)
+		for _, policyKey := range policyKeys {
+			err := c.validateManagedPolicy(policies, policyKey, roleName)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
