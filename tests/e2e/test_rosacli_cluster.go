@@ -3690,30 +3690,34 @@ var _ = Describe("Sts cluster creation supplemental testing",
 		})
 
 		AfterEach(func() {
-			By("Delete cluster")
-			rosaClient.Runner.UnsetArgs()
-			_, err := clusterService.DeleteCluster(clusterID, "-y")
-			Expect(err).To(BeNil())
+			if clusterID != "" {
+				By("Delete cluster")
+				rosaClient.Runner.UnsetArgs()
+				_, err := clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
 
-			rosaClient.Runner.UnsetArgs()
-			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-			Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+				Expect(err).To(BeNil())
 
-			By("Delete operator-roles")
-			_, err = ocmResourceService.DeleteOperatorRoles(
-				"-c", clusterID,
-				"--mode", "auto",
-				"-y",
-			)
-			Expect(err).To(BeNil())
+				By("Delete operator-roles")
+				_, err = ocmResourceService.DeleteOperatorRoles(
+					"-c", clusterID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+			}
 
-			By("Delete account-roles")
-			_, err = ocmResourceService.DeleteAccountRole(
-				"--prefix", rolePrefix,
-				"--mode", "auto",
-				"-y",
-			)
-			Expect(err).To(BeNil())
+			if rolePrefix != "" {
+				By("Delete account-roles")
+				_, err := ocmResourceService.DeleteAccountRole(
+					"--prefix", rolePrefix,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+			}
 		})
 
 		It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
@@ -3727,6 +3731,9 @@ var _ = Describe("Sts cluster creation supplemental testing",
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
+				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
+				_, rolePrefix, err = helper.ParseRoleARN(installRoleArn)
+				Expect(err).To(BeNil())
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--operator-roles-prefix": testOperatorRolePrefix,
 				})
