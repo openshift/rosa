@@ -66,9 +66,14 @@ func LoadProfileYamlFileByENV() *Profile {
 	}
 
 	if config.Test.GlobalENV.ComputeMachineType != "" {
-		log.Logger.Infof("Got global env settings for INSTANCE_TYPE, overwritten the profile setting with value %s",
+		log.Logger.Infof("Got global env settings for COMPUTE_MACHINE_TYPE, overwritten the profile setting with value %s",
 			config.Test.GlobalENV.ComputeMachineType)
 		profile.ClusterConfig.InstanceType = config.Test.GlobalENV.ComputeMachineType
+	}
+
+	if config.Test.GlobalENV.UseLocalCredentials {
+		log.Logger.Info("Got global env setting for USE_LOCAL_CREDENTIALS, overwritten the profile setting to true")
+		profile.ClusterConfig.UseLocalCredentials = true
 	}
 
 	return profile
@@ -178,6 +183,11 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 	if profile.ClusterConfig.DomainPrefixEnabled {
 		flags = append(flags,
 			"--domain-prefix", helper.TrimNameByLength(clusterName, ocm.MaxClusterDomainPrefixLength),
+		)
+	}
+	if profile.ClusterConfig.UseLocalCredentials {
+		flags = append(flags,
+			"--use-local-credentials",
 		)
 	}
 	if profile.ClusterConfig.STS {
