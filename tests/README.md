@@ -16,7 +16,7 @@ tests
 |    |____exec                                    ---- exec contains the different services to run the commands
 |    |    |____rosacli                            ---- ROSA CLI specific services/commands
 |    |____log                                     ---- tests logger
-|    |____profilehandler                          ---- package which support create cluster by profile configuration
+|    |____handler                                 ---- package which support create cluster and resources
 |       
 |____prow_ci.sh
 ```
@@ -28,9 +28,9 @@ Please read the structure and contribute code to the correct place
 ### Contribute to day1
 
 1. Enable the configuration in _[profiles](./ci/data/profiles)_
-2. Mapping the configuration in _[ClusterConfig](./utils/profilehandler/interface.go)_
-3. Define the userdata preparation function in _[data_preparation](./utils/profilehandler/data_preparation.go)_
-4. Call the functions in the _[GenerateClusterCreateFlags](./utils/profilehandler/profile_handler.go)_
+2. Mapping the configuration in _[ClusterConfig](./utils/handler/interface.go)_
+3. Define the userdata preparation function in _[data_preparation](./utils/handler/data_preparation.go)_
+4. Call the functions in the _[GenerateClusterCreateFlags](./utils/handler/profile_handler.go)_
 
 ### Contribute to day2
 
