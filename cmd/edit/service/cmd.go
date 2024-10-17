@@ -19,7 +19,7 @@ package service
 import (
 	"os"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	asv1 "github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/arguments"
@@ -84,7 +84,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	addonParameters := addOn.Parameters()
-	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+	addonParameters.Each(func(param *asv1.AddonParameter) bool {
 		arguments.AddStringFlag(cmd, param.ID())
 		return true
 	})
@@ -96,7 +96,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	args.Parameters = map[string]string{}
-	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+	addonParameters.Each(func(param *asv1.AddonParameter) bool {
 		flag := cmd.Flags().Lookup(param.ID())
 		// Checking if the flag changed to ensure that the user set the value.
 		if flag != nil && flag.Changed {

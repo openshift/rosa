@@ -25,7 +25,7 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	asv1 "github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -200,7 +200,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if parameters.Len() > 0 {
 		args.Parameters = map[string]string{}
 		// Determine if all required parameters have already been set as flags.
-		parameters.Each(func(param *cmv1.AddOnParameter) bool {
+		parameters.Each(func(param *asv1.AddonParameter) bool {
 			flag := cmd.Flags().Lookup(param.ID())
 			if param.Required() && (flag == nil || flag.Value.String() == "") {
 				r.Reporter.Errorf("Required parameter --%s missing", param.ID())
