@@ -202,7 +202,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	//Check if the upgrade is needed for the operators
-	missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, version)
+	missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, version, credRequests)
 	if err != nil {
 		r.Reporter.Errorf("Error finding operator roles for upgrade '%s'", err)
 		os.Exit(1)
