@@ -25,6 +25,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -92,6 +93,24 @@ var _ = Describe("Edit cluster", func() {
 			Expect(err).To(BeNil())
 			Expect(outputString).To(
 				ContainSubstring("warning string OAuth visibility will be affected by cluster visibility change"))
+		})
+	})
+
+	Context("BuildClusterConfigWithRegistry", func() {
+		clusterConfig := ocm.Spec{
+			Name: "test-cluster",
+		}
+		allowedRegistries := []string{"registry.io1", "registry.io2"}
+		It("OK: should pass with valid inputs", func() {
+			output, err := BuildClusterConfigWithRegistry(clusterConfig, allowedRegistries, nil, nil, "", "", "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(output.AllowedRegistries).To(Equal(allowedRegistries))
+		})
+		It("KO: should fail with error if ca file does not exist", func() {
+			_, err := BuildClusterConfigWithRegistry(clusterConfig, allowedRegistries, nil, nil, "not-exist", "", "")
+			Expect(err).To(MatchError("Failed to build the additional trusted ca from file not-exist, " +
+				"got error: expected a valid additional trusted certificate spec file:" +
+				" open not-exist: no such file or directory"))
 		})
 	})
 })

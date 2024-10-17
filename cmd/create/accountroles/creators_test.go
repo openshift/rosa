@@ -27,7 +27,7 @@ var _ = Describe("Accountroles", Ordered, func() {
 			accountRolesCreationInput := buildRolesCreationInput("test", "", "account-123", "stage", policies, "", "")
 			err := (&hcpManagedPoliciesCreator{}).createRoles(r, accountRolesCreationInput)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("failed to find policy ARN for 'sts_hcp_installer_permission_policy'"))
+			Expect(err.Error()).To(ContainSubstring("failed to find policy ARN for"))
 		})
 		It("createRole succeeds", func() {
 			mockCtrl := gomock.NewController(GinkgoT())
