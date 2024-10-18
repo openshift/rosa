@@ -1,43 +1,31 @@
-package profilehandler
+package handler
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-func RecordUserDataInfo(filePath string, key string, value string) error {
-	userData, _ := ParseUserData()
-
-	if userData == nil {
-		userData = &UserData{}
-	}
-	valueOfUserData := reflect.ValueOf(userData).Elem()
-	valueOfUserData.FieldByName(key).SetString(value)
-	_, err := helper.CreateFileWithContent(filePath, userData)
-	return err
-
-}
-func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGroup string, hcp bool) (
-	*rosacli.OpenShiftVersionTableOutput, error) {
+func (rh *resourcesHandler) PrepareVersion(versionRequirement string,
+	channelGroup string,
+	hcp bool,
+) (*rosacli.OpenShiftVersionTableOutput, error) {
 	log.Logger.Infof("Got version requirement %s going to prepare accordingly", versionRequirement)
 	log.Logger.Infof("Channel group = %s", channelGroup)
-	versionList, err := client.Version.ListAndReflectVersions(channelGroup, hcp)
+	versionList, err := rh.rosaClient.Version.ListAndReflectVersions(channelGroup, hcp)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +70,7 @@ func PrepareVersion(client *rosacli.Client, versionRequirement string, channelGr
 
 // PrepareNames will generate the name for cluster creation
 // if longname is set, it will generate the long name with constants.DefaultLongClusterNamelength
-func PreparePrefix(profilePrefix string, nameLength int) string {
+func (rh *resourcesHandler) PreparePrefix(profilePrefix string, nameLength int) string {
 	if nameLength > ocm.MaxClusterNameLength {
 		panic(fmt.Errorf("name length %d is longer than allowed max name length %d", nameLength, ocm.MaxClusterNameLength))
 	}
@@ -97,28 +85,29 @@ func PreparePrefix(profilePrefix string, nameLength int) string {
 }
 
 // PrepareVPC will prepare a single vpc
-func PrepareVPC(region string, vpcName string, cidrValue string,
-	awsSharedCredentialFile string) (*vpc_client.VPC, error) {
+func (rh *resourcesHandler) PrepareVPC(vpcName string, cidrValue string, useExisting bool) (*vpc_client.VPC, error) {
 	log.Logger.Info("Starting vpc preparation")
-	vpc, err := vpc_client.PrepareVPC(vpcName, region, cidrValue, false, awsSharedCredentialFile)
+	vpc, err := vpc_client.PrepareVPC(vpcName, rh.resources.Region, cidrValue, useExisting, rh.awsSharedCredentialsFile)
 	if err != nil {
-		return vpc, err
+		return nil, err
 	}
-	err = RecordUserDataInfo(config.Test.UserDataFile, "VpcID", vpc.VpcID)
+	rh.vpc = vpc
+	err = rh.registerVpcID(vpc.VpcID)
 	log.Logger.Info("VPC preparation finished")
 	return vpc, err
-
 }
 
 // PrepareSubnets will prepare pair of subnets according to the vpcID and zones
 // if zones are empty list it will list the zones and pick according to multi-zone parameter.
 // when multi-zone=true, 3 zones will be pickup
-func PrepareSubnets(vpcClient *vpc_client.VPC, region string,
-	zones []string, multiZone bool) (map[string][]string, error) {
+func (rh *resourcesHandler) PrepareSubnets(zones []string, multiZone bool) (map[string][]string, error) {
+	if rh.vpc == nil {
+		return nil, errors.New("VPC has not been initialized ...")
+	}
 	resultMap := map[string][]string{}
 	if len(zones) == 0 {
 		log.Logger.Info("Got no zones indicated. List the zones and pick from the listed zones")
-		resultZones, err := vpcClient.AWSClient.ListAvaliableZonesForRegion(region, "availability-zone")
+		resultZones, err := rh.vpc.AWSClient.ListAvaliableZonesForRegion(rh.resources.Region, "availability-zone")
 		if err != nil {
 			return resultMap, err
 		}
@@ -128,7 +117,7 @@ func PrepareSubnets(vpcClient *vpc_client.VPC, region string,
 		}
 	}
 	for _, zone := range zones {
-		subnetMap, err := vpcClient.PreparePairSubnetByZone(zone)
+		subnetMap, err := rh.vpc.PreparePairSubnetByZone(zone)
 		if err != nil {
 			return resultMap, err
 		}
@@ -143,13 +132,14 @@ func PrepareSubnets(vpcClient *vpc_client.VPC, region string,
 	return resultMap, nil
 }
 
-func PrepareProxy(vpcClient *vpc_client.VPC,
-	zone string,
-	sshPemFileName string,
-	sshPemFileRecordDir string,
+func (rh *resourcesHandler) PrepareProxy(zone string, sshPemFileName string, sshPemFileRecordDir string,
 	caFile string) (*ProxyDetail, error) {
 
-	_, privateIP, caContent, err := vpcClient.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
+	if rh.vpc == nil {
+		return nil, errors.New("VPC has not been initialized ...")
+	}
+
+	_, privateIP, caContent, err := rh.vpc.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
 	if err != nil {
 		return nil, err
 	}
@@ -165,67 +155,40 @@ func PrepareProxy(vpcClient *vpc_client.VPC,
 	}, nil
 }
 
-func PrepareKMSKey(region string, multiRegion bool, testClient string, hcp bool, etcdKMS bool) (string, error) {
-	keyArn, err := kms_key.CreateOCMTestKMSKey(region, multiRegion, testClient)
+func (rh *resourcesHandler) PrepareKMSKey(multiRegion bool, testClient string, hcp bool, etcdKMS bool) (string, error) {
+	keyArn, err := kms_key.CreateOCMTestKMSKey(rh.resources.Region, multiRegion, testClient)
 	if err != nil {
 		return keyArn, err
 	}
-	userDataKey := "KMSKey"
 	if etcdKMS {
-		userDataKey = "EtcdKMSKey"
+		err = rh.registerEtcdKMSKey(keyArn)
+	} else {
+		err = rh.registerKMSKey(keyArn)
 	}
-	err = RecordUserDataInfo(config.Test.UserDataFile, userDataKey, keyArn)
 	if err != nil {
 		return keyArn, err
 	}
 	if hcp {
-		kms_key.AddTagToKMS(keyArn, region, map[string]string{
+		kms_key.AddTagToKMS(keyArn, rh.resources.Region, map[string]string{
 			"red-hat": "true",
 		})
 	}
 	return keyArn, err
 }
 
-func ElaborateKMSKeyForSTSCluster(client *rosacli.Client, cluster string, etcdKMS bool) error {
-	jsonData, err := client.Cluster.GetJSONClusterDescription(cluster)
-	if err != nil {
-		return err
-	}
-	accountRoles := []string{
-		jsonData.DigString("aws", "sts", "role_arn"),
-	}
-	operaorRoleMap := map[string]string{}
-	keyArn := jsonData.DigString("aws", "kms_key_arn")
-	if etcdKMS {
-		keyArn = jsonData.DigString("aws", "etcd_encryption", "kms_key_arn")
-	}
-	operatorRoles := jsonData.DigObject("aws", "sts", "operator_iam_roles").([]interface{})
-	for _, operatorRole := range operatorRoles {
-		role := operatorRole.(map[string]interface{})
-		operaorRoleMap[role["name"].(string)] = role["role_arn"].(string)
-	}
-	region := jsonData.DigString("region", "id")
-	isHCP := jsonData.DigBool("hypershift", "enabled")
-	err = kms_key.ConfigKMSKeyPolicyForSTS(keyArn, region, isHCP, accountRoles, operaorRoleMap)
-	if err != nil {
-		log.Logger.Errorf("Elaborate the KMS key %s for cluster %s failed: %s", keyArn, cluster, err.Error())
-	} else {
-		log.Logger.Infof("Elaborate the KMS key %s for cluster %s successfully", keyArn, cluster)
-	}
-
-	return err
-}
-
-func PrepareAdditionalSecurityGroups(vpcClient *vpc_client.VPC,
+func (rh *resourcesHandler) PrepareAdditionalSecurityGroups(
 	securityGroupCount int,
 	namePrefix string) ([]string, error) {
+	if rh.vpc == nil {
+		return nil, errors.New("VPC has not been initialized ...")
+	}
 
-	return vpcClient.CreateAdditionalSecurityGroups(securityGroupCount, namePrefix, "")
+	return rh.vpc.CreateAdditionalSecurityGroups(securityGroupCount, namePrefix, "")
 }
 
 // PrepareAccountRoles will prepare account roles according to the parameters
 // openshiftVersion must follow 4.15.2-x format
-func PrepareAccountRoles(client *rosacli.Client,
+func (rh *resourcesHandler) PrepareAccountRoles(
 	namePrefix string,
 	hcp bool,
 	openshiftVersion string,
@@ -234,7 +197,7 @@ func PrepareAccountRoles(client *rosacli.Client,
 	permissionsBoundary string) (
 	accRoles *rosacli.AccountRolesUnit, err error) {
 
-	flags := GenerateAccountRoleCreationFlag(client,
+	flags := rh.generateAccountRoleCreationFlag(
 		namePrefix,
 		hcp,
 		openshiftVersion,
@@ -243,21 +206,22 @@ func PrepareAccountRoles(client *rosacli.Client,
 		permissionsBoundary,
 	)
 
-	output, err := client.OCMResource.CreateAccountRole(
+	ocmResourceService := rh.rosaClient.OCMResource
+	output, err := ocmResourceService.CreateAccountRole(
 		flags...,
 	)
 	if err != nil {
 		err = fmt.Errorf("error happens when create account-roles, %s", output.String())
 		return
 	}
-	err = RecordUserDataInfo(config.Test.UserDataFile, "AccountRolesPrefix", namePrefix)
+	err = rh.registerAccountRolesPrefix(namePrefix)
 	if err != nil {
 		return
 	}
 	var accoutRoles *rosacli.AccountRolesUnit
 	maxRetries := 3
 	for i := 0; i < maxRetries; i++ {
-		accRoleList, output, err := client.OCMResource.ListAccountRole()
+		accRoleList, output, err := ocmResourceService.ListAccountRole()
 		if err != nil && strings.Contains(err.Error(), "cannot be found") {
 			log.Logger.Infof("Some IAM role cannot be found, Retrying... (%d/%d)\n", i+1, maxRetries)
 			continue
@@ -275,7 +239,7 @@ func PrepareAccountRoles(client *rosacli.Client,
 
 // PrepareOperatorRolesByOIDCConfig will prepare operator roles with OIDC config ID
 // When sharedVPCRoleArn is not empty it will be set to the flag
-func PrepareOperatorRolesByOIDCConfig(client *rosacli.Client,
+func (rh *resourcesHandler) PrepareOperatorRolesByOIDCConfig(
 	namePrefix string,
 	oidcConfigID string,
 	roleArn string,
@@ -296,45 +260,46 @@ func PrepareOperatorRolesByOIDCConfig(client *rosacli.Client,
 	if sharedVPCRoleArn != "" {
 		flags = append(flags, "--shared-vpc-role-arn", sharedVPCRoleArn)
 	}
-	_, err := client.OCMResource.CreateOperatorRoles(
+	_, err := rh.rosaClient.OCMResource.CreateOperatorRoles(
 		flags...,
 	)
 	if err != nil {
 		return err
 	}
-	err = RecordUserDataInfo(config.Test.UserDataFile, "OperatorRolesPrefix", namePrefix)
+	err = rh.registerOperatorRolesPrefix(namePrefix)
 	return err
 }
 
-func PrepareAdminUser() (string, string) {
+func (rh *resourcesHandler) PrepareAdminUser() (string, string) {
 	userName := helper.GenerateRandomString(10)
 	password := helper.GenerateRandomStringWithSymbols(14)
 	return userName, password
 }
 
-func PrepareAuditlogRoleArnByOIDCConfig(client *rosacli.Client,
+func (rh *resourcesHandler) PrepareAuditlogRoleArnByOIDCConfig(
 	auditLogRoleName string,
-	oidcConfigID string,
-	region string) (string, error) {
+	oidcConfigID string) (string, error) {
 
-	oidcConfig, err := client.OCMResource.GetOIDCConfigFromList(oidcConfigID)
+	oidcConfig, err := rh.rosaClient.OCMResource.GetOIDCConfigFromList(oidcConfigID)
 	if err != nil {
 		return "", err
 	}
-	logRoleArn, err := PrepareAuditlogRoleArnByIssuer(auditLogRoleName, oidcConfig.IssuerUrl, region)
+	logRoleArn, err := rh.PrepareAuditlogRoleArnByIssuer(auditLogRoleName, oidcConfig.IssuerUrl)
 	if err != nil {
 		return logRoleArn, err
 	}
-	err = RecordUserDataInfo(config.Test.UserDataFile, "AuditLogArn", logRoleArn)
+	err = rh.registerAuditLogArn(logRoleArn)
 	return logRoleArn, err
 
 }
 
-func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL string, region string) (string, error) {
+func (rh *resourcesHandler) PrepareAuditlogRoleArnByIssuer(auditLogRoleName string,
+	oidcIssuerURL string) (string, error) {
+
 	//nolint:staticcheck,all
 	oidcIssuerURL = strings.TrimLeft(oidcIssuerURL, "https://")
 	log.Logger.Infof("Preparing audit log role with name %s and oidcIssuerURL %s", auditLogRoleName, oidcIssuerURL)
-	awsClient, err := aws_client.CreateAWSClient("", region)
+	awsClient, err := rh.GetAWSClient(false)
 	if err != nil {
 		return "", err
 	}
@@ -351,7 +316,7 @@ func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL strin
 		return auditLogRoleArn, err
 	}
 	log.Logger.Infof("Create a new role for audit log forwarding: %s", auditLogRoleArn)
-	err = RecordUserDataInfo(config.Test.UserDataFile, "AuditLogArn", auditLogRoleArn)
+	err = rh.registerAuditLogArn(auditLogRoleArn)
 	if err != nil {
 		log.Logger.Errorf("Error happened when record audit log role: %s", err.Error())
 		return auditLogRoleArn, err
@@ -365,13 +330,13 @@ func PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL strin
 	return auditLogRoleArn, err
 }
 
-func PrepareOperatorRolesByCluster(client *rosacli.Client, cluster string) error {
+func (rh *resourcesHandler) PrepareOperatorRolesByCluster(cluster string) error {
 	flags := []string{
 		"-y",
 		"--mode", "auto",
 		"--cluster", cluster,
 	}
-	_, err := client.OCMResource.CreateOperatorRoles(
+	_, err := rh.rosaClient.OCMResource.CreateOperatorRoles(
 		flags...,
 	)
 	return err
@@ -379,9 +344,8 @@ func PrepareOperatorRolesByCluster(client *rosacli.Client, cluster string) error
 
 // PrepareOIDCConfig will prepare the oidc config for the cluster,
 // if the oidcConfigType="managed", roleArn and prefix won't be set
-func PrepareOIDCConfig(client *rosacli.Client,
+func (rh *resourcesHandler) PrepareOIDCConfig(
 	oidcConfigType string,
-	region string,
 	roleArn string,
 	prefix string) (string, error) {
 
@@ -390,19 +354,19 @@ func PrepareOIDCConfig(client *rosacli.Client,
 	var err error
 	switch oidcConfigType {
 	case "managed":
-		output, err = client.OCMResource.CreateOIDCConfig(
+		output, err = rh.rosaClient.OCMResource.CreateOIDCConfig(
 			"-o", "json",
 			"--mode", "auto",
-			"--region", region,
+			"--region", rh.resources.Region,
 			"--managed",
 			"-y",
 		)
 	case "unmanaged":
-		output, err = client.OCMResource.CreateOIDCConfig(
+		output, err = rh.rosaClient.OCMResource.CreateOIDCConfig(
 			"-o", "json",
 			"--mode", "auto",
 			"--prefix", prefix,
-			"--region", region,
+			"--region", rh.resources.Region,
 			"--role-arn", roleArn,
 			"--managed=false",
 			"-y",
@@ -416,20 +380,20 @@ func PrepareOIDCConfig(client *rosacli.Client,
 	}
 	parser := rosacli.NewParser()
 	oidcConfigID = parser.JsonData.Input(output).Parse().DigString("id")
-	err = RecordUserDataInfo(config.Test.UserDataFile, "OIDCConfigID", oidcConfigID)
+	err = rh.registerOIDCConfigID(oidcConfigID)
 	return oidcConfigID, err
 }
 
-func PrepareOIDCProvider(client *rosacli.Client, oidcConfigID string) error {
-	_, err := client.OCMResource.CreateOIDCProvider(
+func (rh *resourcesHandler) PrepareOIDCProvider(oidcConfigID string) error {
+	_, err := rh.rosaClient.OCMResource.CreateOIDCProvider(
 		"--mode", "auto",
 		"-y",
 		"--oidc-config-id", oidcConfigID,
 	)
 	return err
 }
-func PrepareOIDCProviderByCluster(client *rosacli.Client, cluster string) error {
-	_, err := client.OCMResource.CreateOIDCProvider(
+func (rh *resourcesHandler) PrepareOIDCProviderByCluster(cluster string) error {
+	_, err := rh.rosaClient.OCMResource.CreateOIDCProvider(
 		"--mode", "auto",
 		"-y",
 		"--cluster", cluster,
@@ -437,9 +401,10 @@ func PrepareOIDCProviderByCluster(client *rosacli.Client, cluster string) error 
 	return err
 }
 
-func PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string, ingressOperatorRoleArn string,
-	region string, awsSharedCredentialFile string) (string, string, error) {
-	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+func (rh *resourcesHandler) PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string,
+	ingressOperatorRoleArn string) (string, string, error) {
+
+	awsClient, err := rh.GetAWSClient(true)
 	if err != nil {
 		return "", "", err
 	}
@@ -466,7 +431,7 @@ func PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string, i
 		return roleName, sharedVPCRoleArn, err
 	}
 	log.Logger.Infof("Create a new role for shared VPC: %s", sharedVPCRoleArn)
-	err = RecordUserDataInfo(config.Test.UserDataFile, "SharedVPCRole", roleName)
+	err = rh.registerSharedVPCRole(roleName)
 	if err != nil {
 		log.Logger.Errorf("Error happened when record shared VPC role: %s", err.Error())
 		return roleName, sharedVPCRoleArn, err
@@ -479,9 +444,8 @@ func PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string, i
 	return roleName, sharedVPCRoleArn, err
 }
 
-func PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string,
-	region string, awsSharedCredentialFile string) (string, error) {
-	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+func (rh *resourcesHandler) PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string) (string, error) {
+	awsClient, err := rh.GetAWSClient(true)
 	if err != nil {
 		return "", err
 	}
@@ -506,12 +470,12 @@ func PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string,
 	return additionalPrincipalRoleArn, err
 }
 
-func PrepareDNSDomain(client *rosacli.Client) (string, error) {
+func (rh *resourcesHandler) PrepareDNSDomain() (string, error) {
 	var dnsDomain string
 	var output bytes.Buffer
 	var err error
 
-	output, err = client.OCMResource.CreateDNSDomain()
+	output, err = rh.rosaClient.OCMResource.CreateDNSDomain()
 	if err != nil {
 		return dnsDomain, err
 	}
@@ -519,40 +483,47 @@ func PrepareDNSDomain(client *rosacli.Client) (string, error) {
 	tip := parser.TextData.Input(output).Parse().Tip()
 	dnsDomainStr := strings.Split(strings.Split(tip, "\n")[0], " ")[3]
 	dnsDomain = strings.TrimSuffix(strings.TrimPrefix(dnsDomainStr, "‘"), "’")
-	err = RecordUserDataInfo(config.Test.UserDataFile, "DNSDomain", dnsDomain)
+	err = rh.registerDNSDomain(dnsDomain)
 	if err != nil {
 		log.Logger.Errorf("Error happened when record DNS Domain: %s", err.Error())
 	}
 	return dnsDomain, err
 }
 
-func PrepareHostedZone(clusterName string, dnsDomain string, vpcID string, region string, private bool,
-	awsSharedCredentialFile string) (string, error) {
-	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+func (rh *resourcesHandler) PrepareHostedZone(clusterName string, dnsDomain string,
+	vpcID string, private bool) (string, error) {
+
+	awsClient, err := rh.GetAWSClient(true)
 	if err != nil {
 		return "", err
 	}
 
 	hostedZoneName := fmt.Sprintf("%s.%s", clusterName, dnsDomain)
 	callerReference := helper.GenerateRandomString(10)
-	hostedZoneOutput, err := awsClient.CreateHostedZone(hostedZoneName, callerReference, vpcID, region, private)
+	hostedZoneOutput, err := awsClient.CreateHostedZone(
+		hostedZoneName,
+		callerReference,
+		vpcID,
+		rh.resources.Region,
+		private,
+	)
 	if err != nil {
 		log.Logger.Errorf("Error happens when prepare hosted zone: %s", err.Error())
 		return "", err
 	}
 	hostedZoneID := strings.Split(*hostedZoneOutput.HostedZone.Id, "/")[2]
 
-	err = RecordUserDataInfo(config.Test.UserDataFile, "HostedZoneID", hostedZoneID)
+	err = rh.registerHostedZoneID(hostedZoneID)
 	if err != nil {
 		log.Logger.Errorf("Error happened when record Hosted Zone ID: %s", err.Error())
 	}
 	return hostedZoneID, err
 }
 
-func PrepareSubnetArns(subnetIDs string, region string, awsSharedCredentialFile string) ([]string, error) {
+func (rh *resourcesHandler) PrepareSubnetArns(subnetIDs string) ([]string, error) {
 	var subnetArns []string
 	var resp []types.Subnet
-	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	awsClient, err := rh.GetAWSClient(true)
 	if err != nil {
 		return nil, err
 	}
@@ -569,16 +540,16 @@ func PrepareSubnetArns(subnetIDs string, region string, awsSharedCredentialFile 
 	return subnetArns, err
 }
 
-func PrepareResourceShare(resourceShareName string, resourceArns []string, region string,
-	awsSharedCredentialFile string) (string, error) {
+func (rh *resourcesHandler) PrepareResourceShare(resourceShareName string, resourceArns []string) (string, error) {
 	var principles []string
-	awsClient, err := aws_client.CreateAWSClient("", region)
+	// Use directly aws client creation because we don't want the shared one here
+	awsClient, err := rh.GetAWSClient(false)
 	if err != nil {
 		return "", err
 	}
 	principles = append(principles, awsClient.AccountID)
 
-	sharedVPCAWSClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile)
+	sharedVPCAWSClient, err := rh.GetAWSClient(true)
 	if err != nil {
 		return "", err
 	}
@@ -589,9 +560,43 @@ func PrepareResourceShare(resourceShareName string, resourceArns []string, regio
 		return "", err
 	}
 	resourceShareArn := *sharedResourceOutput.ResourceShare.ResourceShareArn
-	err = RecordUserDataInfo(config.Test.UserDataFile, "ResourceShareArn", resourceShareArn)
+	err = rh.registerResourceShareArn(resourceShareArn)
 	if err != nil {
 		log.Logger.Errorf("Error happened when record resource share: %s", err.Error())
 	}
 	return resourceShareArn, err
+}
+
+// generateAccountRoleCreationFlag will generate account role creation flags
+func (rh *resourcesHandler) generateAccountRoleCreationFlag(
+	namePrefix string,
+	hcp bool,
+	openshiftVersion string,
+	channelGroup string,
+	path string,
+	permissionsBoundary string) []string {
+	flags := []string{
+		"--prefix", namePrefix,
+		"--mode", "auto",
+		"-y",
+	}
+	if openshiftVersion != "" {
+		majorVersion := helper.SplitMajorVersion(openshiftVersion)
+		flags = append(flags, "--version", majorVersion)
+	}
+	if channelGroup != "" {
+		flags = append(flags, "--channel-group", channelGroup)
+	}
+	if hcp {
+		flags = append(flags, "--hosted-cp")
+	} else {
+		flags = append(flags, "--classic")
+	}
+	if path != "" {
+		flags = append(flags, "--path", path)
+	}
+	if permissionsBoundary != "" {
+		flags = append(flags, "--permissions-boundary", permissionsBoundary)
+	}
+	return flags
 }

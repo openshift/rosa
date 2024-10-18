@@ -14,9 +14,9 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
-	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
@@ -28,7 +28,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	var (
 		rosaClient         *rosacli.Client
 		machinePoolService rosacli.MachinePoolService
-		profile            *ph.Profile
+		profile            *handler.Profile
 		isMultiArch        bool
 	)
 
@@ -51,7 +51,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			SkipNotHosted()
 		}
 
-		profile = ph.LoadProfileYamlFileByENV()
+		profile = handler.LoadProfileYamlFileByENV()
 	})
 
 	Describe("Create/delete/view a machine pool", func() {
@@ -541,9 +541,12 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("with subnet not in VPC")
 			vpcPrefix := helper.TrimNameByLength("c56786", 20)
-			vpc, err := vpc_client.PrepareVPC(vpcPrefix, profile.Region, constants.DefaultVPCCIDRValue, false, "")
+			resourcesHandler, err := handler.NewTempResourcesHandler(rosaClient, profile.Region, "")
 			Expect(err).ToNot(HaveOccurred())
-			defer vpc.DeleteVPCChain(true)
+			defer resourcesHandler.DestroyResources()
+
+			vpc, err := resourcesHandler.PrepareVPC(vpcPrefix, constants.DefaultVPCCIDRValue, false)
+			Expect(err).ToNot(HaveOccurred())
 			zones, err := vpc.AWSClient.ListAvaliableZonesForRegion(profile.Region, "availability-zone")
 			Expect(err).ToNot(HaveOccurred())
 			subnet, err := vpc.CreateSubnet(zones[0])
