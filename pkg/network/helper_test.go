@@ -72,8 +72,9 @@ var _ = Describe("Helper Functions", func() {
 	Describe("SelectTemplate", func() {
 		It("should return the correct template file path", func() {
 			templateName := "test-template"
+			templateDir := "cmd/create/network/templates"
 			expectedTemplateFile := "cmd/create/network/templates/test-template/cloudformation.yaml"
-			Expect(SelectTemplate(templateName)).To(Equal(expectedTemplateFile))
+			Expect(SelectTemplate(templateDir, templateName)).To(Equal(expectedTemplateFile))
 		})
 	})
 

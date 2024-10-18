@@ -1,8 +1,12 @@
-package Network
+package network
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/constants"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -17,10 +21,12 @@ const (
 		` --param Name=quickstart-stack --param AvailabilityZoneCount=1 --param VpcCidr=10.0.0.0/16` +
 		"\n\n" + `  # To delete the AWS cloudformation stack` +
 		"\n" + `  aws cloudformation delete-stack --stack-name <name> --region <region>`
+	defaultTemplateDir = "cmd/create/network/templates"
 )
 
 type NetworkUserOptions struct {
-	Params []string
+	Params      []string
+	TemplateDir string
 }
 
 type NetworkOptions struct {
@@ -29,13 +35,23 @@ type NetworkOptions struct {
 }
 
 func NewNetworkUserOptions() *NetworkUserOptions {
-	return &NetworkUserOptions{}
+	options := &NetworkUserOptions{}
+
+	// Set template directory from environment variable or use default
+	templateDir := os.Getenv(constants.OcmTemplateDir)
+	if helper.HandleEscapedEmptyString(templateDir) != "" {
+		options.TemplateDir = templateDir
+	} else {
+		options.TemplateDir = defaultTemplateDir
+	}
+
+	return options
 }
 
 func NewNetworkOptions() *NetworkOptions {
 	return &NetworkOptions{
 		reporter: reporter.CreateReporter(),
-		args:     &NetworkUserOptions{},
+		args:     NewNetworkUserOptions(),
 	}
 }
 
@@ -56,7 +72,8 @@ func BuildNetworkCommandWithOptions() (*cobra.Command, *NetworkUserOptions) {
 	}
 
 	flags := cmd.Flags()
-
+	flags.StringVar(&options.TemplateDir, "template-dir", defaultTemplateDir, "Use a specific template directory,"+
+		" overriding the OCM_TEMPLATE_DIR environment variable.")
 	flags.StringArrayVar(&options.Params, "param", []string{}, "List of parameters")
 
 	return cmd, options

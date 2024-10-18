@@ -25,7 +25,7 @@ func NewNetworkCommand() *cobra.Command {
 	interactive.AddModeFlag(cmd)
 
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		templateDir := "cmd/create/network/templates"
+		templateDir := options.TemplateDir
 		err := filepath.WalkDir(templateDir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -99,11 +99,16 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		for _, arg := range argv {
 			if !strings.HasPrefix(arg, "--param") {
 				templateCommand = arg
+				if templateCommand == "rosa-quickstart-default-vpc" {
+					r.Logger.Debugf("Template command not provided, using default template %s", templateCommand)
+				}
 				break
 			}
 		}
 
-		templateFile := helper.SelectTemplate(templateCommand)
+		templateDir := options.args.TemplateDir
+
+		templateFile := helper.SelectTemplate(templateDir, templateCommand)
 		if templateFile == "" {
 			return r.Reporter.Errorf("No suitable template found")
 		}
