@@ -149,8 +149,9 @@ func ValidateUnmanagedAccountRoles(roleARNs []string, awsClient aws.Client, vers
 func ValidateOperatorRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster,
 	operatorRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy, mode string, prefix string,
 	unifiedPath string, upgradeVersion string, hostedCPPolicies bool) error {
+
 	if upgradeVersion != "" {
-		missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, upgradeVersion)
+		missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, upgradeVersion, operatorRoles)
 		if err != nil {
 			return err
 		}
@@ -164,6 +165,44 @@ func ValidateOperatorRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster
 	}
 
 	return r.AWSClient.ValidateOperatorRolesManagedPolicies(cluster, operatorRoles, policies, hostedCPPolicies)
+}
+
+func ValidateAccountAndOperatorRolesManagedPolicies(
+	r *rosa.Runtime,
+	cluster *cmv1.Cluster,
+	credRequests map[string]*cmv1.STSOperator,
+	unifiedPath string,
+	mode string,
+	upgradeVersion string,
+) error {
+	var accountRolePrefix string
+	var err error
+
+	accountRolePrefix, err = aws.GetPrefixFromAccountRole(cluster, aws.InstallerAccountRoleType)
+	if err != nil {
+		return fmt.Errorf("Failed while trying to get account role prefix: '%v'", err)
+	}
+
+	hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
+
+	err = ValidateAccountRolesManagedPolicies(r, accountRolePrefix, hostedCPPolicies)
+	if err != nil {
+		return fmt.Errorf("Failed while validating managed policies: %v", err)
+	}
+	r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies.", accountRolePrefix)
+
+	policies, err := r.OCMClient.GetPolicies("OperatorRole")
+	if err != nil {
+		return fmt.Errorf("Expected a valid role creation mode: %s", err)
+	}
+
+	err = ValidateOperatorRolesManagedPolicies(r, cluster, credRequests, policies, mode,
+		accountRolePrefix, unifiedPath, upgradeVersion, hostedCPPolicies)
+	if err != nil {
+		return fmt.Errorf("Failed while validating managed policies: %v", err)
+	}
+
+	return nil
 }
 
 func CreateMissingRoles(

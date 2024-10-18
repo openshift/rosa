@@ -186,31 +186,10 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if managedPolicies {
-		var accountRolePrefix string
-		accountRolePrefix, err = aws.GetPrefixFromAccountRole(cluster, "Installer")
+		err = roles.ValidateAccountAndOperatorRolesManagedPolicies(
+			r, cluster, credRequests, unifiedPath, mode, clusterUpgradeVersion)
 		if err != nil {
-			r.Reporter.Errorf("Failed while trying to get account role prefix: '%v'", err)
-			os.Exit(1)
-		}
-
-		hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
-
-		err = roles.ValidateAccountRolesManagedPolicies(r, accountRolePrefix, hostedCPPolicies)
-		if err != nil {
-			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
-			os.Exit(1)
-		}
-		r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies.", accountRolePrefix)
-
-		policies, err := r.OCMClient.GetPolicies("OperatorRole")
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-			os.Exit(1)
-		}
-		err = roles.ValidateOperatorRolesManagedPolicies(r, cluster, credRequests, policies, mode,
-			accountRolePrefix, unifiedPath, clusterUpgradeVersion, hostedCPPolicies)
-		if err != nil {
-			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
+			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		r.Reporter.Infof("Cluster '%s' operator roles have attached managed policies. "+
@@ -398,7 +377,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	missingRolesInCS, err := ocmClient.FindMissingOperatorRolesForUpgrade(cluster, clusterUpgradeVersion)
+	missingRolesInCS, err := ocmClient.FindMissingOperatorRolesForUpgrade(cluster, clusterUpgradeVersion, credRequests)
 	if err != nil {
 		r.Reporter.Errorf("Error finding operator roles for upgrade '%s'", err)
 		os.Exit(1)
