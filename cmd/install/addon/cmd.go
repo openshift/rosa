@@ -25,6 +25,7 @@ import (
 	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
+	asv1 "github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
@@ -180,7 +181,7 @@ func run(cmd *cobra.Command, argv []string) {
 		// set as flags, then we also ensure that interactive mode is enabled so that the
 		// user gets prompted.
 		if arguments.HasUnknownFlags() {
-			addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+			addonParameters.Each(func(param *asv1.AddonParameter) bool {
 				flag := cmd.Flags().Lookup(param.ID())
 				if param.Required() && (flag == nil || flag.Value.String() == "") {
 					interactive.Enable()
@@ -192,7 +193,7 @@ func run(cmd *cobra.Command, argv []string) {
 			interactive.Enable()
 		}
 
-		addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+		addonParameters.Each(func(param *asv1.AddonParameter) bool {
 			var val string
 			var options []string
 			var values []string
@@ -297,7 +298,7 @@ func ensureAddonNotInstalled(r *rosa.Runtime, clusterID, addOnID string) {
 	}
 }
 
-func createAddonRole(r *rosa.Runtime, roleName string, cr *cmv1.CredentialRequest, cmd *cobra.Command,
+func createAddonRole(r *rosa.Runtime, roleName string, cr *asv1.CredentialRequest, cmd *cobra.Command,
 	cluster *cmv1.Cluster) error {
 	policy := aws.NewPolicyDocument()
 	policy.AllowActions(cr.PolicyPermissions()...)
@@ -354,7 +355,7 @@ func buildCommand(
 	return command
 }
 
-func generateRoleName(cr *cmv1.CredentialRequest, prefix string) string {
+func generateRoleName(cr *asv1.CredentialRequest, prefix string) string {
 	roleName := fmt.Sprintf("%s-%s-%s", prefix, cr.Namespace(), cr.Name())
 	return awsCommonUtils.TruncateRoleName(roleName)
 }
