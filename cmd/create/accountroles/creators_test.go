@@ -18,7 +18,7 @@ var _ = Describe("Accountroles", Ordered, func() {
 			mockCtrl := gomock.NewController(GinkgoT())
 			mockClient := mock.NewMockClient(mockCtrl)
 			mockClient.EXPECT().EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
-				gomock.Any(), gomock.Any(), gomock.Any()).Return("role-123", nil)
+				gomock.Any(), gomock.Any(), gomock.Any()).Return("role-123", nil).AnyTimes()
 
 			r := rosa.NewRuntime()
 			r.AWSClient = mockClient
@@ -29,10 +29,34 @@ var _ = Describe("Accountroles", Ordered, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to find policy ARN for"))
 		})
-		It("createRole succeeds", func() {
+		It("createRole succeeds without ec2 policy", func() {
 			mockCtrl := gomock.NewController(GinkgoT())
 			mockClient := mock.NewMockClient(mockCtrl)
-			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(3)
+			mockClient.EXPECT().EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+				gomock.Any(), gomock.Any(), gomock.Any()).Return("role-123", nil).AnyTimes()
+
+			r := rosa.NewRuntime()
+			r.AWSClient = mockClient
+			r.Creator = &mock.Creator{ARN: "arn-123"}
+			installerPolicy, _ := (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::installer").Build()
+			workerPolicy, _ := (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::worker").Build()
+			supportPolicy, _ := (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::support").Build()
+
+			policies := map[string]*cmv1.AWSSTSPolicy{
+				"sts_hcp_installer_permission_policy":       installerPolicy,
+				"sts_hcp_instance_worker_permission_policy": workerPolicy,
+				"sts_hcp_support_permission_policy":         supportPolicy,
+			}
+
+			accountRolesCreationInput := buildRolesCreationInput("test", "", "account-123", "stage", policies, "", "")
+			err := (&hcpManagedPoliciesCreator{}).createRoles(r, accountRolesCreationInput)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("createRole succeeds with ec2 policy", func() {
+			mockCtrl := gomock.NewController(GinkgoT())
+			mockClient := mock.NewMockClient(mockCtrl)
+			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(4)
 			mockClient.EXPECT().EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any(), gomock.Any()).Return("role-123", nil).AnyTimes()
 
