@@ -326,6 +326,12 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 		for _, policyKey := range policyKeys {
 			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
 			if err != nil {
+				// EC2 policy is only available to orgs for zero-egress feature toggle enabled
+				if policyKey == aws.WorkerEC2RegistryKey {
+					r.Reporter.Infof("Skip attaching policy '%s' to role '%s' (zero egress feature toggle is not enabled)",
+						policyKey, accRoleName)
+					continue
+				}
 				return err
 			}
 
@@ -352,6 +358,12 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 		for _, policyKey := range policyKeys {
 			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
 			if err != nil {
+				// EC2 policy is only available to orgs for zero-egress feature toggle enabled
+				if policyKey == aws.WorkerEC2RegistryKey {
+					r.Reporter.Infof("Skip attaching policy '%s' to role '%s' (zero egress feature toggle is not enabled)",
+						policyKey, accRoleName)
+					continue
+				}
 				return err
 			}
 
