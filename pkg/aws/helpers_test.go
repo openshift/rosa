@@ -251,9 +251,8 @@ var _ = Describe("GetHcpAccountRolePolicyKeys", func() {
 	When("role_type contains instance_worker", func() {
 		It("should return correct policy keys", func() {
 			policyKeys := GetHcpAccountRolePolicyKeys("instance_worker")
-			Expect(len(policyKeys)).To(Equal(2))
+			Expect(len(policyKeys)).To(Equal(1))
 			Expect(policyKeys[0]).To(Equal("sts_hcp_instance_worker_permission_policy"))
-			Expect(policyKeys[1]).To(Equal("sts_hcp_ec2_registry_permission_policy"))
 		})
 	})
 	When("role_type contains installer", func() {
