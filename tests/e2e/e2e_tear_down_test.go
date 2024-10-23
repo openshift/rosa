@@ -1,12 +1,15 @@
 package e2e
 
 import (
+	"errors"
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
+	"github.com/openshift/rosa/tests/utils/handler"
 )
 
 var _ = Describe("Cluster destroy", labels.Feature.Cluster, func() {
@@ -15,8 +18,10 @@ var _ = Describe("Cluster destroy", labels.Feature.Cluster, func() {
 		labels.Critical,
 		func() {
 			client := rosacli.NewClient()
-			profile := profilehandler.LoadProfileYamlFileByENV()
-			var errs = profilehandler.DestroyResourceByProfile(profile, client)
-			Expect(len(errs)).To(Equal(0))
+			profile := handler.LoadProfileYamlFileByENV()
+			clusterHandler, err := handler.NewClusterHandlerFromFilesystem(client, profile)
+			Expect(err).ToNot(HaveOccurred())
+			var errs = clusterHandler.Destroy()
+			Expect(len(errs)).To(Equal(0), fmt.Sprintf("Errors while destroying the cluster: %v", errors.Join(errs...)))
 		})
 })

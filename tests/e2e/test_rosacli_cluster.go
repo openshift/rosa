@@ -23,9 +23,9 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit cluster",
@@ -37,8 +37,7 @@ var _ = Describe("Edit cluster",
 			clusterID      string
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
-			// upgradeService rosacli.UpgradeService
-			profile *profilehandler.Profile
+			profile        *handler.Profile
 		)
 
 		BeforeEach(func() {
@@ -49,10 +48,9 @@ var _ = Describe("Edit cluster",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
-			// upgradeService = rosaClient.Upgrade
 
 			By("Load the profile")
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
@@ -641,7 +639,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Load the profile")
-			profile := profilehandler.LoadProfileYamlFileByENV()
+			profile := handler.LoadProfileYamlFileByENV()
 
 			By("Edit cluster with invalid http_proxy set")
 			if !profile.ClusterConfig.BYOVPC {
@@ -750,17 +748,20 @@ var _ = Describe("Classic cluster creation validation",
 
 		var (
 			rosaClient     *rosacli.Client
-			profilesMap    map[string]*profilehandler.Profile
-			profile        *profilehandler.Profile
+			profilesMap    map[string]*handler.Profile
+			profile        *handler.Profile
 			clusterService rosacli.ClusterService
+			clusterHandler handler.ClusterHandler
 		)
 
 		BeforeEach(func() {
+			var err error
+
 			// Init the client
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			// Get a random profile
-			profilesMap = profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
+			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
 			profilesNames := make([]string, 0, len(profilesMap))
 			for k, v := range profilesMap {
 				if !v.ClusterConfig.SharedVPC {
@@ -768,11 +769,12 @@ var _ = Describe("Classic cluster creation validation",
 				}
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
+			Expect(err).To(BeNil())
 		})
 
 		AfterEach(func() {
-			errs := profilehandler.DestroyResourceByProfile(profile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
+			clusterHandler.Destroy()
 		})
 
 		It("to check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]",
@@ -783,7 +785,7 @@ var _ = Describe("Classic cluster creation validation",
 				var rosalCommand config.Command
 				profile.NamePrefix = helper.GenerateRandomName("ci38770", 2)
 
-				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).To(BeNil())
 
 				// nolint
@@ -920,7 +922,7 @@ var _ = Describe("Classic cluster creation validation",
 				var command string
 				var rosalCommand config.Command
 				profile.NamePrefix = helper.GenerateRandomName("ci45161", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).To(BeNil())
 
 				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
@@ -1192,7 +1194,7 @@ var _ = Describe("Classic cluster creation validation",
 				var command string
 				var rosalCommand config.Command
 				profile.NamePrefix = helper.GenerateRandomName("ci71329", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).To(BeNil())
 
 				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
@@ -1326,17 +1328,15 @@ var _ = Describe("Classic cluster creation validation",
 				)
 
 				By("Prepare a vpc for the testing")
-				vpc, err := vpc_client.PrepareVPC(caseNumber, region, "", false, "")
+				resourcesHandler := clusterHandler.GetResourcesHandler()
+				_, err := resourcesHandler.PrepareVPC(caseNumber, "", true)
 				Expect(err).ToNot(HaveOccurred())
-				defer vpc.DeleteVPCChain()
-
-				subnetMap, err := profilehandler.PrepareSubnets(vpc, region, []string{}, false)
+				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Prepare additional security group ids for testing")
-				sgIDs, err := profilehandler.PrepareAdditionalSecurityGroups(vpc, SGIdsMoreThanTen, caseNumber)
+				sgIDs, err := resourcesHandler.PrepareAdditionalSecurityGroups(SGIdsMoreThanTen, caseNumber)
 				Expect(err).ToNot(HaveOccurred())
-
 				subnetsFlagValue := strings.Join(append(subnetMap["private"], subnetMap["public"]...), ",")
 				rosaclient := rosacli.NewClient()
 
@@ -2091,10 +2091,11 @@ var _ = Describe("HCP cluster creation negative testing",
 		var (
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
-			profilesMap    map[string]*profilehandler.Profile
-			profile        *profilehandler.Profile
+			profilesMap    map[string]*handler.Profile
+			profile        *handler.Profile
 			command        string
 			rosalCommand   config.Command
+			clusterHandler handler.ClusterHandler
 		)
 		BeforeEach(func() {
 
@@ -2103,16 +2104,18 @@ var _ = Describe("HCP cluster creation negative testing",
 			clusterService = rosaClient.Cluster
 
 			// Get a random profile
-			profilesMap = profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
+			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
 			profilesNames := make([]string, 0, len(profilesMap))
 			for k := range profilesMap {
 				profilesNames = append(profilesNames, k)
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
 			profile.NamePrefix = constants.DefaultNamePrefix
+			clusterHandler, err := handler.NewTempClusterHandler(rosaClient, profile)
+			Expect(err).To(BeNil())
 
 			By("Prepare creation command")
-			flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+			flags, err := clusterHandler.GenerateClusterCreateFlags()
 			Expect(err).To(BeNil())
 
 			command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
@@ -2120,7 +2123,7 @@ var _ = Describe("HCP cluster creation negative testing",
 		})
 
 		AfterEach(func() {
-			errs := profilehandler.DestroyResourceByProfile(profile, rosaClient)
+			errs := clusterHandler.Destroy()
 			Expect(len(errs)).To(Equal(0))
 		})
 
@@ -2449,15 +2452,14 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 
 				By("Prepare a vpc for the testing")
-				vpc, err := vpc_client.PrepareVPC(vpcName, constants.CommonAWSRegion, "", false, "")
+				resourcesHandler := clusterHandler.GetResourcesHandler()
+				vpc, err := resourcesHandler.PrepareVPC(vpcName, "", false)
 				Expect(err).ToNot(HaveOccurred())
 				defer vpc.DeleteVPCChain()
 
-				subnetMap, err := profilehandler.PrepareSubnets(vpc, constants.CommonAWSRegion, []string{}, true)
+				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, true)
 				Expect(err).ToNot(HaveOccurred())
-
 				availabilityZone := vpc.SubnetList[0].Zone
-
 				additionalPrivateSubnet, err := vpc.CreatePrivateSubnet(availabilityZone, true)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -2718,7 +2720,7 @@ var _ = Describe("Create cluster with availability zones testing",
 		It("User can set availability zones - [id:52691]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				profile := profilehandler.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 				mpID := "mp-52691"
 				machineType := "m5.2xlarge" // nolint:goconst
 
@@ -2758,7 +2760,7 @@ var _ = Describe("Create sts and hcp cluster with the IAM roles with path settin
 	var (
 		clusterID      string
 		rosaClient     *rosacli.Client
-		profile        *profilehandler.Profile
+		profile        *handler.Profile
 		err            error
 		clusterService rosacli.ClusterService
 		path           string
@@ -2767,7 +2769,7 @@ var _ = Describe("Create sts and hcp cluster with the IAM roles with path settin
 
 	BeforeEach(func() {
 		By("Get the cluster")
-		profile = profilehandler.LoadProfileYamlFileByENV()
+		profile = handler.LoadProfileYamlFileByENV()
 		Expect(err).ToNot(HaveOccurred())
 
 		By("Init the client")
@@ -3125,7 +3127,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	defer GinkgoRecover()
 	var (
 		rosaClient               *rosacli.Client
-		profile                  *profilehandler.Profile
+		profile                  *handler.Profile
 		err                      error
 		oidcConfigToClean        string
 		ocmResourceService       rosacli.OCMResourceService
@@ -3142,7 +3144,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
 		clusterService = rosaClient.Cluster
-		profile = profilehandler.LoadProfileYamlFileByENV()
+		profile = handler.LoadProfileYamlFileByENV()
 		Expect(err).ToNot(HaveOccurred())
 
 		awsClient, err = aws_client.CreateAWSClient("", "")
@@ -3285,12 +3287,14 @@ var _ = Describe("Sts cluster creation with external id",
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
 
-			customProfile      *profilehandler.Profile
+			customProfile      *handler.Profile
 			clusterID          string
 			ocmResourceService rosacli.OCMResourceService
 			testingClusterName string
+			clusterHandler     handler.ClusterHandler
 		)
 		BeforeEach(func() {
+			var err error
 
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
@@ -3302,8 +3306,8 @@ var _ = Describe("Sts cluster creation with external id",
 			rosaClient.Runner.UnsetFormat()
 
 			By("Prepare custom profile")
-			customProfile = &profilehandler.Profile{
-				ClusterConfig: &profilehandler.ClusterConfig{
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
 					HCP:           false,
 					MultiAZ:       false,
 					STS:           true,
@@ -3311,7 +3315,7 @@ var _ = Describe("Sts cluster creation with external id",
 					NetworkingSet: false,
 					BYOVPC:        false,
 				},
-				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+				AccountRoleConfig: &handler.AccountRoleConfig{
 					Path:               "/aa/bb/",
 					PermissionBoundary: "",
 				},
@@ -3320,10 +3324,16 @@ var _ = Describe("Sts cluster creation with external id",
 				Region:       "us-east-2",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
-
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
+			defer func() {
+				By("Clean resources")
+				clusterHandler.Destroy()
+			}()
+
 			By("Delete cluster")
 			rosaClient.Runner.UnsetArgs()
 			_, err := clusterService.DeleteCluster(clusterID, "-y")
@@ -3340,10 +3350,6 @@ var _ = Describe("Sts cluster creation with external id",
 				"-y",
 			)
 			Expect(err).To(BeNil())
-
-			By("Clean resource")
-			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
 		})
 
 		It("Creating cluster with sts external id should succeed - [id:75603]",
@@ -3352,7 +3358,7 @@ var _ = Describe("Sts cluster creation with external id",
 				By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75603", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75603", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
@@ -3441,14 +3447,14 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
 
-			customProfile      *profilehandler.Profile
+			customProfile      *handler.Profile
 			clusterID          string
 			ocmResourceService rosacli.OCMResourceService
 			AWSAccountID       string
 			testingClusterName string
+			clusterHandler     handler.ClusterHandler
 		)
 		BeforeEach(func() {
-
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
@@ -3463,8 +3469,8 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			AWSAccountID = whoamiData.AWSAccountID
 
 			By("Prepare custom profile")
-			customProfile = &profilehandler.Profile{
-				ClusterConfig: &profilehandler.ClusterConfig{
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
 					HCP:           true,
 					MultiAZ:       true,
 					STS:           true,
@@ -3473,7 +3479,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 					BYOVPC:        true,
 					Zones:         "",
 				},
-				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+				AccountRoleConfig: &handler.AccountRoleConfig{
 					Path:               "",
 					PermissionBoundary: "",
 				},
@@ -3482,10 +3488,16 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				Region:       constants.CommonAWSRegion,
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
-
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+			Expect(err).To(BeNil())
 		})
 
 		AfterEach(func() {
+			defer func() {
+				By("Clean resources")
+				clusterHandler.Destroy()
+			}()
+
 			if clusterID != "" {
 				By("Delete cluster by id")
 				rosaClient.Runner.UnsetArgs()
@@ -3510,10 +3522,6 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				_, err := clusterService.DeleteCluster(testingClusterName, "-y")
 				Expect(err).To(BeNil())
 			}
-
-			By("Clean resource")
-			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
 		})
 
 		It("Check the output of the STS cluster creation with new oidc flow - [id:75925]",
@@ -3522,7 +3530,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75925", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75925", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
@@ -3551,7 +3559,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			labels.Runtime.Day1Supplemental,
 			func() {
 				clusterName := helper.GenerateRandomName("ocp-75534", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " +
@@ -3602,7 +3610,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				testingClusterName = helper.GenerateRandomName("c54413", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
@@ -3649,14 +3657,16 @@ var _ = Describe("Sts cluster creation supplemental testing",
 		var (
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
+			clusterHandler handler.ClusterHandler
 
-			customProfile      *profilehandler.Profile
+			customProfile      *handler.Profile
 			clusterID          string
 			ocmResourceService rosacli.OCMResourceService
 			rolePrefix         string
 			testingClusterName string
 		)
 		BeforeEach(func() {
+			var err error
 
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
@@ -3668,8 +3678,8 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			rosaClient.Runner.UnsetFormat()
 
 			By("Prepare custom profile")
-			customProfile = &profilehandler.Profile{
-				ClusterConfig: &profilehandler.ClusterConfig{
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
 					HCP:           false,
 					MultiAZ:       true,
 					STS:           true,
@@ -3677,7 +3687,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 					NetworkingSet: false,
 					BYOVPC:        false,
 				},
-				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+				AccountRoleConfig: &handler.AccountRoleConfig{
 					Path:               "/aa/bb/",
 					PermissionBoundary: "",
 				},
@@ -3686,10 +3696,16 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				Region:       "us-east-2",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
-
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
+			defer func() {
+				By("Clean resources")
+				clusterHandler.Destroy()
+			}()
+
 			By("Delete cluster")
 			rosaClient.Runner.UnsetArgs()
 			_, err := clusterService.DeleteCluster(clusterID, "-y")
@@ -3722,7 +3738,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75927", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75927", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
@@ -3752,7 +3768,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				customProfile.ClusterConfig.Zones = "us-east-2a,us-east-2b,us-east-2c"
 				customProfile.NamePrefix = "rosa56224"
 				testingClusterName = "cluster56224"
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 				rolePrefix = flags[16]
 
@@ -3789,20 +3805,23 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 		var (
 			rosaClient         *rosacli.Client
 			clusterService     rosacli.ClusterService
-			customProfile      *profilehandler.Profile
+			clusterHandler     handler.ClusterHandler
+			customProfile      *handler.Profile
 			clusterID          string
 			ocmResourceService rosacli.OCMResourceService
 			testingClusterName string
 		)
 		BeforeEach(func() {
+			var err error
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
 
 			By("Prepare custom profile")
-			customProfile = &profilehandler.Profile{
-				ClusterConfig: &profilehandler.ClusterConfig{
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
 					HCP:           false,
 					MultiAZ:       false,
 					STS:           true,
@@ -3810,7 +3829,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 					NetworkingSet: false,
 					BYOVPC:        false,
 				},
-				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+				AccountRoleConfig: &handler.AccountRoleConfig{
 					Path:               "/aa/bb/",
 					PermissionBoundary: "",
 				},
@@ -3819,10 +3838,16 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 				Region:       "us-east-2",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
-
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
+			defer func() {
+				By("Clean resources")
+				clusterHandler.Destroy()
+			}()
+
 			By("Delete the cluster")
 			if clusterID != "" {
 				rosaClient.Runner.UnsetArgs()
@@ -3832,9 +3857,6 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 35)
 				Expect(err).To(BeNil())
 			}
-			By("Clean resource")
-			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
 		})
 
 		It("Create STS cluster with oidc config id but no oidc provider via rosacli in auto mode - [id:76093]",
@@ -3842,7 +3864,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 			func() {
 				By("Prepare command for custom cluster creation")
 				testingClusterName = helper.GenerateRandomName("c76093", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
@@ -3858,10 +3880,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 				AWSAccountID := whoamiData.AWSAccountID
 
-				ud, err := profilehandler.ParseUserData()
-				Expect(err).To(BeNil())
-				Expect(ud).NotTo(BeNil())
-				oidcConfigID := ud.OIDCConfigID
+				oidcConfigID := clusterHandler.GetResourcesHandler().GetOIDCConfigID()
 				oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
 				Expect(err).To(BeNil())
 				foundOIDCConfig := oidcConfigList.OIDCConfig(oidcConfigID)

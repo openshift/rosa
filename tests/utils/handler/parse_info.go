@@ -1,4 +1,4 @@
-package profilehandler
+package handler
 
 import (
 	"encoding/json"
@@ -9,25 +9,8 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-// ParseUserData Get user data from resources.json file
-func ParseUserData() (*UserData, error) {
-	var ud *UserData
-
-	udContent, err := helper.ReadFileContent(config.Test.UserDataFile)
-	if err != nil {
-		log.Logger.Errorf("Error happened when read user data: %s", err.Error())
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(udContent), &ud)
-	if err != nil {
-		log.Logger.Errorf("Error happened when parse resource file data to UserData struct: %s", err.Error())
-		return nil, err
-	}
-	return ud, err
-}
-
-// ParserClusterDetail Get the cluster info from cluster-detail.json file
-func ParserClusterDetail() (*ClusterDetail, error) {
+// ParseClusterDetail Get the cluster info from cluster-detail.json file
+func ParseClusterDetail() (*ClusterDetail, error) {
 	var cd *ClusterDetail
 
 	_, err := os.Stat(config.Test.ClusterDetailFile)
