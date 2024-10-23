@@ -54,6 +54,7 @@ type GlobalENVVariables struct {
 	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`
 	ComputeMachineType    string `env:"COMPUTE_MACHINE_TYPE" default:""`
 	OCM_LOGIN_ENV         string `env:"OCM_LOGIN_ENV" default:""`
+	UseLocalCredentials   bool   `env:"USE_LOCAL_CREDENTIALS" default:"false"`
 }
 
 func init() {
@@ -100,6 +101,7 @@ func init() {
 		panic(fmt.Errorf("env variable CLUSTER_TIMEOUT must be set to an integer"))
 	}
 	waitSetupClusterReady, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("WAIT_SETUP_CLUSTER_READY", "true"))
+	useLocalCredentials, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("USE_LOCAL_CREDENTIALS", "false"))
 	Test.GlobalENV = &GlobalENVVariables{
 		ChannelGroup:          os.Getenv("CHANNEL_GROUP"),
 		Version:               os.Getenv("VERSION"),
@@ -109,6 +111,7 @@ func init() {
 		SVPC_CREDENTIALS_FILE: os.Getenv("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE"),
 		ComputeMachineType:    os.Getenv("COMPUTE_MACHINE_TYPE"),
 		OCM_LOGIN_ENV:         os.Getenv("OCM_LOGIN_ENV"),
+		UseLocalCredentials:   useLocalCredentials,
 		ClusterWaitingTime:    waitingTime,
 		WaitSetupClusterReady: waitSetupClusterReady,
 	}
