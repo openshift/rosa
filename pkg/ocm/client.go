@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
 
@@ -166,6 +167,12 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 		return nil, fmt.Errorf("error creating connection. Not able to get authentication token: %s", err)
 	}
 
+	// Only execute if the refresh token has changed. This helps limit warnings for users
+	// to only on login and when their refresh token is cycled by SSO instead of on every command.
+	if b.cfg.RefreshToken != refreshToken {
+		offlineTokenDeprecationWarning(refreshToken)
+	}
+
 	// Persist tokens in the configuration file, the SDK may have refreshed them
 	err = config.PersistTokens(b.cfg, accessToken, refreshToken)
 	if err != nil {
@@ -205,4 +212,34 @@ func (c *Client) KeepTokensAlive() error {
 	}
 
 	return nil
+}
+
+// Prints a deprecation warning if tokens have changed and the new refresh token contains the 'offline_access' scope
+// Swallow and log errors as debug as this is a non-essential warning that should not block the user
+func offlineTokenDeprecationWarning(refreshToken string) {
+	const offlineTokenDeprecationMessage = "Logging in with offline tokens is being deprecated and will no longer " +
+		"be maintained or enhanced. Instead, log in with --use-auth-code or --use-device-code. See 'rosa login --help' " +
+		"for usage. Learn more about deprecating offline tokens via https://console.redhat.com/openshift/token/rosa"
+
+	rprtr := reporter.CreateReporter()
+	parser := new(jwt.Parser)
+	token, _, err := parser.ParseUnverified(refreshToken, jwt.MapClaims{})
+	if err != nil {
+		rprtr.Debugf("Failed to parse refresh token for deprecation warning: %v", err)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		rprtr.Debugf("Failed to get claims from refresh token for deprecation warning: %v", err)
+		return
+	}
+	scopes, ok := claims["scope"].(string)
+	if !ok {
+		rprtr.Debugf("Failed to get scopes from refresh token for deprecation warning: %v", err)
+		return
+	}
+	if strings.Contains(scopes, "offline_access") {
+		rprtr.Warnf(offlineTokenDeprecationMessage)
+		return
+	}
 }
