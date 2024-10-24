@@ -25,3 +25,8 @@ const (
 	StageEnv      = "https://api.stage.openshift.com"
 	ProductionEnv = "https://api.openshift.com"
 )
+
+const (
+	BillingAccount        = "301721915996"
+	ChangedBillingAccount = "361660083367"
+)
