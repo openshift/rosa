@@ -270,12 +270,20 @@ func buildCommand(roleNames []string, policyMap map[string][]string,
 		arbitraryPolicyARN := arbitraryPolicyMap[roleName]
 		detachPolicy := ""
 		deletePolicy := ""
+		deletePolicyVersion := ""
 		if len(policyARN) > 0 {
 			detachPolicy = awscb.NewIAMCommandBuilder().
 				SetCommand(awscb.DetachRolePolicy).
 				AddParam(awscb.RoleName, roleName).
 				AddParam(awscb.PolicyArn, policyARN[0]).Build()
 			commands = append(commands, detachPolicy)
+
+			deletePolicyVersion = awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DeletePolicyVersion).
+				AddParam(awscb.PolicyArn, policyARN[0]).
+				AddParam(awscb.VersionID, "v1").Build()
+			commands = append(commands, deletePolicyVersion)
+
 			if !managedPolicies {
 				deletePolicy = awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.DeletePolicy).
@@ -290,6 +298,12 @@ func buildCommand(roleNames []string, policyMap map[string][]string,
 				AddParam(awscb.RoleName, roleName).
 				AddParam(awscb.PolicyArn, policy).Build()
 			commands = append(commands, detachArbitraryPolicy)
+
+			deletePolicyVersion = awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.DeletePolicyVersion).
+				AddParam(awscb.PolicyArn, policyARN[0]).
+				AddParam(awscb.VersionID, "v1").Build()
+			commands = append(commands, deletePolicyVersion)
 		}
 		deleteRole := awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.DeleteRole).
