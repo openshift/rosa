@@ -703,10 +703,8 @@ var _ = Describe("Describe/List rosa upgrade",
 		AfterEach(func() {
 			if profile.Version == constants.YStreamPreviousVersion {
 				By("Delete cluster upgrade")
-				output, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Successfully canceled scheduled upgrade on cluster "+
-					"'%s'", clusterID))
 			}
 
 			By("Clean remaining resources")
@@ -728,7 +726,7 @@ var _ = Describe("Describe/List rosa upgrade",
 
 				if profile.Version == "latest" {
 					By("Check list upgrade for the cluster with latest version")
-					output, err = upgradeService.ListUpgrades(clusterID)
+					output, err = upgradeService.ListUpgrades("-c", clusterID)
 					Expect(err).To(BeNil())
 					Expect(output.String()).To(ContainSubstring("There are no available upgrades for cluster "+
 						"'%s'", clusterID))
@@ -790,7 +788,7 @@ var _ = Describe("Describe/List rosa upgrade",
 
 					time.Sleep(2 * time.Minute)
 					By("Check list upgrade")
-					out, err := upgradeService.ListUpgrades(clusterID)
+					out, err := upgradeService.ListUpgrades("-c", clusterID)
 					Expect(err).To(BeNil())
 					Expect(out.String()).To(MatchRegexp(`%s\s+recommended\s+-\s+(scheduled|started) for %s %s UTC`,
 						upgradingVersion, scheduledDate, scheduledTime))
@@ -802,6 +800,83 @@ var _ = Describe("Describe/List rosa upgrade",
 					Expect(UD.NextRun).To(Equal(fmt.Sprintf("%s %s UTC", scheduledDate, scheduledTime)))
 					Expect(UD.UpgradeState).To(Equal("scheduled"))
 				}
+			})
+
+		It("List upgrades of cluster via ROSA cli will succeed - [id:38827]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Skip testing if the cluster is not a y-1 STS classic cluster")
+				if profile.Version != constants.YStreamPreviousVersion || !profile.ClusterConfig.STS ||
+					profile.ClusterConfig.HCP {
+					Skip("Skip this case as the version defined in profile is not y-1 for sts cluster upgrade " +
+						"testing")
+				}
+
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				clusterVersion := jsonData.DigString("version", "raw_id")
+
+				By("Find upper Y stream version")
+				upgradingVersion, _, err := FindUpperYStreamVersion(versionService, profile.ChannelGroup, clusterVersion)
+				Expect(err).To(BeNil())
+				Expect(upgradingVersion).NotTo(BeEmpty())
+
+				By("Check the help message of 'rosa describe upgrade -h'")
+				output, err := upgradeService.ListUpgrades("-c", clusterID, "-h")
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("rosa list upgrades [flags]"))
+				Expect(output.String()).To(ContainSubstring("-c, --cluster"))
+				Expect(output.String()).To(ContainSubstring("--machinepool"))
+				Expect(output.String()).To(ContainSubstring("-y, --yes"))
+				Expect(output.String()).To(ContainSubstring("-o, --output"))
+
+				By("No upgrades and list the upgrades")
+				output, err = upgradeService.ListUpgrades("-c", clusterID)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(MatchRegexp(`%s\s+recommended\s+`, upgradingVersion))
+
+				By("Create a cluster upgrade policy")
+				scheduledDate := time.Now().Format("2006-01-02")
+				scheduledTime := time.Now().Add(30 * time.Minute).UTC().Format("15:04")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+				time.Sleep(3 * time.Minute)
+				By("Run command to list the upgrade")
+				output, err = upgradeService.ListUpgrades("-c", clusterID)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(MatchRegexp(`%s\s+recommended\s+-\s+(scheduled|started) for %s %s UTC`,
+					upgradingVersion, scheduledDate, scheduledTime))
+
+				By("Delete cluster upgrade policy")
+				output, err = upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Successfully canceled scheduled upgrade on cluster "+
+					"'%s'", clusterID))
+
+				By("List cluster upgrade")
+				output, err = upgradeService.ListUpgrades("-c", clusterID)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(MatchRegexp(`%s\s+recommended\s+`, upgradingVersion))
+
+				By("Run command to list the upgrades without cluster set")
+				output, err = upgradeService.ListUpgrades()
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+
+				By("Run command to list the upgrades invalid flag")
+				output, err = upgradeService.ListUpgrades("-c", clusterID, "--interactive")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("unknown flag: --interactive"))
+
 			})
 	})
 
@@ -872,7 +947,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			Expect(output.String()).To(ContainSubstring("--control-plane"))
 
 			By("List the available ugrades for cluster")
-			output, err = upgradeService.ListUpgrades(clusterID)
+			output, err = upgradeService.ListUpgrades("-c", clusterID)
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("%s", zStreamVersion))
 			Expect(output.String()).To(ContainSubstring("%s", yStreamVersion))
@@ -918,7 +993,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			}
 
 			By("List the upgrades of the cluster")
-			output, err = upgradeService.ListUpgrades(clusterID)
+			output, err = upgradeService.ListUpgrades("-c", clusterID)
 			Expect(err).To(BeNil())
 			if zStreamVersion != "" {
 				Expect(output.String()).To(ContainSubstring("scheduled for %s", upgDesResp.NextRun))
@@ -965,7 +1040,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			Expect(upgDesResp.StateMesage).To(ContainSubstring("Upgrade scheduled"))
 
 			By("List the upgrades of the cluster")
-			output, err = upgradeService.ListUpgrades(clusterID)
+			output, err = upgradeService.ListUpgrades("-c", clusterID)
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("scheduled for %s", upgDesResp.NextRun))
 
@@ -1091,6 +1166,227 @@ var _ = Describe("ROSA HCP cluster upgrade",
 				}
 			})
 	})
+
+var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Cluster, func() {
+	defer GinkgoRecover()
+
+	var (
+		clusterID      string
+		rosaClient     *rosacli.Client
+		clusterService rosacli.ClusterService
+		upgradeService rosacli.UpgradeService
+		versionService rosacli.VersionService
+		profile        *profilehandler.Profile
+	)
+
+	BeforeEach(func() {
+		By("Get the cluster")
+		clusterID = config.GetClusterID()
+		Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		clusterService = rosaClient.Cluster
+		upgradeService = rosaClient.Upgrade
+		versionService = rosaClient.Version
+
+		By("Load the profile")
+		profile = profilehandler.LoadProfileYamlFileByENV()
+	})
+
+	AfterEach(func() {
+		By("Clean the cluster")
+		rosaClient.CleanResources(clusterID)
+	})
+
+	It("Validation for creating upgrade policy via ROSA cli will work - [id:38829]",
+		labels.Medium, labels.Runtime.Day2,
+		func() {
+			defer func() {
+				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+				Expect(err).ToNot(HaveOccurred())
+			}()
+
+			By("Skip testing if the cluster is not a y-1 classic cluster")
+			if profile.Version != constants.YStreamPreviousVersion || profile.ClusterConfig.HCP {
+				Skip("Skip this case as the version defined in profile is not y-1 for classic cluster upgrade " +
+					"testing")
+			}
+
+			scheduledDate := time.Now().Format("2006-01-02")
+			scheduledTime := time.Now().Add(50 * time.Minute).UTC().Format("15:04")
+
+			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+			Expect(err).To(BeNil())
+			clusterVersion := jsonData.DigString("version", "raw_id")
+
+			By("Find upper Y stream version")
+			upgradingVersion, _, err := FindUpperYStreamVersion(versionService, profile.ChannelGroup, clusterVersion)
+			Expect(err).To(BeNil())
+			Expect(upgradingVersion).NotTo(BeEmpty())
+
+			if profile.ClusterConfig.STS {
+				By("Upgrade cluster with invalid version")
+				output, err := upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", "4.6.9",
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Expected a valid version to upgrade cluster to"))
+
+				By("Upgrade the cluster with invalid schedule-date")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", "73293028",
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("schedule date should use the format 'yyyy-mm-dd'"))
+
+				By("Upgrade the cluster with passed schedule-date")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", "2016-01-01 ",
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Cannot set upgrade to start earlier than 5 minutes from now"))
+
+				By("Upgrade the cluster with invalid schedule-time")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", "123:876",
+					"--version", upgradingVersion,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Schedule time should use the format 'HH:mm'"))
+
+				By("Run command to upgrade cluster without cluster set")
+				output, err = upgradeService.Upgrade()
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+
+				By("Run invalid command to upgrade cluster")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("unknown command \"y\" for \"rosa upgrade cluster\""))
+
+				By("Schedule upgrade again to the cluster")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.String()).To(MatchRegexp("There is already a (pending|scheduled) upgrade"))
+			} else {
+				By("Upgrade cluster with invalid version")
+				output, err := upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", "4.6.9",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Expected a valid version to upgrade cluster to"))
+
+				By("Upgrade the cluster with invalid schedule-date")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", "73293028",
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("schedule date should use the format 'yyyy-mm-dd'"))
+
+				By("Upgrade the cluster with passed schedule-date")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", "2016-01-01 ",
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Cannot set upgrade to start earlier than 5 minutes from now"))
+
+				By("Upgrade the cluster with invalid schedule-time")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", "123:876",
+					"--version", upgradingVersion,
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Schedule time should use the format 'HH:mm'"))
+
+				By("Run command to upgrade cluster without cluster set")
+				output, err = upgradeService.Upgrade()
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+
+				By("Run invalid command to upgrade cluster")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("unknown command \"y\" for \"rosa upgrade cluster\""))
+
+				By("Schedule upgrade again to the cluster")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-y",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"--version", upgradingVersion,
+					"-y",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.String()).To(MatchRegexp("There is already a (pending|scheduled) upgrade"))
+			}
+
+		})
+})
 
 func FindUpperYStreamVersion(v rosacli.VersionService, channelGroup string, clusterVersion string) (string, string,
 	error) {

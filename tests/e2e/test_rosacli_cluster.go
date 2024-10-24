@@ -3779,6 +3779,107 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				zones := jsonData.DigString("nodes", "availability_zones")
 				Expect(zones).To(Equal("[us-east-2a us-east-2b us-east-2c]"))
 			})
+
+		It("rosacli makes STS cluster by default - [id:55701]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Check the help message of 'rosa describe upgrade -h'")
+				output, err, _ := clusterService.Create("ocp55701", "--help")
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("rosa create cluster [flags]"))
+				Expect(output.String()).To(ContainSubstring("--sts"))
+				Expect(output.String()).To(ContainSubstring("--non-sts"))
+				Expect(output.String()).To(ContainSubstring("--mint-mode"))
+
+				By("Create cluster with '--sts' flag")
+				testingClusterName = helper.GenerateRandomName("c55701", 2)
+				output, err, _ = clusterService.Create(testingClusterName, "--sts")
+				Expect(err).NotTo(BeNil())
+				Expect(output.String()).To(ContainSubstring("More than one Installer role found"))
+				Expect(output.String()).To(ContainSubstring("Expected a valid role ARN"))
+
+				By("Create cluster with '--non-sts' flag")
+				testingClusterName = helper.GenerateRandomName("c55701", 2)
+				output, err, _ = clusterService.Create(testingClusterName, "--non-sts")
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
+
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(CD.STSRoleArn).To(BeEmpty())
+
+				By("Delete cluster which created with '--non-sts' flag")
+				rosaClient.Runner.UnsetArgs()
+				_, err = clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+
+				By("Create cluster with '--mint-mode' flag")
+				testingClusterName = helper.GenerateRandomName("c55701", 2)
+				output, err, _ = clusterService.Create(testingClusterName, "--mint-mode")
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err = clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err = clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
+
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(CD.STSRoleArn).To(BeEmpty())
+
+				By("Delete cluster which created with '--mint-mode' flag")
+				rosaClient.Runner.UnsetArgs()
+				_, err = clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+
+				By("Create cluster without setting '--sts'/'--non-sts'/'--mint-mode' flags but with the " +
+					"account-roles arns set")
+				testingClusterName = helper.GenerateRandomName("c55701", 2)
+				testOperatorRolePrefix := helper.GenerateRandomName("opp55701", 2)
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				rolePrefix = customProfile.NamePrefix
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--operator-roles-prefix": testOperatorRolePrefix,
+				})
+
+				rosalCommand.AddFlags("--mode", "auto")
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err = clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err = clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				Expect(clusterID).ToNot(BeNil())
+
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(CD.STSRoleArn).NotTo(BeEmpty())
+			})
 	})
 
 var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
