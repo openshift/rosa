@@ -11,7 +11,7 @@ import (
 type UpgradeService interface {
 	ResourcesCleaner
 
-	ListUpgrades(clusterID string, flags ...string) (bytes.Buffer, error)
+	ListUpgrades(flags ...string) (bytes.Buffer, error)
 	DescribeUpgrade(clusterID string, flags ...string) (bytes.Buffer, error)
 	DescribeUpgradeAndReflect(clusterID string) (*UpgradeDescription, error)
 	DeleteUpgrade(flags ...string) (bytes.Buffer, error)
@@ -43,11 +43,10 @@ type UpgradeDescription struct {
 	EnableMinorVersionUpgrades string `yaml:"Enable minor version upgrades,omitempty"`
 }
 
-func (u *upgradeService) ListUpgrades(clusterID string, flags ...string) (bytes.Buffer, error) {
-	combflags := append([]string{"--cluster", clusterID}, flags...)
+func (u *upgradeService) ListUpgrades(flags ...string) (bytes.Buffer, error) {
 	describe := u.client.Runner.
 		Cmd("list", "upgrade").
-		CmdFlags(combflags...)
+		CmdFlags(flags...)
 	return describe.Run()
 }
 

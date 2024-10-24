@@ -933,3 +933,48 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 	})
+
+var _ = Describe("Post-Check testing for cluster clusters with the --disable-scp-checks flag",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+		var (
+			clusterID      string
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+		})
+
+		AfterEach(func() {
+			By("Clean remaining resources")
+			rosaClient.CleanResources(clusterID)
+		})
+
+		It(" Create MOA clusters with the --disable-scp-check flag - [id:35894]",
+			labels.Medium, labels.Runtime.Day1Post,
+			func() {
+				profile := profilehandler.LoadProfileYamlFileByENV()
+				By("Skip testing if the cluster is not a y-1 STS classic cluster")
+				if profile.ClusterConfig.HCP {
+					Skip("Skip this case as it is for classic cluster")
+				}
+
+				By("Describe cluster in text format")
+				output, err := clusterService.DescribeCluster(clusterID, "-o", "yaml")
+				Expect(err).To(BeNil())
+				if profile.ClusterConfig.DisableSCPChecks {
+					Expect(output.String()).To(ContainSubstring("disable_scp_checks: true"))
+				} else {
+					Expect(output.String()).To(ContainSubstring("disable_scp_checks: false"))
+				}
+			})
+	})
