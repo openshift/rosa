@@ -99,24 +99,26 @@ type ClusterDescription struct {
 	Proxy                 []map[string]string      `yaml:"Proxy,omitempty"`
 	STSRoleArn            string                   `yaml:"Role (STS) ARN,omitempty"`
 	// STSExternalID            string                   `yaml:"STS External ID,omitempty"`
-	SupportRoleARN           string              `yaml:"Support Role ARN,omitempty"`
-	OperatorIAMRoles         []string            `yaml:"Operator IAM Roles,omitempty"`
-	InstanceIAMRoles         []map[string]string `yaml:"Instance IAM Roles,omitempty"`
-	ManagedPolicies          string              `yaml:"Managed Policies,omitempty"`
-	UserWorkloadMonitoring   string              `yaml:"User Workload Monitoring,omitempty"`
-	FIPSMod                  string              `yaml:"FIPS mode,omitempty"`
-	OIDCEndpointURL          string              `yaml:"OIDC Endpoint URL,omitempty"`
-	PrivateHostedZone        []map[string]string `yaml:"Private Hosted Zone,omitempty"`
-	AuditLogForwarding       string              `yaml:"Audit Log Forwarding,omitempty"`
-	ProvisioningErrorMessage string              `yaml:"Provisioning Error Message,omitempty"`
-	ProvisioningErrorCode    string              `yaml:"Provisioning Error Code,omitempty"`
-	LimitedSupport           []map[string]string `yaml:"Limited Support,omitempty"`
-	AuditLogRoleARN          string              `yaml:"Audit Log Role ARN,omitempty"`
-	FailedInflightChecks     string              `yaml:"Failed Inflight Checks,omitempty"`
-	ExternalAuthentication   string              `yaml:"External Authentication,omitempty"`
-	EnableDeleteProtection   string              `yaml:"Delete Protection,omitempty"`
-	EnableEtcdEncryption     string              `yaml:"Etcd Encryption,omitempty"`
-	EtcdKmsKeyARN            string              `yaml:"Etcd KMS key ARN,omitempty"`
+	SupportRoleARN           string                   `yaml:"Support Role ARN,omitempty"`
+	OperatorIAMRoles         []string                 `yaml:"Operator IAM Roles,omitempty"`
+	InstanceIAMRoles         []map[string]string      `yaml:"Instance IAM Roles,omitempty"`
+	ManagedPolicies          string                   `yaml:"Managed Policies,omitempty"`
+	UserWorkloadMonitoring   string                   `yaml:"User Workload Monitoring,omitempty"`
+	FIPSMod                  string                   `yaml:"FIPS mode,omitempty"`
+	OIDCEndpointURL          string                   `yaml:"OIDC Endpoint URL,omitempty"`
+	PrivateHostedZone        []map[string]string      `yaml:"Private Hosted Zone,omitempty"`
+	AuditLogForwarding       string                   `yaml:"Audit Log Forwarding,omitempty"`
+	ProvisioningErrorMessage string                   `yaml:"Provisioning Error Message,omitempty"`
+	ProvisioningErrorCode    string                   `yaml:"Provisioning Error Code,omitempty"`
+	LimitedSupport           []map[string]string      `yaml:"Limited Support,omitempty"`
+	AuditLogRoleARN          string                   `yaml:"Audit Log Role ARN,omitempty"`
+	FailedInflightChecks     string                   `yaml:"Failed Inflight Checks,omitempty"`
+	ExternalAuthentication   string                   `yaml:"External Authentication,omitempty"`
+	EnableDeleteProtection   string                   `yaml:"Delete Protection,omitempty"`
+	EnableEtcdEncryption     string                   `yaml:"Etcd Encryption,omitempty"`
+	EtcdKmsKeyARN            string                   `yaml:"Etcd KMS key ARN,omitempty"`
+	RegistryConfiguration    []map[string]interface{} `yaml:"Registry Configuration,omitempty"`
+	ZeroEgress               string                   `yaml:"Zero Egress,omitempty"`
 }
 
 // Pasrse the result of 'rosa list cluster' to the ClusterList struct
@@ -197,6 +199,8 @@ func (c *clusterService) ReflectClusterDescription(result bytes.Buffer) (res *Cl
 			newStr = strings.Replace(str, "Failed Inflight Checks:", "Failed Inflight Checks: |", 1)
 			newStr = strings.ReplaceAll(newStr, "\t", "  ")
 			newStr = strings.ReplaceAll(newStr, "not found: Role name", "not found:Role name")
+			//Until https://issues.redhat.com/browse/OCM-11830 fixed
+			newStr = strings.Replace(newStr, "Platform Allowlist:", "Platform Allowlist: \n    - ID:", 1)
 			return
 		}).
 		YamlToMap()
