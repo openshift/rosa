@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -433,5 +434,227 @@ var _ = Describe("HCP cluster testing",
 				CD, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				Expect(CD.AWSBillingAccount).To(Equal(constants.BillingAccount))
+			})
+
+		It("create ROSA HCP with registry config can work well via rosa cli  - [id:76394]",
+			labels.High, labels.Runtime.Day1Post,
+			func() {
+				By("Check the help message of 'rosa create cluster -h'")
+				helpOutput, err, _ := clusterService.Create("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-insecure-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-blocked-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries-for-import"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-additional-trusted-ca"))
+
+				By("Check if cluster enable registry config")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				if clusterConfig.RegistryConfig {
+					Skip("It is only for registry config enabled clusters")
+				}
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+
+				for _, v := range clusterDetail.RegistryConfiguration {
+					if v["Allowed Registries"] != nil {
+						allowedList := jsonData.DigString("registry_config", "registry_sources", "allowed_registries")
+						if len(allowedList) > 2 {
+							result := strings.Replace(allowedList, " ", ",", 1)
+							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Allowed Registries"])))
+						}
+					}
+					if v["Blocked Registries"] != nil {
+						blockedList := jsonData.DigString("registry_config", "registry_sources", "blocked_registries")
+						if len(blockedList) > 2 {
+							result := strings.Replace(blockedList, " ", ",", 1)
+							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Blocked Registries"])))
+						}
+					}
+					if v["Insecure Registries"] != nil {
+						insecureList := jsonData.DigString("registry_config", "registry_sources", "insecure_registries")
+						if len(insecureList) > 2 {
+							result := strings.Replace(insecureList, " ", ",", 1)
+							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Insecure Registries"])))
+						}
+					}
+					if v["Allowed Registries for Import"] != nil {
+						clusterData := jsonData.DigObject("registry_config", "allowed_registries_for_import")
+						if clusterData != "" {
+							allowedImport := v["Allowed Registries for Import"].([]interface{})
+							for _, a := range clusterData.([]interface{}) {
+								importListFromJson := a.(map[string]interface{})
+								insecureValue := false
+								if importListFromJson["insecure"] != nil {
+									insecureValue = importListFromJson["insecure"].(bool)
+								}
+								value1 := map[string]interface{}{
+									"Domain Name": importListFromJson["domain_name"],
+								}
+								value2 := map[string]interface{}{
+									"Insecure": insecureValue,
+								}
+								Expect(allowedImport).To(ContainElement(value1))
+								Expect(allowedImport).To(ContainElement(value2))
+							}
+						}
+					}
+					if v["Platform Allowlist"] != nil {
+						platformListID := jsonData.DigString("registry_config", "platform_allowlist", "id")
+						pList := v["Platform Allowlist"].([]interface{})
+						for _, p := range pList {
+							pMap := p.(map[string]interface{})
+							if pMap["ID"] != nil {
+								Expect(pMap["ID"].(string)).To(Equal(platformListID))
+							}
+						}
+					}
+
+					if v["Additional Trusted CA"] != nil {
+						caContent := jsonData.DigObject("registry_config", "additional_trusted_ca")
+						if caContent != "" {
+							caFromc := caContent.(map[string]interface{})
+							for _, ca := range v["Additional Trusted CA"].([]interface{}) {
+								Expect(caFromc).To(Equal(ca))
+							}
+						}
+					}
+				}
+			})
+
+		It("edit ROSA HCP with registry config can work well via rosa cli  - [id:76395]",
+			labels.High, labels.Runtime.Day2,
+			func() {
+				By("Check the help message of 'rosa edit cluster -h'")
+				helpOutput, err := clusterService.EditCluster("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-insecure-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-blocked-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries-for-import"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-additional-trusted-ca"))
+
+				By("Edit hcp cluster with registry configs")
+				if clusterConfig.RegistryConfig {
+					Skip("It is only for registry config enabled clusters")
+				}
+
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				for _, v := range clusterDetail.RegistryConfiguration {
+					if v["Allowed Registries"] != nil {
+						By("Remove allowed registry config")
+						originValue := v["Allowed Registries"].(string)
+						out, err := clusterService.EditCluster(clusterID,
+							"--registry-config-allowed-registries", "",
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err := clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(BeNil())
+
+						By("Add blocked registry config")
+						blockedValue := "test.blocked.com,*.example.com"
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", blockedValue,
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[1]["Blocked Registries"]).To(Equal(blockedValue))
+
+						By("Update it back")
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", "",
+							"--registry-config-allowed-registries", originValue,
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(Equal(originValue))
+						Expect(clusterDetail.RegistryConfiguration[1]["Blocked Registries"]).To(BeNil())
+
+					}
+					if v["Blocked Registries"] != nil {
+						By("Remove blocked registry config")
+						originValue := v["Blocked Registries"].(string)
+						out, err := clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", "",
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err := clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Blocked Registries"]).To(BeNil())
+
+						By("Add allowed registry config")
+						allowedValue := "test.allowed.com,*.example.com"
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-allowed-registries", allowedValue,
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(Equal(allowedValue))
+
+						By("Update it back")
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", originValue,
+							"--registry-config-allowed-registries", "",
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[1]["Blocked Registries"]).To(Equal(originValue))
+					}
+				}
 			})
 	})

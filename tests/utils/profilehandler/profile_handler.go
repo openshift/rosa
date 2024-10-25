@@ -681,6 +681,35 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		clusterConfiguration.Networking.Type = profile.ClusterConfig.NetworkType
 	}
 
+	if profile.ClusterConfig.RegistriesConfig && profile.ClusterConfig.HCP {
+		caContent, err := helper.CreatePEMCertificate()
+
+		if err != nil {
+			return flags, err
+		}
+		registryConfigCa := map[string]string{
+			"test.io": caContent,
+		}
+		caFile := fmt.Sprintf("%s-%s", config.Test.OutputDir, "registryConfig")
+		_, err = helper.CreateFileWithContent(caFile, registryConfigCa)
+		if err != nil {
+			return flags, err
+		}
+		flags = append(flags,
+			"--registry-config-additional-trusted-ca", caFile,
+			"--registry-config-insecure-registries", "test.com,*.example",
+			"--registry-config-allowed-registries-for-import", "example.com:true,test.com:false",
+		)
+		if profile.ClusterConfig.AllowedRegistries {
+			flags = append(flags,
+				"--registry-config-allowed-registries", "allowed.example.com,*.test",
+			)
+		} else {
+			flags = append(flags,
+				"--registry-config-blocked-registries", "blocked.example.com,*.test",
+			)
+		}
+	}
 	return flags, nil
 }
 func WaitForClusterPassWaiting(client *rosacli.Client, cluster string, timeoutMin int) error {
