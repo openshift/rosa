@@ -295,23 +295,25 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	oidcConfigId := oidcConfigStrategy.execute(r)
-	if !args.rawFiles {
-		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
-		providerArgs := []string{"", mode, oidcConfigInput.IssuerUrl}
-		if oidcConfigId != "" {
-			providerArgs = append(providerArgs, "--oidc-config-id", oidcConfigId)
-			err = oidcprovider.Cmd.Flags().Set("oidc-config-id", oidcConfigId)
-			if err != nil {
+	if mode == interactive.ModeAuto {
+		if !args.rawFiles {
+			arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
+			providerArgs := []string{"", mode, oidcConfigInput.IssuerUrl}
+			if oidcConfigId != "" {
+				providerArgs = append(providerArgs, "--oidc-config-id", oidcConfigId)
+				err = oidcprovider.Cmd.Flags().Set("oidc-config-id", oidcConfigId)
+				if err != nil {
+					r.Reporter.Errorf("Unable to attempt creation of OIDC provider; oidc config ID"+
+						" not found / not created successfully: %s", err)
+				}
+			} else {
 				r.Reporter.Errorf("Unable to attempt creation of OIDC provider; oidc config ID"+
 					" not found / not created successfully: %s", err)
+				os.Exit(1)
 			}
-		} else {
-			r.Reporter.Errorf("Unable to attempt creation of OIDC provider; oidc config ID"+
-				" not found / not created successfully: %s", err)
-			os.Exit(1)
+			oidcprovider.Cmd.Run(oidcprovider.Cmd, providerArgs)
+			arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 		}
-		oidcprovider.Cmd.Run(oidcprovider.Cmd, providerArgs)
-		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	}
 }
 
