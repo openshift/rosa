@@ -1,5 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template to create a ROSA Quickstart default VPC.
+  This CloudFormation template may not work with rosa CLI versions later than 1.2.47. 
+  Please ensure that you are using the compatible CLI version before deploying this template.
 
 Parameters:
   AvailabilityZoneCount:
@@ -63,83 +65,12 @@ Resources:
         - !Ref PublicRouteTable
         - !Ref PrivateRouteTable
 
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Ref Name
-        - Key: 'rosa_managed_policies'
-          Value: 'true'
-        - Key: 'rosa_hcp_policies'
-          Value: 'true'
-        - Key: 'service'
-          Value: 'ROSA'
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Ref Name
-        - Key: 'rosa_managed_policies'
-          Value: 'true'
-        - Key: 'rosa_hcp_policies'
-          Value: 'true'
-        - Key: 'service'
-          Value: 'ROSA'
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub "${Name}-Private-Route-Table"
-        - Key: 'rosa_managed_policies'
-          Value: 'true'
-        - Key: 'rosa_hcp_policies'
-          Value: 'true'
-        - Key: 'service'
-          Value: 'ROSA'
-
-  PrivateRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !If
-        - One
-        - !Ref NATGateway1
-        - !If
-          - Two
-          - !Ref NATGateway2
-          - !If
-            - HasAZ3
-            - !Ref NATGateway3
-            - !Ref "AWS::NoValue"
-
   SubnetPublic1:
     Condition: One
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 6, 8]]
       AvailabilityZone: !Select [0, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags:
@@ -159,8 +90,9 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 6, 8]]
       AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Private-Subnet-1"
@@ -178,7 +110,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 10.0.3.0/24
+      CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 6, 8]]
       AvailabilityZone: !Select [1, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags:
@@ -198,8 +130,9 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 10.0.4.0/24
+      CidrBlock: !Select [3, !Cidr [!Ref VpcCidr, 6, 8]]
       AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Private-Subnet-2"
@@ -217,7 +150,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 10.0.5.0/24
+      CidrBlock: !Select [4, !Cidr [!Ref VpcCidr, 6, 8]]
       AvailabilityZone: !Select [2, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags:
@@ -237,8 +170,9 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 10.0.6.0/24
+      CidrBlock: !Select [5, !Cidr [!Ref VpcCidr, 6, 8]]
       AvailabilityZone: !Select [2, !GetAZs '']
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Private-Subnet-3"
@@ -251,47 +185,24 @@ Resources:
         - Key: 'kubernetes.io/role/internal-elb'
           Value: '1'
 
-  PublicSubnetRouteTableAssociation1:
-    Condition: One
-    Type: AWS::EC2::SubnetRouteTableAssociation
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
     Properties:
-      SubnetId: !Ref SubnetPublic1
-      RouteTableId: !Ref PublicRouteTable
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
 
-  PublicSubnetRouteTableAssociation2:
-    Condition: Two
-    Type: AWS::EC2::SubnetRouteTableAssociation
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      SubnetId: !Ref SubnetPublic2
-      RouteTableId: !Ref PublicRouteTable
-
-  PublicSubnetRouteTableAssociation3:
-    Condition: HasAZ3
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref SubnetPublic3
-      RouteTableId: !Ref PublicRouteTable
-
-  PrivateSubnetRouteTableAssociation1:
-    Condition: One
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref SubnetPrivate1
-      RouteTableId: !Ref PrivateRouteTable
-
-  PrivateSubnetRouteTableAssociation2:
-    Condition: Two
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref SubnetPrivate2
-      RouteTableId: !Ref PrivateRouteTable
-
-  PrivateSubnetRouteTableAssociation3:
-    Condition: HasAZ3
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref SubnetPrivate3
-      RouteTableId: !Ref PrivateRouteTable
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
 
   ElasticIP1:
     Type: AWS::EC2::EIP
@@ -383,6 +294,100 @@ Resources:
           Value: 'true'
         - Key: 'service'
           Value: 'ROSA'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !If
+        - One
+        - !Ref NATGateway1
+        - !If
+          - Two
+          - !Ref NATGateway2
+          - !If
+            - HasAZ3
+            - !Ref NATGateway3
+            - !Ref "AWS::NoValue"
+
+  PublicSubnetRouteTableAssociation1:
+    Condition: One
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPublic1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRouteTableAssociation2:
+    Condition: Two
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPublic2
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRouteTableAssociation3:
+    Condition: HasAZ3
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPublic3
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnetRouteTableAssociation1:
+    Condition: One
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPrivate1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation2:
+    Condition: Two
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPrivate2
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation3:
+    Condition: HasAZ3
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPrivate3
+      RouteTableId: !Ref PrivateRouteTable
   
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -393,16 +398,12 @@ Resources:
         - IpProtocol: -1
           FromPort: 0
           ToPort: 0
-          CidrIp: "10.8.0.0/16"
+          CidrIp: "10.0.0.0/16"
       SecurityGroupEgress:
         - IpProtocol: -1
           FromPort: 0
           ToPort: 0
-          CidrIp: "0.0.0.0/0"
-        - IpProtocol: -1
-          FromPort: 0
-          ToPort: 0
-          CidrIpv6: "::/0"
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Ref Name
