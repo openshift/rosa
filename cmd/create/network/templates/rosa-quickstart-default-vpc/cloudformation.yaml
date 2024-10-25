@@ -5,6 +5,7 @@ Parameters:
   AvailabilityZoneCount:
     Type: Number
     Description: "Number of Availability Zones to use"
+    Default: 1
     MinValue: 1
     MaxValue: 3
   Region:
