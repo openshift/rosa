@@ -87,15 +87,18 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		}
 
 		if parsedParams["Name"] == "" {
-			r.Logger.Debugf("Name not provided, using default name %s", r.Creator.AccountID)
+			r.Reporter.Infof("Name not provided, using default name %s", r.Creator.AccountID)
 			parsedParams["Name"] = "rosa-network-stack-" + r.Creator.AccountID
 		}
 		if parsedParams["Region"] == "" {
-			r.Logger.Debugf("Region not provided, using default region %s", r.AWSClient.GetRegion())
+			r.Reporter.Infof("Region not provided, using default region %s", r.AWSClient.GetRegion())
 			parsedParams["Region"] = r.AWSClient.GetRegion()
 		}
 
 		// Extract the first non-`--param` argument to use as the template command
+		if len(argv) == 0 {
+			r.Reporter.Infof("Template command not provided, using default template %s", templateCommand)
+		}
 		for _, arg := range argv {
 			if !strings.HasPrefix(arg, "--param") {
 				templateCommand = arg
