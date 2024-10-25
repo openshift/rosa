@@ -105,8 +105,8 @@ func ParseParams(params []string) (map[string]string, map[string]string, error) 
 }
 
 // SelectTemplate selects the appropriate template file based on the template name
-func SelectTemplate(command string) string {
-	return fmt.Sprintf("cmd/create/network/templates/%s/cloudformation.yaml", command)
+func SelectTemplate(templateDir, command string) string {
+	return fmt.Sprintf("%s/%s/cloudformation.yaml", templateDir, command)
 }
 
 func formatParams(params map[string]string) string {
