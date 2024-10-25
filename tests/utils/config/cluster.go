@@ -99,6 +99,12 @@ type AdditionalSecurityGroups struct {
 	InfraSecurityGroups        string `json:"infra_sgs,omitempty"`
 	WorkerSecurityGroups       string `json:"worker_sgs,omitempty"`
 }
+type RegistryConfig struct {
+	AllowedRegistries          string   `json:"allowed_registries,omitempty"`
+	RegistryAdditionalTrustCA  string   `json:"reristry_additional_trust_ca,omitempty"`
+	AllowedRegistriesForImport []string `json:"allowed_registries_for_import,omitempty"`
+}
+
 type ClusterConfig struct {
 	DisableScpChecks          bool                      `json:"disable_scp_checks,omitempty"`
 	DisableWorkloadMonitoring bool                      `json:"disable_workload_monitoring,omitempty"`
@@ -135,6 +141,7 @@ type ClusterConfig struct {
 	Version                   *Version                  `json:"version,omitempty"`
 	ExternalAuthentication    bool                      `json:"external_authentication,omitempty"`
 	SharedVPC                 bool                      `json:"shared_vpc,omitempty"`
+	RegistryConfig            bool                      `json:"registry_config,omitempty"`
 }
 
 func ParseClusterProfile() (*ClusterConfig, error) {
