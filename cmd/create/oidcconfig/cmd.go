@@ -309,7 +309,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			r.Reporter.Infof("To create the OIDC provider, please run 'rosa create oidc-provider' with the ID " +
 				"of the OIDC config or cluster you want to associate it with.")
-			os.Exit(1)
+			os.Exit(0)
 		}
 		oidcprovider.Cmd.Run(oidcprovider.Cmd, providerArgs)
 		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
