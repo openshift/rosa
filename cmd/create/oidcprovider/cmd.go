@@ -267,9 +267,6 @@ func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (s
 	if err != nil {
 		return "", err
 	}
-	if err != nil {
-		return "", err
-	}
 	r.Reporter.Debugf("Using thumbprint '%s'", thumbprint.Thumbprint())
 
 	iamTags := map[string]string{

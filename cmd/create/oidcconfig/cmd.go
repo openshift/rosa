@@ -295,25 +295,24 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	oidcConfigId := oidcConfigStrategy.execute(r)
-	if mode == interactive.ModeAuto {
-		if !args.rawFiles {
-			arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
-			providerArgs := []string{"", mode, oidcConfigInput.IssuerUrl}
-			if oidcConfigId != "" {
-				providerArgs = append(providerArgs, "--oidc-config-id", oidcConfigId)
-				err = oidcprovider.Cmd.Flags().Set("oidc-config-id", oidcConfigId)
-				if err != nil {
-					r.Reporter.Errorf("Unable to attempt creation of OIDC provider; oidc config ID"+
-						" not found / not created successfully: %s", err)
-				}
-			} else {
+	if !args.rawFiles {
+		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
+		providerArgs := []string{"", mode, oidcConfigInput.IssuerUrl}
+		if oidcConfigId != "" {
+			providerArgs = append(providerArgs, "--oidc-config-id", oidcConfigId)
+			err = oidcprovider.Cmd.Flags().Set("oidc-config-id", oidcConfigId)
+			if err != nil {
 				r.Reporter.Errorf("Unable to attempt creation of OIDC provider; oidc config ID"+
 					" not found / not created successfully: %s", err)
 				os.Exit(1)
 			}
-			oidcprovider.Cmd.Run(oidcprovider.Cmd, providerArgs)
-			arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
+		} else {
+			r.Reporter.Infof("To create the OIDC provider, please run 'rosa create oidc-provider' with the ID " +
+				"of the OIDC config or cluster you want to associate it with.")
+			os.Exit(1)
 		}
+		oidcprovider.Cmd.Run(oidcprovider.Cmd, providerArgs)
+		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	}
 }
 
