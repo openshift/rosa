@@ -72,7 +72,8 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		var err error
 		templateCommand := "rosa-quickstart-default-vpc"
 		options := NewNetworkOptions()
-		options.args = userOptions
+		userOptions.CleanTemplateDir()
+		options.Bind(userOptions)
 
 		defer r.Cleanup()
 
