@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 
+	asv1 "github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -101,7 +102,7 @@ func run(cmd *cobra.Command, argv []string) {
 	// set as flags, then we also ensure that interactive mode is enabled so that the
 	// user gets prompted.
 	if arguments.HasUnknownFlags() {
-		addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+		addonParameters.Each(func(param *asv1.AddonParameter) bool {
 			flag := cmd.Flags().Lookup(param.ID())
 			if flag != nil && !param.Editable() {
 				r.Reporter.Errorf("Parameter '%s' on addon '%s' cannot be modified", param.ID(), addOnID)
@@ -114,11 +115,11 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	var addonArguments []ocm.AddOnParam
-	addonParameters.Each(func(param *cmv1.AddOnParameter) bool {
+	addonParameters.Each(func(param *asv1.AddonParameter) bool {
 		// Find the installation parameter corresponding to the addon parameter
-		var addOnInstallationParam *cmv1.AddOnInstallationParameter
-		addOnInstallation.Parameters().Each(func(p *cmv1.AddOnInstallationParameter) bool {
-			if p.ID() == param.ID() {
+		var addOnInstallationParam *asv1.AddonInstallationParameter
+		addOnInstallation.Parameters().Each(func(p *asv1.AddonInstallationParameter) bool {
+			if p.Id() == param.ID() {
 				addOnInstallationParam = p
 				return false
 			}

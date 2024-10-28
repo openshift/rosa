@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	asv1 "github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1"
 )
 
-func GetAddonArgument(param cmv1.AddOnParameter, dflt string) (string, error) {
+func GetAddonArgument(param asv1.AddonParameter, dflt string) (string, error) {
 	var input = Input{
 		Question: param.Name(),
 		Help:     fmt.Sprintf("%s: %s", param.ID(), param.Description()),
@@ -109,7 +109,7 @@ func GetAddonArgument(param cmv1.AddOnParameter, dflt string) (string, error) {
 	return "", fmt.Errorf("The parameter '%s' does not support interactive mode", param.ID())
 }
 
-func getOptionNames(param cmv1.AddOnParameter) []string {
+func getOptionNames(param asv1.AddonParameter) []string {
 	var optionNames []string
 	options, _ := param.GetOptions()
 	for _, option := range options {
