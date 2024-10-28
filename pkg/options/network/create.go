@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/constants"
-	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -38,14 +37,24 @@ func NewNetworkUserOptions() *NetworkUserOptions {
 	options := &NetworkUserOptions{}
 
 	// Set template directory from environment variable or use default
-	templateDir := os.Getenv(constants.OcmTemplateDir)
-	if helper.HandleEscapedEmptyString(templateDir) != "" {
+	templateDir, isSet := os.LookupEnv(constants.OcmTemplateDir)
+	if isSet {
+		if templateDir == "\"\"" {
+			templateDir = ""
+		}
 		options.TemplateDir = templateDir
 	} else {
 		options.TemplateDir = defaultTemplateDir
 	}
 
 	return options
+}
+
+func (n *NetworkUserOptions) CleanTemplateDir() {
+	// Clean up trailing '/' to work with filepath logic later
+	if len(n.TemplateDir) > 0 && n.TemplateDir[len(n.TemplateDir)-1] == '/' {
+		n.TemplateDir = n.TemplateDir[:len(n.TemplateDir)-1]
+	}
 }
 
 func NewNetworkOptions() *NetworkOptions {
@@ -72,9 +81,18 @@ func BuildNetworkCommandWithOptions() (*cobra.Command, *NetworkUserOptions) {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&options.TemplateDir, "template-dir", defaultTemplateDir, "Use a specific template directory,"+
-		" overriding the OCM_TEMPLATE_DIR environment variable.")
-	flags.StringArrayVar(&options.Params, "param", []string{}, "List of parameters")
+	flags.StringVar(
+		&options.TemplateDir,
+		"template-dir",
+		options.TemplateDir,
+		"Use a specific template directory, overriding the OCM_TEMPLATE_DIR environment variable.",
+	)
+	flags.StringArrayVar(
+		&options.Params,
+		"param",
+		[]string{},
+		"List of parameters",
+	)
 
 	return cmd, options
 }

@@ -11,6 +11,10 @@ type Options struct {
 	args *opts.NetworkUserOptions
 }
 
+func (o *Options) Bind(userOptions *opts.NetworkUserOptions) {
+	o.args = userOptions
+}
+
 func NewNetworkUserOptions() *opts.NetworkUserOptions {
 	return &opts.NetworkUserOptions{
 		Params: []string{},
