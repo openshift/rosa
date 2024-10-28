@@ -218,6 +218,13 @@ func run(cmd *cobra.Command, _ []string) {
 		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
+
+	err = oidcprovider.Cmd.Flags().Set(OidcConfigIdFlag, oidcConfig.ID())
+	if err != nil {
+		r.Reporter.Errorf("Unable to set %s flag: %s", OidcConfigIdFlag, err)
+		os.Exit(1)
+	}
+
 	arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
 	oidcprovider.Cmd.Run(oidcprovider.Cmd, []string{"", mode, args.issuerUrl})
 	arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
