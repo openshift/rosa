@@ -22,7 +22,7 @@ import (
 	"regexp"
 	"strings"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	asv1 "github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/rosa"
@@ -65,7 +65,7 @@ func run(_ *cobra.Command, argv []string) {
 	printParameters(addOn.Parameters())
 }
 
-func printDescription(addOn *cmv1.AddOn) {
+func printDescription(addOn *asv1.Addon) {
 	fmt.Printf("ADD-ON\n"+
 		"ID:               %s\n"+
 		"Name:             %s\n"+
@@ -85,7 +85,7 @@ func printDescription(addOn *cmv1.AddOn) {
 	fmt.Println()
 }
 
-func printCredentialRequests(requests []*cmv1.CredentialRequest) {
+func printCredentialRequests(requests []*asv1.CredentialRequest) {
 	if len(requests) > 0 {
 		fmt.Printf("CREDENTIALS REQUESTS\n")
 		for _, cr := range requests {
@@ -108,10 +108,10 @@ func printCredentialRequests(requests []*cmv1.CredentialRequest) {
 	fmt.Println()
 }
 
-func printParameters(params *cmv1.AddOnParameterList) {
+func printParameters(params *asv1.AddonParameterList) {
 	if params.Len() > 0 {
 		fmt.Printf("ADD-ON PARAMETERS\n")
-		params.Each(func(param *cmv1.AddOnParameter) bool {
+		params.Each(func(param *asv1.AddonParameter) bool {
 			if !param.Enabled() {
 				return true
 			}

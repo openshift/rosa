@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	asv1 "github.com/openshift-online/ocm-sdk-go/addonsmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
@@ -106,8 +106,8 @@ func describeAddonInstallation(r *rosa.Runtime, installationKey string) error {
 	if parameters.Len() > 0 {
 		fmt.Println("Parameters:")
 	}
-	parameters.Each(func(parameter *cmv1.AddOnInstallationParameter) bool {
-		fmt.Printf("\t%-28q: %q\n", parameter.ID(), parameter.Value())
+	parameters.Each(func(parameter *asv1.AddonInstallationParameter) bool {
+		fmt.Printf("\t%-28q: %q\n", parameter.Id(), parameter.Value())
 		return true
 	})
 
