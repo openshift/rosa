@@ -251,7 +251,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(foundOperatorRoles, policyMap, arbitraryPolicyMap, managedPolicies)
+		commands := buildCommand(r, foundOperatorRoles, policyMap, arbitraryPolicyMap, managedPolicies)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the Operator roles and policies:\n")
 		}
@@ -262,7 +262,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func buildCommand(roleNames []string, policyMap map[string][]string,
+func buildCommand(r *rosa.Runtime, roleNames []string, policyMap map[string][]string,
 	arbitraryPolicyMap map[string][]string, managedPolicies bool) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
@@ -270,12 +270,30 @@ func buildCommand(roleNames []string, policyMap map[string][]string,
 		arbitraryPolicyARN := arbitraryPolicyMap[roleName]
 		detachPolicy := ""
 		deletePolicy := ""
+		deletePolicyVersion := ""
 		if len(policyARN) > 0 {
 			detachPolicy = awscb.NewIAMCommandBuilder().
 				SetCommand(awscb.DetachRolePolicy).
 				AddParam(awscb.RoleName, roleName).
 				AddParam(awscb.PolicyArn, policyARN[0]).Build()
 			commands = append(commands, detachPolicy)
+
+			policyVersions, err := r.AWSClient.ListPolicyVersions(policyARN[0])
+			if err != nil {
+				fmt.Printf("Failed to list policy versions for %s: %v\n", policyARN[0], err)
+				return ""
+			}
+
+			for _, version := range policyVersions {
+				if !version.IsDefaultVersion {
+					deletePolicyVersion = awscb.NewIAMCommandBuilder().
+						SetCommand(awscb.DeletePolicyVersion).
+						AddParam(awscb.PolicyArn, policyARN[0]).
+						AddParam(awscb.VersionID, version.VersionID).Build()
+					commands = append(commands, deletePolicyVersion)
+				}
+			}
+
 			if !managedPolicies {
 				deletePolicy = awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.DeletePolicy).

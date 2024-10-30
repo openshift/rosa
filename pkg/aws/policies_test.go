@@ -853,3 +853,60 @@ var _ = Describe("validateManagedPolicy", func() {
 			"failed to find policy ARN for 'sts_hcp_instance_worker_permission_policy'"),
 	)
 })
+
+var _ = Describe("ListPolicyVersions", func() {
+	var (
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+		client     *awsClient
+		policyArn  string
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = &awsClient{iamClient: mockIamAPI}
+		policyArn = "arn:aws:iam::123456789012:policy/test-policy"
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	It("Should list policy versions successfully", func() {
+		expectedVersions := []iamtypes.PolicyVersion{
+			{
+				VersionId:        aws.String("v1"),
+				IsDefaultVersion: true,
+			},
+			{
+				VersionId:        aws.String("v2"),
+				IsDefaultVersion: false,
+			},
+		}
+
+		mockIamAPI.EXPECT().ListPolicyVersions(gomock.Any(), &iam.ListPolicyVersionsInput{
+			PolicyArn: aws.String(policyArn),
+		}).Return(&iam.ListPolicyVersionsOutput{
+			Versions: expectedVersions,
+		}, nil)
+
+		result, err := client.ListPolicyVersions(policyArn)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(HaveLen(2))
+		Expect(result[0].VersionID).To(Equal("v1"))
+		Expect(result[0].IsDefaultVersion).To(BeTrue())
+		Expect(result[1].VersionID).To(Equal("v2"))
+		Expect(result[1].IsDefaultVersion).To(BeFalse())
+	})
+
+	It("Should return an error when ListPolicyVersions fails", func() {
+		mockIamAPI.EXPECT().ListPolicyVersions(gomock.Any(), &iam.ListPolicyVersionsInput{
+			PolicyArn: aws.String(policyArn),
+		}).Return(nil, fmt.Errorf("failed to list policy versions"))
+
+		result, err := client.ListPolicyVersions(policyArn)
+		Expect(err).To(HaveOccurred())
+		Expect(result).To(BeNil())
+	})
+})

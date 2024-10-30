@@ -49,6 +49,11 @@ var (
 	DefaultPrefix         = "ManagedOpenShift"
 )
 
+type PolicyVersion struct {
+	VersionID        string
+	IsDefaultVersion bool
+}
+
 type Operator struct {
 	Name                string
 	Namespace           string
@@ -2198,4 +2203,24 @@ func getOperatorRolePolicyTags(c client.IamApiClient, roleName string) (map[stri
 
 func isAwsManagedPolicy(policyArn string) bool {
 	return awsManagedPolicyRegex.MatchString(policyArn)
+}
+
+func (c *awsClient) ListPolicyVersions(policyArn string) ([]PolicyVersion, error) {
+	policyVersionsOutput, err := c.iamClient.ListPolicyVersions(context.TODO(), &iam.ListPolicyVersionsInput{
+		PolicyArn: aws.String(policyArn),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list policy versions, %v", err)
+	}
+
+	// Convert the output to a slice of PolicyVersion
+	var policyVersions []PolicyVersion
+	for _, version := range policyVersionsOutput.Versions {
+		policyVersions = append(policyVersions, PolicyVersion{
+			VersionID:        aws.ToString(version.VersionId),
+			IsDefaultVersion: version.IsDefaultVersion,
+		})
+	}
+
+	return policyVersions, nil
 }
