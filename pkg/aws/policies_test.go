@@ -18,6 +18,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/logging"
 )
 
 var _ = Describe("ListOperatorRoles", func() {
@@ -812,4 +813,43 @@ var _ = Describe("doesPolicyHaveTags", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(BeTrue())
 	})
+})
+
+var _ = Describe("validateManagedPolicy", func() {
+	var (
+		client                awsClient
+		mockIamAPI            *mocks.MockIamApiClient
+		mockCtrl              *gomock.Controller
+		ec2ContainerPolicy, _ = (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::ec2Container").Build()
+		workerPolicy, _       = (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::worker").Build()
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{
+			iamClient: mockIamAPI,
+			logger:    logging.NewLogger(),
+		}
+	})
+
+	DescribeTable("validate ECR policy", func(
+		policies map[string]*cmv1.AWSSTSPolicy, policyKey, roleName, expectedErr string,
+	) {
+		err := client.validateManagedPolicy(policies, policyKey, roleName)
+		if expectedErr == "" {
+			Expect(err).To(BeNil())
+		} else {
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring(expectedErr))
+		}
+	},
+		Entry("succeeds if ECR policy does not exist", map[string]*cmv1.AWSSTSPolicy{
+			"sts_hcp_instance_worker_permission_policy": workerPolicy},
+			"sts_hcp_ec2_registry_permission_policy", "worker", ""),
+		Entry("fails to find worker policy", map[string]*cmv1.AWSSTSPolicy{
+			"sts_hcp_ec2_registry_permission_policy": ec2ContainerPolicy},
+			"sts_hcp_instance_worker_permission_policy", "worker",
+			"failed to find policy ARN for 'sts_hcp_instance_worker_permission_policy'"),
+	)
 })
