@@ -65,10 +65,56 @@ func LoadProfileYamlFileByENV() *Profile {
 		profile.NamePrefix = config.Test.GlobalENV.NamePrefix
 	}
 
-	if config.Test.GlobalENV.ComputeMachineType != "" {
-		log.Logger.Infof("Got global env settings for INSTANCE_TYPE, overwritten the profile setting with value %s",
-			config.Test.GlobalENV.ComputeMachineType)
-		profile.ClusterConfig.InstanceType = config.Test.GlobalENV.ComputeMachineType
+	if config.Test.ClusterENV.ComputeMachineType != "" {
+		log.Logger.Infof("Got global env settings for COMPUTE_MACHINE_TYPE, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.ComputeMachineType)
+		profile.ClusterConfig.InstanceType = config.Test.ClusterENV.ComputeMachineType
+	}
+	if config.Test.ClusterENV.BYOVPC != "" {
+		log.Logger.Infof("Got global env settings for BYOVPC, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.BYOVPC)
+
+		profile.ClusterConfig.BYOVPC = helper.ParseBool(config.Test.ClusterENV.BYOVPC)
+	}
+	if config.Test.ClusterENV.Private != "" {
+		log.Logger.Infof("Got global env settings for PRIVATE, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.Private)
+		profile.ClusterConfig.Private = helper.ParseBool(config.Test.ClusterENV.Private)
+	}
+	if config.Test.ClusterENV.Autoscale != "" {
+		log.Logger.Infof("Got global env settings for AUTOSCALE, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.Autoscale)
+		profile.ClusterConfig.Autoscale = helper.ParseBool(config.Test.ClusterENV.Autoscale)
+	}
+	if config.Test.ClusterENV.ProxyEnabled != "" {
+		log.Logger.Infof("Got global env settings for PROXY_ENABLED, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.ProxyEnabled)
+		profile.ClusterConfig.ProxyEnabled = helper.ParseBool(config.Test.ClusterENV.ProxyEnabled)
+	}
+	if config.Test.ClusterENV.FipsEnabled != "" {
+		log.Logger.Infof("Got global env settings for FIPS_ENABLED, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.FipsEnabled)
+		profile.ClusterConfig.FIPS = helper.ParseBool(config.Test.ClusterENV.FipsEnabled)
+	}
+	if config.Test.ClusterENV.MultiAZ != "" {
+		log.Logger.Infof("Got global env settings for MULTI_AZ, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.MultiAZ)
+		profile.ClusterConfig.MultiAZ = helper.ParseBool(config.Test.ClusterENV.MultiAZ)
+	}
+	if config.Test.ClusterENV.VolumeSize != "" {
+		log.Logger.Infof("Got global env settings for VOLUME_SIZE, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.VolumeSize)
+		profile.ClusterConfig.VolumeSize = helper.ParseInt(config.Test.ClusterENV.VolumeSize)
+	}
+	if config.Test.ClusterENV.Replicas != "" {
+		log.Logger.Infof("Got global env settings for REPLICAS, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.Replicas)
+		profile.ClusterConfig.WorkerPoolReplicas = helper.ParseInt(config.Test.ClusterENV.Replicas)
+	}
+	if config.Test.ClusterENV.AllowRegistries != "" {
+		log.Logger.Infof("Got global env settings for ALLOW_REGISTRIES, overwritten the profile setting with value %s",
+			config.Test.ClusterENV.AllowRegistries)
+		profile.ClusterConfig.AllowedRegistries = helper.ParseBool(config.Test.ClusterENV.AllowRegistries)
 	}
 
 	return profile

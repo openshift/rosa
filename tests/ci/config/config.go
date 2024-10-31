@@ -43,6 +43,7 @@ type TestConfig struct {
 	ProxySSHPemFile                 string
 	ProxyCABundleFile               string
 	GlobalENV                       *GlobalENVVariables
+	ClusterENV                      *ClusterENVVariables
 }
 type GlobalENVVariables struct {
 	ChannelGroup          string `env:"CHANNEL_GROUP" default:""`
@@ -53,8 +54,19 @@ type GlobalENVVariables struct {
 	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"60"`
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
 	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`
-	ComputeMachineType    string `env:"COMPUTE_MACHINE_TYPE" default:""`
 	OCM_LOGIN_ENV         string `env:"OCM_LOGIN_ENV" default:""`
+}
+type ClusterENVVariables struct {
+	ComputeMachineType string `env:"COMPUTE_MACHINE_TYPE" default:""`
+	BYOVPC             string `env:"BYOVPC" default:""`
+	Private            string `env:"PRIVATE" default:""`
+	Autoscale          string `env:"AUTOSCALE" default:""`
+	ProxyEnabled       string `env:"PROXY_ENABLED" default:""`
+	FipsEnabled        string `env:"FIPS_ENABLED" default:""`
+	VolumeSize         string `env:"VOLUME_SIZE" default:""`
+	Replicas           string `env:"REPLICAS" default:""`
+	MultiAZ            string `env:"MULTI_AZ" default:""`
+	AllowRegistries    string `env:"ALLOW_REGISTRIES" default:""`
 }
 
 func init() {
@@ -109,10 +121,21 @@ func init() {
 		ProvisionShard:        os.Getenv("PROVISION_SHARD"),
 		NamePrefix:            os.Getenv("NAME_PREFIX"),
 		SVPC_CREDENTIALS_FILE: os.Getenv("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE"),
-		ComputeMachineType:    os.Getenv("COMPUTE_MACHINE_TYPE"),
 		OCM_LOGIN_ENV:         os.Getenv("OCM_LOGIN_ENV"),
 		ClusterWaitingTime:    waitingTime,
 		WaitSetupClusterReady: waitSetupClusterReady,
+	}
+	Test.ClusterENV = &ClusterENVVariables{
+		ComputeMachineType: os.Getenv("COMPUTE_MACHINE_TYPE"),
+		BYOVPC:             os.Getenv("BYOVPC"),
+		Private:            os.Getenv("PRIVATE"),
+		Autoscale:          os.Getenv("AUTOSCALE"),
+		ProxyEnabled:       os.Getenv("PROXY_ENABLED"),
+		FipsEnabled:        os.Getenv("FIPS_ENABLED"),
+		VolumeSize:         os.Getenv("VOLUME_SIZE"),
+		Replicas:           os.Getenv("REPLICAS"),
+		MultiAZ:            os.Getenv("MULTI_AZ"),
+		AllowRegistries:    os.Getenv("ALLOW_REGISTRIES"),
 	}
 
 }

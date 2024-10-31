@@ -10,6 +10,20 @@ import (
 	"strings"
 )
 
+func ParseBool(value string) bool {
+	parsedValue, err := strconv.ParseBool(value)
+	if err != nil {
+		panic(err.Error())
+	}
+	return parsedValue
+}
+func ParseInt(value string) int {
+	parsedValue, err := strconv.Atoi(value)
+	if err != nil {
+		panic(err.Error())
+	}
+	return parsedValue
+}
 func ParseLabels(labels string) []string {
 	return ParseCommaSeparatedStrings(labels)
 }
