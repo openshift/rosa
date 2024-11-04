@@ -153,7 +153,7 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 	cmd.Flags().IntVar(
 		&args.ResourceLimits.MaxNodesTotal,
 		fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag),
-		180,
+		249,
 		"Total amount of nodes that can exist in the cluster, including non-scaled nodes.",
 	)
 
