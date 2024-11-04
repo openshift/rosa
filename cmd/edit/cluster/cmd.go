@@ -203,7 +203,7 @@ func run(cmd *cobra.Command, _ []string) {
 			"registry-config-allowed-registries", "registry-config-blocked-registries",
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
-			"registry-config-allowed-registries-for-import"} {
+			"registry-config-allowed-registries-for-import", "enable-delete-protection"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
@@ -678,7 +678,7 @@ func run(cmd *cobra.Command, _ []string) {
 	var deleteProtection bool
 	if !cmd.Flags().Changed(enableDeleteProtectionFlagName) {
 		deleteProtection = cluster.DeleteProtection().Enabled()
-	} else if interactive.Enabled() {
+	} else {
 		deleteProtection = args.enableDeleteProtection
 	}
 
