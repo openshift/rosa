@@ -460,5 +460,43 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 					To(ContainSubstring(
 						"ERR: Listing identity providers is not supported for clusters with external authentication configured."))
 			})
+
+		It("to validate HCP cluster creation/list with external auth - [id:72602]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Create non HCP cluster with external_auths")
+				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !hostedCluster {
+					output, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
+
+					output, err = rosaClient.ExternalAuthProvider.ListExternalAuthProvider(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
+					return
+				}
+
+				By("Create external_provider  to HCP cluster that external_auth_config is not enable")
+				isExternalAuthEnabled, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !isExternalAuthEnabled {
+					output, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID,
+						"--name", "test")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: External authentication configuration is not enabled for cluster"))
+
+					By("List external_provider to HCP cluster that external_auth_config is not enable")
+					output, err = rosaClient.ExternalAuthProvider.ListExternalAuthProvider(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: External authentication configuration is not enabled for cluster"))
+					return
+				}
+			})
 	})
 })

@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
@@ -57,12 +59,12 @@ var _ = Describe("Network verifier",
 				}
 
 				By("Run network verifier vith clusterID")
+				cmd := "Run the following command to wait for verification to all subnets to complete:\n" +
+					"rosa verify network --watch --status-only"
 				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).
-					To(ContainSubstring(
-						"Run the following command to wait for verification to all subnets to complete:\n" +
-							"rosa verify network --watch --status-only"))
+					To(ContainSubstring(cmd))
 
 				By("Get the cluster subnets")
 				var subnetsNetworkInfo string
@@ -129,9 +131,7 @@ var _ = Describe("Network verifier",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).
-					To(ContainSubstring(
-						"Run the following command to wait for verification to all subnets to complete:\n" +
-							"rosa verify network --watch --status-only"))
+					To(ContainSubstring(cmd))
 				Expect(output.String()).To(ContainSubstring("pending"))
 
 				By("Check the network verifier with hosted-cp attributes")
@@ -205,4 +205,81 @@ var _ = Describe("Network verifier",
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring("ERR: role-arn is required"))
 			})
+
+		It("verify that network will be failed if it can't reach to cluster subnet via the rosa cli - [id:70370]",
+			labels.Medium, labels.Runtime.Day2, labels.Runtime.Destructive,
+			func() {
+				By("Prepare a ready byo vpc ROSA cluster")
+				isBYOVPC, err := clusterService.IsBYOVPCCluster(clusterID)
+				Expect(err).To(BeNil())
+				if !isBYOVPC {
+					By("Run network verifier with non BYO VPC cluster")
+					output, err := networkService.CreateNetworkVerifierWithCluster(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).
+						To(ContainSubstring(
+							"ERR: Running the network verifier is only supported for BYO VPC clusters"))
+					return
+				}
+				By("Edit the VPC to make the subnets network can't work well")
+				clusterDetail, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+
+				var subnetsNetworkInfo string
+				for _, networkLine := range clusterDetail.Network {
+					if value, containsKey := networkLine["Subnets"]; containsKey {
+						subnetsNetworkInfo = value
+						break
+					}
+				}
+				subnets := strings.Replace(subnetsNetworkInfo, " ", "", -1)
+				region := clusterDetail.Region
+				var vpcClient *vpc_client.VPC
+
+				vpcClient, err = vpc_client.GenerateVPCBySubnet(strings.Split(subnets, ",")[0], clusterDetail.Region)
+				Expect(err).To(BeNil())
+				err = vpcClient.AddSimplyDenyRuleToNetworkACL(443, 10)
+				Expect(err).To(BeNil())
+				defer vpcClient.DeleteNetworkACLRules(true, 10)
+
+				By("Verify network with cluster id")
+				output, err := networkService.CreateNetworkVerifierWithCluster(clusterID)
+				Expect(err).To(BeNil())
+				Expect(output.String()).
+					To(ContainSubstring(
+						"Run the following command to wait for verification to all subnets to complete:\n" +
+							"rosa verify network --watch --status-only"))
+
+				By("Use --status-only and --watch to check subnet network verify result")
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					200*time.Second,
+					false,
+					func(context.Context) (bool, error) {
+						output, err = networkService.GetNetworkVerifierStatus(
+							"--region", region,
+							"--subnet-ids", subnets,
+						)
+						if strings.Contains(output.String(), "pending") {
+							return false, err
+						}
+						return true, err
+					})
+				helper.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
+
+				By("The network verification result will be sync to cluster inflight check")
+				clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+				Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring(fmt.Sprintf("rosa verify network -c %s", clusterID)))
+				for _, s := range strings.Split(subnets, ",") {
+					for _, p := range vpcClient.AllPrivateSubnetIDs() {
+						if s == p {
+							Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring(fmt.Sprintf(
+								"Invalid configurations on subnet '%s' have been identified", s)))
+						}
+					}
+				}
+			})
+
 	})
