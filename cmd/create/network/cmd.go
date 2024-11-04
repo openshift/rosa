@@ -54,6 +54,7 @@ func NewNetworkCommand() *cobra.Command {
 				for paramName := range parameters {
 					fmt.Printf("  %s\n", paramName)
 				}
+				fmt.Printf("  %s\n", "Tags")
 			}
 			return nil
 		})
