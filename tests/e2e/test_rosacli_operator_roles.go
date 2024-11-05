@@ -1246,7 +1246,7 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
 
 				By("Check upgrade state")
-				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 5)
+				err = upgradeService.WaitForUpgradeToState(clusterID, constants.Scheduled, 5)
 				Expect(err).To(BeNil())
 			})
 	})

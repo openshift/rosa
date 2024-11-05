@@ -2,6 +2,8 @@ package rosacli
 
 import (
 	"bytes"
+	"fmt"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -16,6 +18,8 @@ type UpgradeService interface {
 	DescribeUpgradeAndReflect(clusterID string) (*UpgradeDescription, error)
 	DeleteUpgrade(flags ...string) (bytes.Buffer, error)
 	Upgrade(flags ...string) (bytes.Buffer, error)
+
+	WaitForUpgradeToState(clusterID string, state string, timeout int) error
 }
 
 type upgradeService struct {
@@ -103,4 +107,21 @@ func (u *upgradeService) Upgrade(flags ...string) (bytes.Buffer, error) {
 func (u *upgradeService) CleanResources(clusterID string) (errors []error) {
 	log.Logger.Debugf("Nothing to clean in Version Service")
 	return
+}
+
+func (u *upgradeService) WaitForUpgradeToState(clusterID string, state string, timeout int) error {
+	startTime := time.Now()
+	for time.Now().Before(startTime.Add(time.Duration(timeout) * time.Minute)) {
+		UD, err := u.DescribeUpgradeAndReflect(clusterID)
+		if err != nil {
+			return err
+		} else {
+			if UD.UpgradeState == state {
+				return nil
+			}
+			time.Sleep(1 * time.Minute)
+		}
+	}
+	return fmt.Errorf("ERROR!Timeout after %d minutes to wait for the upgrade into status %s of cluster %s",
+		timeout, state, clusterID)
 }
