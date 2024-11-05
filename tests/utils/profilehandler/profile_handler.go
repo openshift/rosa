@@ -293,18 +293,21 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			if err != nil {
 				return flags, err
 			}
-			err = PrepareOIDCProvider(client, oidcConfigID)
-			if err != nil {
-				return flags, err
-			}
-			err = PrepareOperatorRolesByOIDCConfig(client, operatorRolePrefix,
-				oidcConfigID, accRoles.InstallerRole, sharedVPCRoleArn, profile.ClusterConfig.HCP, profile.ChannelGroup)
-			if err != nil {
-				return flags, err
-			}
 			flags = append(flags, "--oidc-config-id", oidcConfigID)
 			clusterConfiguration.Aws.Sts.OidcConfigID = oidcConfigID
 			userData.OIDCConfigID = oidcConfigID
+
+			if !profile.ClusterConfig.ManualCreationMode {
+				err = PrepareOIDCProvider(client, oidcConfigID)
+				if err != nil {
+					return flags, err
+				}
+				err = PrepareOperatorRolesByOIDCConfig(client, operatorRolePrefix,
+					oidcConfigID, accRoles.InstallerRole, sharedVPCRoleArn, profile.ClusterConfig.HCP, profile.ChannelGroup)
+				if err != nil {
+					return flags, err
+				}
+			}
 		}
 
 		flags = append(flags, "--operator-roles-prefix", operatorRolePrefix)

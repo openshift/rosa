@@ -37,7 +37,7 @@ type MachinePoolService interface {
 	ReflectNodePoolDescription(result bytes.Buffer) (npd *NodePoolDescription, err error)
 	DescribeAndReflectNodePool(clusterID string, name string) (*NodePoolDescription, error)
 	GetNodePoolAutoScaledReplicas(clusterID string, mpName string) (map[string]int, error)
-	WaitNodePoolReplicasReady(clusterID string, mpName string, isAutoscale bool, interval, timeout time.Duration) error
+	WaitForNodePoolReplicasReady(clusterID string, mpName string, isAutoscale bool, interval, timeout time.Duration) error
 	ScaleNodePool(clusterID string, mpName string, updateReplicas int, waitForNPInstancesReady bool) error
 	ScaleAutoScaledNodePool(
 		clusterID string,
@@ -375,8 +375,8 @@ func parseAutoscaledReplicas(desiredReplicaList []interface{}) (map[string]int, 
 	return replicas, nil
 }
 
-// WaitNodePoolReplicasReady Wait node pool replicas ready
-func (m *machinepoolService) WaitNodePoolReplicasReady(
+// WaitForNodePoolReplicasReady Wait node pool replicas ready
+func (m *machinepoolService) WaitForNodePoolReplicasReady(
 	clusterID string,
 	mpName string,
 	isAutoscale bool,
@@ -440,7 +440,7 @@ func (m *machinepoolService) ScaleNodePool(
 
 	if waitForNPInstancesReady && config.IsNodePoolGlobalCheck() {
 		// Check current replicas reach the desired replicas after scale
-		err = m.WaitNodePoolReplicasReady(
+		err = m.WaitForNodePoolReplicasReady(
 			clusterID,
 			mpName,
 			false,
@@ -484,7 +484,7 @@ func (m *machinepoolService) ScaleAutoScaledNodePool(
 
 	if waitForNPInstancesReady && config.IsNodePoolGlobalCheck() {
 		// Check current replicas reach the min_replica in desired replicas after scale
-		err = m.WaitNodePoolReplicasReady(
+		err = m.WaitForNodePoolReplicasReady(
 			clusterID,
 			mpName,
 			true,

@@ -3143,7 +3143,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands := helper.ExtractCommandsToCreateAWSResoueces(output)
+				commands := helper.ExtractCommandsToCreateAWSResources(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
@@ -3156,7 +3156,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands = helper.ExtractCommandsToCreateAWSResoueces(output)
+				commands = helper.ExtractCommandsToCreateAWSResources(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
@@ -3712,6 +3712,51 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
 				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+
+				By("Retrieve cluster ID")
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+
+				By("Wait for Cluster")
+				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
+				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+			})
+
+		It("Create hosted cluster in manual mode - [id:75536]",
+			labels.High, labels.Runtime.Day1Supplemental,
+			func() {
+				customProfile.ClusterConfig.ManualCreationMode = true
+				By("Prepare command for testing")
+				testingClusterName = helper.GenerateRandomName("c75536", 2)
+				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				if rosalCommand.CheckFlagExist("--mode") {
+					rosalCommand.DeleteFlag("--mode", true)
+				}
+				rosalCommand.AddFlags("--mode", "manual")
+
+				By("Create temp dir for manual execution")
+				dirForManual, err := os.MkdirTemp("", "*")
+				Expect(err).To(BeNil())
+				rosaClient.Runner.SetDir(dirForManual)
+
+				By("Run create cluster command")
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+
+				By("Run individual manual commands")
+				commands := helper.ExtractAWSCmdsForClusterCreation(stdout)
+				for _, command := range commands {
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
 
 				By("Retrieve cluster ID")
 				rosaClient.Runner.UnsetArgs()

@@ -11,7 +11,7 @@ import (
 // `rosa create account-role --mode manual`
 // `rosa create operator-roles --mode manual`
 // `rosa create oidc-provider --mode manual`
-func ExtractCommandsToCreateAWSResoueces(bf bytes.Buffer) []string {
+func ExtractCommandsToCreateAWSResources(bf bytes.Buffer) []string {
 	var commands []string
 	output := strings.Split(bf.String(), "\n\n")
 	for _, message := range output {
@@ -85,10 +85,9 @@ func ExtractCommandsToDeleteAccountRoles(bf bytes.Buffer) []string {
 	return newCommands
 }
 
-// Extract aws commands to create AWS resource promted by rosacli, this function supports to parse bellow commands
+// Extract aws commands to create AWS resource promted by rosacli, this function supports to parse below commands
 // `rosa create cluster --mode manual --sts /--hosted-cp`
 func ExtractAWSCmdsForClusterCreation(bf bytes.Buffer) []string {
-
 	var commands []string
 	//remove empty lines
 	lines := strings.Split(bf.String(), "\n")
