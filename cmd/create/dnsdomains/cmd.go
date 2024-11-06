@@ -20,10 +20,15 @@ import (
 	// nolint:gosec
 	"os"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/rosa"
 )
+
+var args struct {
+	hostedCp bool
+}
 
 var Cmd = &cobra.Command{
 	Use:     "dns-domain",
@@ -36,11 +41,27 @@ var Cmd = &cobra.Command{
 	Args: cobra.NoArgs,
 }
 
+func init() {
+	flags := Cmd.Flags()
+
+	flags.BoolVar(
+		&args.hostedCp,
+		"hosted-cp",
+		false,
+		"If creating a dns-domain for a Hosted Control Plane cluster",
+	)
+}
+
 func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
-	dnsdomain, err := r.OCMClient.CreateDNSDomain()
+	domain, err := createDnsDomain(args.hostedCp)
+	if err != nil {
+		r.Reporter.Errorf("Failed to build DNS domain: %s", err)
+		os.Exit(1)
+	}
+	dnsdomain, err := r.OCMClient.CreateDNSDomain(domain)
 	if err != nil {
 		r.Reporter.Errorf("Failed to create dns domain: %s", err)
 		os.Exit(1)
@@ -48,4 +69,15 @@ func run(_ *cobra.Command, _ []string) {
 
 	r.Reporter.Infof("DNS domain ‘%s’ has been created.", dnsdomain.ID())
 	r.Reporter.Infof("To view all DNS domains, run 'rosa list dns-domains")
+}
+
+func createDnsDomain(isHostedCp bool) (*cmv1.DNSDomain, error) {
+	dnsDomainBuilder := cmv1.DNSDomainBuilder{}
+	if isHostedCp {
+		dnsDomainBuilder.ClusterArch(cmv1.ClusterArchitectureHcp)
+	} else {
+		dnsDomainBuilder.ClusterArch(cmv1.ClusterArchitectureClassic)
+	}
+
+	return dnsDomainBuilder.Build()
 }
