@@ -744,7 +744,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags,
 			"--registry-config-additional-trusted-ca", caFile,
 			"--registry-config-insecure-registries", "test.com,*.example",
-			"--registry-config-allowed-registries-for-import", "example.com:true,test.com:false",
+			"--registry-config-allowed-registries-for-import",
+			"docker.io:false,registry.redhat.com:false,registry.access.redhat.com:false,quay.io:false",
 		)
 		if profile.ClusterConfig.AllowedRegistries {
 			flags = append(flags,
