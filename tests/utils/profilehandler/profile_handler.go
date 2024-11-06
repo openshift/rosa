@@ -3,6 +3,7 @@ package profilehandler
 import (
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -736,7 +737,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		registryConfigCa := map[string]string{
 			"test.io": caContent,
 		}
-		caFile := fmt.Sprintf("%s-%s", config.Test.OutputDir, "registryConfig")
+		caFile := path.Join(config.Test.OutputDir, "registryConfig")
 		_, err = helper.CreateFileWithContent(caFile, registryConfigCa)
 		if err != nil {
 			return flags, err

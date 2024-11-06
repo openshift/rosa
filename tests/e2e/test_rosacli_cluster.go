@@ -3249,14 +3249,17 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 		}
 
 		By("Delete resources for testing")
-		output, err := ocmResourceService.DeleteOIDCConfig(
-			"--oidc-config-id", oidcConfigToClean,
-			"--mode", "auto",
-			"-y",
-		)
-		Expect(err).To(BeNil())
-		textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-		Expect(textData).To(ContainSubstring("Successfully deleted the OIDC provider"))
+		if oidcConfigToClean != "" {
+			output, err := ocmResourceService.DeleteOIDCConfig(
+				"--oidc-config-id", oidcConfigToClean,
+				"--region", profile.Region,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			Expect(textData).To(ContainSubstring("Successfully deleted the OIDC provider"))
+		}
 
 	})
 
