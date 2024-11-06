@@ -42,7 +42,9 @@ const (
 
 // cluster topology
 const (
-	HostedCP = "Hosted CP"
+	HostedCP              = "Hosted CP"
+	HostedCpDnsBaseDomain = "i3.devshift.org"
+	ClassicDnsBaseDomain  = "i1.devshift.org"
 )
 
 // cluster upgrade status

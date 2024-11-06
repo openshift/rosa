@@ -19,17 +19,21 @@ package dnsdomains
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/tests/utils/constants"
 )
 
 var args struct {
-	all bool
+	all      bool
+	hostedCp bool
 }
 
 var Cmd = &cobra.Command{
@@ -54,6 +58,13 @@ func init() {
 		"List all DNS domains (default lists just user defined).",
 	)
 
+	flags.BoolVar(
+		&args.hostedCp,
+		"hosted-cp",
+		false,
+		"If listing dns-domains used for Hosted Control Plane clusters",
+	)
+
 	output.AddFlag(Cmd)
 }
 
@@ -71,6 +82,8 @@ func run(_ *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
 		os.Exit(1)
 	}
+
+	dnsDomains = filterByBaseDomain(dnsDomains, returnBaseDomain(args.hostedCp))
 
 	if output.HasFlag() {
 		err = output.Print(dnsDomains)
@@ -91,16 +104,36 @@ func run(_ *cobra.Command, _ []string) {
 
 	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\n")
 	for _, dnsdomain := range dnsDomains {
-		userDefind := "No"
+		userDefined := "No"
 		if dnsdomain.UserDefined() {
-			userDefind = "Yes"
+			userDefined = "Yes"
 		}
 		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
 			dnsdomain.ID(),
 			dnsdomain.Cluster().ID(),
 			dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
-			userDefind,
+			userDefined,
 		)
 	}
 	writer.Flush()
+}
+
+func filterByBaseDomain(domains []*v1.DNSDomain, baseDomain string) []*v1.DNSDomain {
+	finalDomains := make([]*v1.DNSDomain, 0)
+	if baseDomain == constants.HostedCpDnsBaseDomain {
+		for _, domain := range domains {
+			if strings.SplitN(domain.ID(), ".", 2)[1] == constants.HostedCpDnsBaseDomain {
+				finalDomains = append(finalDomains, domain)
+			}
+		}
+		return finalDomains
+	}
+	return domains
+}
+
+func returnBaseDomain(isHostedCp bool) string {
+	if isHostedCp {
+		return constants.HostedCpDnsBaseDomain
+	}
+	return constants.ClassicDnsBaseDomain
 }
