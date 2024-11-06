@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.448
+- Update model version v0.0.401
+  - Include support for HCP shared vpc fields in `Cluster` and `DNS` models.
+
 ## 0.1.447
 - Update model version v0.0.400
   - Update ocm-sdk-go examples for Addons

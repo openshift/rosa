@@ -156,11 +156,20 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("hcp_internal_communication_hosted_zone_id")
+		stream.WriteString(object.hcpInternalCommunicationHostedZoneId)
+		count++
+	}
+	present_ = object.bitmap_&8192 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("private_hosted_zone_id")
 		stream.WriteString(object.privateHostedZoneID)
 		count++
 	}
-	present_ = object.bitmap_&8192 != 0
+	present_ = object.bitmap_&16384 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -169,7 +178,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.privateHostedZoneRoleARN)
 		count++
 	}
-	present_ = object.bitmap_&16384 != 0
+	present_ = object.bitmap_&32768 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -178,7 +187,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteBool(object.privateLink)
 		count++
 	}
-	present_ = object.bitmap_&32768 != 0 && object.privateLinkConfiguration != nil
+	present_ = object.bitmap_&65536 != 0 && object.privateLinkConfiguration != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -187,7 +196,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		writePrivateLinkClusterConfiguration(object.privateLinkConfiguration, stream)
 		count++
 	}
-	present_ = object.bitmap_&65536 != 0
+	present_ = object.bitmap_&131072 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -196,7 +205,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		stream.WriteString(object.secretAccessKey)
 		count++
 	}
-	present_ = object.bitmap_&131072 != 0 && object.subnetIDs != nil
+	present_ = object.bitmap_&262144 != 0 && object.subnetIDs != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -205,7 +214,7 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		writeStringList(object.subnetIDs, stream)
 		count++
 	}
-	present_ = object.bitmap_&262144 != 0 && object.tags != nil
+	present_ = object.bitmap_&524288 != 0 && object.tags != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -232,6 +241,15 @@ func writeAWS(object *AWS, stream *jsoniter.Stream) {
 		} else {
 			stream.WriteNil()
 		}
+		count++
+	}
+	present_ = object.bitmap_&1048576 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("vpc_endpoint_role_arn")
+		stream.WriteString(object.vpcEndpointRoleArn)
 	}
 	stream.WriteObjectEnd()
 }
@@ -306,30 +324,34 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 			value := readAwsEtcdEncryption(iterator)
 			object.etcdEncryption = value
 			object.bitmap_ |= 2048
+		case "hcp_internal_communication_hosted_zone_id":
+			value := iterator.ReadString()
+			object.hcpInternalCommunicationHostedZoneId = value
+			object.bitmap_ |= 4096
 		case "private_hosted_zone_id":
 			value := iterator.ReadString()
 			object.privateHostedZoneID = value
-			object.bitmap_ |= 4096
+			object.bitmap_ |= 8192
 		case "private_hosted_zone_role_arn":
 			value := iterator.ReadString()
 			object.privateHostedZoneRoleARN = value
-			object.bitmap_ |= 8192
+			object.bitmap_ |= 16384
 		case "private_link":
 			value := iterator.ReadBool()
 			object.privateLink = value
-			object.bitmap_ |= 16384
+			object.bitmap_ |= 32768
 		case "private_link_configuration":
 			value := readPrivateLinkClusterConfiguration(iterator)
 			object.privateLinkConfiguration = value
-			object.bitmap_ |= 32768
+			object.bitmap_ |= 65536
 		case "secret_access_key":
 			value := iterator.ReadString()
 			object.secretAccessKey = value
-			object.bitmap_ |= 65536
+			object.bitmap_ |= 131072
 		case "subnet_ids":
 			value := readStringList(iterator)
 			object.subnetIDs = value
-			object.bitmap_ |= 131072
+			object.bitmap_ |= 262144
 		case "tags":
 			value := map[string]string{}
 			for {
@@ -341,7 +363,11 @@ func readAWS(iterator *jsoniter.Iterator) *AWS {
 				value[key] = item
 			}
 			object.tags = value
-			object.bitmap_ |= 262144
+			object.bitmap_ |= 524288
+		case "vpc_endpoint_role_arn":
+			value := iterator.ReadString()
+			object.vpcEndpointRoleArn = value
+			object.bitmap_ |= 1048576
 		default:
 			iterator.ReadAny()
 		}
