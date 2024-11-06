@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 Red Hat, Inc.
+Copyright (c) 2020 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// This file contains the version number of the client.
+// IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
+// your changes will be lost when the file is generated again.
 
-package sdk
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-const Version = "0.1.448"
+// ClusterArchitecture represents the values of the 'cluster_architecture' enumerated type.
+type ClusterArchitecture string
+
+const (
+	//
+	ClusterArchitectureClassic ClusterArchitecture = "classic"
+	//
+	ClusterArchitectureHcp ClusterArchitecture = "hcp"
+)

@@ -75,7 +75,16 @@ func writeDNSDomain(object *DNSDomain, stream *jsoniter.Stream) {
 		writeClusterLink(object.cluster, stream)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0 && object.organization != nil
+	present_ = object.bitmap_&16 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("cluster_arch")
+		stream.WriteString(string(object.clusterArch))
+		count++
+	}
+	present_ = object.bitmap_&32 != 0 && object.organization != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -84,7 +93,7 @@ func writeDNSDomain(object *DNSDomain, stream *jsoniter.Stream) {
 		writeOrganizationLink(object.organization, stream)
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -93,7 +102,7 @@ func writeDNSDomain(object *DNSDomain, stream *jsoniter.Stream) {
 		stream.WriteString((object.reservedAtTimestamp).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -140,10 +149,15 @@ func readDNSDomain(iterator *jsoniter.Iterator) *DNSDomain {
 			value := readClusterLink(iterator)
 			object.cluster = value
 			object.bitmap_ |= 8
+		case "cluster_arch":
+			text := iterator.ReadString()
+			value := ClusterArchitecture(text)
+			object.clusterArch = value
+			object.bitmap_ |= 16
 		case "organization":
 			value := readOrganizationLink(iterator)
 			object.organization = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "reserved_at_timestamp":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -151,11 +165,11 @@ func readDNSDomain(iterator *jsoniter.Iterator) *DNSDomain {
 				iterator.ReportError("", err.Error())
 			}
 			object.reservedAtTimestamp = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "user_defined":
 			value := iterator.ReadBool()
 			object.userDefined = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		default:
 			iterator.ReadAny()
 		}
