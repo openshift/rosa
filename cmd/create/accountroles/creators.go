@@ -354,6 +354,8 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 
 		createRole := buildCreateRoleCommand(accRoleName, file, iamTags, input)
 
+		commands = append(commands, createRole)
+
 		policyKeys := aws.GetHcpAccountRolePolicyKeys(file)
 		for _, policyKey := range policyKeys {
 			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
@@ -368,7 +370,7 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 			}
 
 			attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
-			commands = append(commands, createRole, attachRolePolicy)
+			commands = append(commands, attachRolePolicy)
 		}
 	}
 
