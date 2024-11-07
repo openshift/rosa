@@ -599,7 +599,7 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(output2.String()).To(ContainSubstring("Ensuring account role/policies compatibility " +
 						"for upgrade"))
 
-					commands := helper.ExtractCommandsToCreateAWSResoueces(output2)
+					commands := helper.ExtractCommandsToCreateAWSResources(output2)
 					for _, command := range commands {
 						info := "INFO: Ensuring operator role/policies compatibility for upgrade"
 						if strings.Contains(command, info) {

@@ -603,7 +603,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				"--managed-policies",
 				"-y")
 			Expect(err).To(BeNil())
-			commands := helper.ExtractCommandsToCreateAWSResoueces(output)
+			commands := helper.ExtractCommandsToCreateAWSResources(output)
 
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
@@ -1088,7 +1088,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				Expect(err).To(BeNil())
 				accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix)
 
-				commands := helper.ExtractCommandsToCreateAWSResoueces(output)
+				commands := helper.ExtractCommandsToCreateAWSResources(output)
 
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
@@ -1118,7 +1118,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				)
 				Expect(err).To(BeNil())
 
-				commands = helper.ExtractCommandsToCreateAWSResoueces(output)
+				commands = helper.ExtractCommandsToCreateAWSResources(output)
 
 				for _, command := range commands {
 					cmd := strings.Split(command, " ")
