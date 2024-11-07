@@ -72,7 +72,7 @@ func PrintConfig(arg string) error {
 		}
 		// If the configuration doesn't exist yet assume that all the configuration settings
 		// are empty:
-		if cfg == nil {
+		if cfg == nil || config.IsNotValid(cfg) {
 			fmt.Fprintf(Writer, "\n")
 			return nil
 		}
