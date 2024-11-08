@@ -97,6 +97,7 @@ func LoadProfileYamlFileByENV() *Profile {
 	}
 	profile := LoadProfileYamlFile(config.Test.TestProfile)
 
+
 	// Supporting global env setting to overrite profile settings
 	if config.Test.GlobalENV.ChannelGroup != "" {
 		log.Logger.Infof("Got global env settings for CHANNEL_GROUP, overwritten the profile setting with value %s",

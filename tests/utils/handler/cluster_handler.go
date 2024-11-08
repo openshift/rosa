@@ -674,6 +674,12 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			ProvisionShardID: ch.profile.ClusterConfig.ProvisionShard,
 		}
 	}
+	if ch.profile.ClusterConfig.ZeroEgress {
+		flags = append(flags, "--properties", fmt.Sprintf("zero_egress:%t", ch.profile.ClusterConfig.ZeroEgress))
+		ch.clusterConfig.Properties = &ClusterConfigure.Properties{
+			ZeroEgress: ch.profile.ClusterConfig.ZeroEgress,
+		}
+	}
 
 	if ch.profile.ClusterConfig.TagEnabled {
 		tags := "test-tag:tagvalue,qe-managed:true"
