@@ -12,8 +12,8 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/handler"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("HCP cluster testing",
@@ -666,4 +666,5 @@ var _ = Describe("HCP cluster testing",
 					rosaClient.MachinePool.DeleteMachinePool(clusterID, mpID)
 				}()
 			})
+
 	})
