@@ -449,3 +449,23 @@ func (vl *OpenShiftVersionTableList) FindYStreamUpgradableVersion(throttleVersio
 	}
 	return
 }
+
+func (vl *OpenShiftVersionTableList) FindUpperYStreamVersion(channelGroup string, clusterVersion string) (
+	string, string, error) {
+	// Sorted version from high to low
+	sortedVersionList, err := vl.Sort(true)
+	if err != nil {
+		return "", "", err
+	}
+	versions, err := sortedVersionList.FindYStreamUpgradeVersions(clusterVersion)
+	if err != nil {
+		return "", "", err
+	}
+	if len(versions) == 0 {
+		return "", "", nil
+	} else {
+		upgradingVersion := versions[len(versions)-1]
+		upgradingMajorVersion := helper.SplitMajorVersion(upgradingVersion)
+		return upgradingVersion, upgradingMajorVersion, nil
+	}
+}
