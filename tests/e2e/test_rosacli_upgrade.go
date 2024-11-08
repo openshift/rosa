@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"fmt"
-	"path"
 	"strings"
 	"time"
 
@@ -12,14 +11,13 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
-	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Cluster Upgrade testing",
@@ -37,7 +35,7 @@ var _ = Describe("Cluster Upgrade testing",
 			versionService           rosacli.VersionService
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
-			profile                  *profilehandler.Profile
+			profile                  *handler.Profile
 			roleUrlPrefix            = "https://console.aws.amazon.com/iam/home?#/roles/"
 			accountRoles             []string
 			operatorRoles            []string
@@ -58,7 +56,7 @@ var _ = Describe("Cluster Upgrade testing",
 			versionService = rosaClient.Version
 
 			By("Load the profile")
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
@@ -391,6 +389,10 @@ var _ = Describe("Cluster Upgrade testing",
 						"upgrading testing")
 				}
 
+				clusterHandler, err := handler.NewClusterHandlerFromFilesystem(rosaClient, profile)
+				Expect(err).To(BeNil())
+				resourcesHandler := clusterHandler.GetResourcesHandler()
+
 				By("Upgrade wide AMI roles in auto mode")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
@@ -406,9 +408,6 @@ var _ = Describe("Cluster Upgrade testing",
 					}
 
 					By("upgrade HCP cluster wide AMI roles in auto mode")
-					ud, err := profilehandler.ParseUserData()
-					Expect(err).To(BeNil())
-					Expect(ud).NotTo(BeNil())
 					output1, err := ocmResourceService.UpgradeRoles(
 						"-c", clusterID,
 						"--cluster-version", hcpUpgradingVersion,
@@ -417,9 +416,9 @@ var _ = Describe("Cluster Upgrade testing",
 					)
 					Expect(err).To(BeNil())
 					Expect(output1.String()).To(ContainSubstring("Account roles with the prefix '%s' have attached "+
-						"managed policies.", ud.AccountRolesPrefix))
+						"managed policies.", resourcesHandler.GetAccountRolesPrefix()))
 					Expect(output1.String()).To(ContainSubstring("Cluster '%s' operator roles have attached managed "+
-						"policies. An upgrade isn't needed", ud.OperatorRolesPrefix))
+						"policies. An upgrade isn't needed", resourcesHandler.GetOperatorRolesPrefix()))
 				} else {
 					By("Find STS Classic cluster upgrade version")
 					classicUpgradingVersion, classicUpgradingMajorVersion, err := FindUpperYStreamVersion(versionService,
@@ -496,6 +495,10 @@ var _ = Describe("Cluster Upgrade testing",
 						"upgrading testing")
 				}
 
+				clusterHandler, err := handler.NewClusterHandlerFromFilesystem(rosaClient, profile)
+				Expect(err).To(BeNil())
+				resourcesHandler := clusterHandler.GetResourcesHandler()
+
 				By("Upgrade wide AMI roles in manual mode")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
@@ -511,10 +514,6 @@ var _ = Describe("Cluster Upgrade testing",
 					}
 
 					By("upgrade HCP cluster wide AMI roles in manual mode")
-					ud, err := profilehandler.ParseUserData()
-					Expect(err).To(BeNil())
-					Expect(ud).NotTo(BeNil())
-
 					output1, err := ocmResourceService.UpgradeRoles(
 						"-c", clusterID,
 						"--cluster-version", hcpUpgradingVersion,
@@ -523,9 +522,9 @@ var _ = Describe("Cluster Upgrade testing",
 					)
 					Expect(err).To(BeNil())
 					Expect(output1.String()).To(ContainSubstring("Account roles with the prefix '%s' have attached "+
-						"managed policies.", ud.AccountRolesPrefix))
+						"managed policies.", resourcesHandler.GetAccountRolesPrefix()))
 					Expect(output1.String()).To(ContainSubstring("Cluster '%s' operator roles have attached managed "+
-						"policies. An upgrade isn't needed", ud.OperatorRolesPrefix))
+						"policies. An upgrade isn't needed", resourcesHandler.GetOperatorRolesPrefix()))
 				} else {
 					By("Find STS Classic cluster upgrade version")
 					classicUpgradingVersion, upgradingMajorVersion, err := FindUpperYStreamVersion(versionService,
@@ -629,7 +628,7 @@ var _ = Describe("Describe/List rosa upgrade",
 			upgradeService rosacli.UpgradeService
 			versionService rosacli.VersionService
 			clusterID      string
-			profile        *profilehandler.Profile
+			profile        *handler.Profile
 		)
 
 		BeforeEach(func() {
@@ -644,7 +643,7 @@ var _ = Describe("Describe/List rosa upgrade",
 			versionService = rosaClient.Version
 
 			By("Load the profile")
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
@@ -1123,7 +1122,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 		clusterService rosacli.ClusterService
 		upgradeService rosacli.UpgradeService
 		versionService rosacli.VersionService
-		profile        *profilehandler.Profile
+		profile        *handler.Profile
 	)
 
 	BeforeEach(func() {
@@ -1138,7 +1137,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 		versionService = rosaClient.Version
 
 		By("Load the profile")
-		profile = profilehandler.LoadProfileYamlFileByENV()
+		profile = handler.LoadProfileYamlFileByENV()
 	})
 
 	AfterEach(func() {
@@ -1340,15 +1339,14 @@ var _ = Describe("Successful Upgrade Testing",
 		defer GinkgoRecover()
 
 		var (
-			clusterID          string
-			clusterName        string
-			rosaClient         *rosacli.Client
-			clusterService     rosacli.ClusterService
-			upgradeService     rosacli.UpgradeService
-			versionService     rosacli.VersionService
-			ocmResourceService rosacli.OCMResourceService
-			rolePrefix         string
-			profile            *profilehandler.Profile
+			clusterID      string
+			clusterName    string
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+			upgradeService rosacli.UpgradeService
+			versionService rosacli.VersionService
+			profile        *handler.Profile
+			clusterHandler handler.ClusterHandler
 		)
 
 		BeforeEach(func() {
@@ -1357,59 +1355,30 @@ var _ = Describe("Successful Upgrade Testing",
 			clusterService = rosaClient.Cluster
 			upgradeService = rosaClient.Upgrade
 			versionService = rosaClient.Version
-			ocmResourceService = rosaClient.OCMResource
 		})
 
 		AfterEach(func() {
-			if clusterID != "" {
-				By("Delete cluster")
-				rosaClient.Runner.UnsetArgs()
-				_, err := clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
-
-				rosaClient.Runner.UnsetArgs()
-				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-				Expect(err).To(BeNil())
-
-				By("Delete operator-roles")
-				_, err = ocmResourceService.DeleteOperatorRoles(
-					"-c", clusterID,
-					"--mode", "auto",
-					"-y",
-				)
-				Expect(err).To(BeNil())
-			}
-
-			if rolePrefix != "" {
-				By("Delete account-roles")
-				_, err := ocmResourceService.DeleteAccountRole(
-					"--prefix", rolePrefix,
-					"--mode", "auto",
-					"-y",
-				)
-				Expect(err).To(BeNil())
-			}
-			errs := profilehandler.DestroyResourceByProfile(profile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
+			By("Clean resources")
+			clusterHandler.Destroy()
 		})
 
 		Context("for Y-stream cluster - [id:55883]", labels.Critical, labels.Runtime.Day1Supplemental, func() {
 			It("on STS rosa classic cluster", func() {
 				By("Create a Y-stream sts rosa classic cluster")
-				profilesMap := profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
-				profile = profilesMap["rosa-upgrade-y-stream"]
+				profile = handler.GetProfile("rosa-upgrade-y-stream", handler.GetYAMLProfilesDir())
+				Expect(profile).ToNot(BeNil())
 				profile.NamePrefix = constants.DefaultNamePrefix
 
-				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				clusterHandler, err := handler.NewClusterHandlerFromFilesystem(rosaClient, profile)
+				Expect(err).To(BeNil())
+
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				clusterName = helper.GenerateRandomName("cluster-55883", 2)
 				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ") + " --mode auto"
 				rosalCommand := config.GenerateCommand(command)
 				log.Logger.Info(rosalCommand)
-				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
-				_, rolePrefix, err = helper.ParseRoleARN(installRoleArn)
-				Expect(err).To(BeNil())
 				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", clusterName)))
@@ -1467,19 +1436,19 @@ var _ = Describe("Successful Upgrade Testing",
 
 			It("on rosa hcp cluster", func() {
 				By("Create a Y-stream rosa hcp cluster")
-				profilesMap := profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
-				profile = profilesMap["rosa-hcp-upgrade-y-stream"]
+				profile = handler.GetProfile("rosa-hcp-upgrade-y-stream", handler.GetYAMLProfilesDir())
+				Expect(profile).ToNot(BeNil())
 				profile.NamePrefix = constants.DefaultNamePrefix
 
-				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				clusterHandler, err := handler.NewClusterHandlerFromFilesystem(rosaClient, profile)
+				Expect(err).To(BeNil())
+
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				clusterName = helper.GenerateRandomName("cluster-55883", 2)
 				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
-				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
-				_, rolePrefix, err = helper.ParseRoleARN(installRoleArn)
-				Expect(err).To(BeNil())
 				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", clusterName)))

@@ -20,9 +20,9 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	. "github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit nodepool",
@@ -37,7 +37,7 @@ var _ = Describe("Edit nodepool",
 			machinePoolService        rosacli.MachinePoolService
 			machinePoolUpgradeService rosacli.MachinePoolUpgradeService
 			versionService            rosacli.VersionService
-			profile                   *profilehandler.Profile
+			profile                   *handler.Profile
 		)
 
 		const (
@@ -57,7 +57,7 @@ var _ = Describe("Edit nodepool",
 			machinePoolService = rosaClient.MachinePool
 			machinePoolUpgradeService = rosaClient.MachinePoolUpgrade
 			versionService = rosaClient.Version
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 
 			By("Skip testing if the cluster is not a HCP cluster")
 			hosted, err := clusterService.IsHostedCPCluster(clusterID)
@@ -1156,47 +1156,56 @@ var _ = Describe("Edit nodepool",
 
 				reqBody := []map[string]string{
 					{
+						"id":              "5-10",
 						"max surge":       "5%",
 						"max unavailable": "10%",
 					},
 					{
+						"id":              "3-2",
 						"max surge":       "3",
 						"max unavailable": "2",
 					},
 					{
+						"id":              "na-na",
 						"max surge":       "",
 						"max unavailable": "",
 					},
 					{
+						"id":              "0-10",
 						"max surge":       "0%",
 						"max unavailable": "10%",
 					},
 					{
+						"id":              "10-0",
 						"max surge":       "10%",
 						"max unavailable": "0%",
 					},
 					{
+						"id":              "100-10",
 						"max surge":       "100%",
 						"max unavailable": "10%",
 					},
 					{
+						"id":              "10-100",
 						"max surge":       "10%",
 						"max unavailable": "100%",
 					},
 					{
+						"id":              "0-1",
 						"max surge":       "0",
 						"max unavailable": "1",
 					},
 					{
+						"id":              "1-0",
 						"max surge":       "1",
 						"max unavailable": "0",
 					},
 				}
 
 				for _, flags := range reqBody {
-
 					By("Create nodepool with max-surge/max-unavailable set with different values")
-					machinePoolName := helper.GenerateRandomName("ocp-74387", 2)
+					machinePoolName := fmt.Sprintf("c-74387-%s", flags["id"])
+					Logger.Infof("Create machine pool with name %s", machinePoolName)
 					output, err = machinePoolService.CreateMachinePool(
 						clusterID,
 						machinePoolName,
@@ -1278,7 +1287,6 @@ var _ = Describe("Edit nodepool",
 				}
 
 				for _, flags := range reqBody {
-
 					By("Describe the nodepool to see max surge and max unavailable prev value")
 					out, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePoolName)
 					Expect(err).ToNot(HaveOccurred())

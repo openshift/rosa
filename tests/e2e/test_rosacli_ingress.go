@@ -10,8 +10,8 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
-	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 const YES = "yes"
@@ -23,7 +23,7 @@ var _ = Describe("Edit default ingress",
 
 		var (
 			clusterID      string
-			profile        ph.Profile
+			profile        handler.Profile
 			rosaClient     *rosacli.Client
 			ingressService rosacli.IngressService
 			isHosted       bool
@@ -44,7 +44,7 @@ var _ = Describe("Edit default ingress",
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Load the profile")
-			profile = *ph.LoadProfileYamlFileByENV()
+			profile = *handler.LoadProfileYamlFileByENV()
 		})
 
 		It("can update on rosa HCP cluster - [id:63323]",
@@ -247,7 +247,7 @@ var _ = Describe("Edit default ingress",
 				}
 
 				By("Check that the ingress was customized at install")
-				profile := ph.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 				if !profile.ClusterConfig.IngressCustomized {
 					Skip("The ingress must be customized at install")
 				}

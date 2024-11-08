@@ -13,10 +13,9 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
-	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Create machinepool",
@@ -29,7 +28,7 @@ var _ = Describe("Create machinepool",
 			machinePoolService rosacli.MachinePoolService
 			ocmResourceService rosacli.OCMResourceService
 			clusterConfig      *config.ClusterConfig
-			profile            *ph.Profile
+			profile            *handler.Profile
 		)
 
 		BeforeEach(func() {
@@ -54,7 +53,7 @@ var _ = Describe("Create machinepool",
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Load cluster profile configuration")
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
@@ -940,7 +939,7 @@ var _ = Describe("Create machinepool will validate", labels.Feature.Machinepool,
 			machinePoolService rosacli.MachinePoolService
 
 			clusterConfig *config.ClusterConfig
-			profile       *ph.Profile
+			profile       *handler.Profile
 		)
 
 		BeforeEach(func() {
@@ -958,7 +957,7 @@ var _ = Describe("Create machinepool will validate", labels.Feature.Machinepool,
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Load cluster profile configuration")
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 		})
 
 		AfterEach(func() {
