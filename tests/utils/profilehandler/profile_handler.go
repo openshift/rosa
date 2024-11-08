@@ -3,6 +3,7 @@ package profilehandler
 import (
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -292,18 +293,21 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 			if err != nil {
 				return flags, err
 			}
-			err = PrepareOIDCProvider(client, oidcConfigID)
-			if err != nil {
-				return flags, err
-			}
-			err = PrepareOperatorRolesByOIDCConfig(client, operatorRolePrefix,
-				oidcConfigID, accRoles.InstallerRole, sharedVPCRoleArn, profile.ClusterConfig.HCP, profile.ChannelGroup)
-			if err != nil {
-				return flags, err
-			}
 			flags = append(flags, "--oidc-config-id", oidcConfigID)
 			clusterConfiguration.Aws.Sts.OidcConfigID = oidcConfigID
 			userData.OIDCConfigID = oidcConfigID
+
+			if !profile.ClusterConfig.ManualCreationMode {
+				err = PrepareOIDCProvider(client, oidcConfigID)
+				if err != nil {
+					return flags, err
+				}
+				err = PrepareOperatorRolesByOIDCConfig(client, operatorRolePrefix,
+					oidcConfigID, accRoles.InstallerRole, sharedVPCRoleArn, profile.ClusterConfig.HCP, profile.ChannelGroup)
+				if err != nil {
+					return flags, err
+				}
+			}
 		}
 
 		flags = append(flags, "--operator-roles-prefix", operatorRolePrefix)
@@ -743,7 +747,7 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		registryConfigCa := map[string]string{
 			"test.io": caContent,
 		}
-		caFile := fmt.Sprintf("%s-%s", config.Test.OutputDir, "registryConfig")
+		caFile := path.Join(config.Test.OutputDir, "registryConfig")
 		_, err = helper.CreateFileWithContent(caFile, registryConfigCa)
 		if err != nil {
 			return flags, err
@@ -751,7 +755,8 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		flags = append(flags,
 			"--registry-config-additional-trusted-ca", caFile,
 			"--registry-config-insecure-registries", "test.com,*.example",
-			"--registry-config-allowed-registries-for-import", "example.com:true,test.com:false",
+			"--registry-config-allowed-registries-for-import",
+			"docker.io:false,registry.redhat.com:false,registry.access.redhat.com:false,quay.io:false",
 		)
 		if profile.ClusterConfig.AllowedRegistries {
 			flags = append(flags,

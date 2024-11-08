@@ -239,7 +239,7 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			Expect(output.String()).Should(ContainSubstring("rosa link user-role"))
 
 			By("Create user role manually")
-			commands := helper.ExtractCommandsToCreateAWSResoueces(output)
+			commands := helper.ExtractCommandsToCreateAWSResources(output)
 			for _, command := range commands {
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())

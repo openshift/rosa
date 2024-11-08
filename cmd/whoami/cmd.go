@@ -66,7 +66,7 @@ func run(_ *cobra.Command, _ []string) {
 		r.Reporter.Errorf("Failed to load config file: %v", err)
 		os.Exit(1)
 	}
-	if cfg == nil {
+	if cfg == nil || config.IsNotValid(cfg) {
 		r.Reporter.Errorf("User is not logged in to OCM")
 		os.Exit(0)
 	}

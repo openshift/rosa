@@ -252,7 +252,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to load config file: %v", err)
 	}
-	if cfg == nil {
+	if cfg == nil || config.IsNotValid(cfg) {
 		cfg = new(config.Config)
 	}
 
@@ -519,7 +519,7 @@ func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
 	if err != nil {
 		return fmt.Errorf("Failed to load config file: %v", err)
 	}
-	if cfg != nil {
+	if cfg != nil && !config.IsNotValid(cfg) {
 		// Check that credentials in the config file are valid
 		isLoggedIn, err = cfg.Armed()
 		if err != nil {

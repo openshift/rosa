@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
@@ -342,61 +344,6 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).To(BeNil())
 		})
 
-		It("to upgrade STS rosa cluster across Y stream - [id:55883]", labels.Critical, labels.Runtime.Upgrade, func() {
-			By("Check the cluster version and compare with the profile to decide if skip this case")
-			if profile.Version != constants.YStreamPreviousVersion || !profile.ClusterConfig.STS ||
-				profile.ClusterConfig.SharedVPC {
-				Skip("Skip this case as the version defined in profile is not y-1 for sts cluster upgrading testing")
-			}
-
-			By("Check the cluster upgrade version to decide if skip this case")
-			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
-			Expect(err).To(BeNil())
-			clusterVersion := jsonData.DigString("version", "raw_id")
-
-			upgradingVersion, _, err := FindUpperYStreamVersion(versionService, profile.ChannelGroup, clusterVersion)
-			Expect(err).To(BeNil())
-			if upgradingVersion == "" {
-				Skip("Skip this case as the cluster is being upgraded.")
-			}
-
-			By("Upgrade cluster")
-			scheduledDate := time.Now().Format("2006-01-02")
-			scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
-			if profile.ClusterConfig.HCP {
-				By("Upgrade HCP cluster")
-				output, err := upgradeService.Upgrade(
-					"-c", clusterID,
-					"--version", upgradingVersion,
-					"--schedule-date", scheduledDate,
-					"--schedule-time", scheduledTime,
-					"--control-plane",
-					"-m", "auto",
-					"-y",
-				)
-				Expect(err).To(BeNil())
-				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
-			} else {
-				By("Upgrade STS classic cluster")
-				output, err := upgradeService.Upgrade(
-					"-c", clusterID,
-					"--version", upgradingVersion,
-					"--schedule-date", scheduledDate,
-					"--schedule-time", scheduledTime,
-					"-m", "auto",
-					"-y",
-				)
-				Expect(err).To(BeNil())
-				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
-			}
-
-			By("Check upgrade state")
-			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
-			Expect(err).To(BeNil())
-			err = WaitForUpgradeToState(upgradeService, clusterID, constants.Started, 70)
-			Expect(err).To(BeNil())
-		})
-
 		It("to upgrade shared VPC cluster across Y stream - [id:67168]", labels.High, labels.Runtime.Upgrade, func() {
 			By("Check the cluster version and whether it is a shared VPC cluster to decide if skip this case")
 			if profile.Version == constants.YStreamPreviousVersion && profile.ClusterConfig.SharedVPC {
@@ -599,7 +546,7 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(output2.String()).To(ContainSubstring("Ensuring account role/policies compatibility " +
 						"for upgrade"))
 
-					commands := helper.ExtractCommandsToCreateAWSResoueces(output2)
+					commands := helper.ExtractCommandsToCreateAWSResources(output2)
 					for _, command := range commands {
 						info := "INFO: Ensuring operator role/policies compatibility for upgrade"
 						if strings.Contains(command, info) {
@@ -1387,6 +1334,208 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 
 		})
 })
+var _ = Describe("Successful Upgrade Testing",
+	labels.Feature.Policy,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			clusterID          string
+			clusterName        string
+			rosaClient         *rosacli.Client
+			clusterService     rosacli.ClusterService
+			upgradeService     rosacli.UpgradeService
+			versionService     rosacli.VersionService
+			ocmResourceService rosacli.OCMResourceService
+			rolePrefix         string
+			profile            *profilehandler.Profile
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			upgradeService = rosaClient.Upgrade
+			versionService = rosaClient.Version
+			ocmResourceService = rosaClient.OCMResource
+		})
+
+		AfterEach(func() {
+			if clusterID != "" {
+				By("Delete cluster")
+				rosaClient.Runner.UnsetArgs()
+				_, err := clusterService.DeleteCluster(clusterID, "-y")
+				Expect(err).To(BeNil())
+
+				rosaClient.Runner.UnsetArgs()
+				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+				Expect(err).To(BeNil())
+
+				By("Delete operator-roles")
+				_, err = ocmResourceService.DeleteOperatorRoles(
+					"-c", clusterID,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+			}
+
+			if rolePrefix != "" {
+				By("Delete account-roles")
+				_, err := ocmResourceService.DeleteAccountRole(
+					"--prefix", rolePrefix,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+			}
+			errs := profilehandler.DestroyResourceByProfile(profile, rosaClient)
+			Expect(len(errs)).To(Equal(0))
+		})
+
+		Context("for Y-stream cluster - [id:55883]", labels.Critical, labels.Runtime.Day1Supplemental, func() {
+			It("on STS rosa classic cluster", func() {
+				By("Create a Y-stream sts rosa classic cluster")
+				profilesMap := profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
+				profile = profilesMap["rosa-upgrade-y-stream"]
+				profile.NamePrefix = constants.DefaultNamePrefix
+
+				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				clusterName = helper.GenerateRandomName("cluster-55883", 2)
+				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ") + " --mode auto"
+				rosalCommand := config.GenerateCommand(command)
+				log.Logger.Info(rosalCommand)
+				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
+				_, rolePrefix, err = helper.ParseRoleARN(installRoleArn)
+				Expect(err).To(BeNil())
+				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", clusterName)))
+
+				By("Retrieve cluster ID")
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(clusterName).ID
+
+				By("Wait for Cluster to be ready")
+				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 120)
+				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+
+				By("Check the cluster upgrade version to decide if skip this case")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				clusterVersion := jsonData.DigString("version", "raw_id")
+
+				upgradingVersion, _, err := FindUpperYStreamVersion(versionService, profile.ChannelGroup, clusterVersion)
+				Expect(err).To(BeNil())
+				if upgradingVersion == "" {
+					Skip("Skip this case as the cluster is being upgraded.")
+				}
+
+				scheduledDate := time.Now().Format("2006-01-02")
+				scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+				By("Upgrade STS classic cluster")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", upgradingVersion,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+
+				By("Check upgrade state")
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
+				Expect(err).To(BeNil())
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Started, 70)
+				Expect(err).To(BeNil())
+
+				By("Check the scheduled upgrade is completed successfully")
+				Eventually(func() (string, error) {
+					output, err := upgradeService.DescribeUpgrade(clusterID)
+					return rosaClient.Parser.TextData.Input(output).Parse().Tip(), err
+				}, time.Minute*70, time.Minute*1).Should(
+					ContainSubstring("INFO: No scheduled upgrades for cluster '%s'", clusterID))
+			})
+
+			It("on rosa hcp cluster", func() {
+				By("Create a Y-stream rosa hcp cluster")
+				profilesMap := profilehandler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
+				profile = profilesMap["rosa-hcp-upgrade-y-stream"]
+				profile.NamePrefix = constants.DefaultNamePrefix
+
+				flags, err := profilehandler.GenerateClusterCreateFlags(profile, rosaClient)
+				Expect(err).ToNot(HaveOccurred())
+
+				clusterName = helper.GenerateRandomName("cluster-55883", 2)
+				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
+				_, rolePrefix, err = helper.ParseRoleARN(installRoleArn)
+				Expect(err).To(BeNil())
+				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", clusterName)))
+
+				By("Retrieve cluster ID")
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(clusterName).ID
+
+				By("Wait for Cluster to be ready")
+				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
+				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+
+				By("Check the cluster upgrade version to decide if skip this case")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				clusterVersion := jsonData.DigString("version", "raw_id")
+
+				upgradingVersion, _, err := FindUpperYStreamVersion(versionService, profile.ChannelGroup, clusterVersion)
+				Expect(err).To(BeNil())
+				if upgradingVersion == "" {
+					Skip("Skip this case as the cluster is being upgraded.")
+				}
+
+				scheduledDate := time.Now().Format("2006-01-02")
+				scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+				By("Upgrade HCP cluster")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", upgradingVersion,
+					"--schedule-date", scheduledDate,
+					"--schedule-time", scheduledTime,
+					"--control-plane",
+					"-m", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+				By("Check upgrade state")
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Scheduled, 4)
+				Expect(err).To(BeNil())
+				err = WaitForUpgradeToState(upgradeService, clusterID, constants.Started, 70)
+				Expect(err).To(BeNil())
+
+				By("Check the scheduled upgrade is completed successfully")
+				Eventually(func() (string, error) {
+					output, err := upgradeService.DescribeUpgrade(clusterID)
+					return rosaClient.Parser.TextData.Input(output).Parse().Tip(), err
+				}, time.Minute*30, time.Minute*1).Should(
+					ContainSubstring("INFO: No scheduled upgrades for cluster '%s'", clusterID))
+			})
+		})
+	})
 
 func FindUpperYStreamVersion(v rosacli.VersionService, channelGroup string, clusterVersion string) (string, string,
 	error) {

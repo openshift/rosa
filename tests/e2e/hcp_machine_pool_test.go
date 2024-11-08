@@ -285,7 +285,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			if isNodePoolGlobalCheck {
 				By("Check if current replicas reach the desired replicas after creating a machine pool")
-				err = rosaClient.MachinePool.WaitNodePoolReplicasReady(
+				err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
 					clusterID,
 					mpName,
 					false,
@@ -364,7 +364,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			if isNodePoolGlobalCheck {
 				By("Check current replicas reach the min replicas after creating a autoscaled machine pool")
-				err = rosaClient.MachinePool.WaitNodePoolReplicasReady(
+				err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
 					clusterID,
 					mpName,
 					true,
