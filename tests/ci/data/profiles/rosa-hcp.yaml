@@ -62,6 +62,34 @@ profiles:
   account-role:
     path: "/test/hcp/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
+- as: rosa-hcp-ze
+  version: 4.14.38
+  channel_group: stable
+  region: "us-west-2"
+  cluster:
+    multi_az: true
+    instance_type: ""
+    hcp: true
+    sts: true
+    byo_vpc: true
+    private: true
+    additional_principals: false
+    imdsv2: ""
+    etcd_encryption: false
+    autoscale: false
+    kms_key: false
+    oidc_config: "managed"
+    networking: false
+    proxy_enabled: false
+    label_enabled: false
+    tag_enabled: false
+    zones: ""
+    registries_config: true
+    blocked_registries: true
+    zero_egress: true
+  account-role:
+    path: "/test/hcp/"
+    permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
 - as: rosa-hcp-upgrade-z-stream
   version: "z-1"
   channel_group: stable

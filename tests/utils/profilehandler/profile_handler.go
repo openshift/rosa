@@ -705,6 +705,13 @@ func GenerateClusterCreateFlags(profile *Profile, client *rosacli.Client) ([]str
 		}
 	}
 
+	if profile.ClusterConfig.ZeroEgress {
+		flags = append(flags, "--properties", fmt.Sprintf("zero_egress:%t", profile.ClusterConfig.ZeroEgress))
+		clusterConfiguration.Properties = &ClusterConfigure.Properties{
+			ZeroEgress: profile.ClusterConfig.ZeroEgress,
+		}
+	}
+
 	if profile.ClusterConfig.TagEnabled {
 		tags := "test-tag:tagvalue,qe-managed:true"
 		flags = append(flags, "--tags", tags)
