@@ -50,7 +50,6 @@ type GlobalENVVariables struct {
 	Version               string `env:"VERSION" default:""`
 	Region                string `env:"REGION" default:""`
 	ProvisionShard        string `env:"PROVISION_SHARD" default:""`
-	ZeroEgress            bool   `env:"ZERO_EGRESS" default:"false"`
 	NamePrefix            string `env:"NAME_PREFIX"`
 	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"60"`
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
@@ -115,13 +114,11 @@ func init() {
 		panic(fmt.Errorf("env variable CLUSTER_TIMEOUT must be set to an integer"))
 	}
 	waitSetupClusterReady, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("WAIT_SETUP_CLUSTER_READY", "true"))
-	zeroEgress, err := strconv.ParseBool(helper.ReadENVWithDefaultValue("ZERO_EGRESS", "true"))
 	Test.GlobalENV = &GlobalENVVariables{
 		ChannelGroup:          os.Getenv("CHANNEL_GROUP"),
 		Version:               os.Getenv("VERSION"),
 		Region:                os.Getenv("REGION"),
 		ProvisionShard:        os.Getenv("PROVISION_SHARD"),
-		ZeroEgress:            zeroEgress,
 		NamePrefix:            os.Getenv("NAME_PREFIX"),
 		SVPC_CREDENTIALS_FILE: os.Getenv("SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE"),
 		OCM_LOGIN_ENV:         os.Getenv("OCM_LOGIN_ENV"),

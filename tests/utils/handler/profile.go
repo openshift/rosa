@@ -97,7 +97,6 @@ func LoadProfileYamlFileByENV() *Profile {
 	}
 	profile := LoadProfileYamlFile(config.Test.TestProfile)
 
-
 	// Supporting global env setting to overrite profile settings
 	if config.Test.GlobalENV.ChannelGroup != "" {
 		log.Logger.Infof("Got global env settings for CHANNEL_GROUP, overwritten the profile setting with value %s",
@@ -118,11 +117,6 @@ func LoadProfileYamlFileByENV() *Profile {
 		log.Logger.Infof("Got global env settings for PROVISION_SHARD, overwritten the profile setting with value %s",
 			config.Test.GlobalENV.ProvisionShard)
 		profile.ClusterConfig.ProvisionShard = config.Test.GlobalENV.ProvisionShard
-	}
-	if config.Test.GlobalENV.ZeroEgress {
-		log.Logger.Infof("Got global env settings for ZERO_EGRESS, overwritten the profile setting with value %t",
-			config.Test.GlobalENV.ZeroEgress)
-		profile.ClusterConfig.ZeroEgress = config.Test.GlobalENV.ZeroEgress
 	}
 	if config.Test.GlobalENV.NamePrefix != "" {
 		log.Logger.Infof("Got global env settings for NAME_PREFIX, overwritten the profile setting with value %s",
