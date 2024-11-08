@@ -11,8 +11,8 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
-	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 func validateIDPOutput(textData string, clusterID string, idpName string) {
@@ -29,7 +29,7 @@ var _ = Describe("Edit IDP",
 			clusterID  string
 			rosaClient *rosacli.Client
 			idpService rosacli.IDPService
-			profile    *ph.Profile
+			profile    *handler.Profile
 		)
 
 		BeforeEach(func() {
@@ -42,7 +42,7 @@ var _ = Describe("Edit IDP",
 			idpService = rosaClient.IDP
 
 			By("Load the profile")
-			profile = ph.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 
 			if profile.ClusterConfig.AdminEnabled {
 				// Delete the day1 created admin. DON'T user it in day1-post case

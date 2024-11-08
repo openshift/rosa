@@ -13,7 +13,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
+	"github.com/openshift/rosa/tests/utils/handler"
 )
 
 var _ = Describe("HCP cluster testing",
@@ -26,10 +26,9 @@ var _ = Describe("HCP cluster testing",
 			rosaClient         *rosacli.Client
 			clusterService     rosacli.ClusterService
 			clusterConfig      *config.ClusterConfig
-			profile            *profilehandler.Profile
+			profile            *handler.Profile
 			machinePoolService rosacli.MachinePoolService
 			ocmResourceService rosacli.OCMResourceService
-			customProfile      *profilehandler.Profile
 		)
 
 		BeforeEach(func() {
@@ -40,7 +39,7 @@ var _ = Describe("HCP cluster testing",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 			var err error
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
@@ -53,27 +52,6 @@ var _ = Describe("HCP cluster testing",
 			if !hostedCluster {
 				SkipNotHosted()
 			}
-
-			By("Prepare custom profile")
-			customProfile = &profilehandler.Profile{
-				ClusterConfig: &profilehandler.ClusterConfig{
-					HCP:           true,
-					MultiAZ:       true,
-					STS:           true,
-					OIDCConfig:    "managed",
-					NetworkingSet: true,
-					BYOVPC:        true,
-					Zones:         "",
-				},
-				AccountRoleConfig: &profilehandler.AccountRoleConfig{
-					Path:               "",
-					PermissionBoundary: "",
-				},
-				Version:      "latest",
-				ChannelGroup: "candidate",
-				Region:       constants.CommonAWSRegion,
-			}
-			customProfile.NamePrefix = constants.DefaultNamePrefix
 		})
 
 		AfterEach(func() {
@@ -265,16 +243,16 @@ var _ = Describe("HCP cluster testing",
 				By("Create additional account roles")
 				accrolePrefix := "arPrefix74556"
 
+				resourcesHandler, err := handler.NewTempResourcesHandler(rosaClient, profile.Region, awsSharedCredentialFile)
+				Expect(err).ToNot(HaveOccurred())
 				additionalPrincipalRoleName := fmt.Sprintf("%s-%s", accrolePrefix, "additional-principal-role")
-				additionalPrincipalRoleArn, err := profilehandler.PrepareAdditionalPrincipalsRole(
+				additionalPrincipalRoleArn, err := resourcesHandler.PrepareAdditionalPrincipalsRole(
 					additionalPrincipalRoleName,
-					installRoleArn,
-					profile.Region, awsSharedCredentialFile)
+					installRoleArn)
 				Expect(err).To(BeNil())
 				defer func() {
 					By("Delete the additional principal account-roles")
-					err = profilehandler.DeleteAdditionalPrincipalsRole(additionalPrincipalRoleName,
-						true, profile.Region, awsSharedCredentialFile)
+					err = resourcesHandler.DeleteAdditionalPrincipalsRole(true)
 					Expect(err).To(BeNil())
 				}()
 

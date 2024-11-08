@@ -11,8 +11,8 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
-	ph "github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Attach and Detach arbitrary policies",
@@ -28,13 +28,13 @@ var _ = Describe("Attach and Detach arbitrary policies",
 			arbitraryPoliciesToClean []string
 			awsClient                *aws_client.AWSClient
 			err                      error
-			profile                  *ph.Profile
+			profile                  *handler.Profile
 			roleUrlPrefix            = "https://console.aws.amazon.com/iam/home?#/roles/"
 		)
 
 		BeforeEach(func() {
 			By("Load profile")
-			profile = ph.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 			if !profile.ClusterConfig.STS {
 				Skip("This feature only works for STS cluster")
 			}
@@ -304,12 +304,12 @@ var _ = Describe("Validation testing",
 			testingRolesToClean      []string
 			awsClient                *aws_client.AWSClient
 			err                      error
-			profile                  *ph.Profile
+			profile                  *handler.Profile
 		)
 
 		BeforeEach(func() {
 			By("Load profile")
-			profile = ph.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 
 			By("Get the cluster")
 			clusterID = config.GetClusterID()

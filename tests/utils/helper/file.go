@@ -66,3 +66,16 @@ func ReadFileContent(fileAbsPath string) (string, error) {
 	content := strings.TrimSuffix(string(output), "\n")
 	return content, err
 }
+
+// Read file content to an object
+func ReadFileContentToObject(fileAbsPath string, obj interface{}) error {
+	content, err := ReadFileContent(fileAbsPath)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal([]byte(content), obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}

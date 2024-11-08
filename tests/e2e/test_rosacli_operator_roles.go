@@ -18,8 +18,8 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
@@ -68,7 +68,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Check if the cluster is using BYO oidc config")
-				profile := profilehandler.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 				if profile.ClusterConfig.OIDCConfig == "" {
 					SkipTestOnFeature("This testing only work for byo oidc cluster")
 				}
@@ -956,13 +956,14 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 		var (
 			rosaClient         *rosacli.Client
 			clusterService     rosacli.ClusterService
-			customProfile      *profilehandler.Profile
+			customProfile      *handler.Profile
 			ocmResourceService rosacli.OCMResourceService
 			AWSAccountID       string
 			testingClusterName string
 			defaultDir         string
 			dirForManual       string
 			clusterID          string
+			clusterHandler     handler.ClusterHandler
 		)
 
 		BeforeEach(func() {
@@ -981,8 +982,8 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 			AWSAccountID = whoamiData.AWSAccountID
 
 			By("Prepare custom profile")
-			customProfile = &profilehandler.Profile{
-				ClusterConfig: &profilehandler.ClusterConfig{
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
 					HCP:           true,
 					MultiAZ:       true,
 					STS:           true,
@@ -991,7 +992,7 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 					BYOVPC:        true,
 					Zones:         "",
 				},
-				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+				AccountRoleConfig: &handler.AccountRoleConfig{
 					Path:               "",
 					PermissionBoundary: "",
 				},
@@ -1000,12 +1001,18 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 				Region:       "us-west-2",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+			Expect(err).To(BeNil())
 
 			By("Get the default dir")
 			defaultDir = rosaClient.Runner.GetDir()
 		})
 
 		AfterEach(func() {
+			defer func() {
+				By("Clean resources")
+				clusterHandler.Destroy()
+			}()
 
 			By("Go back original by setting runner dir")
 			rosaClient.Runner.SetDir(defaultDir)
@@ -1026,10 +1033,6 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 				"-y",
 			)
 			Expect(err).To(BeNil())
-
-			By("Clean resource")
-			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
 		})
 
 		It("to create and delete operatorroles attaching managed policies in manual mode - [id:75504]",
@@ -1037,7 +1040,7 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 				By("Create hcp cluster in manual mode")
 				testingClusterName = helper.GenerateRandomName("c75504", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75504", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
@@ -1090,14 +1093,16 @@ var _ = Describe("Upgrade operator roles in auto mode",
 		var (
 			rosaClient         *rosacli.Client
 			clusterService     rosacli.ClusterService
-			customProfile      *profilehandler.Profile
+			customProfile      *handler.Profile
 			ocmResourceService rosacli.OCMResourceService
 			upgradeService     rosacli.UpgradeService
 			clusterName        string
 			clusterID          string
+			clusterHandler     handler.ClusterHandler
 		)
 
 		BeforeEach(func() {
+			var err error
 			By("Init client and service")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
@@ -1105,11 +1110,11 @@ var _ = Describe("Upgrade operator roles in auto mode",
 			upgradeService = rosaClient.Upgrade
 
 			By("Prepare custom profile")
-			customProfile = &profilehandler.Profile{
-				ClusterConfig: &profilehandler.ClusterConfig{
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
 					STS: true,
 				},
-				AccountRoleConfig: &profilehandler.AccountRoleConfig{
+				AccountRoleConfig: &handler.AccountRoleConfig{
 					Path:               "",
 					PermissionBoundary: "",
 				},
@@ -1118,9 +1123,16 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				Region:       "us-west-2",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+			Expect(err).To(BeNil())
 		})
 
 		AfterEach(func() {
+			defer func() {
+				By("Clean resources")
+				clusterHandler.Destroy()
+			}()
+
 			if clusterID != "" {
 				By("Delete cluster")
 				rosaClient.Runner.UnsetArgs()
@@ -1131,17 +1143,13 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
 				Expect(err).To(BeNil())
 			}
-
-			By("Clean resource")
-			errs := profilehandler.DestroyResourceByProfile(customProfile, rosaClient)
-			Expect(len(errs)).To(Equal(0))
 		})
 
 		It("to create and upgrade operator roles in auto mode - [id:45745]",
 			labels.Critical, labels.Runtime.Day1Supplemental, func() {
 				By("Create classic STS cluster")
 				clusterName = helper.GenerateRandomName("c45745", 2)
-				flags, err := profilehandler.GenerateClusterCreateFlags(customProfile, rosaClient)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + clusterName + " " + strings.Join(flags, " ")

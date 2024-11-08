@@ -19,8 +19,8 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
-	"github.com/openshift/rosa/tests/utils/profilehandler"
 )
 
 var _ = Describe("Healthy check",
@@ -32,7 +32,7 @@ var _ = Describe("Healthy check",
 			rosaClient         *rosacli.Client
 			clusterService     rosacli.ClusterService
 			machinePoolService rosacli.MachinePoolService
-			profile            *profilehandler.Profile
+			profile            *handler.Profile
 			isHosted           bool
 			err                error
 		)
@@ -47,7 +47,8 @@ var _ = Describe("Healthy check",
 			clusterService = rosaClient.Cluster
 			machinePoolService = rosaClient.MachinePool
 
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			By("Retrieve profile")
+			profile = handler.LoadProfileYamlFileByENV()
 
 			By("Retrieve whether hosted cluster")
 			isHosted, err = clusterService.IsHostedCPCluster(clusterID)
@@ -626,9 +627,9 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 
 		BeforeEach(func() {
 			By("Get the cluster")
-			var clusterDetail *profilehandler.ClusterDetail
+			var clusterDetail *handler.ClusterDetail
 			var err error
-			clusterDetail, err = profilehandler.ParserClusterDetail()
+			clusterDetail, err = handler.ParseClusterDetail()
 			Expect(err).ToNot(HaveOccurred())
 			clusterID = clusterDetail.ClusterID
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
@@ -646,7 +647,7 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 		It("User can create cluster with channel group - [id:35420]",
 			labels.Critical, labels.Runtime.Day1Post,
 			func() {
-				profile := profilehandler.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 
 				By("Check if the cluster using right channel group")
 				versionOutput, err := clusterService.GetClusterVersion(clusterID)
@@ -669,7 +670,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 			clusterConfig      *config.ClusterConfig
 			oidcConfigC        string
 			oidcProviderArn    string
-			profile            *profilehandler.Profile
+			profile            *handler.Profile
 		)
 
 		BeforeEach(func() {
@@ -683,7 +684,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 			clusterConfig, err = config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
 
-			profile = profilehandler.LoadProfileYamlFileByENV()
+			profile = handler.LoadProfileYamlFileByENV()
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -708,7 +709,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
 
 				By("Get oidc endpoint URL from cluster detail json file")
-				clusterDetail, err := profilehandler.ParserClusterDetail()
+				clusterDetail, err := handler.ParseClusterDetail()
 				Expect(err).To(BeNil())
 				oidcEndpointUrlC = clusterDetail.OIDCEndpointURL
 				parts := strings.Split(oidcEndpointUrlC, " ")
@@ -748,7 +749,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 			labels.High, labels.Runtime.DestroyPost,
 			func() {
 				By("Check the operator-roles is deleted")
-				clusterDetail, err := profilehandler.ParserClusterDetail()
+				clusterDetail, err := handler.ParseClusterDetail()
 				Expect(err).To(BeNil())
 
 				operatorRolesArn := clusterDetail.OperatorRoleArns
@@ -818,7 +819,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 			func() {
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
-				profile := profilehandler.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Check if it is using oidc config")
@@ -869,12 +870,12 @@ var _ = Describe("Post-Check testing for cluster creation",
 			labels.High, labels.Runtime.Day1Post,
 			func() {
 				By("Check the cluster is STS cluster")
-				profile := profilehandler.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 				if !profile.ClusterConfig.STS {
 					Skip("This case is only for STS cluster post check")
 				}
 				By("Check the cluster is in ready status")
-				clusterDetail, err := profilehandler.ParserClusterDetail()
+				clusterDetail, err := handler.ParseClusterDetail()
 				Expect(err).ToNot(HaveOccurred())
 				clusterID = clusterDetail.ClusterID
 				Expect(clusterID).ToNot(Equal(""), "ClusterID is required.Please debug why it is empty")
@@ -899,7 +900,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 			func() {
 				// Till now, only HCP clusters operator roles are attaching managed policies
 				By("Skip is the cluster is not HCP cluster")
-				profile := profilehandler.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 				if !profile.ClusterConfig.HCP {
 					Skip("This case is only for STS cluster post check")
 				}
@@ -962,7 +963,7 @@ var _ = Describe("Post-Check testing for cluster clusters with the --disable-scp
 		It(" Create MOA clusters with the --disable-scp-check flag - [id:35894]",
 			labels.Medium, labels.Runtime.Day1Post,
 			func() {
-				profile := profilehandler.LoadProfileYamlFileByENV()
+				profile := handler.LoadProfileYamlFileByENV()
 				By("Skip testing if the cluster is not a y-1 STS classic cluster")
 				if profile.ClusterConfig.HCP {
 					Skip("Skip this case as it is for classic cluster")
