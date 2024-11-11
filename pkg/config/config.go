@@ -111,7 +111,8 @@ func Load() (cfg *Config, err error) {
 }
 
 func IsNotValid(cfg *Config) bool {
-	return cfg.ClientID == "" || cfg.AccessToken == "" || cfg.RefreshToken == ""
+	return cfg.ClientID == "" || cfg.AccessToken == "" || cfg.RefreshToken == "" ||
+		cfg.URL == "" || cfg.TokenURL == ""
 }
 
 // Loads the configuration from the OS keyring. If the configuration doesn't exist
