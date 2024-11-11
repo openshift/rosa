@@ -19,6 +19,8 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const defaultTemplate = "rosa-quickstart-default-vpc"
+
 func NewNetworkCommand() *cobra.Command {
 	cmd, options := opts.BuildNetworkCommandWithOptions()
 	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCMAndAWS(), NetworkRunner(options))
@@ -71,7 +73,9 @@ func NewNetworkCommand() *cobra.Command {
 func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		var err error
-		templateCommand := "rosa-quickstart-default-vpc"
+		var templateFile string
+		var templateBody []byte
+		templateCommand := defaultTemplate
 		options := NewNetworkOptions()
 		userOptions.CleanTemplateDir()
 		options.Bind(userOptions)
@@ -97,23 +101,8 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 			parsedParams["Region"] = r.AWSClient.GetRegion()
 		}
 
-		// Extract the first non-`--param` argument to use as the template command
-		if len(argv) == 0 {
-			r.Reporter.Infof("Template command not provided, using default template %s", templateCommand)
-		}
-		for _, arg := range argv {
-			if !strings.HasPrefix(arg, "--param") {
-				templateCommand = arg
-				break
-			}
-		}
-
-		templateDir := options.args.TemplateDir
-
-		templateFile := helper.SelectTemplate(templateDir, templateCommand)
-		if templateFile == "" {
-			return r.Reporter.Errorf("No suitable template found")
-		}
+		extractTemplateCommand(r, argv, options.args,
+			&templateCommand, &templateFile)
 
 		service := helper.NewNetworkService()
 
@@ -141,7 +130,32 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 					"template":       templateFile,
 				},
 			)
-			return service.CreateStack(templateFile, parsedParams, parsedTags)
+			return service.CreateStack(&templateFile, &templateBody, parsedParams, parsedTags)
 		}
+	}
+}
+
+func extractTemplateCommand(r *rosa.Runtime, argv []string, options *opts.NetworkUserOptions,
+	templateCommand *string, templateFile *string) {
+	if len(argv) == 0 {
+		r.Reporter.Infof("No template name provided in the command. "+
+			"Defaulting to %s. Please note that a corresponding directory with this name"+
+			" must exist under the specified path <`--template-dir`> or the templates directory"+
+			" for the command to work correctly. ", templateCommand)
+		*templateCommand = defaultTemplate
+		*templateFile = CloudFormationTemplateFile
+	}
+
+	for _, arg := range argv {
+		if !strings.HasPrefix(arg, "--param") {
+			*templateCommand = arg
+			break
+		}
+	}
+	if *templateCommand == defaultTemplate {
+		*templateFile = CloudFormationTemplateFile
+	} else {
+		templateDir := options.TemplateDir
+		*templateFile = helper.SelectTemplate(templateDir, *templateCommand)
 	}
 }
