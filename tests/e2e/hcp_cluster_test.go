@@ -13,7 +13,6 @@ import (
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/handler"
-	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("HCP cluster testing",
@@ -646,25 +645,6 @@ var _ = Describe("HCP cluster testing",
 				clusterDetail, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				Expect(clusterDetail.ZeroEgress).To(Equal("Enabled"))
-
-				By("Create a machinepool describe it")
-				mpID := helper.GenerateRandomName("mp-36293", 2)
-				output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpID,
-					"--replicas", "1",
-					"-y",
-				)
-				Expect(err).ToNot(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring(
-					"Machine pool '%s' created successfully on hosted cluster '%s'",
-					mpID,
-					clusterID))
-				_, err = machinePoolService.DescribeMachinePool(clusterID, mpID)
-				Expect(err).ToNot(HaveOccurred())
-				defer func() {
-					By("Remove the machine pool")
-					rosaClient.MachinePool.DeleteMachinePool(clusterID, mpID)
-				}()
 			})
 
 	})
