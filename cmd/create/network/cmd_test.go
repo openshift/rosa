@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/network"
 	opts "github.com/openshift/rosa/pkg/options/network"
+	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var _ = Describe("Network", func() {
@@ -92,12 +93,13 @@ var _ = Describe("Validation functions", func() {
 	Context("extractTemplateCommand", func() {
 		It("should use default template when no arguments are provided", func() {
 			argv := []string{}
+			r := rosa.NewRuntime()
 			templateCommand := "rosa-quickstart-default-vpc"
 			templateFile := ""
 			options := &opts.NetworkUserOptions{}
 			options.TemplateDir = "cmd/create/network/templates"
 
-			extractTemplateCommand(argv, options, &templateCommand, &templateFile)
+			extractTemplateCommand(r, argv, options, &templateCommand, &templateFile)
 
 			Expect(templateCommand).To(Equal("rosa-quickstart-default-vpc"))
 			Expect(templateFile).To(Equal(CloudFormationTemplateFile))
@@ -105,12 +107,13 @@ var _ = Describe("Validation functions", func() {
 
 		It("should extract the first non-`--param` argument as the template command", func() {
 			argv := []string{"my-template", "--param", "key=value"}
+			r := rosa.NewRuntime()
 			templateCommand := ""
 			templateFile := ""
 			options := &opts.NetworkUserOptions{}
 			options.TemplateDir = "cmd/create/network/templates"
 
-			extractTemplateCommand(argv, options, &templateCommand, &templateFile)
+			extractTemplateCommand(r, argv, options, &templateCommand, &templateFile)
 
 			Expect(templateCommand).To(Equal("my-template"))
 			Expect(templateFile).To(Equal("cmd/create/network/templates/my-template/cloudformation.yaml"))
@@ -118,12 +121,13 @@ var _ = Describe("Validation functions", func() {
 
 		It("should use the default template when the extracted template command is 'rosa-quickstart-default-vpc'", func() {
 			argv := []string{"rosa-quickstart-default-vpc"}
+			r := rosa.NewRuntime()
 			templateCommand := ""
 			templateFile := ""
 			options := &opts.NetworkUserOptions{}
 			options.TemplateDir = "cmd/create/network/templates"
 
-			extractTemplateCommand(argv, options, &templateCommand, &templateFile)
+			extractTemplateCommand(r, argv, options, &templateCommand, &templateFile)
 
 			Expect(templateCommand).To(Equal("rosa-quickstart-default-vpc"))
 			Expect(templateFile).To(Equal(CloudFormationTemplateFile))

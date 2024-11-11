@@ -101,7 +101,7 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 			parsedParams["Region"] = r.AWSClient.GetRegion()
 		}
 
-		extractTemplateCommand(argv, options.args,
+		extractTemplateCommand(r, argv, options.args,
 			&templateCommand, &templateFile)
 
 		service := helper.NewNetworkService()
@@ -135,9 +135,13 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 	}
 }
 
-func extractTemplateCommand(argv []string, options *opts.NetworkUserOptions,
+func extractTemplateCommand(r *rosa.Runtime, argv []string, options *opts.NetworkUserOptions,
 	templateCommand *string, templateFile *string) {
 	if len(argv) == 0 {
+		r.Reporter.Infof("No template name provided in the command. "+
+			"Defaulting to %s. Please note that a corresponding directory with this name"+
+			" must exist under the specified path <`--template-dir`> or the templates directory"+
+			" for the command to work correctly. ", *templateCommand)
 		*templateCommand = defaultTemplate
 		*templateFile = CloudFormationTemplateFile
 	}
