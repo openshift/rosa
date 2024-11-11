@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,7 +14,7 @@ import (
 
 //go:generate mockgen -source=network.go -package=network -destination=network_mock.go
 type NetworkService interface {
-	CreateStack(templateFile string, params map[string]string, tags map[string]string) error
+	CreateStack(templateFile *string, templateBody *[]byte, params map[string]string, tags map[string]string) error
 }
 
 type network struct {
@@ -28,19 +27,14 @@ func NewNetworkService() NetworkService {
 }
 
 // CreateStack creates a CloudFormation stack
-func (s *network) CreateStack(templateFile string, params map[string]string, tags map[string]string) error {
+func (s *network) CreateStack(templateFile *string, templateBody *[]byte,
+	params map[string]string, tags map[string]string) error {
 	// Load the AWS configuration
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(params["Region"]))
 	if err != nil {
 		return fmt.Errorf("unable to load SDK config, %v", err)
-	}
-
-	// Read the CloudFormation template
-	templateBody, err := os.ReadFile(templateFile)
-	if err != nil {
-		return fmt.Errorf("unable to read template file, %v", err)
 	}
 
 	var cfTags []cfTypes.Tag
@@ -64,11 +58,17 @@ func (s *network) CreateStack(templateFile string, params map[string]string, tag
 		})
 	}
 
+	var template string
+	template = *templateFile
+	if templateBody != nil && len(*templateBody) > 0 {
+		template = string(*templateBody)
+	}
+
 	// Create the stack
 	logger.Info("Creating CloudFormation stack")
 	_, err = cfClient.CreateStack(context.TODO(), &cloudformation.CreateStackInput{
 		StackName:    aws.String(params["Name"]),
-		TemplateBody: aws.String(string(templateBody)),
+		TemplateBody: aws.String(template),
 		Parameters:   cfParams,
 		Tags:         cfTags,
 		Capabilities: []cfTypes.Capability{
@@ -101,7 +101,7 @@ func (s *network) CreateStack(templateFile string, params map[string]string, tag
 	})
 	if err != nil {
 		deleteHelperMessage(logger, params, err)
-		helperMsg := ManualModeHelperMessage(params, templateFile, tags)
+		helperMsg := ManualModeHelperMessage(params, template, tags)
 		logger.Infof(helperMsg)
 		return fmt.Errorf("failed to wait for stack creation, %v", err)
 	}
