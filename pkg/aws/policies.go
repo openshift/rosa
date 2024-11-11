@@ -127,6 +127,7 @@ const (
 	HCPSuffixPattern = "HCP-ROSA"
 
 	IngressOperatorCloudCredentialsRoleType = "ingress_operator_cloud_credentials"
+	ControlPlaneCloudCredentialsRoleType    = "control_plane_operator_credentials"
 
 	TrueString = "true"
 )
