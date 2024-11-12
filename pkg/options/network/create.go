@@ -85,6 +85,10 @@ func BuildNetworkCommandWithOptions() (*cobra.Command, *NetworkUserOptions) {
 		Args:    cobra.MaximumNArgs(1),
 		Hidden:  false,
 	}
+	var exportedTempDir string
+	if options.TemplateDir != "" {
+		exportedTempDir = options.TemplateDir
+	}
 
 	flags := cmd.Flags()
 	flags.StringVar(
@@ -93,6 +97,9 @@ func BuildNetworkCommandWithOptions() (*cobra.Command, *NetworkUserOptions) {
 		DefaultTemplateDir,
 		"Use a specific template directory, overriding the OCM_TEMPLATE_DIR environment variable.",
 	)
+	if exportedTempDir != "" {
+		options.TemplateDir = exportedTempDir
+	}
 	flags.StringArrayVar(
 		&options.Params,
 		"param",
