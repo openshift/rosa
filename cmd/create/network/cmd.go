@@ -93,8 +93,8 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		}
 
 		if parsedParams["Name"] == "" {
-			r.Reporter.Infof("Name not provided, using default name %s", r.Creator.AccountID)
 			parsedParams["Name"] = "rosa-network-stack-" + r.Creator.AccountID
+			r.Reporter.Infof("Name not provided, using default name %s", parsedParams["Name"])
 		}
 		if parsedParams["Region"] == "" {
 			r.Reporter.Infof("Region not provided, using default region %s", r.AWSClient.GetRegion())
