@@ -12,3 +12,5 @@
 - name: role-arn
 - name: shared-vpc-role-arn
 - name: "yes"
+- name: vpc-endpoint-role-arn
+- name: route53-role-arn
