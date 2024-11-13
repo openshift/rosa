@@ -101,8 +101,11 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 			parsedParams["Region"] = r.AWSClient.GetRegion()
 		}
 
-		extractTemplateCommand(r, argv, options.args,
+		err = extractTemplateCommand(r, argv, options.args,
 			&templateCommand, &templateFile)
+		if err != nil {
+			return err
+		}
 
 		service := helper.NewNetworkService()
 
@@ -136,7 +139,7 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 }
 
 func extractTemplateCommand(r *rosa.Runtime, argv []string, options *opts.NetworkUserOptions,
-	templateCommand *string, templateFile *string) {
+	templateCommand *string, templateFile *string) error {
 	if len(argv) == 0 {
 		r.Reporter.Infof("No template name provided in the command. "+
 			"Defaulting to %s. Please note that a corresponding directory with this name"+
@@ -157,5 +160,11 @@ func extractTemplateCommand(r *rosa.Runtime, argv []string, options *opts.Networ
 	} else {
 		templateDir := options.TemplateDir
 		*templateFile = helper.SelectTemplate(templateDir, *templateCommand)
+		templateBody, err := os.ReadFile(*templateFile)
+		if err != nil {
+			return fmt.Errorf("failed to read template file: %w", err)
+		}
+		*templateFile = string(templateBody)
 	}
+	return nil
 }
