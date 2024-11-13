@@ -17,7 +17,6 @@ limitations under the License.
 package operatorroles
 
 import (
-	"fmt"
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -32,12 +31,10 @@ import (
 )
 
 const (
-	PrefixFlag             = "prefix"
-	HostedCpFlag           = "hosted-cp"
-	OidcConfigIdFlag       = "oidc-config-id"
-	InstallerRoleArnFlag   = "role-arn"
-	vpcEndpointRoleArnFlag = "vpc-endpoint-role-arn"
-	hostedZoneRoleArnFlag  = "route53-role-arn"
+	PrefixFlag           = "prefix"
+	HostedCpFlag         = "hosted-cp"
+	OidcConfigIdFlag     = "oidc-config-id"
+	InstallerRoleArnFlag = "role-arn"
 )
 
 var args struct {
@@ -49,7 +46,6 @@ var args struct {
 	oidcConfigId        string
 	sharedVpcRoleArn    string
 	channelGroup        string
-	vpcEndpointRoleArn  string
 }
 
 var Cmd = &cobra.Command{
@@ -133,26 +129,6 @@ func init() {
 	)
 	flags.MarkHidden("channel-group")
 
-	flags.StringVar(
-		&args.vpcEndpointRoleArn,
-		vpcEndpointRoleArnFlag,
-		"",
-		"AWS IAM Role ARN with policy attached, associated with the shared VPC."+
-			" Grants permissions necessary to communicate with and handle a cross-account VPC. "+
-			"This flag deprecates '--shared-vpc-role-arn'.",
-	)
-
-	flags.StringVar(
-		&args.sharedVpcRoleArn,
-		hostedZoneRoleArnFlag,
-		"",
-		"AWS IAM Role Arn with policy attached, associated with the shared VPC used for Hosted Control Plane clusters."+
-			" Grants permission necessary to handle route53 operations associated with a cross-acount VPC.",
-	)
-
-	flags.MarkDeprecated("shared-vpc-role-arn", fmt.Sprintf("'--shared-vpc-role-arn' will be replaced with %s "+
-		"in future versions of ROSA", hostedZoneRoleArnFlag))
-
 	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -173,13 +149,6 @@ func run(cmd *cobra.Command, argv []string) {
 		if argv[1] != "" {
 			isProgmaticallyCalled = true
 		}
-	}
-
-	isHcpSharedVpc, err := validateSharedVpcInputs(args.hostedCp, args.vpcEndpointRoleArn,
-		args.sharedVpcRoleArn)
-	if err != nil {
-		r.Reporter.Errorf("Invalid configuration: %s", err)
-		os.Exit(1)
 	}
 
 	env, err := ocm.GetEnv()
@@ -297,7 +266,7 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		err = handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
-			mode, policies, latestPolicyVersion, isHcpSharedVpc)
+			mode, policies, latestPolicyVersion)
 		if err != nil {
 			r.Reporter.Errorf("Error creating operator roles: %s", err)
 			os.Exit(1)
