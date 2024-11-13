@@ -5,7 +5,7 @@ package network
 const CloudFormationTemplateFile = `
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template to create a ROSA Quickstart default VPC.
-  This CloudFormation template may not work with rosa CLI versions later than 1.2.47. 
+  This CloudFormation template may not work with rosa CLI versions later than v1.2.48. 
   Please ensure that you are using the compatible CLI version before deploying this template.
 
 Parameters:
