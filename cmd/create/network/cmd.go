@@ -28,40 +28,68 @@ func NewNetworkCommand() *cobra.Command {
 
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		templateDir := options.TemplateDir
-		err := filepath.WalkDir(templateDir, func(path string, d fs.DirEntry, err error) error {
+		var templateBody []byte
+		var err error
+
+		if options.TemplateDir == opts.DefaultTemplateDir {
+			templateBody = []byte(CloudFormationTemplateFile)
+		} else {
+			err = filepath.WalkDir(templateDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if !d.IsDir() && strings.HasSuffix(d.Name(), ".yaml") {
+					templateBody, err = os.ReadFile(path)
+					if err != nil {
+						fmt.Println(err)
+						return nil
+					}
+
+					var templateMap map[string]interface{}
+					err = yaml.Unmarshal(templateBody, &templateMap)
+					if err != nil {
+						fmt.Println(err)
+						return nil
+					}
+
+					parameters, ok := templateMap["Parameters"].(map[string]interface{})
+					if !ok {
+						fmt.Printf("No parameters found in the CloudFormation template %s\n", d.Name())
+						return nil
+					}
+
+					fmt.Printf("Available parameters in %s/%s:\n", filepath.Base(filepath.Dir(path)), d.Name())
+					for paramName := range parameters {
+						fmt.Printf("  %s\n", paramName)
+					}
+					fmt.Printf("  %s\n", "Tags")
+				}
+				return nil
+			})
 			if err != nil {
-				return err
+				fmt.Println(err)
 			}
-			if !d.IsDir() && strings.HasSuffix(d.Name(), ".yaml") {
-				templateBody, err := os.ReadFile(path)
-				if err != nil {
-					fmt.Println(err)
-					return nil
-				}
+		}
 
-				var templateMap map[string]interface{}
-				err = yaml.Unmarshal(templateBody, &templateMap)
-				if err != nil {
-					fmt.Println(err)
-					return nil
-				}
-
-				parameters, ok := templateMap["Parameters"].(map[string]interface{})
-				if !ok {
-					fmt.Printf("No parameters found in the CloudFormation template %s\n", d.Name())
-					return nil
-				}
-
-				fmt.Printf("Available parameters in %s/%s:\n", filepath.Base(filepath.Dir(path)), d.Name())
-				for paramName := range parameters {
-					fmt.Printf("  %s\n", paramName)
-				}
-				fmt.Printf("  %s\n", "Tags")
+		if options.TemplateDir == opts.DefaultTemplateDir {
+			var templateMap map[string]interface{}
+			err = yaml.Unmarshal(templateBody, &templateMap)
+			if err != nil {
+				fmt.Println(err)
+				return
 			}
-			return nil
-		})
-		if err != nil {
-			fmt.Println(err)
+
+			parameters, ok := templateMap["Parameters"].(map[string]interface{})
+			if !ok {
+				fmt.Printf("No parameters found in the default CloudFormation template\n")
+				return
+			}
+
+			fmt.Printf("Available parameters in default template:\n")
+			for paramName := range parameters {
+				fmt.Printf("  %s\n", paramName)
+			}
+			fmt.Printf("  %s\n", "Tags")
 		}
 
 		fmt.Println("\n" + cmd.UsageString())
