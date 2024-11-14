@@ -5,6 +5,7 @@
 //
 //	mockgen -source=cmd.go -package=rosa -destination=./cmd_mock.go
 //
+
 // Package rosa is a generated GoMock package.
 package rosa
 
