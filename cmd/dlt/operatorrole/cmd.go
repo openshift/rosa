@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
+	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -300,6 +301,14 @@ func buildCommand(r *rosa.Runtime, roleNames []string, policyMap map[string][]st
 					AddParam(awscb.PolicyArn, policyARN[0]).
 					Build()
 				commands = append(commands, deletePolicy)
+			} else {
+				policyName := aws.SharedVpcAssumeRolePrefix + "-" + roleName
+				arn := fmt.Sprintf("arn:%s:iam::%s:policy/%s", r.Creator.Partition, r.Creator.AccountID, policyName)
+				deleteSharedVpcPolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DeletePolicy).
+					AddParam(awscb.PolicyArn, arn).
+					Build()
+				commands = append(commands, deleteSharedVpcPolicy)
 			}
 		}
 		for _, policy := range arbitraryPolicyARN {
