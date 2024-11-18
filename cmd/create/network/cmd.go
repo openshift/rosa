@@ -19,6 +19,8 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const defaultTemplate = "rosa-quickstart-default-vpc"
+
 func NewNetworkCommand() *cobra.Command {
 	cmd, options := opts.BuildNetworkCommandWithOptions()
 	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCMAndAWS(), NetworkRunner(options))
@@ -26,40 +28,68 @@ func NewNetworkCommand() *cobra.Command {
 
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		templateDir := options.TemplateDir
-		err := filepath.WalkDir(templateDir, func(path string, d fs.DirEntry, err error) error {
+		var templateBody []byte
+		var err error
+
+		if options.TemplateDir == opts.DefaultTemplateDir {
+			templateBody = []byte(CloudFormationTemplateFile)
+		} else {
+			err = filepath.WalkDir(templateDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if !d.IsDir() && strings.HasSuffix(d.Name(), ".yaml") {
+					templateBody, err = os.ReadFile(path)
+					if err != nil {
+						fmt.Println(err)
+						return nil
+					}
+
+					var templateMap map[string]interface{}
+					err = yaml.Unmarshal(templateBody, &templateMap)
+					if err != nil {
+						fmt.Println(err)
+						return nil
+					}
+
+					parameters, ok := templateMap["Parameters"].(map[string]interface{})
+					if !ok {
+						fmt.Printf("No parameters found in the CloudFormation template %s\n", d.Name())
+						return nil
+					}
+
+					fmt.Printf("Available parameters in %s/%s:\n", filepath.Base(filepath.Dir(path)), d.Name())
+					for paramName := range parameters {
+						fmt.Printf("  %s\n", paramName)
+					}
+					fmt.Printf("  %s\n", "Tags")
+				}
+				return nil
+			})
 			if err != nil {
-				return err
+				fmt.Println(err)
 			}
-			if !d.IsDir() && strings.HasSuffix(d.Name(), ".yaml") {
-				templateBody, err := os.ReadFile(path)
-				if err != nil {
-					fmt.Println(err)
-					return nil
-				}
+		}
 
-				var templateMap map[string]interface{}
-				err = yaml.Unmarshal(templateBody, &templateMap)
-				if err != nil {
-					fmt.Println(err)
-					return nil
-				}
-
-				parameters, ok := templateMap["Parameters"].(map[string]interface{})
-				if !ok {
-					fmt.Printf("No parameters found in the CloudFormation template %s\n", d.Name())
-					return nil
-				}
-
-				fmt.Printf("Available parameters in %s/%s:\n", filepath.Base(filepath.Dir(path)), d.Name())
-				for paramName := range parameters {
-					fmt.Printf("  %s\n", paramName)
-				}
-				fmt.Printf("  %s\n", "Tags")
+		if options.TemplateDir == opts.DefaultTemplateDir {
+			var templateMap map[string]interface{}
+			err = yaml.Unmarshal(templateBody, &templateMap)
+			if err != nil {
+				fmt.Println(err)
+				return
 			}
-			return nil
-		})
-		if err != nil {
-			fmt.Println(err)
+
+			parameters, ok := templateMap["Parameters"].(map[string]interface{})
+			if !ok {
+				fmt.Printf("No parameters found in the default CloudFormation template\n")
+				return
+			}
+
+			fmt.Printf("Available parameters in default template:\n")
+			for paramName := range parameters {
+				fmt.Printf("  %s\n", paramName)
+			}
+			fmt.Printf("  %s\n", "Tags")
 		}
 
 		fmt.Println("\n" + cmd.UsageString())
@@ -71,7 +101,9 @@ func NewNetworkCommand() *cobra.Command {
 func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		var err error
-		templateCommand := "rosa-quickstart-default-vpc"
+		var templateFile string
+		var templateBody []byte
+		templateCommand := defaultTemplate
 		options := NewNetworkOptions()
 		userOptions.CleanTemplateDir()
 		options.Bind(userOptions)
@@ -89,30 +121,18 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		}
 
 		if parsedParams["Name"] == "" {
-			r.Reporter.Infof("Name not provided, using default name %s", r.Creator.AccountID)
 			parsedParams["Name"] = "rosa-network-stack-" + r.Creator.AccountID
+			r.Reporter.Infof("Name not provided, using default name %s", parsedParams["Name"])
 		}
 		if parsedParams["Region"] == "" {
 			r.Reporter.Infof("Region not provided, using default region %s", r.AWSClient.GetRegion())
 			parsedParams["Region"] = r.AWSClient.GetRegion()
 		}
 
-		// Extract the first non-`--param` argument to use as the template command
-		if len(argv) == 0 {
-			r.Reporter.Infof("Template command not provided, using default template %s", templateCommand)
-		}
-		for _, arg := range argv {
-			if !strings.HasPrefix(arg, "--param") {
-				templateCommand = arg
-				break
-			}
-		}
-
-		templateDir := options.args.TemplateDir
-
-		templateFile := helper.SelectTemplate(templateDir, templateCommand)
-		if templateFile == "" {
-			return r.Reporter.Errorf("No suitable template found")
+		err = extractTemplateCommand(r, argv, options.args,
+			&templateCommand, &templateFile)
+		if err != nil {
+			return err
 		}
 
 		service := helper.NewNetworkService()
@@ -141,7 +161,38 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 					"template":       templateFile,
 				},
 			)
-			return service.CreateStack(templateFile, parsedParams, parsedTags)
+			return service.CreateStack(&templateFile, &templateBody, parsedParams, parsedTags)
 		}
 	}
+}
+
+func extractTemplateCommand(r *rosa.Runtime, argv []string, options *opts.NetworkUserOptions,
+	templateCommand *string, templateFile *string) error {
+	if len(argv) == 0 {
+		r.Reporter.Infof("No template name provided in the command. "+
+			"Defaulting to %s. Please note that a corresponding directory with this name"+
+			" must exist under the specified path <`--template-dir`> or the templates directory"+
+			" for the command to work correctly. ", *templateCommand)
+		*templateCommand = defaultTemplate
+		*templateFile = CloudFormationTemplateFile
+	}
+
+	for _, arg := range argv {
+		if !strings.HasPrefix(arg, "--param") {
+			*templateCommand = arg
+			break
+		}
+	}
+	if *templateCommand == defaultTemplate {
+		*templateFile = CloudFormationTemplateFile
+	} else {
+		templateDir := options.TemplateDir
+		*templateFile = helper.SelectTemplate(templateDir, *templateCommand)
+		templateBody, err := os.ReadFile(*templateFile)
+		if err != nil {
+			return fmt.Errorf("failed to read template file: %w", err)
+		}
+		*templateFile = string(templateBody)
+	}
+	return nil
 }

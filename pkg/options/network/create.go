@@ -19,8 +19,14 @@ const (
 		"\n" + `  rosa create network rosa-quickstart-default-vpc --param Region=us-west-2` +
 		` --param Name=quickstart-stack --param AvailabilityZoneCount=1 --param VpcCidr=10.0.0.0/16` +
 		"\n\n" + `  # To delete the AWS cloudformation stack` +
-		"\n" + `  aws cloudformation delete-stack --stack-name <name> --region <region>`
-	defaultTemplateDir = "cmd/create/network/templates"
+		"\n" + `  aws cloudformation delete-stack --stack-name <name> --region <region>` +
+		"\n\n" + `# TEMPLATE_NAME:` +
+		"\n" + `Specifies the name of the template to use. This should match the name of a directory ` +
+		"\n" + `under the path specified by '--template-dir' or the 'OCM_TEMPLATE_DIR' environment variable.` +
+		"\n" + `The directory should contain a YAML file defining the custom template structure.` +
+		"\n\n" + `If no TEMPLATE_NAME is provided, or if no matching directory is found, the default ` +
+		"\n" + `built-in template 'rosa-quickstart-default-vpc' will be used.`
+	DefaultTemplateDir = "cmd/create/network/templates"
 )
 
 type NetworkUserOptions struct {
@@ -44,7 +50,7 @@ func NewNetworkUserOptions() *NetworkUserOptions {
 		}
 		options.TemplateDir = templateDir
 	} else {
-		options.TemplateDir = defaultTemplateDir
+		options.TemplateDir = DefaultTemplateDir
 	}
 
 	return options
@@ -79,14 +85,21 @@ func BuildNetworkCommandWithOptions() (*cobra.Command, *NetworkUserOptions) {
 		Args:    cobra.MaximumNArgs(1),
 		Hidden:  false,
 	}
+	var exportedTempDir string
+	if options.TemplateDir != "" {
+		exportedTempDir = options.TemplateDir
+	}
 
 	flags := cmd.Flags()
 	flags.StringVar(
 		&options.TemplateDir,
 		"template-dir",
-		options.TemplateDir,
+		"",
 		"Use a specific template directory, overriding the OCM_TEMPLATE_DIR environment variable.",
 	)
+	if exportedTempDir != "" {
+		options.TemplateDir = exportedTempDir
+	}
 	flags.StringArrayVar(
 		&options.Params,
 		"param",
