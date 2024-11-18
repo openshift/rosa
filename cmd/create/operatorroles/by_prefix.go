@@ -88,8 +88,8 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	operatorRolesPrefix := args.prefix
 	oidcEndpointUrl := oidcConfig.IssuerUrl()
 	installerRoleArn := args.installerRoleArn
-	sharedVpcRoleArn := args.vpcEndpointRoleArn
-	sharedVpcEndpointRoleArn := args.sharedVpcRoleArn
+	sharedVpcRoleArn := args.sharedVpcRoleArn
+	sharedVpcEndpointRoleArn := args.vpcEndpointRoleArn
 
 	validateArgumentsOperatorRolesCreationByPrefix(r, operatorRolesPrefix, oidcEndpointUrl, installerRoleArn)
 
@@ -214,7 +214,7 @@ func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 			defaultPolicyVersion, policies,
 			credRequests, managedPolicies,
 			path, operatorIAMRoleList,
-			oidcEndpointUrl, hostedCPPolicies, sharedVpcRoleArn)
+			oidcEndpointUrl, hostedCPPolicies, sharedVpcRoleArn, sharedVpcEndpointRoleArn)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: %s", err)
 			os.Exit(1)
@@ -312,13 +312,13 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			}
 			if isSharedVpc {
 				if credrequest == aws.IngressOperatorCloudCredentialsRoleType {
-					policyArn, err = attachHcpSharedVpcPolicy(r, sharedVpcRoleArn, roleName, operator,
+					policyArn, err = getHcpSharedVpcPolicy(r, sharedVpcRoleArn, roleName, operator,
 						path, defaultPolicyVersion)
 					if err != nil {
 						return err
 					}
 				} else if credrequest == aws.ControlPlaneCloudCredentialsRoleType {
-					policyArn, err = attachHcpSharedVpcPolicy(r, sharedVpcEndpointRoleArn, roleName,
+					policyArn, err = getHcpSharedVpcPolicy(r, sharedVpcEndpointRoleArn, roleName,
 						operator, path, defaultPolicyVersion)
 					if err != nil {
 						return err
@@ -408,7 +408,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
 	managedPolicies bool, path string,
 	operatorIAMRoleList []*cmv1.OperatorIAMRole,
-	oidcEndpointUrl string, hostedCPPolicies bool, sharedVpcRoleArn string) (string, error) {
+	oidcEndpointUrl string, hostedCPPolicies bool, sharedVpcRoleArn string, vpcEndpointRoleArn string) (string, error) {
 	if !managedPolicies {
 		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests, sharedVpcRoleArn, r.Creator.Partition)
 		if err != nil {
@@ -511,26 +511,31 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			AddParam(awscb.RoleName, roleName).
 			AddParam(awscb.PolicyArn, policyARN).
 			Build()
-		commands = append(commands, createRole, attachRolePolicy)
+
+		var attachSharedVpcRolePolicy string
+		var createPolicyCommand string
+
+		if isSharedVpc { // HCP Shared VPC policy attachment
+			var policyName string
+			if credrequest == aws.IngressOperatorCloudCredentialsRoleType {
+				createPolicyCommand, policyName = getHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn, roleName,
+					iamTags, path)
+			} else if credrequest == aws.ControlPlaneCloudCredentialsRoleType {
+				createPolicyCommand, policyName = getHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn, roleName,
+					iamTags, path)
+			}
+
+			if credrequest == aws.IngressOperatorCloudCredentialsRoleType ||
+				credrequest == aws.ControlPlaneCloudCredentialsRoleType {
+				arn := fmt.Sprintf("arn:%s:iam::%s:policy/%s", r.Creator.Partition, r.Creator.AccountID, policyName)
+				attachSharedVpcRolePolicy = awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.AttachRolePolicy).
+					AddParam(awscb.RoleName, roleName).
+					AddParam(awscb.PolicyArn, arn).
+					Build()
+			}
+		}
+		commands = append(commands, createRole, attachRolePolicy, createPolicyCommand, attachSharedVpcRolePolicy)
 	}
 	return awscb.JoinCommands(commands), nil
-}
-
-func attachHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, roleName string,
-	operator *cmv1.STSOperator, path string, defaultPolicyVersion string) (string, error) {
-	policyDetails := "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": {\n    \"Effect\": \"Allow\",\n    " +
-		"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": \"%{shared_vpc_role_arn}\"\n  }\n}\n"
-	policyDetails = aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
-		"shared_vpc_role_arn": roleArn,
-	})
-	policy := aws.GetOperatorPolicyARN(r.Creator.Partition, r.Creator.AccountID,
-		"rosa-assume-role-"+roleName, operator.Namespace(), operator.Name(), path)
-
-	var err error
-	policyArn, err := r.AWSClient.EnsurePolicy(policy, policyDetails, defaultPolicyVersion,
-		map[string]string{tags.RedHatManaged: helper.True}, path)
-	if err != nil {
-		return policyArn, err
-	}
-	return policyArn, nil
 }

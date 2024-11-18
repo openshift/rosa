@@ -129,6 +129,8 @@ const (
 	IngressOperatorCloudCredentialsRoleType = "ingress_operator_cloud_credentials"
 	ControlPlaneCloudCredentialsRoleType    = "control_plane_operator_credentials"
 
+	SharedVpcAssumeRolePrefix = "rosa-assume-role"
+
 	TrueString = "true"
 )
 
@@ -1064,7 +1066,7 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 	if err != nil {
 		return err
 	}
-	policies, _, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
+	policies, excludedPolicies, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
 	if err != nil {
 		return err
 	}
@@ -1088,6 +1090,14 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 	}
 	if !managedPolicies {
 		_, err = c.deletePolicies(policies)
+	} else {
+		var sharedVpcHcpPolicies []string
+		for _, policy := range excludedPolicies {
+			if strings.Contains(policy, SharedVpcAssumeRolePrefix) {
+				sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
+			}
+		}
+		_, err = c.deletePolicies(sharedVpcHcpPolicies)
 	}
 	return err
 }
