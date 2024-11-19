@@ -231,7 +231,8 @@ var _ = Describe("getZeroEgressStatus", func() {
 		}
 	})
 
-	It("Should include zero egress enabled in the output", func() {
+	// TODO: Temporarily disabled due to bug in CS
+	XIt("Should include zero egress enabled in the output", func() {
 		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
 		apiServer.AppendHandlers(
 			RespondWithJSON(
@@ -247,7 +248,8 @@ var _ = Describe("getZeroEgressStatus", func() {
 		expectedOutput := "Zero Egress:                Enabled\n"
 		Expect(output).To(Equal(expectedOutput))
 	})
-	It("Should include zero egress disabled in the output", func() {
+	// TODO: Temporarily disabled due to bug in CS
+	XIt("Should include zero egress disabled in the output", func() {
 		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
 		apiServer.AppendHandlers(
 			RespondWithJSON(
