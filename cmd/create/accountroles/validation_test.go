@@ -1,4 +1,4 @@
-package operatorroles
+package accountroles
 
 import (
 	"go.uber.org/mock/gomock"
@@ -9,7 +9,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 )
 
-var _ = Describe("Create dns domain", func() {
+var _ = Describe("Validate Shared VPC Inputs", func() {
 	var ctrl *gomock.Controller
 
 	BeforeEach(func() {
@@ -41,7 +41,7 @@ var _ = Describe("Create dns domain", func() {
 				Expect(usingSharedVpc).To(BeFalse())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(arguments.MustUseBothFlagsErrorMessage,
-					hostedZoneRoleArnFlag,
+					route53RoleArnFlag,
 					vpcEndpointRoleArnFlag,
 				))
 			})
@@ -51,7 +51,7 @@ var _ = Describe("Create dns domain", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(arguments.MustUseBothFlagsErrorMessage,
 					vpcEndpointRoleArnFlag,
-					hostedZoneRoleArnFlag,
+					route53RoleArnFlag,
 				))
 			})
 		})

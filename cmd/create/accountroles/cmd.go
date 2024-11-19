@@ -32,6 +32,11 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const (
+	route53RoleArnFlag     = "route53-role-arn"
+	vpcEndpointRoleArnFlag = "vpc-endpoint-role-arn"
+)
+
 var args struct {
 	prefix              string
 	permissionsBoundary string
@@ -42,6 +47,8 @@ var args struct {
 	forcePolicyCreation bool
 	hostedCP            bool
 	classic             bool
+	route53RoleArn      string
+	vpcEndpointRoleArn  string
 }
 
 var Cmd = &cobra.Command{
@@ -133,6 +140,22 @@ func init() {
 		"Create only classic Rosa account roles",
 	)
 
+	flags.StringVar(
+		&args.route53RoleArn,
+		route53RoleArnFlag,
+		"",
+		"Role ARN associated with the private hosted zone used for Hosted Control Plane cluster shared VPC, this "+
+			"role contains policies to be used with Route 53",
+	)
+
+	flags.StringVar(
+		&args.vpcEndpointRoleArn,
+		vpcEndpointRoleArnFlag,
+		"",
+		"Role ARN associated with the shared VPC used for Hosted Control Plane clusters, this role contains "+
+			"policies to be used with the VPC endpoint",
+	)
+
 	interactive.AddModeFlag(Cmd)
 
 	confirm.AddFlag(flags)
@@ -143,6 +166,16 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS()
 
 	mode, err := interactive.GetMode()
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if !cmd.Flag("hosted-cp").Changed {
+		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
+		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+	}
+	isHcpSharedVpc, err := validateSharedVpcInputs(args.hostedCP, args.vpcEndpointRoleArn, args.route53RoleArn)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -383,7 +416,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
-		policyVersion, path)
+		policyVersion, path, isHcpSharedVpc)
 
 	switch mode {
 	case interactive.ModeAuto:

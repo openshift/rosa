@@ -130,6 +130,8 @@ const (
 	ControlPlaneCloudCredentialsRoleType    = "control_plane_operator_credentials"
 
 	SharedVpcAssumeRolePrefix = "rosa-assume-role"
+	SharedVpcDefaultPolicy    = "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": {\n    \"Effect\": \"Allow\",\n    " +
+		"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": [\n    \"%{shared_vpc_role_arn}\"\n    ]\n  }\n}\n"
 
 	TrueString = "true"
 )
@@ -315,21 +317,26 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 
 func (c *awsClient) ForceEnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string, path string) (string, error) {
-	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, true)
+	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, true, "")
 }
 
 func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string, path string) (string, error) {
-	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false)
+	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false, "")
+}
+
+func (c *awsClient) EnsurePolicyWithName(policyArn string, document string,
+	version string, tagList map[string]string, path string, policyName string) (string, error) {
+	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false, policyName)
 }
 
 func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
-	version string, tagList map[string]string, path string, force bool) (string, error) {
+	version string, tagList map[string]string, path string, force bool, policyName string) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		var policyArnLocal string
 		if awserr.IsNoSuchEntityException(err) {
-			policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path)
+			policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path, policyName)
 			if err != nil {
 				if awserr.IsEntityAlreadyExistsException(err) {
 					return "", errors.Wrapf(err, "Failed to create a policy with ARN '%s'", policyArn)
@@ -397,8 +404,11 @@ func (c *awsClient) IsRolePolicyExists(roleName string, policyName string) (*iam
 }
 
 func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string,
-	path string) (string, error) {
-	policyName, err := GetResourceIdFromARN(policyArn)
+	path string, policyName string) (string, error) {
+	var err error
+	if policyName == "" {
+		policyName, err = GetResourceIdFromARN(policyArn)
+	}
 	if err != nil {
 		return "", err
 	}

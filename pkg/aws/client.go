@@ -74,6 +74,8 @@ const (
 	AdminUserName        = "osdCcsAdmin"
 	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
 
+	AssumeRolePolicyPrefix = "%s-assume-role"
+
 	// Since CloudFormation stacks are region-dependent, we hard-code OCM's default region and
 	// then use it to ensure that the user always gets the stack from the same region.
 	DefaultRegion = "us-east-1"
@@ -127,6 +129,8 @@ type Client interface {
 		path string) (string, error)
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string,
 		path string) (string, error)
+	EnsurePolicyWithName(policyArn string, document string, version string, tagList map[string]string,
+		path string, policyName string) (string, error)
 	AttachRolePolicy(reporter *reporter.Object, roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
 	DeleteOpenIDConnectProvider(providerURL string) error

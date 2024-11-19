@@ -273,14 +273,6 @@ func LabelValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
-func HostedClusterOnlyFlag(r *rosa.Runtime, cmd *cobra.Command, flagName string) {
-	isFlagSet := cmd.Flags().Changed(flagName)
-	if isFlagSet {
-		r.Reporter.Errorf("Setting the `%s` flag is only supported for hosted clusters", flagName)
-		os.Exit(1)
-	}
-}
-
 func CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod string) (*cmv1.ValueBuilder, error) {
 	valueBuilder := cmv1.NewValue()
 	if nodeDrainGracePeriod == "" {
