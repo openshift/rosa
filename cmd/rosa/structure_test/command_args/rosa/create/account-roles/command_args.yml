@@ -13,3 +13,5 @@
 - name: region
 - name: version
 - name: "yes"
+- name: route53-role-arn
+- name: vpc-endpoint-role-arn

@@ -162,6 +162,8 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+
 	// Allow the command to be called programmatically
 	isProgmaticallyCalled := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {

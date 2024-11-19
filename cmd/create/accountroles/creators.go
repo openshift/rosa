@@ -60,11 +60,12 @@ type accountRolesCreationInput struct {
 	policies             map[string]*cmv1.AWSSTSPolicy
 	defaultPolicyVersion string
 	path                 string
+	isSharedVpc          bool
 }
 
 func buildRolesCreationInput(prefix, permissionsBoundary, accountID, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, defaultPolicyVersion string,
-	path string) *accountRolesCreationInput {
+	path string, isSharedVpc bool) *accountRolesCreationInput {
 	return &accountRolesCreationInput{
 		prefix:               prefix,
 		permissionsBoundary:  permissionsBoundary,
@@ -73,6 +74,7 @@ func buildRolesCreationInput(prefix, permissionsBoundary, accountID, env string,
 		policies:             policies,
 		defaultPolicyVersion: defaultPolicyVersion,
 		path:                 path,
+		isSharedVpc:          isSharedVpc,
 	}
 }
 
@@ -322,6 +324,21 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 		}
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
 
+		if role == aws.HCPAccountRoles[aws.HCPInstallerRole] {
+			if input.isSharedVpc {
+				err := attachHcpSharedVpcPolicy(r, args.route53RoleArn, accRoleName,
+					input.path, input.defaultPolicyVersion)
+				if err != nil {
+					return err
+				}
+				err = attachHcpSharedVpcPolicy(r, args.vpcEndpointRoleArn, accRoleName,
+					input.path, input.defaultPolicyVersion)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		policyKeys := aws.GetHcpAccountRolePolicyKeys(file)
 		for _, policyKey := range policyKeys {
 			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
@@ -433,4 +450,32 @@ func buildAttachRolePolicyCommand(accRoleName string, policyARN string) string {
 		AddParam(awscb.RoleName, accRoleName).
 		AddParam(awscb.PolicyArn, policyARN).
 		Build()
+}
+
+func attachHcpSharedVpcPolicy(r *rosa.Runtime, sharedVpcRoleArn string, roleName string,
+	path string, defaultPolicyVersion string) error {
+	policyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, aws.SharedVpcDefaultPolicy, map[string]string{
+		"shared_vpc_role_arn": sharedVpcRoleArn,
+	})
+
+	policyTags := map[string]string{
+		tags.RedHatManaged: aws.TrueString,
+	}
+
+	userProvidedRoleName, err := aws.GetResourceIdFromARN(sharedVpcRoleArn)
+	if err != nil {
+		return err
+	}
+	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
+	policyArn := aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, path)
+	policyArn, err = r.AWSClient.EnsurePolicyWithName(policyArn, policyDetails,
+		defaultPolicyVersion, policyTags, path, policyName)
+	if err != nil {
+		return err
+	}
+	err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyArn)
+	if err != nil {
+		return err
+	}
+	return nil
 }

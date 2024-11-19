@@ -5,7 +5,6 @@
 //
 //	mockgen -source=machinepool.go -package=machinepool -destination=machinepool_mock.go
 //
-
 // Package machinepool is a generated GoMock package.
 package machinepool
 

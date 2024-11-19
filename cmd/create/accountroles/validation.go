@@ -1,4 +1,4 @@
-package operatorroles
+package accountroles
 
 import (
 	errors "github.com/zgalor/weberr"
@@ -8,12 +8,11 @@ import (
 
 func validateSharedVpcInputs(hostedCp bool, vpcEndpointRoleArn string,
 	route53RoleArn string) (bool, error) {
-
 	if hostedCp {
 		if vpcEndpointRoleArn != "" && route53RoleArn == "" {
 			return false, errors.UserErrorf(
 				arguments.MustUseBothFlagsErrorMessage,
-				hostedZoneRoleArnFlag,
+				route53RoleArnFlag,
 				vpcEndpointRoleArnFlag,
 			)
 		}
@@ -22,7 +21,7 @@ func validateSharedVpcInputs(hostedCp bool, vpcEndpointRoleArn string,
 			return false, errors.UserErrorf(
 				arguments.MustUseBothFlagsErrorMessage,
 				vpcEndpointRoleArnFlag,
-				hostedZoneRoleArnFlag,
+				route53RoleArnFlag,
 			)
 		}
 	}
