@@ -22,6 +22,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/output"
@@ -29,7 +30,8 @@ import (
 )
 
 var args struct {
-	all bool
+	all      bool
+	hostedCp bool
 }
 
 var Cmd = &cobra.Command{
@@ -54,6 +56,13 @@ func init() {
 		"List all DNS domains (default lists just user defined).",
 	)
 
+	flags.BoolVar(
+		&args.hostedCp,
+		"hosted-cp",
+		false,
+		"Filter to list only DNS Domains used for Hosted Control Plane clusters",
+	)
+
 	output.AddFlag(Cmd)
 }
 
@@ -70,6 +79,10 @@ func run(_ *cobra.Command, _ []string) {
 	if err != nil {
 		r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
 		os.Exit(1)
+	}
+
+	if args.hostedCp {
+		dnsDomains = filterByClusterArch(dnsDomains, v1.ClusterArchitectureHcp)
 	}
 
 	if output.HasFlag() {
@@ -89,18 +102,29 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\n")
+	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\tARCHITECTURE\n")
 	for _, dnsdomain := range dnsDomains {
-		userDefind := "No"
+		userDefined := "No"
 		if dnsdomain.UserDefined() {
-			userDefind = "Yes"
+			userDefined = "Yes"
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
 			dnsdomain.ID(),
 			dnsdomain.Cluster().ID(),
 			dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
-			userDefind,
+			userDefined,
+			dnsdomain.ClusterArch(),
 		)
 	}
 	writer.Flush()
+}
+
+func filterByClusterArch(domains []*v1.DNSDomain, arch v1.ClusterArchitecture) []*v1.DNSDomain {
+	finalDomains := make([]*v1.DNSDomain, 0)
+	for _, domain := range domains {
+		if domain.ClusterArch() == arch {
+			finalDomains = append(finalDomains, domain)
+		}
+	}
+	return finalDomains
 }
