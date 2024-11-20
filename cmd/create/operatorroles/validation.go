@@ -25,6 +25,8 @@ func validateSharedVpcInputs(hostedCp bool, vpcEndpointRoleArn string,
 				hostedZoneRoleArnFlag,
 			)
 		}
+	} else {
+		return false, nil
 	}
 
 	return hostedCp && vpcEndpointRoleArn != "" && route53RoleArn != "", nil
