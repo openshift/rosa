@@ -376,7 +376,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 			return "", err
 		}
 	} else {
-		policyARN = aws.GetPolicyARN(creator.Partition, creator.AccountID, roleName, rolePath)
+		policyARN = aws.GetPolicyArnWithSuffix(creator.Partition, creator.AccountID, roleName, rolePath)
 	}
 	attachRolePolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.AttachRolePolicy).
@@ -448,7 +448,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 			return "", err
 		}
 	} else {
-		policyARN = aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
+		policyARN = aws.GetPolicyArnWithSuffix(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
 	}
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)

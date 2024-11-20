@@ -291,7 +291,7 @@ func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, pr
 			continue
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
-		policyARN := aws.GetPolicyARN(partition, accountID, roleName, policyPath)
+		policyARN := aws.GetPolicyArnWithSuffix(partition, accountID, roleName, policyPath)
 
 		policyDetails := aws.GetPolicyDetails(policies, filename)
 		policyARN, err := awsClient.EnsurePolicy(policyARN, policyDetails,
@@ -333,7 +333,7 @@ func buildCommands(prefix string, partition string, accountID string, isUpgradeN
 	if isUpgradeNeedForAccountRolePolicies {
 		for file, role := range aws.AccountRoles {
 			accRoleName := common.GetRoleName(prefix, role.Name)
-			policyARN := aws.GetPolicyARN(partition, accountID, accRoleName, policyPath)
+			policyARN := aws.GetPolicyArnWithSuffix(partition, accountID, accRoleName, policyPath)
 			_, err := awsClient.IsPolicyExists(policyARN)
 			policyExists := err == nil
 			policyName := aws.GetPolicyName(accRoleName)

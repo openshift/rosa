@@ -304,6 +304,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 		}
 
 		var policyArn string
+		var policyArns []string
 		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
 		if managedPolicies {
 			policyArn, err = aws.GetManagedPolicyARN(policies, filename)
@@ -312,16 +313,19 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			}
 			if isSharedVpc {
 				if credrequest == aws.IngressOperatorCloudCredentialsRoleType {
-					policyArn, err = getHcpSharedVpcPolicy(r, sharedVpcRoleArn, roleName, operator,
-						path, defaultPolicyVersion)
+					sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, sharedVpcRoleArn, roleName, defaultPolicyVersion)
 					if err != nil {
 						return err
 					}
+					policyArns = append(policyArns, sharedVpcPolicyArn)
 				} else if credrequest == aws.ControlPlaneCloudCredentialsRoleType {
-					policyArn, err = getHcpSharedVpcPolicy(r, sharedVpcEndpointRoleArn, roleName,
-						operator, path, defaultPolicyVersion)
-					if err != nil {
-						return err
+					for _, arn := range []string{sharedVpcEndpointRoleArn, sharedVpcRoleArn} {
+						sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, arn, path,
+							defaultPolicyVersion)
+						if err != nil {
+							return err
+						}
+						policyArns = append(policyArns, sharedVpcPolicyArn)
 					}
 				}
 			}
@@ -363,6 +367,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 				}
 			}
 		}
+		policyArns = append(policyArns, policyArn)
 
 		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
 		policy, err := aws.GenerateOperatorRolePolicyDocByOidcEndpointUrl(r.Creator.Partition, oidcEndpointUrl,
@@ -393,10 +398,12 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 		}
 
-		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyArn, roleName)
-		err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyArn)
-		if err != nil {
-			return err
+		for _, arn := range policyArns {
+			r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", arn, roleName)
+			err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, arn)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

@@ -44,7 +44,7 @@ var args struct {
 
 var Cmd = &cobra.Command{
 	Use:     "operator-roles",
-	Aliases: []string{"operatorrole"},
+	Aliases: []string{"operatorrole", "operatorroles"},
 	Short:   "Delete Operator Roles",
 	Long:    "Cleans up operator roles of deleted STS cluster.",
 	Example: `  # Delete Operator roles for cluster named "mycluster"

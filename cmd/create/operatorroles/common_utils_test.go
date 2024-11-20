@@ -8,7 +8,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -25,7 +24,6 @@ var _ = Describe("Create dns domain", func() {
 	var testRoleName = "test"
 	var testIamTags = map[string]string{tags.RedHatManaged: aws.TrueString}
 	var testPath = "/path"
-	var testOperator *cmv1.STSOperator
 	var testVersion = "2012-10-17"
 	var mockClient *aws.MockClient
 
@@ -36,10 +34,6 @@ var _ = Describe("Create dns domain", func() {
 		mockClient = aws.NewMockClient(ctrl)
 		runtime.AWSClient = mockClient
 		mockClient.EXPECT().GetCreator().Return(&aws.Creator{Partition: testPartition}, nil)
-
-		var err error
-		testOperator, err = cmv1.NewSTSOperator().Namespace("test").Namespace("test-namespace").Build()
-		Expect(err).ToNot(HaveOccurred())
 
 		creator, err := runtime.AWSClient.GetCreator()
 		Expect(err).ToNot(HaveOccurred())
@@ -63,14 +57,14 @@ var _ = Describe("Create dns domain", func() {
 				returnedArn := "arn:aws:iam::123123123123:policy/test"
 				mockClient.EXPECT().EnsurePolicy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 					gomock.Any()).Return(returnedArn, nil)
-				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testRoleName, testOperator, testPath, testVersion)
+				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testPath, testVersion)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(arn).To(Equal(returnedArn))
 			})
 			It("KO: Returns empty policy when fails", func() {
 				mockClient.EXPECT().EnsurePolicy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 					gomock.Any()).Return("", errors.UserErrorf("Failed"))
-				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testRoleName, testOperator, testPath, testVersion)
+				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testPath, testVersion)
 				Expect(err).To(HaveOccurred())
 				Expect(arn).To(Equal(""))
 			})

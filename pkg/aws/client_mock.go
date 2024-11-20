@@ -376,21 +376,6 @@ func (mr *MockClientMockRecorder) EnsurePolicy(policyArn, document, version, tag
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsurePolicy", reflect.TypeOf((*MockClient)(nil).EnsurePolicy), policyArn, document, version, tagList, path)
 }
 
-// EnsurePolicyWithName mocks base method.
-func (m *MockClient) EnsurePolicyWithName(policyArn, document, version string, tagList map[string]string, path, policyName string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnsurePolicyWithName", policyArn, document, version, tagList, path, policyName)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// EnsurePolicyWithName indicates an expected call of EnsurePolicyWithName.
-func (mr *MockClientMockRecorder) EnsurePolicyWithName(policyArn, document, version, tagList, path, policyName any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsurePolicyWithName", reflect.TypeOf((*MockClient)(nil).EnsurePolicyWithName), policyArn, document, version, tagList, path, policyName)
-}
-
 // EnsureRole mocks base method.
 func (m *MockClient) EnsureRole(reporter *reporter.Object, name, policy, permissionsBoundary, version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
 	m.ctrl.T.Helper()

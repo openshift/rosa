@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -25,6 +24,9 @@ const policyDocumentBody = ` \
     "Resource": "%{shared_vpc_role_arn}"
   }
 }'`
+
+const policyDetails = "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": {\n    \"Effect\": \"Allow\",\n    " +
+	"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": \"%{shared_vpc_role_arn}\"\n  }\n}\n"
 
 func computePolicyARN(creator aws.Creator,
 	prefix string, namespace string, name string, path string) string {
@@ -75,18 +77,19 @@ func validateIngressOperatorPolicyOverride(r *rosa.Runtime, policyArn string, sh
 	return nil
 }
 
-func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, roleName string,
-	operator *cmv1.STSOperator, path string, defaultPolicyVersion string) (string, error) {
-	policyDetails := "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": {\n    \"Effect\": \"Allow\",\n    " +
-		"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": \"%{shared_vpc_role_arn}\"\n  }\n}\n"
-	policyDetails = aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
+func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, path string, defaultPolicyVersion string) (string, error) {
+
+	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
 		"shared_vpc_role_arn": roleArn,
 	})
-	policy := aws.GetOperatorPolicyARN(r.Creator.Partition, r.Creator.AccountID,
-		aws.SharedVpcAssumeRolePrefix+"-"+roleName, operator.Namespace(), operator.Name(), path)
+	userProvidedRoleName, err := aws.GetResourceIdFromARN(roleArn)
+	if err != nil {
+		return "", err
+	}
+	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
+	policy := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
 
-	var err error
-	policyArn, err := r.AWSClient.EnsurePolicy(policy, policyDetails, defaultPolicyVersion,
+	policyArn, err := r.AWSClient.EnsurePolicy(policy, interpolatedPolicyDetails, defaultPolicyVersion,
 		map[string]string{tags.RedHatManaged: helper.True}, path)
 	if err != nil {
 		return policyArn, err
@@ -96,16 +99,17 @@ func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, roleName string,
 
 func getHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, roleName string, iamTags map[string]string,
 	path string) (string, string) {
-	policyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDocumentBody, map[string]string{
-		"shared_vpc_role_arn": roleArn,
-	})
+	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDocumentBody,
+		map[string]string{
+			"shared_vpc_role_arn": roleArn,
+		})
 
 	policyName := aws.SharedVpcAssumeRolePrefix + "-" + roleName
 
 	createPolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.CreatePolicy).
 		AddParam(awscb.PolicyName, policyName).
-		AddParam(awscb.PolicyDocument, policyDetails).
+		AddParam(awscb.PolicyDocument, interpolatedPolicyDetails).
 		AddTags(iamTags).
 		AddParam(awscb.Path, path).
 		Build()

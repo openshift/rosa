@@ -529,7 +529,7 @@ func handleAccountRolePolicyARN(
 
 	attachedPoliciesDetail := aws.FindAllAttachedPolicyDetails(policiesDetails)
 
-	generatedPolicyARN := aws.GetPolicyARN(partition, accountID, roleName, rolePath)
+	generatedPolicyARN := aws.GetPolicyArnWithSuffix(partition, accountID, roleName, rolePath)
 	if len(attachedPoliciesDetail) == 0 {
 		return generatedPolicyARN, nil
 	}

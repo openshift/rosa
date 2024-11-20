@@ -325,11 +325,6 @@ func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false, "")
 }
 
-func (c *awsClient) EnsurePolicyWithName(policyArn string, document string,
-	version string, tagList map[string]string, path string, policyName string) (string, error) {
-	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false, policyName)
-}
-
 func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
 	version string, tagList map[string]string, path string, force bool, policyName string) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
