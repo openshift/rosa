@@ -201,7 +201,7 @@ func (up *unmanagedPoliciesCreator) printCommands(r *rosa.Runtime, input *accoun
 
 		createPolicy := buildCreatePolicyCommand(policyName, policyDocument, iamTags, input.path)
 
-		policyARN := aws.GetPolicyARN(r.Creator.Partition, input.accountID, accRoleName, input.path)
+		policyARN := aws.GetPolicyArnWithSuffix(r.Creator.Partition, input.accountID, accRoleName, input.path)
 
 		attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
 
@@ -279,7 +279,7 @@ func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput
 
 	policyPermissionDetail := aws.GetPolicyDetails(input.policies, filename)
 
-	policyARN := aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, accRoleName, input.path)
+	policyARN := aws.GetPolicyArnWithSuffix(r.Creator.Partition, r.Creator.AccountID, accRoleName, input.path)
 
 	r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
 	if args.forcePolicyCreation {
@@ -467,9 +467,9 @@ func attachHcpSharedVpcPolicy(r *rosa.Runtime, sharedVpcRoleArn string, roleName
 		return err
 	}
 	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
-	policyArn := aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, path)
-	policyArn, err = r.AWSClient.EnsurePolicyWithName(policyArn, policyDetails,
-		defaultPolicyVersion, policyTags, path, policyName)
+	policyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, path)
+	policyArn, err = r.AWSClient.EnsurePolicy(policyArn, policyDetails,
+		defaultPolicyVersion, policyTags, path)
 	if err != nil {
 		return err
 	}

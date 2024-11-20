@@ -85,8 +85,8 @@ var _ = Describe("Accountroles", Ordered, func() {
 			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(6)
 			mockClient.EXPECT().EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any(), gomock.Any()).Return("arn::role:role-123", nil).AnyTimes()
-			mockClient.EXPECT().EnsurePolicyWithName(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
-				gomock.Any(), gomock.Any()).Return("arn::policy:123", nil).Times(2)
+			mockClient.EXPECT().EnsurePolicy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+				gomock.Any()).Return("arn::policy:123", nil).Times(2)
 
 			r := rosa.NewRuntime()
 			r.AWSClient = mockClient

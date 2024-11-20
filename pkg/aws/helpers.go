@@ -451,8 +451,12 @@ func GetAdminPolicyARN(partition string, accountID string, name string, path str
 	return getPolicyARN(partition, accountID, GetAdminPolicyName(name), path)
 }
 
-func GetPolicyARN(partition string, accountID string, name string, path string) string {
+func GetPolicyArnWithSuffix(partition string, accountID string, name string, path string) string {
 	return getPolicyARN(partition, accountID, GetPolicyName(name), path)
+}
+
+func GetPolicyArn(partition string, accountID string, name string, path string) string {
+	return getPolicyARN(partition, accountID, name, path)
 }
 
 func getPolicyARN(partition string, accountID string, name string, path string) string {
