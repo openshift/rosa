@@ -184,6 +184,21 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if args.vpcEndpointRoleArn != "" {
+		err = aws.ARNValidator(args.vpcEndpointRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", vpcEndpointRoleArnFlag, err)
+			os.Exit(1)
+		}
+	}
+	if args.sharedVpcRoleArn != "" {
+		err = aws.ARNValidator(args.sharedVpcRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", hostedZoneRoleArnFlag, err)
+			os.Exit(1)
+		}
+	}
+
 	env, err := ocm.GetEnv()
 	if err != nil {
 		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
