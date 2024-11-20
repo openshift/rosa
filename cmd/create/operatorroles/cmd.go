@@ -138,16 +138,16 @@ func init() {
 		vpcEndpointRoleArnFlag,
 		"",
 		"AWS IAM Role ARN with policy attached, associated with the shared VPC."+
-			" Grants permissions necessary to communicate with and handle a cross-account VPC. "+
-			"This flag deprecates '--shared-vpc-role-arn'.",
+			" Grants permissions necessary to communicate with and handle a cross-account VPC.",
 	)
 
 	flags.StringVar(
 		&args.sharedVpcRoleArn,
 		hostedZoneRoleArnFlag,
 		"",
-		"AWS IAM Role Arn with policy attached, associated with the shared VPC used for Hosted Control Plane clusters."+
-			" Grants permission necessary to handle route53 operations associated with a cross-acount VPC.",
+		"AWS IAM Role Arn with policy attached, associated with shared VPC."+
+			" Grants permission necessary to handle route53 operations associated with a cross-account VPC. "+
+			"This flag deprecates '--shared-vpc-role-arn'.",
 	)
 
 	flags.MarkDeprecated("shared-vpc-role-arn", fmt.Sprintf("'--shared-vpc-role-arn' will be replaced with %s "+
