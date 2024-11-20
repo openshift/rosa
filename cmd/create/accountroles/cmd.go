@@ -181,6 +181,21 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if args.vpcEndpointRoleArn != "" {
+		err = aws.ARNValidator(args.vpcEndpointRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", vpcEndpointRoleArnFlag, err)
+			os.Exit(1)
+		}
+	}
+	if args.route53RoleArn != "" {
+		err = aws.ARNValidator(args.route53RoleArn)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", route53RoleArnFlag, err)
+			os.Exit(1)
+		}
+	}
+
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing
 	// longer checks.
