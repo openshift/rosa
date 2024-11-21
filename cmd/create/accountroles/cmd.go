@@ -421,8 +421,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !createHostedCP {
-		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
 		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
 	}
 
 	rolesCreator, createRoles := initCreator(r, managedPolicies, createClassic, createHostedCP,
