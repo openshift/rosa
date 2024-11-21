@@ -57,14 +57,14 @@ var _ = Describe("Create dns domain", func() {
 				returnedArn := "arn:aws:iam::123123123123:policy/test"
 				mockClient.EXPECT().EnsurePolicy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 					gomock.Any()).Return(returnedArn, nil)
-				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testPath, testVersion)
+				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testVersion)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(arn).To(Equal(returnedArn))
 			})
 			It("KO: Returns empty policy when fails", func() {
 				mockClient.EXPECT().EnsurePolicy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 					gomock.Any()).Return("", errors.UserErrorf("Failed"))
-				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testPath, testVersion)
+				arn, err := getHcpSharedVpcPolicy(runtime, testArn, testVersion)
 				Expect(err).To(HaveOccurred())
 				Expect(arn).To(Equal(""))
 			})

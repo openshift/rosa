@@ -326,13 +326,11 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 
 		if role == aws.HCPAccountRoles[aws.HCPInstallerRole] {
 			if input.isSharedVpc {
-				err := attachHcpSharedVpcPolicy(r, args.route53RoleArn, accRoleName,
-					input.path, input.defaultPolicyVersion)
+				err := attachHcpSharedVpcPolicy(r, args.route53RoleArn, accRoleName, input.defaultPolicyVersion)
 				if err != nil {
 					return err
 				}
-				err = attachHcpSharedVpcPolicy(r, args.vpcEndpointRoleArn, accRoleName,
-					input.path, input.defaultPolicyVersion)
+				err = attachHcpSharedVpcPolicy(r, args.vpcEndpointRoleArn, accRoleName, input.defaultPolicyVersion)
 				if err != nil {
 					return err
 				}
@@ -453,10 +451,15 @@ func buildAttachRolePolicyCommand(accRoleName string, policyARN string) string {
 }
 
 func attachHcpSharedVpcPolicy(r *rosa.Runtime, sharedVpcRoleArn string, roleName string,
-	path string, defaultPolicyVersion string) error {
+	defaultPolicyVersion string) error {
 	policyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, aws.SharedVpcDefaultPolicy, map[string]string{
 		"shared_vpc_role_arn": sharedVpcRoleArn,
 	})
+
+	path, err := aws.GetPathFromARN(sharedVpcRoleArn)
+	if err != nil {
+		return err
+	}
 
 	policyTags := map[string]string{
 		tags.RedHatManaged: aws.TrueString,
