@@ -313,14 +313,14 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			}
 			if isSharedVpc {
 				if credrequest == aws.IngressOperatorCloudCredentialsRoleType {
-					sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, sharedVpcRoleArn, roleName, defaultPolicyVersion)
+					sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, sharedVpcRoleArn, defaultPolicyVersion)
 					if err != nil {
 						return err
 					}
 					policyArns = append(policyArns, sharedVpcPolicyArn)
 				} else if credrequest == aws.ControlPlaneCloudCredentialsRoleType {
 					for _, arn := range []string{sharedVpcEndpointRoleArn, sharedVpcRoleArn} {
-						sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, arn, path,
+						sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, arn,
 							defaultPolicyVersion)
 						if err != nil {
 							return err

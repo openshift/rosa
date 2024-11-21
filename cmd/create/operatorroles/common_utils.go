@@ -77,7 +77,7 @@ func validateIngressOperatorPolicyOverride(r *rosa.Runtime, policyArn string, sh
 	return nil
 }
 
-func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, path string, defaultPolicyVersion string) (string, error) {
+func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, defaultPolicyVersion string) (string, error) {
 
 	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
 		"shared_vpc_role_arn": roleArn,
@@ -88,6 +88,11 @@ func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, path string, default
 	}
 	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
 	policy := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
+
+	path, err := aws.GetPathFromARN(roleArn)
+	if err != nil {
+		return "", err
+	}
 
 	policyArn, err := r.AWSClient.EnsurePolicy(policy, interpolatedPolicyDetails, defaultPolicyVersion,
 		map[string]string{tags.RedHatManaged: helper.True}, path)
