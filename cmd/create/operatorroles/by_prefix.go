@@ -291,7 +291,9 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 	managedPolicies bool, path string,
 	operatorIAMRoleList []*cmv1.OperatorIAMRole,
 	oidcEndpointUrl string, hostedCPPolicies bool, sharedVpcRoleArn string, sharedVpcEndpointRoleArn string,
-	isSharedVpc bool) error {
+	isHcpSharedVpc bool) error {
+
+	isSharedVpc := sharedVpcRoleArn != ""
 
 	for credrequest, operator := range credRequests {
 		roleArn := aws.FindOperatorRoleBySTSOperator(operatorIAMRoleList, operator)
@@ -311,7 +313,7 @@ func createRolesByPrefix(r *rosa.Runtime, prefix string, permissionsBoundary str
 			if err != nil {
 				return err
 			}
-			if isSharedVpc {
+			if isHcpSharedVpc {
 				if credrequest == aws.IngressOperatorCloudCredentialsRoleType {
 					sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, sharedVpcRoleArn, roleName, defaultPolicyVersion)
 					if err != nil {

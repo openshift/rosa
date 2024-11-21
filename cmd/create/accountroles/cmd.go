@@ -423,6 +423,12 @@ func run(cmd *cobra.Command, argv []string) {
 	if !createHostedCP {
 		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
 		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+	} else {
+		isHcpSharedVpc, err = validateSharedVpcInputs(args.hostedCP, args.vpcEndpointRoleArn, args.route53RoleArn)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
 
 	rolesCreator, createRoles := initCreator(r, managedPolicies, createClassic, createHostedCP,
