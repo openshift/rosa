@@ -420,7 +420,7 @@ func run(cmd *cobra.Command, argv []string) {
 		isHostedCPValueSet = true
 	}
 
-	if !createHostedCP {
+	if !createHostedCP && !cmd.Flag(interactive.Mode).Changed {
 		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
 		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
 	} else {
