@@ -111,7 +111,7 @@ func Load() (cfg *Config, err error) {
 }
 
 func IsNotValid(cfg *Config) bool {
-	return cfg.ClientID == "" || cfg.AccessToken == "" || cfg.RefreshToken == "" ||
+	return cfg.ClientID == "" || cfg.AccessToken == "" ||
 		cfg.URL == "" || cfg.TokenURL == ""
 }
 
