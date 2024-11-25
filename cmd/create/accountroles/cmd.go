@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -171,10 +172,17 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	isHcpSharedVpc, err := validateSharedVpcInputs(args.hostedCP, args.vpcEndpointRoleArn, args.route53RoleArn)
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+	var isHcpSharedVpc bool
+	if args.classic && !args.hostedCP {
+		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
+		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+	} else {
+		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.route53RoleArn,
+			vpcEndpointRoleArnFlag, route53RoleArnFlag)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
 
 	if args.vpcEndpointRoleArn != "" {
@@ -424,7 +432,17 @@ func run(cmd *cobra.Command, argv []string) {
 		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
 		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
 	} else {
-		isHcpSharedVpc, err = validateSharedVpcInputs(args.hostedCP, args.vpcEndpointRoleArn, args.route53RoleArn)
+		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.route53RoleArn,
+			vpcEndpointRoleArnFlag, route53RoleArnFlag)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
+	if cmd.Flag(interactive.Mode).Value.String() == interactive.ModeManual && !args.classic {
+		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.route53RoleArn,
+			vpcEndpointRoleArnFlag, route53RoleArnFlag)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)

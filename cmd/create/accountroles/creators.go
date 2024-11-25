@@ -384,6 +384,25 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 				return err
 			}
 
+			isHcpInstallerRole := role.Name == aws.HCPAccountRoles[aws.HCPInstallerRole].Name
+
+			if isHcpInstallerRole && input.isSharedVpc { // HCP shared VPC (Installer role policies)
+				for _, arn := range []string{args.route53RoleArn, args.vpcEndpointRoleArn} {
+					userProvidedRoleName, err := aws.GetResourceIdFromARN(arn)
+					if err != nil {
+						return err
+					}
+					policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
+					path, err := aws.GetPathFromARN(arn)
+					if err != nil {
+						return err
+					}
+					policyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, path)
+					attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyArn)
+					commands = append(commands, attachRolePolicy)
+				}
+			}
+
 			attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
 			commands = append(commands, attachRolePolicy)
 		}
