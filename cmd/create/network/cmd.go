@@ -145,7 +145,7 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		switch mode {
 		case interactive.ModeManual:
 			r.Reporter.Infof(helper.ManualModeHelperMessage(parsedParams, templateFile, parsedTags))
-			r.OCMClient.LogEvent("RosaNetworkStackManual",
+			r.OCMClient.LogEvent("ROSANetworkStackManual",
 				map[string]string{
 					ocm.Account:      r.Creator.AccountID,
 					ocm.Organization: orgID,
@@ -154,7 +154,7 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 			)
 			return nil
 		default:
-			r.OCMClient.LogEvent("RosaNetworkStack",
+			r.OCMClient.LogEvent("ROSANetworkStack",
 				map[string]string{
 					ocm.Account:      r.Creator.AccountID,
 					ocm.Organization: orgID,
