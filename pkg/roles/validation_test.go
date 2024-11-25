@@ -1,4 +1,4 @@
-package operatorroles
+package roles
 
 import (
 	"go.uber.org/mock/gomock"
@@ -9,8 +9,11 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 )
 
-var _ = Describe("Create dns domain", func() {
+var _ = Describe("Validate Shared VPC Inputs", func() {
 	var ctrl *gomock.Controller
+
+	var route53RoleArnFlag = "route53-role-arn"
+	var vpcEndpointRoleArnFlag = "vpc-endpoint-role-arn"
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
@@ -21,37 +24,36 @@ var _ = Describe("Create dns domain", func() {
 
 	Context("validateSharedVpcInputs", func() {
 		When("Validate flags properly for shared VPC for HCP op roles", func() {
-			It("OK: Should pass with no error, for classic (return false)", func() {
-				usingSharedVpc, err := validateSharedVpcInputs(false, "", "")
-				Expect(usingSharedVpc).To(BeFalse())
-				Expect(err).ToNot(HaveOccurred())
-			})
-			It("OK: Should pass with no error, for HCP (return false)", func() {
-				usingSharedVpc, err := validateSharedVpcInputs(true, "", "")
+			It("OK: Should pass with no error, no flag usage (return false)", func() {
+				usingSharedVpc, err := ValidateSharedVpcInputs("", "",
+					route53RoleArnFlag, vpcEndpointRoleArnFlag)
 				Expect(usingSharedVpc).To(BeFalse())
 				Expect(err).ToNot(HaveOccurred())
 			})
 			It("OK: Should pass with no error, for HCP (return true)", func() {
-				usingSharedVpc, err := validateSharedVpcInputs(true, "123", "123")
+				usingSharedVpc, err := ValidateSharedVpcInputs("123", "123",
+					route53RoleArnFlag, vpcEndpointRoleArnFlag)
 				Expect(usingSharedVpc).To(BeTrue())
 				Expect(err).ToNot(HaveOccurred())
 			})
-			It("KO: Should error when using HCP and the first flag but not the second (return false)", func() {
-				usingSharedVpc, err := validateSharedVpcInputs(true, "123", "")
+			It("KO: Should error when using the first flag but not the second (return false)", func() {
+				usingSharedVpc, err := ValidateSharedVpcInputs("123", "",
+					route53RoleArnFlag, vpcEndpointRoleArnFlag)
 				Expect(usingSharedVpc).To(BeFalse())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(arguments.MustUseBothFlagsErrorMessage,
-					hostedZoneRoleArnFlag,
+					route53RoleArnFlag,
 					vpcEndpointRoleArnFlag,
 				))
 			})
-			It("KO: Should error when using HCP and the second flag but not the first (return false)", func() {
-				usingSharedVpc, err := validateSharedVpcInputs(true, "", "123")
+			It("KO: Should error when using the second flag but not the first (return false)", func() {
+				usingSharedVpc, err := ValidateSharedVpcInputs("", "123",
+					route53RoleArnFlag, vpcEndpointRoleArnFlag)
 				Expect(usingSharedVpc).To(BeFalse())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(arguments.MustUseBothFlagsErrorMessage,
 					vpcEndpointRoleArnFlag,
-					hostedZoneRoleArnFlag,
+					route53RoleArnFlag,
 				))
 			})
 		})

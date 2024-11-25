@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -177,11 +178,18 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	isHcpSharedVpc, err := validateSharedVpcInputs(args.hostedCp, args.vpcEndpointRoleArn,
-		args.sharedVpcRoleArn)
-	if err != nil {
-		r.Reporter.Errorf("Invalid configuration: %s", err)
-		os.Exit(1)
+	var isHcpSharedVpc bool
+	var err error
+	if !args.hostedCp {
+		rosa.HostedClusterOnlyFlag(r, cmd, hostedZoneRoleArnFlag)
+		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+	} else {
+		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.sharedVpcRoleArn,
+			vpcEndpointRoleArnFlag, hostedZoneRoleArnFlag)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
 
 	if args.vpcEndpointRoleArn != "" {
