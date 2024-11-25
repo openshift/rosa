@@ -428,6 +428,45 @@ func run(cmd *cobra.Command, argv []string) {
 		isHostedCPValueSet = true
 	}
 
+	if interactive.Enabled() && createHostedCP {
+		isHcpSharedVpc, err = interactive.GetBool(interactive.Input{
+			Question: "Use account roles for Hosted CP shared VPC?",
+			Help: "Whether or not to set route53/VPC endpoint role ARNs to be used for Hosted CP shared VPC " +
+				"(cross-account VPC)",
+			Default:  false,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+		args.vpcEndpointRoleArn, err = interactive.GetString(interactive.Input{
+			Question: "Set VPC endpoint role ARN",
+			Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
+			Default:  args.vpcEndpointRoleArn,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+		args.route53RoleArn, err = interactive.GetString(interactive.Input{
+			Question: "Set route53 role ARN",
+			Help:     cmd.Flags().Lookup(route53RoleArnFlag).Usage,
+			Default:  args.route53RoleArn,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	if !createHostedCP && !cmd.Flag(interactive.Mode).Changed {
 		rosa.HostedClusterOnlyFlag(r, cmd, route53RoleArnFlag)
 		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
