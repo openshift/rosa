@@ -522,29 +522,64 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			Build()
 
 		var attachSharedVpcRolePolicy string
-		var createPolicyCommand string
+		var policyCommands []string
+
+		type manualSharedVpcPolicyDetails struct {
+			command string
+			name    string
+		}
 
 		if isSharedVpc { // HCP Shared VPC policy attachment
-			var policyName string
-			if credrequest == aws.IngressOperatorCloudCredentialsRoleType {
-				createPolicyCommand, policyName = getHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn, roleName,
-					iamTags, path)
-			} else if credrequest == aws.ControlPlaneCloudCredentialsRoleType {
-				createPolicyCommand, policyName = getHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn, roleName,
-					iamTags, path)
+
+			// Precreate HCP shared VPC policies for less memory usage + time to execute
+			var policyDetails = make(map[string]manualSharedVpcPolicyDetails)
+			createPolicyCommand, policyName, err := getHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn,
+				iamTags)
+			if err != nil {
+				return "", err
+			}
+			policyDetails[aws.IngressOperatorCloudCredentialsRoleType] = manualSharedVpcPolicyDetails{
+				createPolicyCommand,
+				policyName,
 			}
 
-			if credrequest == aws.IngressOperatorCloudCredentialsRoleType ||
-				credrequest == aws.ControlPlaneCloudCredentialsRoleType {
-				arn := fmt.Sprintf("arn:%s:iam::%s:policy/%s", r.Creator.Partition, r.Creator.AccountID, policyName)
+			createPolicyCommand, policyName, err = getHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn,
+				iamTags)
+			if err != nil {
+				return "", err
+			}
+			policyDetails[aws.ControlPlaneCloudCredentialsRoleType] = manualSharedVpcPolicyDetails{
+				createPolicyCommand,
+				policyName,
+			}
+
+			var policies []string
+
+			// Add HCP shared VPC policies
+			switch credrequest {
+			case aws.IngressOperatorCloudCredentialsRoleType:
+				policyCommands = append(policyCommands, policyDetails[credrequest].command)
+				policies = append(policies, policyDetails[credrequest].name)
+			case aws.ControlPlaneCloudCredentialsRoleType:
+				for _, details := range policyDetails {
+					policyCommands = append(policyCommands, details.command)
+					policies = append(policies, details.name)
+				}
+			}
+
+			for _, policy := range policies {
+				arn := fmt.Sprintf("arn:%s:iam::%s:policy/%s", r.Creator.Partition, r.Creator.AccountID, policy)
 				attachSharedVpcRolePolicy = awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.AttachRolePolicy).
 					AddParam(awscb.RoleName, roleName).
 					AddParam(awscb.PolicyArn, arn).
 					Build()
+				policyCommands = append(policyCommands, attachSharedVpcRolePolicy)
 			}
 		}
-		commands = append(commands, createRole, attachRolePolicy, createPolicyCommand, attachSharedVpcRolePolicy)
+		commands = append(commands, createRole, attachRolePolicy)
+		commands = append(commands, policyCommands...)
+
 	}
 	return awscb.JoinCommands(commands), nil
 }

@@ -21,9 +21,7 @@ var _ = Describe("Create dns domain", func() {
 
 	var testPartition = "test"
 	var testArn = "arn:aws:iam::123456789012:role/test"
-	var testRoleName = "test"
 	var testIamTags = map[string]string{tags.RedHatManaged: aws.TrueString}
-	var testPath = "/path"
 	var testVersion = "2012-10-17"
 	var mockClient *aws.MockClient
 
@@ -46,8 +44,9 @@ var _ = Describe("Create dns domain", func() {
 	Context("Common Utils for create/operatorroles Test", func() {
 		When("getHcpSharedVpcPolicyDetails", func() {
 			It("Test that returned details + name are correct", func() {
-				details, name := getHcpSharedVpcPolicyDetails(runtime, testArn, testRoleName, testIamTags, testPath)
-				Expect(name).To(Equal("rosa-assume-role-test"))
+				details, name, err := getHcpSharedVpcPolicyDetails(runtime, testArn, testIamTags)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(name).To(Equal("test-assume-role"))
 				expectedDetails := strings.Replace(details, fmt.Sprintf("%%{%s}", name), name, -1)
 				Expect(details).To(Equal(expectedDetails))
 			})
