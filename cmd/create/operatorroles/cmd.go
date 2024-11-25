@@ -291,6 +291,45 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	if interactive.Enabled() && args.hostedCp {
+		isHcpSharedVpc, err = interactive.GetBool(interactive.Input{
+			Question: "Use operator roles for Hosted CP shared VPC?",
+			Help: "Whether or not to set route53/VPC endpoint role ARNs to be used for Hosted CP shared VPC " +
+				"(cross-account VPC)",
+			Default:  false,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+		args.vpcEndpointRoleArn, err = interactive.GetString(interactive.Input{
+			Question: "Set VPC endpoint role ARN",
+			Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
+			Default:  args.vpcEndpointRoleArn,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+		args.sharedVpcRoleArn, err = interactive.GetString(interactive.Input{
+			Question: "Set route53 role ARN",
+			Help:     cmd.Flags().Lookup(hostedZoneRoleArnFlag).Usage,
+			Default:  args.sharedVpcRoleArn,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	if permissionsBoundary != "" {
 		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
