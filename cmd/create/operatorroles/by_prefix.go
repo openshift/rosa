@@ -566,14 +566,22 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 				policies = append(policies, policyDetails[credrequest].name)
 				if !policyDetails[credrequest].alreadyExists { // Skip creation if already exists
 					policyCommands = append(policyCommands, policyDetails[credrequest].command)
+					// Allow only one creation command for this policy to be printed
+					if details, ok := policyDetails[credrequest]; ok {
+						details.alreadyExists = true
+						policyDetails[credrequest] = details
+					}
 				}
 			case aws.ControlPlaneCloudCredentialsRoleType:
-				for _, details := range policyDetails {
+				for i, details := range policyDetails {
 					policies = append(policies, details.name)
 					if details.alreadyExists { // Skip creation if already exists
 						continue
 					}
 					policyCommands = append(policyCommands, details.command)
+					// Allow only one creation command for this policy to be printed
+					details.alreadyExists = true
+					policyDetails[i] = details
 				}
 			}
 
