@@ -447,7 +447,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Question: "Set VPC endpoint role ARN",
 			Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
 			Default:  args.vpcEndpointRoleArn,
-			Required: false,
+			Required: isHcpSharedVpc,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid value: %s", err)
@@ -459,7 +459,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Question: "Set route53 role ARN",
 			Help:     cmd.Flags().Lookup(route53RoleArnFlag).Usage,
 			Default:  args.route53RoleArn,
-			Required: false,
+			Required: isHcpSharedVpc,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid value: %s", err)
