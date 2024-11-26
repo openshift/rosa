@@ -33,6 +33,8 @@ var _ = Describe("Create dns domain", func() {
 		runtime.AWSClient = mockClient
 		mockClient.EXPECT().GetCreator().Return(&aws.Creator{Partition: testPartition}, nil)
 
+		mockClient.EXPECT().IsPolicyExists(gomock.Any()).Return(nil, nil).AnyTimes()
+
 		creator, err := runtime.AWSClient.GetCreator()
 		Expect(err).ToNot(HaveOccurred())
 		runtime.Creator = creator
@@ -44,8 +46,9 @@ var _ = Describe("Create dns domain", func() {
 	Context("Common Utils for create/operatorroles Test", func() {
 		When("getHcpSharedVpcPolicyDetails", func() {
 			It("Test that returned details + name are correct", func() {
-				details, name, err := getHcpSharedVpcPolicyDetails(runtime, testArn, testIamTags)
+				exists, details, name, err := getHcpSharedVpcPolicyDetails(runtime, testArn, testIamTags)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(exists).To(BeFalse())
 				Expect(name).To(Equal("test-assume-role"))
 				expectedDetails := strings.Replace(details, fmt.Sprintf("%%{%s}", name), name, -1)
 				Expect(details).To(Equal(expectedDetails))

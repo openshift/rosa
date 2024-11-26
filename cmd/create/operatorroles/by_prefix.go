@@ -525,15 +525,17 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 		var policyCommands []string
 
 		type manualSharedVpcPolicyDetails struct {
-			command string
-			name    string
+			command       string
+			name          string
+			alreadyExists bool
 		}
 
 		if isSharedVpc { // HCP Shared VPC policy attachment
 
 			// Precreate HCP shared VPC policies for less memory usage + time to execute
+			// Shared VPC role arn (route53)
 			var policyDetails = make(map[string]manualSharedVpcPolicyDetails)
-			createPolicyCommand, policyName, err := getHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn,
+			exists, createPolicyCommand, policyName, err := getHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn,
 				iamTags)
 			if err != nil {
 				return "", err
@@ -541,32 +543,41 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			policyDetails[aws.IngressOperatorCloudCredentialsRoleType] = manualSharedVpcPolicyDetails{
 				createPolicyCommand,
 				policyName,
+				exists,
 			}
-
-			createPolicyCommand, policyName, err = getHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn,
+			// VPC endpoint role arn
+			exists, createPolicyCommand, policyName, err = getHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn,
 				iamTags)
 			if err != nil {
 				return "", err
 			}
+
 			policyDetails[aws.ControlPlaneCloudCredentialsRoleType] = manualSharedVpcPolicyDetails{
 				createPolicyCommand,
 				policyName,
+				exists,
 			}
 
 			var policies []string
 
-			// Add HCP shared VPC policies
+			// Attach HCP shared VPC policies
 			switch credrequest {
 			case aws.IngressOperatorCloudCredentialsRoleType:
-				policyCommands = append(policyCommands, policyDetails[credrequest].command)
 				policies = append(policies, policyDetails[credrequest].name)
+				if !policyDetails[credrequest].alreadyExists { // Skip creation if already exists
+					policyCommands = append(policyCommands, policyDetails[credrequest].command)
+				}
 			case aws.ControlPlaneCloudCredentialsRoleType:
 				for _, details := range policyDetails {
-					policyCommands = append(policyCommands, details.command)
 					policies = append(policies, details.name)
+					if details.alreadyExists { // Skip creation if already exists
+						continue
+					}
+					policyCommands = append(policyCommands, details.command)
 				}
 			}
 
+			// Attach policies to roles
 			for _, policy := range policies {
 				arn := fmt.Sprintf("arn:%s:iam::%s:policy/%s", r.Creator.Partition, r.Creator.AccountID, policy)
 				attachSharedVpcRolePolicy = awscb.NewIAMCommandBuilder().
