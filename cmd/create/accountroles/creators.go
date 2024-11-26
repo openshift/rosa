@@ -9,6 +9,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -363,6 +364,7 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 
 func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *accountRolesCreationInput) error {
 	commands := []string{}
+
 	for file, role := range aws.HCPAccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		iamTags := hcp.getRoleTags(file, input)
@@ -388,17 +390,22 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 
 			if isHcpInstallerRole && input.isSharedVpc { // HCP shared VPC (Installer role policies)
 				for _, arn := range []string{args.route53RoleArn, args.vpcEndpointRoleArn} {
-					userProvidedRoleName, err := aws.GetResourceIdFromARN(arn)
+					// Shared VPC role arn (route53)
+					exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, arn,
+						iamTags)
 					if err != nil {
 						return err
 					}
-					policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
+
 					path, err := aws.GetPathFromARN(arn)
 					if err != nil {
 						return err
 					}
 					policyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, path)
 					attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyArn)
+					if !exists {
+						commands = append(commands, createPolicyCommand)
+					}
 					commands = append(commands, attachRolePolicy)
 				}
 			}

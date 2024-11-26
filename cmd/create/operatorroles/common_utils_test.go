@@ -1,9 +1,6 @@
 package operatorroles
 
 import (
-	"fmt"
-	"strings"
-
 	"go.uber.org/mock/gomock"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -11,7 +8,6 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -21,7 +17,6 @@ var _ = Describe("Create dns domain", func() {
 
 	var testPartition = "test"
 	var testArn = "arn:aws:iam::123456789012:role/test"
-	var testIamTags = map[string]string{tags.RedHatManaged: aws.TrueString}
 	var testVersion = "2012-10-17"
 	var mockClient *aws.MockClient
 
@@ -44,16 +39,6 @@ var _ = Describe("Create dns domain", func() {
 	})
 
 	Context("Common Utils for create/operatorroles Test", func() {
-		When("getHcpSharedVpcPolicyDetails", func() {
-			It("Test that returned details + name are correct", func() {
-				exists, details, name, err := getHcpSharedVpcPolicyDetails(runtime, testArn, testIamTags)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(exists).To(BeFalse())
-				Expect(name).To(Equal("test-assume-role"))
-				expectedDetails := strings.Replace(details, fmt.Sprintf("%%{%s}", name), name, -1)
-				Expect(details).To(Equal(expectedDetails))
-			})
-		})
 		When("getHcpSharedVpcPolicy", func() {
 			It("OK: Gets policy arn back", func() {
 				returnedArn := "arn:aws:iam::123123123123:policy/test"
