@@ -37,6 +37,7 @@ type Client struct {
 	MachinePool          MachinePoolService
 	MachinePoolUpgrade   MachinePoolUpgradeService
 	NetworkVerifier      NetworkVerifierService
+	NetworkResources     NetworkResourcesService
 	OCMResource          OCMResourceService
 	TuningConfig         TuningConfigService
 	User                 UserService
@@ -66,6 +67,7 @@ func NewClient() *Client {
 	client.MachinePool = NewMachinePoolService(client)
 	client.MachinePoolUpgrade = NewMachinePoolUpgradeService(client)
 	client.NetworkVerifier = NewNetworkVerifierService(client)
+	client.NetworkResources = NewNetworkResourceService(client)
 	client.OCMResource = NewOCMResourceService(client)
 	client.TuningConfig = NewTuningConfigService(client)
 	client.User = NewUserService(client)
@@ -90,6 +92,7 @@ func (c *Client) CleanResources(clusterID string) error {
 	errorList = append(errorList, c.MachinePool.CleanResources(clusterID)...)
 	errorList = append(errorList, c.Ingress.CleanResources(clusterID)...)
 	errorList = append(errorList, c.NetworkVerifier.CleanResources(clusterID)...)
+	errorList = append(errorList, c.NetworkResources.CleanResources(clusterID)...)
 	errorList = append(errorList, c.KubeletConfig.CleanResources(clusterID)...)
 	errorList = append(errorList, c.User.CleanResources(clusterID)...)
 	errorList = append(errorList, c.IDP.CleanResources(clusterID)...)

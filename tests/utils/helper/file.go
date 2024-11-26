@@ -3,6 +3,7 @@ package helper
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 
 	. "github.com/openshift/rosa/tests/utils/log"
@@ -14,6 +15,34 @@ func CreateTempFileWithContent(fileContent string) (string, error) {
 
 func CreateTempFileWithPrefixAndContent(prefix string, fileContent string) (string, error) {
 	f, err := os.CreateTemp("", prefix+"-")
+	if err != nil {
+		return "", err
+	}
+	return CreateFileWithContent(f.Name(), fileContent)
+}
+
+func GetCurrentWorkingDir() (string, error) {
+	ex, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	exPath := filepath.Dir(ex)
+	return exPath, err
+}
+
+func CreateTemplateDirForNetworkResources(templateName string, fileContent string) (string, error) {
+	err := os.Mkdir(templateName, 0744)
+	if err != nil {
+		return "", err
+	}
+	exPath, err := GetCurrentWorkingDir()
+	if err != nil {
+		return "", err
+	}
+	dirpath := filepath.Join(exPath + "/" + templateName)
+	outputPath := filepath.Join(dirpath, "cloudformation.yaml")
+
+	f, err := os.Create(outputPath)
 	if err != nil {
 		return "", err
 	}

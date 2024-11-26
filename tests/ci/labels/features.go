@@ -28,6 +28,7 @@ type featureLabels struct {
 	Token                Labels
 	TuningConfigs        Labels
 	UserRole             Labels
+	NetworkResources     Labels
 	VerifyResources      Labels
 	Version              Labels
 	Upgrade              Labels
