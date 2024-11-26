@@ -448,6 +448,9 @@ func run(cmd *cobra.Command, argv []string) {
 			Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
 			Default:  args.vpcEndpointRoleArn,
 			Required: isHcpSharedVpc,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid value: %s", err)
@@ -460,6 +463,9 @@ func run(cmd *cobra.Command, argv []string) {
 			Help:     cmd.Flags().Lookup(route53RoleArnFlag).Usage,
 			Default:  args.route53RoleArn,
 			Required: isHcpSharedVpc,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid value: %s", err)
