@@ -102,7 +102,8 @@ func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, defaultPolicyVersion
 	return policyArn, nil
 }
 
-func getHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, iamTags map[string]string) (string, string, error) {
+func getHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, iamTags map[string]string) (bool, string,
+	string, error) {
 	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDocumentBody,
 		map[string]string{
 			"shared_vpc_role_arn": roleArn,
@@ -110,10 +111,14 @@ func getHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, iamTags map[s
 
 	roleName, err := aws.GetResourceIdFromARN(roleArn)
 	if err != nil {
-		return "", "", err
+		return false, "", "", err
 	}
 
 	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, roleName)
+
+	predictedPolicyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
+
+	existsQuery, _ := r.AWSClient.IsPolicyExists(predictedPolicyArn)
 
 	createPolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.CreatePolicy).
@@ -122,5 +127,6 @@ func getHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, iamTags map[s
 		AddTags(iamTags).
 		AddParam(awscb.Path, "").
 		Build()
-	return createPolicy, policyName, nil
+
+	return existsQuery != nil, createPolicy, policyName, nil
 }
