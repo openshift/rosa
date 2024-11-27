@@ -530,8 +530,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			// Precreate HCP shared VPC policies for less memory usage + time to execute
 			// Shared VPC role arn (route53)
 			var policyDetails = make(map[string]roles.ManualSharedVpcPolicyDetails)
-			exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn,
-				iamTags)
+			exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn)
 			if err != nil {
 				return "", err
 			}
@@ -541,8 +540,7 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 				AlreadyExists: exists,
 			}
 			// VPC endpoint role arn
-			exists, createPolicyCommand, policyName, err = roles.GetHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn,
-				iamTags)
+			exists, createPolicyCommand, policyName, err = roles.GetHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn)
 			if err != nil {
 				return "", err
 			}

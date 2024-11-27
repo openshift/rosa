@@ -391,8 +391,7 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 			if isHcpInstallerRole && input.isSharedVpc { // HCP shared VPC (Installer role policies)
 				for _, arn := range []string{args.route53RoleArn, args.vpcEndpointRoleArn} {
 					// Shared VPC role arn (route53)
-					exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, arn,
-						iamTags)
+					exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, arn)
 					if err != nil {
 						return err
 					}
@@ -489,6 +488,7 @@ func attachHcpSharedVpcPolicy(r *rosa.Runtime, sharedVpcRoleArn string, roleName
 
 	policyTags := map[string]string{
 		tags.RedHatManaged: aws.TrueString,
+		tags.HcpSharedVpc:  aws.TrueString,
 	}
 
 	userProvidedRoleName, err := aws.GetResourceIdFromARN(sharedVpcRoleArn)
