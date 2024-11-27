@@ -7,23 +7,12 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
-	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
 const assumePolicyAction = "sts:AssumeRole"
-
-const policyDocumentBody = ` \
-'{
-  "Version": "2012-10-17",
-  "Statement": {
-    "Effect": "Allow",
-    "Action": "sts:AssumeRole",
-    "Resource": "%{shared_vpc_role_arn}"
-  }
-}'`
 
 const policyDetails = "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": {\n    \"Effect\": \"Allow\",\n    " +
 	"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": \"%{shared_vpc_role_arn}\"\n  }\n}\n"
@@ -78,7 +67,6 @@ func validateIngressOperatorPolicyOverride(r *rosa.Runtime, policyArn string, sh
 }
 
 func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, defaultPolicyVersion string) (string, error) {
-
 	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
 		"shared_vpc_role_arn": roleArn,
 	})
@@ -100,33 +88,4 @@ func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, defaultPolicyVersion
 		return policyArn, err
 	}
 	return policyArn, nil
-}
-
-func getHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, iamTags map[string]string) (bool, string,
-	string, error) {
-	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDocumentBody,
-		map[string]string{
-			"shared_vpc_role_arn": roleArn,
-		})
-
-	roleName, err := aws.GetResourceIdFromARN(roleArn)
-	if err != nil {
-		return false, "", "", err
-	}
-
-	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, roleName)
-
-	predictedPolicyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
-
-	existsQuery, _ := r.AWSClient.IsPolicyExists(predictedPolicyArn)
-
-	createPolicy := awscb.NewIAMCommandBuilder().
-		SetCommand(awscb.CreatePolicy).
-		AddParam(awscb.PolicyName, policyName).
-		AddParam(awscb.PolicyDocument, interpolatedPolicyDetails).
-		AddTags(iamTags).
-		AddParam(awscb.Path, "").
-		Build()
-
-	return existsQuery != nil, createPolicy, policyName, nil
 }
