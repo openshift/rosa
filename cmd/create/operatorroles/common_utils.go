@@ -82,8 +82,13 @@ func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, defaultPolicyVersion
 		return "", err
 	}
 
+	iamTags := map[string]string{
+		tags.RedHatManaged: helper.True,
+		tags.HcpSharedVpc:  helper.True,
+	}
+
 	policyArn, err := r.AWSClient.EnsurePolicy(policy, interpolatedPolicyDetails, defaultPolicyVersion,
-		map[string]string{tags.RedHatManaged: helper.True}, path)
+		iamTags, path)
 	if err != nil {
 		return policyArn, err
 	}

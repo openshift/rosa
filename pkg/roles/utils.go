@@ -5,6 +5,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -24,7 +25,7 @@ type ManualSharedVpcPolicyDetails struct {
 	AlreadyExists bool
 }
 
-func GetHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, iamTags map[string]string) (bool, string,
+func GetHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string) (bool, string,
 	string, error) {
 	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDocumentBody,
 		map[string]string{
@@ -41,6 +42,11 @@ func GetHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string, iamTags map[s
 	predictedPolicyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
 
 	existsQuery, _ := r.AWSClient.IsPolicyExists(predictedPolicyArn)
+
+	var iamTags = map[string]string{
+		tags.RedHatManaged: aws.TrueString,
+		tags.HcpSharedVpc:  aws.TrueString,
+	}
 
 	createPolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.CreatePolicy).

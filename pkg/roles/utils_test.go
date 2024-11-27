@@ -9,8 +9,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -19,7 +17,6 @@ var _ = Describe("Validate Shared VPC Inputs", func() {
 	var runtime *rosa.Runtime
 
 	var testArn = "arn:aws:iam::123456789012:role/test"
-	var testIamTags = map[string]string{tags.RedHatManaged: aws.TrueString}
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
@@ -31,7 +28,7 @@ var _ = Describe("Validate Shared VPC Inputs", func() {
 	Context("GetHcpSharedVpcPolicyDetails", func() {
 		When("getHcpSharedVpcPolicyDetails", func() {
 			It("Test that returned details + name are correct", func() {
-				exists, details, name, err := GetHcpSharedVpcPolicyDetails(runtime, testArn, testIamTags)
+				exists, details, name, err := GetHcpSharedVpcPolicyDetails(runtime, testArn)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeFalse())
 				Expect(name).To(Equal("test-assume-role"))

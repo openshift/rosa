@@ -1146,7 +1146,7 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 	if err != nil {
 		return err
 	}
-	policyMap, _, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
+	policyMap, excludedPolicyMap, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
 	if err != nil {
 		return err
 	}
@@ -1173,6 +1173,36 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 	}
 	if !managedPolicies {
 		_, err = c.deletePolicies(policyMap)
+	} else {
+		var sharedVpcHcpPolicies []string
+		for _, policy := range excludedPolicyMap {
+			policyOutput, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
+				PolicyArn: aws.String(policy),
+			})
+			if err != nil || policyOutput == nil {
+				return err
+			}
+
+			containsManagedTag := false
+			containsHcpSharedVpcTag := false
+			for _, policyTag := range policyOutput.Policy.Tags {
+				switch strings.Trim(*policyTag.Key, " ") {
+				case tags.RedHatManaged:
+					containsManagedTag = true
+				case tags.HcpSharedVpc:
+					containsHcpSharedVpcTag = true
+				}
+			}
+			if containsManagedTag && containsHcpSharedVpcTag {
+				if *policyOutput.Policy.AttachmentCount == 0 {
+					sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
+				} else {
+					c.logger.Warnf("Unable to delete policy %s: Policy still attached to %v other resource(s)",
+						*policyOutput.Policy.PolicyName, *policyOutput.Policy.AttachmentCount)
+				}
+			}
+		}
+		_, err = c.deletePolicies(sharedVpcHcpPolicies)
 	}
 	return err
 }
