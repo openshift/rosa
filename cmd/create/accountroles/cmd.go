@@ -429,11 +429,13 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() && createHostedCP {
+		defaultValue := args.route53RoleArn != "" && args.vpcEndpointRoleArn != ""
+
 		isHcpSharedVpc, err = interactive.GetBool(interactive.Input{
 			Question: "Use account roles for Hosted CP shared VPC?",
 			Help: "Whether or not to set route53/VPC endpoint role ARNs to be used for Hosted CP shared VPC " +
 				"(cross-account VPC)",
-			Default:  false,
+			Default:  defaultValue,
 			Required: false,
 		})
 		if err != nil {
