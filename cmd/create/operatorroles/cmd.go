@@ -303,6 +303,11 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Expected a valid value: %s", err)
 			os.Exit(1)
 		}
+
+		if !isHcpSharedVpc {
+			args.sharedVpcRoleArn = ""
+			args.vpcEndpointRoleArn = ""
+		}
 	}
 
 	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
