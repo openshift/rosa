@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	"path"
 	"time"
 
@@ -32,22 +31,33 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 			clusterID := clusterHandler.GetClusterDetail().ClusterID
 			log.Logger.Infof("Cluster prepared successfully with id %s", clusterID)
 
-			if profile.ClusterConfig.HCP && profile.ClusterConfig.NetworkType == "other" {
-				clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
+		})
 
+	It("to wait for cluster ready",
+		labels.Runtime.Day1Readiness,
+		func() {
+			profile := handler.LoadProfileYamlFileByENV()
+			client := rosacli.NewClient()
+			clusterHandler, err := handler.NewClusterHandlerFromFilesystem(client, profile)
+			Expect(err).ToNot(HaveOccurred())
+			clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
+
+			// For HCP cluster with other network type,it is required to set one configure:cilium
+			if profile.ClusterConfig.HCP && profile.ClusterConfig.NetworkType == "other" {
+				clusterID := clusterHandler.GetClusterDetail().ClusterID
 				clusterService := client.Cluster
 				output, err := clusterService.DescribeCluster(clusterID)
 				Expect(err).To(BeNil())
 				clusterDetails, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				if clusterDetails.ExternalAuthentication == "Enabled" {
-					//create break-glass-credential to get kubeconfig
+					// it is not support to create htpasswd for cluster with xternal auth enabled
+					// create break-glass-credential to get kubeconfig
 					_, err := client.BreakGlassCredential.CreateBreakGlassCredential(clusterID)
 					Expect(err).To(BeNil())
 					breakGlassCredList, err := client.BreakGlassCredential.ListBreakGlassCredentialsAndReflect(clusterID)
 					Expect(err).To(BeNil())
-					testDir := config.Test.OutputDir
-					kubeconfigFile := path.Join(testDir, fmt.Sprintf("%s.kubeconfig", clusterID))
+					kubeconfigFile := path.Join(config.Test.OutputDir, "kubeconfig")
 
 					By("Get the issued credential")
 					for _, i := range breakGlassCredList.BreakGlassCredentials {
@@ -79,7 +89,8 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					By("Deploy cilium configures")
 					ocClient, err := occli.NewOCClient(kubeconfigFile)
 					Expect(err).ToNot(HaveOccurred())
-					err = utilConfig.DeployCilium(ocClient, podCIDR, hostPrefix, testDir, kubeconfigFile)
+					err = utilConfig.DeployCilium(ocClient, podCIDR, hostPrefix,
+						config.Test.OutputDir, kubeconfigFile)
 					Expect(err).ToNot(HaveOccurred())
 					log.Logger.Infof("Deploy cilium for HCP cluster: %s successfully ", clusterID)
 				} else {
@@ -100,15 +111,6 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					helper.CreateFileWithContent(config.Test.ClusterIDPAdminUsernamePassword, usersValue)
 				}
 			}
-		})
 
-	It("to wait for cluster ready",
-		labels.Runtime.Day1Readiness,
-		func() {
-			profile := handler.LoadProfileYamlFileByENV()
-			client := rosacli.NewClient()
-			clusterHandler, err := handler.NewClusterHandlerFromFilesystem(client, profile)
-			Expect(err).ToNot(HaveOccurred())
-			clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
 		})
 })
