@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -204,12 +205,16 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		r.Reporter.Infof(fmt.Sprintf("Deleting %saccount roles", roleTypeString))
 
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
+		deleteHcpSharedVpcPolicies := false
+		if roles.CheckIfRolesAreHcpSharedVpc(r, finalRoleList) {
+			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC policies?")
+		}
 		for _, role := range finalRoleList {
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
 				continue
 			}
 			r.Reporter.Infof("Deleting account role '%s'", role)
-			err := r.AWSClient.DeleteAccountRole(role, prefix, managedPolicies)
+			err := r.AWSClient.DeleteAccountRole(role, prefix, managedPolicies, deleteHcpSharedVpcPolicies)
 			if err != nil {
 				r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
 				continue

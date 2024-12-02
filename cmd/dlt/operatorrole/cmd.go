@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -220,6 +221,13 @@ func run(cmd *cobra.Command, _ []string) {
 	switch mode {
 	case interactive.ModeAuto:
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
+
+		// Only ask user if they want to delete policies if they are deleting HcpSharedVpc roles
+		deleteHcpSharedVpcPolicies := false
+		if roles.CheckIfRolesAreHcpSharedVpc(r, foundOperatorRoles) {
+			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC policies?")
+		}
+		allSharedVpcPoliciesNotDeleted := make(map[string]bool)
 		for _, role := range foundOperatorRoles {
 			if !confirm.Prompt(true, "Delete the operator role '%s'?", role) {
 				continue
@@ -228,7 +236,11 @@ func run(cmd *cobra.Command, _ []string) {
 			if spin != nil {
 				spin.Start()
 			}
-			err := r.AWSClient.DeleteOperatorRole(role, managedPolicies)
+			sharedVpcPoliciesNotDeleted, err := r.AWSClient.DeleteOperatorRole(role, managedPolicies,
+				deleteHcpSharedVpcPolicies)
+			for key, value := range sharedVpcPoliciesNotDeleted {
+				allSharedVpcPoliciesNotDeleted[key] = value
+			}
 
 			if err != nil {
 				if spin != nil {
@@ -240,6 +252,12 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 			if spin != nil {
 				spin.Stop()
+			}
+		}
+		for policyOutput, notDeleted := range allSharedVpcPoliciesNotDeleted {
+			if notDeleted {
+				r.Logger.Warnf("Unable to delete policy %s: Policy still attached to other resources",
+					policyOutput)
 			}
 		}
 		if !errOccured {
