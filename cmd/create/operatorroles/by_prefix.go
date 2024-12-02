@@ -428,6 +428,8 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 	}
 
 	isSharedVpc := sharedVpcRoleArn != ""
+	var policyDetails = make(map[string]roles.ManualSharedVpcPolicyDetails)
+
 	commands := []string{}
 
 	for credrequest, operator := range credRequests {
@@ -529,26 +531,30 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 
 			// Precreate HCP shared VPC policies for less memory usage + time to execute
 			// Shared VPC role arn (route53)
-			var policyDetails = make(map[string]roles.ManualSharedVpcPolicyDetails)
-			exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn)
-			if err != nil {
-				return "", err
-			}
-			policyDetails[aws.IngressOperatorCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
-				Command:       createPolicyCommand,
-				Name:          policyName,
-				AlreadyExists: exists,
+			if _, ok := policyDetails[aws.IngressOperatorCloudCredentialsRoleType]; !ok {
+				exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn)
+				if err != nil {
+					return "", err
+				}
+				policyDetails[aws.IngressOperatorCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
+					Command:       createPolicyCommand,
+					Name:          policyName,
+					AlreadyExists: exists,
+				}
 			}
 			// VPC endpoint role arn
-			exists, createPolicyCommand, policyName, err = roles.GetHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn)
-			if err != nil {
-				return "", err
-			}
+			if _, ok := policyDetails[aws.ControlPlaneCloudCredentialsRoleType]; !ok {
 
-			policyDetails[aws.ControlPlaneCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
-				Command:       createPolicyCommand,
-				Name:          policyName,
-				AlreadyExists: exists,
+				exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn)
+				if err != nil {
+					return "", err
+				}
+
+				policyDetails[aws.ControlPlaneCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
+					Command:       createPolicyCommand,
+					Name:          policyName,
+					AlreadyExists: exists,
+				}
 			}
 
 			var policies []string
@@ -556,11 +562,11 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			// Attach HCP shared VPC policies
 			switch credrequest {
 			case aws.IngressOperatorCloudCredentialsRoleType:
-				policies = append(policies, policyDetails[credrequest].Name)
-				if !policyDetails[credrequest].AlreadyExists { // Skip creation if already exists
-					policyCommands = append(policyCommands, policyDetails[credrequest].Command)
-					// Allow only one creation command for this policy to be printed
-					if details, ok := policyDetails[credrequest]; ok {
+				if details, ok := policyDetails[credrequest]; ok {
+					policies = append(policies, policyDetails[credrequest].Name)
+					if !policyDetails[credrequest].AlreadyExists { // Skip creation if already exists
+						policyCommands = append(policyCommands, policyDetails[credrequest].Command)
+						// Allow only one creation command for this policy to be printed
 						details.AlreadyExists = true
 						policyDetails[credrequest] = details
 					}
@@ -568,13 +574,12 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 			case aws.ControlPlaneCloudCredentialsRoleType:
 				for i, details := range policyDetails {
 					policies = append(policies, details.Name)
-					if details.AlreadyExists { // Skip creation if already exists
-						continue
+					if !details.AlreadyExists {
+						policyCommands = append(policyCommands, details.Command)
+						// Allow only one creation command for this policy to be printed
+						details.AlreadyExists = true
+						policyDetails[i] = details
 					}
-					policyCommands = append(policyCommands, details.Command)
-					// Allow only one creation command for this policy to be printed
-					details.AlreadyExists = true
-					policyDetails[i] = details
 				}
 			}
 
