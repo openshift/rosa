@@ -575,9 +575,6 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 				for i, details := range policyDetails {
 					policies = append(policies, details.Name)
 					if !details.AlreadyExists {
-						if details.AlreadyExists { // Skip creation if already exists
-							continue
-						}
 						policyCommands = append(policyCommands, details.Command)
 						// Allow only one creation command for this policy to be printed
 						details.AlreadyExists = true
