@@ -22,11 +22,14 @@ import (
 	"os"
 	"strings"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -207,7 +210,8 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
 		deleteHcpSharedVpcPolicies := false
 		if roles.CheckIfRolesAreHcpSharedVpc(r, finalRoleList) {
-			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC policies?")
+			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Create commands to delete Hosted CP shared VPC"+
+				" policies?")
 		}
 		for _, role := range finalRoleList {
 			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
@@ -227,7 +231,21 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		if err != nil {
 			return fmt.Errorf("There was an error getting the policy: %v", err)
 		}
-		commands := buildCommand(finalRoleList, policyMap, arbitraryPolicyMap, managedPolicies)
+
+		// Get HCP shared vpc policy details if the user is deleting roles related to HCP shared vpc
+		policiesOutput := make([]*iam.GetPolicyOutput, 0)
+		if roles.CheckIfRolesAreHcpSharedVpc(r, finalRoleList) &&
+			confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC policies?") {
+			for _, role := range finalRoleList {
+				policiesOutput, err = r.AWSClient.GetPolicyDetailsFromRole(awssdk.String(role))
+				if err != nil {
+					r.Reporter.Infof("There was an error getting details of policies attached to role '%s': %v",
+						role, err)
+				}
+			}
+		}
+
+		commands := buildCommand(finalRoleList, policyMap, arbitraryPolicyMap, managedPolicies, policiesOutput)
 
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the account roles and policies:\n")
@@ -298,7 +316,8 @@ func checkIfRoleAssociated(clusters []*cmv1.Cluster, role aws.Role) string {
 }
 
 func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail,
-	arbitraryPolicyMap map[string][]aws.PolicyDetail, managedPolicies bool) string {
+	arbitraryPolicyMap map[string][]aws.PolicyDetail, managedPolicies bool,
+	hcpSharedVpcPoliciesOutput []*iam.GetPolicyOutput) string {
 	commands := []string{}
 	for _, roleName := range roleNames {
 		policyDetails := policyMap[roleName]
@@ -344,6 +363,27 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail,
 			AddParam(awscb.RoleName, roleName).
 			Build()
 		commands = append(commands, deleteRole)
+
+		if len(hcpSharedVpcPoliciesOutput) > 0 { // Delete HCP shared VPC policies
+			for _, hcpSharedVpcPolicy := range hcpSharedVpcPoliciesOutput {
+				hasRhManagedTag := false
+				hasHcpSharedVpcTag := false
+				for _, tag := range hcpSharedVpcPolicy.Policy.Tags {
+					if *tag.Key == tags.RedHatManaged {
+						hasRhManagedTag = true
+					} else if *tag.Key == tags.HcpSharedVpc {
+						hasHcpSharedVpcTag = true
+					}
+				}
+				if hasHcpSharedVpcTag && hasRhManagedTag {
+					deletePolicy := awscb.NewIAMCommandBuilder().
+						SetCommand(awscb.DeletePolicy).
+						AddParam(awscb.PolicyName, *hcpSharedVpcPolicy.Policy.PolicyName).
+						Build()
+					commands = append(commands, deletePolicy)
+				}
+			}
+		}
 	}
 	return awscb.JoinCommands(commands)
 }
