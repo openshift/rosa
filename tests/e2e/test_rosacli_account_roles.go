@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
+	raws "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -1142,5 +1143,176 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 					}
 				}
 			}
+		})
+})
+
+var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature.AccountRoles, func() {
+	defer GinkgoRecover()
+
+	var (
+		rosaClient                     *rosacli.Client
+		ocmResourceService             rosacli.OCMResourceService
+		accountRolePrefixesNeedCleanup []string
+		path                           = "/aa/bb/"
+		AWSAccountID                   string
+	)
+	BeforeEach(func() {
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		ocmResourceService = rosaClient.OCMResource
+
+		whoamiOutput, err := ocmResourceService.Whoami()
+		Expect(err).To(BeNil())
+		rosaClient.Runner.UnsetFormat()
+		whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+		AWSAccountID = whoamiData.AWSAccountID
+	})
+
+	AfterEach(func() {
+		By("Cleanup account-roles")
+		if len(accountRolePrefixesNeedCleanup) > 0 {
+			for _, v := range accountRolePrefixesNeedCleanup {
+				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", v,
+					"-y")
+
+				Expect(err).To(BeNil())
+			}
+		}
+	})
+	It("Create/Delete account roles for hosted-cp shared vpc cluster in auto mode - [id:77829]",
+		labels.Critical, labels.Runtime.OCMResources,
+		func() {
+			var (
+				accrolePrefix1            string
+				accrolePrefix2            string
+				route53RoleArn            = "arn:aws:iam::641733028092:role/citest-sharevpc-role"
+				vpcEndpointRoleArn        = "arn:aws:iam::641733028092:role/citest-sharevpc-vpc-endpoint-role"
+				invalidRoute53RoleArn     = "arn:641733028092:role/citest-sharevpc-role"
+				invalidVpcEndpointRoleArn = "aws::641733028092:role/citest-sharevpc-vpc-endpoint-role"
+			)
+
+			route53RoleName, err := raws.GetResourceIdFromARN(route53RoleArn)
+			Expect(err).To(BeNil())
+			route53PolicyName := fmt.Sprintf(raws.AssumeRolePolicyPrefix, route53RoleName)
+			route53PolicyArn := fmt.Sprintf("arn:aws:iam::%s:policy/%s", AWSAccountID, route53PolicyName)
+
+			vpcEndpointRoleName, err := raws.GetResourceIdFromARN(vpcEndpointRoleArn)
+			Expect(err).To(BeNil())
+			vpcEndpointPolicyName := fmt.Sprintf(raws.AssumeRolePolicyPrefix, vpcEndpointRoleName)
+			vpcEndpointPolicyArn := fmt.Sprintf("arn:aws:iam::%s:policy/%s", AWSAccountID, vpcEndpointPolicyName)
+
+			By("Check the help message of 'rosa create account-roles'")
+			output, err := ocmResourceService.CreateAccountRole("-h")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("--route53-role-arn"))
+			Expect(output.String()).To(ContainSubstring("--vpc-endpoint-role-arn"))
+
+			By("Create account roles for hosted-cp shared vpc")
+			accrolePrefix1 = helper.GenerateRandomString(5)
+			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix1)
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix1,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring(
+				"Attached policy '%s' to role '%s", route53PolicyArn,
+				fmt.Sprintf("%s-HCP-ROSA-Installer-Role", accrolePrefix1)))
+			Expect(output.String()).To(ContainSubstring(
+				"Attached policy '%s' to role '%s", vpcEndpointPolicyArn,
+				fmt.Sprintf("%s-HCP-ROSA-Installer-Role", accrolePrefix1)))
+
+			By("Create account roles with hosted-cp shared vpc settings without --hosted-cp or --classic flag")
+			accrolePrefix2 = helper.GenerateRandomString(5)
+			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix2)
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix2,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Created role '%s-Installer-Role'", accrolePrefix2))
+			Expect(output.String()).To(ContainSubstring(
+				"Attached policy '%s' to role '%s", route53PolicyArn,
+				fmt.Sprintf("%s-HCP-ROSA-Installer-Role", accrolePrefix2)))
+			Expect(output.String()).To(ContainSubstring(
+				"Attached policy '%s' to role '%s", vpcEndpointPolicyArn,
+				fmt.Sprintf("%s-HCP-ROSA-Installer-Role", accrolePrefix2)))
+
+			By("Delete the first set of account roles for hosted-cp shared vpc")
+			output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix1,
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("There are no classic account roles to be deleted"))
+			Expect(output.String()).To(ContainSubstring(
+				"Unable to delete policy citest-sharevpc-vpc-endpoint-role-assume-role: Policy still attached to 1 other resource"))
+			Expect(output.String()).To(ContainSubstring(
+				"Unable to delete policy citest-sharevpc-role-assume-role: Policy still attached to 1 other resource"))
+			Expect(output.String()).To(ContainSubstring("Successfully deleted the hosted CP account roles"))
+
+			By("Delete the second set of account roles for hosted-cp shared vpc")
+			output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix2,
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Successfully deleted the classic account roles"))
+			Expect(output.String()).To(ContainSubstring("Successfully deleted the hosted CP account roles"))
+			Expect(output.String()).To(ContainSubstring("Deleting policy '%s'", route53PolicyArn))
+			Expect(output.String()).To(ContainSubstring("Deleting policy '%s'", vpcEndpointPolicyArn))
+
+			By("Validate invalid ars for hosted-cp shared vpc settings")
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix1,
+				"--path", path,
+				"--route53-role-arn", invalidRoute53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"-y")
+			Expect(err).NotTo(BeNil())
+			Expect(output.String()).To(ContainSubstring("Expected a valid policy ARN for route53-role-arn"))
+
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix1,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", invalidVpcEndpointRoleArn,
+				"-y")
+			Expect(err).NotTo(BeNil())
+			Expect(output.String()).To(ContainSubstring("Expected a valid policy ARN for vpc-endpoint-role-arn"))
+
+			By("Valiadte the shared vpc setting not supported for classic account roles")
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix1,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--classic",
+				"-y")
+			Expect(err).NotTo(BeNil())
+			Expect(output.String()).To(ContainSubstring(
+				"Setting the `route53-role-arn` flag is only supported for hosted clusters"))
+
+			By("Validate two share vpc flags are not used together")
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix1,
+				"--path", path,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"-y")
+			Expect(err).NotTo(BeNil())
+			Expect(output.String()).To(ContainSubstring("Must supply"))
+
+			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix1,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"-y")
+			Expect(err).NotTo(BeNil())
+			Expect(output.String()).To(ContainSubstring("Must supply"))
+
 		})
 })
