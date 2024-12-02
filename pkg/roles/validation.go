@@ -6,8 +6,8 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 )
 
-func ValidateSharedVpcInputs(vpcEndpointRoleArn string, route53RoleArn string, route53RoleArnFlag string,
-	vpcEndpointRoleArnFlag string) (bool, error) {
+func ValidateSharedVpcInputs(vpcEndpointRoleArn string, route53RoleArn string,
+	vpcEndpointRoleArnFlag string, route53RoleArnFlag string) (bool, error) {
 	if route53RoleArn != "" && vpcEndpointRoleArn != "" {
 		return true, nil
 	}
