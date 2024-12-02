@@ -58,3 +58,29 @@ func GetHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string) (bool, string
 
 	return existsQuery != nil, createPolicy, policyName, nil
 }
+
+func CheckIfRolesAreHcpSharedVpc(r *rosa.Runtime, roles []string) bool {
+	isHcpSharedVpc := false
+	for _, roleName := range roles {
+		ptrRoleName := roleName
+		attachedPolicies, err := r.AWSClient.GetPolicyDetailsFromRole(&ptrRoleName)
+		if err != nil {
+			r.Reporter.Errorf("Failed to get policy details for role '%s': %v", roleName, err)
+		}
+		for _, attachedPolicy := range attachedPolicies {
+			rhManaged := false
+			hcpSharedVpc := false
+			for _, tag := range attachedPolicy.Policy.Tags {
+				if *tag.Key == tags.RedHatManaged {
+					rhManaged = true
+				} else if *tag.Key == tags.HcpSharedVpc {
+					hcpSharedVpc = true
+				}
+			}
+			if rhManaged && hcpSharedVpc {
+				isHcpSharedVpc = true
+			}
+		}
+	}
+	return isHcpSharedVpc
+}

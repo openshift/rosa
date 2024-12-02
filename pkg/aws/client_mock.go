@@ -178,17 +178,17 @@ func (mr *MockClientMockRecorder) CreateSecretInSecretsManager(name, secret any)
 }
 
 // DeleteAccountRole mocks base method.
-func (m *MockClient) DeleteAccountRole(roleName, prefix string, managedPolicies bool) error {
+func (m *MockClient) DeleteAccountRole(roleName, prefix string, managedPolicies, deleteHcpSharedVpcPolicies bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteAccountRole", roleName, prefix, managedPolicies)
+	ret := m.ctrl.Call(m, "DeleteAccountRole", roleName, prefix, managedPolicies, deleteHcpSharedVpcPolicies)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteAccountRole indicates an expected call of DeleteAccountRole.
-func (mr *MockClientMockRecorder) DeleteAccountRole(roleName, prefix, managedPolicies any) *gomock.Call {
+func (mr *MockClientMockRecorder) DeleteAccountRole(roleName, prefix, managedPolicies, deleteHcpSharedVpcPolicies any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAccountRole", reflect.TypeOf((*MockClient)(nil).DeleteAccountRole), roleName, prefix, managedPolicies)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAccountRole", reflect.TypeOf((*MockClient)(nil).DeleteAccountRole), roleName, prefix, managedPolicies, deleteHcpSharedVpcPolicies)
 }
 
 // DeleteInlineRolePolicies mocks base method.
@@ -234,17 +234,18 @@ func (mr *MockClientMockRecorder) DeleteOpenIDConnectProvider(providerURL any) *
 }
 
 // DeleteOperatorRole mocks base method.
-func (m *MockClient) DeleteOperatorRole(roles string, managedPolicies bool) error {
+func (m *MockClient) DeleteOperatorRole(roles string, managedPolicies, deleteHcpSharedVpcPolicies bool) (map[string]bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteOperatorRole", roles, managedPolicies)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "DeleteOperatorRole", roles, managedPolicies, deleteHcpSharedVpcPolicies)
+	ret0, _ := ret[0].(map[string]bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DeleteOperatorRole indicates an expected call of DeleteOperatorRole.
-func (mr *MockClientMockRecorder) DeleteOperatorRole(roles, managedPolicies any) *gomock.Call {
+func (mr *MockClientMockRecorder) DeleteOperatorRole(roles, managedPolicies, deleteHcpSharedVpcPolicies any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOperatorRole", reflect.TypeOf((*MockClient)(nil).DeleteOperatorRole), roles, managedPolicies)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOperatorRole", reflect.TypeOf((*MockClient)(nil).DeleteOperatorRole), roles, managedPolicies, deleteHcpSharedVpcPolicies)
 }
 
 // DeleteOsdCcsAdminUser mocks base method.
@@ -856,6 +857,21 @@ func (m *MockClient) GetOperatorRolesFromAccountByPrefix(prefix string, credRequ
 func (mr *MockClientMockRecorder) GetOperatorRolesFromAccountByPrefix(prefix, credRequest any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOperatorRolesFromAccountByPrefix", reflect.TypeOf((*MockClient)(nil).GetOperatorRolesFromAccountByPrefix), prefix, credRequest)
+}
+
+// GetPolicyDetailsFromRole mocks base method.
+func (m *MockClient) GetPolicyDetailsFromRole(role *string) ([]*iam.GetPolicyOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPolicyDetailsFromRole", role)
+	ret0, _ := ret[0].([]*iam.GetPolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPolicyDetailsFromRole indicates an expected call of GetPolicyDetailsFromRole.
+func (mr *MockClientMockRecorder) GetPolicyDetailsFromRole(role any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPolicyDetailsFromRole", reflect.TypeOf((*MockClient)(nil).GetPolicyDetailsFromRole), role)
 }
 
 // GetRegion mocks base method.

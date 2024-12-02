@@ -145,7 +145,7 @@ type Client interface {
 	ListOidcProviders(targetClusterId string, config *cmv1.OidcConfig) ([]OidcProviderOutput, error)
 	GetRoleByARN(roleARN string) (iamtypes.Role, error)
 	GetRoleByName(roleName string) (iamtypes.Role, error)
-	DeleteOperatorRole(roles string, managedPolicies bool) error
+	DeleteOperatorRole(roles string, managedPolicies bool, deleteHcpSharedVpcPolicies bool) (map[string]bool, error)
 	GetOperatorRolesFromAccountByClusterID(
 		clusterID string,
 		credRequests map[string]*cmv1.STSOperator,
@@ -156,11 +156,12 @@ type Client interface {
 	GetAccountRoleForCurrentEnv(env string, roleName string) (Role, error)
 	GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string,
 		accountRolesMap map[string]AccountRole) ([]Role, error)
-	DeleteAccountRole(roleName string, prefix string, managedPolicies bool) error
+	DeleteAccountRole(roleName string, prefix string, managedPolicies bool, deleteHcpSharedVpcPolicies bool) error
 	DeleteOCMRole(roleARN string, managedPolicies bool) error
 	DeleteUserRole(roleName string) error
 	GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail, map[string][]PolicyDetail, error)
 	GetAttachedPolicy(role *string) ([]PolicyDetail, error)
+	GetPolicyDetailsFromRole(role *string) ([]*iam.GetPolicyOutput, error)
 	HasPermissionsBoundary(roleName string) (bool, error)
 	GetOpenIDConnectProviderByClusterIdTag(clusterID string) (string, error)
 	GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl string) (string, error)

@@ -1065,15 +1065,37 @@ func checkIfROSAOperatorRole(role iamtypes.Role, credRequest map[string]*cmv1.ST
 	return false
 }
 
-func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) error {
+func (c *awsClient) GetPolicyDetailsFromRole(role *string) ([]*iam.GetPolicyOutput, error) {
+	policies, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
+		RoleName: role,
+	})
+	if err != nil {
+		return nil, err
+	}
+	finalOutput := make([]*iam.GetPolicyOutput, 0)
+	for _, attachedPolicy := range policies.AttachedPolicies {
+		policy, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
+			PolicyArn: attachedPolicy.PolicyArn,
+		})
+		if err != nil {
+			return nil, err
+		}
+		finalOutput = append(finalOutput, policy)
+	}
+	return finalOutput, nil
+}
+
+func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool,
+	deleteHcpSharedVpcPolicies bool) (map[string]bool, error) {
 	role := aws.String(roleName)
+	sharedVpcPoliciesNotDeleted := make(map[string]bool)
 	tagFilter, err := getOperatorRolePolicyTags(c.iamClient, roleName)
 	if err != nil {
-		return err
+		return sharedVpcPoliciesNotDeleted, err
 	}
 	policies, excludedPolicies, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
 	if err != nil {
-		return err
+		return sharedVpcPoliciesNotDeleted, err
 	}
 	err = c.detachOperatorRolePolicies(role)
 	if err != nil {
@@ -1086,25 +1108,55 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 			err = nil
 		}
 		if err != nil {
-			return err
+			return sharedVpcPoliciesNotDeleted, err
 		}
 	}
 	err = c.DeleteRole(*role)
 	if err != nil {
-		return err
+		return sharedVpcPoliciesNotDeleted, err
 	}
 	if !managedPolicies {
 		_, err = c.deletePolicies(policies)
-	} else {
+	} else if deleteHcpSharedVpcPolicies {
 		var sharedVpcHcpPolicies []string
 		for _, policy := range excludedPolicies {
-			if strings.Contains(policy, SharedVpcAssumeRolePrefix) {
-				sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
+			policyOutput, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
+				PolicyArn: aws.String(policy),
+			})
+			if err != nil || policyOutput == nil {
+				return sharedVpcPoliciesNotDeleted, err
+			}
+
+			containsManagedTag := false
+			containsHcpSharedVpcTag := false
+			for _, policyTag := range policyOutput.Policy.Tags {
+				switch strings.Trim(*policyTag.Key, " ") {
+				case tags.RedHatManaged:
+					containsManagedTag = true
+				case tags.HcpSharedVpc:
+					containsHcpSharedVpcTag = true
+				}
+			}
+			// Delete if no attachments and correct tags showing it's a hcp sharedvpc policy
+			if containsManagedTag && containsHcpSharedVpcTag {
+				if *policyOutput.Policy.AttachmentCount == 0 {
+					// If the policy is deleted, remove from the warning outputs
+					sharedVpcPoliciesNotDeleted[*policyOutput.Policy.Arn] = false
+
+					// Add to list of sharedVpc policies to be actually deleted
+					c.logger.Infof("Deleting policy '%s'", policy)
+					sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
+				} else {
+					// Print warning message after all roles are checked (will result in duplicated warnings without
+					// adding to this map and displaying at the end of role deletion due to multiple roles having
+					// one of the policies)
+					sharedVpcPoliciesNotDeleted[*policyOutput.Policy.Arn] = true
+				}
 			}
 		}
 		_, err = c.deletePolicies(sharedVpcHcpPolicies)
 	}
-	return err
+	return sharedVpcPoliciesNotDeleted, err
 }
 
 func (c *awsClient) DeleteRole(role string) error {
@@ -1140,7 +1192,8 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 	return instanceProfiles, nil
 }
 
-func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPolicies bool) error {
+func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPolicies bool,
+	deleteHcpSharedVpcPolicies bool) error {
 	role := aws.String(roleName)
 	err := c.DeleteInlineRolePolicies(aws.ToString(role))
 	if err != nil {
@@ -1173,7 +1226,7 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 	}
 	if !managedPolicies {
 		_, err = c.deletePolicies(policyMap)
-	} else {
+	} else if deleteHcpSharedVpcPolicies {
 		var sharedVpcHcpPolicies []string
 		for _, policy := range excludedPolicyMap {
 			policyOutput, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
@@ -1195,6 +1248,7 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 			}
 			if containsManagedTag && containsHcpSharedVpcTag {
 				if *policyOutput.Policy.AttachmentCount == 0 {
+					c.logger.Infof("Deleting policy '%s'", policy)
 					sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
 				} else {
 					c.logger.Warnf("Unable to delete policy %s: Policy still attached to %v other resource(s)",
