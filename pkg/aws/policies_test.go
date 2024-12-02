@@ -531,6 +531,15 @@ var _ = Describe("Cluster Roles/Policies", func() {
 		Expect(policies).To(HaveLen(1))
 		Expect(policies[0]).To(Equal(operatorRolePolicyArn))
 	})
+	It("Test GetPolicyDetailsFromRole", func() {
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), &iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(accountRole),
+		}).Return(accountRoleAttachedPolicies, nil).Times(1)
+		mockIamAPI.EXPECT().GetPolicy(gomock.Any(), gomock.Any()).Times(2)
+		output, err := client.GetPolicyDetailsFromRole(&accountRole)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(output).To(HaveLen(2))
+	})
 	It("Test DeleteAccountRole", func() {
 		mockIamAPI.EXPECT().ListRolePolicies(gomock.Any(), gomock.Any()).Return(&iam.ListRolePoliciesOutput{}, nil)
 		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), &iam.ListAttachedRolePoliciesInput{
@@ -567,7 +576,7 @@ var _ = Describe("Cluster Roles/Policies", func() {
 		mockIamAPI.EXPECT().DeletePolicy(gomock.Any(), &iam.DeletePolicyInput{
 			PolicyArn: aws.String(accountRolePolicyArn),
 		}).Return(&iam.DeletePolicyOutput{}, nil)
-		err := client.DeleteAccountRole(accountRole, rolePrefix, false)
+		err := client.DeleteAccountRole(accountRole, rolePrefix, false, false)
 		Expect(err).NotTo(HaveOccurred())
 	})
 	It("Test DeleteOperatorRole", func() {
@@ -602,7 +611,7 @@ var _ = Describe("Cluster Roles/Policies", func() {
 				AttachmentCount: &attachCount,
 			},
 		}, nil)
-		err := client.DeleteOperatorRole(operatorRole, false)
+		_, err := client.DeleteOperatorRole(operatorRole, false, false)
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
