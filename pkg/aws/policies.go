@@ -1072,7 +1072,7 @@ func (c *awsClient) GetPolicyDetailsFromRole(role *string) ([]*iam.GetPolicyOutp
 	if err != nil {
 		return nil, err
 	}
-	finalOutput := make([]*iam.GetPolicyOutput, 0)
+	var finalOutput []*iam.GetPolicyOutput
 	for _, attachedPolicy := range policies.AttachedPolicies {
 		policy, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
 			PolicyArn: attachedPolicy.PolicyArn,
