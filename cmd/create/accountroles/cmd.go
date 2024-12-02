@@ -414,11 +414,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	createHostedCP := args.hostedCP
+	defaultValue := args.route53RoleArn != "" && args.vpcEndpointRoleArn != ""
 	if interactive.Enabled() && !isHostedCPValueSet && !cmd.Flags().Changed("classic") && !r.Creator.IsGovcloud {
 		createHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Create Hosted CP account roles",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-			Default:  false,
+			Default:  defaultValue || !createClassic,
 			Required: false,
 		})
 		if err != nil {
@@ -429,14 +430,12 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() && createHostedCP {
-		defaultValue := args.route53RoleArn != "" && args.vpcEndpointRoleArn != ""
-
 		isHcpSharedVpc, err = interactive.GetBool(interactive.Input{
 			Question: "Use account roles for Hosted CP shared VPC?",
 			Help: "Whether or not to set route53/VPC endpoint role ARNs to be used for Hosted CP shared VPC " +
 				"(cross-account VPC)",
 			Default:  defaultValue,
-			Required: false,
+			Required: createHostedCP,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid value: %s", err)
@@ -449,7 +448,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud && createHostedCP {
 		args.vpcEndpointRoleArn, err = interactive.GetString(interactive.Input{
 			Question: "Set VPC endpoint role ARN",
 			Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
@@ -464,7 +463,7 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 	}
-	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud && createHostedCP {
 		args.route53RoleArn, err = interactive.GetString(interactive.Input{
 			Question: "Set route53 role ARN",
 			Help:     cmd.Flags().Lookup(route53RoleArnFlag).Usage,
