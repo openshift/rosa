@@ -210,7 +210,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
 		deleteHcpSharedVpcPolicies := false
 		if roles.CheckIfRolesAreHcpSharedVpc(r, finalRoleList) {
-			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Create commands to delete Hosted CP shared VPC"+
+			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC"+
 				" policies?")
 		}
 		for _, role := range finalRoleList {
@@ -235,7 +235,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 		// Get HCP shared vpc policy details if the user is deleting roles related to HCP shared vpc
 		policiesOutput := make([]*iam.GetPolicyOutput, 0)
 		if roles.CheckIfRolesAreHcpSharedVpc(r, finalRoleList) &&
-			confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC policies?") {
+			confirm.Prompt(true, "Create commands to delete Hosted CP shared VPC policies?") {
 			for _, role := range finalRoleList {
 				policiesOutput, err = r.AWSClient.GetPolicyDetailsFromRole(awssdk.String(role))
 				if err != nil {
