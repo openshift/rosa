@@ -118,16 +118,15 @@ var _ = Describe("Helper Functions", func() {
 				"Name":   "test-stack",
 				"Region": "us-west-1",
 			}
-			templateFile := "test-template.yaml"
 			tags := map[string]string{
 				"TagKey1": "TagValue1",
 				"TagKey2": "TagValue2",
 			}
 			expectedMessage := "Run the following command to create the stack manually:\n" +
-				"aws cloudformation create-stack --stack-name test-stack --template-body file://test-template.yaml " +
+				"aws cloudformation create-stack --stack-name test-stack --template-body file://<template-file-path> " +
 				"--param ParameterKey=Name,ParameterValue=test-stack ParameterKey=Region,ParameterValue=us-west-1 " +
 				" --tags Key=TagKey1,Value=TagValue1 Key=TagKey2,Value=TagValue2  --region us-west-1"
-			Expect(ManualModeHelperMessage(params, templateFile, tags)).To(Equal(expectedMessage))
+			Expect(ManualModeHelperMessage(params, tags)).To(Equal(expectedMessage))
 		})
 	})
 

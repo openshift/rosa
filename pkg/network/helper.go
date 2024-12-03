@@ -142,9 +142,9 @@ func deleteHelperMessage(logger *logrus.Logger, params map[string]string, err er
 		params["Name"], params["Region"])
 }
 
-func ManualModeHelperMessage(params map[string]string,
-	templateFile string, tags map[string]string) string {
+func ManualModeHelperMessage(params map[string]string, tags map[string]string) string {
 	return fmt.Sprintf("Run the following command to create the stack manually:\n"+
-		"aws cloudformation create-stack --stack-name %s --template-body file://%s --param %s --tags %s --region %s",
-		params["Name"], templateFile, formatParams(params), formatTags(tags), params["Region"])
+		"aws cloudformation create-stack --stack-name %s --template-body file://<template-file-path>"+
+		" --param %s --tags %s --region %s",
+		params["Name"], formatParams(params), formatTags(tags), params["Region"])
 }
