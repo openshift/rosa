@@ -22,12 +22,15 @@ import (
 	"strings"
 	"time"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -270,7 +273,22 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("There was an error getting the policy: %v", err)
 			os.Exit(1)
 		}
-		commands := buildCommand(r, foundOperatorRoles, policyMap, arbitraryPolicyMap, managedPolicies)
+
+		// Get HCP shared vpc policy details if the user is deleting roles related to HCP shared vpc
+		policiesOutput := make([]*iam.GetPolicyOutput, 0)
+		if roles.CheckIfRolesAreHcpSharedVpc(r, foundOperatorRoles) &&
+			confirm.Prompt(true, "Create commands to delete Hosted CP shared VPC policies?") {
+			for _, role := range foundOperatorRoles {
+				policies, err := r.AWSClient.GetPolicyDetailsFromRole(awssdk.String(role))
+				policiesOutput = append(policiesOutput, policies...)
+				if err != nil {
+					r.Reporter.Warnf("There was an error getting details of policies attached to role '%s': %v",
+						role, err)
+				}
+			}
+		}
+
+		commands := buildCommand(r, foundOperatorRoles, policyMap, arbitraryPolicyMap, managedPolicies, policiesOutput)
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the Operator roles and policies:\n")
 		}
@@ -282,8 +300,11 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 func buildCommand(r *rosa.Runtime, roleNames []string, policyMap map[string][]string,
-	arbitraryPolicyMap map[string][]string, managedPolicies bool) string {
+	arbitraryPolicyMap map[string][]string, managedPolicies bool,
+	hcpSharedVpcPoliciesOutput []*iam.GetPolicyOutput) string {
 	commands := []string{}
+	hcpSharedVpcPolicyCommands := make(map[string]string) // Ensures no duplicate delete policy cmds for hcp sharedvpc
+
 	for _, roleName := range roleNames {
 		policyARN := policyMap[roleName]
 		arbitraryPolicyARN := arbitraryPolicyMap[roleName]
@@ -341,6 +362,30 @@ func buildCommand(r *rosa.Runtime, roleNames []string, policyMap map[string][]st
 			AddParam(awscb.RoleName, roleName).
 			Build()
 		commands = append(commands, deleteRole)
+
+		// Delete HCP shared VPC policies
+		for _, hcpSharedVpcPolicy := range hcpSharedVpcPoliciesOutput {
+			hasRhManagedTag := false
+			hasHcpSharedVpcTag := false
+			for _, tag := range hcpSharedVpcPolicy.Policy.Tags {
+				if *tag.Key == tags.RedHatManaged {
+					hasRhManagedTag = true
+				} else if *tag.Key == tags.HcpSharedVpc {
+					hasHcpSharedVpcTag = true
+				}
+			}
+			if hasHcpSharedVpcTag && hasRhManagedTag {
+				deletePolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DeletePolicy).
+					AddParam(awscb.PolicyArn, *hcpSharedVpcPolicy.Policy.Arn).
+					Build()
+				hcpSharedVpcPolicyCommands[*hcpSharedVpcPolicy.Policy.PolicyName] = deletePolicy
+			}
+		}
+	}
+
+	for _, command := range hcpSharedVpcPolicyCommands {
+		commands = append(commands, command)
 	}
 	return strings.Join(commands, "\n")
 }
