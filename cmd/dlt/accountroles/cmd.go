@@ -240,7 +240,7 @@ func deleteAccountRoles(r *rosa.Runtime, env string, prefix string, clusters []*
 				policies, err := r.AWSClient.GetPolicyDetailsFromRole(awssdk.String(role))
 				policiesOutput = append(policiesOutput, policies...)
 				if err != nil {
-					r.Reporter.Infof("There was an error getting details of policies attached to role '%s': %v",
+					r.Reporter.Warnf("There was an error getting details of policies attached to role '%s': %v",
 						role, err)
 				}
 			}
@@ -320,6 +320,8 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail,
 	arbitraryPolicyMap map[string][]aws.PolicyDetail, managedPolicies bool,
 	hcpSharedVpcPoliciesOutput []*iam.GetPolicyOutput) string {
 	commands := []string{}
+	hcpSharedVpcPolicyCommands := make(map[string]string) // Ensures no duplicate delete policy cmds for hcp sharedvpc
+
 	for _, roleName := range roleNames {
 		policyDetails := policyMap[roleName]
 		excludedPolicyDetails := arbitraryPolicyMap[roleName]
@@ -365,26 +367,29 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail,
 			Build()
 		commands = append(commands, deleteRole)
 
-		if len(hcpSharedVpcPoliciesOutput) > 0 { // Delete HCP shared VPC policies
-			for _, hcpSharedVpcPolicy := range hcpSharedVpcPoliciesOutput {
-				hasRhManagedTag := false
-				hasHcpSharedVpcTag := false
-				for _, tag := range hcpSharedVpcPolicy.Policy.Tags {
-					if *tag.Key == tags.RedHatManaged {
-						hasRhManagedTag = true
-					} else if *tag.Key == tags.HcpSharedVpc {
-						hasHcpSharedVpcTag = true
-					}
-				}
-				if hasHcpSharedVpcTag && hasRhManagedTag {
-					deletePolicy := awscb.NewIAMCommandBuilder().
-						SetCommand(awscb.DeletePolicy).
-						AddParam(awscb.PolicyName, *hcpSharedVpcPolicy.Policy.PolicyName).
-						Build()
-					commands = append(commands, deletePolicy)
+		// Delete HCP shared VPC policies
+		for _, hcpSharedVpcPolicy := range hcpSharedVpcPoliciesOutput {
+			hasRhManagedTag := false
+			hasHcpSharedVpcTag := false
+			for _, tag := range hcpSharedVpcPolicy.Policy.Tags {
+				if *tag.Key == tags.RedHatManaged {
+					hasRhManagedTag = true
+				} else if *tag.Key == tags.HcpSharedVpc {
+					hasHcpSharedVpcTag = true
 				}
 			}
+			if hasHcpSharedVpcTag && hasRhManagedTag {
+				deletePolicy := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.DeletePolicy).
+					AddParam(awscb.PolicyArn, *hcpSharedVpcPolicy.Policy.Arn).
+					Build()
+				hcpSharedVpcPolicyCommands[*hcpSharedVpcPolicy.Policy.PolicyName] = deletePolicy
+			}
 		}
+	}
+
+	for _, command := range hcpSharedVpcPolicyCommands {
+		commands = append(commands, command)
 	}
 	return awscb.JoinCommands(commands)
 }
