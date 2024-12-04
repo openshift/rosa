@@ -101,7 +101,7 @@ func (s *network) CreateStack(templateFile *string, templateBody *[]byte,
 	})
 	if err != nil {
 		deleteHelperMessage(logger, params, err)
-		helperMsg := ManualModeHelperMessage(params, template, tags)
+		helperMsg := ManualModeHelperMessage(params, tags)
 		logger.Infof(helperMsg)
 		return fmt.Errorf("failed to wait for stack creation, %v", err)
 	}
