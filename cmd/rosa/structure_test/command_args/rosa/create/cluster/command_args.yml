@@ -92,6 +92,10 @@
 - name: default-ingress-namespace-ownership-policy
 - name: private-hosted-zone-id
 - name: shared-vpc-role-arn
+- name: route53-role-arn
+- name: vpc-endpoint-role-arn
+- name: hcp-internal-communication-hosted-zone-id
+- name: ingress-private-hosted-zone-id
 - name: base-domain
 - name: additional-compute-security-group-ids
 - name: additional-infra-security-group-ids

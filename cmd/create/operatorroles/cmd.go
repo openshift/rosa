@@ -139,7 +139,7 @@ func init() {
 		vpcEndpointRoleArnFlag,
 		"",
 		"AWS IAM Role ARN with policy attached, associated with the shared VPC."+
-			" Grants permissions necessary to communicate with and handle a cross-account VPC.",
+			" Grants permissions necessary to communicate with and handle a Hosted Control Plane cross-account VPC.",
 	)
 
 	flags.StringVar(
@@ -151,8 +151,8 @@ func init() {
 			"This flag deprecates '--shared-vpc-role-arn'.",
 	)
 
-	flags.MarkDeprecated("shared-vpc-role-arn", fmt.Sprintf("'--shared-vpc-role-arn' will be replaced with %s "+
-		"in future versions of ROSA", hostedZoneRoleArnFlag))
+	flags.MarkDeprecated("shared-vpc-role-arn", fmt.Sprintf("'--shared-vpc-role-arn' will be replaced with "+
+		"'--%s' in future versions of ROSA.", hostedZoneRoleArnFlag))
 
 	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
