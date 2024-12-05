@@ -166,6 +166,10 @@ type Spec struct {
 	SharedVPCRoleArn    string
 	BaseDomain          string
 
+	// HCP Shared VPC
+	VpcEndpointRoleArn                string
+	InternalCommunicationHostedZoneId string
+
 	// Worker Machine Pool attributes
 	AdditionalComputeSecurityGroupIds []string
 
@@ -1011,6 +1015,13 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 	if config.PrivateHostedZoneID != "" {
 		awsBuilder = awsBuilder.PrivateHostedZoneID(config.PrivateHostedZoneID)
 		awsBuilder = awsBuilder.PrivateHostedZoneRoleARN(config.SharedVPCRoleArn)
+	}
+	// hcp shared vpc
+	if config.VpcEndpointRoleArn != "" {
+		awsBuilder = awsBuilder.PrivateHostedZoneID(config.PrivateHostedZoneID)
+		awsBuilder = awsBuilder.PrivateHostedZoneRoleARN(config.SharedVPCRoleArn)
+		awsBuilder = awsBuilder.VpcEndpointRoleArn(config.VpcEndpointRoleArn)
+		awsBuilder = awsBuilder.HcpInternalCommunicationHostedZoneId(config.InternalCommunicationHostedZoneId)
 	}
 	if config.BaseDomain != "" {
 		clusterBuilder = clusterBuilder.DNS(v1.NewDNS().BaseDomain(config.BaseDomain))
