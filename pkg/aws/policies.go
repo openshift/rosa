@@ -352,6 +352,10 @@ func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
 			return policyArn, err
 		}
 	}
+	tag, ok := tagList[tags.HcpSharedVpc]
+	if ok && tag == tags.True {
+		isCompatible = true // Workaround for HcpSharedVpc policies, to force them to not make a new policy version
+	}
 
 	if !isCompatible {
 		// Since there is a limit to how many versions a policy can have, we delete all non-default
