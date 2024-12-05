@@ -481,11 +481,6 @@ func attachHcpSharedVpcPolicy(r *rosa.Runtime, sharedVpcRoleArn string, roleName
 		"shared_vpc_role_arn": sharedVpcRoleArn,
 	})
 
-	path, err := aws.GetPathFromARN(sharedVpcRoleArn)
-	if err != nil {
-		return err
-	}
-
 	policyTags := map[string]string{
 		tags.RedHatManaged: aws.TrueString,
 		tags.HcpSharedVpc:  aws.TrueString,
@@ -496,6 +491,7 @@ func attachHcpSharedVpcPolicy(r *rosa.Runtime, sharedVpcRoleArn string, roleName
 		return err
 	}
 	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
+	path := ""
 	policyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, path)
 	policyArn, err = r.AWSClient.EnsurePolicy(policyArn, policyDetails,
 		defaultPolicyVersion, policyTags, path)

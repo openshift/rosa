@@ -77,10 +77,7 @@ func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, defaultPolicyVersion
 	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
 	policy := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
 
-	path, err := aws.GetPathFromARN(roleArn)
-	if err != nil {
-		return "", err
-	}
+	path := ""
 
 	iamTags := map[string]string{
 		tags.RedHatManaged: helper.True,
