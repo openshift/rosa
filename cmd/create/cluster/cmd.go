@@ -3294,6 +3294,12 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.SharedVPCRoleArn = sharedVPCRoleARN
 		clusterConfig.BaseDomain = baseDomain
 	}
+	if isHcpSharedVpc {
+		clusterConfig.PrivateHostedZoneID = privateHostedZoneID
+		clusterConfig.SharedVPCRoleArn = sharedVPCRoleARN
+		clusterConfig.InternalCommunicationHostedZoneId = hcpInternalCommunicationHostedZoneId
+		clusterConfig.VpcEndpointRoleArn = vpcEndpointRoleArn
+	}
 	if clusterAutoscaler != nil {
 		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(clusterAutoscaler)
 		if err != nil {
