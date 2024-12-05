@@ -2342,6 +2342,76 @@ func run(cmd *cobra.Command, _ []string) {
 	anyHcpSharedVpcFlagsUsed := route53RoleArn != "" || vpcEndpointRoleArn != "" ||
 		hcpInternalCommunicationHostedZoneId != "" || ingressPrivateHostedZoneId != ""
 
+	if len(subnetIDs) == 0 && (isSharedVPC || isHcpSharedVpc) {
+		r.Reporter.Errorf("Installing a cluster into a shared VPC is only supported for BYO VPC clusters")
+		os.Exit(1)
+	}
+
+	if isSubnetBelongToSharedVpc(r, awsCreator.AccountID, subnetIDs, mapSubnetIDToSubnet) {
+
+		if clusterHasLongNameWithoutDomainPrefix(clusterName, domainPrefix) {
+			r.Reporter.Errorf("Installing a cluster into shared VPC is only supported for cluster "+
+				"which has a name no longer than %d characters or with a cluster domain prefix",
+				ocm.MaxClusterDomainPrefixLength)
+			os.Exit(1)
+		}
+
+		isSharedVPC = true
+
+		useInteractive := false
+
+		if isHostedCP {
+			isHcpSharedVpc = true
+			useInteractive = route53RoleArn == "" || vpcEndpointRoleArn == "" || ingressPrivateHostedZoneId == "" ||
+				hcpInternalCommunicationHostedZoneId == ""
+		}
+
+		useInteractive = useInteractive || privateHostedZoneID == "" || sharedVPCRoleARN == "" || baseDomain == ""
+
+		if useInteractive {
+			if !interactive.Enabled() {
+				interactive.Enable()
+			}
+
+			privateHostedZoneID, err = getPrivateHostedZoneID(cmd, privateHostedZoneID)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			// TODO: We can remove this and replace the above once we deprecate the old flags
+			ingressPrivateHostedZoneId = privateHostedZoneID
+
+			hcpInternalCommunicationHostedZoneId, err = getHcpInternalCommunicationHostedZoneId(cmd,
+				hcpInternalCommunicationHostedZoneId)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			sharedVPCRoleARN, err = getSharedVpcRoleArn(cmd, sharedVPCRoleARN)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			// TODO: We can remove this and replace the above once we deprecate the old flags
+			route53RoleArn = sharedVPCRoleARN
+
+			vpcEndpointRoleArn, err = getVpcEndpointRoleArn(cmd, vpcEndpointRoleArn)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			baseDomain, err = getBaseDomain(r, cmd, baseDomain)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
+	}
+
 	if anyHcpSharedVpcFlagsUsed {
 		if isHostedCP {
 			isHcpSharedVpc = true
@@ -2359,47 +2429,6 @@ func run(cmd *cobra.Command, _ []string) {
 			} else if hcpInternalCommunicationHostedZoneId != "" {
 				r.Reporter.Errorf(hcpSharedVpcFlagOnlyErrorMsg,
 					hcpInternalCommunicationHostedZoneIdFlag)
-				os.Exit(1)
-			}
-		}
-	}
-
-	if len(subnetIDs) == 0 && (isSharedVPC || isHcpSharedVpc) {
-		r.Reporter.Errorf("Installing a cluster into a shared VPC is only supported for BYO VPC clusters")
-		os.Exit(1)
-	}
-
-	if isSubnetBelongToSharedVpc(r, awsCreator.AccountID, subnetIDs, mapSubnetIDToSubnet) {
-
-		if clusterHasLongNameWithoutDomainPrefix(clusterName, domainPrefix) {
-			r.Reporter.Errorf("Installing a cluster into shared VPC is only supported for cluster "+
-				"which has a name no longer than %d characters or with a cluster domain prefix",
-				ocm.MaxClusterDomainPrefixLength)
-			os.Exit(1)
-		}
-
-		isSharedVPC = true
-
-		if privateHostedZoneID == "" || sharedVPCRoleARN == "" || baseDomain == "" {
-			if !interactive.Enabled() {
-				interactive.Enable()
-			}
-
-			privateHostedZoneID, err = getPrivateHostedZoneID(cmd, privateHostedZoneID)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-
-			sharedVPCRoleARN, err = getSharedVpcRoleArn(cmd, sharedVPCRoleARN)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-
-			baseDomain, err = getBaseDomain(r, cmd, baseDomain)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
 		}
