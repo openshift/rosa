@@ -30,11 +30,12 @@ func isSubnetBelongToSharedVpc(r *rosa.Runtime, accountID string, subnetIDs []st
 
 func getPrivateHostedZoneID(cmd *cobra.Command, privateHostedZoneID string) (string, error) {
 	res, err := interactive.GetString(interactive.Input{
-		Question: "Private hosted zone ID",
+		Question: "Ingress private hosted zone ID",
 		Help:     cmd.Flags().Lookup("private-hosted-zone-id").Usage,
 		Default:  privateHostedZoneID,
 		Required: true,
 	})
+	// TODO: Update error when we deprecate the old flags
 	if err != nil {
 		return "", errors.Errorf("Expected a valid value for 'private-hosted-zone-id': %s", err)
 	}
@@ -42,9 +43,24 @@ func getPrivateHostedZoneID(cmd *cobra.Command, privateHostedZoneID string) (str
 	return res, nil
 }
 
+func getHcpInternalCommunicationHostedZoneId(cmd *cobra.Command, hcpInternalHostedZoneId string) (string, error) {
+	res, err := interactive.GetString(interactive.Input{
+		Question: "Hosted Control Plane internal communication hosted zone ID",
+		Help:     cmd.Flags().Lookup(hcpInternalCommunicationHostedZoneIdFlag).Usage,
+		Default:  hcpInternalHostedZoneId,
+		Required: true,
+	})
+	if err != nil {
+		return "", errors.Errorf("Expected a valid value for '%s': %s", hcpInternalCommunicationHostedZoneIdFlag,
+			err)
+	}
+
+	return res, nil
+}
+
 func getSharedVpcRoleArn(cmd *cobra.Command, sharedVpcRoleArn string) (string, error) {
 	res, err := interactive.GetString(interactive.Input{
-		Question: "Shared VPC role ARN",
+		Question: "Shared VPC role ARN (Route53 role ARN)", // TODO: Change once we deprecate the old flags
 		Help:     cmd.Flags().Lookup("shared-vpc-role-arn").Usage,
 		Default:  sharedVpcRoleArn,
 		Required: true,
@@ -52,8 +68,26 @@ func getSharedVpcRoleArn(cmd *cobra.Command, sharedVpcRoleArn string) (string, e
 			aws.ARNValidator,
 		},
 	})
+	// TODO: Update error when we deprecate the old flags
 	if err != nil {
 		return "", errors.Errorf("Expected a valid value for 'shared-vpc-role-arn': %s", err)
+	}
+
+	return res, nil
+}
+
+func getVpcEndpointRoleArn(cmd *cobra.Command, vpcEndpointRoleArn string) (string, error) {
+	res, err := interactive.GetString(interactive.Input{
+		Question: "VPC endpoint role ARN",
+		Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
+		Default:  vpcEndpointRoleArn,
+		Required: true,
+		Validators: []interactive.Validator{
+			aws.ARNValidator,
+		},
+	})
+	if err != nil {
+		return "", errors.Errorf("Expected a valid value for '%s': %s", vpcEndpointRoleArnFlag, err)
 	}
 
 	return res, nil
