@@ -2332,7 +2332,39 @@ func run(cmd *cobra.Command, _ []string) {
 		isSharedVPC = true
 	}
 
-	if len(subnetIDs) == 0 && isSharedVPC {
+	// validate flags for hcp shared vpc
+	isHcpSharedVpc := false
+	route53RoleArn := sharedVPCRoleARN // TODO: Change when fully deprecating old flag name
+	vpcEndpointRoleArn := strings.Trim(args.vpcEndpointRoleArn, " \t")
+	hcpInternalCommunicationHostedZoneId := strings.Trim(args.hcpInternalCommunicationHostedZoneId, " \t")
+	ingressPrivateHostedZoneId := privateHostedZoneID // TODO: Change when fully deprecating old flag name
+
+	anyHcpSharedVpcFlagsUsed := route53RoleArn != "" || vpcEndpointRoleArn != "" ||
+		hcpInternalCommunicationHostedZoneId != "" || ingressPrivateHostedZoneId != ""
+
+	if anyHcpSharedVpcFlagsUsed {
+		if isHostedCP {
+			isHcpSharedVpc = true
+			err = validateHcpSharedVpcArgs(route53RoleArn, vpcEndpointRoleArn, ingressPrivateHostedZoneId,
+				hcpInternalCommunicationHostedZoneId)
+			if err != nil {
+				r.Reporter.Errorf("Error when validating flags: %v", err)
+				os.Exit(1)
+			}
+		} else {
+			if vpcEndpointRoleArn != "" {
+				r.Reporter.Errorf(hcpSharedVpcFlagOnlyErrorMsg,
+					vpcEndpointRoleArnFlag)
+				os.Exit(1)
+			} else if hcpInternalCommunicationHostedZoneId != "" {
+				r.Reporter.Errorf(hcpSharedVpcFlagOnlyErrorMsg,
+					hcpInternalCommunicationHostedZoneIdFlag)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if len(subnetIDs) == 0 && (isSharedVPC || isHcpSharedVpc) {
 		r.Reporter.Errorf("Installing a cluster into a shared VPC is only supported for BYO VPC clusters")
 		os.Exit(1)
 	}
@@ -2347,6 +2379,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		isSharedVPC = true
+
 		if privateHostedZoneID == "" || sharedVPCRoleARN == "" || baseDomain == "" {
 			if !interactive.Enabled() {
 				interactive.Enable()
