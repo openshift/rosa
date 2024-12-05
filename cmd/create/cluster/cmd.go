@@ -4028,9 +4028,15 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --subnet-ids %s", strings.Join(spec.SubnetIds, ","))
 	}
 	if spec.PrivateHostedZoneID != "" {
+		// TODO: Change flag names here when we deprecate the old flags
 		command += fmt.Sprintf(" --private-hosted-zone-id %s", spec.PrivateHostedZoneID)
 		command += fmt.Sprintf(" --shared-vpc-role-arn %s", spec.SharedVPCRoleArn)
 		command += fmt.Sprintf(" --base-domain %s", spec.BaseDomain)
+	}
+	if spec.InternalCommunicationHostedZoneId != "" {
+		command += fmt.Sprintf(" --%s %s", hcpInternalCommunicationHostedZoneIdFlag,
+			spec.InternalCommunicationHostedZoneId)
+		command += fmt.Sprintf(" --%s %s", vpcEndpointRoleArnFlag, spec.VpcEndpointRoleArn)
 	}
 	if spec.FIPS {
 		command += " --fips"
