@@ -39,11 +39,13 @@ import (
 )
 
 const (
-	PrefixFlag = "prefix"
+	PrefixFlag                         = "prefix"
+	deleteHcpSharedVpcPoliciesFlagName = "delete-hcp-shared-vpc-policies"
 )
 
 var args struct {
-	prefix string
+	prefix                     string
+	deleteHcpSharedVpcPolicies bool
 }
 
 var Cmd = &cobra.Command{
@@ -65,6 +67,13 @@ func init() {
 		PrefixFlag,
 		"",
 		"Operator role prefix, this flag needs to be used in case of reusable OIDC Config",
+	)
+
+	flags.BoolVar(
+		&args.deleteHcpSharedVpcPolicies,
+		deleteHcpSharedVpcPoliciesFlagName,
+		false,
+		"Deletes the Hosted Control Plane shared vpc policies",
 	)
 
 	ocm.AddOptionalClusterFlag(Cmd)
@@ -226,8 +235,9 @@ func run(cmd *cobra.Command, _ []string) {
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeAuto", nil)
 
 		// Only ask user if they want to delete policies if they are deleting HcpSharedVpc roles
-		deleteHcpSharedVpcPolicies := false
-		if roles.CheckIfRolesAreHcpSharedVpc(r, foundOperatorRoles) {
+		deleteHcpSharedVpcPolicies := args.deleteHcpSharedVpcPolicies
+		if roles.CheckIfRolesAreHcpSharedVpc(r, foundOperatorRoles) &&
+			!cmd.Flag(deleteHcpSharedVpcPoliciesFlagName).Changed {
 			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC policies?")
 		}
 		allSharedVpcPoliciesNotDeleted := make(map[string]bool)
@@ -276,8 +286,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 		// Get HCP shared vpc policy details if the user is deleting roles related to HCP shared vpc
 		policiesOutput := make([]*iam.GetPolicyOutput, 0)
-		if roles.CheckIfRolesAreHcpSharedVpc(r, foundOperatorRoles) &&
-			confirm.Prompt(true, "Create commands to delete Hosted CP shared VPC policies?") {
+		if roles.CheckIfRolesAreHcpSharedVpc(r, foundOperatorRoles) && args.deleteHcpSharedVpcPolicies {
 			for _, role := range foundOperatorRoles {
 				policies, err := r.AWSClient.GetPolicyDetailsFromRole(awssdk.String(role))
 				policiesOutput = append(policiesOutput, policies...)
