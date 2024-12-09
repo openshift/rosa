@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -138,20 +139,20 @@ func init() {
 		vpcEndpointRoleArnFlag,
 		"",
 		"AWS IAM Role ARN with policy attached, associated with the shared VPC."+
-			" Grants permissions necessary to communicate with and handle a cross-account VPC. "+
-			"This flag deprecates '--shared-vpc-role-arn'.",
+			" Grants permissions necessary to communicate with and handle a Hosted Control Plane cross-account VPC.",
 	)
 
 	flags.StringVar(
 		&args.sharedVpcRoleArn,
 		hostedZoneRoleArnFlag,
 		"",
-		"AWS IAM Role Arn with policy attached, associated with the shared VPC used for Hosted Control Plane clusters."+
-			" Grants permission necessary to handle route53 operations associated with a cross-acount VPC.",
+		"AWS IAM Role Arn with policy attached, associated with shared VPC."+
+			" Grants permission necessary to handle route53 operations associated with a cross-account VPC. "+
+			"This flag deprecates '--shared-vpc-role-arn'.",
 	)
 
-	flags.MarkDeprecated("shared-vpc-role-arn", fmt.Sprintf("'--shared-vpc-role-arn' will be replaced with %s "+
-		"in future versions of ROSA", hostedZoneRoleArnFlag))
+	flags.MarkDeprecated("shared-vpc-role-arn", fmt.Sprintf("'--shared-vpc-role-arn' will be replaced with "+
+		"'--%s' in future versions of ROSA.", hostedZoneRoleArnFlag))
 
 	interactive.AddModeFlag(Cmd)
 	confirm.AddFlag(flags)
@@ -161,6 +162,8 @@ func init() {
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+
+	rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
 
 	// Allow the command to be called programmatically
 	isProgmaticallyCalled := false
@@ -175,11 +178,33 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	isHcpSharedVpc, err := validateSharedVpcInputs(args.hostedCp, args.vpcEndpointRoleArn,
-		args.sharedVpcRoleArn)
-	if err != nil {
-		r.Reporter.Errorf("Invalid configuration: %s", err)
-		os.Exit(1)
+	var isHcpSharedVpc bool
+	var err error
+	if !args.hostedCp {
+		rosa.HostedClusterOnlyFlag(r, cmd, hostedZoneRoleArnFlag)
+		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+	} else {
+		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.sharedVpcRoleArn,
+			vpcEndpointRoleArnFlag, hostedZoneRoleArnFlag)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+	}
+
+	if args.vpcEndpointRoleArn != "" {
+		err = aws.ARNValidator(args.vpcEndpointRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", vpcEndpointRoleArnFlag, err)
+			os.Exit(1)
+		}
+	}
+	if args.sharedVpcRoleArn != "" {
+		err = aws.ARNValidator(args.sharedVpcRoleArn)
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", hostedZoneRoleArnFlag, err)
+			os.Exit(1)
+		}
 	}
 
 	env, err := ocm.GetEnv()
@@ -262,6 +287,57 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if interactive.Enabled() && args.hostedCp {
+		defaultValue := args.sharedVpcRoleArn != "" && args.vpcEndpointRoleArn != ""
+		isHcpSharedVpc, err = interactive.GetBool(interactive.Input{
+			Question: "Use operator roles for Hosted CP shared VPC?",
+			Help: "Whether or not to set route53/VPC endpoint role ARNs to be used for Hosted CP shared VPC " +
+				"(cross-account VPC)",
+			Default:  defaultValue,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+
+		if !isHcpSharedVpc {
+			args.sharedVpcRoleArn = ""
+			args.vpcEndpointRoleArn = ""
+		}
+	}
+
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+		args.vpcEndpointRoleArn, err = interactive.GetString(interactive.Input{
+			Question: "Set VPC endpoint role ARN",
+			Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
+			Default:  args.vpcEndpointRoleArn,
+			Required: isHcpSharedVpc,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
+			os.Exit(1)
+		}
+	}
+	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
+		args.sharedVpcRoleArn, err = interactive.GetString(interactive.Input{
+			Question: "Set route53 role ARN",
+			Help:     cmd.Flags().Lookup(hostedZoneRoleArnFlag).Usage,
+			Default:  args.sharedVpcRoleArn,
+			Required: isHcpSharedVpc,
+			Validators: []interactive.Validator{
+				aws.ARNValidator,
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %s", err)
 			os.Exit(1)
 		}
 	}

@@ -130,11 +130,11 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		return fmt.Errorf("Setting the `subnet` flag is only supported for creating a single AZ machine pool")
 	}
 
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "version")
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "ec2-metadata-http-tokens")
+	rosa.HostedClusterOnlyFlag(r, cmd, "version")
+	rosa.HostedClusterOnlyFlag(r, cmd, "autorepair")
+	rosa.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
+	rosa.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")
+	rosa.HostedClusterOnlyFlag(r, cmd, "ec2-metadata-http-tokens")
 
 	// Machine pool name:
 	name := strings.Trim(args.Name, " \t")
@@ -1401,9 +1401,9 @@ func editMachinePoolAutoscaling(machinePool *cmv1.MachinePool,
 
 func editMachinePool(cmd *cobra.Command, machinePoolId string,
 	clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) error {
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "autorepair")
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
-	mpHelpers.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")
+	rosa.HostedClusterOnlyFlag(r, cmd, "autorepair")
+	rosa.HostedClusterOnlyFlag(r, cmd, "tuning-configs")
+	rosa.HostedClusterOnlyFlag(r, cmd, "kubelet-configs")
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
 	isMaxReplicasSet := cmd.Flags().Changed("max-replicas")

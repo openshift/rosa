@@ -7,10 +7,15 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
 const assumePolicyAction = "sts:AssumeRole"
+
+const policyDetails = "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": {\n    \"Effect\": \"Allow\",\n    " +
+	"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": \"%{shared_vpc_role_arn}\"\n  }\n}\n"
 
 func computePolicyARN(creator aws.Creator,
 	prefix string, namespace string, name string, path string) string {
@@ -59,4 +64,33 @@ func validateIngressOperatorPolicyOverride(r *rosa.Runtime, policyArn string, sh
 	}
 
 	return nil
+}
+
+func getHcpSharedVpcPolicy(r *rosa.Runtime, roleArn string, defaultPolicyVersion string) (string, error) {
+	interpolatedPolicyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, policyDetails, map[string]string{
+		"shared_vpc_role_arn": roleArn,
+	})
+	userProvidedRoleName, err := aws.GetResourceIdFromARN(roleArn)
+	if err != nil {
+		return "", err
+	}
+	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
+	policy := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
+
+	path, err := aws.GetPathFromARN(roleArn)
+	if err != nil {
+		return "", err
+	}
+
+	iamTags := map[string]string{
+		tags.RedHatManaged: helper.True,
+		tags.HcpSharedVpc:  helper.True,
+	}
+
+	policyArn, err := r.AWSClient.EnsurePolicy(policy, interpolatedPolicyDetails, defaultPolicyVersion,
+		iamTags, path)
+	if err != nil {
+		return policyArn, err
+	}
+	return policyArn, nil
 }

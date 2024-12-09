@@ -2,10 +2,11 @@ package rosacli
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	. "github.com/openshift/rosa/tests/utils/log"
 )
@@ -138,17 +139,17 @@ type OCMRoleList struct {
 	OCMRoleList []OCMRole `json:"OCMRoleList,omitempty"`
 }
 type AccountsInfo struct {
-	AWSArn                    string `json:"AWS ARN,omitempty"`
-	AWSAccountID              string `json:"AWS Account ID,omitempty"`
-	AWSDefaultRegion          string `json:"AWS Default Region,omitempty"`
-	OCMApi                    string `json:"OCM API,omitempty"`
-	OCMAccountEmail           string `json:"OCM Account Email,omitempty"`
-	OCMAccountID              string `json:"OCM Account ID,omitempty"`
-	OCMAccountName            string `json:"OCM Account Name,omitempty"`
-	OCMAccountUsername        string `json:"OCM Account Username,omitempty"`
-	OCMOrganizationExternalID string `json:"OCM Organization External ID,omitempty"`
-	OCMOrganizationID         string `json:"OCM Organization ID,omitempty"`
-	OCMOrganizationName       string `json:"OCM Organization Name,omitempty"`
+	AWSArn                    string `yaml:"AWS ARN,omitempty"`
+	AWSAccountID              string `yaml:"AWS Account ID,omitempty"`
+	AWSDefaultRegion          string `yaml:"AWS Default Region,omitempty"`
+	OCMApi                    string `yaml:"OCM API,omitempty"`
+	OCMAccountEmail           string `yaml:"OCM Account Email,omitempty"`
+	OCMAccountID              string `yaml:"OCM Account ID,omitempty"`
+	OCMAccountName            string `yaml:"OCM Account Name,omitempty"`
+	OCMAccountUsername        string `yaml:"OCM Account Username,omitempty"`
+	OCMOrganizationExternalID string `yaml:"OCM Organization External ID,omitempty"`
+	OCMOrganizationID         string `yaml:"OCM Organization ID,omitempty"`
+	OCMOrganizationName       string `yaml:"OCM Organization Name,omitempty"`
 }
 
 type AccountRole struct {
@@ -244,9 +245,9 @@ func (ors *ocmResourceService) ReflectRegionList(result bytes.Buffer) (regions [
 // Pasrse the result of 'rosa whoami' to the AccountsInfo struct
 func (ors *ocmResourceService) ReflectAccountsInfo(result bytes.Buffer) *AccountsInfo {
 	res := new(AccountsInfo)
-	theMap, _ := ors.client.Parser.TextData.Input(result).Parse().JsonToMap()
-	data, _ := json.Marshal(&theMap)
-	json.Unmarshal(data, res)
+	theMap, _ := ors.client.Parser.TextData.Input(result).Parse().YamlToMap()
+	data, _ := yaml.Marshal(&theMap)
+	yaml.Unmarshal(data, res)
 	return res
 }
 

@@ -90,6 +90,11 @@ const (
 	duplicateIamRoleArnErrorMsg = "ROSA IAM roles must have unique ARNs " +
 		"and should not be shared with other IAM roles within the same cluster. " +
 		"Duplicated ARN: %s"
+
+	route53RoleArnFlag                       = "route53-role-arn"
+	vpcEndpointRoleArnFlag                   = "vpc-endpoint-role-arn"
+	hcpInternalCommunicationHostedZoneIdFlag = "hcp-internal-communication-hosted-zone-id"
+	ingressPrivateHostedZoneIdFlag           = "ingress-private-hosted-zone-id"
 )
 
 var args struct {
@@ -213,6 +218,20 @@ var args struct {
 	privateHostedZoneID string
 	sharedVPCRoleARN    string
 	baseDomain          string
+
+	// HCP Shared VPC
+	vpcEndpointRoleArn string
+	//
+	//route53RoleArn string
+	// Route53 Role Arn is the same thing as `sharedVpcRoleArn` for now- deprecation warning will be in place
+	// This is the same behavior as create/operatorroles
+	//
+	hcpInternalCommunicationHostedZoneId string
+	//
+	//ingressPrivateHostedZoneId string
+	// Ingress Private Hosted Zone ID is the same thing as `privateHostedZoneID` for now- deprecation warning
+	// will be in place
+	//
 
 	// Worker machine pool attributes
 	additionalComputeSecurityGroupIds []string
@@ -819,6 +838,46 @@ func initFlags(cmd *cobra.Command) {
 		"AWS IAM role ARN with a policy attached, granting permissions necessary to create and manage Route 53 DNS records "+
 			"in private Route 53 hosted zone associated with intended shared VPC.",
 	)
+
+	flags.StringVar(
+		&args.vpcEndpointRoleArn,
+		vpcEndpointRoleArnFlag,
+		"",
+		"AWS IAM Role ARN with policy attached, associated with the shared VPC."+
+			" Grants permissions necessary to communicate with and handle a Hosted Control Plane cross-account VPC.")
+
+	flags.StringVar(
+		&args.sharedVPCRoleARN,
+		route53RoleArnFlag,
+		"",
+		"AWS IAM Role Arn with policy attached, associated with shared VPC."+
+			" Grants permission necessary to handle route53 operations associated with a cross-account VPC. "+
+			"This flag deprecates '--shared-vpc-role-arn'.",
+	)
+
+	// Mark old sharedvpc role arn flag as deprecated for future transitioning of the flag name (both are usable for now)
+	flags.MarkDeprecated("shared-vpc-role-arn", fmt.Sprintf("'--shared-vpc-role-arn' will be replaced with "+
+		"'--%s' in future versions of ROSA.", route53RoleArnFlag))
+
+	flags.StringVar(
+		&args.hcpInternalCommunicationHostedZoneId,
+		hcpInternalCommunicationHostedZoneIdFlag,
+		"",
+		"The internal communication Route 53 hosted zone ID to be used for Hosted Control Plane cross-account "+
+			"VPC, e.g., 'Z05646003S02O1ENCDCSN'.",
+	)
+
+	flags.StringVar(
+		&args.privateHostedZoneID,
+		ingressPrivateHostedZoneIdFlag,
+		"",
+		"ID assigned by AWS to private Route 53 hosted zone associated with intended shared VPC, "+
+			"e.g., 'Z05646003S02O1ENCDCSN'.",
+	)
+
+	// Mark old private hosted zone id flag as deprecated for future transitioning of the flag (both are usable for now)
+	flags.MarkDeprecated("private-hosted-zone-id", fmt.Sprintf("'--private-hosted-zone-id' will be "+
+		"replaced with '--%s' in future versions of ROSA.", ingressPrivateHostedZoneIdFlag))
 
 	flags.StringVar(
 		&args.baseDomain,
@@ -2273,7 +2332,17 @@ func run(cmd *cobra.Command, _ []string) {
 		isSharedVPC = true
 	}
 
-	if len(subnetIDs) == 0 && isSharedVPC {
+	// validate flags for hcp shared vpc
+	isHcpSharedVpc := false
+	route53RoleArn := sharedVPCRoleARN // TODO: Change when fully deprecating old flag name
+	vpcEndpointRoleArn := strings.Trim(args.vpcEndpointRoleArn, " \t")
+	hcpInternalCommunicationHostedZoneId := strings.Trim(args.hcpInternalCommunicationHostedZoneId, " \t")
+	ingressPrivateHostedZoneId := privateHostedZoneID // TODO: Change when fully deprecating old flag name
+
+	anyHcpSharedVpcFlagsUsed := route53RoleArn != "" || vpcEndpointRoleArn != "" ||
+		hcpInternalCommunicationHostedZoneId != "" || ingressPrivateHostedZoneId != ""
+
+	if len(subnetIDs) == 0 && (isSharedVPC || isHcpSharedVpc) {
 		r.Reporter.Errorf("Installing a cluster into a shared VPC is only supported for BYO VPC clusters")
 		os.Exit(1)
 	}
@@ -2288,12 +2357,33 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		isSharedVPC = true
-		if privateHostedZoneID == "" || sharedVPCRoleARN == "" || baseDomain == "" {
+
+		useInteractive := false
+
+		if isHostedCP {
+			isHcpSharedVpc = true
+			useInteractive = route53RoleArn == "" || vpcEndpointRoleArn == "" || ingressPrivateHostedZoneId == "" ||
+				hcpInternalCommunicationHostedZoneId == ""
+		}
+
+		useInteractive = useInteractive || privateHostedZoneID == "" || sharedVPCRoleARN == "" || baseDomain == ""
+
+		if useInteractive {
 			if !interactive.Enabled() {
 				interactive.Enable()
 			}
 
 			privateHostedZoneID, err = getPrivateHostedZoneID(cmd, privateHostedZoneID)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
+			// TODO: We can remove this and replace the above once we deprecate the old flags
+			ingressPrivateHostedZoneId = privateHostedZoneID
+
+			hcpInternalCommunicationHostedZoneId, err = getHcpInternalCommunicationHostedZoneId(cmd,
+				hcpInternalCommunicationHostedZoneId)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -2305,9 +2395,40 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 
+			// TODO: We can remove this and replace the above once we deprecate the old flags
+			route53RoleArn = sharedVPCRoleARN
+
+			vpcEndpointRoleArn, err = getVpcEndpointRoleArn(cmd, vpcEndpointRoleArn)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+
 			baseDomain, err = getBaseDomain(r, cmd, baseDomain)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if anyHcpSharedVpcFlagsUsed {
+		if isHostedCP {
+			isHcpSharedVpc = true
+			err = validateHcpSharedVpcArgs(route53RoleArn, vpcEndpointRoleArn, ingressPrivateHostedZoneId,
+				hcpInternalCommunicationHostedZoneId)
+			if err != nil {
+				r.Reporter.Errorf("Error when validating flags: %v", err)
+				os.Exit(1)
+			}
+		} else {
+			if vpcEndpointRoleArn != "" {
+				r.Reporter.Errorf(hcpSharedVpcFlagOnlyErrorMsg,
+					vpcEndpointRoleArnFlag)
+				os.Exit(1)
+			} else if hcpInternalCommunicationHostedZoneId != "" {
+				r.Reporter.Errorf(hcpSharedVpcFlagOnlyErrorMsg,
+					hcpInternalCommunicationHostedZoneIdFlag)
 				os.Exit(1)
 			}
 		}
@@ -3202,6 +3323,12 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.SharedVPCRoleArn = sharedVPCRoleARN
 		clusterConfig.BaseDomain = baseDomain
 	}
+	if isHcpSharedVpc {
+		clusterConfig.PrivateHostedZoneID = privateHostedZoneID
+		clusterConfig.SharedVPCRoleArn = sharedVPCRoleARN
+		clusterConfig.InternalCommunicationHostedZoneId = hcpInternalCommunicationHostedZoneId
+		clusterConfig.VpcEndpointRoleArn = vpcEndpointRoleArn
+	}
 	if clusterAutoscaler != nil {
 		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(clusterAutoscaler)
 		if err != nil {
@@ -3901,9 +4028,15 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --subnet-ids %s", strings.Join(spec.SubnetIds, ","))
 	}
 	if spec.PrivateHostedZoneID != "" {
+		// TODO: Change flag names here when we deprecate the old flags
 		command += fmt.Sprintf(" --private-hosted-zone-id %s", spec.PrivateHostedZoneID)
 		command += fmt.Sprintf(" --shared-vpc-role-arn %s", spec.SharedVPCRoleArn)
 		command += fmt.Sprintf(" --base-domain %s", spec.BaseDomain)
+	}
+	if spec.InternalCommunicationHostedZoneId != "" {
+		command += fmt.Sprintf(" --%s %s", hcpInternalCommunicationHostedZoneIdFlag,
+			spec.InternalCommunicationHostedZoneId)
+		command += fmt.Sprintf(" --%s %s", vpcEndpointRoleArnFlag, spec.VpcEndpointRoleArn)
 	}
 	if spec.FIPS {
 		command += " --fips"

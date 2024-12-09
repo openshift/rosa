@@ -134,7 +134,6 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 		if err != nil {
 			return err
 		}
-
 		service := helper.NewNetworkService()
 
 		mode, err := interactive.GetMode()
@@ -142,23 +141,24 @@ func NetworkRunner(userOptions *opts.NetworkUserOptions) rosa.CommandRunner {
 			return err
 		}
 
+		defaultTemplateUsed := templateCommand == defaultTemplate
 		switch mode {
 		case interactive.ModeManual:
-			r.Reporter.Infof(helper.ManualModeHelperMessage(parsedParams, templateFile, parsedTags))
-			r.OCMClient.LogEvent("RosaNetworkStackManual",
+			r.Reporter.Infof(helper.ManualModeHelperMessage(parsedParams, parsedTags))
+			r.OCMClient.LogEvent("ROSANetworkStackManual",
 				map[string]string{
-					ocm.Account:      r.Creator.AccountID,
-					ocm.Organization: orgID,
-					"template":       templateFile,
+					ocm.Account:        r.Creator.AccountID,
+					ocm.Organization:   orgID,
+					"default-template": fmt.Sprintf("%t", defaultTemplateUsed),
 				},
 			)
 			return nil
 		default:
-			r.OCMClient.LogEvent("RosaNetworkStack",
+			r.OCMClient.LogEvent("ROSANetworkStack",
 				map[string]string{
-					ocm.Account:      r.Creator.AccountID,
-					ocm.Organization: orgID,
-					"template":       templateFile,
+					ocm.Account:        r.Creator.AccountID,
+					ocm.Organization:   orgID,
+					"default-template": fmt.Sprintf("%t", defaultTemplateUsed),
 				},
 			)
 			return service.CreateStack(&templateFile, &templateBody, parsedParams, parsedTags)

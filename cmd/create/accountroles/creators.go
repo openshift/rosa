@@ -9,6 +9,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -60,11 +61,12 @@ type accountRolesCreationInput struct {
 	policies             map[string]*cmv1.AWSSTSPolicy
 	defaultPolicyVersion string
 	path                 string
+	isSharedVpc          bool
 }
 
 func buildRolesCreationInput(prefix, permissionsBoundary, accountID, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, defaultPolicyVersion string,
-	path string) *accountRolesCreationInput {
+	path string, isSharedVpc bool) *accountRolesCreationInput {
 	return &accountRolesCreationInput{
 		prefix:               prefix,
 		permissionsBoundary:  permissionsBoundary,
@@ -73,6 +75,7 @@ func buildRolesCreationInput(prefix, permissionsBoundary, accountID, env string,
 		policies:             policies,
 		defaultPolicyVersion: defaultPolicyVersion,
 		path:                 path,
+		isSharedVpc:          isSharedVpc,
 	}
 }
 
@@ -199,7 +202,7 @@ func (up *unmanagedPoliciesCreator) printCommands(r *rosa.Runtime, input *accoun
 
 		createPolicy := buildCreatePolicyCommand(policyName, policyDocument, iamTags, input.path)
 
-		policyARN := aws.GetPolicyARN(r.Creator.Partition, input.accountID, accRoleName, input.path)
+		policyARN := aws.GetPolicyArnWithSuffix(r.Creator.Partition, input.accountID, accRoleName, input.path)
 
 		attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
 
@@ -277,7 +280,7 @@ func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput
 
 	policyPermissionDetail := aws.GetPolicyDetails(input.policies, filename)
 
-	policyARN := aws.GetPolicyARN(r.Creator.Partition, r.Creator.AccountID, accRoleName, input.path)
+	policyARN := aws.GetPolicyArnWithSuffix(r.Creator.Partition, r.Creator.AccountID, accRoleName, input.path)
 
 	r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
 	if args.forcePolicyCreation {
@@ -322,6 +325,19 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 		}
 		r.Reporter.Infof("Created role '%s' with ARN '%s'", accRoleName, roleARN)
 
+		if role == aws.HCPAccountRoles[aws.HCPInstallerRole] {
+			if input.isSharedVpc {
+				err := attachHcpSharedVpcPolicy(r, args.route53RoleArn, accRoleName, input.defaultPolicyVersion)
+				if err != nil {
+					return err
+				}
+				err = attachHcpSharedVpcPolicy(r, args.vpcEndpointRoleArn, accRoleName, input.defaultPolicyVersion)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		policyKeys := aws.GetHcpAccountRolePolicyKeys(file)
 		for _, policyKey := range policyKeys {
 			policyARN, err := aws.GetManagedPolicyARN(input.policies, policyKey)
@@ -348,6 +364,7 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 
 func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *accountRolesCreationInput) error {
 	commands := []string{}
+
 	for file, role := range aws.HCPAccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
 		iamTags := hcp.getRoleTags(file, input)
@@ -367,6 +384,29 @@ func (hcp *hcpManagedPoliciesCreator) printCommands(r *rosa.Runtime, input *acco
 					continue
 				}
 				return err
+			}
+
+			isHcpInstallerRole := role.Name == aws.HCPAccountRoles[aws.HCPInstallerRole].Name
+
+			if isHcpInstallerRole && input.isSharedVpc { // HCP shared VPC (Installer role policies)
+				for _, arn := range []string{args.route53RoleArn, args.vpcEndpointRoleArn} {
+					// Shared VPC role arn (route53)
+					exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, arn)
+					if err != nil {
+						return err
+					}
+
+					path, err := aws.GetPathFromARN(arn)
+					if err != nil {
+						return err
+					}
+					policyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, path)
+					attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyArn)
+					if !exists {
+						commands = append(commands, createPolicyCommand)
+					}
+					commands = append(commands, attachRolePolicy)
+				}
 			}
 
 			attachRolePolicy := buildAttachRolePolicyCommand(accRoleName, policyARN)
@@ -433,4 +473,38 @@ func buildAttachRolePolicyCommand(accRoleName string, policyARN string) string {
 		AddParam(awscb.RoleName, accRoleName).
 		AddParam(awscb.PolicyArn, policyARN).
 		Build()
+}
+
+func attachHcpSharedVpcPolicy(r *rosa.Runtime, sharedVpcRoleArn string, roleName string,
+	defaultPolicyVersion string) error {
+	policyDetails := aws.InterpolatePolicyDocument(r.Creator.Partition, aws.SharedVpcDefaultPolicy, map[string]string{
+		"shared_vpc_role_arn": sharedVpcRoleArn,
+	})
+
+	path, err := aws.GetPathFromARN(sharedVpcRoleArn)
+	if err != nil {
+		return err
+	}
+
+	policyTags := map[string]string{
+		tags.RedHatManaged: aws.TrueString,
+		tags.HcpSharedVpc:  aws.TrueString,
+	}
+
+	userProvidedRoleName, err := aws.GetResourceIdFromARN(sharedVpcRoleArn)
+	if err != nil {
+		return err
+	}
+	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, userProvidedRoleName)
+	policyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, path)
+	policyArn, err = r.AWSClient.EnsurePolicy(policyArn, policyDetails,
+		defaultPolicyVersion, policyTags, path)
+	if err != nil {
+		return err
+	}
+	err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyArn)
+	if err != nil {
+		return err
+	}
+	return nil
 }

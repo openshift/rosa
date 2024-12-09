@@ -129,6 +129,10 @@ const (
 	IngressOperatorCloudCredentialsRoleType = "ingress_operator_cloud_credentials"
 	ControlPlaneCloudCredentialsRoleType    = "control_plane_operator_credentials"
 
+	SharedVpcAssumeRolePrefix = "rosa-assume-role"
+	SharedVpcDefaultPolicy    = "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": {\n    \"Effect\": \"Allow\",\n    " +
+		"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": [\n    \"%{shared_vpc_role_arn}\"\n    ]\n  }\n}\n"
+
 	TrueString = "true"
 )
 
@@ -313,21 +317,21 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 
 func (c *awsClient) ForceEnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string, path string) (string, error) {
-	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, true)
+	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, true, "")
 }
 
 func (c *awsClient) EnsurePolicy(policyArn string, document string,
 	version string, tagList map[string]string, path string) (string, error) {
-	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false)
+	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false, "")
 }
 
 func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
-	version string, tagList map[string]string, path string, force bool) (string, error) {
+	version string, tagList map[string]string, path string, force bool, policyName string) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		var policyArnLocal string
 		if awserr.IsNoSuchEntityException(err) {
-			policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path)
+			policyArnLocal, err = c.createPolicy(policyArn, document, tagList, path, policyName)
 			if err != nil {
 				if awserr.IsEntityAlreadyExistsException(err) {
 					return "", errors.Wrapf(err, "Failed to create a policy with ARN '%s'", policyArn)
@@ -347,6 +351,10 @@ func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
 		if err != nil {
 			return policyArn, err
 		}
+	}
+	tag, ok := tagList[tags.HcpSharedVpc]
+	if ok && tag == tags.True {
+		isCompatible = true // Workaround for HcpSharedVpc policies, to force them to not make a new policy version
 	}
 
 	if !isCompatible {
@@ -395,8 +403,11 @@ func (c *awsClient) IsRolePolicyExists(roleName string, policyName string) (*iam
 }
 
 func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string,
-	path string) (string, error) {
-	policyName, err := GetResourceIdFromARN(policyArn)
+	path string, policyName string) (string, error) {
+	var err error
+	if policyName == "" {
+		policyName, err = GetResourceIdFromARN(policyArn)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -1058,15 +1069,37 @@ func checkIfROSAOperatorRole(role iamtypes.Role, credRequest map[string]*cmv1.ST
 	return false
 }
 
-func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) error {
+func (c *awsClient) GetPolicyDetailsFromRole(role *string) ([]*iam.GetPolicyOutput, error) {
+	policies, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
+		RoleName: role,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var finalOutput []*iam.GetPolicyOutput
+	for _, attachedPolicy := range policies.AttachedPolicies {
+		policy, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
+			PolicyArn: attachedPolicy.PolicyArn,
+		})
+		if err != nil {
+			return nil, err
+		}
+		finalOutput = append(finalOutput, policy)
+	}
+	return finalOutput, nil
+}
+
+func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool,
+	deleteHcpSharedVpcPolicies bool) (map[string]bool, error) {
 	role := aws.String(roleName)
+	sharedVpcPoliciesNotDeleted := make(map[string]bool)
 	tagFilter, err := getOperatorRolePolicyTags(c.iamClient, roleName)
 	if err != nil {
-		return err
+		return sharedVpcPoliciesNotDeleted, err
 	}
-	policies, _, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
+	policies, excludedPolicies, err := getAttachedPolicies(c.iamClient, roleName, tagFilter)
 	if err != nil {
-		return err
+		return sharedVpcPoliciesNotDeleted, err
 	}
 	err = c.detachOperatorRolePolicies(role)
 	if err != nil {
@@ -1079,17 +1112,55 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool) er
 			err = nil
 		}
 		if err != nil {
-			return err
+			return sharedVpcPoliciesNotDeleted, err
 		}
 	}
 	err = c.DeleteRole(*role)
 	if err != nil {
-		return err
+		return sharedVpcPoliciesNotDeleted, err
 	}
 	if !managedPolicies {
 		_, err = c.deletePolicies(policies)
+	} else if deleteHcpSharedVpcPolicies {
+		var sharedVpcHcpPolicies []string
+		for _, policy := range excludedPolicies {
+			policyOutput, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
+				PolicyArn: aws.String(policy),
+			})
+			if err != nil || policyOutput == nil {
+				return sharedVpcPoliciesNotDeleted, err
+			}
+
+			containsManagedTag := false
+			containsHcpSharedVpcTag := false
+			for _, policyTag := range policyOutput.Policy.Tags {
+				switch strings.Trim(*policyTag.Key, " ") {
+				case tags.RedHatManaged:
+					containsManagedTag = true
+				case tags.HcpSharedVpc:
+					containsHcpSharedVpcTag = true
+				}
+			}
+			// Delete if no attachments and correct tags showing it's a hcp sharedvpc policy
+			if containsManagedTag && containsHcpSharedVpcTag {
+				if *policyOutput.Policy.AttachmentCount == 0 {
+					// If the policy is deleted, remove from the warning outputs
+					sharedVpcPoliciesNotDeleted[*policyOutput.Policy.Arn] = false
+
+					// Add to list of sharedVpc policies to be actually deleted
+					c.logger.Infof("Deleting policy '%s'", policy)
+					sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
+				} else {
+					// Print warning message after all roles are checked (will result in duplicated warnings without
+					// adding to this map and displaying at the end of role deletion due to multiple roles having
+					// one of the policies)
+					sharedVpcPoliciesNotDeleted[*policyOutput.Policy.Arn] = true
+				}
+			}
+		}
+		_, err = c.deletePolicies(sharedVpcHcpPolicies)
 	}
-	return err
+	return sharedVpcPoliciesNotDeleted, err
 }
 
 func (c *awsClient) DeleteRole(role string) error {
@@ -1125,13 +1196,14 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 	return instanceProfiles, nil
 }
 
-func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPolicies bool) error {
+func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPolicies bool,
+	deleteHcpSharedVpcPolicies bool) error {
 	role := aws.String(roleName)
 	err := c.DeleteInlineRolePolicies(aws.ToString(role))
 	if err != nil {
 		return err
 	}
-	policyMap, _, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
+	policyMap, excludedPolicyMap, err := getAttachedPolicies(c.iamClient, roleName, getAcctRolePolicyTags(prefix))
 	if err != nil {
 		return err
 	}
@@ -1158,6 +1230,37 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 	}
 	if !managedPolicies {
 		_, err = c.deletePolicies(policyMap)
+	} else if deleteHcpSharedVpcPolicies {
+		var sharedVpcHcpPolicies []string
+		for _, policy := range excludedPolicyMap {
+			policyOutput, err := c.iamClient.GetPolicy(context.Background(), &iam.GetPolicyInput{
+				PolicyArn: aws.String(policy),
+			})
+			if err != nil || policyOutput == nil {
+				return err
+			}
+
+			containsManagedTag := false
+			containsHcpSharedVpcTag := false
+			for _, policyTag := range policyOutput.Policy.Tags {
+				switch strings.Trim(*policyTag.Key, " ") {
+				case tags.RedHatManaged:
+					containsManagedTag = true
+				case tags.HcpSharedVpc:
+					containsHcpSharedVpcTag = true
+				}
+			}
+			if containsManagedTag && containsHcpSharedVpcTag {
+				if *policyOutput.Policy.AttachmentCount == 0 {
+					c.logger.Infof("Deleting policy '%s'", policy)
+					sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
+				} else {
+					c.logger.Warnf("Unable to delete policy %s: Policy still attached to %v other resource(s)",
+						*policyOutput.Policy.PolicyName, *policyOutput.Policy.AttachmentCount)
+				}
+			}
+		}
+		_, err = c.deletePolicies(sharedVpcHcpPolicies)
 	}
 	return err
 }
