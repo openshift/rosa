@@ -18,12 +18,29 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+type operatorRolesInput struct {
+	prefix              string
+	permissionsBoundary string
+	cluster             *cmv1.Cluster
+	accountRoleVersion  string
+	policies            map[string]*cmv1.AWSSTSPolicy
+	defaultVersion      string
+	credRequests        map[string]*cmv1.STSOperator
+	managedPolicies     bool
+	hostedCPPolicies    bool
+	isHcpSharedVpc      bool
+	route53RoleArn      string
+	vpcEndpointRoleArn  string
+}
+
 func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 	permissionsBoundary string, mode string,
 	policies map[string]*cmv1.AWSSTSPolicy,
-	defaultPolicyVersion string) error {
+	defaultPolicyVersion string, isHcpSharedVpc bool) error {
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
+	route53RoleArn := args.sharedVpcRoleArn
+	vpcEndpointRoleArn := args.vpcEndpointRoleArn
 	if cluster.AWS().STS().RoleARN() == "" {
 		r.Reporter.Errorf("Cluster '%s' is not an STS cluster.", clusterKey)
 		os.Exit(1)
@@ -101,8 +118,20 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 			r.Reporter.Errorf("Error getting account role version '%v'", err)
 			os.Exit(1)
 		}
-		err = createRoles(r, operatorRolePolicyPrefix, permissionsBoundary, cluster,
-			accountRoleVersion, policies, defaultPolicyVersion, credRequests, managedPolicies, hostedCPPolicies)
+		err = createRoles(r, operatorRolesInput{
+			prefix:              operatorRolePolicyPrefix,
+			permissionsBoundary: permissionsBoundary,
+			cluster:             cluster,
+			accountRoleVersion:  accountRoleVersion,
+			policies:            policies,
+			defaultVersion:      defaultPolicyVersion,
+			credRequests:        credRequests,
+			managedPolicies:     managedPolicies,
+			hostedCPPolicies:    hostedCPPolicies,
+			isHcpSharedVpc:      isHcpSharedVpc,
+			route53RoleArn:      route53RoleArn,
+			vpcEndpointRoleArn:  vpcEndpointRoleArn,
+		})
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the operator roles: '%v'", err)
 			isThrottle := "false"
@@ -147,23 +176,12 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 	return nil
 }
 
-func createRoles(
-	r *rosa.Runtime,
-	prefix string,
-	permissionsBoundary string,
-	cluster *cmv1.Cluster,
-	accountRoleVersion string,
-	policies map[string]*cmv1.AWSSTSPolicy,
-	defaultVersion string,
-	credRequests map[string]*cmv1.STSOperator,
-	managedPolicies bool,
-	hostedCPPolicies bool,
-) error {
-	sharedVpcRoleArn := cluster.AWS().PrivateHostedZoneRoleARN()
+func createRoles(r *rosa.Runtime, createInput operatorRolesInput) error {
+	sharedVpcRoleArn := createInput.cluster.AWS().PrivateHostedZoneRoleARN()
 	isSharedVpc := sharedVpcRoleArn != ""
 
-	for credrequest, operator := range credRequests {
-		ver := cluster.Version()
+	for credrequest, operator := range createInput.credRequests {
+		ver := createInput.cluster.Version()
 		if ver != nil && operator.MinVersion() != "" {
 			isSupported, err := ocm.CheckSupportedVersion(ocm.GetVersionMinor(ver.ID()), operator.MinVersion())
 			if err != nil {
@@ -174,30 +192,48 @@ func createRoles(
 				continue
 			}
 		}
-		roleName, _ := aws.FindOperatorRoleNameBySTSOperator(cluster, operator)
+		roleName, _ := aws.FindOperatorRoleNameBySTSOperator(createInput.cluster, operator)
 		if roleName == "" {
 			return fmt.Errorf("Failed to find operator IAM role")
 		}
 
-		path, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
+		path, err := aws.GetPathFromAccountRole(createInput.cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 		if err != nil {
 			return err
 		}
 
 		var policyArn string
-		filename := aws.GetOperatorPolicyKey(credrequest, hostedCPPolicies, isSharedVpc)
-		if managedPolicies {
-			policyArn, err = aws.GetManagedPolicyARN(policies, filename)
+		var policyArns []string
+		filename := aws.GetOperatorPolicyKey(credrequest, createInput.hostedCPPolicies, isSharedVpc)
+		if createInput.managedPolicies {
+			policyArn, err = aws.GetManagedPolicyARN(createInput.policies, filename)
 			if err != nil {
 				return err
 			}
+			if createInput.isHcpSharedVpc {
+				if credrequest == aws.IngressOperatorCloudCredentialsRoleType {
+					sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, sharedVpcRoleArn, createInput.defaultVersion)
+					if err != nil {
+						return err
+					}
+					policyArns = append(policyArns, sharedVpcPolicyArn)
+				} else if credrequest == aws.ControlPlaneCloudCredentialsRoleType {
+					for _, arn := range []string{createInput.vpcEndpointRoleArn, sharedVpcRoleArn} {
+						sharedVpcPolicyArn, err := getHcpSharedVpcPolicy(r, arn, createInput.defaultVersion)
+						if err != nil {
+							return err
+						}
+						policyArns = append(policyArns, sharedVpcPolicyArn)
+					}
+				}
+			}
 		} else {
-			policyArn = aws.GetOperatorPolicyARN(r.Creator.Partition, r.Creator.AccountID, prefix, operator.Namespace(),
-				operator.Name(), path)
-			policyDetails := aws.GetPolicyDetails(policies, filename)
+			policyArn = aws.GetOperatorPolicyARN(r.Creator.Partition, r.Creator.AccountID, createInput.prefix,
+				operator.Namespace(), operator.Name(), path)
+			policyDetails := aws.GetPolicyDetails(createInput.policies, filename)
 
 			if isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType {
-				err = validateIngressOperatorPolicyOverride(r, policyArn, sharedVpcRoleArn, prefix)
+				err = validateIngressOperatorPolicyOverride(r, policyArn, sharedVpcRoleArn, createInput.prefix)
 				if err != nil {
 					return err
 				}
@@ -208,8 +244,8 @@ func createRoles(
 			}
 
 			operatorPolicyTags := map[string]string{
-				common.OpenShiftVersion: accountRoleVersion,
-				tags.RolePrefix:         prefix,
+				common.OpenShiftVersion: createInput.accountRoleVersion,
+				tags.RolePrefix:         createInput.prefix,
 				tags.RedHatManaged:      helper.True,
 				tags.OperatorNamespace:  operator.Namespace(),
 				tags.OperatorName:       operator.Name(),
@@ -217,21 +253,22 @@ func createRoles(
 
 			if args.forcePolicyCreation || (isSharedVpc && credrequest == aws.IngressOperatorCloudCredentialsRoleType) {
 				policyArn, err = r.AWSClient.ForceEnsurePolicy(policyArn, policyDetails,
-					defaultVersion, operatorPolicyTags, path)
+					createInput.defaultVersion, operatorPolicyTags, path)
 				if err != nil {
 					return err
 				}
 			} else {
 				policyArn, err = r.AWSClient.EnsurePolicy(policyArn, policyDetails,
-					defaultVersion, operatorPolicyTags, path)
+					createInput.defaultVersion, operatorPolicyTags, path)
 				if err != nil {
 					return err
 				}
 			}
 		}
+		policyArns = append(policyArns, policyArn)
 
-		policyDetails := aws.GetPolicyDetails(policies, "operator_iam_role_policy")
-		policy, err := aws.GenerateOperatorRolePolicyDoc(r.Creator.Partition, cluster,
+		policyDetails := aws.GetPolicyDetails(createInput.policies, "operator_iam_role_policy")
+		policy, err := aws.GenerateOperatorRolePolicyDoc(r.Creator.Partition, createInput.cluster,
 			r.Creator.AccountID, operator, policyDetails)
 		if err != nil {
 			return err
@@ -243,18 +280,18 @@ func createRoles(
 			tags.OperatorName:      operator.Name(),
 			tags.RedHatManaged:     helper.True,
 		}
-		if !ocm.IsOidcConfigReusable(cluster) {
-			tagsList[tags.ClusterID] = cluster.ID()
+		if !ocm.IsOidcConfigReusable(createInput.cluster) {
+			tagsList[tags.ClusterID] = createInput.cluster.ID()
 		}
-		if managedPolicies {
+		if createInput.managedPolicies {
 			tagsList[common.ManagedPolicies] = helper.True
 		}
-		if hostedCPPolicies {
+		if createInput.hostedCPPolicies {
 			tagsList[tags.HypershiftPolicies] = helper.True
 		}
 
-		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, policy, permissionsBoundary, accountRoleVersion,
-			tagsList, path, managedPolicies)
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, policy, createInput.permissionsBoundary,
+			createInput.accountRoleVersion, tagsList, path, createInput.managedPolicies)
 		if err != nil {
 			return err
 		}
@@ -262,10 +299,12 @@ func createRoles(
 			r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 		}
 
-		r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", policyArn, roleName)
-		err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyArn)
-		if err != nil {
-			return err
+		for _, arn := range policyArns {
+			r.Reporter.Debugf("Attaching permission policy '%s' to role '%s'", arn, roleName)
+			err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, arn)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
