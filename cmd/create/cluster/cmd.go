@@ -3461,6 +3461,13 @@ func run(cmd *cobra.Command, _ []string) {
 				if permissionsBoundary != "" {
 					rolesCMD = fmt.Sprintf("%s --permissions-boundary %s", rolesCMD, permissionsBoundary)
 				}
+				// HCP Shared VPC
+				if route53RoleArn != "" {
+					rolesCMD = fmt.Sprintf("%s --%s %s --hosted-cp", rolesCMD, route53RoleArnFlag, route53RoleArn)
+				}
+				if vpcEndpointRoleArn != "" {
+					rolesCMD = fmt.Sprintf("%s --%s %s", rolesCMD, vpcEndpointRoleArnFlag, vpcEndpointRoleArn)
+				}
 				output = fmt.Sprintf("%s\t%s\n", output, rolesCMD)
 			}
 			oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
