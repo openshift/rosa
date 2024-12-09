@@ -386,7 +386,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	err = handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
-		mode, policies, latestPolicyVersion)
+		mode, policies, latestPolicyVersion, isHcpSharedVpc)
 	if err != nil {
 		r.Reporter.Errorf("Error creating operator roles: %s", err)
 		os.Exit(1)
