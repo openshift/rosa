@@ -447,13 +447,29 @@ func run(cmd *cobra.Command, argv []string) {
 			cluster.AWS().STS().OIDCEndpointURL(), managementType)
 	}
 	if cluster.AWS().PrivateHostedZoneID() != "" {
-		str = fmt.Sprintf("%s"+"Private Hosted Zone:\n", str)
-		str = fmt.Sprintf("%s"+
-			" - ID:                      %s\n", str,
-			cluster.AWS().PrivateHostedZoneID())
-		str = fmt.Sprintf("%s"+
-			" - Role ARN:                %s\n", str,
-			cluster.AWS().PrivateHostedZoneRoleARN())
+		if cluster.Hypershift().Enabled() {
+			str = fmt.Sprintf("%s"+"Shared VPC Config:\n", str)
+			str = fmt.Sprintf("%s"+
+				" - Ingress Private HZ ID:   %s\n", str,
+				cluster.AWS().PrivateHostedZoneID())
+			str = fmt.Sprintf("%s"+
+				" - Internal Comms. HZ ID:   %s\n", str,
+				cluster.AWS().HcpInternalCommunicationHostedZoneId())
+			str = fmt.Sprintf("%s"+
+				" - Route53 Role ARN:        %s\n", str,
+				cluster.AWS().PrivateHostedZoneRoleARN())
+			str = fmt.Sprintf("%s"+
+				" - VPC Endpoint Role ARN:   %s\n", str,
+				cluster.AWS().VpcEndpointRoleArn())
+		} else {
+			str = fmt.Sprintf("%s"+"Private Hosted Zone:\n", str)
+			str = fmt.Sprintf("%s"+
+				" - ID:                      %s\n", str,
+				cluster.AWS().PrivateHostedZoneID())
+			str = fmt.Sprintf("%s"+
+				" - Role ARN:                %s\n", str,
+				cluster.AWS().PrivateHostedZoneRoleARN())
+		}
 	}
 	if !isHypershift {
 		if scheduledUpgrade != nil {
