@@ -224,21 +224,21 @@ func deleteAccountRoles(r *rosa.Runtime, cmd *cobra.Command, env string, prefix 
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeAuto", nil)
 		if roles.CheckIfRolesAreHcpSharedVpc(r, finalRoleList) &&
 			!cmd.Flag(deleteHcpSharedVpcPoliciesFlagName).Changed {
-			deleteHcpSharedVpcPolicies = confirm.Prompt(true, "Attempt to delete Hosted CP shared VPC policies?")
+			deleteHcpSharedVpcPolicies = confirm.Prompt(args.deleteHcpSharedVpcPolicies,
+				"Attempt to delete Hosted CP shared VPC policies?")
 		}
 
-		if deleteHcpSharedVpcPolicies {
-			for _, role := range finalRoleList {
-				if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
-					continue
-				}
-				r.Reporter.Infof("Deleting account role '%s'", role)
-				err := r.AWSClient.DeleteAccountRole(role, prefix, managedPolicies, deleteHcpSharedVpcPolicies)
-				if err != nil {
-					r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
-					continue
-				}
+		for _, role := range finalRoleList {
+			if !confirm.Prompt(true, "Delete the account role '%s'?", role) {
+				continue
 			}
+			r.Reporter.Infof("Deleting account role '%s'", role)
+			err := r.AWSClient.DeleteAccountRole(role, prefix, managedPolicies, deleteHcpSharedVpcPolicies)
+			if err != nil {
+				r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
+				continue
+			}
+
 			r.Reporter.Infof(fmt.Sprintf("Successfully deleted the %s account roles", roleTypeString))
 		}
 	case interactive.ModeManual:
