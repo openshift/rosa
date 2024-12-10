@@ -36,10 +36,14 @@ func GetHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string) (bool, string
 	if err != nil {
 		return false, "", "", err
 	}
+	path, err := aws.GetPathFromARN(roleArn)
+	if err != nil {
+		return false, "", "", err
+	}
 
 	policyName := fmt.Sprintf(aws.AssumeRolePolicyPrefix, roleName)
 
-	predictedPolicyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, "")
+	predictedPolicyArn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policyName, path)
 
 	existsQuery, _ := r.AWSClient.IsPolicyExists(predictedPolicyArn)
 
@@ -53,7 +57,7 @@ func GetHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string) (bool, string
 		AddParam(awscb.PolicyName, policyName).
 		AddParam(awscb.PolicyDocument, interpolatedPolicyDetails).
 		AddTags(iamTags).
-		AddParam(awscb.Path, "").
+		AddParam(awscb.Path, path).
 		Build()
 
 	return existsQuery != nil, createPolicy, policyName, nil
