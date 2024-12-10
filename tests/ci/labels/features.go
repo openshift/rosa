@@ -34,6 +34,7 @@ type featureLabels struct {
 	Upgrade              Labels
 	Config               Labels
 	Hibernation          Labels
+	ZeroEgress           Labels
 }
 
 var Feature = initFeatureLabels()
@@ -65,6 +66,7 @@ func initFeatureLabels() *featureLabels {
 	fLabels.Upgrade = Label("feature-upgrade")
 	fLabels.Config = Label("feature-config")
 	fLabels.Hibernation = Label("feature-hibernation")
+	fLabels.ZeroEgress = Label("feature-zero-egress")
 
 	return fLabels
 }

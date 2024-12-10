@@ -63,7 +63,7 @@ profiles:
     path: "/test/hcp/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
 - as: rosa-hcp-ze
-  version: 4.14.38
+  version: latest
   channel_group: stable
   region: "us-west-2"
   cluster:

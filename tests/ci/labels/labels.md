@@ -85,3 +85,4 @@ It defines which group the test case belongs to. The feature label is always def
 * labels.Feature.UserRole
 * labels.Feature.VerifyResources
 * labels.Feature.Version
+* labels.Feature.ZeroEgress
