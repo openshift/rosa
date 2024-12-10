@@ -644,7 +644,7 @@ var _ = Describe("HCP cluster testing",
 				Expect(err).To(BeNil())
 				clusterDetail, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
-				Expect(clusterDetail.ZeroEgress).To(Equal("Enabled"))
+				Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring("Egress URL access issues"))
 			})
 
 	})
