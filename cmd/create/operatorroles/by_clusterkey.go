@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -151,7 +152,7 @@ func handleOperatorRoleCreationByClusterKey(r *rosa.Runtime, env string,
 		})
 	case interactive.ModeManual:
 		commands, err := buildCommands(r, env, operatorRolePolicyPrefix, permissionsBoundary, defaultPolicyVersion,
-			cluster, policies, credRequests, managedPolicies, hostedCPPolicies)
+			cluster, policies, credRequests, managedPolicies, hostedCPPolicies, route53RoleArn, vpcEndpointRoleArn)
 		if err != nil {
 			r.Reporter.Errorf("There was an error building the list of resources: '%v'", err)
 			os.Exit(1)
@@ -314,9 +315,10 @@ func createRoles(r *rosa.Runtime, createInput operatorRolesInput) error {
 func buildCommands(r *rosa.Runtime, env string,
 	prefix string, permissionsBoundary string, defaultPolicyVersion string, cluster *cmv1.Cluster,
 	policies map[string]*cmv1.AWSSTSPolicy, credRequests map[string]*cmv1.STSOperator,
-	managedPolicies bool, hostedCPPolicies bool) (string, error) {
+	managedPolicies bool, hostedCPPolicies bool, route53RoleArn string, vpcEndpointRoleArn string) (string, error) {
 	sharedVpcRoleArn := cluster.AWS().PrivateHostedZoneRoleARN()
 	isSharedVpc := sharedVpcRoleArn != ""
+	var policyDetails = make(map[string]roles.ManualSharedVpcPolicyDetails)
 
 	if !managedPolicies {
 		err := aws.GenerateOperatorRolePolicyFiles(r.Reporter, policies, credRequests, sharedVpcRoleArn, r.Creator.Partition)
@@ -434,6 +436,79 @@ func buildCommands(r *rosa.Runtime, env string,
 			AddParam(awscb.PolicyArn, policyARN).
 			Build()
 		commands = append(commands, createRole, attachRolePolicy)
+		var attachSharedVpcRolePolicy string
+		var policyCommands []string
+
+		if isSharedVpc { // HCP Shared VPC policy attachment
+
+			// Precreate HCP shared VPC policies for less memory usage + time to execute
+			// Shared VPC role arn (route53)
+			if _, ok := policyDetails[aws.IngressOperatorCloudCredentialsRoleType]; !ok {
+				exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, sharedVpcRoleArn)
+				if err != nil {
+					return "", err
+				}
+				policyDetails[aws.IngressOperatorCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
+					Command:       createPolicyCommand,
+					Name:          policyName,
+					AlreadyExists: exists,
+				}
+			}
+			// VPC endpoint role arn
+			if _, ok := policyDetails[aws.ControlPlaneCloudCredentialsRoleType]; !ok {
+
+				exists, createPolicyCommand, policyName, err := roles.GetHcpSharedVpcPolicyDetails(r, vpcEndpointRoleArn)
+				if err != nil {
+					return "", err
+				}
+
+				policyDetails[aws.ControlPlaneCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
+					Command:       createPolicyCommand,
+					Name:          policyName,
+					AlreadyExists: exists,
+				}
+			}
+
+			var policies []string
+
+			// Attach HCP shared VPC policies
+			switch credrequest {
+			case aws.IngressOperatorCloudCredentialsRoleType:
+				if details, ok := policyDetails[credrequest]; ok {
+					policies = append(policies, policyDetails[credrequest].Name)
+					if !policyDetails[credrequest].AlreadyExists { // Skip creation if already exists
+						policyCommands = append(policyCommands, policyDetails[credrequest].Command)
+						// Allow only one creation command for this policy to be printed
+						details.AlreadyExists = true
+						policyDetails[credrequest] = details
+					}
+				}
+			case aws.ControlPlaneCloudCredentialsRoleType:
+				for i, details := range policyDetails {
+					policies = append(policies, details.Name)
+					if !details.AlreadyExists {
+						policyCommands = append(policyCommands, details.Command)
+						// Allow only one creation command for this policy to be printed
+						details.AlreadyExists = true
+						policyDetails[i] = details
+					}
+				}
+			}
+
+			// Attach policies to roles
+			for _, policy := range policies {
+				arn := fmt.Sprintf("arn:%s:iam::%s:policy/%s", r.Creator.Partition, r.Creator.AccountID, policy)
+				attachSharedVpcRolePolicy = awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.AttachRolePolicy).
+					AddParam(awscb.RoleName, roleName).
+					AddParam(awscb.PolicyArn, arn).
+					Build()
+				policyCommands = append(policyCommands, attachSharedVpcRolePolicy)
+			}
+		}
+		commands = append(commands, createRole, attachRolePolicy)
+		commands = append(commands, policyCommands...)
+
 	}
 	return awscb.JoinCommands(commands), nil
 }
