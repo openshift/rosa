@@ -238,9 +238,8 @@ func deleteAccountRoles(r *rosa.Runtime, cmd *cobra.Command, env string, prefix 
 				r.Reporter.Warnf("There was an error deleting the account roles or policies: %s", err)
 				continue
 			}
-
-			r.Reporter.Infof(fmt.Sprintf("Successfully deleted the %s account roles", roleTypeString))
 		}
+		r.Reporter.Infof(fmt.Sprintf("Successfully deleted the %saccount roles", roleTypeString))
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
 		policyMap, arbitraryPolicyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList, prefix)
