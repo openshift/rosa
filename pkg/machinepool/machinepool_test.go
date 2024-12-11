@@ -550,9 +550,16 @@ var _ = Describe("Utility Functions", func() {
 
 	Describe("minReplicaValidator function", func() {
 		var validator interactive.Validator
+		var replicaSizeValidation *ReplicaSizeValidation
 
 		BeforeEach(func() {
-			validator = minReplicaValidator(true, false, false) // or false for non-multiAZ
+			replicaSizeValidation = &ReplicaSizeValidation{
+				ClusterVersion: "openshift-v4.14.14",
+				MultiAz:        true,
+				IsHostedCp:     false,
+				Autoscaling:    false,
+			}
+			validator = replicaSizeValidation.MinReplicaValidator() // or false for non-multiAZ
 		})
 
 		When("input is non-integer", func() {
@@ -586,9 +593,17 @@ var _ = Describe("Utility Functions", func() {
 
 	Describe("maxReplicaValidator function", func() {
 		var validator interactive.Validator
+		var replicaSizeValidation *ReplicaSizeValidation
 
 		BeforeEach(func() {
-			validator = maxReplicaValidator(1, true)
+			replicaSizeValidation = &ReplicaSizeValidation{
+				MinReplicas:    1,
+				ClusterVersion: "openshift-v4.14.14",
+				MultiAz:        true,
+				IsHostedCp:     false,
+				Autoscaling:    false,
+			}
+			validator = replicaSizeValidation.MaxReplicaValidator() // or false for non-multiAZ
 		})
 
 		When("input is non-integer", func() {
@@ -1556,12 +1571,16 @@ var _ = Describe("NodePools", func() {
 var _ = Describe("ManageReplicas", func() {
 	var cmd *cobra.Command
 	var args *mpOpts.CreateMachinepoolUserOptions
-	var multiAZMachinePool bool
-
+	var replicaSizeValidation *ReplicaSizeValidation
 	BeforeEach(func() {
 		cmd = &cobra.Command{}
 		args = &mpOpts.CreateMachinepoolUserOptions{}
-		multiAZMachinePool = true
+		replicaSizeValidation = &ReplicaSizeValidation{
+			ClusterVersion: "openshift-v4.14.14",
+			MultiAz:        true,
+			IsHostedCp:     false,
+			Autoscaling:    false,
+		}
 	})
 
 	When("when autoscaling is enabled", func() {
@@ -1569,7 +1588,7 @@ var _ = Describe("ManageReplicas", func() {
 			args.AutoscalingEnabled = true
 			cmd.Flags().Int32("replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "1")
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, false)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, replicaSizeValidation)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
 			Expect(autoscaling).To(BeTrue())
@@ -1582,7 +1601,7 @@ var _ = Describe("ManageReplicas", func() {
 			cmd.Flags().Set("max-replicas", "6")
 			args.MinReplicas = 3
 			args.MaxReplicas = 6
-			_, _, _, _, err := manageReplicas(cmd, args, multiAZMachinePool, false)
+			_, _, _, _, err := manageReplicas(cmd, args, replicaSizeValidation)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -1596,7 +1615,7 @@ var _ = Describe("ManageReplicas", func() {
 			cmd.Flags().Set("max-replicas", "3")
 			args.MinReplicas = 1
 			args.MaxReplicas = 3
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, false)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, replicaSizeValidation)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
 			Expect(autoscaling).To(BeFalse())
@@ -1605,7 +1624,7 @@ var _ = Describe("ManageReplicas", func() {
 			args.AutoscalingEnabled = false
 			cmd.Flags().Int32("replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "1")
-			_, _, _, autoscaling, err := manageReplicas(cmd, args, multiAZMachinePool, false)
+			_, _, _, autoscaling, err := manageReplicas(cmd, args, replicaSizeValidation)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(autoscaling).To(BeFalse())
 		})
@@ -1629,9 +1648,16 @@ var _ = Describe("Utility Functions", func() {
 
 	Describe("minReplicaValidator function", func() {
 		var validator interactive.Validator
+		var replicaSizeValidation *ReplicaSizeValidation
 
 		BeforeEach(func() {
-			validator = minReplicaValidator(true, false, false) // or false for non-multiAZ
+			replicaSizeValidation = &ReplicaSizeValidation{
+				ClusterVersion: "openshift-v4.14.14",
+				MultiAz:        true,
+				IsHostedCp:     false,
+				Autoscaling:    false,
+			}
+			validator = replicaSizeValidation.MinReplicaValidator() // or false for non-multiAZ
 		})
 
 		It("should return error for non-integer input", func() {
@@ -1657,9 +1683,17 @@ var _ = Describe("Utility Functions", func() {
 
 	Describe("maxReplicaValidator function", func() {
 		var validator interactive.Validator
+		var replicaSizeValidation *ReplicaSizeValidation
 
 		BeforeEach(func() {
-			validator = maxReplicaValidator(1, true)
+			replicaSizeValidation = &ReplicaSizeValidation{
+				MinReplicas:    1,
+				ClusterVersion: "openshift-v4.14.14",
+				MultiAz:        true,
+				IsHostedCp:     false,
+				Autoscaling:    false,
+			}
+			validator = replicaSizeValidation.MaxReplicaValidator() // or false for non-multiAZ
 		})
 
 		It("should return error for non-integer input", func() {
