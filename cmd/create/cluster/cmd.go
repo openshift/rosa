@@ -3028,6 +3028,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Question: "Additional Allowed Principal ARNs",
 			Help:     cmd.Flags().Lookup("additional-allowed-principals").Usage,
 			Default:  strings.Join(additionalAllowedPrincipals, ","),
+			Required: isHcpSharedVpc,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid value for Additional Allowed Principal ARNs: %s", err)
