@@ -584,7 +584,8 @@ func buildCommandsFromPrefix(r *rosa.Runtime, env string,
 
 			// Attach policies to roles
 			for _, policy := range policies {
-				arn := fmt.Sprintf("arn:%s:iam::%s:policy/%s", r.Creator.Partition, r.Creator.AccountID, policy)
+				arn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policy, path)
+
 				attachSharedVpcRolePolicy = awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.AttachRolePolicy).
 					AddParam(awscb.RoleName, roleName).
