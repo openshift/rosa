@@ -417,7 +417,13 @@ var _ = Describe("getSecurityGroupsOption", func() {
 var _ = Describe("Machine pool min/max replicas validation", func() {
 	DescribeTable("Machine pool min replicas validation",
 		func(minReplicas int, autoscaling bool, multiAZ bool, hasError bool) {
-			err := minReplicaValidator(multiAZ, autoscaling, false)(minReplicas)
+			replicaSizeValidation := &ReplicaSizeValidation{
+				ClusterVersion: "openshift-v4.14.14",
+				MultiAz:        multiAZ,
+				Autoscaling:    autoscaling,
+				IsHostedCp:     false,
+			}
+			err := replicaSizeValidation.MinReplicaValidator()(minReplicas)
 			if hasError {
 				Expect(err).To(HaveOccurred())
 			} else {
@@ -463,7 +469,13 @@ var _ = Describe("Machine pool min/max replicas validation", func() {
 	)
 	DescribeTable("Machine pool max replicas validation",
 		func(minReplicas int, maxReplicas int, multiAZ bool, hasError bool) {
-			err := maxReplicaValidator(minReplicas, multiAZ)(maxReplicas)
+			replicaSizeValidation := &ReplicaSizeValidation{
+				MinReplicas:    minReplicas,
+				ClusterVersion: "openshift-v4.14.14",
+				MultiAz:        multiAZ,
+				IsHostedCp:     false,
+			}
+			err := replicaSizeValidation.MaxReplicaValidator()(maxReplicas)
 			if hasError {
 				Expect(err).To(HaveOccurred())
 			} else {
@@ -539,5 +551,66 @@ var _ = Describe("getVpcIdFromSubnet Function", func() {
 		_, err := getVpcIdFromSubnet(subnet)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("Unexpected situation a VPC ID should have been selected based on chosen subnets"))
+	})
+})
+
+var _ = Describe("ValidateClusterVersionWithMaxNodesLimit Function", func() {
+	// Classic cluster validations for node count
+	It("should return error if user creates mp with more than 180 nodes for classic cluster below v4.14.14", func() {
+		clusterVersion := "v4.14.13"
+		isHostedCp := false
+		replicas := 181
+
+		err := validateClusterVersionWithMaxNodesLimit(clusterVersion, replicas, isHostedCp)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(fmt.Sprintf("should provide an integer number less than or equal to '%v'", 180)))
+	})
+
+	It("should return error if user creates mp with more than 249 nodes for classic cluster at or above v4.14.14", func() {
+		clusterVersion := "v4.14.14"
+		isHostedCp := false
+		replicas := 250
+
+		err := validateClusterVersionWithMaxNodesLimit(clusterVersion, replicas, isHostedCp)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(fmt.Sprintf("should provide an integer number less than or equal to '%v'", 249)))
+	})
+
+	It("should accept if user creates mp with 180 nodes for classic cluster below v4.14.14", func() {
+		clusterVersion := "v4.14.13"
+		isHostedCp := false
+		replicas := 180
+
+		err := validateClusterVersionWithMaxNodesLimit(clusterVersion, replicas, isHostedCp)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	It("should accept if user creates mp with 249 nodes for classic cluster at or above  v4.14.14", func() {
+		clusterVersion := "v4.14.14"
+		isHostedCp := false
+		replicas := 249
+
+		err := validateClusterVersionWithMaxNodesLimit(clusterVersion, replicas, isHostedCp)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	// Hosted CP cluster validations for node count
+	It("should return error if user creates mp with more than 500 nodes for hcp cluster at or above v4.14.0", func() {
+		clusterVersion := "v4.14.0"
+		isHostedCp := true
+		replicas := 501
+
+		err := validateClusterVersionWithMaxNodesLimit(clusterVersion, replicas, isHostedCp)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(fmt.Sprintf("should provide an integer number less than or equal to '%v'", 500)))
+	})
+
+	It("should accept if user creates mp with 500 nodes for hcp cluster at or above v4.14.0", func() {
+		clusterVersion := "v4.14.0"
+		isHostedCp := true
+		replicas := 500
+
+		err := validateClusterVersionWithMaxNodesLimit(clusterVersion, replicas, isHostedCp)
+		Expect(err).ToNot(HaveOccurred())
 	})
 })

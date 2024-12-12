@@ -61,6 +61,7 @@ import (
 	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
+	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
@@ -253,6 +254,7 @@ var args struct {
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
 var autoscalerArgs *clusterautoscaler.AutoscalerArgs
+var autoscalerValidationArgs *clusterautoscaler.AutoscalerValidationArgs
 var userSpecifiedAutoscalerValues []*pflag.Flag
 
 var Cmd = makeCmd()
@@ -2578,6 +2580,14 @@ func run(cmd *cobra.Command, _ []string) {
 		multiAZ)
 
 	var clusterAutoscaler *clusterautoscaler.AutoscalerArgs
+
+	replicaSizeValidation := &machinepool.ReplicaSizeValidation{
+		MinReplicas:         minReplicas,
+		ClusterVersion:      version,
+		PrivateSubnetsCount: privateSubnetsCount,
+		IsHostedCp:          isHostedCP,
+		MultiAz:             multiAZ,
+	}
 	if !autoscaling {
 		clusterAutoscaler = nil
 	} else {
@@ -2593,7 +2603,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  minReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount),
+					replicaSizeValidation.MinReplicaValidatorOnClusterCreate(),
 				},
 			})
 			if err != nil {
@@ -2601,11 +2611,12 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount)(minReplicas)
+		err = replicaSizeValidation.MinReplicaValidatorOnClusterCreate()(minReplicas)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
+		replicaSizeValidation.MinReplicas = minReplicas
 
 		if interactive.Enabled() || !isMaxReplicasSet {
 			maxReplicas, err = interactive.GetInt(interactive.Input{
@@ -2614,7 +2625,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Default:  maxReplicas,
 				Required: true,
 				Validators: []interactive.Validator{
-					maxReplicaValidator(multiAZ, minReplicas, isHostedCP, privateSubnetsCount),
+					replicaSizeValidation.MaxReplicaValidatorOnClusterCreate(),
 				},
 			})
 			if err != nil {
@@ -2622,7 +2633,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = maxReplicaValidator(multiAZ, minReplicas, isHostedCP, privateSubnetsCount)(maxReplicas)
+		err = replicaSizeValidation.MaxReplicaValidatorOnClusterCreate()(maxReplicas)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -2634,8 +2645,15 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		} else {
+
+			autoscalerValidationArgs = &clusterautoscaler.AutoscalerValidationArgs{
+				ClusterVersion: version,
+				MultiAz:        multiAZ,
+				IsHostedCp:     false,
+			}
+
 			clusterAutoscaler, err = clusterautoscaler.GetAutoscalerOptions(
-				cmd.Flags(), clusterAutoscalerFlagsPrefix, true, autoscalerArgs)
+				cmd.Flags(), clusterAutoscalerFlagsPrefix, true, autoscalerArgs, autoscalerValidationArgs)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -2662,7 +2680,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Help:     cmd.Flags().Lookup("compute-nodes").Usage,
 				Default:  computeNodes,
 				Validators: []interactive.Validator{
-					minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount),
+					replicaSizeValidation.MinReplicaValidatorOnClusterCreate(),
 				},
 			})
 			if err != nil {
@@ -2670,7 +2688,7 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-		err = minReplicaValidator(multiAZ, isHostedCP, privateSubnetsCount)(computeNodes)
+		err = replicaSizeValidation.MinReplicaValidatorOnClusterCreate()(computeNodes)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
@@ -3743,39 +3761,6 @@ func isValidCidrRange(
 	return machineNetwork.Contains(subnetIP) &&
 		!subnetNetwork.Contains(serviceNetwork.IP) &&
 		!serviceNetwork.Contains(subnetIP)
-}
-
-func minReplicaValidator(multiAZ bool, isHostedCP bool, privateSubnetsCount int) interactive.Validator {
-	return func(val interface{}) error {
-		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-
-		if isHostedCP && minReplicas < 2 {
-			return fmt.Errorf("hosted Control Plane clusters require a minimum of 2 nodes, "+
-				"but %d was requested", minReplicas)
-		}
-
-		return clustervalidations.MinReplicasValidator(minReplicas, multiAZ, isHostedCP, privateSubnetsCount)
-	}
-}
-
-func maxReplicaValidator(multiAZ bool, minReplicas int, isHostedCP bool,
-	privateSubnetsCount int) interactive.Validator {
-	return func(val interface{}) error {
-		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-		return clustervalidations.MaxReplicasValidator(
-			minReplicas,
-			maxReplicas,
-			multiAZ,
-			isHostedCP,
-			privateSubnetsCount,
-		)
-	}
 }
 
 const (
