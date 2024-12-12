@@ -6,29 +6,17 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	clustervalidations "github.com/openshift-online/ocm-common/pkg/cluster/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
-	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
-	"github.com/openshift/rosa/pkg/ocm"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 )
-
-type ReplicaSizeValidation struct {
-	MinReplicas         int
-	ClusterVersion      string
-	PrivateSubnetsCount int
-	Autoscaling         bool
-	IsHostedCp          bool
-	MultiAz             bool
-}
 
 // Parse labels if the 'labels' flag is set
 func ValidateLabels(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions) error {
@@ -201,44 +189,42 @@ func getMachinePoolAvailabilityZones(r *rosa.Runtime, cluster *cmv1.Cluster, mul
 	return cluster.Nodes().AvailabilityZones(), nil
 }
 
-func (r *ReplicaSizeValidation) MaxReplicaValidator() interactive.Validator {
+func maxReplicaValidator(minReplicas int, multiAZMachinePool bool) interactive.Validator {
 	return func(val interface{}) error {
 		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
 			return err
 		}
-		if r.MinReplicas > maxReplicas {
+		if minReplicas > maxReplicas {
 			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
 		}
-		if r.MultiAz && maxReplicas%3 != 0 {
+		if multiAZMachinePool && maxReplicas%3 != 0 {
 			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
 		}
-		return validateClusterVersionWithMaxNodesLimit(
-			r.ClusterVersion, maxReplicas, r.IsHostedCp)
+		return nil
 	}
 }
 
-func (r *ReplicaSizeValidation) MinReplicaValidator() interactive.Validator {
+func minReplicaValidator(multiAZMachinePool bool, autoscaling bool, isHypershift bool) interactive.Validator {
 	return func(val interface{}) error {
 		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
 			return err
 		}
-		if r.Autoscaling && minReplicas < 1 && r.IsHostedCp {
+		if autoscaling && minReplicas < 1 && isHypershift {
 			return fmt.Errorf("min-replicas must be greater than zero")
 		}
-		if r.Autoscaling && minReplicas < 0 && !r.IsHostedCp {
+		if autoscaling && minReplicas < 0 && !isHypershift {
 			return fmt.Errorf("min-replicas must be a number that is 0 or greater when autoscaling is" +
 				" enabled")
 		}
-		if !r.Autoscaling && minReplicas < 0 {
+		if !autoscaling && minReplicas < 0 {
 			return fmt.Errorf("Replicas must be a non-negative integer")
 		}
-		if r.MultiAz && minReplicas%3 != 0 {
+		if multiAZMachinePool && minReplicas%3 != 0 {
 			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
 		}
-		return validateClusterVersionWithMaxNodesLimit(
-			r.ClusterVersion, minReplicas, r.IsHostedCp)
+		return nil
 	}
 }
 
@@ -312,78 +298,4 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 	}
 
 	return "", fmt.Errorf("Failed to find a private subnet for '%s' availability zone", availabilityZone)
-}
-
-// temporary fn until calculated default values can be retrieved from single source of truth
-func validateClusterVersionWithMaxNodesLimit(clusterVersion string, replicas int, isHostedCp bool) error {
-	hcpMaxNodesLimit := 500
-	if isHostedCp {
-		if replicas > hcpMaxNodesLimit {
-			return fmt.Errorf("should provide an integer number less than or equal to '%v'", hcpMaxNodesLimit)
-		}
-		return nil
-	}
-
-	maxNodesLimit := 180
-	classicMaxNodeSize249SupportedVersion, _ := versions.IsGreaterThanOrEqual(
-		clusterVersion, ocm.ClassicMaxNodeSize249Support)
-	// on error do nothing
-	if classicMaxNodeSize249SupportedVersion {
-		maxNodesLimit = 249
-	}
-	if replicas > maxNodesLimit {
-		return fmt.Errorf("should provide an integer number less than or equal to '%v'", maxNodesLimit)
-	}
-
-	return nil
-}
-
-func (r *ReplicaSizeValidation) MinReplicaValidatorOnClusterCreate() interactive.Validator {
-	return func(val interface{}) error {
-		minReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-
-		if r.IsHostedCp && minReplicas < 2 {
-			return fmt.Errorf("hosted Control Plane clusters require a minimum of 2 nodes, "+
-				"but %d was requested", minReplicas)
-		}
-
-		err = validateClusterVersionWithMaxNodesLimit(
-			r.ClusterVersion, minReplicas, r.IsHostedCp)
-		if err != nil {
-			return err
-		}
-
-		return clustervalidations.MinReplicasValidator(
-			minReplicas,
-			r.MultiAz,
-			r.IsHostedCp,
-			r.PrivateSubnetsCount,
-		)
-	}
-}
-
-func (r *ReplicaSizeValidation) MaxReplicaValidatorOnClusterCreate() interactive.Validator {
-	return func(val interface{}) error {
-		maxReplicas, err := strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
-
-		err = validateClusterVersionWithMaxNodesLimit(
-			r.ClusterVersion, maxReplicas, r.IsHostedCp)
-		if err != nil {
-			return err
-		}
-
-		return clustervalidations.MaxReplicasValidator(
-			r.MinReplicas,
-			maxReplicas,
-			r.MultiAz,
-			r.IsHostedCp,
-			r.PrivateSubnetsCount,
-		)
-	}
 }

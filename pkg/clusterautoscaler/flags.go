@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 )
@@ -87,12 +86,6 @@ type ScaleDownConfig struct {
 	DelayAfterFailure    string
 }
 
-type AutoscalerValidationArgs struct {
-	IsHostedCp     bool
-	ClusterVersion string
-	MultiAz        bool
-}
-
 func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArgs {
 	args := &AutoscalerArgs{}
 
@@ -160,7 +153,7 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 	cmd.Flags().IntVar(
 		&args.ResourceLimits.MaxNodesTotal,
 		fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag),
-		0,
+		249,
 		"Total amount of nodes that can exist in the cluster, including non-scaled nodes.",
 	)
 
@@ -266,7 +259,7 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 
 func GetAutoscalerOptions(
 	cmd *pflag.FlagSet, prefix string, confirmBeforeAllArgs bool, autoscalerArgs *AutoscalerArgs,
-	autoscalerValidationArgs *AutoscalerValidationArgs) (*AutoscalerArgs, error) {
+) (*AutoscalerArgs, error) {
 
 	var err error
 	result := &AutoscalerArgs{}
@@ -446,8 +439,7 @@ func GetAutoscalerOptions(
 			Question: "Maximum amount of nodes in the cluster",
 			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxNodesTotalFlag)).Usage,
 			Required: false,
-			Default: getAutoscalerMaxNodesTotalDefaultValue(
-				result.ResourceLimits.MaxNodesTotal, autoscalerValidationArgs),
+			Default:  result.ResourceLimits.MaxNodesTotal,
 			Validators: []interactive.Validator{
 				ocm.NonNegativeInt32Validator,
 			},
@@ -952,38 +944,4 @@ func PrefillAutoscalerArgs(cmd *cobra.Command, autoscalerArgs *AutoscalerArgs,
 		autoscalerArgs.ScaleDown.UtilizationThreshold = utilizationThreshold
 	}
 	return autoscalerArgs, nil
-}
-
-// temporary fn until calculated default values can be retrieved from single source of truth
-func getAutoscalerMaxNodesTotalDefaultValue(
-	prefilledMaxNodesTotalValue int, autoscalerValidationArgs *AutoscalerValidationArgs) int {
-	if prefilledMaxNodesTotalValue > 0 {
-		return prefilledMaxNodesTotalValue
-	}
-
-	// hosted cp maxNodesTotal default value calculation
-	hostedCpWorkerNodeCount := 500
-	if autoscalerValidationArgs.IsHostedCp {
-		return hostedCpWorkerNodeCount
-
-	}
-
-	// classic maxNodesTotal default value calculation
-	workerNodeCount := 180
-	infraNodeCount := 2
-	masterNodeCount := 3
-	classicMaxNodeSize249SupportedVersion, err := versions.IsGreaterThanOrEqual(
-		autoscalerValidationArgs.ClusterVersion, ocm.ClassicMaxNodeSize249Support)
-	if err != nil {
-		return workerNodeCount + infraNodeCount + masterNodeCount
-	}
-
-	if classicMaxNodeSize249SupportedVersion {
-		workerNodeCount = 249
-	}
-	if autoscalerValidationArgs.MultiAz {
-		infraNodeCount = 3
-	}
-
-	return workerNodeCount + infraNodeCount + masterNodeCount
 }
