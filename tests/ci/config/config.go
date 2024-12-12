@@ -27,12 +27,14 @@ type TestConfig struct {
 	UserDataFile      string
 	CreateCommandFile string
 	// Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
-	ClusterIDFile   string
-	APIURLFile      string
-	ClusterNameFile string
-	ClusterTypeFile string
-	ConsoleUrlFile  string
-	InfraIDFile     string
+	ClusterIDFile     string
+	APIURLFile        string
+	ClusterNameFile   string
+	ClusterTypeFile   string
+	ConsoleUrlFile    string
+	InfraIDFile       string
+	VPCIDFile         string
+	PublicSubnetsFile string
 	// End of temporary
 	ClusterDetailFile               string
 	ClusterInstallLogArtifactFile   string
@@ -97,6 +99,8 @@ func init() {
 	Test.ClusterTypeFile = path.Join(Test.OutputDir, "cluster-type")
 	Test.ConsoleUrlFile = path.Join(Test.OutputDir, "console.url")
 	Test.InfraIDFile = path.Join(Test.OutputDir, "infra_id")
+	Test.VPCIDFile = path.Join(Test.OutputDir, "vpc_id")
+	Test.PublicSubnetsFile = path.Join(Test.OutputDir, "public_subnet_ids")
 	// End of temporary
 
 	Test.CreateCommandFile = path.Join(Test.OutputDir, "create_cluster.sh")

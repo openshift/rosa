@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
@@ -261,7 +263,20 @@ func (rh *resourcesHandler) saveToFile() (err error) {
 		log.Logger.Debug("Ignoring save to file as per configuration")
 	}
 	_, err = helper.CreateFileWithContent(config.Test.UserDataFile, &rh.resources)
-	return err
+	if err != nil {
+		return
+	}
+	if rh.vpc != nil {
+		_, err = helper.CreateFileWithContent(config.Test.VPCIDFile, rh.vpc.VpcID)
+		if err != nil {
+			return
+		}
+		if len(rh.vpc.AllPublicSubnetIDs()) != 0 {
+			_, err = helper.CreateFileWithContent(config.Test.PublicSubnetsFile,
+				fmt.Sprintf(`['%s']`, rh.vpc.AllPublicSubnetIDs()[0]))
+		}
+	}
+	return
 }
 
 func (rh *resourcesHandler) GetAccountRolesPrefix() string {
@@ -369,6 +384,11 @@ func (rh *resourcesHandler) registerSharedVPCRole(sharedVPCRole string) error {
 
 func (rh *resourcesHandler) registerVpcID(vpcID string) error {
 	rh.resources.VpcID = vpcID
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerVPC(vpc *vpc_client.VPC) error {
+	rh.vpc = vpc
 	return rh.saveToFile()
 }
 
