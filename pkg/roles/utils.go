@@ -3,6 +3,8 @@ package roles
 import (
 	"fmt"
 
+	errors "github.com/zgalor/weberr"
+
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -23,6 +25,7 @@ type ManualSharedVpcPolicyDetails struct {
 	Command       string
 	Name          string
 	AlreadyExists bool
+	Path          string
 }
 
 func GetHcpSharedVpcPolicyDetails(r *rosa.Runtime, roleArn string) (bool, string,
@@ -87,4 +90,14 @@ func CheckIfRolesAreHcpSharedVpc(r *rosa.Runtime, roles []string) bool {
 		}
 	}
 	return isHcpSharedVpc
+}
+
+func GetPolicyDetailsByName(details map[string]ManualSharedVpcPolicyDetails, name string) (ManualSharedVpcPolicyDetails,
+	error) {
+	for _, detail := range details {
+		if detail.Name == name {
+			return detail, nil
+		}
+	}
+	return ManualSharedVpcPolicyDetails{}, errors.Errorf("Policy %s not found", name)
 }

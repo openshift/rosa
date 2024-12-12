@@ -448,10 +448,17 @@ func buildCommands(r *rosa.Runtime, env string,
 				if err != nil {
 					return "", err
 				}
+
+				sharedVpcRolePath, err := aws.GetPathFromARN(sharedVpcRoleArn)
+				if err != nil {
+					return "", err
+				}
+
 				policyDetails[aws.IngressOperatorCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
 					Command:       createPolicyCommand,
 					Name:          policyName,
 					AlreadyExists: exists,
+					Path:          sharedVpcRolePath,
 				}
 			}
 			// VPC endpoint role arn
@@ -462,10 +469,16 @@ func buildCommands(r *rosa.Runtime, env string,
 					return "", err
 				}
 
+				vpcEndpointRolePath, err := aws.GetPathFromARN(vpcEndpointRoleArn)
+				if err != nil {
+					return "", err
+				}
+
 				policyDetails[aws.ControlPlaneCloudCredentialsRoleType] = roles.ManualSharedVpcPolicyDetails{
 					Command:       createPolicyCommand,
 					Name:          policyName,
 					AlreadyExists: exists,
+					Path:          vpcEndpointRolePath,
 				}
 			}
 
@@ -497,7 +510,11 @@ func buildCommands(r *rosa.Runtime, env string,
 
 			// Attach policies to roles
 			for _, policy := range policies {
-				arn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policy, path)
+				details, err := roles.GetPolicyDetailsByName(policyDetails, policy)
+				if err != nil {
+					return "", err
+				}
+				arn := aws.GetPolicyArn(r.Creator.Partition, r.Creator.AccountID, policy, details.Path)
 
 				attachSharedVpcRolePolicy = awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.AttachRolePolicy).
