@@ -3447,6 +3447,13 @@ func run(cmd *cobra.Command, _ []string) {
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create operator roles.")
 			}
+			// Set flags for HCP shared VPC if needed
+			if vpcEndpointRoleArn != "" && route53RoleArn != "" && isHostedCP {
+				operatorroles.Cmd.Flags().Set(route53RoleArnFlag, route53RoleArn)
+				operatorroles.Cmd.Flags().Set(vpcEndpointRoleArnFlag, vpcEndpointRoleArn)
+				operatorroles.Cmd.Flags().Set(operatorroles.HostedCpFlag, strconv.FormatBool(isHostedCP))
+				operatorroles.Cmd.Flags().Set(operatorroles.OidcConfigIdFlag, oidcConfig.ID())
+			}
 			operatorroles.Cmd.Run(operatorroles.Cmd, []string{clusterName, mode, permissionsBoundary})
 			if !output.HasFlag() || r.Reporter.IsTerminal() {
 				r.Reporter.Infof("Preparing to create OIDC Provider.")
