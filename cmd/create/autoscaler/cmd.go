@@ -104,14 +104,7 @@ func CreateAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) ro
 
 		r.Reporter.Debugf("Creating autoscaler for cluster '%s'", clusterKey)
 
-		autoscalerValidationArgs := &clusterautoscaler.AutoscalerValidationArgs{
-			ClusterVersion: cluster.OpenshiftVersion(),
-			MultiAz:        cluster.MultiAZ(),
-			IsHostedCp:     cluster.Hypershift().Enabled(),
-		}
-
-		autoscalerArgs, err := clusterautoscaler.GetAutoscalerOptions(
-			command.Flags(), "", false, autoscalerArgs, autoscalerValidationArgs)
+		autoscalerArgs, err := clusterautoscaler.GetAutoscalerOptions(command.Flags(), "", false, autoscalerArgs)
 		if err != nil {
 			return fmt.Errorf("Failed creating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)

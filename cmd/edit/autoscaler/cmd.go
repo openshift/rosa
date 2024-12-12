@@ -110,14 +110,7 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 				cluster.ID(), err)
 		}
 
-		autoscalerValidationArgs := &clusterautoscaler.AutoscalerValidationArgs{
-			ClusterVersion: cluster.OpenshiftVersion(),
-			MultiAz:        cluster.MultiAZ(),
-			IsHostedCp:     cluster.Hypershift().Enabled(),
-		}
-
-		autoscalerArgs, err = clusterautoscaler.GetAutoscalerOptions(
-			command.Flags(), "", false, autoscalerArgs, autoscalerValidationArgs)
+		autoscalerArgs, err = clusterautoscaler.GetAutoscalerOptions(command.Flags(), "", false, autoscalerArgs)
 		if err != nil {
 			return fmt.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)
