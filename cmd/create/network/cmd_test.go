@@ -111,12 +111,27 @@ var _ = Describe("Validation functions", func() {
 			templateCommand := ""
 			templateFile := ""
 			options := &opts.NetworkUserOptions{}
-			options.TemplateDir = "cmd/create/network/templates"
+			options.TemplateDir = "cmd/create/other/templates"
 
 			extractTemplateCommand(r, argv, options, &templateCommand, &templateFile)
 
 			Expect(templateCommand).To(Equal("my-template"))
-			Expect(templateFile).To(Equal("cmd/create/network/templates/my-template/cloudformation.yaml"))
+			Expect(templateFile).To(Equal("cmd/create/other/templates/my-template/cloudformation.yaml"))
+		})
+
+		It("should extract the error telling the user to use `--template-dir", func() {
+			argv := []string{"my-template", "--param", "key=value"}
+			r := rosa.NewRuntime()
+			templateCommand := ""
+			templateFile := ""
+			options := &opts.NetworkUserOptions{}
+			options.TemplateDir = "cmd/create/network/templates"
+
+			err := extractTemplateCommand(r, argv, options, &templateCommand, &templateFile)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("when using a custom template please use `--template-dir`" +
+				" to specify the template directory"))
 		})
 
 		It("should use the default template when the extracted template command is 'rosa-quickstart-default-vpc'", func() {
