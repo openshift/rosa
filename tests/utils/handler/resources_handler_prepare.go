@@ -94,6 +94,10 @@ func (rh *resourcesHandler) PrepareVPC(vpcName string, cidrValue string, useExis
 	rh.vpc = vpc
 	err = rh.registerVpcID(vpc.VpcID)
 	log.Logger.Info("VPC preparation finished")
+	if err != nil {
+		return vpc, err
+	}
+	err = rh.registerVPC(vpc)
 	return vpc, err
 }
 
@@ -102,7 +106,7 @@ func (rh *resourcesHandler) PrepareVPC(vpcName string, cidrValue string, useExis
 // when multi-zone=true, 3 zones will be pickup
 func (rh *resourcesHandler) PrepareSubnets(zones []string, multiZone bool) (map[string][]string, error) {
 	if rh.vpc == nil {
-		return nil, errors.New("VPC has not been initialized ...")
+		return nil, errors.New("VPC has not been initialized")
 	}
 	resultMap := map[string][]string{}
 	if len(zones) == 0 {
@@ -128,8 +132,8 @@ func (rh *resourcesHandler) PrepareSubnets(zones []string, multiZone bool) (map[
 			resultMap[subnetType] = append(resultMap[subnetType], subnet.ID)
 		}
 	}
-
-	return resultMap, nil
+	err := rh.registerVPC(rh.vpc)
+	return resultMap, err
 }
 
 func (rh *resourcesHandler) PrepareProxy(zone string, sshPemFileName string, sshPemFileRecordDir string,
