@@ -186,6 +186,9 @@ func extractTemplateCommand(r *rosa.Runtime, argv []string, options *opts.Networ
 	if *templateCommand == defaultTemplate {
 		*templateFile = CloudFormationTemplateFile
 	} else {
+		if options.TemplateDir == opts.DefaultTemplateDir {
+			return fmt.Errorf("when using a custom template please use `--template-dir` to specify the template directory")
+		}
 		templateDir := options.TemplateDir
 		*templateFile = helper.SelectTemplate(templateDir, *templateCommand)
 		templateBody, err := os.ReadFile(*templateFile)
