@@ -435,7 +435,7 @@ func buildCommands(r *rosa.Runtime, env string,
 			AddParam(awscb.RoleName, roleName).
 			AddParam(awscb.PolicyArn, policyARN).
 			Build()
-		commands = append(commands, createRole, attachRolePolicy)
+
 		var attachSharedVpcRolePolicy string
 		var policyCommands []string
 
