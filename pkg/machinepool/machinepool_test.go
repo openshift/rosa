@@ -74,13 +74,13 @@ var _ = Describe("Machinepool and nodepool", func() {
 			testCommand.Flags().Lookup("min-replicas").Changed = true
 			testCommand.Flags().Lookup("max-replicas").Changed = true
 		})
-		It("editAutoscaling should not be nil if nothing is changed", func() {
+		It("editAutoscaling should equal nil if nothing is changed", func() {
 			nodepool, err := cmv1.NewNodePool().
 				Autoscaling(cmv1.NewNodePoolAutoscaling().MaxReplica(2).MinReplica(1)).
 				Build()
 			Expect(err).ToNot(HaveOccurred())
 			builder := editAutoscaling(nodepool, 1, 2)
-			Expect(builder).To(Not(BeNil()))
+			Expect(builder).To(BeNil())
 		})
 		It("editAutoscaling should equal the expected output", func() {
 			nodepool, err := cmv1.NewNodePool().
