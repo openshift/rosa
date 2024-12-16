@@ -2382,11 +2382,14 @@ func run(cmd *cobra.Command, _ []string) {
 			// TODO: We can remove this and replace the above once we deprecate the old flags
 			ingressPrivateHostedZoneId = privateHostedZoneID
 
-			hcpInternalCommunicationHostedZoneId, err = getHcpInternalCommunicationHostedZoneId(cmd,
-				hcpInternalCommunicationHostedZoneId)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+			if isHostedCP {
+				hcpInternalCommunicationHostedZoneId, err = getHcpInternalCommunicationHostedZoneId(cmd,
+					hcpInternalCommunicationHostedZoneId)
+
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
 			}
 
 			sharedVPCRoleARN, err = getSharedVpcRoleArn(cmd, sharedVPCRoleARN)
@@ -2398,10 +2401,12 @@ func run(cmd *cobra.Command, _ []string) {
 			// TODO: We can remove this and replace the above once we deprecate the old flags
 			route53RoleArn = sharedVPCRoleARN
 
-			vpcEndpointRoleArn, err = getVpcEndpointRoleArn(cmd, vpcEndpointRoleArn)
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
+			if isHostedCP {
+				vpcEndpointRoleArn, err = getVpcEndpointRoleArn(cmd, vpcEndpointRoleArn)
+				if err != nil {
+					r.Reporter.Errorf("%s", err)
+					os.Exit(1)
+				}
 			}
 
 			baseDomain, err = getBaseDomain(r, cmd, baseDomain)
