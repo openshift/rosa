@@ -181,7 +181,6 @@ func run(cmd *cobra.Command, argv []string) {
 	var isHcpSharedVpc bool
 	var err error
 	if !args.hostedCp {
-		rosa.HostedClusterOnlyFlag(r, cmd, hostedZoneRoleArnFlag)
 		rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
 	} else {
 		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.sharedVpcRoleArn,
