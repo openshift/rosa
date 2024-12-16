@@ -31,7 +31,6 @@ import (
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/output"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -1243,7 +1242,6 @@ func fillAutoScalingAndReplicas(npBuilder *cmv1.NodePoolBuilder, autoscaling boo
 }
 
 func getMachinePoolReplicas(cmd *cobra.Command,
-	reporter *rprtr.Object,
 	machinePoolID string,
 	existingReplicas int,
 	existingAutoscaling *cmv1.MachinePoolAutoscaling,
@@ -1435,7 +1433,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas, err :=
-		getMachinePoolReplicas(cmd, r.Reporter, machinePoolId, machinePool.Replicas(), machinePool.Autoscaling(),
+		getMachinePoolReplicas(cmd, machinePoolId, machinePool.Replicas(), machinePool.Autoscaling(),
 			!isLabelsSet && !isTaintsSet, isMultiAZMachinePool(machinePool))
 
 	if err != nil {
@@ -1528,7 +1526,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		return fmt.Errorf("Machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID, clusterKey)
 	}
 
-	autoscaling, replicas, minReplicas, maxReplicas, err := getNodePoolReplicas(cmd, r, nodePoolID,
+	autoscaling, replicas, minReplicas, maxReplicas, err := getNodePoolReplicas(cmd, nodePoolID,
 		nodePool.Replicas(), nodePool.Autoscaling(), isAnyAdditionalParameterSet)
 	if err != nil {
 		return fmt.Errorf("Failed to get autoscaling or replicas: '%s'", err)
@@ -1816,7 +1814,6 @@ func promptForNodePoolNodeRecreate(
 }
 
 func getNodePoolReplicas(cmd *cobra.Command,
-	r *rosa.Runtime,
 	nodePoolID string,
 	existingReplicas int,
 	existingAutoscaling *cmv1.NodePoolAutoscaling,
@@ -1957,10 +1954,8 @@ func editAutoscaling(nodePool *cmv1.NodePool, minReplicas int, maxReplicas int) 
 		max = maxReplicas
 	}
 
-	if existingMinReplica != minReplicas || existingMaxReplica != maxReplicas {
-		if min >= 1 && max >= 1 {
-			return cmv1.NewNodePoolAutoscaling().MinReplica(min).MaxReplica(max)
-		}
+	if min >= 1 && max >= 1 {
+		return cmv1.NewNodePoolAutoscaling().MinReplica(min).MaxReplica(max)
 	}
 
 	return nil
