@@ -2175,13 +2175,15 @@ func (c *awsClient) GetOperatorRoleDefaultPolicy(roleName string) (string, error
 
 func (c *awsClient) validateManagedPolicy(policies map[string]*cmv1.AWSSTSPolicy, policyKey string,
 	roleName string) error {
+	// EC2 policy is now returned from CS for all orgs. It is optional since it's only required
+	// to create zero egress clusters
+	if policyKey == WorkerEC2RegistryKey {
+		c.logger.Infof("Ignored check for policy key '%s' (only required for zero egress enabled clusters)", policyKey)
+		return nil
+	}
+
 	managedPolicyARN, err := GetManagedPolicyARN(policies, policyKey)
 	if err != nil {
-		// EC2 policy is only available to orgs for zero-egress feature toggle enabled
-		if policyKey == WorkerEC2RegistryKey {
-			c.logger.Infof("Ignored check for policy key '%s' (zero egress feature toggle is not enabled)", policyKey)
-			return nil
-		}
 		return err
 	}
 

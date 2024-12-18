@@ -845,6 +845,7 @@ var _ = Describe("validateManagedPolicy", func() {
 	DescribeTable("validate ECR policy", func(
 		policies map[string]*cmv1.AWSSTSPolicy, policyKey, roleName, expectedErr string,
 	) {
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 		err := client.validateManagedPolicy(policies, policyKey, roleName)
 		if expectedErr == "" {
 			Expect(err).To(BeNil())
@@ -855,6 +856,11 @@ var _ = Describe("validateManagedPolicy", func() {
 	},
 		Entry("succeeds if ECR policy does not exist", map[string]*cmv1.AWSSTSPolicy{
 			"sts_hcp_instance_worker_permission_policy": workerPolicy},
+			"sts_hcp_ec2_registry_permission_policy", "worker", ""),
+		Entry("succeeds if ECR policy exist but skips check if policy is attached",
+			map[string]*cmv1.AWSSTSPolicy{
+				"sts_hcp_instance_worker_permission_policy": workerPolicy,
+				"sts_hcp_ec2_registry_permission_policy":    ec2ContainerPolicy},
 			"sts_hcp_ec2_registry_permission_policy", "worker", ""),
 		Entry("fails to find worker policy", map[string]*cmv1.AWSSTSPolicy{
 			"sts_hcp_ec2_registry_permission_policy": ec2ContainerPolicy},
