@@ -7,7 +7,6 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
-	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -15,7 +14,7 @@ func (rh *resourcesHandler) DeleteVPCChain() error {
 	var err error
 	if rh.vpc == nil {
 		var awsclient *aws_client.AWSClient
-		awsSharedCredentialFile := ciConfig.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+		awsSharedCredentialFile := rh.awsSharedCredentialsFile
 		if awsSharedCredentialFile == "" {
 			awsclient, err = aws_client.CreateAWSClient("", rh.resources.Region)
 		} else {
