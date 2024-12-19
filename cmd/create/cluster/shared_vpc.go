@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 
+	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
@@ -93,8 +94,8 @@ func getVpcEndpointRoleArn(cmd *cobra.Command, vpcEndpointRoleArn string) (strin
 	return res, nil
 }
 
-func getBaseDomain(r *rosa.Runtime, cmd *cobra.Command, baseDomain string) (string, error) {
-	dnsDomains, err := getAvailableBaseDomains(r)
+func getBaseDomain(r *rosa.Runtime, cmd *cobra.Command, baseDomain string, isHostedCp bool) (string, error) {
+	dnsDomains, err := getAvailableBaseDomains(r, isHostedCp)
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +114,7 @@ func getBaseDomain(r *rosa.Runtime, cmd *cobra.Command, baseDomain string) (stri
 	return res, nil
 }
 
-func getAvailableBaseDomains(r *rosa.Runtime) ([]string, error) {
+func getAvailableBaseDomains(r *rosa.Runtime, isHostedCp bool) ([]string, error) {
 	organizationID, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
 		return nil, errors.Errorf("Failed to get current OCM organization ID: %s", err)
@@ -127,7 +128,11 @@ func getAvailableBaseDomains(r *rosa.Runtime) ([]string, error) {
 
 	var dnsDomainsIDs []string
 	for _, dnsDomain := range dnsDomains {
-		dnsDomainsIDs = append(dnsDomainsIDs, dnsDomain.ID())
+		if isHostedCp && dnsDomain.ClusterArch() == v1.ClusterArchitectureHcp {
+			dnsDomainsIDs = append(dnsDomainsIDs, dnsDomain.ID())
+		} else if !isHostedCp {
+			dnsDomainsIDs = append(dnsDomainsIDs, dnsDomain.ID())
+		}
 	}
 
 	return dnsDomainsIDs, nil

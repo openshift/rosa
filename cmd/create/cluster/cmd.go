@@ -2411,7 +2411,7 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 
-			baseDomain, err = getBaseDomain(r, cmd, baseDomain)
+			baseDomain, err = getBaseDomain(r, cmd, baseDomain, isHostedCP)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
