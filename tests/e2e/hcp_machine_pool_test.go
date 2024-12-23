@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
@@ -541,11 +542,13 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("with subnet not in VPC")
 			vpcPrefix := helper.TrimNameByLength("c56786", 20)
-			resourcesHandler, err := handler.NewTempResourcesHandler(rosaClient, profile.Region, "")
+			resourcesHandler, err := handler.NewTempResourcesHandler(rosaClient, profile.Region,
+				ciConfig.Test.GlobalENV.AWSCredetialsFile,
+				ciConfig.Test.GlobalENV.SVPC_CREDENTIALS_FILE)
 			Expect(err).ToNot(HaveOccurred())
 			defer resourcesHandler.DestroyResources()
 
-			vpc, err := resourcesHandler.PrepareVPC(vpcPrefix, constants.DefaultVPCCIDRValue, false)
+			vpc, err := resourcesHandler.PrepareVPC(vpcPrefix, constants.DefaultVPCCIDRValue, false, false)
 			Expect(err).ToNot(HaveOccurred())
 			zones, err := vpc.AWSClient.ListAvaliableZonesForRegion(profile.Region, "availability-zone")
 			Expect(err).ToNot(HaveOccurred())
