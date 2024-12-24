@@ -33,7 +33,7 @@ type ResourcesHandler interface {
 
 	PrepareVersion(versionRequirement string, channelGroup string, hcp bool) (*rosacli.OpenShiftVersionTableOutput, error)
 	PreparePrefix(profilePrefix string, nameLength int) string
-	PrepareVPC(vpcName string, cidrValue string, useExisting bool) (*vpc_client.VPC, error)
+	PrepareVPC(vpcName string, cidrValue string, useExisting bool, withSharedAccount bool) (*vpc_client.VPC, error)
 	PrepareSubnets(zones []string, multiZone bool) (map[string][]string, error)
 	PrepareProxy(zone string, sshPemFileName string, sshPemFileRecordDir string, caFile string) (*ProxyDetail, error)
 	PrepareKMSKey(multiRegion bool, testClient string, hcp bool, etcdKMS bool) (string, error)
@@ -57,7 +57,7 @@ type ResourcesHandler interface {
 	PrepareSubnetArns(subnetIDs string) ([]string, error)
 	PrepareResourceShare(resourceShareName string, resourceArns []string) (string, error)
 
-	DeleteVPCChain() error
+	DeleteVPCChain(withSharedAccount bool) error
 	DeleteKMSKey(etcdKMS bool) error
 	DeleteAuditLogRoleArn() error
 	DeleteHostedZone() error
@@ -71,10 +71,11 @@ type ResourcesHandler interface {
 }
 
 type resourcesHandler struct {
-	resources                *Resources
-	persist                  bool
-	rosaClient               *rosacli.Client
-	awsSharedCredentialsFile string
+	resources                       *Resources
+	persist                         bool
+	rosaClient                      *rosacli.Client
+	awsCredentialsFile              string
+	awsSharedAccountCredentialsFile string
 
 	// Optional
 	vpc *vpc_client.VPC
@@ -82,34 +83,37 @@ type resourcesHandler struct {
 
 // NewResourcesHandler create a new resources handler with data persisted to Filesystem
 func NewResourcesHandler(client *rosacli.Client, region string,
-	awsSharedCredentialsFile string) (ResourcesHandler, error) {
+	awsCredentialsFile string, awsSharedAccountCredentialsFile string) (ResourcesHandler, error) {
 
-	return newResourcesHandler(client, region, true, false, awsSharedCredentialsFile)
+	return newResourcesHandler(client, region, true, false, awsCredentialsFile, awsSharedAccountCredentialsFile)
 }
 
 // NewTempResourcesHandler create a new resources handler WITHOUT data written to Filesystem
 // Useful for test cases needed resources. Do not forget to delete the resources afterwards
+// awsSharedAccountCredentialsFile is the second AWS account for shared resources
 func NewTempResourcesHandler(client *rosacli.Client, region string,
-	awsSharedCredentialsFile string) (ResourcesHandler, error) {
+	awsCredentialsFile string, awsSharedAccountCredentialsFile string) (ResourcesHandler, error) {
 
-	return newResourcesHandler(client, region, false, false, awsSharedCredentialsFile)
+	return newResourcesHandler(client, region, false, false, awsCredentialsFile, awsSharedAccountCredentialsFile)
 }
 
 // NewResourcesHandlerFromFilesystem create a new resources handler from data saved on Filesystem
 func NewResourcesHandlerFromFilesystem(client *rosacli.Client,
-	awsSharedCredentialsFile string) (ResourcesHandler, error) {
+	awsCredentialsFile string, awsSharedAccountCredentialsFile string) (ResourcesHandler, error) {
 
-	return newResourcesHandler(client, "", true, true, awsSharedCredentialsFile)
+	return newResourcesHandler(client, "", true, true, awsCredentialsFile, awsSharedAccountCredentialsFile)
 }
 
 func newResourcesHandler(client *rosacli.Client, region string, persist bool,
-	loadFilesystem bool, awsSharedCredentialsFile string) (*resourcesHandler, error) {
+	loadFilesystem bool, awsCredentialsFile string,
+	awsSharedAccountCredentialsFile string) (*resourcesHandler, error) {
 
 	resourcesHandler := &resourcesHandler{
-		rosaClient:               client,
-		resources:                &Resources{Region: region},
-		persist:                  persist,
-		awsSharedCredentialsFile: awsSharedCredentialsFile,
+		rosaClient:                      client,
+		resources:                       &Resources{Region: region},
+		persist:                         persist,
+		awsCredentialsFile:              awsCredentialsFile,
+		awsSharedAccountCredentialsFile: awsSharedAccountCredentialsFile,
 	}
 	if loadFilesystem {
 		err := helper.ReadFileContentToObject(config.Test.UserDataFile, &resourcesHandler.resources)
@@ -198,10 +202,10 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 	// delete vpc chain
 	if resources.VpcID != "" {
 		log.Logger.Infof("Find prepared vpc id: %s", resources.VpcID)
-		err = rh.DeleteVPCChain()
+		err = rh.DeleteVPCChain(resources.FromSharedAWSAccount != nil && resources.FromSharedAWSAccount.VPC)
 		success := destroyLog(err, "vpc chain")
 		if success {
-			rh.registerVpcID("")
+			rh.registerVpcID("", false)
 		}
 	}
 	// delete shared vpc role
@@ -334,6 +338,10 @@ func (rh *resourcesHandler) registerAccountRolesPrefix(accountRolesPrefix string
 
 func (rh *resourcesHandler) registerAdditionalPrincipals(additionalPrincipals string) error {
 	rh.resources.AdditionalPrincipals = additionalPrincipals
+	if rh.resources.FromSharedAWSAccount == nil {
+		rh.resources.FromSharedAWSAccount = &FromSharedAWSAccount{}
+	}
+	rh.resources.FromSharedAWSAccount.AdditionalPrincipls = true
 	return rh.saveToFile()
 }
 
@@ -382,8 +390,12 @@ func (rh *resourcesHandler) registerSharedVPCRole(sharedVPCRole string) error {
 	return rh.saveToFile()
 }
 
-func (rh *resourcesHandler) registerVpcID(vpcID string) error {
+func (rh *resourcesHandler) registerVpcID(vpcID string, fromSharedAccount bool) error {
 	rh.resources.VpcID = vpcID
+	if rh.resources.FromSharedAWSAccount == nil {
+		rh.resources.FromSharedAWSAccount = &FromSharedAWSAccount{}
+	}
+	rh.resources.FromSharedAWSAccount.VPC = fromSharedAccount
 	return rh.saveToFile()
 }
 
@@ -396,9 +408,12 @@ func (rh *resourcesHandler) GetVPC() *vpc_client.VPC {
 	return rh.vpc
 }
 
-func (rh *resourcesHandler) GetAWSClient(useSharedVPCIfAvailable bool) (*aws_client.AWSClient, error) {
-	if useSharedVPCIfAvailable && rh.awsSharedCredentialsFile != "" {
-		return aws_client.CreateAWSClient("", rh.resources.Region, rh.awsSharedCredentialsFile)
+func (rh *resourcesHandler) GetAWSClient(useSharedAccount bool) (*aws_client.AWSClient, error) {
+	if useSharedAccount {
+		if rh.awsSharedAccountCredentialsFile == "" {
+			return nil, fmt.Errorf("the shared aws account credential file is empty. Please set it by export ")
+		}
+		return aws_client.CreateAWSClient("", rh.resources.Region, rh.awsSharedAccountCredentialsFile)
 	}
 	return aws_client.CreateAWSClient("", rh.resources.Region)
 }

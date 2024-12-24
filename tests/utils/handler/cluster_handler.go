@@ -73,17 +73,13 @@ func newClusterHandler(client *rosacli.Client,
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	// Make sure shared VPC credentials file based on profile
-	awsSharedCredentialsFile := ""
-	if profile.ClusterConfig.SharedVPC || profile.ClusterConfig.AdditionalPrincipals {
-		awsSharedCredentialsFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
-		if awsSharedCredentialsFile == "" {
-			log.Logger.Errorf(envVariableErrMsg, awsSharedCredentialsFile)
-			return nil, fmt.Errorf(envVariableErrMsg, awsSharedCredentialsFile)
-		}
+	awsCredentialsFile := config.Test.GlobalENV.AWSCredetialsFile
+	awsSharedAccountCredentialsFile := config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+	if profile.ClusterConfig.SharedVPC && awsSharedAccountCredentialsFile == "" {
+		return nil, fmt.Errorf(envVariableErrMsg, awsSharedAccountCredentialsFile)
 	}
 
 	resourcesHandler, err := newResourcesHandler(
@@ -91,23 +87,23 @@ func newClusterHandler(client *rosacli.Client,
 		profile.Region,
 		persist,
 		loadFromFilesystem,
-		awsSharedCredentialsFile,
+		awsCredentialsFile,
+		awsSharedAccountCredentialsFile,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	// Make sure shared VPC credentials file based on loaded resources
-	if resourcesHandler.resources.SharedVPCRole != "" ||
+	if (resourcesHandler.resources.SharedVPCRole != "" ||
 		resourcesHandler.resources.AdditionalPrincipals != "" ||
-		resourcesHandler.resources.ResourceShareArn != "" {
-		awsSharedCredentialsFile = config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
-		if awsSharedCredentialsFile == "" {
-			log.Logger.Errorf(envVariableErrMsg, awsSharedCredentialsFile)
-			return nil, fmt.Errorf(envVariableErrMsg, awsSharedCredentialsFile)
-		}
+		resourcesHandler.resources.ResourceShareArn != "") &&
+		resourcesHandler.awsSharedAccountCredentialsFile == "" {
+
+		log.Logger.Errorf(envVariableErrMsg, awsCredentialsFile)
+		return nil, fmt.Errorf(envVariableErrMsg, awsCredentialsFile)
+
 	}
-	resourcesHandler.awsSharedCredentialsFile = awsSharedCredentialsFile
 
 	return &clusterHandler{
 		rosaClient:       client,
@@ -477,7 +473,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			cidrValue = ch.clusterConfig.Networking.MachineCIDR
 		}
 
-		vpc, err = resourcesHandler.PrepareVPC(vpcPrefix, cidrValue, false)
+		vpc, err = resourcesHandler.PrepareVPC(vpcPrefix, cidrValue, false, ch.profile.ClusterConfig.SharedVPC)
 		if err != nil {
 			return flags, err
 		}

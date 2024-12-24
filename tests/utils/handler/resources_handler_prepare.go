@@ -85,14 +85,19 @@ func (rh *resourcesHandler) PreparePrefix(profilePrefix string, nameLength int) 
 }
 
 // PrepareVPC will prepare a single vpc
-func (rh *resourcesHandler) PrepareVPC(vpcName string, cidrValue string, useExisting bool) (*vpc_client.VPC, error) {
-	log.Logger.Info("Starting vpc preparation")
-	vpc, err := vpc_client.PrepareVPC(vpcName, rh.resources.Region, cidrValue, useExisting, rh.awsSharedCredentialsFile)
+func (rh *resourcesHandler) PrepareVPC(vpcName string, cidrValue string, useExisting bool, withSharedAccount bool) (
+	*vpc_client.VPC, error) {
+	log.Logger.Infof("Starting vpc preparation on region %s", rh.resources.Region)
+	credentialFile := rh.awsCredentialsFile
+	if withSharedAccount {
+		credentialFile = rh.awsSharedAccountCredentialsFile
+	}
+	vpc, err := vpc_client.PrepareVPC(vpcName, rh.resources.Region, cidrValue, useExisting, credentialFile)
 	if err != nil {
 		return nil, err
 	}
 	rh.vpc = vpc
-	err = rh.registerVpcID(vpc.VpcID)
+	err = rh.registerVpcID(vpc.VpcID, withSharedAccount)
 	log.Logger.Info("VPC preparation finished")
 	if err != nil {
 		return vpc, err
@@ -460,6 +465,7 @@ func (rh *resourcesHandler) PrepareAdditionalPrincipalsRole(roleName string, ins
 	}
 	roleArn, err := awsClient.CreateRoleForAdditionalPrincipals(roleName, installerRoleArn)
 	additionalPrincipalRoleArn := aws.ToString(roleArn.Arn)
+	rh.registerAdditionalPrincipals(additionalPrincipalRoleArn)
 	if err != nil {
 		log.Logger.Errorf("Error happens when prepare additional principal role: %s", err.Error())
 		return additionalPrincipalRoleArn, err

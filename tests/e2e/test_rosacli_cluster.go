@@ -1360,7 +1360,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Prepare a vpc for the testing")
 				resourcesHandler := clusterHandler.GetResourcesHandler()
-				_, err := resourcesHandler.PrepareVPC(caseNumber, "", true)
+				_, err := resourcesHandler.PrepareVPC(caseNumber, "", true, false)
 				Expect(err).ToNot(HaveOccurred())
 				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, false)
 				Expect(err).ToNot(HaveOccurred())
@@ -2484,7 +2484,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 				By("Prepare a vpc for the testing")
 				resourcesHandler := clusterHandler.GetResourcesHandler()
-				vpc, err := resourcesHandler.PrepareVPC(vpcName, "", false)
+				vpc, err := resourcesHandler.PrepareVPC(vpcName, "", false, false)
 				Expect(err).ToNot(HaveOccurred())
 				defer vpc.DeleteVPCChain()
 

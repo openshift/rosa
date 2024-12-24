@@ -56,9 +56,9 @@ var _ = Describe("ROSA CLI Test", func() {
 		It("VPCClientTesting", func() {
 			client := rosacli.NewClient()
 			region := "us-east-1"
-			resourcesHandler, err := handler.NewTempResourcesHandler(client, region, "")
+			resourcesHandler, err := handler.NewTempResourcesHandler(client, region, "", "")
 			Expect(err).ToNot(HaveOccurred())
-			vpcClient, err := resourcesHandler.PrepareVPC("xueli-test", "10.0.0.0/16", false)
+			vpcClient, err := resourcesHandler.PrepareVPC("xueli-test", "10.0.0.0/16", false, false)
 			Expect(err).ToNot(HaveOccurred())
 			defer resourcesHandler.DestroyResources()
 			subnets, err := resourcesHandler.PrepareSubnets([]string{}, true)

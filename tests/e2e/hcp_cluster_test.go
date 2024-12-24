@@ -236,13 +236,12 @@ var _ = Describe("HCP cluster testing",
 				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
 				installRoleArn := jsonData.DigString("aws", "sts", "role_arn")
 
-				By("Get additional principal credentials")
-				awsSharedCredentialFile := ciConfig.Test.GlobalENV.SVPC_CREDENTIALS_FILE
-
 				By("Create additional account roles")
 				accrolePrefix := "arPrefix74556"
 
-				resourcesHandler, err := handler.NewTempResourcesHandler(rosaClient, profile.Region, awsSharedCredentialFile)
+				resourcesHandler, err := handler.NewTempResourcesHandler(rosaClient, profile.Region,
+					ciConfig.Test.GlobalENV.AWSCredetialsFile,
+					ciConfig.Test.GlobalENV.SVPC_CREDENTIALS_FILE)
 				Expect(err).ToNot(HaveOccurred())
 				additionalPrincipalRoleName := fmt.Sprintf("%s-%s", accrolePrefix, "additional-principal-role")
 				additionalPrincipalRoleArn, err := resourcesHandler.PrepareAdditionalPrincipalsRole(
