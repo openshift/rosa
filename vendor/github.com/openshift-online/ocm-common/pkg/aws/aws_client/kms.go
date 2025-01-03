@@ -101,3 +101,12 @@ func (client *AWSClient) TagKeys(kmsKeyId string, tagKey string, tagValue string
 	}
 	return output, err
 }
+
+func (client *AWSClient) ListKMSKeys() (*kms.ListKeysOutput, error) {
+
+	result, err := client.KmsClient.ListKeys(context.TODO(), &kms.ListKeysInput{})
+	if err != nil {
+		log.LogError("Got error list key: %s", err)
+	}
+	return result, err
+}

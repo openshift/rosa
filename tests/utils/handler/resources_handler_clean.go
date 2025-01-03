@@ -55,12 +55,12 @@ func (rh *resourcesHandler) DeleteAuditLogRoleArn() error {
 	return awsClent.DeleteRoleAndPolicy(roleName, false)
 }
 
-func (rh *resourcesHandler) DeleteHostedZone() error {
+func (rh *resourcesHandler) DeleteHostedZone(hostedZoneID string) error {
 	awsClient, err := rh.GetAWSClient(true)
 	if err != nil {
 		return err
 	}
-	return awsClient.DeleteHostedZone(rh.resources.HostedZoneID)
+	return awsClient.DeleteHostedZone(hostedZoneID)
 }
 
 func (rh *resourcesHandler) DeleteDNSDomain() error {
@@ -78,6 +78,20 @@ func (rh *resourcesHandler) DeleteSharedVPCRole(managedPolicy bool) error {
 	}
 
 	err = awsClient.DeleteRoleAndPolicy(rh.resources.SharedVPCRole, managedPolicy)
+	return err
+}
+
+func (rh *resourcesHandler) DeleteHostedCPSharedVPCRoles(managedPolicy bool) error {
+	awsClient, err := rh.GetAWSClient(true)
+	if err != nil {
+		return err
+	}
+
+	err = awsClient.DeleteRoleAndPolicy(rh.resources.HCPRoute53ShareRole, managedPolicy)
+	if err != nil {
+		return err
+	}
+	err = awsClient.DeleteRoleAndPolicy(rh.resources.HCPVPCEndpointShareRole, managedPolicy)
 	return err
 }
 

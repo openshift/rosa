@@ -97,6 +97,8 @@ func newClusterHandler(client *rosacli.Client,
 	// Make sure shared VPC credentials file based on loaded resources
 	if (resourcesHandler.resources.SharedVPCRole != "" ||
 		resourcesHandler.resources.AdditionalPrincipals != "" ||
+		resourcesHandler.resources.HCPRoute53ShareRole != "" ||
+		resourcesHandler.resources.HCPVPCEndpointShareRole != "" ||
 		resourcesHandler.resources.ResourceShareArn != "") &&
 		resourcesHandler.awsSharedAccountCredentialsFile == "" {
 
@@ -164,8 +166,11 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 	clusterName := resourcesHandler.PreparePrefix(ch.profile.NamePrefix, ch.profile.ClusterConfig.NameLength)
 	ch.profile.ClusterConfig.Name = clusterName
 
-	sharedVPCRoleArn := ""
+	sharedRoute53RoleArn := ""
+	sharedVPCEndPointRoleArn := ""
 	sharedVPCRolePrefix := ""
+	sharedVPCAdditionalPrincipalsForHostedCP := ""
+	additionalPrincipalRoleArn := ""
 	defer func() {
 		err := ch.saveToFile()
 		if err != nil {
@@ -214,19 +219,55 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.STS {
 		var accRoles *rosacli.AccountRolesUnit
 		var oidcConfigID string
+		var err error
+
 		accountRolePrefix := helper.TrimNameByLength(clusterName, constants.MaxRolePrefixLength)
 		log.Logger.Infof(
 			"Got sts set to true. Going to prepare Account roles with prefix %s",
 			accountRolePrefix,
 		)
-		accRoles, err := resourcesHandler.PrepareAccountRoles(
-			accountRolePrefix,
-			ch.profile.ClusterConfig.HCP,
-			ch.profile.Version,
-			ch.profile.ChannelGroup,
-			ch.profile.AccountRoleConfig.Path,
-			ch.profile.AccountRoleConfig.PermissionBoundary,
-		)
+		if ch.profile.ClusterConfig.SharedVPC {
+			sharedVPCRolePrefix = accountRolePrefix
+			awsClient, err := resourcesHandler.GetAWSClient(true)
+			if err != nil {
+				return flags, err
+			}
+			sharedVPCAccountID := awsClient.AccountID
+			sharedRoute53RoleArn = fmt.Sprintf("arn:aws:iam::%s:role/%s-shared-vpc-role",
+				sharedVPCAccountID, sharedVPCRolePrefix)
+
+			if ch.profile.ClusterConfig.HCP {
+				sharedRoute53RoleArn = fmt.Sprintf(
+					"arn:aws:iam::%s:role/%s-shared-route53-role",
+					sharedVPCAccountID, sharedVPCRolePrefix)
+				sharedVPCEndPointRoleArn = fmt.Sprintf(
+					"arn:aws:iam::%s:role/%s-shared-vpcendpoint-role",
+					sharedVPCAccountID, sharedVPCRolePrefix)
+			}
+		}
+		if ch.profile.ClusterConfig.HCP && ch.profile.ClusterConfig.SharedVPC {
+			accRoles, err = resourcesHandler.PrepareAccountRoles(
+				accountRolePrefix,
+				ch.profile.ClusterConfig.HCP,
+				ch.profile.Version,
+				ch.profile.ChannelGroup,
+				ch.profile.AccountRoleConfig.Path,
+				ch.profile.AccountRoleConfig.PermissionBoundary,
+				sharedRoute53RoleArn, sharedVPCEndPointRoleArn,
+			)
+
+		} else {
+			accRoles, err = resourcesHandler.PrepareAccountRoles(
+				accountRolePrefix,
+				ch.profile.ClusterConfig.HCP,
+				ch.profile.Version,
+				ch.profile.ChannelGroup,
+				ch.profile.AccountRoleConfig.Path,
+				ch.profile.AccountRoleConfig.PermissionBoundary,
+				"", "",
+			)
+		}
+
 		if err != nil {
 			log.Logger.Errorf("Got error happens when preparing account roles: %s", err.Error())
 			return flags, err
@@ -253,16 +294,6 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 
 		}
 
-		if ch.profile.ClusterConfig.SharedVPC {
-			sharedVPCRolePrefix = accountRolePrefix
-			awsClient, err := resourcesHandler.GetAWSClient(true)
-			if err != nil {
-				return flags, err
-			}
-			sharedVPCAccountID := awsClient.AccountID
-			sharedVPCRoleArn = fmt.Sprintf("arn:aws:iam::%s:role/%s-shared-vpc-role", sharedVPCAccountID, sharedVPCRolePrefix)
-		}
-
 		operatorRolePrefix := accountRolePrefix
 		if ch.profile.ClusterConfig.OIDCConfig != "" {
 			oidcConfigPrefix := helper.TrimNameByLength(clusterName, constants.MaxOIDCConfigPrefixLength)
@@ -281,8 +312,17 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				if err != nil {
 					return flags, err
 				}
-				err = resourcesHandler.PrepareOperatorRolesByOIDCConfig(operatorRolePrefix,
-					oidcConfigID, accRoles.InstallerRole, sharedVPCRoleArn, ch.profile.ClusterConfig.HCP, ch.profile.ChannelGroup)
+				if ch.profile.ClusterConfig.HCP {
+					err = resourcesHandler.PrepareOperatorRolesByOIDCConfig(operatorRolePrefix,
+						oidcConfigID, accRoles.InstallerRole, sharedRoute53RoleArn,
+						sharedVPCEndPointRoleArn, ch.profile.ClusterConfig.HCP,
+						ch.profile.ChannelGroup)
+				} else {
+					err = resourcesHandler.PrepareOperatorRolesByOIDCConfig(operatorRolePrefix,
+						oidcConfigID, accRoles.InstallerRole,
+						sharedRoute53RoleArn, "", ch.profile.ClusterConfig.HCP,
+						ch.profile.ChannelGroup)
+				}
 				if err != nil {
 					return flags, err
 				}
@@ -299,12 +339,31 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			installRoleArn := accRoles.InstallerRole
 			ingressOperatorRoleArn := fmt.Sprintf("%s/%s-%s", strings.Split(installRoleArn, "/")[0],
 				sharedVPCRolePrefix, "openshift-ingress-operator-cloud-credentials")
-			_, sharedVPCRoleArn, err := resourcesHandler.PrepareSharedVPCRole(sharedVPCRolePrefix, installRoleArn,
-				ingressOperatorRoleArn)
-			if err != nil {
-				return flags, err
+			controlPlaneOperatorRoleArn := fmt.Sprintf("%s/%s-%s", strings.Split(installRoleArn, "/")[0],
+				sharedVPCRolePrefix, "kube-system-control-plane-operator")
+			if !ch.profile.ClusterConfig.HCP {
+				_, sharedVPCRoleArn, err := resourcesHandler.PrepareSharedVPCRole(sharedVPCRolePrefix, installRoleArn,
+					ingressOperatorRoleArn)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--shared-vpc-role-arn", sharedVPCRoleArn)
+			} else {
+				_, sharedRoute53RoleArn, err := resourcesHandler.PrepareSharedRoute53RoleForHostedCP(
+					sharedVPCRolePrefix, installRoleArn, ingressOperatorRoleArn, controlPlaneOperatorRoleArn)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--route53-role-arn", sharedRoute53RoleArn)
+				_, sharedVPCEndpointRoleArn, err := resourcesHandler.PrepareSharedVPCEndPointRoleForHostedCP(
+					sharedVPCRolePrefix, installRoleArn, controlPlaneOperatorRoleArn)
+				if err != nil {
+					return flags, err
+				}
+
+				flags = append(flags, "--vpc-endpoint-role-arn", sharedVPCEndpointRoleArn)
 			}
-			flags = append(flags, "--shared-vpc-role-arn", sharedVPCRoleArn)
+
 		}
 
 		if ch.profile.ClusterConfig.AuditLogForward {
@@ -317,19 +376,31 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			flags = append(flags,
 				"--audit-log-arn", auditRoleArn)
 		}
+		// Set the additional principals if the additional principals is enabled
+		// And also for hosted-cp shared-vpc cluster, it needs to route53-role-arn
+		//and vpc-endpoint-role-arn as the additional principals
 
 		if ch.profile.ClusterConfig.AdditionalPrincipals {
 			installRoleArn := accRoles.InstallerRole
 			additionalPrincipalRolePrefix := accountRolePrefix
 			additionalPrincipalRoleName := fmt.Sprintf("%s-%s", additionalPrincipalRolePrefix, "additional-principal-role")
-			additionalPrincipalRoleArn, err := resourcesHandler.
+			additionalPrincipalRoleArn, err = resourcesHandler.
 				PrepareAdditionalPrincipalsRole(additionalPrincipalRoleName, installRoleArn)
 			if err != nil {
 				return flags, err
 			}
-			flags = append(flags, "--additional-allowed-principals", additionalPrincipalRoleArn)
 			ch.clusterConfig.AdditionalPrincipals = additionalPrincipalRoleArn
 		}
+		if ch.profile.ClusterConfig.SharedVPC && ch.profile.ClusterConfig.HCP {
+			sharedVPCAdditionalPrincipalsForHostedCP = fmt.Sprintf("%s,%s", sharedRoute53RoleArn, sharedVPCEndPointRoleArn)
+		}
+		if sharedVPCAdditionalPrincipalsForHostedCP != "" {
+			flags = append(flags, "--additional-allowed-principals",
+				fmt.Sprintf("%s,%s", sharedVPCAdditionalPrincipalsForHostedCP, additionalPrincipalRoleArn))
+		} else {
+			flags = append(flags, "--additional-allowed-principals", additionalPrincipalRoleArn)
+		}
+
 	}
 
 	// Put this part before the BYOVPC preparation so the subnets is prepared based on PrivateLink
@@ -566,19 +637,46 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				return flags, err
 			}
 
-			dnsDomain, err := resourcesHandler.PrepareDNSDomain()
+			dnsDomain, err := resourcesHandler.PrepareDNSDomain(ch.profile.ClusterConfig.HCP)
 			if err != nil {
 				return flags, err
 			}
 			flags = append(flags, "--base-domain", dnsDomain)
+			if ch.profile.ClusterConfig.HCP {
+				ingressHostedZoneID, err := resourcesHandler.PrepareHostedZone(
+					fmt.Sprintf("rosa.%s.%s", clusterName, dnsDomain), vpc.VpcID, true)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--ingress-private-hosted-zone-id", ingressHostedZoneID)
 
-			hostedZoneID, err := resourcesHandler.PrepareHostedZone(clusterName, dnsDomain, vpc.VpcID, true)
-			if err != nil {
-				return flags, err
+				hostedCPInternalHostedZoneID, err := resourcesHandler.PrepareHostedZone(
+					fmt.Sprintf("%s.hypershift.local", clusterName), vpc.VpcID, true,
+				)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--hcp-internal-communication-hosted-zone-id", hostedCPInternalHostedZoneID)
+			} else {
+				ingressHostedZoneID, err := resourcesHandler.PrepareHostedZone(
+					fmt.Sprintf("%s.%s", clusterName, dnsDomain), vpc.VpcID, true,
+				)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--ingress-private-hosted-zone-id", ingressHostedZoneID)
 			}
-			flags = append(flags, "--private-hosted-zone-id", hostedZoneID)
 
 			ch.clusterConfig.SharedVPC = ch.profile.ClusterConfig.SharedVPC
+
+			//HostedCP Shared VPC cluster BYO subnet needs to add tags 'kubernetes.io/role/internal-elb'
+			//and 'kubernetes.io/role/elb' on public and private subnets on the cluster owner aws account
+			if ch.profile.ClusterConfig.HCP {
+				err = resourcesHandler.AddTagsToSharedVPCBYOSubnets(*ch.clusterConfig.Subnets, ch.clusterConfig.Region)
+				if err != nil {
+					return flags, err
+				}
+			}
 		}
 	}
 	if ch.profile.ClusterConfig.BillingAccount != "" {
@@ -906,7 +1004,7 @@ func (ch *clusterHandler) destroyCluster() (errors []error) {
 			}
 
 			// Remove OIDC provider
-			if ch.profile.ClusterConfig.STS {
+			if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" {
 				_, err = ch.rosaClient.OCMResource.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
 				if err != nil {
 					log.Logger.Errorf("Error happened when delete oidc provider: %s", err.Error())

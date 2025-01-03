@@ -20,7 +20,8 @@ type ResourcesHandler interface {
 	GetAuditLogArn() string
 	GetDNSDomain() string
 	GetEtcdKMSKey() string
-	GetHostedZoneID() string
+	GetIngressHostedZoneID() string
+	GetHostedCPInternalHostedZoneID() string
 	GetKMSKey() string
 	GetOIDCConfigID() string
 	GetOperatorRolesPrefix() string
@@ -39,9 +40,15 @@ type ResourcesHandler interface {
 	PrepareKMSKey(multiRegion bool, testClient string, hcp bool, etcdKMS bool) (string, error)
 	PrepareAdditionalSecurityGroups(securityGroupCount int, namePrefix string) ([]string, error)
 	PrepareAccountRoles(namePrefix string, hcp bool, openshiftVersion string,
-		channelGroup string, path string, permissionsBoundary string) (accRoles *rosacli.AccountRolesUnit, err error)
-	PrepareOperatorRolesByOIDCConfig(namePrefix string, oidcConfigID string, roleArn string,
-		sharedVPCRoleArn string, hcp bool, channelGroup string) error
+		channelGroup string, path string, permissionsBoundary string, route53RoleARN string,
+		vpcEndpointRoleArn string) (accRoles *rosacli.AccountRolesUnit, err error)
+	PrepareOperatorRolesByOIDCConfig(
+		namePrefix string,
+		oidcConfigID string,
+		roleArn string,
+		sharedRoute53RoleArn string,
+		sharedVPCEndPointRoleArn string,
+		hcp bool, channelGroup string) error
 	PrepareAdminUser() (string, string)
 	PrepareAuditlogRoleArnByOIDCConfig(auditLogRoleName string, oidcConfigID string) (string, error)
 	PrepareAuditlogRoleArnByIssuer(auditLogRoleName string, oidcIssuerURL string) (string, error)
@@ -52,15 +59,15 @@ type ResourcesHandler interface {
 	PrepareSharedVPCRole(sharedVPCRolePrefix string, installerRoleArn string,
 		ingressOperatorRoleArn string) (string, string, error)
 	PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string) (string, error)
-	PrepareDNSDomain() (string, error)
-	PrepareHostedZone(clusterName string, dnsDomain string, vpcID string, private bool) (string, error)
+	PrepareDNSDomain(hostedcp bool) (string, error)
+	PrepareHostedZone(hostedZoneName string, vpcID string, private bool) (string, error)
 	PrepareSubnetArns(subnetIDs string) ([]string, error)
 	PrepareResourceShare(resourceShareName string, resourceArns []string) (string, error)
 
 	DeleteVPCChain(withSharedAccount bool) error
 	DeleteKMSKey(etcdKMS bool) error
 	DeleteAuditLogRoleArn() error
-	DeleteHostedZone() error
+	DeleteHostedZone(hostedZoneID string) error
 	DeleteDNSDomain() error
 	DeleteSharedVPCRole(managedPolicy bool) error
 	DeleteAdditionalPrincipalsRole(managedPolicy bool) error
@@ -172,15 +179,25 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 			rh.registerAuditLogArn("")
 		}
 	}
-	//delete hosted zone
-	if resources.HostedZoneID != "" {
-		log.Logger.Infof("Find prepared hosted zone: %s", resources.HostedZoneID)
-		err = rh.DeleteHostedZone()
-		success := destroyLog(err, "hosted zone")
+	//delete hosted zones
+	if resources.IngressHostedZoneID != "" {
+		log.Logger.Infof("Find prepared ingress hosted zone: %s", resources.IngressHostedZoneID)
+		err = rh.DeleteHostedZone(resources.IngressHostedZoneID)
+		success := destroyLog(err, "ingress hosted zone")
 		if success {
-			rh.registerHostedZoneID("")
+			rh.registerIngressHostedZoneID("")
 		}
 	}
+
+	if resources.HostedCPInternalHostedZoneID != "" {
+		log.Logger.Infof("Find prepared hostedcp internal hosted zone: %s", resources.HostedCPInternalHostedZoneID)
+		err = rh.DeleteHostedZone(resources.HostedCPInternalHostedZoneID)
+		success := destroyLog(err, "hostedcp internal hosted zone")
+		if success {
+			rh.registerHostedCPInternalHostedZoneID("")
+		}
+	}
+
 	//delete dns domain
 	if resources.DNSDomain != "" {
 		log.Logger.Infof("Find prepared DNS Domain: %s", resources.DNSDomain)
@@ -208,15 +225,28 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 			rh.registerVpcID("", false)
 		}
 	}
-	// delete shared vpc role
+	// delete shared vpc role -- for classic shared vpc cluster
 	if resources.SharedVPCRole != "" {
-		log.Logger.Infof("Find prepared shared vpc role: %s", resources.SharedVPCRole)
+		log.Logger.Infof("Find prepared classic shared vpc role: %s", resources.SharedVPCRole)
 		err = rh.DeleteSharedVPCRole(false)
-		success := destroyLog(err, "shared vpc role")
+		success := destroyLog(err, "classic shared vpc role")
 		if success {
 			rh.registerSharedVPCRole("")
 		}
 	}
+
+	// delete shared vpc role -- for hosted-cp shared vpc cluster
+	if resources.HCPRoute53ShareRole != "" || resources.HCPVPCEndpointShareRole != "" {
+		log.Logger.Infof("Find prepared hostedcp shared route53 and vpc endpoint roles: %s and %s",
+			resources.HCPRoute53ShareRole, resources.HCPVPCEndpointShareRole)
+		err = rh.DeleteHostedCPSharedVPCRoles(false)
+		success := destroyLog(err, "hostedcp shared vpc roles(shared route53 role and shared vpc endpoint role)")
+		if success {
+			rh.registerSharedRoute53Role("")
+			rh.registerSharedVPCEndpointRole("")
+		}
+	}
+
 	// delete additional principal role
 	if resources.AdditionalPrincipals != "" {
 		log.Logger.Infof("Find prepared additional principal role: %s", resources.AdditionalPrincipals)
@@ -303,8 +333,11 @@ func (rh *resourcesHandler) GetEtcdKMSKey() string {
 	return rh.resources.EtcdKMSKey
 }
 
-func (rh *resourcesHandler) GetHostedZoneID() string {
-	return rh.resources.HostedZoneID
+func (rh *resourcesHandler) GetIngressHostedZoneID() string {
+	return rh.resources.IngressHostedZoneID
+}
+func (rh *resourcesHandler) GetHostedCPInternalHostedZoneID() string {
+	return rh.resources.HostedCPInternalHostedZoneID
 }
 
 func (rh *resourcesHandler) GetKMSKey() string {
@@ -360,8 +393,13 @@ func (rh *resourcesHandler) registerEtcdKMSKey(etcdKMSKey string) error {
 	return rh.saveToFile()
 }
 
-func (rh *resourcesHandler) registerHostedZoneID(hostedZoneID string) error {
-	rh.resources.HostedZoneID = hostedZoneID
+func (rh *resourcesHandler) registerIngressHostedZoneID(hostedZoneID string) error {
+	rh.resources.IngressHostedZoneID = hostedZoneID
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerHostedCPInternalHostedZoneID(hostedZoneID string) error {
+	rh.resources.HostedCPInternalHostedZoneID = hostedZoneID
 	return rh.saveToFile()
 }
 
@@ -387,6 +425,15 @@ func (rh *resourcesHandler) registerResourceShareArn(resourceShareArn string) er
 
 func (rh *resourcesHandler) registerSharedVPCRole(sharedVPCRole string) error {
 	rh.resources.SharedVPCRole = sharedVPCRole
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerSharedRoute53Role(sharedVPCRoute53Role string) error {
+	rh.resources.HCPRoute53ShareRole = sharedVPCRoute53Role
+	return rh.saveToFile()
+}
+func (rh *resourcesHandler) registerSharedVPCEndpointRole(sharedVPCEndpointRole string) error {
+	rh.resources.HCPVPCEndpointShareRole = sharedVPCEndpointRole
 	return rh.saveToFile()
 }
 

@@ -65,21 +65,24 @@ type ClusterConfig struct {
 
 // Resources will record the resources prepared
 type Resources struct {
-	AccountRolesPrefix   string                `json:"account_roles_prefix,omitempty"`
-	AdditionalPrincipals string                `json:"additional_principals,omitempty"`
-	AuditLogArn          string                `json:"audit_log,omitempty"`
-	DNSDomain            string                `json:"dns_domain,omitempty"`
-	EtcdKMSKey           string                `json:"etcd_kms_key,omitempty"`
-	FromSharedAWSAccount *FromSharedAWSAccount `json:"from_shared_aws_account,omitempty"`
-	HostedZoneID         string                `json:"hosted_zone_id,omitempty"`
-	KMSKey               string                `json:"kms_key,omitempty"`
-	OIDCConfigID         string                `json:"oidc_config_id,omitempty"`
-	OIDCProviderID       string                `json:"oidc_provider_id,omitempty"`
-	OperatorRolesPrefix  string                `json:"operator_roles_prefix,omitempty"`
-	Region               string                `json:"region,omitempty"`
-	ResourceShareArn     string                `json:"resource_share,omitempty"`
-	SharedVPCRole        string                `json:"shared_vpc_role,omitempty"`
-	VpcID                string                `json:"vpc_id,omitempty"`
+	AccountRolesPrefix           string                `json:"account_roles_prefix,omitempty"`
+	AdditionalPrincipals         string                `json:"additional_principals,omitempty"`
+	AuditLogArn                  string                `json:"audit_log,omitempty"`
+	DNSDomain                    string                `json:"dns_domain,omitempty"`
+	EtcdKMSKey                   string                `json:"etcd_kms_key,omitempty"`
+	FromSharedAWSAccount         *FromSharedAWSAccount `json:"from_shared_aws_account,omitempty"`
+	IngressHostedZoneID          string                `json:"ingress_hosted_zone_id,omitempty"`
+	HostedCPInternalHostedZoneID string                `json:"hostedcp_internal_hosted_zone_id,omitempty"`
+	KMSKey                       string                `json:"kms_key,omitempty"`
+	OIDCConfigID                 string                `json:"oidc_config_id,omitempty"`
+	OIDCProviderID               string                `json:"oidc_provider_id,omitempty"`
+	OperatorRolesPrefix          string                `json:"operator_roles_prefix,omitempty"`
+	Region                       string                `json:"region,omitempty"`
+	ResourceShareArn             string                `json:"resource_share,omitempty"`
+	SharedVPCRole                string                `json:"shared_vpc_role,omitempty"`
+	VpcID                        string                `json:"vpc_id,omitempty"`
+	HCPRoute53ShareRole          string                `json:"hcp_route53_share_role,omitempty"`
+	HCPVPCEndpointShareRole      string                `json:"hcp_vpc_endpoint_share_role,omitempty"`
 }
 
 type FromSharedAWSAccount struct {
