@@ -19,7 +19,7 @@ func (vpc *VPC) DeleteVPCNatGateways(vpcID string) error {
 		wg.Add(1)
 		go func(gateWayID string) {
 			defer wg.Done()
-			_, err = vpc.AWSClient.DeleteNatGateway(gateWayID, 120)
+			_, err = vpc.AWSClient.DeleteNatGateway(gateWayID, 180)
 			if err != nil {
 				delERR = err
 			}

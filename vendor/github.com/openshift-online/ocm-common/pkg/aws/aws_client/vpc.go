@@ -11,17 +11,11 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
-func (client *AWSClient) ListVPCByName(vpcName string) ([]types.Vpc, error) {
+func (client *AWSClient) ListVPCs(filter ...types.Filter) ([]types.Vpc, error) {
 	vpcs := []types.Vpc{}
-	filterKey := "tag:Name"
-	filter := []types.Filter{
-		{
-			Name:   &filterKey,
-			Values: []string{vpcName},
-		},
-	}
-	input := &ec2.DescribeVpcsInput{
-		Filters: filter,
+	input := &ec2.DescribeVpcsInput{}
+	if len(filter) != 0 {
+		input.Filters = filter
 	}
 	resp, err := client.Ec2Client.DescribeVpcs(context.TODO(), input)
 	if err != nil {
@@ -29,6 +23,19 @@ func (client *AWSClient) ListVPCByName(vpcName string) ([]types.Vpc, error) {
 	}
 	vpcs = resp.Vpcs
 	return vpcs, nil
+}
+
+func (client *AWSClient) ListVPCByName(vpcName string) ([]types.Vpc, error) {
+
+	filterKey := "tag:Name"
+	filter := []types.Filter{
+		{
+			Name:   &filterKey,
+			Values: []string{vpcName},
+		},
+	}
+
+	return client.ListVPCs(filter...)
 }
 
 func (client *AWSClient) CreateVpc(cidr string, name ...string) (*ec2.CreateVpcOutput, error) {
