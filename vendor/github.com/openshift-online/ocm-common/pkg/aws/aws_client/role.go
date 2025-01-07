@@ -418,6 +418,28 @@ func (client *AWSClient) CreateRoleForSharedVPC(roleName, installerRoleArn strin
 	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
 }
 
+// A more common function to create roles for shared VPC. The old CreateRoleForSharedVPC function was used for classic
+// shared-vpc cluster only. This function can be used for both classic and hosted-cp shared-vpc cluster. Keep CreateRoleForSharedVPC
+// for the compatibility of the eale reference
+func (client *AWSClient) CreateRoleForSharedVPCHCP(roleName string, assumeRolesArns []string) (types.Role, error) {
+	statement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Principal": map[string]interface{}{
+			"AWS": assumeRolesArns,
+		},
+		"Action": "sts:AssumeRole",
+	}
+
+	assumeRolePolicyDocument, err := completeRolePolicyDocument(statement)
+	if err != nil {
+		log.LogError("Failed to convert Role Policy Document into JSON: %s", err.Error())
+		return types.Role{}, err
+	}
+
+	return client.CreateRole(roleName, string(assumeRolePolicyDocument), "", make(map[string]string), "/")
+}
+
 func (client *AWSClient) CreatePolicyForSharedVPC(policyName string) (string, error) {
 	statement := map[string]interface{}{
 		"Sid":    "Statement1",

@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/openshift-online/ocm-common/pkg/aws/consts"
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
@@ -26,8 +27,9 @@ func (client *AWSClient) DescribeImage(imageIDs []string, filters ...map[string]
 	filterInput := []types.Filter{}
 	for _, filter := range filters {
 		for k, v := range filter {
+			copyKey := k
 			awsFilter := types.Filter{
-				Name:   &k,
+				Name:   &copyKey,
 				Values: v,
 			}
 			filterInput = append(filterInput, awsFilter)
@@ -35,6 +37,7 @@ func (client *AWSClient) DescribeImage(imageIDs []string, filters ...map[string]
 	}
 
 	describeImageInput := &ec2.DescribeImagesInput{
+		Owners:  []string{consts.AmazonName},
 		Filters: filterInput,
 	}
 

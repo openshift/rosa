@@ -1,44 +1,72 @@
 package vpc_client
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/openshift-online/ocm-common/pkg/file"
+	"golang.org/x/crypto/bcrypt"
+	"net/url"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-
 	CON "github.com/openshift-online/ocm-common/pkg/aws/consts"
+	awsUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	"github.com/openshift-online/ocm-common/pkg/log"
+	"github.com/openshift-online/ocm-common/pkg/utils"
 )
 
 // LaunchBastion will launch a bastion instance on the indicated zone.
-// If set imageID to empty, it will find the bastion image in the bastionImageMap map
-func (vpc *VPC) LaunchBastion(imageID string, zone string) (*types.Instance, error) {
+// If set imageID to empty, it will find the bastion image using filter with specific name.
+func (vpc *VPC) LaunchBastion(imageID string, zone string, userData string, keypairName string,
+	privateKeyPath string) (*types.Instance, error) {
 	var inst *types.Instance
 	if imageID == "" {
-		var ok bool
-		imageID, ok = CON.BastionImageMap[vpc.Region]
-		if !ok {
+
+		var err error
+		imageID, err = vpc.FindProxyLaunchImage()
+		if err != nil {
 			log.LogError("Cannot find bastion image of region %s in map bastionImageMap, please indicate it as parameter", vpc.Region)
-			return nil, fmt.Errorf("cannot find bastion image of region %s in map bastionImageMap, please indicate it as parameter", vpc.Region)
+			return nil, err
 		}
+	}
+	if userData == "" {
+		log.LogError("Userdata can not be empty, pleas provide the correct userdata")
+		return nil, errors.New("userData should not be empty")
 	}
 	pubSubnet, err := vpc.PreparePublicSubnet(zone)
 	if err != nil {
-		log.LogInfo("Error preparing a subnet in current zone %s with image ID %s: %s", zone, imageID, err)
+		log.LogError("Error preparing a subnet in current zone %s with image ID %s: %s", zone, imageID, err)
 		return nil, err
 	}
-	SGID, err := vpc.CreateAndAuthorizeDefaultSecurityGroupForProxy()
+	SGID, err := vpc.CreateAndAuthorizeDefaultSecurityGroupForProxy(3128)
 	if err != nil {
 		log.LogError("Prepare SG failed for the bastion preparation %s", err)
 		return inst, err
 	}
-
-	key, err := vpc.CreateKeyPair(fmt.Sprintf("%s-bastion", CON.InstanceKeyNamePrefix))
+	keyName := fmt.Sprintf("%s-%s", CON.InstanceKeyNamePrefix, keypairName)
+	key, err := vpc.CreateKeyPair(keyName)
 	if err != nil {
 		log.LogError("Create key pair failed %s", err)
 		return inst, err
 	}
-	instOut, err := vpc.AWSClient.LaunchInstance(pubSubnet.ID, imageID, 1, "t3.medium", *key.KeyName, []string{SGID}, true)
+	tags := map[string]string{
+		"Name": CON.BastionName,
+	}
+	_, err = vpc.AWSClient.TagResource(*key.KeyPairId, tags)
+	if err != nil {
+		log.LogError("Add tag for key pair %s failed %s", *key.KeyPairId, err)
+		return inst, err
+	}
+
+	privateKeyName := fmt.Sprintf("%s-%s", keypairName, "keyPair.pem")
+	sshKeyPath, err := file.WriteToFile(*key.KeyMaterial, privateKeyName, privateKeyPath)
+	if err != nil {
+		log.LogError("Write private key to %s failed %s", sshKeyPath, err)
+		return inst, err
+	}
+	instOut, err := vpc.AWSClient.LaunchInstance(pubSubnet.ID, imageID, 1, "t3.medium", *key.KeyName,
+		[]string{SGID}, true, userData)
 
 	if err != nil {
 		log.LogError("Launch bastion instance failed %s", err)
@@ -46,7 +74,7 @@ func (vpc *VPC) LaunchBastion(imageID string, zone string) (*types.Instance, err
 	} else {
 		log.LogInfo("Launch bastion instance %s succeed", *instOut.Instances[0].InstanceId)
 	}
-	tags := map[string]string{
+	tags = map[string]string{
 		"Name": CON.BastionName,
 	}
 	instID := *instOut.Instances[0].InstanceId
@@ -61,35 +89,113 @@ func (vpc *VPC) LaunchBastion(imageID string, zone string) (*types.Instance, err
 		return inst, err
 	}
 	log.LogInfo("Prepare EIP successfully for the bastion preparation. Launch with IP: %s", publicIP)
+
+	time.Sleep(2 * time.Minute)
+
 	inst = &instOut.Instances[0]
 	inst.PublicIpAddress = &publicIP
-	time.Sleep(2 * time.Minute)
 	return inst, nil
 }
 
-func (vpc *VPC) PrepareBastion(zone string) (*types.Instance, error) {
-	filters := []map[string][]string{
-		{
-			"vpc-id": {
-				vpc.VpcID,
-			},
-		},
-		{
-			"tag:Name": {
-				CON.BastionName,
-			},
-		},
-	}
-
-	insts, err := vpc.AWSClient.ListInstances([]string{}, filters...)
+// PrepareBastionProxy will launch a bastion instance with squid proxy on the indicated zone and return the proxy url.
+func (vpc *VPC) PrepareBastionProxy(zone string, keypairName string, privateKeyPath string) (proxyUrl string, err error) {
+	encodeUserData := generateShellCommand()
+	instance, err := vpc.LaunchBastion("", zone, encodeUserData, keypairName, privateKeyPath)
 	if err != nil {
-		return nil, err
+		log.LogError("Launch bastion failed")
+		return "", err
 	}
-	if len(insts) == 0 {
-		log.LogInfo("Didn't found an existing bastion, going to launch one")
-		return vpc.LaunchBastion("", zone)
 
+	privateKeyName := awsUtils.GetPrivateKeyName(privateKeyPath, keypairName)
+	hostName := fmt.Sprintf("%s:%s", *instance.PublicIpAddress, CON.SSHPort)
+	SSHExecuteCMDs, username, password, err := generateWriteSquidPasswordFileCommand()
+	if err != nil {
+		return "", err
 	}
-	log.LogInfo("Found existing bastion: %s", *insts[0].InstanceId)
-	return &insts[0], nil
+	for _, cmd := range SSHExecuteCMDs {
+		_, err = Exec_CMD(CON.AWSInstanceUser, privateKeyName, hostName, cmd)
+		if err != nil {
+			log.LogError("SSH execute command failed")
+			return "", err
+		}
+	}
+
+	// construct proxy url
+	proxy := &url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("%s:%s", *instance.PublicIpAddress, CON.SquidProxyPort),
+		User:   url.UserPassword(username, password),
+	}
+	proxyUrl = proxy.String()
+	return proxyUrl, nil
+}
+
+func (vpc *VPC) DestroyBastionProxy(instance types.Instance) error {
+	var instanceIDs []string
+	instanceIDs = append(instanceIDs, *instance.InstanceId)
+	err := vpc.AWSClient.TerminateInstances(instanceIDs, true, 10)
+	if err != nil {
+		log.LogError("Terminate instance failed")
+		return err
+	}
+	return nil
+}
+
+func generateBcryptPassword(plainPassword string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.LogError("Generate hashed password failed")
+		return "", nil
+	}
+	log.LogInfo("Generate hashed password finished.")
+	return string(hashedPassword), nil
+}
+
+func generateShellCommand() string {
+	userData := fmt.Sprintf(`#!/bin/bash
+		yum update -y
+		sudo dnf install squid -y
+		cd /etc/squid/
+		sudo mv ./squid.conf ./squid.conf.bak
+		sudo touch squid.conf
+		echo http_port %s >> %s
+		echo auth_param basic program /usr/lib64/squid/basic_ncsa_auth %s >> %s
+		echo auth_param basic realm Squid Proxy Server >> %s
+		echo acl authenticated proxy_auth REQUIRED >> %s
+		echo http_access allow authenticated >> %s
+		echo http_access deny all >> %s
+		systemctl start squid
+		systemctl enable squid`, CON.SquidProxyPort, CON.SquidConfigFilePath, CON.SquidPasswordFilePath,
+		CON.SquidConfigFilePath, CON.SquidConfigFilePath, CON.SquidConfigFilePath, CON.SquidConfigFilePath,
+		CON.SquidConfigFilePath)
+
+	encodeUserData := base64.StdEncoding.EncodeToString([]byte(userData))
+	log.LogInfo("Generate user data to creating squid proxy successfully.")
+
+	return encodeUserData
+}
+
+func generateWriteSquidPasswordFileCommand() (SSHExecuteCMDs []string, username string,
+	password string, err error) {
+	username = utils.RandomLabel(5)
+	password = utils.GeneratePassword(10)
+
+	hashedPassword, err := generateBcryptPassword(password)
+	if err != nil {
+		log.LogError("Generate bcrypt password failed.")
+		return []string{}, "", "", err
+	}
+
+	line := fmt.Sprintf("%s:%s\n", username, hashedPassword)
+	remoteFilePath := CON.SquidPasswordFilePath
+
+	createFileCMD := fmt.Sprintf("sudo touch %s", remoteFilePath)
+	copyPasswordCMD := fmt.Sprintf("echo '%s' | sudo tee %s > /dev/null", line, remoteFilePath)
+	SSHExecuteCMDs = []string{
+		createFileCMD,
+		copyPasswordCMD,
+	}
+
+	log.LogInfo("Generate write squid password file command finished.")
+	return SSHExecuteCMDs, username, password, nil
 }

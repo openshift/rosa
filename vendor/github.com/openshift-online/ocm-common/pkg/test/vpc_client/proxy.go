@@ -2,6 +2,7 @@ package vpc_client
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -11,34 +12,67 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
+// FindProxyLaunchImage will try to find a proper image based on the filters to launch the proxy instance
+// No parameter needed here
+// It will return an image ID and error if happens
+func (vpc *VPC) FindProxyLaunchImage() (string, error) {
+	filters := map[string][]string{
+		"architecture": {
+			"x86_64",
+		},
+		"state": {
+			"available",
+		},
+		"image-type": {
+			"machine",
+		},
+		"is-public": {
+			"true",
+		},
+		"virtualization-type": {
+			"hvm",
+		},
+		"root-device-type": {
+			"ebs",
+		},
+	}
+
+	output, err := vpc.AWSClient.DescribeImage([]string{}, filters)
+	if err != nil {
+		log.LogError("Describe image met error: %s", err)
+		return "", err
+	}
+	if output == nil || len(output.Images) < 1 {
+		log.LogError("Got the empty image via the filter: %s", filters)
+		err = fmt.Errorf("got empty image list via the filter: %s", filters)
+		return "", err
+	}
+	expectedImageID := ""
+	nameRegexp := regexp.MustCompile(`al[0-9]{4}-ami[0-9\.-]*kernel[0-9-\._a-z]*`)
+	for _, image := range output.Images {
+		if nameRegexp.MatchString(*image.Name) {
+			expectedImageID = *image.ImageId
+			break
+		}
+	}
+	if expectedImageID != "" {
+		log.LogInfo("Got the image ID : %s", expectedImageID)
+	} else {
+		log.LogError("Got no proper image meet the regex: %s", nameRegexp.String())
+		err = fmt.Errorf("got no proper image meet the regex: %s", nameRegexp.String())
+	}
+
+	return expectedImageID, err
+}
+
 // LaunchProxyInstance will launch a proxy instance on the indicated zone.
 // If set imageID to empty, it will find the proxy image in the ProxyImageMap map
 // LaunchProxyInstance will return proxyInstance detail, privateIPAddress,CAcontent and error
 func (vpc *VPC) LaunchProxyInstance(zone string, keypairName string, privateKeyPath string) (inst types.Instance, privateIP string, proxyServerCA string, err error) {
-	filters := []map[string][]string{
-		{
-			"name": {
-				CON.PublicImageName,
-			},
-		},
-	}
-
-	output, err := vpc.AWSClient.DescribeImage([]string{}, filters...)
+	imageID, err := vpc.FindProxyLaunchImage()
 	if err != nil {
-		log.LogError("Describe image met error: %s", err)
 		return inst, "", "", err
 	}
-	if output == nil {
-		log.LogError("Got the empty image via the filter: %s", filters)
-		return inst, "", "", nil
-	}
-	if len(output.Images) < 1 {
-		log.LogError("Can't get the vaild image")
-		return inst, "", "", nil
-	}
-	imageID := *output.Images[0].ImageId
-	log.LogInfo("Got the image ID : %s", imageID)
-
 	pubSubnet, err := vpc.PreparePublicSubnet(zone)
 	if err != nil {
 		log.LogInfo("Error preparing a subnet in current zone %s with image ID %s: %s", zone, imageID, err)

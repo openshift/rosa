@@ -15,7 +15,8 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
-func (client *AWSClient) LaunchInstance(subnetID string, imageID string, count int, instanceType string, keyName string, securityGroupIds []string, wait bool) (*ec2.RunInstancesOutput, error) {
+func (client *AWSClient) LaunchInstance(subnetID string, imageID string, count int, instanceType string, keyName string,
+	securityGroupIds []string, wait bool, userDate ...string) (*ec2.RunInstancesOutput, error) {
 	input := &ec2.RunInstancesInput{
 		ImageId:          aws.String(imageID),
 		MinCount:         aws.Int32(int32(count)),
@@ -25,6 +26,10 @@ func (client *AWSClient) LaunchInstance(subnetID string, imageID string, count i
 		SecurityGroupIds: securityGroupIds,
 		SubnetId:         &subnetID,
 	}
+	if len(userDate) > 0 {
+		input.UserData = &userDate[0]
+	}
+
 	output, err := client.Ec2Client.RunInstances(context.TODO(), input)
 	if wait && err == nil {
 		instanceIDs := []string{}

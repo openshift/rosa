@@ -36,10 +36,21 @@ func (vpc *VPC) DeleteVPCSecurityGroups(customizedOnly bool) error {
 }
 
 // CreateAndAuthorizeDefaultSecurityGroupForProxy can prepare a security group for the proxy launch
-func (vpc *VPC) CreateAndAuthorizeDefaultSecurityGroupForProxy() (string, error) {
+func (vpc *VPC) CreateAndAuthorizeDefaultSecurityGroupForProxy(ports ...int32) (string, error) {
 	var groupID string
 	var err error
-	sgIDs, err := vpc.CreateAdditionalSecurityGroups(1, con.ProxySecurityGroupName, con.ProxySecurityGroupDescription)
+	var sgIDs []string
+	var securityGroupName string
+	var securityGroupDescription string
+	if len(ports) > 0 {
+		securityGroupName = con.BastionSecurityGroupName
+		securityGroupDescription = con.BastionSecurityGroupDescription
+	} else {
+		securityGroupName = con.ProxySecurityGroupName
+		securityGroupDescription = con.ProxySecurityGroupDescription
+	}
+	sgIDs, err = vpc.CreateAdditionalSecurityGroups(1, securityGroupName, securityGroupDescription, ports...)
+
 	if err != nil {
 		log.LogError("Security group prepare for proxy failed")
 	} else {
@@ -52,7 +63,7 @@ func (vpc *VPC) CreateAndAuthorizeDefaultSecurityGroupForProxy() (string, error)
 // CreateAdditionalSecurityGroups  can prepare <count> additional security groups
 // description can be empty which will be set to default value
 // namePrefix is required, otherwise if there is same security group existing the creation will fail
-func (vpc *VPC) CreateAdditionalSecurityGroups(count int, namePrefix string, description string) ([]string, error) {
+func (vpc *VPC) CreateAdditionalSecurityGroups(count int, namePrefix string, description string, ports ...int32) ([]string, error) {
 	preparedSGs := []string{}
 	createdsgNum := 0
 	if description == "" {
@@ -65,15 +76,21 @@ func (vpc *VPC) CreateAdditionalSecurityGroups(count int, namePrefix string, des
 			panic(err)
 		}
 		groupID := *sg.GroupId
-		cidrPortsMap := map[string]int32{
-			vpc.CIDRValue:                 8080,
-			con.RouteDestinationCidrBlock: 22,
+		cidrPortsMap := make(map[string][]int32)
+		cidrPortsMap[con.RouteDestinationCidrBlock] = append(cidrPortsMap[con.RouteDestinationCidrBlock], 22)
+		if len(ports) > 0 {
+			cidrPortsMap[con.RouteDestinationCidrBlock] = append(cidrPortsMap[con.RouteDestinationCidrBlock], ports...)
+		} else {
+			cidrPortsMap[vpc.CIDRValue] = append(cidrPortsMap[vpc.CIDRValue], 8080)
 		}
 		for cidr, port := range cidrPortsMap {
-			_, err = vpc.AWSClient.AuthorizeSecurityGroupIngress(groupID, cidr, con.TCPProtocol, port, port)
-			if err != nil {
-				return preparedSGs, err
+			for _, v := range port {
+				_, err = vpc.AWSClient.AuthorizeSecurityGroupIngress(groupID, cidr, con.TCPProtocol, v, v)
+				if err != nil {
+					return preparedSGs, err
+				}
 			}
+
 		}
 
 		preparedSGs = append(preparedSGs, *sg.GroupId)
