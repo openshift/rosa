@@ -9,10 +9,12 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
@@ -104,6 +106,35 @@ func (rh *resourcesHandler) PrepareVPC(vpcName string, cidrValue string, useExis
 	}
 	err = rh.registerVPC(vpc)
 	return vpc, err
+}
+
+// This AddTagsToSharedVPCBYOSubnets is to add tags 'kubernetes.io/role/internal-elb' and 'kubernetes.io/role/elb'
+// on the shared subnets on cluster owner aws account
+func (rh *resourcesHandler) AddTagsToSharedVPCBYOSubnets(subnets config.Subnets, region string) error {
+	pubTags := map[string]string{
+		"kubernetes.io/role/elb": "",
+	}
+	privateTags := map[string]string{
+		"kubernetes.io/role/internal-elb": "",
+	}
+	awsclient, err := aws_client.CreateAWSClient("", region)
+	if err != nil {
+		return err
+	}
+
+	for _, pubSubnetID := range strings.Split(subnets.PublicSubnetIds, ",") {
+		_, err = awsclient.TagResource(pubSubnetID, pubTags)
+		if err != nil {
+			return fmt.Errorf("tag subnet %s failed:%s", pubSubnetID, err)
+		}
+	}
+	for _, priSubnetID := range strings.Split(subnets.PrivateSubnetIds, ",") {
+		_, err = awsclient.TagResource(priSubnetID, privateTags)
+		if err != nil {
+			return fmt.Errorf("tag subnet %s failed:%s", priSubnetID, err)
+		}
+	}
+	return nil
 }
 
 // PrepareSubnets will prepare pair of subnets according to the vpcID and zones
@@ -203,17 +234,34 @@ func (rh *resourcesHandler) PrepareAccountRoles(
 	openshiftVersion string,
 	channelGroup string,
 	path string,
-	permissionsBoundary string) (
+	permissionsBoundary string,
+	route53RoleARN string,
+	vpcEndpointRoleArn string) (
 	accRoles *rosacli.AccountRolesUnit, err error) {
-
-	flags := rh.generateAccountRoleCreationFlag(
-		namePrefix,
-		hcp,
-		openshiftVersion,
-		channelGroup,
-		path,
-		permissionsBoundary,
-	)
+	var flags []string
+	if route53RoleARN != "" && vpcEndpointRoleArn != "" {
+		flags = rh.generateAccountRoleCreationFlag(
+			namePrefix,
+			hcp,
+			openshiftVersion,
+			channelGroup,
+			path,
+			permissionsBoundary,
+			route53RoleARN,
+			vpcEndpointRoleArn,
+		)
+	} else {
+		flags = rh.generateAccountRoleCreationFlag(
+			namePrefix,
+			hcp,
+			openshiftVersion,
+			channelGroup,
+			path,
+			permissionsBoundary,
+			"",
+			"",
+		)
+	}
 
 	ocmResourceService := rh.rosaClient.OCMResource
 	output, err := ocmResourceService.CreateAccountRole(
@@ -252,7 +300,8 @@ func (rh *resourcesHandler) PrepareOperatorRolesByOIDCConfig(
 	namePrefix string,
 	oidcConfigID string,
 	roleArn string,
-	sharedVPCRoleArn string,
+	sharedRoute53RoleArn string,
+	sharedVPCEndPointRoleArn string,
 	hcp bool, channelGroup string) error {
 
 	flags := []string{
@@ -266,8 +315,11 @@ func (rh *resourcesHandler) PrepareOperatorRolesByOIDCConfig(
 	if hcp {
 		flags = append(flags, "--hosted-cp")
 	}
-	if sharedVPCRoleArn != "" {
-		flags = append(flags, "--shared-vpc-role-arn", sharedVPCRoleArn)
+	if sharedRoute53RoleArn != "" {
+		flags = append(flags, "--route53-role-arn", sharedRoute53RoleArn)
+	}
+	if sharedVPCEndPointRoleArn != "" {
+		flags = append(flags, "--vpc-endpoint-role-arn", sharedVPCEndPointRoleArn)
 	}
 	_, err := rh.rosaClient.OCMResource.CreateOperatorRoles(
 		flags...,
@@ -453,6 +505,147 @@ func (rh *resourcesHandler) PrepareSharedVPCRole(sharedVPCRolePrefix string, ins
 	return roleName, sharedVPCRoleArn, err
 }
 
+func (rh *resourcesHandler) PrepareSharedRoute53RoleForHostedCP(route53RolePrefix string, installerRoleArn string,
+	ingressOperatorRoleArn string, controlPlaneOperatorRoleArn string) (string, string, error) {
+
+	awsClient, err := rh.GetAWSClient(true)
+	if err != nil {
+		return "", "", err
+	}
+
+	policyName := fmt.Sprintf("%s-%s", route53RolePrefix, "sharedvpc-r53-policy")
+	sharedRoute53PolictStatement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Action": []string{
+			"route53:ChangeResourceRecordSets",
+			"route53:ListHostedZones",
+			"route53:ListHostedZonesByName",
+			"route53:ListResourceRecordSets",
+			"route53:ChangeTagsForResource",
+			"route53:GetAccountLimit",
+			"route53:GetChange",
+			"route53:GetHostedZone",
+			"route53:ListTagsForResource",
+			"route53:UpdateHostedZoneComment",
+			"tag:GetResources",
+			"tag:UntagResources",
+		},
+		"Resource": "*",
+	}
+	policyArn, err := awsClient.CreatePolicy(policyName, sharedRoute53PolictStatement)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare shared route53 policy: %s", err.Error())
+		return "", "", err
+	}
+
+	roleName := fmt.Sprintf("%s-%s", route53RolePrefix, "shared-route53-role")
+	if installerRoleArn == "" || controlPlaneOperatorRoleArn == "" || ingressOperatorRoleArn == "" {
+		log.Logger.Errorf(
+			"Can not create shared vpc route53 role due to no installer role or ingress/controlplane operator role.",
+		)
+		return "", "", err
+	}
+	log.Logger.Debugf("Got installer role arn: %s for shared route53 role preparation", installerRoleArn)
+	log.Logger.Debugf("Got ingress role arn: %s for shared route53 role preparation", ingressOperatorRoleArn)
+	log.Logger.Debugf(
+		"Got control plane operator role arn: %s for shared route53 role preparation",
+		controlPlaneOperatorRoleArn,
+	)
+
+	assumeRolesArns := []string{installerRoleArn, ingressOperatorRoleArn, controlPlaneOperatorRoleArn}
+	roleArn, err := awsClient.CreateRoleForSharedVPCHCP(roleName, assumeRolesArns)
+	sharedVPCRoute53RoleArn := aws.ToString(roleArn.Arn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare shared route53 role: %s", err.Error())
+		return roleName, sharedVPCRoute53RoleArn, err
+	}
+	log.Logger.Infof("Create a new route53 role for shared VPC: %s", sharedVPCRoute53RoleArn)
+	err = rh.registerSharedRoute53Role(roleName)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record shared VPC route53 role: %s", err.Error())
+		return roleName, sharedVPCRoute53RoleArn, err
+	}
+	err = awsClient.AttachIAMPolicy(roleName, policyArn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when attach shared route53 policy %s to role %s: %s", policyArn,
+			sharedVPCRoute53RoleArn, err.Error())
+	}
+	return roleName, sharedVPCRoute53RoleArn, err
+}
+
+func (rh *resourcesHandler) PrepareSharedVPCEndPointRoleForHostedCP(
+	vpcendpointRolePrefix string,
+	installerRoleArn string,
+	controlPlaneOperatorRoleArn string) (string, string, error) {
+
+	awsClient, err := rh.GetAWSClient(true)
+	if err != nil {
+		return "", "", err
+	}
+
+	policyName := fmt.Sprintf("%s-%s", vpcendpointRolePrefix, "sharedvpc-vpc-endpoint-policy")
+	sharedVpcEndPointPolictStatement := map[string]interface{}{
+		"Sid":    "Statement1",
+		"Effect": "Allow",
+		"Action": []string{
+			"ec2:CreateVpcEndpoint",
+			"ec2:DescribeVpcEndpoints",
+			"ec2:ModifyVpcEndpoint",
+			"ec2:DeleteVpcEndpoints",
+			"ec2:CreateTags",
+			"ec2:CreateSecurityGroup",
+			"ec2:AuthorizeSecurityGroupIngress",
+			"ec2:AuthorizeSecurityGroupEgress",
+			"ec2:DeleteSecurityGroup",
+			"ec2:RevokeSecurityGroupIngress",
+			"ec2:RevokeSecurityGroupEgress",
+			"ec2:DescribeSecurityGroups",
+			"ec2:DescribeVpcs",
+			"route53:ListHostedZones",
+			"route53:ChangeResourceRecordSets",
+			"route53:ListResourceRecordSets",
+		},
+		"Resource": "*",
+	}
+	policyArn, err := awsClient.CreatePolicy(policyName, sharedVpcEndPointPolictStatement)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare shared vpc-endpoint policy: %s", err.Error())
+		return "", "", err
+	}
+
+	roleName := fmt.Sprintf("%s-%s", vpcendpointRolePrefix, "shared-vpcendpoint-role")
+	if installerRoleArn == "" || controlPlaneOperatorRoleArn == "" {
+		log.Logger.Errorf("Can not create shared vpc-endpoint role due to no installer role or controlplane operator role.")
+		return "", "", err
+	}
+	log.Logger.Debugf("Got installer role arn: %s for shared vpc-endpoint role preparation", installerRoleArn)
+	log.Logger.Debugf(
+		"Got control plane operator role arn: %s for shared vpc-endpoint role preparation",
+		controlPlaneOperatorRoleArn,
+	)
+
+	assumeRolesArns := []string{installerRoleArn, controlPlaneOperatorRoleArn}
+	roleArn, err := awsClient.CreateRoleForSharedVPCHCP(roleName, assumeRolesArns)
+	sharedVpcEndpointRoleArn := aws.ToString(roleArn.Arn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepare shared vpc-endpoint role: %s", err.Error())
+		return roleName, sharedVpcEndpointRoleArn, err
+	}
+	log.Logger.Infof("Create a new vpc-endpoint role for shared VPC: %s", sharedVpcEndpointRoleArn)
+	err = rh.registerSharedVPCEndpointRole(roleName)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record shared VPC vpc-endpoint role: %s", err.Error())
+		return roleName, sharedVpcEndpointRoleArn, err
+	}
+	err = awsClient.AttachIAMPolicy(roleName, policyArn)
+	if err != nil {
+		log.Logger.Errorf("Error happens when attach shared vpc-endpoint policy %s to role %s: %s", policyArn,
+			sharedVpcEndpointRoleArn, err.Error())
+	}
+	return roleName, sharedVpcEndpointRoleArn, err
+}
+
 func (rh *resourcesHandler) PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string) (string, error) {
 	awsClient, err := rh.GetAWSClient(true)
 	if err != nil {
@@ -480,12 +673,15 @@ func (rh *resourcesHandler) PrepareAdditionalPrincipalsRole(roleName string, ins
 	return additionalPrincipalRoleArn, err
 }
 
-func (rh *resourcesHandler) PrepareDNSDomain() (string, error) {
+func (rh *resourcesHandler) PrepareDNSDomain(hostedcp bool) (string, error) {
 	var dnsDomain string
 	var output bytes.Buffer
 	var err error
-
-	output, err = rh.rosaClient.OCMResource.CreateDNSDomain()
+	if hostedcp {
+		output, err = rh.rosaClient.OCMResource.CreateDNSDomain("--hosted-cp")
+	} else {
+		output, err = rh.rosaClient.OCMResource.CreateDNSDomain()
+	}
 	if err != nil {
 		return dnsDomain, err
 	}
@@ -500,7 +696,7 @@ func (rh *resourcesHandler) PrepareDNSDomain() (string, error) {
 	return dnsDomain, err
 }
 
-func (rh *resourcesHandler) PrepareHostedZone(clusterName string, dnsDomain string,
+func (rh *resourcesHandler) PrepareHostedZone(hostedZoneName string,
 	vpcID string, private bool) (string, error) {
 
 	awsClient, err := rh.GetAWSClient(true)
@@ -508,7 +704,7 @@ func (rh *resourcesHandler) PrepareHostedZone(clusterName string, dnsDomain stri
 		return "", err
 	}
 
-	hostedZoneName := fmt.Sprintf("%s.%s", clusterName, dnsDomain)
+	// hostedZoneName := fmt.Sprintf("%s.%s", clusterName, dnsDomain)
 	callerReference := helper.GenerateRandomString(10)
 	hostedZoneOutput, err := awsClient.CreateHostedZone(
 		hostedZoneName,
@@ -522,11 +718,18 @@ func (rh *resourcesHandler) PrepareHostedZone(clusterName string, dnsDomain stri
 		return "", err
 	}
 	hostedZoneID := strings.Split(*hostedZoneOutput.HostedZone.Id, "/")[2]
-
-	err = rh.registerHostedZoneID(hostedZoneID)
-	if err != nil {
-		log.Logger.Errorf("Error happened when record Hosted Zone ID: %s", err.Error())
+	if strings.HasSuffix(hostedZoneName, "hypershift.local") {
+		err = rh.registerIngressHostedZoneID(hostedZoneID)
+		if err != nil {
+			log.Logger.Errorf("Error happened when record Ingress Hosted Zone ID: %s", err.Error())
+		}
+	} else {
+		err = rh.registerHostedCPInternalHostedZoneID(hostedZoneID)
+		if err != nil {
+			log.Logger.Errorf("Error happened when record Hosted Zone ID: %s", err.Error())
+		}
 	}
+
 	return hostedZoneID, err
 }
 
@@ -584,7 +787,9 @@ func (rh *resourcesHandler) generateAccountRoleCreationFlag(
 	openshiftVersion string,
 	channelGroup string,
 	path string,
-	permissionsBoundary string) []string {
+	permissionsBoundary string,
+	route53RoleARN string,
+	vpcEndpointRoleArn string) []string {
 	flags := []string{
 		"--prefix", namePrefix,
 		"--mode", "auto",
@@ -607,6 +812,12 @@ func (rh *resourcesHandler) generateAccountRoleCreationFlag(
 	}
 	if permissionsBoundary != "" {
 		flags = append(flags, "--permissions-boundary", permissionsBoundary)
+	}
+	if route53RoleARN != "" {
+		flags = append(flags, "--route53-role-arn", route53RoleARN)
+	}
+	if vpcEndpointRoleArn != "" {
+		flags = append(flags, "--vpc-endpoint-role-arn", vpcEndpointRoleArn)
 	}
 	return flags
 }
