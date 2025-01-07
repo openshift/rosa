@@ -390,10 +390,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		if len(httpProxyValue) == 0 {
-			//user skipped the prompt by pressing 'enter'
-			httpProxy = nil
-		} else if httpProxyValue == input.DoubleQuotesToRemove {
+		if def != httpProxyValue && httpProxyValue == input.DoubleQuotesToRemove {
 			//user entered double quotes ("") to remove the existing value
 			httpProxy = new(string)
 			*httpProxy = ""
@@ -431,10 +428,7 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid https proxy: %s", err)
 			os.Exit(1)
 		}
-		if len(httpsProxyValue) == 0 {
-			//user skipped the prompt by pressing 'enter'
-			httpsProxy = nil
-		} else if httpsProxyValue == input.DoubleQuotesToRemove {
+		if def != httpsProxyValue && httpsProxyValue == input.DoubleQuotesToRemove {
 			//user entered double quotes ("") to remove the existing value
 			httpsProxy = new(string)
 			*httpsProxy = ""
