@@ -397,7 +397,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		if sharedVPCAdditionalPrincipalsForHostedCP != "" {
 			flags = append(flags, "--additional-allowed-principals",
 				fmt.Sprintf("%s,%s", sharedVPCAdditionalPrincipalsForHostedCP, additionalPrincipalRoleArn))
-		} else {
+		} else if additionalPrincipalRoleArn != "" {
 			flags = append(flags, "--additional-allowed-principals", additionalPrincipalRoleArn)
 		}
 
