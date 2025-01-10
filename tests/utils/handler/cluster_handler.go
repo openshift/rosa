@@ -394,11 +394,13 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		if ch.profile.ClusterConfig.SharedVPC && ch.profile.ClusterConfig.HCP {
 			sharedVPCAdditionalPrincipalsForHostedCP = fmt.Sprintf("%s,%s", sharedRoute53RoleArn, sharedVPCEndPointRoleArn)
 		}
-		if sharedVPCAdditionalPrincipalsForHostedCP != "" {
+		if sharedVPCAdditionalPrincipalsForHostedCP != "" && additionalPrincipalRoleArn != "" {
 			flags = append(flags, "--additional-allowed-principals",
 				fmt.Sprintf("%s,%s", sharedVPCAdditionalPrincipalsForHostedCP, additionalPrincipalRoleArn))
-		} else if additionalPrincipalRoleArn != "" {
+		} else if sharedVPCAdditionalPrincipalsForHostedCP == "" && additionalPrincipalRoleArn != "" {
 			flags = append(flags, "--additional-allowed-principals", additionalPrincipalRoleArn)
+		} else if sharedVPCAdditionalPrincipalsForHostedCP != "" && additionalPrincipalRoleArn == "" {
+			flags = append(flags, "--additional-allowed-principals", sharedVPCAdditionalPrincipalsForHostedCP)
 		}
 
 	}

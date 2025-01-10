@@ -122,6 +122,7 @@ func newResourcesHandler(client *rosacli.Client, region string, persist bool,
 		awsCredentialsFile:              awsCredentialsFile,
 		awsSharedAccountCredentialsFile: awsSharedAccountCredentialsFile,
 	}
+
 	if loadFilesystem {
 		err := helper.ReadFileContentToObject(config.Test.UserDataFile, &resourcesHandler.resources)
 		if err != nil {
@@ -295,6 +296,7 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 func (rh *resourcesHandler) saveToFile() (err error) {
 	if !rh.persist {
 		log.Logger.Debug("Ignoring save to file as per configuration")
+		return
 	}
 	_, err = helper.CreateFileWithContent(config.Test.UserDataFile, &rh.resources)
 	if err != nil {
