@@ -93,13 +93,14 @@ type Spec struct {
 	AvailabilityZones []string
 
 	// Network config
-	NetworkType string
-	MachineCIDR net.IPNet
-	ServiceCIDR net.IPNet
-	PodCIDR     net.IPNet
-	HostPrefix  int
-	Private     *bool
-	PrivateLink *bool
+	NetworkType         string
+	SubnetConfiguration string
+	MachineCIDR         net.IPNet
+	ServiceCIDR         net.IPNet
+	PodCIDR             net.IPNet
+	HostPrefix          int
+	Private             *bool
+	PrivateLink         *bool
 
 	// Properties
 	CustomProperties map[string]string
@@ -617,6 +618,14 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 
 	if config.DisableWorkloadMonitoring != nil {
 		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
+	}
+
+	// SDN -> OVN Migration
+	if config.NetworkType == NetworkTypes[1] {
+		clusterBuilder = clusterBuilder.Network(v1.NewNetwork().Copy(cluster.Network()).Type(config.NetworkType))
+	}
+	if config.SubnetConfiguration != "" {
+		clusterBuilder = clusterBuilder.
 	}
 
 	if config.HTTPProxy != nil || config.HTTPSProxy != nil || config.NoProxy != nil {

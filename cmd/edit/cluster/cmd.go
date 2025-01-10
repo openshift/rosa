@@ -39,6 +39,14 @@ import (
 
 const enableDeleteProtectionFlagName = "enable-delete-protection"
 
+// SDN -> OVN Migration
+const networkTypeFlagName = "network-type"
+const subnetConfigurationFlagName = "subnet-configuration"
+const networkTypeOvn = "OVNKubernetes"
+const subnetConfigTransit = "transit"
+const subnetConfigJoin = "join"
+const subnetConfigMasquerade = "masquerade"
+
 var args struct {
 	// Basic options
 	expirationTime         string
@@ -69,6 +77,10 @@ var args struct {
 	allowedRegistriesForImport string
 	platformAllowlist          string
 	additionalTrustedCa        string
+
+	// SDN -> OVN Migration
+	networkType         string
+	subnetConfiguration string
 }
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
@@ -186,6 +198,21 @@ func init() {
 		"",
 		"Account ID used for billing subscriptions purchased through the AWS console for ROSA",
 	)
+
+	flags.StringVar(
+		&args.networkType,
+		"network-type",
+		"",
+		"Migrate a cluster's network type from OpenShiftSDN to OVN-Kubernetes",
+	)
+
+	flags.StringVar(
+		&args.subnetConfiguration,
+		"subnet-configuration",
+		"",
+		"Subnet configuration for migrating 'network-type' from OpenShiftSDN -> OVN-Kubernetes. Choices consist of "+
+			"'transit', 'join', or 'masquerade'",
+	)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -218,6 +245,18 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Validate flags:
 	expiration, err := validateExpiration()
+	if err != nil {
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
+		os.Exit(1)
+	}
+
+	subnetConfiguration, err := validateSubnetConfiguration()
+	if err != nil {
+		r.Reporter.Errorf(fmt.Sprintf("%s", err))
+		os.Exit(1)
+	}
+
+	networkType, err := validateNetworkType()
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -708,6 +747,84 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	// SDN -> OVN Migration
+	var clusterNetworkType string
+	if !cmd.Flags().Changed(networkTypeFlagName) {
+		var ok bool
+		if cluster.Network() == nil {
+			ok = false
+		} else {
+			networkType, ok = cluster.Network().GetType()
+			clusterNetworkType = networkType // Store the cluster's current network type for interactive usage
+		}
+		if !ok {
+			r.Reporter.Errorf("Unable to get cluster's network type")
+			os.Exit(1)
+		}
+	} else {
+		deleteProtection = args.enableDeleteProtection
+	}
+
+	// Only prompt user with migrating the cluster's network type when it is not OVN-Kubernetes
+	if interactive.Enabled() && clusterNetworkType != "" && clusterNetworkType != networkTypeOvn {
+		migrateNetworkType, err := interactive.GetBool(interactive.Input{
+			Question: "Migrate cluster network type from OpenShiftSDN -> OVN-Kubernetes",
+			Help: "Clusters are required to migrate from network type 'OpenShiftSDN' to 'OVN-Kubernetes', this allows " +
+				"you to do this along with your cluster changes",
+			Default: false,
+		})
+
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+
+		if migrateNetworkType {
+			migrateNetworkType, err = interactive.GetBool(interactive.Input{
+				Question: "Changing the network plugin will reboot cluster nodes, can not be interrupted or rolled " +
+					"back, and can not be combined with other operations such as cluster upgrades. Are you sure that " +
+					"you want to proceed with migrating from 'OpenShiftSDN' to 'OVN-Kubernetes",
+					Help: "Confirm that you are wanting to migrate your cluster's network type, it may be safer to do " +
+					"this migration with no other changes",
+					Default: false,
+			})
+
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		}
+
+		if migrateNetworkType {
+			networkType, err = interactive.GetString(interactive.Input{
+				Question: "Network type for cluster",
+				Help:     cmd.Flags().Lookup(networkTypeFlagName).Usage,
+				Default:  networkTypeOvn,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value: %v", err)
+				os.Exit(1)
+			}
+
+			subnetConfiguration, err = interactive.GetString(interactive.Input{
+				Question: "Subnet configuration for cluster",
+				Help:     cmd.Flags().Lookup(subnetConfigurationFlagName).Usage,
+				Default:  subnetConfiguration,
+				Options:  []string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade},
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid value: %v", err)
+			}
+		}
+	}
+
+	if networkType == networkTypeOvn {
+		clusterConfig.NetworkType = networkType
+	}
+	if helper.Contains([]string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade}, subnetConfiguration) {
+		clusterConfig.
+	}
+
 	var billingAccount string
 	if cmd.Flags().Changed("billing-account") {
 		billingAccount = args.billingAccount
@@ -844,6 +961,36 @@ func validateExpiration() (expiration time.Time, err error) {
 		expiration = time.Now().Add(args.expirationDuration).Round(time.Second)
 	}
 
+	return
+}
+
+// SDN -> OVN migration subnet configuration validator
+func validateSubnetConfiguration() (subnetConfig string, err error) {
+	if len(args.subnetConfiguration) > 0 {
+		if !helper.Contains([]string{
+			subnetConfigTransit,
+			subnetConfigJoin,
+			subnetConfigMasquerade,
+		}, args.subnetConfiguration) {
+			err = fmt.Errorf("Incorrect option for '%s', please use one of '%s', '%s', or '%s'",
+				subnetConfigurationFlagName, subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade)
+		} else {
+			subnetConfig = args.subnetConfiguration
+		}
+	}
+	return
+}
+
+// SDN -> OVN migration network type validator (one option)
+func validateNetworkType() (networkConfig string, err error) {
+	if len(args.networkType) > 0 {
+		if args.networkType != networkTypeOvn {
+			err = fmt.Errorf("Incorrect network type '%s', please use '%s' or remove the flag",
+				args.networkType, networkTypeOvn)
+		} else {
+			networkConfig = args.networkType
+		}
+	}
 	return
 }
 
