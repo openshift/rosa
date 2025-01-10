@@ -765,9 +765,10 @@ func run(cmd *cobra.Command, _ []string) {
 		deleteProtection = args.enableDeleteProtection
 	}
 
+	var migrateNetworkType bool
 	// Only prompt user with migrating the cluster's network type when it is not OVN-Kubernetes
 	if interactive.Enabled() && clusterNetworkType != "" && clusterNetworkType != networkTypeOvn {
-		migrateNetworkType, err := interactive.GetBool(interactive.Input{
+		migrateNetworkType, err = interactive.GetBool(interactive.Input{
 			Question: "Migrate cluster network type from OpenShiftSDN -> OVN-Kubernetes",
 			Help: "Clusters are required to migrate from network type 'OpenShiftSDN' to 'OVN-Kubernetes', this allows " +
 				"you to do this along with your cluster changes",
@@ -780,14 +781,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		if migrateNetworkType {
-			migrateNetworkType, err = interactive.GetBool(interactive.Input{
-				Question: "Changing the network plugin will reboot cluster nodes, can not be interrupted or rolled " +
-					"back, and can not be combined with other operations such as cluster upgrades. Are you sure that " +
-					"you want to proceed with migrating from 'OpenShiftSDN' to 'OVN-Kubernetes",
-					Help: "Confirm that you are wanting to migrate your cluster's network type, it may be safer to do " +
-					"this migration with no other changes",
-					Default: false,
-			})
+			migrateNetworkType, err = confirmMigration()
 
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
@@ -818,11 +812,21 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if networkType == networkTypeOvn {
-		clusterConfig.NetworkType = networkType
+	if cmd.Flags().Changed(networkTypeFlagName) && networkType == networkTypeOvn {
+		migrateNetworkType, err = confirmMigration()
+
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
 	}
-	if helper.Contains([]string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade}, subnetConfiguration) {
-		clusterConfig.
+
+	if networkType == networkTypeOvn && migrateNetworkType {
+		clusterConfig.NetworkType = networkType
+
+		if helper.Contains([]string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade}, subnetConfiguration) {
+			clusterConfig.
+		}
 	}
 
 	var billingAccount string
@@ -1131,4 +1135,15 @@ func BuildClusterConfigWithRegistry(clusterConfig ocm.Spec, allowedRegistries []
 	}
 	clusterConfig.AllowedRegistriesForImport = allowedRegistriesForImport
 	return clusterConfig, nil
+}
+
+func confirmMigration() (bool, error) {
+	 return interactive.GetBool(interactive.Input{
+		Question: "Changing the network plugin will reboot cluster nodes, can not be interrupted or rolled " +
+			"back, and can not be combined with other operations such as cluster upgrades. Are you sure that " +
+			"you want to proceed with migrating from 'OpenShiftSDN' to 'OVN-Kubernetes",
+		Help: "Confirm that you are wanting to migrate your cluster's network type, it may be safer to do " +
+			"this migration with no other changes",
+		Default: false,
+	})
 }
