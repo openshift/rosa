@@ -820,7 +820,7 @@ var _ = Describe("Create machinepool",
 						"--max-replicas", "3",
 						"--enable-autoscaling")
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("'min_replicas' must be less than or equal to 'max_replicas'"))
+					Expect(output.String()).Should(ContainSubstring("max-replicas must be greater or equal to min-replicas"))
 
 					By("Set min-replicas and max-replicas without set --enable-autoscaling")
 					output, err = rosaClient.MachinePool.CreateMachinePool(

@@ -572,6 +572,59 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		flags = append(flags,
 			"--subnet-ids", subnetsFlagValue)
 
+		if ch.profile.ClusterConfig.SharedVPC {
+			subnetArns, err := resourcesHandler.PrepareSubnetArns(subnetsFlagValue)
+			if err != nil {
+				return flags, err
+			}
+
+			resourceShareName := fmt.Sprintf("%s-%s", sharedVPCRolePrefix, "resource-share")
+			_, err = resourcesHandler.PrepareResourceShare(resourceShareName, subnetArns)
+			if err != nil {
+				return flags, err
+			}
+
+			dnsDomain, err := resourcesHandler.PrepareDNSDomain(ch.profile.ClusterConfig.HCP)
+			if err != nil {
+				return flags, err
+			}
+			flags = append(flags, "--base-domain", dnsDomain)
+			if ch.profile.ClusterConfig.HCP {
+				ingressHostedZoneID, err := resourcesHandler.PrepareHostedZone(
+					fmt.Sprintf("rosa.%s.%s", clusterName, dnsDomain), vpc.VpcID, true)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--ingress-private-hosted-zone-id", ingressHostedZoneID)
+
+				hostedCPInternalHostedZoneID, err := resourcesHandler.PrepareHostedZone(
+					fmt.Sprintf("%s.hypershift.local", clusterName), vpc.VpcID, true,
+				)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--hcp-internal-communication-hosted-zone-id", hostedCPInternalHostedZoneID)
+			} else {
+				ingressHostedZoneID, err := resourcesHandler.PrepareHostedZone(
+					fmt.Sprintf("%s.%s", clusterName, dnsDomain), vpc.VpcID, true,
+				)
+				if err != nil {
+					return flags, err
+				}
+				flags = append(flags, "--ingress-private-hosted-zone-id", ingressHostedZoneID)
+			}
+
+			ch.clusterConfig.SharedVPC = ch.profile.ClusterConfig.SharedVPC
+
+			//HostedCP Shared VPC cluster BYO subnet needs to add tags 'kubernetes.io/role/internal-elb'
+			//and 'kubernetes.io/role/elb' on public and private subnets on the cluster owner aws account
+			if ch.profile.ClusterConfig.HCP {
+				err = resourcesHandler.AddTagsToSharedVPCBYOSubnets(*ch.clusterConfig.Subnets, ch.clusterConfig.Region)
+				if err != nil {
+					return flags, err
+				}
+			}
+		}
 		if ch.profile.ClusterConfig.AdditionalSGNumber != 0 {
 			securityGroups, err := resourcesHandler.
 				PrepareAdditionalSecurityGroups(ch.profile.ClusterConfig.AdditionalSGNumber, vpcPrefix)
@@ -626,59 +679,6 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				"--additional-trust-bundle-file", proxy.CABundleFilePath,
 			)
 
-		}
-		if ch.profile.ClusterConfig.SharedVPC {
-			subnetArns, err := resourcesHandler.PrepareSubnetArns(subnetsFlagValue)
-			if err != nil {
-				return flags, err
-			}
-
-			resourceShareName := fmt.Sprintf("%s-%s", sharedVPCRolePrefix, "resource-share")
-			_, err = resourcesHandler.PrepareResourceShare(resourceShareName, subnetArns)
-			if err != nil {
-				return flags, err
-			}
-
-			dnsDomain, err := resourcesHandler.PrepareDNSDomain(ch.profile.ClusterConfig.HCP)
-			if err != nil {
-				return flags, err
-			}
-			flags = append(flags, "--base-domain", dnsDomain)
-			if ch.profile.ClusterConfig.HCP {
-				ingressHostedZoneID, err := resourcesHandler.PrepareHostedZone(
-					fmt.Sprintf("rosa.%s.%s", clusterName, dnsDomain), vpc.VpcID, true)
-				if err != nil {
-					return flags, err
-				}
-				flags = append(flags, "--ingress-private-hosted-zone-id", ingressHostedZoneID)
-
-				hostedCPInternalHostedZoneID, err := resourcesHandler.PrepareHostedZone(
-					fmt.Sprintf("%s.hypershift.local", clusterName), vpc.VpcID, true,
-				)
-				if err != nil {
-					return flags, err
-				}
-				flags = append(flags, "--hcp-internal-communication-hosted-zone-id", hostedCPInternalHostedZoneID)
-			} else {
-				ingressHostedZoneID, err := resourcesHandler.PrepareHostedZone(
-					fmt.Sprintf("%s.%s", clusterName, dnsDomain), vpc.VpcID, true,
-				)
-				if err != nil {
-					return flags, err
-				}
-				flags = append(flags, "--ingress-private-hosted-zone-id", ingressHostedZoneID)
-			}
-
-			ch.clusterConfig.SharedVPC = ch.profile.ClusterConfig.SharedVPC
-
-			//HostedCP Shared VPC cluster BYO subnet needs to add tags 'kubernetes.io/role/internal-elb'
-			//and 'kubernetes.io/role/elb' on public and private subnets on the cluster owner aws account
-			if ch.profile.ClusterConfig.HCP {
-				err = resourcesHandler.AddTagsToSharedVPCBYOSubnets(*ch.clusterConfig.Subnets, ch.clusterConfig.Region)
-				if err != nil {
-					return flags, err
-				}
-			}
 		}
 	}
 	if ch.profile.ClusterConfig.BillingAccount != "" {

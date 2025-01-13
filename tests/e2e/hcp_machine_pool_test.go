@@ -477,8 +477,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
 				Should(
-					ContainSubstring("Replicas+Autoscaling.Min: The total number of compute nodes for a single cluster"))
-			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed"))
+					ContainSubstring("should provide an integer number less than or equal to"))
 
 			By("with invalid name")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything%^#@", "--replicas", "2")
@@ -506,7 +505,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
 				Should(
-					ContainSubstring("Invalid autoscaling range: 6 - 3. 'min_replica' must be less than or equal to 'max_replica'"))
+					ContainSubstring("max-replicas must be greater or equal to min-replicas"))
 
 			By("with min-replicas and max-replicas but without enable-autoscaling")
 			_, err = machinePoolService.CreateMachinePool(
@@ -527,8 +526,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
 				Should(
-					ContainSubstring("Replicas+Autoscaling.Max: The total number of compute nodes for a single cluster"))
-			Expect(err.Error()).Should(ContainSubstring("exceeds the maximum allowed"))
+					ContainSubstring("should provide an integer number less than or equal to"))
 
 			By("with wrong instance-type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--instance-type", "wrong")

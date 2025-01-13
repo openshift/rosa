@@ -359,7 +359,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).
 					Should(ContainSubstring(
-						"The name must be a lowercase RFC 1123 subdomain."))
+						"The name must be a lowercase RFC 1123 subdomain"))
 
 				By("Create kubeletconfig with invalid pod pids limit value like 123456789")
 				out, err = kubeletService.CreateKubeletConfig(clusterID,
