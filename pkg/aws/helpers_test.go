@@ -271,3 +271,25 @@ var _ = Describe("GetHcpAccountRolePolicyKeys", func() {
 		})
 	})
 })
+
+var _ = Describe("IsArnAssumedRole", func() {
+	When("true", func() {
+		It("Is assumed role ARN", func() {
+			out, err := IsArnAssumedRole("arn:aws:iam::123456789012:assumed-role/my-role")
+			Expect(out).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+	When("false", func() {
+		It("Is not assumed role ARN", func() {
+			out, err := IsArnAssumedRole("arn:aws:iam::123456789012:role/my-role")
+			Expect(out).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("Error (not ARN)", func() {
+			out, err := IsArnAssumedRole("123456789012:role/my-role")
+			Expect(out).To(BeFalse())
+			Expect(err).To(HaveOccurred())
+		})
+	})
+})

@@ -75,6 +75,7 @@ const (
 	OsdCcsAdminStackName = "osdCcsAdminIAMUser"
 
 	AssumeRolePolicyPrefix = "%s-assume-role"
+	AssumedRoleRolePrefix  = "assumed-role"
 
 	// Since CloudFormation stacks are region-dependent, we hard-code OCM's default region and
 	// then use it to ensure that the user always gets the stack from the same region.
@@ -219,6 +220,7 @@ type Client interface {
 	GetAccountRoleDefaultPolicy(roleName string, prefix string) (string, error)
 	GetOperatorRoleDefaultPolicy(roleName string) (string, error)
 	ListPolicyVersions(policyArn string) ([]PolicyVersion, error)
+	GetCallerIdentity() (*sts.GetCallerIdentityOutput, error)
 }
 
 type AccessKeyGetter interface {
@@ -707,6 +709,14 @@ type Creator struct {
 	IsSTS      bool
 	IsGovcloud bool
 	Partition  string
+}
+
+func (c *awsClient) GetCallerIdentity() (*sts.GetCallerIdentityOutput, error) {
+	getCallerIdentityOutput, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+	if err != nil {
+		return nil, err
+	}
+	return getCallerIdentityOutput, nil
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {

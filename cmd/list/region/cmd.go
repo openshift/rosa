@@ -24,8 +24,14 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+)
+
+const (
+	roleArnFlag = "role-arn"
 )
 
 var args struct {
@@ -77,8 +83,34 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithOCM()
+	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+
+	callerIdentity, err := r.AWSClient.GetCallerIdentity()
+	if err != nil {
+		r.Reporter.Errorf("Failed to get caller identity: %v", err)
+		os.Exit(1)
+	}
+
+	isUsingAssumedRole, err := aws.IsArnAssumedRole(*callerIdentity.Arn)
+	if err != nil {
+		r.Reporter.Errorf("Failed to check if role is an assumed role: %v", err)
+		os.Exit(1)
+	}
+
+	if isUsingAssumedRole && r.Creator.IsSTS && !cmd.Flag(roleArnFlag).Changed {
+		args.roleARN, err = interactive.GetString(interactive.Input{
+			Question: "ARN of role the API will use to fetch regions",
+			Help: "The AWS profile you are using is using an assumed role, please provide the ARN\n " +
+				cmd.Flag(roleArnFlag).Usage,
+			Default:  args.roleARN,
+			Required: true,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid role arn value: %v", err)
+			os.Exit(1)
+		}
+	}
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Fetching regions")
