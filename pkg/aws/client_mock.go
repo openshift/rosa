@@ -17,6 +17,7 @@ import (
 	iam "github.com/aws/aws-sdk-go-v2/service/iam"
 	types0 "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	servicequotas "github.com/aws/aws-sdk-go-v2/service/servicequotas"
+	sts "github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	reporter "github.com/openshift/rosa/pkg/reporter"
 	gomock "go.uber.org/mock/gomock"
@@ -661,6 +662,21 @@ func (m *MockClient) GetAvailabilityZoneType(availabilityZoneName string) (strin
 func (mr *MockClientMockRecorder) GetAvailabilityZoneType(availabilityZoneName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailabilityZoneType", reflect.TypeOf((*MockClient)(nil).GetAvailabilityZoneType), availabilityZoneName)
+}
+
+// GetCallerIdentity mocks base method.
+func (m *MockClient) GetCallerIdentity() (*sts.GetCallerIdentityOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCallerIdentity")
+	ret0, _ := ret[0].(*sts.GetCallerIdentityOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCallerIdentity indicates an expected call of GetCallerIdentity.
+func (mr *MockClientMockRecorder) GetCallerIdentity() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCallerIdentity", reflect.TypeOf((*MockClient)(nil).GetCallerIdentity))
 }
 
 // GetClusterRegionTagForUser mocks base method.

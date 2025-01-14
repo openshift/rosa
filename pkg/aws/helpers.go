@@ -491,6 +491,18 @@ func GetPathFromARN(arnStr string) (string, error) {
 	return path, nil
 }
 
+func IsArnAssumedRole(arnStr string) (bool, error) {
+	parse, err := arn.Parse(arnStr)
+	if err != nil {
+		return false, err
+	}
+	resource := strings.SplitN(parse.Resource, "/", 2)[0]
+	if resource == AssumedRoleRolePrefix {
+		return true, nil
+	}
+	return false, nil
+}
+
 func GetRoleARN(accountID string, name string, path string, partition string) string {
 	if path == "" {
 		path = "/"

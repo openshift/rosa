@@ -427,6 +427,17 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Context("GetCallerIdentity", func() {
+		It("Gets caller identity with no error", func() {
+			mockSTSApi.EXPECT().GetCallerIdentity(gomock.Any(), &sts.GetCallerIdentityInput{}).
+				Return(&sts.GetCallerIdentityOutput{}, nil)
+
+			out, err := client.GetCallerIdentity()
+			Expect(out).To(BeEquivalentTo(&sts.GetCallerIdentityOutput{}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
 	Context("FetchPublicSubnetMap", func() {
 
 		subnetOneId := "test-subnet-1"
