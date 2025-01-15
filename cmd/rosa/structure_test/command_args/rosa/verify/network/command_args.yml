@@ -7,3 +7,4 @@
 - name: subnet-ids
 - name: tags
 - name: watch
+- name: profile
