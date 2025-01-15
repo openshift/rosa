@@ -134,6 +134,8 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Run network verifier with hosted control plane platform configuration",
 	)
+
+	arguments.AddProfileFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {
