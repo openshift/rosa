@@ -801,10 +801,11 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 
 			ovnInternalSubnets, err = interactive.GetString(interactive.Input{
-				Question: "Subnet configuration for cluster",
+				Question: "OVN-Kubernetes internal subnet configuration for cluster",
 				Help:     cmd.Flags().Lookup(ovnInternalSubnetsFlagName).Usage,
 				Default:  ovnInternalSubnets,
 				Options:  []string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade},
+				Required: false,
 			})
 			if err != nil {
 				r.Reporter.Errorf("Expected a valid value: %v", err)
