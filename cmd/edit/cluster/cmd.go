@@ -41,7 +41,7 @@ const enableDeleteProtectionFlagName = "enable-delete-protection"
 
 // SDN -> OVN Migration
 const networkTypeFlagName = "network-type"
-const subnetConfigurationFlagName = "subnet-configuration"
+const ovnInternalSubnetsFlagName = "ovn-internal-subnets"
 const networkTypeOvn = "OVNKubernetes"
 const subnetConfigTransit = "transit"
 const subnetConfigJoin = "join"
@@ -80,7 +80,7 @@ var args struct {
 
 	// SDN -> OVN Migration
 	networkType         string
-	subnetConfiguration string
+	ovnInternalSubnets string
 }
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
@@ -207,11 +207,11 @@ func init() {
 	)
 
 	flags.StringVar(
-		&args.subnetConfiguration,
-		"subnet-configuration",
+		&args.ovnInternalSubnets,
+		ovnInternalSubnetsFlagName,
 		"",
-		"Subnet configuration for migrating 'network-type' from OpenShiftSDN -> OVN-Kubernetes. Choices consist of "+
-			"'transit', 'join', or 'masquerade'",
+		"OVN-Kubernetes internal subnet configuration for migrating 'network-type' from OpenShiftSDN -> " +
+			"OVN-Kubernetes. Choices consist of 'transit', 'join', or 'masquerade'",
 	)
 }
 
@@ -250,7 +250,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	subnetConfiguration, err := validateSubnetConfiguration()
+	ovnInternalSubnets, err := validateOvnInternalSubnetConfiguration()
 	if err != nil {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
@@ -800,10 +800,10 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 
-			subnetConfiguration, err = interactive.GetString(interactive.Input{
+			ovnInternalSubnets, err = interactive.GetString(interactive.Input{
 				Question: "Subnet configuration for cluster",
-				Help:     cmd.Flags().Lookup(subnetConfigurationFlagName).Usage,
-				Default:  subnetConfiguration,
+				Help:     cmd.Flags().Lookup(ovnInternalSubnetsFlagName).Usage,
+				Default:  ovnInternalSubnets,
 				Options:  []string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade},
 			})
 			if err != nil {
@@ -824,8 +824,8 @@ func run(cmd *cobra.Command, _ []string) {
 	if networkType == networkTypeOvn && migrateNetworkType {
 		clusterConfig.NetworkType = networkType
 
-		if helper.Contains([]string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade}, subnetConfiguration) {
-			clusterConfig.
+		if helper.Contains([]string{subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade}, ovnInternalSubnets) {
+			clusterConfig. // TODO: Update the ovn subnet configuration on the cluster when the API is finished
 		}
 	}
 
@@ -969,17 +969,17 @@ func validateExpiration() (expiration time.Time, err error) {
 }
 
 // SDN -> OVN migration subnet configuration validator
-func validateSubnetConfiguration() (subnetConfig string, err error) {
-	if len(args.subnetConfiguration) > 0 {
+func validateOvnInternalSubnetConfiguration() (ovnInternalSubnets string, err error) {
+	if len(args.ovnInternalSubnets) > 0 {
 		if !helper.Contains([]string{
 			subnetConfigTransit,
 			subnetConfigJoin,
 			subnetConfigMasquerade,
-		}, args.subnetConfiguration) {
+		}, args.ovnInternalSubnets) {
 			err = fmt.Errorf("Incorrect option for '%s', please use one of '%s', '%s', or '%s'",
-				subnetConfigurationFlagName, subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade)
+				ovnInternalSubnetsFlagName, subnetConfigTransit, subnetConfigJoin, subnetConfigMasquerade)
 		} else {
-			subnetConfig = args.subnetConfiguration
+			ovnInternalSubnets = args.ovnInternalSubnets
 		}
 	}
 	return
@@ -1140,7 +1140,7 @@ func BuildClusterConfigWithRegistry(clusterConfig ocm.Spec, allowedRegistries []
 func confirmMigration() (bool, error) {
 	 return interactive.GetBool(interactive.Input{
 		Question: "Changing the network plugin will reboot cluster nodes, can not be interrupted or rolled " +
-			"back, and can not be combined with other operations such as cluster upgrades. Are you sure that " +
+			"back, and can not be combined with other operations such as cluster upgrades. \n\nConfirm that " +
 			"you want to proceed with migrating from 'OpenShiftSDN' to 'OVN-Kubernetes",
 		Help: "Confirm that you are wanting to migrate your cluster's network type, it may be safer to do " +
 			"this migration with no other changes",
