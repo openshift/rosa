@@ -2,12 +2,17 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
@@ -123,12 +128,54 @@ func (rh *resourcesHandler) AddTagsToSharedVPCBYOSubnets(subnets config.Subnets,
 	}
 
 	for _, pubSubnetID := range strings.Split(subnets.PublicSubnetIds, ",") {
+		// Wait for the subnet id to be found by the aws client
+		err = wait.PollUntilContextTimeout(
+			context.Background(),
+			20*time.Second,
+			300*time.Second,
+			false,
+			func(context.Context) (bool, error) {
+				_, err = awsclient.Ec2Client.DescribeSubnets(context.TODO(), &ec2.DescribeSubnetsInput{
+					SubnetIds: []string{pubSubnetID},
+				})
+				if err != nil {
+					if strings.Contains(err.Error(), "does not exist") {
+						return false, nil
+					}
+					return false, err
+				}
+				return true, err
+			})
+		if err != nil {
+			return fmt.Errorf("wait for subnet %s to be found failed: %s", pubSubnetID, err)
+		}
 		_, err = awsclient.TagResource(pubSubnetID, pubTags)
 		if err != nil {
 			return fmt.Errorf("tag subnet %s failed:%s", pubSubnetID, err)
 		}
 	}
 	for _, priSubnetID := range strings.Split(subnets.PrivateSubnetIds, ",") {
+		// Wait for the subnet id to be found by the aws client
+		err = wait.PollUntilContextTimeout(
+			context.Background(),
+			20*time.Second,
+			300*time.Second,
+			false,
+			func(context.Context) (bool, error) {
+				_, err = awsclient.Ec2Client.DescribeSubnets(context.TODO(), &ec2.DescribeSubnetsInput{
+					SubnetIds: []string{priSubnetID},
+				})
+				if err != nil {
+					if strings.Contains(err.Error(), "does not exist") {
+						return false, nil
+					}
+					return false, err
+				}
+				return true, err
+			})
+		if err != nil {
+			return fmt.Errorf("wait for subnet %s to be found failed: %s", priSubnetID, err)
+		}
 		_, err = awsclient.TagResource(priSubnetID, privateTags)
 		if err != nil {
 			return fmt.Errorf("tag subnet %s failed:%s", priSubnetID, err)
@@ -178,7 +225,6 @@ func (rh *resourcesHandler) PrepareProxy(zone string, sshPemFileName string, ssh
 	if rh.vpc == nil {
 		return nil, errors.New("VPC has not been initialized ...")
 	}
-
 	_, privateIP, caContent, err := rh.vpc.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
 	if err != nil {
 		return nil, err
@@ -772,6 +818,7 @@ func (rh *resourcesHandler) PrepareResourceShare(resourceShareName string, resou
 		log.Logger.Errorf("Error happens when prepare resource share: %s", err.Error())
 		return "", err
 	}
+
 	resourceShareArn := *sharedResourceOutput.ResourceShare.ResourceShareArn
 	err = rh.registerResourceShareArn(resourceShareArn)
 	if err != nil {
