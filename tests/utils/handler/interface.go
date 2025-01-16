@@ -61,6 +61,7 @@ type ClusterConfig struct {
 	AllowedRegistries             bool   `yaml:"allowed_registries" json:"allowed_registries,omitempty"`
 	BlockedRegistries             bool   `yaml:"blocked_registries" json:"blocked_registries,omitempty"`
 	ManualCreationMode            bool   `yaml:"manual_creation_mode" json:"manual_creation_mode,omitempty"`
+	ZeroEgress                    bool   `yaml:"zero_egress" json:"zero_egress,omitempty"`
 }
 
 // Resources will record the resources prepared

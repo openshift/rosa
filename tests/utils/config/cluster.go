@@ -21,6 +21,7 @@ type Encryption struct {
 
 type Properties struct {
 	ProvisionShardID string `json:"provision_shard_id,omitempty"`
+	ZeroEgress       bool   `json:"zero_egress,omitempty"`
 }
 
 type Sts struct {

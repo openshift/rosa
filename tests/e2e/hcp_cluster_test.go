@@ -634,4 +634,16 @@ var _ = Describe("HCP cluster testing",
 					}
 				}
 			})
+
+		It("create zero-egress HCP cluster - [id:76543]",
+			labels.High, labels.Feature.ZeroEgress, labels.Runtime.Day1,
+			func() {
+				By("Get cluster description")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring("Egress URL access issues"))
+			})
+
 	})
