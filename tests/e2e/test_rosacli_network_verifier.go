@@ -207,7 +207,7 @@ var _ = Describe("Network verifier",
 			})
 
 		It("verify that network will be failed if it can't reach to cluster subnet via the rosa cli - [id:70370]",
-			labels.Medium, labels.Runtime.Day2, labels.Runtime.Destructive,
+			labels.Medium, labels.Runtime.Destructive,
 			func() {
 				By("Prepare a ready byo vpc ROSA cluster")
 				isBYOVPC, err := clusterService.IsBYOVPCCluster(clusterID)
@@ -269,14 +269,38 @@ var _ = Describe("Network verifier",
 				helper.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
 				By("The network verification result will be sync to cluster inflight check")
-				clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					300*time.Second,
+					false,
+					func(context.Context) (bool, error) {
+						clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
+						if !strings.Contains(clusterDetail.FailedInflightChecks,
+							fmt.Sprintf("rosa verify network -c %s", clusterID)) {
+							return false, err
+						}
+						return true, err
+					})
 				Expect(err).To(BeNil())
-				Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring(fmt.Sprintf("rosa verify network -c %s", clusterID)))
+
 				for _, s := range strings.Split(subnets, ",") {
 					for _, p := range vpcClient.AllPrivateSubnetIDs() {
 						if s == p {
-							Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring(fmt.Sprintf(
-								"Invalid configurations on subnet '%s' have been identified", s)))
+							err = wait.PollUntilContextTimeout(
+								context.Background(),
+								20*time.Second,
+								300*time.Second,
+								false,
+								func(context.Context) (bool, error) {
+									clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
+									if !strings.Contains(clusterDetail.FailedInflightChecks,
+										fmt.Sprintf("Invalid configurations on subnet '%s' have been identified", s)) {
+										return false, err
+									}
+									return true, err
+								})
+							Expect(err).To(BeNil())
 						}
 					}
 				}

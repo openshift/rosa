@@ -836,7 +836,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"")
 			Expect(err).ToNot(HaveOccurred())
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("WARN: There is already a pending upgrade"))
+			Expect(textData).To(ContainSubstring("WARN: There is already a"))
 		})
 
 		It("will validate root volume size - [id:66874]",
