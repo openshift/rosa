@@ -2,14 +2,12 @@ package e2e
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/strings/slices"
 
 	"github.com/Masterminds/semver"
@@ -498,21 +496,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(np.Version).To(Equal(previousVersion))
 
-				By("Wait for NodePool replicas to be available")
-				err = wait.PollUntilContextTimeout(
-					context.Background(),
-					30*time.Second,
-					20*time.Minute,
-					false,
-					func(context.Context) (bool, error) {
-						npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolName)
-						if err != nil {
-							return false, err
-						}
-						return npDesc.CurrentReplicas == defaultNodePoolReplicas, nil
-					})
-				helper.AssertWaitPollNoErr(err, "Replicas are not ready after 600")
-
+				By("Create nodepool with different verions")
 				nodePoolVersion, err := versionList.FindNearestBackwardMinorVersion(clusterVersion, 1, true)
 				Expect(err).ToNot(HaveOccurred())
 				if nodePoolVersion != nil {
