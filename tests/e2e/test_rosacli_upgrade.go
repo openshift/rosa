@@ -60,11 +60,16 @@ var _ = Describe("Cluster Upgrade testing",
 
 		AfterEach(func() {
 			if profile.Version == constants.YStreamPreviousVersion {
-				By("Delete cluster upgrade")
-				output, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+				By("Delete cluster upgrade if there is some scheduled upgrade existed")
+				output, err := upgradeService.DescribeUpgrade(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring(
-					"Successfully canceled scheduled upgrade on cluster '%s'", clusterID))
+				if !strings.Contains(output.String(), "No scheduled upgrades for cluster") {
+					output, err = upgradeService.DeleteUpgrade("-c", clusterID, "-y")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring(
+						"Successfully canceled scheduled upgrade on cluster '%s'", clusterID))
+				}
+
 			}
 
 			By("Clean remaining resources")
