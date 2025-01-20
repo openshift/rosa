@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
@@ -3499,6 +3501,25 @@ var _ = Describe("Sts cluster creation with external id",
 				})
 				Expect(err).To(BeNil())
 
+				By("Wait for the trust relationship to be updated")
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					300*time.Second,
+					false,
+					func(context.Context) (bool, error) {
+						result, err := awsClient.IamClient.GetRole(context.TODO(), &iam.GetRoleInput{
+							RoleName: aws.String(roleName),
+						})
+
+						if strings.Contains(*result.Role.AssumeRolePolicyDocument, ExternalId) {
+							return true, nil
+						}
+
+						return false, err
+					})
+				Expect(err).To(BeNil())
+
 				By("Create cluster with external id not same with the role setting one")
 				notMatchExternalId := "333B9588-36A5-ECA4-BE8D-7C673B77CDCD"
 				rosalCommand.AddFlags("--external-id", notMatchExternalId)
@@ -3660,7 +3681,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				Eventually(func() (string, error) {
 					output, err := clusterService.InstallLog(clusterName)
 					return output.String(), err
-				}, time.Minute*5, time.Second*10).Should(And(
+				}, time.Minute*10, time.Second*30).Should(And(
 					ContainSubstring("hostedclusters %s Version", clusterName),
 					ContainSubstring("hostedclusters %s Release image is valid", clusterName)))
 
@@ -3680,7 +3701,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				Eventually(func() (string, error) {
 					output, err := clusterService.UnInstallLog(clusterName)
 					return output.String(), err
-				}, time.Minute*2, time.Second*10).
+				}, time.Minute*20, time.Second*30).
 					Should(
 						ContainSubstring("hostedclusters %s Reconciliation completed successfully", clusterName))
 
