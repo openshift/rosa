@@ -135,6 +135,9 @@ func init() {
 		"For Hosted Control Plane, whether the upgrade should cover only the control plane",
 	)
 
+	flags.MarkDeprecated("control-plane", "Flag is deprecated, and can be omitted when running this "+
+		"command in the future")
+
 	confirm.AddFlag(flags)
 }
 
@@ -159,17 +162,6 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		AllowMinorVersionUpdates: args.allowMinorVersionUpdates,
 	}
 	isHypershift := cluster.Hypershift().Enabled()
-
-	// Check parameters preconditions
-	if args.controlPlane && !isHypershift {
-		return fmt.Errorf("The '--control-plane' option is only supported for Hosted Control Planes")
-	}
-
-	if !interactive.Enabled() {
-		if !args.controlPlane && isHypershift {
-			return fmt.Errorf("The '--control-plane' option is currently mandatory for Hosted Control Planes")
-		}
-	}
 
 	if currentUpgradeScheduling.Schedule == "" && currentUpgradeScheduling.AllowMinorVersionUpdates {
 		return fmt.Errorf("The '--allow-minor-version-upgrades' option needs to be used with --schedule")
