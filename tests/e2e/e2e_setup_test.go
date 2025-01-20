@@ -78,12 +78,10 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					hostPrefix, podCIDR := "", ""
 					for _, networkLine := range clusterDetails.Network {
 						if value, containsKey := networkLine["Host Prefix"]; containsKey {
-							hostPrefix = value
-							break
+							hostPrefix = value[1:]
 						}
 						if value, containsKey := networkLine["Pod CIDR"]; containsKey {
 							podCIDR = value
-							break
 						}
 					}
 					By("Deploy cilium configures")
