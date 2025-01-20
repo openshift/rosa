@@ -69,24 +69,8 @@ var _ = Describe("Upgrade", Ordered, func() {
 	BeforeEach(func() {
 		testRuntime.InitRuntime()
 	})
-	It("Fails if flag is missing", func() {
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterNotReady))
-		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(
-			ContainSubstring("The '--control-plane' option is currently mandatory for Hosted Control Plane"))
-	})
-	It("Fails if cluster is not hypershift and we are using hypershift specific flags", func() {
-		args.controlPlane = true
-		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
-		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(
-			ContainSubstring("The '--control-plane' option is only supported for Hosted Control Planes"))
-	})
 
 	It("Fails if cluster is not hypershift and we are using hypershift specific flags", func() {
-		args.controlPlane = false
 		args.schedule = cronSchedule
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
@@ -95,7 +79,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 			ContainSubstring("The '--schedule' option is only supported for Hosted Control Planes"))
 	})
 	It("Fails if we are using minor version flag for manual upgrades", func() {
-		args.controlPlane = true
 		args.schedule = ""
 		args.allowMinorVersionUpdates = true
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
@@ -105,7 +88,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 			"option needs to be used with --schedule"))
 	})
 	It("Fails if we are mixing scheduling type flags", func() {
-		args.controlPlane = true
 		args.schedule = cronSchedule
 		args.scheduleDate = "31 Jan"
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
@@ -115,7 +97,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 			"options are mutually exclusive with '--schedule'"))
 	})
 	It("Fails if we are mixing automatic scheduling and version flags", func() {
-		args.controlPlane = true
 		args.schedule = cronSchedule
 		args.scheduleDate = ""
 		args.version = "4.13.0"
@@ -126,7 +107,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 			"option is mutually exclusive with '--version'"))
 	})
 	It("Fails if cluster is not ready", func() {
-		args.controlPlane = true
 		args.allowMinorVersionUpdates = false
 		args.schedule = ""
 		args.scheduleDate = ""
@@ -142,7 +122,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(err.Error()).To(ContainSubstring("Cluster 'cluster1' is not yet ready"))
 	})
 	It("Cluster is ready but existing upgrade scheduled", func() {
-		args.controlPlane = true
 		args.schedule = cronSchedule
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		// An existing policy upgrade
@@ -162,7 +141,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 			"There is already a pending upgrade to version 4.12.18 on 2023-06-02 12:30 UTC"))
 	})
 	It("Cluster is ready and with automatic scheduling but bad cron format", func() {
-		args.controlPlane = true
 		// not a valid cron
 		args.schedule = "* a"
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
@@ -176,7 +154,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 	})
 
 	It("Cluster is ready and with manual scheduling but bad format", func() {
-		args.controlPlane = true
 		args.schedule = ""
 		// Not a valid date format
 		args.scheduleDate = "Jan 23"
@@ -193,7 +170,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 			"schedule date should use the format 'yyyy-mm-dd'\n   Schedule time should use the format 'HH:mm'"))
 	})
 	It("Cluster is ready and with manual scheduling but no upgrades available", func() {
-		args.controlPlane = true
 		args.schedule = ""
 		// Not a valid date format
 		args.scheduleDate = dateSchedule
@@ -210,7 +186,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(stderr).To(ContainSubstring("There are no available upgrades"))
 	})
 	It("Cluster is ready and with automatic scheduling, no upgrades available -> still success", func() {
-		args.controlPlane = true
 		args.schedule = "20 5 * * *"
 		args.scheduleDate = ""
 		args.scheduleTime = ""
@@ -235,7 +210,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(stderr).To(BeEmpty())
 	})
 	It("Cluster is ready and with manual scheduling and available upgrades but a wrong version in input", func() {
-		args.controlPlane = true
 		args.schedule = ""
 		// Not a valid date format
 		args.scheduleDate = dateSchedule
@@ -253,7 +227,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 			ContainSubstring("Expected a valid version to upgrade cluster to.\nValid versions: [4.13.1]"))
 	})
 	It("Cluster is ready and with manual scheduling and one available upgrade but cluster not found", func() {
-		args.controlPlane = true
 		args.schedule = ""
 		// Not a valid date format
 		args.scheduleDate = dateSchedule
@@ -278,7 +251,6 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name"))
 	})
 	It("Fails if node-drain-grace-period flag is specified for hypershift clusters", func() {
-		args.controlPlane = true
 		args.schedule = "20 5 * * *"
 		args.scheduleDate = ""
 		args.scheduleTime = ""
