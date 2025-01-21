@@ -71,6 +71,9 @@ func ExtractCommandsFromOIDCRegister(bf bytes.Buffer) []string {
 		command = spaceRegex.ReplaceAllString(command, " ")
 		// remove '' in the value
 		command = strings.ReplaceAll(command, "'", "")
+		if strings.Contains(command, " INFO") {
+			command = strings.Split(command, " INFO")[0]
+		}
 		newCommands = append(newCommands, command)
 
 	}

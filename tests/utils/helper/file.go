@@ -2,6 +2,7 @@ package helper
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,15 +32,16 @@ func GetCurrentWorkingDir() (string, error) {
 }
 
 func CreateTemplateDirForNetworkResources(templateName string, fileContent string) (string, error) {
-	err := os.Mkdir(templateName, 0744)
+	// err := os.Mkdir(templateName, 0744)
+	dirpath, err := os.MkdirTemp("", fmt.Sprintf("%s-*", templateName))
 	if err != nil {
 		return "", err
 	}
-	exPath, err := GetCurrentWorkingDir()
+	// exPath, err := GetCurrentWorkingDir()
 	if err != nil {
 		return "", err
 	}
-	dirpath := filepath.Join(exPath + "/" + templateName)
+	// dirpath := filepath.Join(exPath + "/" + templateName)
 	outputPath := filepath.Join(dirpath, "cloudformation.yaml")
 
 	f, err := os.Create(outputPath)

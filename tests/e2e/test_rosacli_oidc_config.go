@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -285,8 +286,17 @@ var _ = Describe("Register ummanaged oidc config testing",
 					secretArn = helper.ParseSecretArnFromOutput(stdout.String())
 					continue
 				}
-				if strings.Contains(command, "aws iam create-open-id-connect-provider") {
-					issuerUrl = helper.ParseIssuerURLFromCommand(command)
+				if strings.Contains(command, "aws s3api create-bucket") {
+					commandArgs = helper.ParseCommandToArgs(command)
+					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
+					Expect(err).To(BeNil())
+					re := regexp.MustCompile(`"Location":\s*"(http://[^"]+)"`)
+					matches := re.FindStringSubmatch(stdout.String())
+					if len(matches) > 1 {
+						issuerUrl = strings.Replace(matches[1], "http://", "https://", 1)
+					}
+					Expect(issuerUrl).ToNot(BeEmpty(), "issuerUrl is empty which will block coming steps.")
+					continue
 				}
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
