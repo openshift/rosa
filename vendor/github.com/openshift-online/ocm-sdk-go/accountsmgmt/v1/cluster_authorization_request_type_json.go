@@ -29,7 +29,7 @@ import (
 // MarshalClusterAuthorizationRequest writes a value of the 'cluster_authorization_request' type to the given writer.
 func MarshalClusterAuthorizationRequest(object *ClusterAuthorizationRequest, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeClusterAuthorizationRequest(object, stream)
+	WriteClusterAuthorizationRequest(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalClusterAuthorizationRequest(object *ClusterAuthorizationRequest, wri
 	return stream.Error
 }
 
-// writeClusterAuthorizationRequest writes a value of the 'cluster_authorization_request' type to the given stream.
-func writeClusterAuthorizationRequest(object *ClusterAuthorizationRequest, stream *jsoniter.Stream) {
+// WriteClusterAuthorizationRequest writes a value of the 'cluster_authorization_request' type to the given stream.
+func WriteClusterAuthorizationRequest(object *ClusterAuthorizationRequest, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -174,7 +174,7 @@ func writeClusterAuthorizationRequest(object *ClusterAuthorizationRequest, strea
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("resources")
-		writeReservedResourceList(object.resources, stream)
+		WriteReservedResourceList(object.resources, stream)
 		count++
 	}
 	present_ = object.bitmap_&32768 != 0
@@ -195,13 +195,13 @@ func UnmarshalClusterAuthorizationRequest(source interface{}) (object *ClusterAu
 	if err != nil {
 		return
 	}
-	object = readClusterAuthorizationRequest(iterator)
+	object = ReadClusterAuthorizationRequest(iterator)
 	err = iterator.Error
 	return
 }
 
-// readClusterAuthorizationRequest reads a value of the 'cluster_authorization_request' type from the given iterator.
-func readClusterAuthorizationRequest(iterator *jsoniter.Iterator) *ClusterAuthorizationRequest {
+// ReadClusterAuthorizationRequest reads a value of the 'cluster_authorization_request' type from the given iterator.
+func ReadClusterAuthorizationRequest(iterator *jsoniter.Iterator) *ClusterAuthorizationRequest {
 	object := &ClusterAuthorizationRequest{}
 	for {
 		field := iterator.ReadObject()
@@ -266,7 +266,7 @@ func readClusterAuthorizationRequest(iterator *jsoniter.Iterator) *ClusterAuthor
 			object.reserve = value
 			object.bitmap_ |= 8192
 		case "resources":
-			value := readReservedResourceList(iterator)
+			value := ReadReservedResourceList(iterator)
 			object.resources = value
 			object.bitmap_ |= 16384
 		case "scope":

@@ -30,7 +30,7 @@ import (
 // MarshalVersionGate writes a value of the 'version_gate' type to the given writer.
 func MarshalVersionGate(object *VersionGate, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeVersionGate(object, stream)
+	WriteVersionGate(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,8 +38,8 @@ func MarshalVersionGate(object *VersionGate, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeVersionGate writes a value of the 'version_gate' type to the given stream.
-func writeVersionGate(object *VersionGate, stream *jsoniter.Stream) {
+// WriteVersionGate writes a value of the 'version_gate' type to the given stream.
+func WriteVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
@@ -147,13 +147,13 @@ func UnmarshalVersionGate(source interface{}) (object *VersionGate, err error) {
 	if err != nil {
 		return
 	}
-	object = readVersionGate(iterator)
+	object = ReadVersionGate(iterator)
 	err = iterator.Error
 	return
 }
 
-// readVersionGate reads a value of the 'version_gate' type from the given iterator.
-func readVersionGate(iterator *jsoniter.Iterator) *VersionGate {
+// ReadVersionGate reads a value of the 'version_gate' type from the given iterator.
+func ReadVersionGate(iterator *jsoniter.Iterator) *VersionGate {
 	object := &VersionGate{}
 	for {
 		field := iterator.ReadObject()

@@ -63,7 +63,7 @@ func (o *VersionGate) Kind() string {
 	return VersionGateKind
 }
 
-// Link returns true iif this is a link.
+// Link returns true if this is a link.
 func (o *VersionGate) Link() bool {
 	return o != nil && o.bitmap_&1 != 0
 }
@@ -354,6 +354,29 @@ func (l *VersionGateList) Len() int {
 		return 0
 	}
 	return len(l.items)
+}
+
+// Items sets the items of the list.
+func (l *VersionGateList) SetLink(link bool) {
+	l.link = link
+}
+
+// Items sets the items of the list.
+func (l *VersionGateList) SetHREF(href string) {
+	l.href = href
+}
+
+// Items sets the items of the list.
+func (l *VersionGateList) SetItems(items []*VersionGate) {
+	l.items = items
+}
+
+// Items returns the items of the list.
+func (l *VersionGateList) Items() []*VersionGate {
+	if l == nil {
+		return nil
+	}
+	return l.items
 }
 
 // Empty returns true if the list is empty.

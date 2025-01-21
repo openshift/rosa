@@ -30,7 +30,7 @@ import (
 // the given writer.
 func MarshalClusterArchitectureList(list []ClusterArchitecture, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeClusterArchitectureList(list, stream)
+	WriteClusterArchitectureList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,9 +38,9 @@ func MarshalClusterArchitectureList(list []ClusterArchitecture, writer io.Writer
 	return stream.Error
 }
 
-// writeClusterArchitectureList writes a list of value of the 'cluster_architecture' type to
+// WriteClusterArchitectureList writes a list of value of the 'cluster_architecture' type to
 // the given stream.
-func writeClusterArchitectureList(list []ClusterArchitecture, stream *jsoniter.Stream) {
+func WriteClusterArchitectureList(list []ClusterArchitecture, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
@@ -58,14 +58,14 @@ func UnmarshalClusterArchitectureList(source interface{}) (items []ClusterArchit
 	if err != nil {
 		return
 	}
-	items = readClusterArchitectureList(iterator)
+	items = ReadClusterArchitectureList(iterator)
 	err = iterator.Error
 	return
 }
 
-// readClusterArchitectureList reads list of values of the ”cluster_architecture' type from
+// ReadClusterArchitectureList reads list of values of the ”cluster_architecture' type from
 // the given iterator.
-func readClusterArchitectureList(iterator *jsoniter.Iterator) []ClusterArchitecture {
+func ReadClusterArchitectureList(iterator *jsoniter.Iterator) []ClusterArchitecture {
 	list := []ClusterArchitecture{}
 	for iterator.ReadArray() {
 		text := iterator.ReadString()

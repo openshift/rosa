@@ -29,7 +29,7 @@ import (
 // MarshalNodePoolStatus writes a value of the 'node_pool_status' type to the given writer.
 func MarshalNodePoolStatus(object *NodePoolStatus, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	writeNodePoolStatus(object, stream)
+	WriteNodePoolStatus(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalNodePoolStatus(object *NodePoolStatus, writer io.Writer) error {
 	return stream.Error
 }
 
-// writeNodePoolStatus writes a value of the 'node_pool_status' type to the given stream.
-func writeNodePoolStatus(object *NodePoolStatus, stream *jsoniter.Stream) {
+// WriteNodePoolStatus writes a value of the 'node_pool_status' type to the given stream.
+func WriteNodePoolStatus(object *NodePoolStatus, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
@@ -92,13 +92,13 @@ func UnmarshalNodePoolStatus(source interface{}) (object *NodePoolStatus, err er
 	if err != nil {
 		return
 	}
-	object = readNodePoolStatus(iterator)
+	object = ReadNodePoolStatus(iterator)
 	err = iterator.Error
 	return
 }
 
-// readNodePoolStatus reads a value of the 'node_pool_status' type from the given iterator.
-func readNodePoolStatus(iterator *jsoniter.Iterator) *NodePoolStatus {
+// ReadNodePoolStatus reads a value of the 'node_pool_status' type from the given iterator.
+func ReadNodePoolStatus(iterator *jsoniter.Iterator) *NodePoolStatus {
 	object := &NodePoolStatus{}
 	for {
 		field := iterator.ReadObject()

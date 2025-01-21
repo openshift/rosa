@@ -3,6 +3,33 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.454
+- Update model version to v0.0.407
+  - Add ClusterMigration resources
+
+## 0.1.453
+- Update model version to v0.0.406
+  - Expose the GCP Shielded VM secure boot setting at the machine pool level
+
+## 0.1.452
+- Update model version v0.0.405
+- Update metamodel version v0.0.64
+  - Add ARO HCP v1alpha1 root resource
+
+## 0.1.451
+- Update model version v0.0.404
+  - Add WifConfig patch endpoint
+
+## 0.1.450
+- Update model version v0.0.403
+  - Add `NodesOutboundConnectivity` in azure_type.model to the `Azure` model
+  - Add `AzureNodesOutboundConnectivity` model
+
+## 0.1.449
+Update model version v0.0.402
+  - Add WifConfig status endpoint
+  - Add `WifConfigStatus` model
+
 ## 0.1.448
 - Update model version v0.0.401
   - Include support for HCP shared vpc fields in `Cluster` and `DNS` models.
