@@ -147,7 +147,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).To(ContainSubstring("Creating classic account roles"))
 			Expect(textData).ToNot(ContainSubstring("Creating hosted CP account roles"))
 			Expect(textData).To(ContainSubstring("Created role"))
-			Expect(textData).ToNot(ContainSubstring("Attached trust policy to role"))
+			Expect(textData).To(ContainSubstring("Attached trust policy to role"))
 
 			By("List account-roles and check the result are expected")
 			accountRoleList, _, err := ocmResourceService.ListAccountRole()
@@ -508,6 +508,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			var (
 				rolePrefixAuto      = helper.GenerateRandomName("ar57408a", 2)
 				rolePrefixManual    = helper.GenerateRandomName("ar57408m", 2)
+				testAWSAccountID    string
 				roleVersion         string
 				path                = "/fd/sd/"
 				policiesArn         []string
@@ -578,6 +579,10 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				})
 			helper.AssertWaitPollNoErr(err, "Network verification result are not ready after 200")
 
+			By("Get the AWS Account Id from policy arn")
+			arnParts := strings.Split(policiesArn[0], ":")
+			testAWSAccountID = arnParts[4]
+
 			By("Prepare verson for testing")
 			versionService := rosaClient.Version
 			versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
@@ -607,6 +612,9 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			commands := helper.ExtractCommandsToCreateAWSResources(output)
 
 			for _, command := range commands {
+				command = strings.ReplaceAll(
+					command, "arn:aws:iam::765374464689:",
+					fmt.Sprintf("arn:aws:iam::%s:", testAWSAccountID))
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 				Expect(err).To(BeNil())
 			}
@@ -633,32 +641,36 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 				Expect(err).To(BeNil())
 			}
 
-			By("Create classic account-roles with managed policies in auto mode")
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
-				"--prefix", rolePrefixAuto,
-				"--path", path,
-				"--permissions-boundary", permissionsBoundaryArn,
-				"--version", roleVersion,
-				"--managed-policies",
-				"-y")
-			Expect(err).To(BeNil())
-			Expect(output.String()).To(ContainSubstring("Created role"))
+			// commented out the auto mode test as the aws account in the managed policies
+			// is the dev aws account which will lead failure.
+			// Move this back when the managed policies are supported
+			// officially for classic account-roles
+			// By("Create classic account-roles with managed policies in auto mode")
+			// output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			// 	"--prefix", rolePrefixAuto,
+			// 	"--path", path,
+			// 	"--permissions-boundary", permissionsBoundaryArn,
+			// 	"--version", roleVersion,
+			// 	"--managed-policies",
+			// 	"-y")
+			// Expect(err).To(BeNil())
+			// Expect(output.String()).To(ContainSubstring("Created role"))
 
-			By("List the account roles created in auto mode")
-			accountRoleList, _, err = ocmResourceService.ListAccountRole()
-			Expect(err).To(BeNil())
-			accountRoles = accountRoleList.AccountRoles(rolePrefixAuto)
-			Expect(len(accountRoles)).To(Equal(4))
-			for _, ar := range accountRoles {
-				Expect(ar.AWSManaged).To(Equal("Yes"))
-			}
+			// By("List the account roles created in auto mode")
+			// accountRoleList, _, err = ocmResourceService.ListAccountRole()
+			// Expect(err).To(BeNil())
+			// accountRoles = accountRoleList.AccountRoles(rolePrefixAuto)
+			// Expect(len(accountRoles)).To(Equal(4))
+			// for _, ar := range accountRoles {
+			// 	Expect(ar.AWSManaged).To(Equal("Yes"))
+			// }
 
-			By("Delete the account-roles in auto mode")
-			output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
-				"--prefix", rolePrefixAuto,
-				"-y")
-			Expect(err).To(BeNil())
-			Expect(output.String()).To(ContainSubstring("Successfully deleted"))
+			// By("Delete the account-roles in auto mode")
+			// output, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
+			// 	"--prefix", rolePrefixAuto,
+			// 	"-y")
+			// Expect(err).To(BeNil())
+			// Expect(output.String()).To(ContainSubstring("Successfully deleted"))
 		})
 
 	It("Validation for account-role creation by user - [id:43067]",

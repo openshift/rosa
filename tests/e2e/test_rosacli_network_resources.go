@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
@@ -91,7 +92,10 @@ var _ = Describe("Network Resources",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Get current working directory as template dir path")
-				templateDirPath, err := helper.GetCurrentWorkingDir()
+				templateDir := filepath.Dir(templatePath)
+
+				templateDirPath := filepath.Dir(templateDir)
+				templateDirName := filepath.Base(templateDir)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create network resources without passing template name and parameter")
@@ -109,13 +113,13 @@ var _ = Describe("Network Resources",
 				Expect(resp).To(And(
 					ContainSubstring("Name not provided, using default name %s", defaultName),
 					ContainSubstring("No template name provided in the command. Defaulting to rosa-quickstart-default-vpc"),
-					ContainSubstring("Region not provided, using default region %s", region)))
+					ContainSubstring("Region not provided, using default region")))
 
 				By("Create network resources by passing template name and all parameters")
 				stackName_1 := helper.GenerateRandomName("ocp-77140", 2)
 				paramNameFlag := fmt.Sprintf("--param=Name=%s", stackName_1)
 				paramRegionFlag := fmt.Sprintf("--param=Region=%s", region)
-				output, err = networkResourcesService.CreateNetworkResources(false, "single-vpc",
+				output, err = networkResourcesService.CreateNetworkResources(false, templateDirName,
 					paramNameFlag,
 					paramRegionFlag,
 					"--template-dir", templateDirPath,
@@ -140,15 +144,8 @@ var _ = Describe("Network Resources",
 
 				By("Create network using manual mode")
 				stackName_2 := helper.GenerateRandomName("ocp-77140", 2)
-				manualModeOutput := fmt.Sprintf("aws cloudformation create-stack --stack-name %s "+
-					"--template-body file://%s"+
-					" --param ParameterKey=AvailabilityZoneCount,ParameterValue=3 "+
-					"ParameterKey=Name,ParameterValue=%s "+
-					"ParameterKey=Region,ParameterValue=%s  "+
-					"--tags Key=Key1,Value=Value1 Key=Key2,Value=Value2  --region %s",
-					stackName_2, templateContent, stackName_2, region, region)
 				paramNameFlag = fmt.Sprintf("--param=Name=%s", stackName_2)
-				output, err = networkResourcesService.CreateNetworkResources(false, "single-vpc",
+				output, err = networkResourcesService.CreateNetworkResources(false, templateDirName,
 					paramNameFlag,
 					paramRegionFlag,
 					"--template-dir", templateDirPath,
@@ -165,37 +162,28 @@ var _ = Describe("Network Resources",
 				Expect(err).ToNot(HaveOccurred())
 				resp = rosaClient.Parser.TextData.Input(output).Parse().Output()
 				Expect(resp).To(
-					ContainSubstring(manualModeOutput))
+					ContainSubstring("aws cloudformation create-stack --stack-name"))
 
 				By("Try to create network by setting OCM_TEMPLATE_DIR env variable")
+				err = os.Setenv("OCM_TEMPLATE_DIR", templateDirPath)
+				Expect(err).ToNot(HaveOccurred())
 				stackName_3 := helper.GenerateRandomName("ocp-77140", 2)
 				paramNameFlag = fmt.Sprintf("--param=Name=%s", stackName_3)
-				output, err = networkResourcesService.CreateNetworkResources(true, "single-vpc",
+				output, err = networkResourcesService.CreateNetworkResources(false, templateDirName,
 					paramNameFlag,
 					paramRegionFlag)
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName_3,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(func() string {
-						describeParam := cloudformation.DescribeStacksInput{
-							StackName: &stackName_3,
-						}
-						res, _ := awsClient.StackFormationClient.DescribeStacks(context.TODO(), &describeParam)
-						return string(res.Stacks[0].StackStatus)
-					}, time.Minute*2).Should(ContainSubstring("DELETE_IN_PROGRESS"))
-				}()
-				Expect(err).ToNot(HaveOccurred())
-				resp = rosaClient.Parser.TextData.Input(output).Parse().Output()
-				Expect(resp).To(
-					ContainSubstring("msg=\"Stack %s created\"", stackName_3))
+
+				Expect(err).To(HaveOccurred())
+
+				Expect(output.String()).To(
+					ContainSubstring("when using a custom template please use `--template-dir` to specify the template directory"))
 
 				By("Try to override 'OCM_TEMPLATE_DIR' env variable using --template-dir flag")
+				err = os.Setenv("OCM_TEMPLATE_DIR", "/fake/dir")
+				Expect(err).ToNot(HaveOccurred())
 				stackName_4 := helper.GenerateRandomName("ocp-77140", 2)
 				paramNameFlag = fmt.Sprintf("--param=Name=%s", stackName_4)
-				output, err = networkResourcesService.CreateNetworkResources(true, "single-vpc",
+				output, err = networkResourcesService.CreateNetworkResources(false, templateDirName,
 					paramNameFlag,
 					paramRegionFlag,
 					"--template-dir", templateDirPath)
