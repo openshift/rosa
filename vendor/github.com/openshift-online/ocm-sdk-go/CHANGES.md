@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.455
+- Update model version to v0.0.408
+  - Update cluster migration type constant
+
 ## 0.1.454
 - Update model version to v0.0.407
   - Add ClusterMigration resources

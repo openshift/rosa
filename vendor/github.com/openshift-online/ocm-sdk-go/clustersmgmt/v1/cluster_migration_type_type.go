@@ -24,5 +24,5 @@ type ClusterMigrationType string
 
 const (
 	//
-	ClusterMigrationTypeSdnToOvn ClusterMigrationType = "SdnToOvnClusterMigration"
+	ClusterMigrationTypeSdnToOvn ClusterMigrationType = "sdnToOvn"
 )
