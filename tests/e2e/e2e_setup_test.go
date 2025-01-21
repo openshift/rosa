@@ -51,8 +51,22 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 				clusterDetails, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				if clusterDetails.ExternalAuthentication == "Enabled" {
+					By("Create a fake external auth provider to avoid failure of console operator")
+					value := []string{
+						"--name", helper.GenerateRandomName("provider", 2),
+						"--issuer-url", "https://login.microsoftonline.com/fa5d3dd8-b8ec-4407-a55c-ced639f1c8c5/v2.0",
+						"--issuer-audiences", "8a769b34-13c9-4f5b-9933-ec439700ec67",
+						"--claim-mapping-username-claim", "email",
+						"--claim-mapping-groups-claim", "groups",
+						"--console-client-id", "8a769b34-13c9-4f5b-9933-ec439700ec67",
+						"--console-client-secret", "vfq8Q~XpgXx9vsKF~XSW1bcSowfJP2JGraybYa7X",
+					}
+					_, err = client.ExternalAuthProvider.CreateExternalAuthProvider(clusterID, value...)
+					Expect(err).ToNot(HaveOccurred())
+
 					// it is not support to create htpasswd for cluster with xternal auth enabled
 					// create break-glass-credential to get kubeconfig
+					By("Create a break glass credential")
 					_, err := client.BreakGlassCredential.CreateBreakGlassCredential(clusterID)
 					Expect(err).To(BeNil())
 					breakGlassCredList, err := client.BreakGlassCredential.ListBreakGlassCredentialsAndReflect(clusterID)
