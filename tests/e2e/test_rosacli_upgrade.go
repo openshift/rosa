@@ -284,21 +284,14 @@ var _ = Describe("Cluster Upgrade testing",
 			// without arbitrary policies attach share this profile.
 			// It needs to add step to wait the cluster upgrade done
 			// and to check the `rosa describe/list upgrade` in both of these two case.
-			if !isHosted {
-				output, err = upgradeService.Upgrade(
-					"-c", clusterID,
-					"--version", upgradingVersion,
-					"--mode", "auto",
-					"-y",
-				)
-			} else {
-				output, err = upgradeService.Upgrade(
-					"-c", clusterID,
-					"--version", upgradingVersion,
-					"--mode", "auto", "--control-plane",
-					"-y",
-				)
-			}
+
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--version", upgradingVersion,
+				"--mode", "auto",
+				"-y",
+			)
+
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("are compatible with upgrade"))
 			Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
@@ -708,32 +701,19 @@ var _ = Describe("Describe/List rosa upgrade",
 
 					By("Upgrade cluster")
 					if profile.ClusterConfig.STS {
-						hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 						Expect(err).ToNot(HaveOccurred())
-						if !hostedCluster {
-							output, errSTSUpgrade := upgradeService.Upgrade(
-								"-c", clusterID,
-								"--version", upgradingVersion,
-								"--schedule-date", scheduledDate,
-								"--schedule-time", scheduledTime,
-								"-m", "auto",
-								"-y",
-							)
-							Expect(errSTSUpgrade).To(BeNil())
-							Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
-						} else {
-							output, errHCPUpgrade := upgradeService.Upgrade(
-								"-c", clusterID,
-								"--version", upgradingVersion,
-								"--schedule-date", scheduledDate,
-								"--schedule-time", scheduledTime,
-								"-m", "auto",
-								"--control-plane",
-								"-y",
-							)
-							Expect(errHCPUpgrade).To(BeNil())
-							Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
-						}
+
+						output, errSTSUpgrade := upgradeService.Upgrade(
+							"-c", clusterID,
+							"--version", upgradingVersion,
+							"--schedule-date", scheduledDate,
+							"--schedule-time", scheduledTime,
+							"-m", "auto",
+							"-y",
+						)
+						Expect(errSTSUpgrade).To(BeNil())
+						Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
+
 					} else {
 						output, errUpgrade := upgradeService.Upgrade(
 							"-c", clusterID,
@@ -900,16 +880,8 @@ var _ = Describe("ROSA HCP cluster upgrade",
 		})
 
 		It("automatic upgrade for HCP cluster  - [id:64187]", labels.Critical, labels.Runtime.Upgrade, func() {
-			By("Check the help message for 'upgrade cluster'")
-			output, err := upgradeService.Upgrade(
-				"-c", clusterID,
-				"-h",
-			)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(output.String()).To(ContainSubstring("--control-plane"))
-
 			By("List the available ugrades for cluster")
-			output, err = upgradeService.ListUpgrades("-c", clusterID)
+			output, err := upgradeService.ListUpgrades("-c", clusterID)
 			Expect(err).To(BeNil())
 			Expect(output.String()).To(ContainSubstring("%s", zStreamVersion))
 			Expect(output.String()).To(ContainSubstring("%s", yStreamVersion))
@@ -925,7 +897,6 @@ var _ = Describe("ROSA HCP cluster upgrade",
 				"-c", clusterID,
 				"--mode", "auto",
 				"--schedule", scheduled,
-				"--control-plane",
 				"-y",
 			)
 			defer upgradeService.DeleteUpgrade("-c", clusterID, "-y")
@@ -978,7 +949,6 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			output, err := upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode", "manual",
-				"--control-plane",
 				"--version", targetVersion,
 				"-y",
 			)
@@ -1021,7 +991,6 @@ var _ = Describe("ROSA HCP cluster upgrade",
 				"--version", targetVersion,
 				"--schedule-date", scheduledDate,
 				"--schedule-time", scheduledTime,
-				"--control-plane",
 				"--mode", "manual",
 				"-y",
 			)
@@ -1111,7 +1080,6 @@ var _ = Describe("ROSA HCP cluster upgrade",
 						"--version", upgradeVersion,
 						"--schedule-date", scheduledDate,
 						"--schedule-time", scheduledTime,
-						"--control-plane",
 						"--mode", "manual",
 						"-y",
 					)

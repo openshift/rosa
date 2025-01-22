@@ -195,7 +195,7 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 			userRoleArnsToClean = append(userRoleArnsToClean, foundUserRole.RoleArn)
 
 			By("UnLink user-role")
-			output, err = ocmResourceService.LinkUserRole("--role-arn", foundUserRole.RoleArn, "-y")
+			output, err = ocmResourceService.UnlinkUserRole("--role-arn", foundUserRole.RoleArn, "-y")
 			Expect(err).To(BeNil())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).Should(ContainSubstring("Successfully unlinked role"))

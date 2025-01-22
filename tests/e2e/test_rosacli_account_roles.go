@@ -1010,6 +1010,14 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 	It("to create/Upgrade account-roles by setting version and channel-group via rosacli - [id:54469]",
 		labels.High, labels.Runtime.OCMResources,
 		func() {
+			var defaultDir string
+			By("Get the default dir")
+			defaultDir = rosaClient.Runner.GetDir()
+			defer func() {
+				By("Go back original by setting runner dir")
+				rosaClient.Runner.SetDir(defaultDir)
+			}()
+
 			By("Prepare y-1 version for testing")
 			versionService := rosaClient.Version
 			// get stable channel version
@@ -1293,6 +1301,7 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 				"--path", path,
 				"--route53-role-arn", route53RoleArn,
 				"--vpc-endpoint-role-arn", invalidVpcEndpointRoleArn,
+				"--hosted-cp",
 				"-y")
 			Expect(err).NotTo(BeNil())
 			Expect(output.String()).To(ContainSubstring("Expected a valid policy ARN for vpc-endpoint-role-arn"))
@@ -1307,7 +1316,7 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 				"-y")
 			Expect(err).NotTo(BeNil())
 			Expect(output.String()).To(ContainSubstring(
-				"Setting the `route53-role-arn` flag is only supported for hosted clusters"))
+				"Setting the `route53-role-arn` flag is only supported for Hosted Control Plane clusters"))
 
 			By("Validate two share vpc flags are not used together")
 			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
