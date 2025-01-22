@@ -93,13 +93,15 @@ type Spec struct {
 	AvailabilityZones []string
 
 	// Network config
-	NetworkType string
-	MachineCIDR net.IPNet
-	ServiceCIDR net.IPNet
-	PodCIDR     net.IPNet
-	HostPrefix  int
-	Private     *bool
-	PrivateLink *bool
+	NetworkType                    string
+	SubnetConfiguration            string
+	OvnInternalSubnetConfiguration map[string]string
+	MachineCIDR                    net.IPNet
+	ServiceCIDR                    net.IPNet
+	PodCIDR                        net.IPNet
+	HostPrefix                     int
+	Private                        *bool
+	PrivateLink                    *bool
 
 	// Properties
 	CustomProperties map[string]string
@@ -617,6 +619,40 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 
 	if config.DisableWorkloadMonitoring != nil {
 		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
+	}
+
+	// SDN -> OVN Migration
+	if config.NetworkType == NetworkTypes[1] {
+		// Create a request body for the specific cluster migration.
+		requestBuilder := v1.ClusterMigrationBuilder{}
+		requestBuilder.Type(v1.ClusterMigrationTypeSdnToOvn) // Type is required
+
+		if len(config.OvnInternalSubnetConfiguration) > 0 {
+			// Create a builder for the specific migration type's configuration if necessary
+			sdnToOvnBuilder := &v1.SdnToOvnClusterMigrationBuilder{}
+			if _, ok := config.OvnInternalSubnetConfiguration[JoinIpv4]; ok {
+				sdnToOvnBuilder.JoinIpv4(config.OvnInternalSubnetConfiguration[JoinIpv4])
+			}
+			if _, ok := config.OvnInternalSubnetConfiguration[TransitIpv4]; ok {
+				sdnToOvnBuilder.TransitIpv4(config.OvnInternalSubnetConfiguration[TransitIpv4])
+			}
+			if _, ok := config.OvnInternalSubnetConfiguration[MasqueradeIpv4]; ok {
+				sdnToOvnBuilder.MasqueradeIpv4(config.OvnInternalSubnetConfiguration[MasqueradeIpv4])
+			}
+			requestBuilder.SdnToOvn(sdnToOvnBuilder)
+		}
+
+		requestBody, err := requestBuilder.Build()
+		if err != nil {
+			return errors.UserWrapf(err, "Unable to create cluster migration request")
+		}
+
+		// Send the request to add a cluster migration.
+		response, err := c.ocm.ClustersMgmt().V1().Clusters().
+			Cluster(cluster.ID()).Migrations().Add().Body(requestBody).Send()
+		if err != nil {
+			return handleErr(response.Error(), err)
+		}
 	}
 
 	if config.HTTPProxy != nil || config.HTTPSProxy != nil || config.NoProxy != nil {
