@@ -197,6 +197,30 @@ func run(cmd *cobra.Command, argv []string) {
 		)
 	}
 
+	// SDN -> OVN Migration Status
+	migrationsStr := ""
+	collection, err := r.OCMClient.FetchClusterMigrations(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Failed to get cluster migrations: %v", err)
+		os.Exit(1)
+	}
+
+	if len(collection.Items().Items()) > 0 {
+		migrationsToShow := map[string]string{}
+		for _, migration := range collection.Items().Items() {
+			if migration.State() != cmv1.ClusterMigrationStateCompleted {
+				migrationsToShow[migration.ID()] = string(migration.State())
+			}
+		}
+
+		if len(migrationsToShow) > 0 {
+			migrationsStr = " - Migrations:\n"
+			for migrationID, migrationStatus := range migrationsToShow {
+				migrationsStr += fmt.Sprintf("  -%s                    %s\n", migrationID, migrationStatus)
+			}
+		}
+	}
+
 	subnetsStr := ""
 	if len(cluster.AWS().SubnetIDs()) > 0 {
 		subnetsStr = fmt.Sprintf(" - Subnets:                 %s\n",
@@ -241,6 +265,7 @@ func run(cmd *cobra.Command, argv []string) {
 		" - Pod CIDR:                %s\n"+
 		" - Host Prefix:             /%d\n"+
 		"%s"+
+		"%s"+
 		"%s",
 		clusterName,
 		domainPrefix,
@@ -263,6 +288,7 @@ func run(cmd *cobra.Command, argv []string) {
 		cluster.Network().MachineCIDR(),
 		cluster.Network().PodCIDR(),
 		cluster.Network().HostPrefix(),
+		migrationsStr,
 		subnetsStr,
 		str,
 	)
