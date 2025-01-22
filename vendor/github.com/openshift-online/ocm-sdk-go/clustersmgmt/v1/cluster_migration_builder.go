@@ -33,7 +33,7 @@ type ClusterMigrationBuilder struct {
 	clusterID         string
 	creationTimestamp time.Time
 	sdnToOvn          *SdnToOvnClusterMigrationBuilder
-	state             ClusterMigrationState
+	state             *ClusterMigrationStateBuilder
 	type_             ClusterMigrationType
 	updatedTimestamp  time.Time
 }
@@ -97,10 +97,14 @@ func (b *ClusterMigrationBuilder) SdnToOvn(value *SdnToOvnClusterMigrationBuilde
 
 // State sets the value of the 'state' attribute to the given value.
 //
-// The state of the cluster migration.
-func (b *ClusterMigrationBuilder) State(value ClusterMigrationState) *ClusterMigrationBuilder {
+// Representation of a cluster migration state.
+func (b *ClusterMigrationBuilder) State(value *ClusterMigrationStateBuilder) *ClusterMigrationBuilder {
 	b.state = value
-	b.bitmap_ |= 64
+	if value != nil {
+		b.bitmap_ |= 64
+	} else {
+		b.bitmap_ &^= 64
+	}
 	return b
 }
 
@@ -135,7 +139,11 @@ func (b *ClusterMigrationBuilder) Copy(object *ClusterMigration) *ClusterMigrati
 	} else {
 		b.sdnToOvn = nil
 	}
-	b.state = object.state
+	if object.state != nil {
+		b.state = NewClusterMigrationState().Copy(object.state)
+	} else {
+		b.state = nil
+	}
 	b.type_ = object.type_
 	b.updatedTimestamp = object.updatedTimestamp
 	return b
@@ -155,7 +163,12 @@ func (b *ClusterMigrationBuilder) Build() (object *ClusterMigration, err error) 
 			return
 		}
 	}
-	object.state = b.state
+	if b.state != nil {
+		object.state, err = b.state.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.type_ = b.type_
 	object.updatedTimestamp = b.updatedTimestamp
 	return

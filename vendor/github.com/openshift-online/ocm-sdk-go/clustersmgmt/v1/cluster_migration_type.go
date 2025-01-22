@@ -45,7 +45,7 @@ type ClusterMigration struct {
 	clusterID         string
 	creationTimestamp time.Time
 	sdnToOvn          *SdnToOvnClusterMigration
-	state             ClusterMigrationState
+	state             *ClusterMigrationState
 	type_             ClusterMigrationType
 	updatedTimestamp  time.Time
 }
@@ -182,18 +182,18 @@ func (o *ClusterMigration) GetSdnToOvn() (value *SdnToOvnClusterMigration, ok bo
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The state of the cluster migration.
-func (o *ClusterMigration) State() ClusterMigrationState {
+func (o *ClusterMigration) State() *ClusterMigrationState {
 	if o != nil && o.bitmap_&64 != 0 {
 		return o.state
 	}
-	return ClusterMigrationState("")
+	return nil
 }
 
 // GetState returns the value of the 'state' attribute and
 // a flag indicating if the attribute has a value.
 //
 // The state of the cluster migration.
-func (o *ClusterMigration) GetState() (value ClusterMigrationState, ok bool) {
+func (o *ClusterMigration) GetState() (value *ClusterMigrationState, ok bool) {
 	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.state

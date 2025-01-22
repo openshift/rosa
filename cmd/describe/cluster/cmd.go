@@ -208,8 +208,12 @@ func run(cmd *cobra.Command, argv []string) {
 	if len(collection.Items().Items()) > 0 {
 		migrationsToShow := map[string]string{}
 		for _, migration := range collection.Items().Items() {
-			if migration.State() != cmv1.ClusterMigrationStateCompleted {
-				migrationsToShow[migration.ID()] = string(migration.State())
+			state, ok := migration.State().GetValue()
+			if !ok {
+				r.Reporter.Errorf("Failed to get cluster migration state")
+			}
+			if state != cmv1.ClusterMigrationStateValueCompleted {
+				migrationsToShow[migration.ID()] = string(state)
 			}
 		}
 
