@@ -546,19 +546,11 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				SkipNotHosted()
 			}
 
-			By("Upgrade cluster without --control-plane flag")
-			output, err := upgradeService.Upgrade("-c", clusterID)
-			Expect(err).To(HaveOccurred())
-			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
-					"ERR: The '--control-plane' option is currently mandatory for Hosted Control Planes"))
-
 			By("Upgrade cluster with invalid cluster id")
 			invalidClusterID := helper.GenerateRandomString(30)
-			output, err = upgradeService.Upgrade("-c", invalidClusterID)
+			output, err := upgradeService.Upgrade("-c", invalidClusterID)
 			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).
 				To(ContainSubstring(
 					"ERR: Failed to get cluster '%s': There is no cluster with identifier or name '%s'",
@@ -568,7 +560,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("Upgrade cluster with incorrect format of the date and time")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
-				"--control-plane",
 				"--mode=auto",
 				"--schedule-date=\"2024-06\"",
 				"--schedule-time=\"09:00:12\"",
@@ -580,7 +571,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
-				"--control-plane",
 				"--mode=auto",
 				"--schedule-date=\"2024-06-24\"",
 				"--schedule-time=\"09:00\"",
@@ -595,7 +585,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("Upgrade cluster using --schedule and --version flags at the same time")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
-				"--control-plane",
 				"--mode=auto",
 				"--schedule=\"5 5 * * *\"",
 				"--version=4.15.10",
@@ -609,7 +598,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("Upgrade cluster with value not match the cron epression")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
-				"--control-plane",
 				"--mode=auto",
 				"--schedule=\"5 5\"",
 				"-y")
@@ -622,7 +610,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("Upgrade cluster with node_drain_grace_period")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
-				"--control-plane",
 				"--mode=auto",
 				"--schedule", "20 20 * * *",
 				"--node-drain-grace-period", "60",
@@ -3597,6 +3584,10 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
 			Expect(err).To(BeNil())
+
+			By("Init the cluster id and testing cluster name")
+			clusterID = ""
+			testingClusterName = ""
 		})
 
 		AfterEach(func() {
@@ -3665,52 +3656,54 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			labels.Critical,
 			labels.Runtime.Day1Supplemental,
 			func() {
-				clusterName := helper.GenerateRandomName("ocp-75534", 2)
+				testingClusterName = helper.GenerateRandomName("ocp-75534", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " +
-					clusterName + " " + strings.Join(flags, " ") + " " + "--mode auto -y"
+					testingClusterName + " " + strings.Join(flags, " ") + " " + "--mode auto -y"
 				rosalCommand := config.GenerateCommand(command)
-
+				fmt.Println("debug command is: ", rosalCommand.GetFullCommand())
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+
 				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", clusterName)))
+				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
 
 				By("Check the install logs of the hypershift cluster")
 				Eventually(func() (string, error) {
-					output, err := clusterService.InstallLog(clusterName)
+					output, err := clusterService.InstallLog(testingClusterName)
 					return output.String(), err
 				}, time.Minute*10, time.Second*30).Should(And(
-					ContainSubstring("hostedclusters %s Version", clusterName),
-					ContainSubstring("hostedclusters %s Release image is valid", clusterName)))
+					ContainSubstring("hostedclusters %s Version", testingClusterName),
+					ContainSubstring("hostedclusters %s Release image is valid", testingClusterName)))
 
 				By("Check the install logs of the hypershift cluster with flag --watch")
-				output, err := clusterService.InstallLog(clusterName, "--watch")
+				output, err := clusterService.InstallLog(testingClusterName, "--watch")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Version", clusterName))
-				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Release image is valid", clusterName))
-				Expect(output.String()).Should(ContainSubstring("Cluster '%s' is now ready", clusterName))
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Version", testingClusterName))
+				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Release image is valid", testingClusterName))
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' is now ready", testingClusterName))
 
 				By("Delete the Hypershift cluster")
-				output, err = clusterService.DeleteCluster(clusterName, "-y")
+				output, err = clusterService.DeleteCluster(testingClusterName, "-y")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("Cluster '%s' will start uninstalling now", clusterName))
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' will start uninstalling now", testingClusterName))
 
 				By("Check the uninstall logs of the hypershift cluster")
 				Eventually(func() (string, error) {
-					output, err := clusterService.UnInstallLog(clusterName)
+					output, err := clusterService.UnInstallLog(testingClusterName)
 					return output.String(), err
 				}, time.Minute*20, time.Second*30).
 					Should(
-						ContainSubstring("hostedclusters %s Reconciliation completed successfully", clusterName))
+						ContainSubstring("hostedclusters %s Reconciliation completed successfully", testingClusterName))
 
 				By("Check the uninstall log of the hosted cluster with flag --watch")
-				output, err = clusterService.UnInstallLog(clusterName, "--watch")
+				output, err = clusterService.UnInstallLog(testingClusterName, "--watch")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Reconciliation completed successfully",
-					clusterName))
-				Expect(output.String()).Should(ContainSubstring("Cluster '%s' completed uninstallation", clusterName))
+					testingClusterName))
+				Expect(output.String()).Should(ContainSubstring("Cluster '%s' completed uninstallation", testingClusterName))
+				testingClusterName = ""
 			})
 
 		It("Check single AZ hosted cluster can be created - [id:54413]",
