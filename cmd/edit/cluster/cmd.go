@@ -736,25 +736,12 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// SDN -> OVN Migration
-	var clusterNetworkType string
-	if !cmd.Flags().Changed(ocm.NetworkTypeFlagName) {
-		var ok bool
-		if cluster.Network() == nil {
-			ok = false
-		} else {
-			networkType, ok = cluster.Network().GetType()
-			clusterNetworkType = networkType // Store the cluster's current network type for interactive usage
-		}
-		if !ok {
-			r.Reporter.Errorf("Unable to get cluster's network type")
-			os.Exit(1)
-		}
-	}
-
 	var migrateNetworkType bool
 	// Only prompt user with migrating the cluster's network type when it is not OVN-Kubernetes
-	if interactive.Enabled() && clusterNetworkType != "" && clusterNetworkType != ocm.NetworkTypeOvn &&
-		clusterNetworkType != ocm.NetworkTypeOvnAlias {
+	if cmd.Flags().Changed(ocm.NetworkTypeFlagName) && networkType == ocm.NetworkTypeOvn {
+		interactive.SetEnabled(true)
+	}
+	if interactive.Enabled() && args.networkType != "" {
 
 		migrateNetworkType, err = interactive.GetBool(interactive.Input{
 			Question: "Migrate cluster network type from OpenShiftSDN -> OVN-Kubernetes",
@@ -768,15 +755,6 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		if migrateNetworkType {
-			migrateNetworkType, err = confirmMigration()
-
-			if err != nil {
-				r.Reporter.Errorf("%s", err)
-				os.Exit(1)
-			}
-		}
-
 		if migrateNetworkType && interactive.Enabled() {
 			networkType, err = interactive.GetString(interactive.Input{
 				Question: "Network type for cluster",
@@ -788,19 +766,17 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 
-			ovnSubnets, err := interactive.GetString(interactive.Input{
-				Question: "OVN-Kubernetes internal subnet configuration for cluster",
+			ovnSubnets, _ := interactive.GetString(interactive.Input{
+				Question: "OVN-Kubernetes internal subnet configuration for cluster (key=value format)",
 				Help:     cmd.Flags().Lookup(ocm.OvnInternalSubnetsFlagName).Usage,
 				Default:  ovnInternalSubnets,
-				Options:  []string{ocm.SubnetConfigTransit, ocm.SubnetConfigJoin, ocm.SubnetConfigMasquerade},
 				Required: false,
 			})
-			if err != nil {
-				r.Reporter.Errorf("Expected a valid value: %v", err)
-			}
-			ovnInternalSubnets, err = ocm.ParseAndValidateOvnInternalSubnets(ovnSubnets)
-			if err != nil {
-				r.Reporter.Errorf("Failed to parse '%s': %s", ocm.OvnInternalSubnetsFlagName, err)
+			if ovnSubnets != "" {
+				ovnInternalSubnets, err = ocm.ParseAndValidateOvnInternalSubnets(ovnSubnets)
+				if err != nil {
+					r.Reporter.Errorf("Failed to parse '%s': %s", ocm.OvnInternalSubnetsFlagName, err)
+				}
 			}
 		}
 	}
