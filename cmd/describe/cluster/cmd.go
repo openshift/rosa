@@ -207,6 +207,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	if len(collection.Items().Items()) > 0 {
 		migrationsToShow := map[string]string{}
+		migrationTypes := map[string]string{}
 		for _, migration := range collection.Items().Items() {
 			state, ok := migration.State().GetValue()
 			if !ok {
@@ -214,13 +215,16 @@ func run(cmd *cobra.Command, argv []string) {
 			}
 			if state != cmv1.ClusterMigrationStateValueCompleted {
 				migrationsToShow[migration.ID()] = string(state)
+				migrationTypes[migration.ID()] = string(migration.Type())
 			}
 		}
 
 		if len(migrationsToShow) > 0 {
-			migrationsStr = " - Migrations:\n"
+			migrationsStr = "Migrations:\n"
 			for migrationID, migrationStatus := range migrationsToShow {
-				migrationsStr += fmt.Sprintf("  -%s                    %s\n", migrationID, migrationStatus)
+				migrationsStr += fmt.Sprintf(" - %s \n"+
+					"    - Type:                 %s\n"+
+					"    - State:                %s\n", migrationID, migrationTypes[migrationID], migrationStatus)
 			}
 		}
 	}
