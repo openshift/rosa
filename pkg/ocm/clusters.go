@@ -93,13 +93,14 @@ type Spec struct {
 	AvailabilityZones []string
 
 	// Network config
-	NetworkType string
-	MachineCIDR net.IPNet
-	ServiceCIDR net.IPNet
-	PodCIDR     net.IPNet
-	HostPrefix  int
-	Private     *bool
-	PrivateLink *bool
+	NetworkType         string
+	SubnetConfiguration string
+	MachineCIDR         net.IPNet
+	ServiceCIDR         net.IPNet
+	PodCIDR             net.IPNet
+	HostPrefix          int
+	Private             *bool
+	PrivateLink         *bool
 
 	// Properties
 	CustomProperties map[string]string
@@ -617,6 +618,39 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 
 	if config.DisableWorkloadMonitoring != nil {
 		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
+	}
+
+	// SDN -> OVN Migration
+	if config.NetworkType == NetworkTypes[1] {
+		// Create a request body for the specific cluster migration.
+		requestBuilder := v1.ClusterMigrationBuilder{}
+		requestBuilder.Type(v1.ClusterMigrationTypeSdnToOvn) // Type is required
+
+		if config.SubnetConfiguration != "" {
+			// Create a builder for the specific migration type's configuration if necessary
+			sdnToOvnBuilder := &v1.SdnToOvnClusterMigrationBuilder{}
+			switch config.SubnetConfiguration {
+			case "transit":
+				sdnToOvnBuilder.TransitIpv4("192.168.255.0/24")
+			case "masquerade":
+				sdnToOvnBuilder.MasqueradeIpv4("192.168.255.0/24")
+			case "join":
+				sdnToOvnBuilder.JoinIpv4("192.168.255.0/24")
+			}
+			requestBuilder.SdnToOvn(sdnToOvnBuilder)
+		}
+
+		requestBody, err := requestBuilder.Build()
+		if err != nil {
+			return errors.UserWrapf(err, "Unable to create cluster migration request")
+		}
+
+		// Send the request to add a cluster migration.
+		response, err := c.ocm.ClustersMgmt().V1().Clusters().
+			Cluster(cluster.ID()).Migrations().Add().Body(requestBody).Send()
+		if err != nil {
+			return handleErr(response.Error(), err)
+		}
 	}
 
 	if config.HTTPProxy != nil || config.HTTPSProxy != nil || config.NoProxy != nil {
