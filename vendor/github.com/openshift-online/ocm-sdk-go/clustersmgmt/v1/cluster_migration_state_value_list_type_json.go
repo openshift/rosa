@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/helpers"
 )
 
-// MarshalClusterMigrationStateList writes a list of values of the 'cluster_migration_state' type to
+// MarshalClusterMigrationStateValueList writes a list of values of the 'cluster_migration_state_value' type to
 // the given writer.
-func MarshalClusterMigrationStateList(list []*ClusterMigrationState, writer io.Writer) error {
+func MarshalClusterMigrationStateValueList(list []ClusterMigrationStateValue, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	WriteClusterMigrationStateList(list, stream)
+	WriteClusterMigrationStateValueList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,38 @@ func MarshalClusterMigrationStateList(list []*ClusterMigrationState, writer io.W
 	return stream.Error
 }
 
-// WriteClusterMigrationStateList writes a list of value of the 'cluster_migration_state' type to
+// WriteClusterMigrationStateValueList writes a list of value of the 'cluster_migration_state_value' type to
 // the given stream.
-func WriteClusterMigrationStateList(list []*ClusterMigrationState, stream *jsoniter.Stream) {
+func WriteClusterMigrationStateValueList(list []ClusterMigrationStateValue, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		WriteClusterMigrationState(value, stream)
+		stream.WriteString(string(value))
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalClusterMigrationStateList reads a list of values of the 'cluster_migration_state' type
+// UnmarshalClusterMigrationStateValueList reads a list of values of the 'cluster_migration_state_value' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalClusterMigrationStateList(source interface{}) (items []*ClusterMigrationState, err error) {
+func UnmarshalClusterMigrationStateValueList(source interface{}) (items []ClusterMigrationStateValue, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = ReadClusterMigrationStateList(iterator)
+	items = ReadClusterMigrationStateValueList(iterator)
 	err = iterator.Error
 	return
 }
 
-// ReadClusterMigrationStateList reads list of values of the ”cluster_migration_state' type from
+// ReadClusterMigrationStateValueList reads list of values of the ”cluster_migration_state_value' type from
 // the given iterator.
-func ReadClusterMigrationStateList(iterator *jsoniter.Iterator) []*ClusterMigrationState {
-	list := []*ClusterMigrationState{}
+func ReadClusterMigrationStateValueList(iterator *jsoniter.Iterator) []ClusterMigrationStateValue {
+	list := []ClusterMigrationStateValue{}
 	for iterator.ReadArray() {
-		item := ReadClusterMigrationState(iterator)
+		text := iterator.ReadString()
+		item := ClusterMigrationStateValue(text)
 		list = append(list, item)
 	}
 	return list

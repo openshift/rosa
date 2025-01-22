@@ -93,13 +93,13 @@ func WriteClusterMigration(object *ClusterMigration, stream *jsoniter.Stream) {
 		WriteSdnToOvnClusterMigration(object.sdnToOvn, stream)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&64 != 0 && object.state != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("state")
-		stream.WriteString(string(object.state))
+		WriteClusterMigrationState(object.state, stream)
 		count++
 	}
 	present_ = object.bitmap_&128 != 0
@@ -171,8 +171,7 @@ func ReadClusterMigration(iterator *jsoniter.Iterator) *ClusterMigration {
 			object.sdnToOvn = value
 			object.bitmap_ |= 32
 		case "state":
-			text := iterator.ReadString()
-			value := ClusterMigrationState(text)
+			value := ReadClusterMigrationState(iterator)
 			object.state = value
 			object.bitmap_ |= 64
 		case "type":
