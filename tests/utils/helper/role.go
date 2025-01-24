@@ -26,6 +26,16 @@ func ExtractCommandsToCreateAWSResources(bf bytes.Buffer) []string {
 		spaceRegex := regexp.MustCompile(`\s+`)
 		command = spaceRegex.ReplaceAllString(command, " ")
 		command = strings.ReplaceAll(command, "'", "")
+		// convert json string of --policy-document which account roles
+		// of shared-vpc hosted-cp cluster
+		if strings.Contains(command, "--policy-document {") {
+			start := strings.Index(command, "--policy-document {") + len("--policy-document ")
+			end := strings.Index(command, "--policy-name") - 1
+			jsonString := command[start:end]
+			jsonString = strings.ReplaceAll(jsonString, " ", "")
+
+			command = command[:start] + jsonString + command[end:]
+		}
 		newCommands = append(newCommands, command)
 
 	}

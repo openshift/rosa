@@ -1175,6 +1175,7 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 		accountRolePrefixesNeedCleanup []string
 		path                           = "/aa/bb/"
 		AWSAccountID                   string
+		defaultDir                     string
 	)
 	BeforeEach(func() {
 		By("Init the client")
@@ -1192,14 +1193,90 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 		By("Cleanup account-roles")
 		if len(accountRolePrefixesNeedCleanup) > 0 {
 			for _, v := range accountRolePrefixesNeedCleanup {
-				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+				_, _ = ocmResourceService.DeleteAccountRole("--mode", "auto",
 					"--prefix", v,
 					"-y")
 
-				Expect(err).To(BeNil())
 			}
 		}
 	})
+	It("Create/Delete account roles for hosted-cp shared vpc cluster in manual mode - [id:77962]",
+		labels.Critical, labels.Runtime.OCMResources,
+		func() {
+			var (
+				accrolePrefix1     string
+				route53RoleArn     = "arn:aws:iam::641733028092:role/citest-sharevpc-role"
+				vpcEndpointRoleArn = "arn:aws:iam::641733028092:role/citest-sharevpc-vpc-endpoint-role"
+			)
+
+			By("Get the default dir")
+			defaultDir = rosaClient.Runner.GetDir()
+			defer func() {
+				By("Go back original by setting runner dir")
+				rosaClient.Runner.SetDir(defaultDir)
+			}()
+
+			By("Create account roles for hosted-cp shared vpc in manual mode")
+			accrolePrefix1 = helper.GenerateRandomString(5)
+			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, accrolePrefix1)
+			output, err := ocmResourceService.CreateAccountRole("--mode", "manual",
+				"--prefix", accrolePrefix1,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+			commands := helper.ExtractCommandsToCreateAWSResources(output)
+
+			for _, command := range commands {
+				if strings.HasPrefix(command, "aws iam create-policy") {
+					Expect(command).To(ContainSubstring("Key=hcp-shared-vpc,Value=true"))
+					Expect(command).To(ContainSubstring("Key=red-hat-managed,Value=true"))
+				}
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+
+			By("List account roles to check above roles created")
+			accountRoleList, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			installerRole := accountRoleList.InstallerRole(accrolePrefix1, true)
+			installerRoleName := installerRole.RoleName
+
+			By("Get the installer role to check the attached policies")
+			awsClient, err := aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			aps, err := awsClient.IamClient.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
+				RoleName: &installerRoleName,
+			})
+			Expect(err).To(BeNil())
+			Expect(len(aps.AttachedPolicies)).To(Equal(3))
+
+			By("Delete account-roles without --delete-hcp-shared-vpc-policies")
+			output, err = ocmResourceService.DeleteAccountRole("--mode", "manual",
+				"--prefix", accrolePrefix1,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).ToNot(ContainSubstring("aws iam delete-policy"))
+
+			By("Delete account-roles with --delete-hcp-shared-vpc-policies")
+			output, err = ocmResourceService.DeleteAccountRole("--mode", "manual",
+				"--prefix", accrolePrefix1,
+				"--hosted-cp",
+				"--delete-hcp-shared-vpc-policies",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("aws iam delete-policy"))
+
+			commands = helper.ExtractCommandsToDeleteAccountRoles(output)
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+		})
+
 	It("Create/Delete account roles for hosted-cp shared vpc cluster in auto mode - [id:77829]",
 		labels.Critical, labels.Runtime.OCMResources,
 		func() {

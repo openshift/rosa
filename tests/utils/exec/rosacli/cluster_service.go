@@ -123,6 +123,7 @@ type ClusterDescription struct {
 	EtcdKmsKeyARN            string                   `yaml:"Etcd KMS key ARN,omitempty"`
 	RegistryConfiguration    []map[string]interface{} `yaml:"Registry Configuration,omitempty"`
 	ZeroEgress               string                   `yaml:"Zero Egress,omitempty"`
+	SharedVPCConfig          []map[string]string      `yaml:"Shared VPC Config,omitempty"`
 }
 
 // Pasrse the result of 'rosa list cluster' to the ClusterList struct

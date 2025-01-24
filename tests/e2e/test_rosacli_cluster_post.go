@@ -945,6 +945,50 @@ var _ = Describe("Post-Check testing for cluster creation",
 					}
 				}
 			})
+		It("to verify shared-vpc hosted-cp cluster is created successfully and can be edited- [id:78240]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := handler.LoadProfileYamlFileByENV()
+
+				By("Check if it is a shared-vpc hosted-cp cluster")
+				if !(profile.ClusterConfig.HCP && profile.ClusterConfig.SharedVPC) {
+					Skip("Skip this case as it is only for shared-vpc hosted-cp cluster")
+				}
+
+				By("Retrieve oidc config from cluster config")
+				clusterID = config.GetClusterID()
+
+				By("Describe cluster")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterDescription, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				for _, v := range clusterDescription.SharedVPCConfig {
+					for _, vv := range v {
+						Expect(vv).ToNot(BeEmpty())
+					}
+				}
+
+				originalAdditionalPrincals := clusterDescription.AdditionalPrincipals
+
+				By("Edit the additional allowed principals")
+				fakeAP := "arn:aws:iam::123456789012:role/fake"
+				_, err = clusterService.EditCluster(clusterID,
+					"--additional-allowed-principals", fakeAP)
+				Expect(err).To(BeNil())
+				defer func() {
+					_, err = clusterService.EditCluster(clusterID,
+						"--additional-allowed-principals", originalAdditionalPrincals)
+					Expect(err).To(BeNil())
+				}()
+
+				By("Check the additional allowed principals")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterDescription, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clusterDescription.AdditionalPrincipals).To(ContainSubstring(fakeAP))
+			})
 	})
 
 var _ = Describe("Post-Check testing for cluster clusters with the --disable-scp-checks flag",
