@@ -1258,3 +1258,233 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				Expect(err).To(BeNil())
 			})
 	})
+
+var _ = Describe("Create/Delete operator roles for hosted-cp shared vpc", labels.Feature.AccountRoles, func() {
+	defer GinkgoRecover()
+
+	var (
+		rosaClient          *rosacli.Client
+		ocmResourceService  rosacli.OCMResourceService
+		path                = "/aa/bb/"
+		managedOIDCConfigID string
+		accrolePrefix       string
+		operatorRolePrefix  string
+		defaultDir          string
+	)
+	BeforeEach(func() {
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		ocmResourceService = rosaClient.OCMResource
+
+	})
+
+	AfterEach(func() {
+		By("Cleanup account-roles")
+		if accrolePrefix != "" {
+			_, _ = ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"-y")
+		}
+
+		By("Cleanup operator-roles")
+		if operatorRolePrefix != "" {
+			_, _ = ocmResourceService.DeleteOperatorRoles(
+				"--prefix", operatorRolePrefix,
+				"--mode", "auto",
+				"-y")
+		}
+
+		By("Cleanup oidc-config")
+		if managedOIDCConfigID != "" {
+			_, _ = ocmResourceService.DeleteOIDCConfig(
+				"--oidc-config-id", managedOIDCConfigID,
+				"--mode", "auto",
+				"-y")
+		}
+	})
+	It("Create/Delete operator roles for hosted-cp shared vpc cluster in manual mode - [id:77910]",
+		labels.Critical, labels.Runtime.OCMResources,
+		func() {
+			var (
+				route53RoleArn     = "arn:aws:iam::641733028092:role/citest-sharevpc-role"
+				vpcEndpointRoleArn = "arn:aws:iam::641733028092:role/citest-sharevpc-vpc-endpoint-role"
+			)
+			By("Get the default dir")
+			defaultDir = rosaClient.Runner.GetDir()
+			defer func() {
+				By("Go back original by setting runner dir")
+				rosaClient.Runner.SetDir(defaultDir)
+			}()
+
+			By("Create oidc-config")
+			output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Created OIDC provider with ARN"))
+			oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+
+			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+			Expect(err).To(BeNil())
+
+			By("Create account roles for hosted-cp shared vpc in manual mode")
+			accrolePrefix = helper.GenerateRandomString(5)
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+
+			By("List account roles to check above roles created")
+			accountRoleList, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			installerRole := accountRoleList.InstallerRole(accrolePrefix, true)
+			installerRoleArn := installerRole.RoleArn
+
+			By("Create operator roles for hosted-cp shared vpc in manual mode")
+			operatorRolePrefix = helper.GenerateRandomString(5)
+			output, err = ocmResourceService.CreateOperatorRoles(
+				"--oidc-config-id", managedOIDCConfigID,
+				"--installer-role-arn", installerRoleArn,
+				"--mode", "manual",
+				"--prefix", operatorRolePrefix,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+
+			commands := helper.ExtractCommandsToCreateAWSResources(output)
+
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+
+			By("Check the ingress and control-plan operator roles attaching assume role policy")
+			operatorRoleAttachPolicyNumMap := map[string]int{
+				fmt.Sprintf("%s-openshift-ingress-operator-cloud-credentials", operatorRolePrefix): 2,
+				fmt.Sprintf("%s-kube-system-control-plane-operator", operatorRolePrefix):           3,
+			}
+
+			awsClient, err := aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			for roleName, num := range operatorRoleAttachPolicyNumMap {
+				aps, err := awsClient.IamClient.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
+					RoleName: &roleName,
+				})
+				Expect(err).To(BeNil())
+				Expect(len(aps.AttachedPolicies)).To(Equal(num))
+			}
+
+			By("Delete operator roles in manual mode")
+			output, err = ocmResourceService.DeleteOperatorRoles(
+				"--prefix", operatorRolePrefix,
+				"--mode", "manual",
+				"-y")
+			Expect(err).To(BeNil())
+
+			commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
+			for _, command := range commands {
+				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				Expect(err).To(BeNil())
+			}
+		})
+	It("Create/Delete operator roles for hosted-cp shared vpc cluster in auto mode - [id:77866]",
+		labels.Critical, labels.Runtime.OCMResources,
+		func() {
+			var (
+				route53RoleArn     = "arn:aws:iam::641733028092:role/citest-sharevpc-role"
+				vpcEndpointRoleArn = "arn:aws:iam::641733028092:role/citest-sharevpc-vpc-endpoint-role"
+			)
+			By("Create oidc-config")
+			output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("Created OIDC provider with ARN"))
+			oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+			oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+
+			managedOIDCConfigID, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+			Expect(err).To(BeNil())
+
+			By("Create account roles for hosted-cp shared vpc in manual mode")
+			accrolePrefix = helper.GenerateRandomString(5)
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+				"--prefix", accrolePrefix,
+				"--path", path,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+
+			By("List account roles to check above roles created")
+			accountRoleList, _, err := ocmResourceService.ListAccountRole()
+			Expect(err).To(BeNil())
+			installerRole := accountRoleList.InstallerRole(accrolePrefix, true)
+			installerRoleArn := installerRole.RoleArn
+
+			By("Create operator roles for hosted-cp shared vpc in auto mode")
+			operatorRolePrefix = helper.GenerateRandomString(5)
+			output, err = ocmResourceService.CreateOperatorRoles(
+				"--oidc-config-id", managedOIDCConfigID,
+				"--installer-role-arn", installerRoleArn,
+				"--mode", "auto",
+				"--prefix", operatorRolePrefix,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).Should(ContainSubstring("Created role"))
+
+			By("Check the ingress and control-plan operator roles attaching assume role policy")
+			operatorRoleAttachPolicyNumMap := map[string]int{
+				fmt.Sprintf("%s-openshift-ingress-operator-cloud-credentials", operatorRolePrefix): 2,
+				fmt.Sprintf("%s-kube-system-control-plane-operator", operatorRolePrefix):           3,
+			}
+
+			awsClient, err := aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
+			for roleName, num := range operatorRoleAttachPolicyNumMap {
+				aps, err := awsClient.IamClient.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
+					RoleName: &roleName,
+				})
+				Expect(err).To(BeNil())
+				Expect(len(aps.AttachedPolicies)).To(Equal(num))
+			}
+
+			By("Delete operator roles in auto mode with --delete-hcp-shared-vpc-policies")
+			output, err = ocmResourceService.DeleteOperatorRoles(
+				"--prefix", operatorRolePrefix,
+				"--delete-hcp-shared-vpc-policies",
+				"--mode", "auto",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).Should(ContainSubstring("still attached to other resources"))
+
+			By("Create operator roles for hosted-cp shared vpc in auto mode again")
+			output, err = ocmResourceService.CreateOperatorRoles(
+				"--oidc-config-id", managedOIDCConfigID,
+				"--installer-role-arn", installerRoleArn,
+				"--mode", "auto",
+				"--prefix", operatorRolePrefix,
+				"--route53-role-arn", route53RoleArn,
+				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
+				"--hosted-cp",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).Should(ContainSubstring("Created role"))
+
+			By("Delete operator roles in auto mode without --delete-hcp-shared-vpc-policies=false")
+			output, err = ocmResourceService.DeleteOperatorRoles(
+				"--prefix", operatorRolePrefix,
+				"--delete-hcp-shared-vpc-policies=false",
+				"--mode", "auto",
+				"-y")
+			Expect(err).To(BeNil())
+			Expect(output.String()).ShouldNot(ContainSubstring("still attached to other resources"))
+		})
+})
