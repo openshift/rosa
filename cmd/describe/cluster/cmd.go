@@ -201,8 +201,7 @@ func run(cmd *cobra.Command, argv []string) {
 	migrationsStr := ""
 	collection, err := r.OCMClient.FetchClusterMigrations(cluster.ID())
 	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster migrations: %v", err)
-		os.Exit(1)
+		r.Reporter.Warnf("Failed to get cluster migrations: %v", err)
 	}
 
 	if len(collection.Items().Items()) > 0 {
