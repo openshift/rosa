@@ -102,6 +102,27 @@ func run(cmd *cobra.Command, argv []string) {
 	var upgradeState *cmv1.UpgradePolicyState
 	var controlPlaneScheduledUpgrade *cmv1.ControlPlaneUpgradePolicy
 
+	// SDN -> OVN Migration Status
+	migrationsStr := ""
+	collection, err := r.OCMClient.FetchClusterMigrations(cluster.ID())
+	migrations := map[string]*cmv1.ClusterMigration{}
+	if err != nil {
+		if !strings.Contains(err.Error(), "is not enabled for this organization") {
+			r.Reporter.Warnf("Failed to get cluster migrations: %v", err)
+		}
+	} else if len(collection.Items().Items()) > 0 {
+
+		for _, migration := range collection.Items().Items() {
+			state, ok := migration.State().GetValue()
+			if !ok {
+				r.Reporter.Warnf("Failed to get cluster migration state")
+			}
+			if state != cmv1.ClusterMigrationStateValueCompleted {
+				migrations[migration.ID()] = migration
+			}
+		}
+	}
+
 	if !isHypershift {
 		scheduledUpgrade, upgradeState, err = r.OCMClient.GetScheduledUpgrade(cluster.ID())
 		if err != nil {
@@ -110,7 +131,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		if output.HasFlag() {
-			f, err := formatCluster(cluster, scheduledUpgrade, upgradeState, displayName)
+			f, err := formatCluster(cluster, scheduledUpgrade, upgradeState, displayName, migrations)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -130,7 +151,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 
 		if output.HasFlag() {
-			f, err := formatClusterHypershift(cluster, controlPlaneScheduledUpgrade, displayName)
+			f, err := formatClusterHypershift(cluster, controlPlaneScheduledUpgrade, displayName, migrations)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
@@ -198,32 +219,17 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// SDN -> OVN Migration Status
-	migrationsStr := ""
-	collection, err := r.OCMClient.FetchClusterMigrations(cluster.ID())
-	if err != nil {
-		r.Reporter.Warnf("Failed to get cluster migrations: %v", err)
-	}
-
 	if len(collection.Items().Items()) > 0 {
-		migrationsToShow := map[string]string{}
-		migrationTypes := map[string]string{}
-		for _, migration := range collection.Items().Items() {
-			state, ok := migration.State().GetValue()
-			if !ok {
-				r.Reporter.Errorf("Failed to get cluster migration state")
-			}
-			if state != cmv1.ClusterMigrationStateValueCompleted {
-				migrationsToShow[migration.ID()] = string(state)
-				migrationTypes[migration.ID()] = string(migration.Type())
-			}
-		}
 
-		if len(migrationsToShow) > 0 {
+		if len(migrations) > 0 {
 			migrationsStr = "Migrations:\n"
-			for migrationID, migrationStatus := range migrationsToShow {
+			for migrationID, migration := range migrations {
 				migrationsStr += fmt.Sprintf(" - %s \n"+
 					"    - Type:                 %s\n"+
-					"    - State:                %s\n", migrationID, migrationTypes[migrationID], migrationStatus)
+					"    - State:                %s\n"+
+					"    - Description:          %s\n", migrationID, migration.Type(), migration.State().Value(),
+					migration.State().Description(),
+				)
 			}
 		}
 	}
@@ -845,7 +851,8 @@ func getUseworkloadMonitoring(disabled bool) string {
 }
 
 func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
-	upgradeState *cmv1.UpgradePolicyState, displayName string) (map[string]interface{}, error) {
+	upgradeState *cmv1.UpgradePolicyState, displayName string,
+	migrations map[string]*cmv1.ClusterMigration) (map[string]interface{}, error) {
 
 	var b bytes.Buffer
 	err := cmv1.MarshalCluster(cluster, &b)
@@ -869,12 +876,23 @@ func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
 	}
 	ret["displayName"] = displayName
 
+	allMigrations := make([]map[string]interface{}, 0)
+	for k, v := range migrations {
+		migration := make(map[string]interface{})
+		migration["type"] = v.Type()
+		migration["state"] = v.State().Value()
+		migration["id"] = k
+		allMigrations = append(allMigrations, migration)
+	}
+
+	ret["migrations"] = allMigrations
+
 	return ret, nil
 }
 
 func formatClusterHypershift(cluster *cmv1.Cluster,
 	scheduledUpgrade *cmv1.ControlPlaneUpgradePolicy,
-	displayName string) (map[string]interface{}, error) {
+	displayName string, migrations map[string]*cmv1.ClusterMigration) (map[string]interface{}, error) {
 
 	var b bytes.Buffer
 	err := cmv1.MarshalCluster(cluster, &b)
@@ -897,6 +915,17 @@ func formatClusterHypershift(cluster *cmv1.Cluster,
 		ret["scheduledUpgrade"] = upgrade
 	}
 	ret["display_name"] = displayName
+
+	allMigrations := make([]map[string]interface{}, 0)
+	for k, v := range migrations {
+		migration := make(map[string]interface{})
+		migration["type"] = v.Type()
+		migration["state"] = v.State().Value()
+		migration["id"] = k
+		allMigrations = append(allMigrations, migration)
+	}
+
+	ret["migrations"] = allMigrations
 
 	return ret, nil
 }
