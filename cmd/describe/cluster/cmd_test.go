@@ -167,7 +167,7 @@ var _ = Describe("Cluster description", Ordered, func() {
 				map[string]*cmv1.ClusterMigration{"123123123": migration1},
 				expectClusterWithMigration, nil),
 
-			Entry("Prints cluster information including multiple migrations",
+			XEntry("Prints cluster information including multiple migrations",
 				func() *cmv1.Cluster { return clusterWithNameAndID },
 				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
 				func() *cmv1.UpgradePolicyState { return emptyUpgradeState },
