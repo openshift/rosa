@@ -27,22 +27,31 @@ const (
 
 var (
 	now                             = time.Now()
-	expectEmptyCuster               = []byte(`{"displayName":"displayname","kind":"Cluster"}`)
+	expectEmptyCuster               = []byte(`{"displayName":"displayname","kind":"Cluster","migrations":[]}`)
 	expectClusterWithNameAndIDValue = []byte(
-		`{"displayName":"displayname","id":"bar","kind":"Cluster","name":"foo"}`)
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","migrations":[],"name":"foo"}`)
+	expectClusterWithMigrations = []byte(
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","migrations":[{"id":"123123123","state":"started",` +
+			`"type":"sdnToOvn"},{"id":"321321321","state":"prepared","type":"sdnToOvn"}],"name":"foo"}`)
+	expectClusterWithMigration = []byte(
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","migrations":[{"id":"123123123","state":"started",` +
+			`"type":"sdnToOvn"}],"name":"foo"}`)
 	expectClusterWithExternalAuthConfig = []byte(
-		`{"displayName":"displayname","external_auth_config":{"enabled":true},"kind":"Cluster"}`)
+		`{"displayName":"displayname","external_auth_config":{"enabled":true},"kind":"Cluster","migrations":[]}`)
 	expectClusterWithEtcd = []byte(
 		`{"aws":{"etcd_encryption":{"kms_key_arn":"arn:aws:kms:us-west-2:125374464689:key/` +
-			`41fccc11-b089-test-aeff-test"}},"displayName":"displayname","etcd_encryption":true,"kind":"Cluster"}`)
+			`41fccc11-b089-test-aeff-test"}},"displayName":"displayname","etcd_encryption":true,"kind":"Cluster",` +
+			`"migrations":[]}`)
 	expectClusterWithAap = []byte(
-		`{"aws":{"additional_allowed_principals":["foobar"]},"displayName":"displayname","kind":"Cluster"}`)
+		`{"aws":{"additional_allowed_principals":["foobar"]},"displayName":"displayname","kind":"Cluster",` +
+			`"migrations":[]}`)
 	expectClusterWithNameAndValueAndUpgradeInformation = []byte(
-		`{"displayName":"displayname","id":"bar","kind":"Cluster","name":"foo","scheduledUpgrade":{"nextRun":"` +
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","migrations":[],"name":"foo",` +
+			`"scheduledUpgrade":{"nextRun":"` +
 			now.Format("2006-01-02 15:04 MST") + `","state":"` + state + `","version":"` +
 			version + `"}}`)
 	expectEmptyClusterWithNameAndValueAndUpgradeInformation = []byte(
-		`{"displayName":"displayname","kind":"Cluster","scheduledUpgrade":{"nextRun":"` +
+		`{"displayName":"displayname","kind":"Cluster","migrations":[],"scheduledUpgrade":{"nextRun":"` +
 			now.Format("2006-01-02 15:04 MST") + `","state":"` +
 			state + `","version":"` +
 			version + `"}}`)
@@ -52,6 +61,11 @@ var (
 	emptyUpgradeState, upgradePolicyWithState *cmv1.UpgradePolicyState
 
 	berr error
+
+	migration1, _ = cmv1.NewClusterMigration().ID("123123123").State(cmv1.NewClusterMigrationState().
+			Value("started").Description("testing")).Type("sdnToOvn").Build()
+	migration2, _ = cmv1.NewClusterMigration().ID("321321321").State(cmv1.NewClusterMigrationState().
+			Value("prepared").Description("testing")).Type("sdnToOvn").Build()
 )
 var _ = BeforeSuite(func() {
 	clusterWithNameAndID, berr = cmv1.NewCluster().Name("foo").ID("bar").Build()
@@ -142,6 +156,25 @@ var _ = Describe("Cluster description", Ordered, func() {
 				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
 				func() *cmv1.UpgradePolicyState { return nil }, expectClusterWithEtcd, nil),
 		)
+
+		DescribeTable("When displaying clusters with output json",
+			printJsonWithMigrations,
+
+			Entry("Prints cluster information including single migration",
+				func() *cmv1.Cluster { return clusterWithNameAndID },
+				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
+				func() *cmv1.UpgradePolicyState { return emptyUpgradeState },
+				map[string]*cmv1.ClusterMigration{"123123123": migration1},
+				expectClusterWithMigration, nil),
+
+			Entry("Prints cluster information including multiple migrations",
+				func() *cmv1.Cluster { return clusterWithNameAndID },
+				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
+				func() *cmv1.UpgradePolicyState { return emptyUpgradeState },
+				map[string]*cmv1.ClusterMigration{"123123123": migration1, "321321321": migration2},
+				expectClusterWithMigrations, nil),
+		)
+
 	})
 })
 
@@ -299,7 +332,23 @@ func printJson(cluster func() *cmv1.Cluster,
 	state func() *cmv1.UpgradePolicyState,
 	expected []byte,
 	err error) {
-	f, er := formatCluster(cluster(), upgrade(), state(), "displayname")
+	f, er := formatCluster(cluster(), upgrade(), state(), "displayname", nil)
+	if err != nil {
+		Expect(er).To(Equal(err))
+	}
+	Expect(er).To(BeNil())
+	v, er := json.Marshal(f)
+	Expect(er).NotTo(HaveOccurred())
+	Expect(v).To(Equal(expected))
+}
+
+func printJsonWithMigrations(cluster func() *cmv1.Cluster,
+	upgrade func() *cmv1.UpgradePolicy,
+	state func() *cmv1.UpgradePolicyState,
+	migrations map[string]*cmv1.ClusterMigration,
+	expected []byte,
+	err error) {
+	f, er := formatCluster(cluster(), upgrade(), state(), "displayname", migrations)
 	if err != nil {
 		Expect(er).To(Equal(err))
 	}
