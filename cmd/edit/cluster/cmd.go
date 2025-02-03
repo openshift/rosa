@@ -191,7 +191,7 @@ func init() {
 		"Account ID used for billing subscriptions purchased through the AWS console for ROSA",
 	)
 
-	flags.StringVar(
+	/*flags.StringVar(
 		&args.networkType,
 		"network-type",
 		"",
@@ -206,7 +206,7 @@ func init() {
 			"OVN-Kubernetes. Must be supplied as a string=value pair with any of 'join', 'transit', 'masquerade' "+
 			"followed by a CIDR. \nExample: '--ovn-internal-subnets=\"join=192.168.255.0/24,transit=192.168.255.0/24,"+
 			"masquerade=192.168.255.0/24\"'",
-	)
+	)*/
 }
 
 func run(cmd *cobra.Command, _ []string) {
