@@ -193,7 +193,7 @@ func init() {
 
 	flags.StringVar(
 		&args.networkType,
-		"network-type",
+		ocm.NetworkTypeFlagName,
 		"",
 		"Migrate a cluster's network type from OpenShiftSDN to OVN-Kubernetes",
 	)
@@ -207,6 +207,9 @@ func init() {
 			"followed by a CIDR. \nExample: '--ovn-internal-subnets=\"join=192.168.255.0/24,transit=192.168.255.0/24,"+
 			"masquerade=192.168.255.0/24\"'",
 	)
+
+	flags.MarkHidden(ocm.OvnInternalSubnetsFlagName)
+	flags.MarkHidden(ocm.NetworkTypeFlagName)
 }
 
 func run(cmd *cobra.Command, _ []string) {
