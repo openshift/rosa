@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
@@ -78,6 +79,14 @@ func (c *ClusterClient) Update() *ClusterUpdateRequest {
 		transport: c.transport,
 		path:      c.path,
 	}
+}
+
+// Status returns the target 'cluster_status' resource.
+func (c *ClusterClient) Status() *ClusterStatusClient {
+	return NewClusterStatusClient(
+		c.transport,
+		path.Join(c.path, "status"),
+	)
 }
 
 // ClusterPollRequest is the request for the Poll method.
