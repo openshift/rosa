@@ -3,6 +3,19 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.459
+- Update model version to v0.0.411
+  - Update json values for SDN to OVN Cluster Migration configuration properties
+
+## 0.1.458
+- Update metamodel version to v0.0.65
+  - Enhance 'ref' mechanism
+- Update model versiont to v0.0.410
+  - Add ClusterStatus to aro_hcp
+
+## 0.1.457
+- Fix leadership/flag not respecting initial context supplied
+
 ## 0.1.456
 - Update model version to v0.0.409
   - Update cluster migration state to match API object
