@@ -18,7 +18,7 @@ limitations under the License.
 
 package info
 
-const DefaultVersion = "1.2.50-RC2"
+const DefaultVersion = "1.2.50-RC3"
 
 // Build contains the short Git SHA of the CLI at the point it was build. Set via `-ldflags` at build time
 var Build = "local"
