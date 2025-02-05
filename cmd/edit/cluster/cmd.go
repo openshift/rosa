@@ -772,7 +772,7 @@ func run(cmd *cobra.Command, _ []string) {
 			ovnSubnets, _ := interactive.GetString(interactive.Input{
 				Question: "OVN-Kubernetes internal subnet configuration for cluster (key=value format)",
 				Help:     cmd.Flags().Lookup(ocm.OvnInternalSubnetsFlagName).Usage,
-				Default:  ovnInternalSubnets,
+				Default:  args.ovnInternalSubnets,
 				Required: false,
 			})
 			if ovnSubnets != "" {
