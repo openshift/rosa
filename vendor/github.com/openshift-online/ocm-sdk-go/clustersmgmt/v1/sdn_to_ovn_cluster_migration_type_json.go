@@ -47,7 +47,7 @@ func WriteSdnToOvnClusterMigration(object *SdnToOvnClusterMigration, stream *jso
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("join_ipv_4")
+		stream.WriteObjectField("join_ipv4")
 		stream.WriteString(object.joinIpv4)
 		count++
 	}
@@ -56,7 +56,7 @@ func WriteSdnToOvnClusterMigration(object *SdnToOvnClusterMigration, stream *jso
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("masquerade_ipv_4")
+		stream.WriteObjectField("masquerade_ipv4")
 		stream.WriteString(object.masqueradeIpv4)
 		count++
 	}
@@ -65,7 +65,7 @@ func WriteSdnToOvnClusterMigration(object *SdnToOvnClusterMigration, stream *jso
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("transit_ipv_4")
+		stream.WriteObjectField("transit_ipv4")
 		stream.WriteString(object.transitIpv4)
 	}
 	stream.WriteObjectEnd()
@@ -92,15 +92,15 @@ func ReadSdnToOvnClusterMigration(iterator *jsoniter.Iterator) *SdnToOvnClusterM
 			break
 		}
 		switch field {
-		case "join_ipv_4":
+		case "join_ipv4":
 			value := iterator.ReadString()
 			object.joinIpv4 = value
 			object.bitmap_ |= 1
-		case "masquerade_ipv_4":
+		case "masquerade_ipv4":
 			value := iterator.ReadString()
 			object.masqueradeIpv4 = value
 			object.bitmap_ |= 2
-		case "transit_ipv_4":
+		case "transit_ipv4":
 			value := iterator.ReadString()
 			object.transitIpv4 = value
 			object.bitmap_ |= 4
