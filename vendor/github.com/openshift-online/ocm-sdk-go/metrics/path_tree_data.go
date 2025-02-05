@@ -154,7 +154,9 @@ var pathTreeData = `{
     "aro_hcp": {
       "v1alpha1": {
         "clusters": {
-          "-": null
+          "-": {
+            "status": null
+          }
         }
       }
     },
