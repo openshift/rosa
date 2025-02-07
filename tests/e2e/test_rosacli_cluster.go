@@ -2116,6 +2116,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			command        string
 			rosalCommand   config.Command
 			clusterHandler handler.ClusterHandler
+			err            error
 		)
 		BeforeEach(func() {
 
@@ -2131,7 +2132,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
 			profile.NamePrefix = constants.DefaultNamePrefix
-			clusterHandler, err := handler.NewTempClusterHandler(rosaClient, profile)
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
 			Expect(err).To(BeNil())
 
 			By("Prepare creation command")

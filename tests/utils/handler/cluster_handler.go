@@ -192,12 +192,13 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			err = fmt.Errorf("cannot find a version match the condition %s", ch.profile.Version)
 			return flags, err
 		}
-		ch.profile.Version = version.Version
+		// ch.profile.Version = version.Version
 		flags = append(flags, "--version", version.Version)
 
 		ch.clusterConfig.Version = &ClusterConfigure.Version{
-			ChannelGroup: ch.profile.ChannelGroup,
-			RawID:        version.Version,
+			ChannelGroup:       ch.profile.ChannelGroup,
+			RawID:              version.Version,
+			VersionRequirement: ch.profile.Version,
 		}
 	}
 	if ch.profile.ChannelGroup != "" {
@@ -249,7 +250,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			accRoles, err = resourcesHandler.PrepareAccountRoles(
 				accountRolePrefix,
 				ch.profile.ClusterConfig.HCP,
-				ch.profile.Version,
+				ch.clusterConfig.Version.RawID,
 				ch.profile.ChannelGroup,
 				ch.profile.AccountRoleConfig.Path,
 				ch.profile.AccountRoleConfig.PermissionBoundary,
@@ -260,7 +261,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			accRoles, err = resourcesHandler.PrepareAccountRoles(
 				accountRolePrefix,
 				ch.profile.ClusterConfig.HCP,
-				ch.profile.Version,
+				ch.clusterConfig.Version.RawID,
 				ch.profile.ChannelGroup,
 				ch.profile.AccountRoleConfig.Path,
 				ch.profile.AccountRoleConfig.PermissionBoundary,

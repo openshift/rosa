@@ -42,6 +42,9 @@ var _ = Describe("Cluster Upgrade testing",
 		const versionTagName = "rosa_openshift_version"
 
 		BeforeEach(func() {
+
+			arbitraryPoliciesToClean = []string{}
+
 			By("Get the cluster")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
@@ -315,7 +318,9 @@ var _ = Describe("Cluster Upgrade testing",
 
 			clusterVersionList, err := versionService.ListAndReflectVersions(profile.ChannelGroup, false)
 			Expect(err).To(BeNil())
-			upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(profile.ChannelGroup, clusterVersion)
+			upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
+				profile.ChannelGroup, clusterVersion,
+			)
 			Expect(err).To(BeNil())
 			if upgradingVersion == "" {
 				Skip("Skip this case as the cluster is being upgraded.")
@@ -323,7 +328,7 @@ var _ = Describe("Cluster Upgrade testing",
 
 			By("Upgrade cluster")
 			scheduledDate := time.Now().Format("2006-01-02")
-			scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+			scheduledTime := time.Now().Add(200 * time.Minute).UTC().Format("15:04")
 			output, err := upgradeService.Upgrade(
 				"-c", clusterID,
 				"--version", upgradingVersion,
@@ -351,7 +356,9 @@ var _ = Describe("Cluster Upgrade testing",
 
 				clusterVersionList, err := versionService.ListAndReflectVersions(profile.ChannelGroup, false)
 				Expect(err).To(BeNil())
-				upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(profile.ChannelGroup, clusterVersion)
+				upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
+					profile.ChannelGroup, clusterVersion,
+				)
 				Expect(err).To(BeNil())
 				if upgradingVersion == "" {
 					Skip("Skip this case as no available upgrade version.")
@@ -633,7 +640,8 @@ var _ = Describe("Describe/List rosa upgrade",
 			upgradeService rosacli.UpgradeService
 			versionService rosacli.VersionService
 			clusterID      string
-			profile        *handler.Profile
+			clusterConfig  *config.ClusterConfig
+			err            error
 		)
 
 		BeforeEach(func() {
@@ -648,11 +656,12 @@ var _ = Describe("Describe/List rosa upgrade",
 			versionService = rosaClient.Version
 
 			By("Load the profile")
-			profile = handler.LoadProfileYamlFileByENV()
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			if profile.Version == constants.YStreamPreviousVersion {
+			if clusterConfig.Version.VersionRequirement == constants.YStreamPreviousVersion {
 				By("Delete cluster upgrade")
 				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
 				Expect(err).ToNot(HaveOccurred())
@@ -675,7 +684,7 @@ var _ = Describe("Describe/List rosa upgrade",
 				Expect(output.String()).To(ContainSubstring("--machinepool"))
 				Expect(output.String()).To(ContainSubstring("-y, --yes"))
 
-				if profile.Version == "latest" {
+				if clusterConfig.Version.VersionRequirement == "latest" {
 					By("Check list upgrade for the cluster with latest version")
 					output, err = upgradeService.ListUpgrades("-c", clusterID)
 					Expect(err).To(BeNil())
@@ -683,7 +692,7 @@ var _ = Describe("Describe/List rosa upgrade",
 						"'%s'", clusterID))
 				}
 
-				if profile.Version == constants.YStreamPreviousVersion {
+				if clusterConfig.Version.VersionRequirement == constants.YStreamPreviousVersion {
 					By("Upgrade cluster and check list/describe upgrade")
 					scheduledDate := time.Now().Format("2006-01-02")
 					scheduledTime := time.Now().Add(20 * time.Minute).UTC().Format("15:04")
@@ -693,14 +702,18 @@ var _ = Describe("Describe/List rosa upgrade",
 					clusterVersion := jsonData.DigString("version", "raw_id")
 
 					By("Find upper Y stream version")
-					clusterVersionList, err := versionService.ListAndReflectVersions(profile.ChannelGroup, false)
+					clusterVersionList, err := versionService.ListAndReflectVersions(
+						clusterConfig.Version.ChannelGroup, false,
+					)
 					Expect(err).To(BeNil())
-					upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(profile.ChannelGroup, clusterVersion)
+					upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
+						clusterConfig.Version.ChannelGroup, clusterVersion,
+					)
 					Expect(err).To(BeNil())
 					Expect(upgradingVersion).NotTo(BeEmpty())
 
 					By("Upgrade cluster")
-					if profile.ClusterConfig.STS {
+					if clusterConfig.Sts {
 						Expect(err).ToNot(HaveOccurred())
 
 						output, errSTSUpgrade := upgradeService.Upgrade(
@@ -746,8 +759,8 @@ var _ = Describe("Describe/List rosa upgrade",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Skip testing if the cluster is not a y-1 STS classic cluster")
-				if profile.Version != constants.YStreamPreviousVersion || !profile.ClusterConfig.STS ||
-					profile.ClusterConfig.HCP {
+				if clusterConfig.Version.VersionRequirement != constants.YStreamPreviousVersion || !clusterConfig.Sts ||
+					clusterConfig.Hypershift {
 					Skip("Skip this case as the version defined in profile is not y-1 for sts cluster upgrade " +
 						"testing")
 				}
@@ -757,9 +770,13 @@ var _ = Describe("Describe/List rosa upgrade",
 				clusterVersion := jsonData.DigString("version", "raw_id")
 
 				By("Find upper Y stream version")
-				clusterVersionList, err := versionService.ListAndReflectVersions(profile.ChannelGroup, false)
+				clusterVersionList, err := versionService.ListAndReflectVersions(
+					clusterConfig.Version.ChannelGroup, false,
+				)
 				Expect(err).To(BeNil())
-				upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(profile.ChannelGroup, clusterVersion)
+				upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
+					clusterConfig.Version.ChannelGroup, clusterVersion,
+				)
 				Expect(err).To(BeNil())
 				Expect(upgradingVersion).NotTo(BeEmpty())
 
@@ -1153,7 +1170,9 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 			By("Find upper Y stream version")
 			clusterVersionList, err := versionService.ListAndReflectVersions(profile.ChannelGroup, false)
 			Expect(err).To(BeNil())
-			upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(profile.ChannelGroup, clusterVersion)
+			upgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
+				profile.ChannelGroup, clusterVersion,
+			)
 			Expect(err).To(BeNil())
 			Expect(upgradingVersion).NotTo(BeEmpty())
 
