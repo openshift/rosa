@@ -641,7 +641,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				return
 			}
 			originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile := "", "", "", ""
-			if clusterConfig.Proxy.Enabled {
+			if clusterConfig.Proxy != nil && clusterConfig.Proxy.Enabled {
 				originalHttpProxy,
 					originalHTTPSProxy,
 					originalNoProxy, originalCAFile =

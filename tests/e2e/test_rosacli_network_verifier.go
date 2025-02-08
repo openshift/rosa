@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 )
 
@@ -209,6 +210,13 @@ var _ = Describe("Network verifier",
 		It("verify that network will be failed if it can't reach to cluster subnet via the rosa cli - [id:70370]",
 			labels.Medium, labels.Runtime.Destructive,
 			func() {
+				profile := handler.LoadProfileYamlFileByENV()
+
+				By("Skip if it is a shared-vpc cluster")
+				if profile.ClusterConfig.SharedVPC {
+					Skip("Skip this case as it is a shared-vpc cluster")
+				}
+
 				By("Prepare a ready byo vpc ROSA cluster")
 				isBYOVPC, err := clusterService.IsBYOVPCCluster(clusterID)
 				Expect(err).To(BeNil())

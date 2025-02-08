@@ -42,6 +42,9 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 
 		By("Get the default dir")
 		defaultDir = rosaClient.Runner.GetDir()
+
+		By("Init dirToClean")
+		dirToClean = ""
 	})
 	AfterEach(func() {
 		By("Go back original by setting runner dir")
@@ -845,11 +848,17 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 		ocmResourceService             rosacli.OCMResourceService
 		accountRolePrefixesNeedCleanup []string
 		path                           = "/aa/bb/"
+		defaultDir                     string
+		dirToClean                     string
 	)
 	BeforeEach(func() {
 		By("Init the client")
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
+
+		By("Get the default dir and init dirToClean")
+		defaultDir = rosaClient.Runner.GetDir()
+		dirToClean = ""
 	})
 
 	AfterEach(func() {
@@ -863,6 +872,8 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				Expect(err).To(BeNil())
 			}
 		}
+		By("Go back original by setting runner dir")
+		rosaClient.Runner.SetDir(defaultDir)
 	})
 	It("to check the trust policy attach information when create account-roles multiple times - [id:75904]",
 		labels.High, labels.Runtime.OCMResources,
@@ -1095,8 +1106,12 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				Expect(output.String()).To(ContainSubstring("policy/%s-Installer-Role-Policy' to version '%s'",
 					accrolePrefix, upgradeVersion))
 			}
+			By("Create a temp dir to execute the create commands")
+			dirToClean, err = os.MkdirTemp("", "*")
+			Expect(err).To(BeNil())
 
 			By("Create/upgrade account role with version and channel group in manual mode")
+			rosaClient.Runner.SetDir(dirToClean)
 			for c, v := range channelVersion {
 				By("Create account roles in manual mode with channel group and version")
 				accrolePrefix := helper.GenerateRandomString(5)
@@ -1176,6 +1191,8 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 		path                           = "/aa/bb/"
 		AWSAccountID                   string
 		defaultDir                     string
+		tempDir                        string
+		err                            error
 	)
 	BeforeEach(func() {
 		By("Init the client")
@@ -1209,7 +1226,10 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 				vpcEndpointRoleArn = "arn:aws:iam::641733028092:role/citest-sharevpc-vpc-endpoint-role"
 			)
 
-			By("Get the default dir")
+			By("Go to temp dir to execute aws commands then back to the default dir at last")
+			tempDir, err = os.MkdirTemp("", "*")
+			Expect(err).To(BeNil())
+			rosaClient.Runner.SetDir(tempDir)
 			defaultDir = rosaClient.Runner.GetDir()
 			defer func() {
 				By("Go back original by setting runner dir")
