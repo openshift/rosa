@@ -18,17 +18,17 @@ var _ = Describe("Cluster Autoscaler validations", func() {
 		t = test.NewTestRuntime()
 	})
 
-	It("Determines Autoscalers are not valid for HCP clusters", func() {
+	It("Determines ready, HCP cluster can support Autoscaler", func() {
 
 		cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 			h := &cmv1.HypershiftBuilder{}
 			h.Enabled(true)
 			c.Hypershift(h)
+			c.State(cmv1.ClusterStateReady)
 		})
 
 		err := IsAutoscalerSupported(t.RosaRuntime, cluster)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal(NoHCPAutoscalerSupportMessage))
+		Expect(err).To(BeNil())
 
 	})
 
