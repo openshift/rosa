@@ -636,7 +636,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if len(summaries) > 0 {
 			str += fmt.Sprintf("Failed Inflight Checks:\n%s\n", strings.Join(summaries, "\n"))
 			str += fmt.Sprintf("\tPlease run `rosa verify network -c %s` after adjusting"+
-				" the cluster's network configuration to remove the warning", cluster.ID())
+				" the cluster's network configuration to remove the warning", cluster.Name())
 		}
 	}
 
