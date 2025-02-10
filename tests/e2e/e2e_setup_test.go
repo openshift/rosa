@@ -59,7 +59,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 						"--claim-mapping-username-claim", "email",
 						"--claim-mapping-groups-claim", "groups",
 						"--console-client-id", "8a769b34-13c9-4f5b-9933-ec439700ec67",
-						"--console-client-secret", "vfq8Q~XpgXx9vsKF~XSW1bcSowfJP2JGraybYa7X",
+						"--console-client-secret", "xxxxx~xxxxxxxxxx~xxxxxxxxxxxxxxxxxxxxxxx",
 					}
 					_, err = client.ExternalAuthProvider.CreateExternalAuthProvider(clusterID, value...)
 					Expect(err).ToNot(HaveOccurred())
