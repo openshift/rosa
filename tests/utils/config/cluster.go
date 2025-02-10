@@ -10,8 +10,9 @@ import (
 )
 
 type Version struct {
-	ChannelGroup string `json:"channel_group,omitempty"`
-	RawID        string `json:"raw_id,omitempty"`
+	ChannelGroup       string `json:"channel_group,omitempty"`
+	RawID              string `json:"raw_id,omitempty"`
+	VersionRequirement string `json:"version_requirement,omitempty"`
 }
 
 type Encryption struct {
