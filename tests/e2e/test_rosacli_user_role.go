@@ -33,6 +33,9 @@ var _ = Describe("Edit user role", labels.Feature.UserRole, func() {
 
 		By("Get the default dir")
 		defaultDir = rosaClient.Runner.GetDir()
+
+		By("Init userRoleArnsToClean")
+		userRoleArnsToClean = []string{}
 	})
 	AfterEach(func() {
 		By("Go back original by setting runner dir")

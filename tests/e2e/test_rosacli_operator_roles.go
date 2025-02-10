@@ -1343,6 +1343,11 @@ var _ = Describe("Create/Delete operator roles for hosted-cp shared vpc", labels
 			installerRole := accountRoleList.InstallerRole(accrolePrefix, true)
 			installerRoleArn := installerRole.RoleArn
 
+			By("Go to temp dir to execute aws commands then back to the default dir at last")
+			tempDir, err := os.MkdirTemp("", "*")
+			Expect(err).To(BeNil())
+			rosaClient.Runner.SetDir(tempDir)
+
 			By("Create operator roles for hosted-cp shared vpc in manual mode")
 			operatorRolePrefix = helper.GenerateRandomString(5)
 			output, err = ocmResourceService.CreateOperatorRoles(
