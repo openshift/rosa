@@ -14,10 +14,6 @@ const (
 )
 
 func IsAutoscalerSupported(runtime *rosa.Runtime, cluster *cmv1.Cluster) error {
-	if cluster.Hypershift().Enabled() {
-		return fmt.Errorf(NoHCPAutoscalerSupportMessage)
-
-	}
 
 	if cluster.State() != cmv1.ClusterStateReady {
 		return fmt.Errorf(ClusterNotReadyMessage, runtime.ClusterKey, cluster.State())

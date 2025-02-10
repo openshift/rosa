@@ -11,7 +11,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
-	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
 )
@@ -66,23 +65,6 @@ var _ = Describe("rosa describe autoscaler", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(
 				Equal("There is no cluster with identifier or name 'cluster'"))
-		})
-
-		It("Returns an error if the cluster is HCP", func() {
-			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
-				h := &cmv1.HypershiftBuilder{}
-				h.Enabled(true)
-				c.Hypershift(h)
-			})
-
-			t.SetCluster(cluster.Name(), cluster)
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
-
-			runner := DescribeAutoscalerRunner()
-			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring(clusterautoscaler.NoHCPAutoscalerSupportMessage))
 		})
 
 		It("Returns an error if the cluster is not ready", func() {
