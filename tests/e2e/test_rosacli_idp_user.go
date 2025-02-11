@@ -44,7 +44,7 @@ var _ = Describe("Edit IDP User",
 		})
 
 		It("can grant/list/revoke users - [id:36128]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				var (
 					dedicatedAdminsGroupName = "dedicated-admins"

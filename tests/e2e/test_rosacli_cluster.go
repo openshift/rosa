@@ -250,7 +250,7 @@ var _ = Describe("Edit cluster",
 			})
 
 		It("can edit privacy and workload monitoring via rosa-cli - [id:60275]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the cluster is private cluster")
 				private, err := clusterService.IsPrivateCluster(clusterID)

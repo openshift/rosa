@@ -65,6 +65,7 @@ var _ = Describe("Create machinepool",
 		It("can create/list machinepool - [id:36293]",
 			labels.Critical,
 			labels.Runtime.Day2,
+			labels.FedRAMP,
 			func() {
 				By("Check help info for create machinepool")
 				_, err := machinePoolService.RetrieveHelpForCreate()
@@ -1128,7 +1129,7 @@ var _ = Describe("Edit machinepool",
 		})
 
 		It("will succeed - [id:38838]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check help message")
 				output, err := machinePoolService.EditMachinePool(clusterID, "", "-h")
