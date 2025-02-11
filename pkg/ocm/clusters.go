@@ -630,14 +630,14 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		if len(config.OvnInternalSubnetConfiguration) > 0 {
 			// Create a builder for the specific migration type's configuration if necessary
 			sdnToOvnBuilder := &v1.SdnToOvnClusterMigrationBuilder{}
-			if _, ok := config.OvnInternalSubnetConfiguration[JoinIpv4]; ok {
-				sdnToOvnBuilder.JoinIpv4(config.OvnInternalSubnetConfiguration[JoinIpv4])
+			if _, ok := config.OvnInternalSubnetConfiguration[SubnetConfigJoin]; ok {
+				sdnToOvnBuilder.JoinIpv4(config.OvnInternalSubnetConfiguration[SubnetConfigJoin])
 			}
-			if _, ok := config.OvnInternalSubnetConfiguration[TransitIpv4]; ok {
-				sdnToOvnBuilder.TransitIpv4(config.OvnInternalSubnetConfiguration[TransitIpv4])
+			if _, ok := config.OvnInternalSubnetConfiguration[SubnetConfigTransit]; ok {
+				sdnToOvnBuilder.TransitIpv4(config.OvnInternalSubnetConfiguration[SubnetConfigTransit])
 			}
-			if _, ok := config.OvnInternalSubnetConfiguration[MasqueradeIpv4]; ok {
-				sdnToOvnBuilder.MasqueradeIpv4(config.OvnInternalSubnetConfiguration[MasqueradeIpv4])
+			if _, ok := config.OvnInternalSubnetConfiguration[SubnetConfigMasquerade]; ok {
+				sdnToOvnBuilder.MasqueradeIpv4(config.OvnInternalSubnetConfiguration[SubnetConfigMasquerade])
 			}
 			requestBuilder.SdnToOvn(sdnToOvnBuilder)
 		}
