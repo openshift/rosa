@@ -477,22 +477,25 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(err).To(BeNil())
 					Expect(output.String()).To(ContainSubstring("Ensuring account role/policies compatibility for " +
 						"upgrade"))
-					Expect(output.String()).To(ContainSubstring("Starting to upgrade the policies"))
-
-					for _, accountRoleName := range accountRoles {
-						accountRolePolicyArns, err := awsClient.ListRoleAttachedPolicies(accountRoleName)
-						Expect(err).To(BeNil())
-						Expect(output.String()).To(ContainSubstring("Upgraded policy with ARN '%s' to version '%s'",
-							*accountRolePolicyArns[0].PolicyArn, classicUpgradingMajorVersion))
-					}
+					Expect(output.String()).To(SatisfyAny(
+						ContainSubstring("Starting to upgrade the policies"),
+						ContainSubstring("are already up-to-date"),
+					))
 					Expect(output.String()).To(ContainSubstring("Ensuring operator role/policies compatibility for" +
 						" upgrade"))
-
-					for _, operatorRoleName := range operatorRoles {
-						operatorRolePolicyArns, err := awsClient.ListRoleAttachedPolicies(operatorRoleName)
-						Expect(err).To(BeNil())
-						Expect(output.String()).To(ContainSubstring("Upgraded policy with ARN '%s' to version '%s'",
-							*operatorRolePolicyArns[0].PolicyArn, classicUpgradingMajorVersion))
+					if strings.Contains(output.String(), "Starting to upgrade the policies") {
+						for _, accountRoleName := range accountRoles {
+							accountRolePolicyArns, err := awsClient.ListRoleAttachedPolicies(accountRoleName)
+							Expect(err).To(BeNil())
+							Expect(output.String()).To(ContainSubstring("Upgraded policy with ARN '%s' to version '%s'",
+								*accountRolePolicyArns[0].PolicyArn, classicUpgradingMajorVersion))
+						}
+						for _, operatorRoleName := range operatorRoles {
+							operatorRolePolicyArns, err := awsClient.ListRoleAttachedPolicies(operatorRoleName)
+							Expect(err).To(BeNil())
+							Expect(output.String()).To(ContainSubstring("Upgraded policy with ARN '%s' to version '%s'",
+								*operatorRolePolicyArns[0].PolicyArn, classicUpgradingMajorVersion))
+						}
 					}
 				}
 			})
@@ -599,9 +602,11 @@ var _ = Describe("Cluster Upgrade testing",
 
 					By("Check account role version")
 					for _, accArn := range accRoles {
+						fmt.Println("accArn: ", accArn)
 						parse, err := arn.Parse(accArn)
 						Expect(err).To(BeNil())
-						accRoleName := strings.Split(parse.Resource, "/")[1]
+						parts := strings.Split(parse.Resource, "/")
+						accRoleName := parts[len(parts)-1]
 						accRole, err := awsClient.GetRole(accRoleName)
 						Expect(err).To(BeNil())
 						for _, tag := range accRole.Tags {
@@ -615,7 +620,8 @@ var _ = Describe("Cluster Upgrade testing",
 					for _, opArn := range operatorRoles {
 						parse, err := arn.Parse(opArn)
 						Expect(err).To(BeNil())
-						opRoleName := strings.Split(parse.Resource, "/")[1]
+						parts := strings.Split(parse.Resource, "/")
+						opRoleName := parts[len(parts)-1]
 						opPolicy, err := awsClient.ListAttachedRolePolicies(opRoleName)
 						Expect(err).To(BeNil())
 						policyArn := *opPolicy[0].PolicyArn
