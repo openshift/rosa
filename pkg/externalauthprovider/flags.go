@@ -145,7 +145,7 @@ func AddExternalAuthProvidersFlags(cmd *cobra.Command, prefix string) *ExternalA
 		&args.claimMappingUsernameClaim,
 		claimMappingUsernameClaimFlag,
 		"",
-		"The name of the claim that should be used to construct usernmaes for the cluster identity.",
+		"The name of the claim that should be used to construct usernames for the cluster identity.",
 	)
 
 	cmd.Flags().StringSliceVar(
