@@ -723,6 +723,7 @@ func (rh *resourcesHandler) PrepareDNSDomain(hostedcp bool) (string, error) {
 	var dnsDomain string
 	var output bytes.Buffer
 	var err error
+	var dnsDomainStr string
 	if hostedcp {
 		output, err = rh.rosaClient.OCMResource.CreateDNSDomain("--hosted-cp")
 	} else {
@@ -733,7 +734,15 @@ func (rh *resourcesHandler) PrepareDNSDomain(hostedcp bool) (string, error) {
 	}
 	parser := rosacli.NewParser()
 	tip := parser.TextData.Input(output).Parse().Tip()
-	dnsDomainStr := strings.Split(strings.Split(tip, "\n")[0], " ")[3]
+	for _, str := range strings.Split(tip, "\n") {
+		if strings.Contains(str, "has been created") {
+			dnsDomainStr = strings.Split(str, " ")[3]
+			break
+		}
+	}
+	if dnsDomainStr == "" {
+		return dnsDomain, fmt.Errorf("failed to get dns domain from output: %s", tip)
+	}
 	dnsDomain = strings.TrimSuffix(strings.TrimPrefix(dnsDomainStr, "‘"), "’")
 	err = rh.registerDNSDomain(dnsDomain)
 	if err != nil {
