@@ -784,7 +784,7 @@ var _ = Describe("Classic cluster creation validation",
 			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
 			profilesNames := make([]string, 0, len(profilesMap))
 			for k, v := range profilesMap {
-				if !v.ClusterConfig.SharedVPC {
+				if !v.ClusterConfig.SharedVPC || !v.ClusterConfig.AutoscalerEnabled {
 					profilesNames = append(profilesNames, k)
 				}
 			}
@@ -1322,7 +1322,7 @@ var _ = Describe("Classic cluster creation validation",
 				var (
 					ocmResourceService  = rosaClient.OCMResource
 					ocpVersionBelow4_14 = "4.13.44"
-					ocpVersion4_14      = "4.14.0"
+					ocpVersion          string
 					index               int
 					flagName            string
 					hostedCP            = true
@@ -1347,9 +1347,17 @@ var _ = Describe("Classic cluster creation validation",
 					}
 				)
 
+				By("Get cluster upgrade version")
+				versionService := rosaClient.Version
+				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+				Expect(err).To(BeNil())
+				defaultVersion := versionList.DefaultVersion()
+				Expect(defaultVersion).ToNot(BeNil())
+				ocpVersion = defaultVersion.Version
+
 				By("Prepare a vpc for the testing")
 				resourcesHandler := clusterHandler.GetResourcesHandler()
-				_, err := resourcesHandler.PrepareVPC(caseNumber, "", true, false)
+				_, err = resourcesHandler.PrepareVPC(caseNumber, "", true, false)
 				Expect(err).ToNot(HaveOccurred())
 				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, false)
 				Expect(err).ToNot(HaveOccurred())
@@ -1403,7 +1411,7 @@ var _ = Describe("Classic cluster creation validation",
 						"--replicas", "3",
 						"--subnet-ids", subnetsFlagValue,
 						additionalSecurityGroupFlag, value,
-						"--version", ocpVersion4_14,
+						"--version", ocpVersion,
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
@@ -1418,11 +1426,11 @@ var _ = Describe("Classic cluster creation validation",
 						"--replicas", "3",
 						"--subnet-ids", subnetsFlagValue,
 						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-						"--version", ocpVersion4_14,
+						"--version", ocpVersion,
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring(
-						"Failed to create cluster: The limit for Additional Security Groups is '10', but '11' have been supplied"),
+						"limit for Additional Security Groups is '10', but '11' have been supplied"),
 					)
 				}
 
