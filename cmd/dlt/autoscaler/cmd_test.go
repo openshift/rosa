@@ -52,28 +52,29 @@ var _ = Describe("delete autoscaler", func() {
 				Equal("There is no cluster with identifier or name 'cluster'"))
 		})
 
-		It("Returns an error if the cluster is not classic cluster", func() {
+		It("Deletes Austoscaler", func() {
 			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
-				b := cmv1.HypershiftBuilder{}
-				b.Enabled(true)
-				c.Hypershift(&b)
+				c.State(cmv1.ClusterStateReady)
 			})
 
 			t.ApiServer.AppendHandlers(
 				RespondWithJSON(
 					http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
-			t.SetCluster("cluster", nil)
-
+			t.ApiServer.RouteToHandler(http.MethodGet,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/autoscaler", cluster.ID()),
+				RespondWithJSON(http.StatusOK, ""))
 			runner := DeleteAutoscalerRunner()
+			t.SetCluster("cluster", nil)
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(
-				Equal("Hosted Control Plane clusters do not support cluster-autoscaler configuration"))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Deletes Austoscaler", func() {
+		It("Deletes HCP Austoscaler", func() {
 			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateReady)
+				b := cmv1.HypershiftBuilder{}
+				b.Enabled(true)
+				c.Hypershift(&b)
 			})
 
 			t.ApiServer.AppendHandlers(

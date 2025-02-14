@@ -62,10 +62,6 @@ func DeleteAutoscalerRunner() rosa.CommandRunner {
 			return err
 		}
 
-		if cluster.Hypershift().Enabled() {
-			return fmt.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
-		}
-
 		if !confirm.Confirm("delete cluster autoscaler?") {
 			return nil
 		}
