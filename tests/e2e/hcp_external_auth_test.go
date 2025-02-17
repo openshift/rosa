@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
+	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
 )
@@ -156,6 +157,11 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 		It("create/list/describe/delete external_auth for a HCP cluster can work well via rosa client - [id:72536]",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+				if clusterConfig.ExternalAuthentication {
+					Skip("It is only for external_auth_config disabled clusters")
+				}
 				var (
 					consoleClientID      = "abc"
 					consoleClientSecrect = "efgh"
