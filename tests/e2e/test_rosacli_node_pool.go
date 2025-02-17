@@ -1677,7 +1677,7 @@ var _ = Describe("Edit nodepool",
 					constants.RequiredEc2MetadataHttpTokens}
 
 				for _, imdsv2Value := range imdsv2Values {
-					machinePool_Name := helper.GenerateRandomName("ocp-75227", 2)
+					machinePool_Name := helper.GenerateRandomName("ocp-75227", 3)
 					By("Create a machinepool with --ec2-metadata-http-tokens = " + imdsv2Value)
 					output, err := machinePoolService.CreateMachinePool(clusterID,
 						machinePool_Name,
@@ -1700,7 +1700,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Try to create machinepool to the cluster by setting invalid value of --ec2-metadata-http-tokens")
-				machinePool_Name := helper.GenerateRandomName("ocp-75227", 2)
+				machinePool_Name := helper.GenerateRandomName("ocp-75227", 3)
 				output, err := machinePoolService.CreateMachinePool(clusterID,
 					machinePool_Name,
 					"--replicas", "3",

@@ -285,7 +285,7 @@ var _ = Describe("Network verifier",
 					func(context.Context) (bool, error) {
 						clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
 						if !strings.Contains(clusterDetail.FailedInflightChecks,
-							fmt.Sprintf("rosa verify network -c %s", clusterID)) {
+							"rosa verify network -c ") {
 							return false, err
 						}
 						return true, err

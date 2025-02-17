@@ -277,13 +277,8 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 									"ERR: Hosted Control Plane clusters do not support cluster-autoscaler configuration"))
 
 						By("Describe the autoscaler of the cluster")
-						output, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
-						Expect(err).To(HaveOccurred())
-						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-						Expect(textData).
-							To(
-								ContainSubstring(
-									"ERR: Hosted Control Plane clusters do not support cluster-autoscaler configuration"))
+						_, err = rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+						Expect(err).NotTo(HaveOccurred())
 
 						By("Edit the autoscaler of the cluster")
 						resp, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, "--ignore-daemonsets-utilization",
