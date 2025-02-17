@@ -58,25 +58,6 @@ var _ = Describe("edit autoscaler", func() {
 				Equal("There is no cluster with identifier or name 'cluster'"))
 		})
 
-		It("Returns an error if the cluster is not classic cluster", func() {
-			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
-				b := cmv1.HypershiftBuilder{}
-				b.Enabled(true)
-				c.Hypershift(&b)
-			})
-
-			t.ApiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK, FormatClusterList([]*cmv1.Cluster{cluster})))
-			t.SetCluster("cluster", nil)
-
-			runner := EditAutoscalerRunner(&clusterautoscaler.AutoscalerArgs{})
-			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(
-				Equal("Hosted Control Plane clusters do not support cluster-autoscaler configuration"))
-		})
-
 		It("Returns an error if the cluster is not ready", func() {
 			cluster := MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateInstalling)
@@ -185,6 +166,49 @@ var _ = Describe("edit autoscaler", func() {
 			t.SetCluster("cluster", nil)
 			err := runner(context.Background(), t.RosaRuntime, cmd, nil)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Unsupported flags are blocked when using Hosted CP cluster for autoscaler", func() {
+			cmd := NewEditAutoscalerCommand()
+
+			cmd.Flags().Set("balance-similar-node-groups", "true")
+			cmd.Flag("balance-similar-node-groups").Changed = true
+
+			ok, err := clusterautoscaler.ValidateAutoscalerFlagsForHostedCp("", cmd)
+			Expect(ok).To(BeFalse())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprintf(clusterautoscaler.HcpError, "balance-similar-node-groups",
+				"max-nodes-total", "max-pod-grace-period", "max-node-provision-time",
+				"pod-priority-threshold")))
+
+			cmd = NewEditAutoscalerCommand()
+
+			cmd.Flags().Set("max-cores", "true")
+			cmd.Flag("max-cores").Changed = true
+
+			ok, err = clusterautoscaler.ValidateAutoscalerFlagsForHostedCp("", cmd)
+			Expect(ok).To(BeFalse())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprintf(clusterautoscaler.HcpError, "max-cores",
+				"max-nodes-total", "max-pod-grace-period", "max-node-provision-time",
+				"pod-priority-threshold")))
+		})
+
+		It("Supported flags work for Hosted CP cluster autoscaler", func() {
+			cmd := NewEditAutoscalerCommand()
+
+			cmd.Flags().Set("max-nodes-total", "10")
+			cmd.Flag("max-nodes-total").Changed = true
+			cmd.Flags().Set("max-pod-grace-period", "800")
+			cmd.Flag("max-pod-grace-period").Changed = true
+			cmd.Flags().Set("max-node-provision-time", "10s")
+			cmd.Flag("max-node-provision-time").Changed = true
+			cmd.Flags().Set("pod-priority-threshold", "-8")
+			cmd.Flag("pod-priority-threshold").Changed = true
+
+			ok, err := clusterautoscaler.ValidateAutoscalerFlagsForHostedCp("", cmd)
+			Expect(ok).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
