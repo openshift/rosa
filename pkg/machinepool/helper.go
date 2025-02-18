@@ -21,6 +21,10 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const (
+	hcpMaxNodesLimit = 500
+)
+
 type ReplicaSizeValidation struct {
 	MinReplicas         int
 	ClusterVersion      string
@@ -316,7 +320,6 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 
 // temporary fn until calculated default values can be retrieved from single source of truth
 func validateClusterVersionWithMaxNodesLimit(clusterVersion string, replicas int, isHostedCp bool) error {
-	hcpMaxNodesLimit := 500
 	if isHostedCp {
 		if replicas > hcpMaxNodesLimit {
 			return fmt.Errorf("should provide an integer number less than or equal to '%v'", hcpMaxNodesLimit)

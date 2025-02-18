@@ -34,6 +34,10 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const (
+	clusterAutoscalerLimitMessage = "Cluster Autoscaler limit (MaxNodes)"
+)
+
 var fetchMessage string = "Fetching %s '%s' for cluster '%s'"
 var notFoundMessage string = "Machine pool '%s' not found"
 
@@ -948,6 +952,43 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
+	sumOfReplicas := replicas
+	sumOfMaxReplicas := maxReplicas
+	sumOfMinReplicas := minReplicas
+
+	for _, np := range cluster.NodePools().Items() {
+		// If autoscaling, calculate min and max, use min and max in separate messages below
+		autoscaling, ok := np.GetAutoscaling()
+		if !ok || autoscaling == nil {
+			npReplicas, ok := np.GetReplicas()
+			if !ok {
+				return fmt.Errorf("Failed to get node pool replicas for hosted cluster '%s': %v", clusterKey, err)
+			}
+			sumOfReplicas += npReplicas
+		} else {
+			sumOfMaxReplicas += autoscaling.MaxReplica()
+			sumOfMinReplicas += autoscaling.MinReplica()
+		}
+	}
+
+	// Informational message for cluster autoscaler + scaling out to max nodes
+	if autoscaling {
+		r.Reporter.Infof("Scaling max replicas to the maximum allowed value is subject to cluster autoscaler" +
+			" configuration")
+	}
+
+	// Informational message for sum of replicas > MaxNodesTotal
+	if sumOfReplicas+sumOfMaxReplicas > hcpMaxNodesLimit {
+		r.Reporter.Infof("Actual maximum replicas can be lowered, since the replicas defined exceeds "+
+			"%s", clusterAutoscalerLimitMessage)
+	}
+
+	// Informational message for min-replicas or replicas > MaxNodesTotal
+	if sumOfReplicas+sumOfMinReplicas > hcpMaxNodesLimit {
+		r.Reporter.Infof("Actual total nodes in the cluster will be more than the maximum nodes configured " +
+			"in the cluster autoscaler")
+	}
+
 	if version != "" {
 		npBuilder.Version(cmv1.NewVersion().ID(version))
 	}
@@ -1774,6 +1815,43 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 			}
 			npBuilder.ManagementUpgrade(mgmtUpgradeBuilder)
 		}
+	}
+
+	sumOfReplicas := replicas
+	sumOfMaxReplicas := maxReplicas
+	sumOfMinReplicas := minReplicas
+
+	for _, np := range cluster.NodePools().Items() {
+		// If autoscaling, calculate min and max, use min and max in separate messages below
+		autoscaling, ok := np.GetAutoscaling()
+		if !ok || autoscaling == nil {
+			npReplicas, ok := np.GetReplicas()
+			if !ok {
+				return fmt.Errorf("Failed to get node pool replicas for hosted cluster '%s': %v", clusterKey, err)
+			}
+			sumOfReplicas += npReplicas
+		} else {
+			sumOfMaxReplicas += autoscaling.MaxReplica()
+			sumOfMinReplicas += autoscaling.MinReplica()
+		}
+	}
+
+	// Informational message for cluster autoscaler + scaling out to max nodes
+	if autoscaling {
+		r.Reporter.Infof("Scaling max replicas to the maximum allowed value is subject to cluster autoscaler" +
+			" configuration")
+	}
+
+	// Informational message for sum of replicas > MaxNodesTotal
+	if sumOfReplicas+sumOfMaxReplicas > hcpMaxNodesLimit {
+		r.Reporter.Infof("Actual maximum replicas can be lowered, since the replicas defined exceeds "+
+			"%s", clusterAutoscalerLimitMessage)
+	}
+
+	// Informational message for min-replicas or replicas > MaxNodesTotal
+	if sumOfReplicas+sumOfMinReplicas > hcpMaxNodesLimit {
+		r.Reporter.Infof("Actual total nodes in the cluster will be more than the maximum nodes configured " +
+			"in the cluster autoscaler")
 	}
 
 	update, err := npBuilder.Build()
