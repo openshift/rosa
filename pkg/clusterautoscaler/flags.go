@@ -36,6 +36,8 @@ const (
 	scaleDownDelayAfterAddFlag        = "scale-down-delay-after-add"
 	scaleDownDelayAfterDeleteFlag     = "scale-down-delay-after-delete"
 	scaleDownDelayAfterFailureFlag    = "scale-down-delay-after-failure"
+
+	classicOnlyHelpMsg = "Only supported for self-hosted (Classic) control plane clusters."
 )
 
 type AutoscalerArgs struct {
@@ -100,22 +102,24 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 		&args.BalanceSimilarNodeGroups,
 		fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag),
 		false,
-		"Identify node groups with the same instance type and label set, "+
-			"and aim to balance respective sizes of those node groups.",
+		fmt.Sprintf("Identify node groups with the same instance type and label set, "+
+			"and aim to balance respective sizes of those node groups. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().BoolVar(
 		&args.SkipNodesWithLocalStorage,
 		fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag),
 		false,
-		"If true cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPath.",
+		fmt.Sprintf("If true cluster autoscaler will never delete nodes with pods with local storage, e.g."+
+			" EmptyDir or HostPath. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().IntVar(
 		&args.LogVerbosity,
 		fmt.Sprintf("%s%s", prefix, logVerbosityFlag),
 		1,
-		"Autoscaler log level. Default is 1, 4 is a good option when trying to debug the autoscaler.",
+		fmt.Sprintf("Autoscaler log level. Default is 1, 4 is a good option when trying to debug the autoscaler."+
+			" %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().IntVar(
@@ -137,7 +141,8 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 		&args.IgnoreDaemonsetsUtilization,
 		fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag),
 		false,
-		"Should cluster-autoscaler ignore DaemonSet pods when calculating resource utilization for scaling down.",
+		fmt.Sprintf("Should cluster-autoscaler ignore DaemonSet pods when calculating resource utilization for "+
+			"scaling down. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().StringVar(
@@ -152,7 +157,8 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 		&args.BalancingIgnoredLabels,
 		fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag),
 		nil,
-		"A comma-separated list of label keys that cluster autoscaler should ignore when considering node group similarity.",
+		fmt.Sprintf("A comma-separated list of label keys that cluster autoscaler should ignore when "+
+			"considering node group similarity. %s", classicOnlyHelpMsg),
 	)
 
 	// Resource Limits
@@ -168,14 +174,14 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 		&args.ResourceLimits.Cores.Min,
 		fmt.Sprintf("%s%s", prefix, minCoresFlag),
 		0,
-		"Minimum limit for the amount of cores to deploy in the cluster.",
+		fmt.Sprintf("Minimum limit for the amount of cores to deploy in the cluster. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().IntVar(
 		&args.ResourceLimits.Cores.Max,
 		fmt.Sprintf("%s%s", prefix, maxCoresFlag),
 		180*64,
-		"Maximum limit for the amount of cores to deploy in the cluster.",
+		fmt.Sprintf("Maximum limit for the amount of cores to deploy in the cluster. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.MarkFlagsRequiredTogether(
@@ -187,14 +193,14 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 		&args.ResourceLimits.Memory.Min,
 		fmt.Sprintf("%s%s", prefix, minMemoryFlag),
 		0,
-		"Minimum limit for the amount of memory, in GiB, in the cluster.",
+		fmt.Sprintf("Minimum limit for the amount of memory, in GiB, in the cluster. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().IntVar(
 		&args.ResourceLimits.Memory.Max,
 		fmt.Sprintf("%s%s", prefix, maxMemoryFlag),
 		180*64*20,
-		"Maximum limit for the amount of memory, in GiB, in the cluster.",
+		fmt.Sprintf("Maximum limit for the amount of memory, in GiB, in the cluster. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.MarkFlagsRequiredTogether(
@@ -211,8 +217,9 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 			"Limit GPUs consumption. It should be comprised of 3 values separated "+
 				"with commas: the GPU hardware type, a minimal count for that type "+
 				"and a maximal count for that type. This option can be repeated multiple "+
-				"times in order to apply multiple restrictions for different GPU types. For example: "+
-				"--%[1]s nvidia.com/gpu,0,10 --%[1]s amd.com/gpu,1,5", flag),
+				"times in order to apply multiple restrictions for different GPU types. "+
+				"Only supported for self-hosted (Classic) control plane clusters. "+
+				"For example: --%[1]s nvidia.com/gpu,0,10 --%[1]s amd.com/gpu,1,5", flag),
 	)
 
 	// Scale down Configuration
@@ -221,44 +228,48 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 		&args.ScaleDown.Enabled,
 		fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag),
 		false,
-		"Should cluster-autoscaler be able to scale down the cluster.",
+		fmt.Sprintf("Should cluster-autoscaler be able to scale down the cluster. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().StringVar(
 		&args.ScaleDown.UnneededTime,
 		fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag),
 		"",
-		"Increasing value will make nodes stay up longer, waiting for pods to be scheduled "+
-			"while decreasing value will make nodes be deleted sooner.",
+		fmt.Sprintf("Increasing value will make nodes stay up longer, waiting for pods to be scheduled "+
+			"while decreasing value will make nodes be deleted sooner. %s", classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().Float64Var(
 		&args.ScaleDown.UtilizationThreshold,
 		fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag),
 		0.5,
-		"Node utilization level, defined as sum of requested resources divided by capacity, "+
-			"below which a node can be considered for scale down. Value should be between 0 and 1.",
+		fmt.Sprintf("Node utilization level, defined as sum of requested resources divided by capacity, "+
+			"below which a node can be considered for scale down. Value should be between 0 and 1. %s",
+			classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().StringVar(
 		&args.ScaleDown.DelayAfterAdd,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag),
 		"",
-		"After a scale-up, consider scaling down only after this amount of time.",
+		fmt.Sprintf("After a scale-up, consider scaling down only after this amount of time. %s",
+			classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().StringVar(
 		&args.ScaleDown.DelayAfterDelete,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag),
 		"",
-		"After a scale-down, consider scaling down again only after this amount of time.",
+		fmt.Sprintf("After a scale-down, consider scaling down again only after this amount of time. %s",
+			classicOnlyHelpMsg),
 	)
 
 	cmd.Flags().StringVar(
 		&args.ScaleDown.DelayAfterFailure,
 		fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag),
 		"",
-		"After a failing scale-down, consider scaling down again only after this amount of time.",
+		fmt.Sprintf("After a failing scale-down, consider scaling down again only after this amount of time. %s",
+			classicOnlyHelpMsg),
 	)
 
 	return args

@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	use     = "autoscaler"
-	short   = "Show details of the autoscaler for a cluster"
-	long    = short
+	use   = "autoscaler"
+	short = "Show details of the autoscaler for a cluster"
+	long  = "Describes the configuration for cluster's Cluster Auto-scaler. Supported on ROSA clusters " +
+		"service-hosted (HCP) with self-hosted (Classic) control planes."
 	example = ` # Describe the autoscaler for cluster 'foo'
 rosa describe autoscaler --cluster foo`
 )
