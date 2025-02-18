@@ -62,7 +62,11 @@ func DescribeAutoscalerRunner() rosa.CommandRunner {
 		if output.HasFlag() {
 			output.Print(autoscaler)
 		} else {
-			fmt.Print(clusterautoscaler.PrintAutoscaler(autoscaler))
+			if cluster.Hypershift().Enabled() {
+				fmt.Print(clusterautoscaler.PrintHypershiftAutoscaler(autoscaler))
+			} else {
+				fmt.Print(clusterautoscaler.PrintAutoscaler(autoscaler))
+			}
 		}
 		return nil
 	}

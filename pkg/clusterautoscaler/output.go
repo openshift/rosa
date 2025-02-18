@@ -87,3 +87,25 @@ func PrintAutoscaler(a *cmv1.ClusterAutoscaler) string {
 
 	return out
 }
+
+func PrintHypershiftAutoscaler(a *cmv1.ClusterAutoscaler) string {
+
+	out := "\n"
+
+	if a.MaxNodeProvisionTime() != "" {
+		out += fmt.Sprintf("Maximum Node Provision Time:               %s\n",
+			a.MaxNodeProvisionTime())
+	}
+
+	out += fmt.Sprintf("Maximum Pod Grace Period:                  %d\n",
+		a.MaxPodGracePeriod())
+	out += fmt.Sprintf("Pod Priority Threshold:                    %d\n",
+		a.PodPriorityThreshold())
+
+	//Resource Limits
+	out += "Resource Limits:\n"
+	out += fmt.Sprintf(" - Maximum Nodes:                          %d\n",
+		a.ResourceLimits().MaxNodesTotal())
+
+	return out
+}
