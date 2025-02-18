@@ -78,12 +78,15 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 			return err
 		}
 
-		if cluster.Hypershift().Enabled() {
-			return fmt.Errorf("Hosted Control Plane clusters do not support cluster-autoscaler configuration")
-		}
-
 		if cluster.State() != cmv1.ClusterStateReady {
 			return fmt.Errorf("Cluster '%s' is not yet ready. Current state is '%s'", clusterKey, cluster.State())
+		}
+
+		if cluster.Hypershift().Enabled() {
+			ok, err := clusterautoscaler.ValidateAutoscalerFlagsForHostedCp(argsPrefix, command)
+			if !ok || err != nil {
+				return err
+			}
 		}
 
 		autoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
@@ -129,7 +132,7 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 				cluster.ID(), err)
 		}
 
-		_, err = r.OCMClient.UpdateClusterAutoscaler(cluster.ID(), autoscalerConfig)
+		_, err = r.OCMClient.UpdateClusterAutoscaler(cluster.ID(), cluster.Hypershift().Enabled(), autoscalerConfig)
 		if err != nil {
 			return fmt.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)

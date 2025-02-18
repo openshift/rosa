@@ -143,7 +143,7 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 	cmd.Flags().StringVar(
 		&args.MaxNodeProvisionTime,
 		fmt.Sprintf("%s%s", prefix, maxNodeProvisionTimeFlag),
-		"",
+		"15m",
 		"Maximum time cluster-autoscaler waits for node to be provisioned. "+
 			"Expects string comprised of an integer and time unit (ns|us|µs|ms|s|m|h), examples: 20m, 1h.",
 	)
@@ -314,79 +314,81 @@ func GetAutoscalerOptions(
 		}
 	}
 
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag)) {
-		result.BalanceSimilarNodeGroups, err = interactive.GetBool(interactive.Input{
-			Question: "Balance similar node groups",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag)).Usage,
-			Default:  result.BalanceSimilarNodeGroups,
-			Required: false,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag)) {
-		result.SkipNodesWithLocalStorage, err = interactive.GetBool(interactive.Input{
-			Question: "Skip nodes with local storage",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag)).Usage,
-			Default:  result.SkipNodesWithLocalStorage,
-			Required: false,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, logVerbosityFlag)) {
-		result.LogVerbosity, err = interactive.GetInt(interactive.Input{
-			Question: "Log verbosity",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, logVerbosityFlag)).Usage,
-			Default:  result.LogVerbosity,
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.NonNegativeInt32Validator,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := ocm.NonNegativeInt32Validator(result.LogVerbosity); err != nil {
-		return nil, fmt.Errorf("Error validating log-verbosity: %s", err)
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)) {
-		balancingIgnoredLabels, err := interactive.GetString(interactive.Input{
-			Question: "Labels that cluster autoscaler should ignore when considering node group similarity",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)).Usage,
-			Default:  strings.Join(result.BalancingIgnoredLabels, ","),
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.ValidateBalancingIgnoredLabels,
-			},
-		})
-		if err != nil {
-			return nil, err
+	if autoscalerValidationArgs != nil && !autoscalerValidationArgs.IsHostedCp {
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag)) {
+			result.BalanceSimilarNodeGroups, err = interactive.GetBool(interactive.Input{
+				Question: "Balance similar node groups",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, balanceSimilarNodeGroupsFlag)).Usage,
+				Default:  result.BalanceSimilarNodeGroups,
+				Required: false,
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		if balancingIgnoredLabels != "" {
-			result.BalancingIgnoredLabels = strings.Split(balancingIgnoredLabels, ",")
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag)) {
+			result.SkipNodesWithLocalStorage, err = interactive.GetBool(interactive.Input{
+				Question: "Skip nodes with local storage",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, skipNodesWithLocalStorageFlag)).Usage,
+				Default:  result.SkipNodesWithLocalStorage,
+				Required: false,
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	if err := ocm.ValidateBalancingIgnoredLabels(strings.Join(result.BalancingIgnoredLabels, ",")); err != nil {
-		return nil, fmt.Errorf("Error validating balancing-ignored-labels: %s", err)
-	}
 
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)) {
-		result.IgnoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
-			Question: "Ignore daemonsets utilization",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)).Usage,
-			Default:  result.IgnoreDaemonsetsUtilization,
-			Required: false,
-		})
-		if err != nil {
-			return nil, err
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, logVerbosityFlag)) {
+			result.LogVerbosity, err = interactive.GetInt(interactive.Input{
+				Question: "Log verbosity",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, logVerbosityFlag)).Usage,
+				Default:  result.LogVerbosity,
+				Required: false,
+				Validators: []interactive.Validator{
+					ocm.NonNegativeInt32Validator,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := ocm.NonNegativeInt32Validator(result.LogVerbosity); err != nil {
+			return nil, fmt.Errorf("Error validating log-verbosity: %s", err)
+		}
+
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)) {
+			balancingIgnoredLabels, err := interactive.GetString(interactive.Input{
+				Question: "Labels that cluster autoscaler should ignore when considering node group similarity",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)).Usage,
+				Default:  strings.Join(result.BalancingIgnoredLabels, ","),
+				Required: false,
+				Validators: []interactive.Validator{
+					ocm.ValidateBalancingIgnoredLabels,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			if balancingIgnoredLabels != "" {
+				result.BalancingIgnoredLabels = strings.Split(balancingIgnoredLabels, ",")
+			}
+		}
+		if err := ocm.ValidateBalancingIgnoredLabels(strings.Join(result.BalancingIgnoredLabels, ",")); err != nil {
+			return nil, fmt.Errorf("Error validating balancing-ignored-labels: %s", err)
+		}
+
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)) {
+			result.IgnoreDaemonsetsUtilization, err = interactive.GetBool(interactive.Input{
+				Question: "Ignore daemonsets utilization",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)).Usage,
+				Default:  result.IgnoreDaemonsetsUtilization,
+				Required: false,
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -460,119 +462,96 @@ func GetAutoscalerOptions(
 		return nil, fmt.Errorf("Error validating max-nodes-total: %s", err)
 	}
 
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, minCoresFlag)) {
-		result.ResourceLimits.Cores.Min, err = interactive.GetInt(interactive.Input{
-			Question: "Minimum number of cores to deploy in cluster",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, minCoresFlag)).Usage,
-			Required: false,
-			Default:  result.ResourceLimits.Cores.Min,
-			Validators: []interactive.Validator{
-				ocm.NonNegativeInt32Validator,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err = ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Min); err != nil {
-		return nil, fmt.Errorf("Error validating min-cores: %s", err)
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxCoresFlag)) {
-		result.ResourceLimits.Cores.Max, err = interactive.GetInt(interactive.Input{
-			Question: "Maximum number of cores to deploy in cluster",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxCoresFlag)).Usage,
-			Required: false,
-			Default:  result.ResourceLimits.Cores.Max,
-			Validators: []interactive.Validator{
-				ocm.NonNegativeInt32Validator,
-				getValidMaxRangeValidator(result.ResourceLimits.Cores.Min),
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Max); err != nil {
-		return nil, fmt.Errorf("Error validating max-cores: %s", err)
-	}
-
-	if err := getValidMaxRangeValidator(result.ResourceLimits.Cores.Min)(result.ResourceLimits.Cores.Max); err != nil {
-		return nil, fmt.Errorf("Error validating cores range: %s", err)
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, minMemoryFlag)) {
-		result.ResourceLimits.Memory.Min, err = interactive.GetInt(interactive.Input{
-			Question: "Minimum amount of memory, in GiB, in the cluster",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, minMemoryFlag)).Usage,
-			Required: false,
-			Default:  result.ResourceLimits.Memory.Min,
-			Validators: []interactive.Validator{
-				ocm.NonNegativeInt32Validator,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Min); err != nil {
-		return nil, fmt.Errorf("Error validating min-memory: %s", err)
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxMemoryFlag)) {
-		result.ResourceLimits.Memory.Max, err = interactive.GetInt(interactive.Input{
-			Question: "Maximum amount of memory, in GiB, in the cluster",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxMemoryFlag)).Usage,
-			Required: false,
-			Default:  result.ResourceLimits.Memory.Max,
-			Validators: []interactive.Validator{
-				ocm.NonNegativeInt32Validator,
-				getValidMaxRangeValidator(result.ResourceLimits.Memory.Min),
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Max); err != nil {
-		return nil, fmt.Errorf("Error validating max-memory: %s", err)
-	}
-
-	if err := getValidMaxRangeValidator(result.ResourceLimits.Memory.Min)(result.ResourceLimits.Memory.Max); err != nil {
-		return nil, fmt.Errorf("Error validating memory range: %s", err)
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, gpuLimitFlag)) {
-		gpuLimitsCount, err := interactive.GetInt(interactive.Input{
-			Question: "Enter the number of GPU limitations you wish to set",
-			Help: "This allows setting a limiting range of the count of GPU resources " +
-				"that will be used. Each limitation is per hardware type",
-			Default:  0,
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.NonNegativeInt32Validator,
-			},
-		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		for i := 1; i <= gpuLimitsCount; i++ {
-			gpuLimitType, err := interactive.GetString(interactive.Input{
-				Question: fmt.Sprintf("%d. Enter the type of desired GPU limitation", i),
-				Help:     "E.g.: nvidia.com/gpu, amd.com/gpu",
-				Required: true,
+	if autoscalerValidationArgs != nil && !autoscalerValidationArgs.IsHostedCp {
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, minCoresFlag)) {
+			result.ResourceLimits.Cores.Min, err = interactive.GetInt(interactive.Input{
+				Question: "Minimum number of cores to deploy in cluster",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, minCoresFlag)).Usage,
+				Required: false,
+				Default:  result.ResourceLimits.Cores.Min,
+				Validators: []interactive.Validator{
+					ocm.NonNegativeInt32Validator,
+				},
 			})
-
 			if err != nil {
 				return nil, err
 			}
+		}
+		if err = ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Min); err != nil {
+			return nil, fmt.Errorf("Error validating min-cores: %s", err)
+		}
 
-			gpuLimitMin, err := interactive.GetInt(interactive.Input{
-				Question: fmt.Sprintf("%d. Enter minimum number of GPUS of type '%s' to deploy in the cluster.", i, gpuLimitType),
-				Help: "An integer stating the minimum number of GPUs of the given type to deploy in the cluster. " +
-					"Must always be smaller than or equal to the maximal value.",
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxCoresFlag)) {
+			result.ResourceLimits.Cores.Max, err = interactive.GetInt(interactive.Input{
+				Question: "Maximum number of cores to deploy in cluster",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxCoresFlag)).Usage,
+				Required: false,
+				Default:  result.ResourceLimits.Cores.Max,
+				Validators: []interactive.Validator{
+					ocm.NonNegativeInt32Validator,
+					getValidMaxRangeValidator(result.ResourceLimits.Cores.Min),
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Max); err != nil {
+			return nil, fmt.Errorf("Error validating max-cores: %s", err)
+		}
+
+		if err := getValidMaxRangeValidator(result.ResourceLimits.Cores.Min)(result.ResourceLimits.Cores.Max); err != nil {
+			return nil, fmt.Errorf("Error validating cores range: %s", err)
+		}
+
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, minMemoryFlag)) {
+			result.ResourceLimits.Memory.Min, err = interactive.GetInt(interactive.Input{
+				Question: "Minimum amount of memory, in GiB, in the cluster",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, minMemoryFlag)).Usage,
+				Required: false,
+				Default:  result.ResourceLimits.Memory.Min,
+				Validators: []interactive.Validator{
+					ocm.NonNegativeInt32Validator,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Min); err != nil {
+			return nil, fmt.Errorf("Error validating min-memory: %s", err)
+		}
+
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxMemoryFlag)) {
+			result.ResourceLimits.Memory.Max, err = interactive.GetInt(interactive.Input{
+				Question: "Maximum amount of memory, in GiB, in the cluster",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, maxMemoryFlag)).Usage,
+				Required: false,
+				Default:  result.ResourceLimits.Memory.Max,
+				Validators: []interactive.Validator{
+					ocm.NonNegativeInt32Validator,
+					getValidMaxRangeValidator(result.ResourceLimits.Memory.Min),
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Max); err != nil {
+			return nil, fmt.Errorf("Error validating max-memory: %s", err)
+		}
+
+		if err := getValidMaxRangeValidator(result.ResourceLimits.Memory.Min)(result.ResourceLimits.Memory.Max); err != nil {
+			return nil, fmt.Errorf("Error validating memory range: %s", err)
+		}
+
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, gpuLimitFlag)) {
+			gpuLimitsCount, err := interactive.GetInt(interactive.Input{
+				Question: "Enter the number of GPU limitations you wish to set",
+				Help: "This allows setting a limiting range of the count of GPU resources " +
+					"that will be used. Each limitation is per hardware type",
+				Default:  0,
+				Required: false,
 				Validators: []interactive.Validator{
 					ocm.NonNegativeInt32Validator,
 				},
@@ -582,139 +561,164 @@ func GetAutoscalerOptions(
 				return nil, err
 			}
 
-			gpuLimitMax, err := interactive.GetInt(interactive.Input{
-				Question: fmt.Sprintf("%d. Enter maximum number of GPUS of type '%s' to deploy in the cluster.", i, gpuLimitType),
-				Help: "An integer stating the maximum number of GPUs of the given type to deploy in the cluster. " +
-					"Must always be smaller than or equal to the maximal value.",
-				Validators: []interactive.Validator{
-					ocm.NonNegativeInt32Validator,
-					getValidMaxRangeValidator(gpuLimitMin),
-				},
-			})
+			for i := 1; i <= gpuLimitsCount; i++ {
+				gpuLimitType, err := interactive.GetString(interactive.Input{
+					Question: fmt.Sprintf("%d. Enter the type of desired GPU limitation", i),
+					Help:     "E.g.: nvidia.com/gpu, amd.com/gpu",
+					Required: true,
+				})
 
+				if err != nil {
+					return nil, err
+				}
+
+				gpuLimitMin, err := interactive.GetInt(interactive.Input{
+					Question: fmt.Sprintf("%d. Enter minimum number of GPUS of type '%s' to deploy in the cluster.", i, gpuLimitType),
+					Help: "An integer stating the minimum number of GPUs of the given type to deploy in the cluster. " +
+						"Must always be smaller than or equal to the maximal value.",
+					Validators: []interactive.Validator{
+						ocm.NonNegativeInt32Validator,
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				gpuLimitMax, err := interactive.GetInt(interactive.Input{
+					Question: fmt.Sprintf("%d. Enter maximum number of GPUS of type '%s' to deploy in the cluster.", i, gpuLimitType),
+					Help: "An integer stating the maximum number of GPUs of the given type to deploy in the cluster. " +
+						"Must always be smaller than or equal to the maximal value.",
+					Validators: []interactive.Validator{
+						ocm.NonNegativeInt32Validator,
+						getValidMaxRangeValidator(gpuLimitMin),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				result.ResourceLimits.GPULimits = append(result.ResourceLimits.GPULimits,
+					fmt.Sprintf("%s,%d,%d", gpuLimitType, gpuLimitMin, gpuLimitMax))
+			}
+		}
+
+		for _, entry := range result.ResourceLimits.GPULimits {
+			gpuLimit, err := parseGPULimit(entry)
 			if err != nil {
 				return nil, err
 			}
 
-			result.ResourceLimits.GPULimits = append(result.ResourceLimits.GPULimits,
-				fmt.Sprintf("%s,%d,%d", gpuLimitType, gpuLimitMin, gpuLimitMax))
-		}
-	}
-
-	for _, entry := range result.ResourceLimits.GPULimits {
-		gpuLimit, err := parseGPULimit(entry)
-		if err != nil {
-			return nil, err
+			if err := getValidMaxRangeValidator(gpuLimit.Range.Min)(gpuLimit.Range.Max); err != nil {
+				return nil, fmt.Errorf("Error validating GPU range: %s", err)
+			}
 		}
 
-		if err := getValidMaxRangeValidator(gpuLimit.Range.Min)(gpuLimit.Range.Max); err != nil {
-			return nil, fmt.Errorf("Error validating GPU range: %s", err)
+		// scale-down configs
+
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag)) {
+			result.ScaleDown.Enabled, err = interactive.GetBool(interactive.Input{
+				Question: "Should scale-down be enabled",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag)).Usage,
+				Default:  result.ScaleDown.Enabled,
+				Required: false,
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
 
-	// scale-down configs
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag)) {
-		result.ScaleDown.Enabled, err = interactive.GetBool(interactive.Input{
-			Question: "Should scale-down be enabled",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownEnabledFlag)).Usage,
-			Default:  result.ScaleDown.Enabled,
-			Required: false,
-		})
-		if err != nil {
-			return nil, err
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag)) {
+			result.ScaleDown.UnneededTime, err = interactive.GetString(interactive.Input{
+				Question: "How long a node should be unneeded before it is eligible for scale down",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag)).Usage,
+				Default:  result.ScaleDown.UnneededTime,
+				Required: false,
+				Validators: []interactive.Validator{
+					ocm.PositiveDurationStringValidator,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
 
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag)) {
-		result.ScaleDown.UnneededTime, err = interactive.GetString(interactive.Input{
-			Question: "How long a node should be unneeded before it is eligible for scale down",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownUnneededTimeFlag)).Usage,
-			Default:  result.ScaleDown.UnneededTime,
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.PositiveDurationStringValidator,
-			},
-		})
-		if err != nil {
-			return nil, err
+		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.UnneededTime); err != nil {
+			return nil, fmt.Errorf("Error validating unneeded-time: %s", err)
 		}
-	}
 
-	if err := ocm.PositiveDurationStringValidator(result.ScaleDown.UnneededTime); err != nil {
-		return nil, fmt.Errorf("Error validating unneeded-time: %s", err)
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag)) {
-		result.ScaleDown.UtilizationThreshold, err = interactive.GetFloat(interactive.Input{
-			Question: "Node utilization threshold",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag)).Usage,
-			Default:  result.ScaleDown.UtilizationThreshold,
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.PercentageValidator,
-			},
-		})
-		if err != nil {
-			return nil, err
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag)) {
+			result.ScaleDown.UtilizationThreshold, err = interactive.GetFloat(interactive.Input{
+				Question: "Node utilization threshold",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag)).Usage,
+				Default:  result.ScaleDown.UtilizationThreshold,
+				Required: false,
+				Validators: []interactive.Validator{
+					ocm.PercentageValidator,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	if err := ocm.PercentageValidator(result.ScaleDown.UtilizationThreshold); err != nil {
-		return nil, fmt.Errorf("Error validating utilization-threshold: %s", err)
-	}
-
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag)) {
-		result.ScaleDown.DelayAfterAdd, err = interactive.GetString(interactive.Input{
-			Question: "How long after scale up should scale down evaluation resume",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag)).Usage,
-			Default:  result.ScaleDown.DelayAfterAdd,
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.PositiveDurationStringValidator,
-			},
-		})
-		if err != nil {
-			return nil, err
+		if err := ocm.PercentageValidator(result.ScaleDown.UtilizationThreshold); err != nil {
+			return nil, fmt.Errorf("Error validating utilization-threshold: %s", err)
 		}
-	}
-	if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterAdd); err != nil {
-		return nil, fmt.Errorf("Error validating delay-after-add: %s", err)
-	}
 
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag)) {
-		result.ScaleDown.DelayAfterDelete, err = interactive.GetString(interactive.Input{
-			Question: "How long after node deletion should scale down evaluation resume",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag)).Usage,
-			Default:  result.ScaleDown.DelayAfterDelete,
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.PositiveDurationStringValidator,
-			},
-		})
-		if err != nil {
-			return nil, err
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag)) {
+			result.ScaleDown.DelayAfterAdd, err = interactive.GetString(interactive.Input{
+				Question: "How long after scale up should scale down evaluation resume",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag)).Usage,
+				Default:  result.ScaleDown.DelayAfterAdd,
+				Required: false,
+				Validators: []interactive.Validator{
+					ocm.PositiveDurationStringValidator,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterDelete); err != nil {
-		return nil, fmt.Errorf("Error validating delay-after-delete: %s", err)
-	}
+		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterAdd); err != nil {
+			return nil, fmt.Errorf("Error validating delay-after-add: %s", err)
+		}
 
-	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag)) {
-		result.ScaleDown.DelayAfterFailure, err = interactive.GetString(interactive.Input{
-			Question: "How long after node deletion failure should scale down evaluation resume.",
-			Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag)).Usage,
-			Default:  result.ScaleDown.DelayAfterFailure,
-			Required: false,
-			Validators: []interactive.Validator{
-				ocm.PositiveDurationStringValidator,
-			},
-		})
-		if err != nil {
-			return nil, err
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag)) {
+			result.ScaleDown.DelayAfterDelete, err = interactive.GetString(interactive.Input{
+				Question: "How long after node deletion should scale down evaluation resume",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag)).Usage,
+				Default:  result.ScaleDown.DelayAfterDelete,
+				Required: false,
+				Validators: []interactive.Validator{
+					ocm.PositiveDurationStringValidator,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterFailure); err != nil {
-		return nil, fmt.Errorf("Error validating delay-after-failure: %s", err)
+		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterDelete); err != nil {
+			return nil, fmt.Errorf("Error validating delay-after-delete: %s", err)
+		}
+
+		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag)) {
+			result.ScaleDown.DelayAfterFailure, err = interactive.GetString(interactive.Input{
+				Question: "How long after node deletion failure should scale down evaluation resume.",
+				Help:     cmd.Lookup(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag)).Usage,
+				Default:  result.ScaleDown.DelayAfterFailure,
+				Required: false,
+				Validators: []interactive.Validator{
+					ocm.PositiveDurationStringValidator,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterFailure); err != nil {
+			return nil, fmt.Errorf("Error validating delay-after-failure: %s", err)
+		}
 	}
 
 	return result, nil
@@ -941,7 +945,7 @@ func PrefillAutoscalerArgs(cmd *cobra.Command, autoscalerArgs *AutoscalerArgs,
 	if !cmd.Flags().Changed(scaleDownDelayAfterFailureFlag) {
 		autoscalerArgs.ScaleDown.DelayAfterFailure = autoscaler.ScaleDown().DelayAfterFailure()
 	}
-	if !cmd.Flags().Changed(scaleDownUtilizationThresholdFlag) {
+	if !cmd.Flags().Changed(scaleDownUtilizationThresholdFlag) && autoscaler.ScaleDown().UtilizationThreshold() != "" {
 		utilizationThreshold, err := strconv.ParseFloat(
 			autoscaler.ScaleDown().UtilizationThreshold(),
 			commonUtils.MaxByteSize,
