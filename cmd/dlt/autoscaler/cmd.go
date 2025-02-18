@@ -28,9 +28,10 @@ import (
 )
 
 const (
-	use     = "autoscaler"
-	short   = "Delete autoscaler for cluster"
-	long    = "Delete autoscaler configuration for a given cluster."
+	use   = "autoscaler"
+	short = "Delete autoscaler for cluster"
+	long  = "Delete autoscaler configuration for a given cluster. " +
+		"Supported only on ROSA clusters with self-hosted Control Plane (Classic)"
 	example = `  # Delete the autoscaler config for cluster named "mycluster"
   rosa delete autoscaler --cluster=mycluster`
 )

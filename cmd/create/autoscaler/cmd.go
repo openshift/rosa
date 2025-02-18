@@ -33,8 +33,9 @@ const (
 	argsPrefix = ""
 	use        = "autoscaler"
 	short      = "Create an autoscaler for a cluster"
-	long       = "Configuring cluster-wide autoscaling behavior. At least one machine-pool should " +
-		"have autoscaling enabled for the configuration to be active"
+	long       = "     Configuring cluster-wide autoscaling behavior. At least one machine-pool should have autoscaling " +
+		"enabled for the configuration to be active. Supported only on ROSA clusters with self-hosted Control Plane " +
+		"(Classic)"
 	example = `  # Interactively create an autoscaler to a cluster named "mycluster"
   rosa create autoscaler --cluster=mycluster --interactive
 

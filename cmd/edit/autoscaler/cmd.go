@@ -33,8 +33,8 @@ const (
 	argsPrefix = ""
 	use        = "autoscaler"
 	short      = "Edit the autoscaler of a cluster"
-	long       = "Configuring cluster-wide autoscaling behavior. At least one machine-pool should " +
-		"have autoscaling enabled for the configuration to be active"
+	long       = "    Updates the configuration for cluster's Cluster Auto-scaler. Supported on ROSA clusters " +
+		"service-hosted (HCP) with self-hosted (Classic) control planes."
 	example = `  # Interactively edit an autoscaler to a cluster named "mycluster"
   rosa edit autoscaler --cluster=mycluster --interactive
 
