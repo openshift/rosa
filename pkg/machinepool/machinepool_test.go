@@ -1204,7 +1204,7 @@ var _ = Describe("NodePools", func() {
 			cmd.Flags().Set("subnet", "true")
 
 			machinePool := &machinePool{}
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Setting both `subnet` and " +
@@ -1222,7 +1222,7 @@ var _ = Describe("NodePools", func() {
 			invalidName := "0909+===..3"
 			cmd.Flags().Set("name", invalidName)
 
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(Equal("Expected a valid name for the machine pool"))
@@ -1246,7 +1246,7 @@ var _ = Describe("NodePools", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Expected a valid OpenShift version"))
 		})
@@ -1285,7 +1285,7 @@ var _ = Describe("NodePools", func() {
 
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("You must supply a valid instance type"))
 		})
@@ -1339,7 +1339,7 @@ var _ = Describe("NodePools", func() {
 				OrganizationID("123456789012").Version("4.15.0").Build()
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Expected a valid instance type"))
 		})
@@ -1409,7 +1409,7 @@ var _ = Describe("NodePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatTuningConfigList([]*cmv1.TuningConfig{})))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList([]*cmv1.KubeletConfig{})))
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to add machine pool to hosted cluster"))
 		})
@@ -1485,7 +1485,7 @@ var _ = Describe("NodePools", func() {
 			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(Not(HaveOccurred()))
 		})
 		It("should fail if disk size is invalid", func() {
@@ -1560,7 +1560,7 @@ var _ = Describe("NodePools", func() {
 			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(ContainSubstring("Expected a valid node pool root disk size value"))

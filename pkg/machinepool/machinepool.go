@@ -17,6 +17,7 @@ import (
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/features"
@@ -53,7 +54,7 @@ type MachinePoolService interface {
 	EditMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string, cluster *cmv1.Cluster,
 		r *rosa.Runtime) error
 	CreateMachinePoolBasedOnClusterType(r *rosa.Runtime, cmd *cobra.Command,
-		clusterKey string, cluster *cmv1.Cluster,
+		clusterKey string, cluster *cmv1.Cluster, clusterAutoscaler *cmv1.ClusterAutoscaler,
 		options *mpOpts.CreateMachinepoolUserOptions) error
 }
 
@@ -68,10 +69,10 @@ func NewMachinePoolService() MachinePoolService {
 
 // Create machine pool based on cluster type
 func (m machinePool) CreateMachinePoolBasedOnClusterType(r *rosa.Runtime,
-	cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
+	cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, clusterAutoscaler *cmv1.ClusterAutoscaler,
 	options *mpOpts.CreateMachinepoolUserOptions) error {
 	if cluster.Hypershift().Enabled() {
-		return m.CreateNodePools(r, cmd, clusterKey, cluster, options)
+		return m.CreateNodePools(r, cmd, clusterKey, cluster, clusterAutoscaler, options)
 	}
 	return m.CreateMachinePool(r, cmd, clusterKey, cluster, options)
 }
@@ -494,7 +495,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 }
 
 func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
-	args *mpOpts.CreateMachinepoolUserOptions) error {
+	clusterAutoscaler *cmv1.ClusterAutoscaler, args *mpOpts.CreateMachinepoolUserOptions) error {
 
 	var err error
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
@@ -971,22 +972,29 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
-	// Informational message for cluster autoscaler + scaling out to max nodes
-	if autoscaling {
-		r.Reporter.Infof("Scaling max replicas to the maximum allowed value is subject to cluster autoscaler" +
-			" configuration")
+	maxNodesTotal := 0
+	if clusterAutoscaler != nil && clusterAutoscaler.ResourceLimits() != nil {
+		maxNodesTotal = clusterAutoscaler.ResourceLimits().MaxNodesTotal()
 	}
 
-	// Informational message for sum of replicas > MaxNodesTotal
-	if sumOfReplicas+sumOfMaxReplicas > hcpMaxNodesLimit {
-		r.Reporter.Infof("Actual maximum replicas can be lowered, since the replicas defined exceeds "+
-			"%s", clusterAutoscalerLimitMessage)
-	}
+	if maxNodesTotal > 0 { // Do not perform if maxNodesTotal == 0
+		// Informational message for cluster autoscaler + scaling out to max nodes
+		if autoscaling {
+			r.Reporter.Infof("Scaling max replicas to the maximum allowed value is subject to cluster autoscaler" +
+				" configuration")
+		}
 
-	// Informational message for min-replicas or replicas > MaxNodesTotal
-	if sumOfReplicas+sumOfMinReplicas > hcpMaxNodesLimit {
-		r.Reporter.Infof("Actual total nodes in the cluster will be more than the maximum nodes configured " +
-			"in the cluster autoscaler")
+		// Informational message for sum of replicas > MaxNodesTotal
+		if sumOfReplicas+sumOfMaxReplicas > maxNodesTotal {
+			r.Reporter.Infof("Actual maximum replicas can be lowered, since the replicas defined exceeds "+
+				"%s", clusterAutoscalerLimitMessage)
+		}
+
+		// Informational message for min-replicas or replicas > MaxNodesTotal
+		if sumOfReplicas+sumOfMinReplicas > maxNodesTotal {
+			r.Reporter.Infof("Actual total nodes in the cluster will be more than the maximum nodes configured " +
+				"in the cluster autoscaler")
+		}
 	}
 
 	if version != "" {
@@ -1276,7 +1284,11 @@ func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, 
 		return fmt.Errorf("Expected a valid identifier for the machine pool")
 	}
 	if cluster.Hypershift().Enabled() {
-		return editNodePool(cmd, machinePoolId, clusterKey, cluster, r)
+		clusterAutoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
+		if err != nil {
+			return errors.UserErrorf("Failed to fetch cluster autoscaler for cluster '%s'", cluster.ID())
+		}
+		return editNodePool(cmd, machinePoolId, clusterKey, cluster, clusterAutoscaler, r)
 	}
 	return editMachinePool(cmd, machinePoolId, clusterKey, cluster, r)
 }
@@ -1553,7 +1565,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 }
 
 func editNodePool(cmd *cobra.Command, nodePoolID string,
-	clusterKey string, cluster *cmv1.Cluster, r *rosa.Runtime) error {
+	clusterKey string, cluster *cmv1.Cluster, clusterAutoscaler *cmv1.ClusterAutoscaler, r *rosa.Runtime) error {
 	var err error
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
@@ -1836,22 +1848,29 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		}
 	}
 
-	// Informational message for cluster autoscaler + scaling out to max nodes
-	if autoscaling {
-		r.Reporter.Infof("Scaling max replicas to the maximum allowed value is subject to cluster autoscaler" +
-			" configuration")
+	maxNodesTotal := 0
+	if clusterAutoscaler != nil && clusterAutoscaler.ResourceLimits() != nil {
+		maxNodesTotal = clusterAutoscaler.ResourceLimits().MaxNodesTotal()
 	}
 
-	// Informational message for sum of replicas > MaxNodesTotal
-	if sumOfReplicas+sumOfMaxReplicas > hcpMaxNodesLimit {
-		r.Reporter.Infof("Actual maximum replicas can be lowered, since the replicas defined exceeds "+
-			"%s", clusterAutoscalerLimitMessage)
-	}
+	if maxNodesTotal > 0 { // Do not perform if maxNodesTotal == 0
+		// Informational message for cluster autoscaler + scaling out to max nodes
+		if autoscaling {
+			r.Reporter.Infof("Scaling max replicas to the maximum allowed value is subject to cluster autoscaler" +
+				" configuration")
+		}
 
-	// Informational message for min-replicas or replicas > MaxNodesTotal
-	if sumOfReplicas+sumOfMinReplicas > hcpMaxNodesLimit {
-		r.Reporter.Infof("Actual total nodes in the cluster will be more than the maximum nodes configured " +
-			"in the cluster autoscaler")
+		// Informational message for sum of replicas > MaxNodesTotal
+		if sumOfReplicas+sumOfMaxReplicas > maxNodesTotal {
+			r.Reporter.Infof("Actual maximum replicas can be lowered, since the replicas defined exceeds "+
+				"%s", clusterAutoscalerLimitMessage)
+		}
+
+		// Informational message for min-replicas or replicas > MaxNodesTotal
+		if sumOfReplicas+sumOfMinReplicas > maxNodesTotal {
+			r.Reporter.Infof("Actual total nodes in the cluster will be more than the maximum nodes configured " +
+				"in the cluster autoscaler")
+		}
 	}
 
 	update, err := npBuilder.Build()
