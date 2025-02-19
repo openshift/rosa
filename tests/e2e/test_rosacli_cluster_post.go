@@ -294,7 +294,7 @@ var _ = Describe("Healthy check",
 					Expect(etcdEncryption).To(BeTrue())
 				})
 
-			It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical,
+			It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				func() {
 					private := constants.No
 					ingressPrivate := "false"
@@ -746,7 +746,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 
 			})
 		It("to verify the sts cluster is deleted successfully - [id:75256]",
-			labels.High, labels.Runtime.DestroyPost,
+			labels.High, labels.Runtime.DestroyPost, labels.FedRAMP,
 			func() {
 				By("Check the operator-roles is deleted")
 				clusterDetail, err := handler.ParseClusterDetail()
@@ -867,7 +867,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 		It("to verify sts cluster is created successfully - [id:41822]",
-			labels.High, labels.Runtime.Day1Post,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				By("Check the cluster is STS cluster")
 				profile := handler.LoadProfileYamlFileByENV()
@@ -890,6 +890,8 @@ var _ = Describe("Post-Check testing for cluster creation",
 				By("Check the sts cluster created with IAM roles")
 				if profile.ClusterConfig.HCP {
 					Expect(len(clusterDescription.OperatorIAMRoles)).To(Equal(8))
+				} else if profile.ClusterConfig.FedRAMP {
+					Expect(len(clusterDescription.OperatorIAMRoles)).To(Equal(7))
 				} else {
 					Expect(len(clusterDescription.OperatorIAMRoles)).To(Equal(6))
 				}

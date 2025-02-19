@@ -6,3 +6,4 @@ import (
 
 // Exclude in CI
 var Exclude = Label("Exclude")
+var FedRAMP = Label("FedRAMP")

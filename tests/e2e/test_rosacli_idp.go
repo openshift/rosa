@@ -59,7 +59,7 @@ var _ = Describe("Edit IDP",
 		})
 
 		It("can create/describe/delete admin user - [id:35878]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				var (
 					idpType    = "htpasswd"
@@ -158,7 +158,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("can create/List/Delete IDPs for rosa clusters - [id:35896]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				// common IDP variables
 				var (
