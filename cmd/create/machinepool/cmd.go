@@ -65,6 +65,11 @@ func CreateMachinepoolRunner(userOptions *mpOpts.CreateMachinepoolUserOptions) r
 			return err
 		}
 
+		clusterAutoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
+		if err != nil {
+			return err
+		}
+
 		val, ok := cluster.Properties()[properties.UseLocalCredentials]
 		useLocalCredentials := ok && val == "true"
 
@@ -82,6 +87,6 @@ func CreateMachinepoolRunner(userOptions *mpOpts.CreateMachinepoolUserOptions) r
 		}
 
 		return newService.service.CreateMachinePoolBasedOnClusterType(r,
-			cmd, clusterKey, cluster, options.Machinepool())
+			cmd, clusterKey, cluster, clusterAutoscaler, options.Machinepool())
 	}
 }
