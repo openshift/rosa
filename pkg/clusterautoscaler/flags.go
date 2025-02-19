@@ -817,6 +817,7 @@ func BuildAutoscalerOptions(spec *ocm.AutoscalerConfig, prefix string) string {
 
 func CreateAutoscalerConfig(args *AutoscalerArgs) (*ocm.AutoscalerConfig, error) {
 	gpuLimits := []ocm.GPULimit{}
+
 	for _, entry := range args.ResourceLimits.GPULimits {
 		gpuLimit, err := parseGPULimit(entry)
 		if err != nil {
