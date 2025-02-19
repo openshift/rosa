@@ -22,6 +22,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -83,6 +84,10 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 		}
 
 		if cluster.Hypershift().Enabled() {
+			if interactive.Enabled() {
+				return errors.UserErrorf("Editing a Hosted Control Plane cluster autoscaler does not support " +
+					"interactive mode")
+			}
 			ok, err := clusterautoscaler.ValidateAutoscalerFlagsForHostedCp(argsPrefix, command)
 			if !ok || err != nil {
 				return err
@@ -100,7 +105,8 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 				"You should first create it via 'rosa create autoscaler'", clusterKey)
 		}
 
-		if !clusterautoscaler.IsAutoscalerSetViaCLI(command.Flags(), argsPrefix) && !interactive.Enabled() {
+		if !clusterautoscaler.IsAutoscalerSetViaCLI(command.Flags(), argsPrefix) && !interactive.Enabled() &&
+			!cluster.Hypershift().Enabled() {
 			interactive.Enable()
 			r.Reporter.Infof("Enabling interactive mode")
 		}

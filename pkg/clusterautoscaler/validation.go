@@ -53,6 +53,26 @@ func ValidateAutoscalerFlagsForHostedCp(prefix string, cmd *cobra.Command) (bool
 		}
 	}
 
+	mustHaveAtLeastOneList := []string{
+		maxNodesTotalFlag,
+		podPriorityThresholdFlag,
+		maxPodGracePeriodFlag,
+		maxNodeProvisionTimeFlag,
+	}
+
+	atLeastOneChanged := false
+	for _, flag := range mustHaveAtLeastOneList {
+		if cmd.Flag(fmt.Sprintf("%s%s", prefix, flag)).Changed {
+			atLeastOneChanged = true
+		}
+	}
+
+	if !atLeastOneChanged {
+		return false, errors.UserErrorf("Must supply at least one of the following flags: '%s', '%s', '%s', '%s'."+
+			" Editing a Hosted Control Plane cluster autoscaler does not support interactive mode.", maxNodesTotalFlag,
+			podPriorityThresholdFlag, maxPodGracePeriodFlag, maxNodeProvisionTimeFlag)
+	}
+
 	return true, nil
 }
 
