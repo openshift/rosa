@@ -1485,6 +1485,8 @@ var _ = Describe("NodePools", func() {
 			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
+			nodePoolResponse := test.FormatNodePoolList([]*cmv1.NodePool{nodePoolObj})
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(Not(HaveOccurred()))
 		})

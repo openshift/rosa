@@ -109,6 +109,8 @@ var _ = Describe("Edit Machinepool", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				// First get
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+				// Second get
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
 				// Edit
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 				t.SetCluster(clusterId, mockClusterReady)
@@ -129,6 +131,8 @@ var _ = Describe("Edit Machinepool", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				// First get
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolAutoResponse))
+				// Second get
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
 				// Edit
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ""))
 				t.SetCluster(clusterId, mockClusterReady)

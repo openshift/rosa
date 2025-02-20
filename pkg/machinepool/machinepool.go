@@ -957,18 +957,20 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	sumOfMaxReplicas := maxReplicas
 	sumOfMinReplicas := minReplicas
 
-	for _, np := range cluster.NodePools().Items() {
+	nodepools, err := r.OCMClient.GetNodePools(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Error getting node pools from cluster '%s': %s", cluster.ID(), err)
+	}
+
+	for _, np := range nodepools {
 		// If autoscaling, calculate min and max, use min and max in separate messages below
-		autoscaling, ok := np.GetAutoscaling()
-		if !ok || autoscaling == nil {
-			npReplicas, ok := np.GetReplicas()
-			if !ok {
-				return fmt.Errorf("Failed to get node pool replicas for hosted cluster '%s': %v", clusterKey, err)
-			}
+		npAutoscaling, ok := np.GetAutoscaling()
+		if !ok || npAutoscaling == nil {
+			npReplicas, _ := np.GetReplicas()
 			sumOfReplicas += npReplicas
 		} else {
-			sumOfMaxReplicas += autoscaling.MaxReplica()
-			sumOfMinReplicas += autoscaling.MinReplica()
+			sumOfMaxReplicas += npAutoscaling.MaxReplica()
+			sumOfMinReplicas += npAutoscaling.MinReplica()
 		}
 	}
 
@@ -1833,18 +1835,20 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	sumOfMaxReplicas := maxReplicas
 	sumOfMinReplicas := minReplicas
 
-	for _, np := range cluster.NodePools().Items() {
+	nodepools, err := r.OCMClient.GetNodePools(cluster.ID())
+	if err != nil {
+		r.Reporter.Errorf("Error getting node pools from cluster '%s': %s", cluster.ID(), err)
+	}
+
+	for _, np := range nodepools {
 		// If autoscaling, calculate min and max, use min and max in separate messages below
-		autoscaling, ok := np.GetAutoscaling()
-		if !ok || autoscaling == nil {
-			npReplicas, ok := np.GetReplicas()
-			if !ok {
-				return fmt.Errorf("Failed to get node pool replicas for hosted cluster '%s': %v", clusterKey, err)
-			}
+		npAutoscaling, ok := np.GetAutoscaling()
+		if !ok || npAutoscaling == nil {
+			npReplicas, _ := np.GetReplicas()
 			sumOfReplicas += npReplicas
 		} else {
-			sumOfMaxReplicas += autoscaling.MaxReplica()
-			sumOfMinReplicas += autoscaling.MinReplica()
+			sumOfMaxReplicas += npAutoscaling.MaxReplica()
+			sumOfMinReplicas += npAutoscaling.MinReplica()
 		}
 	}
 
