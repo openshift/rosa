@@ -31,6 +31,177 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 		clusterConfig, err = config.ParseClusterProfile()
 		Expect(err).ToNot(HaveOccurred())
 	})
+	Describe("autoscaler testing on hosted-cp cluster", func() {
+		oldAutoscaler := rosacli.Autoscaler{}
+		BeforeEach(func() {
+			By("Skip testing if the cluster is not a Classic cluster")
+			if !hostedCluster {
+				SkipNotHosted()
+			}
+
+			By("Record the default autoscaler of the hosted-cp cluster")
+			rosaClient.Runner.YamlFormat()
+			yamlOutput, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			rosaClient.Runner.UnsetFormat()
+
+			oldAutoscaler = rosacli.Autoscaler{}
+			err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().YamlToObj(&oldAutoscaler)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		AfterEach(func() {
+			By("Recover the default autoscaler configuration")
+			_, err := rosaClient.AutoScaler.EditAutoScaler(clusterID,
+				"--max-nodes-total", strconv.Itoa(oldAutoscaler.ResourcesLimits.MaxNodesTotal),
+				"--pod-priority-threshold", strconv.Itoa(oldAutoscaler.PodPriorityThresold),
+				"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
+				"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+		})
+		It("Edit/describe hosted-cp cluster autoscaler and validations for autoscaler operations - [id:79846]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				By("Check Validation for max-node-provision-time")
+				mnptValidationMap := map[string]string{
+					"16":   "missing unit in duration",
+					"-17m": "Only positive durations are allowed",
+					"50o":  "unknown unit",
+					"10m":  "value should be between 15m and 60m",
+					"70m":  "value should be between 15m and 60m",
+					"2h":   "value should be between 15m and 60m",
+				}
+				for mnpt, expectedMsg := range mnptValidationMap {
+					_, err := rosaClient.AutoScaler.EditAutoScaler(clusterID,
+						"--max-nodes-total", strconv.Itoa(oldAutoscaler.ResourcesLimits.MaxNodesTotal),
+						"--pod-priority-threshold", strconv.Itoa(oldAutoscaler.PodPriorityThresold),
+						"--max-node-provision-time", mnpt,
+						"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring(expectedMsg))
+
+					By("Check Validation for pod-priority-threshold")
+					pptValidationMap := map[string]string{
+						"-11.1":      "strconv.ParseInt: parsing",
+						"1000000003": "value should be between -21474836485 and 1000000000",
+					}
+					for ppt, expectedMsg := range pptValidationMap {
+						_, err := rosaClient.AutoScaler.EditAutoScaler(clusterID,
+							"--max-nodes-total", strconv.Itoa(oldAutoscaler.ResourcesLimits.MaxNodesTotal),
+							"--pod-priority-threshold", ppt,
+							"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
+							"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
+						)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring(expectedMsg))
+					}
+
+					By("Check Validation for max-pod-grace-period")
+					mpgpValidationMap := map[string]string{
+						"-100":  "must be greater or equal to zero",
+						"700.1": "strconv.ParseInt: parsing",
+						"500":   "value should be larger than 600",
+					}
+					for mpgp, expectedMsg := range mpgpValidationMap {
+						_, err := rosaClient.AutoScaler.EditAutoScaler(clusterID,
+							"--max-nodes-total", strconv.Itoa(oldAutoscaler.ResourcesLimits.MaxNodesTotal),
+							"--pod-priority-threshold", strconv.Itoa(oldAutoscaler.PodPriorityThresold),
+							"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
+							"--max-pod-grace-period", mpgp,
+						)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring(expectedMsg))
+					}
+
+					By("Check Validation for max-nodes-total")
+					mntValidationMap := map[string]string{
+						"-1":  "Number must be greater or equal to zero",
+						"499": "exceeds the maximum allowed '500'",
+					}
+					for mnt, expectedMsg := range mntValidationMap {
+						_, err := rosaClient.AutoScaler.EditAutoScaler(clusterID,
+							"--max-nodes-total", mnt,
+							"--pod-priority-threshold", strconv.Itoa(oldAutoscaler.PodPriorityThresold),
+							"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
+							"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
+						)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring(expectedMsg))
+					}
+					By("Check Validation for unsupported flags")
+					_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID,
+						"--log-verbosity", "2",
+						"--pod-priority-threshold", strconv.Itoa(oldAutoscaler.PodPriorityThresold),
+						"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
+						"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
+						"--max-nodes-total", strconv.Itoa(oldAutoscaler.ResourcesLimits.MaxNodesTotal),
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("Unable to use flag"))
+					Expect(err.Error()).To(ContainSubstring("Supported flags are:"))
+					Expect(err.Error()).To(ContainSubstring("'max-nodes-total',"))
+					Expect(err.Error()).To(ContainSubstring("'max-pod-grace-period',"))
+					Expect(err.Error()).To(ContainSubstring("'max-node-provision-time',"))
+					Expect(err.Error()).To(ContainSubstring("'pod-priority-threshold'"))
+
+					By("Try to create a new autoscaler")
+					_, err = rosaClient.AutoScaler.CreateAutoScaler(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(
+						ContainSubstring(
+							"Hosted Control Plane clusters do not support cluster-autoscaler configuration"),
+					)
+
+					By("Try to delete the autoscaler")
+					_, err = rosaClient.AutoScaler.DeleteAutoScaler(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(
+						ContainSubstring(
+							"Hosted Control Plane clusters do not support cluster-autoscaler configuration"),
+					)
+
+					By("Try to edit the autoscaler in interactive mode")
+					_, err = rosaClient.AutoScaler.EditAutoScaler(
+						clusterID,
+						"-i",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(
+						ContainSubstring(
+							"Editing a Hosted Control Plane cluster autoscaler does not support interactive mode"),
+					)
+					By("Edit the autoscaler with custom values")
+					podPriorityThreshold := "1000"
+					maxNodeProvisionTime := "50m"
+					maxPodGracePeriod := "700"
+					maxNodesTotal := "100"
+					_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID,
+						"--pod-priority-threshold", podPriorityThreshold,
+						"--max-node-provision-time", maxNodeProvisionTime,
+						"--max-pod-grace-period", maxPodGracePeriod,
+						"--max-nodes-total", maxNodesTotal,
+					)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Describe the autoscaler to check the edited values")
+					rosaClient.Runner.YamlFormat()
+					yamlOutput, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					rosaClient.Runner.UnsetFormat()
+
+					costomAutoscalerConfig := rosacli.Autoscaler{}
+					err = rosaClient.Parser.TextData.Input(yamlOutput).Parse().YamlToObj(&costomAutoscalerConfig)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(strconv.Itoa(costomAutoscalerConfig.PodPriorityThresold)).To(Equal(podPriorityThreshold))
+					Expect(costomAutoscalerConfig.MaxNodeProvisionTime).To(Equal(maxNodeProvisionTime))
+					Expect(strconv.Itoa(costomAutoscalerConfig.MaxPodGracePeriod)).To(Equal(maxPodGracePeriod))
+					Expect(strconv.Itoa(costomAutoscalerConfig.ResourcesLimits.MaxNodesTotal)).To(Equal(maxNodesTotal))
+				}
+			})
+	})
 
 	Describe("creation testing", func() {
 		BeforeEach(func() {
