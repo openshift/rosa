@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"fmt"
 	"path"
 	"time"
 
@@ -52,6 +53,10 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 				Expect(err).To(BeNil())
 				if clusterDetails.ExternalAuthentication == "Enabled" {
 					By("Create a fake external auth provider to avoid failure of console operator")
+					secretValue := fmt.Sprintf("%s~%s~%s",
+						helper.GenerateRandomStringWithSymbols(5),
+						helper.GenerateRandomStringWithSymbols(10),
+						helper.GenerateRandomStringWithSymbols(23))
 					value := []string{
 						"--name", helper.GenerateRandomName("provider", 2),
 						"--issuer-url", "https://login.microsoftonline.com/fa5d3dd8-b8ec-4407-a55c-ced639f1c8c5/v2.0",
@@ -59,7 +64,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 						"--claim-mapping-username-claim", "email",
 						"--claim-mapping-groups-claim", "groups",
 						"--console-client-id", "8a769b34-13c9-4f5b-9933-ec439700ec67",
-						"--console-client-secret", "vfq8Q~XpgXx9vsKF~XSW1bcSowfJP2JGraybYa7X",
+						"--console-client-secret", secretValue,
 					}
 					_, err = client.ExternalAuthProvider.CreateExternalAuthProvider(clusterID, value...)
 					Expect(err).ToNot(HaveOccurred())
