@@ -43,14 +43,24 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 			Expect(err).ToNot(HaveOccurred())
 			clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
 
+			clusterID := clusterHandler.GetClusterDetail().ClusterID
+			clusterService := client.Cluster
+			output, err := clusterService.DescribeCluster(clusterID)
+			Expect(err).To(BeNil())
+			clusterDetails, err := clusterService.ReflectClusterDescription(output)
+			Expect(err).To(BeNil())
+
+			// Workaround for public HCP with proxy
+			if profile.ClusterConfig.HCP && profile.ClusterConfig.ProxyEnabled && !profile.ClusterConfig.Private {
+				clusterDNS := clusterDetails.DNS
+				_, _, clusterNoProxy :=
+					clusterService.DetectProxy(clusterDetails)
+				_, err := clusterService.EditCluster(clusterID, "--no-proxy",
+					fmt.Sprintf("%s,.%s", clusterNoProxy, clusterDNS))
+				Expect(err).To(BeNil())
+			}
 			// For HCP cluster with other network type,it is required to set one configure:cilium
 			if profile.ClusterConfig.HCP && profile.ClusterConfig.NetworkType == "other" {
-				clusterID := clusterHandler.GetClusterDetail().ClusterID
-				clusterService := client.Cluster
-				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
-				clusterDetails, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
 				if clusterDetails.ExternalAuthentication == "Enabled" {
 					By("Create a fake external auth provider to avoid failure of console operator")
 					secretValue := fmt.Sprintf("%s~%s~%s",

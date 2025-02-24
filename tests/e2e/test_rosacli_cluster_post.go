@@ -478,7 +478,8 @@ var _ = Describe("Healthy check",
 							clusterService.DetectProxy(clusterDescription)
 						Expect(clusterConfig.Proxy.Http).To(Equal(clusterHTTPProxy))
 						Expect(clusterConfig.Proxy.Https).To(Equal(clusterHTTPSProxy))
-						Expect(clusterConfig.Proxy.NoProxy).To(Equal(clusterNoProxy))
+						// Here is workaround in e2e_setup_test.go for HCP with proxy
+						Expect(clusterNoProxy).To(ContainSubstring(clusterConfig.Proxy.NoProxy))
 						Expect(clusterDescription.AdditionalTrustBundle).To(Equal("REDACTED"))
 					} else {
 						Expect(clusterDescription.Proxy).To(BeEmpty())
