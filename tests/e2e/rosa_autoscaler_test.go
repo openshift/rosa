@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
@@ -34,7 +35,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 	Describe("autoscaler testing on hosted-cp cluster", func() {
 		oldAutoscaler := rosacli.Autoscaler{}
 		BeforeEach(func() {
-			By("Skip testing if the cluster is not a Classic cluster")
+			By("Skip testing if the cluster is not a hosted-cp cluster")
 			if !hostedCluster {
 				SkipNotHosted()
 			}
@@ -60,6 +61,107 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 			Expect(err).ToNot(HaveOccurred())
 
 		})
+		It("Validation info/error about the MaxNodeLimit and MaxNodeLimitation - [id:79848]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				var (
+					minReplicas     string
+					maxReplicas     string
+					replicas        string
+					maxNodesTotal   string
+					machinepoolName string
+				)
+				By("Edit the autoscaler with a custom testing max-nodes-total value")
+				maxNodesTotal = "100"
+				_, err := rosaClient.AutoScaler.EditAutoScaler(clusterID,
+					"--max-nodes-total", maxNodesTotal,
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Try to create a new machinepool with settings to trigger the messages")
+				minReplicas = "100"
+				maxReplicas = "100"
+				machinepoolName = helper.GenerateRandomName("mp74430", 2)
+				output, err := rosaClient.MachinePool.CreateMachinePool(clusterID,
+					machinepoolName,
+					"--enable-autoscaling",
+					"--min-replicas", minReplicas,
+					"--max-replicas", maxReplicas,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer func() {
+					By("Delete the additional machinepool")
+					_, err = rosaClient.MachinePool.DeleteMachinePool(
+						clusterID,
+						machinepoolName)
+					Expect(err).ToNot(HaveOccurred())
+				}()
+				Expect(output.String()).To(ContainSubstring(
+					"Scaling max replicas to the maximum allowed value is subject to",
+				))
+				Expect(output.String()).To(ContainSubstring(
+					"Actual maximum replicas can be lowered, since",
+				))
+				Expect(output.String()).To(ContainSubstring(
+					"Actual total nodes in the cluster will be more than",
+				))
+
+				By("Edit additional machinepool with replicas to trigger the messages")
+				replicas = "100"
+				output, err = rosaClient.MachinePool.EditMachinePool(clusterID,
+					machinepoolName,
+					"--enable-autoscaling=false",
+					"--replicas", replicas,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).ToNot(ContainSubstring(
+					"Scaling max replicas to the maximum allowed value is subject to",
+				))
+				Expect(output.String()).To(ContainSubstring(
+					"Actual maximum replicas can be lowered, since",
+				))
+				Expect(output.String()).To(ContainSubstring(
+					"Actual total nodes in the cluster will be more than",
+				))
+
+				By("Edit the additional machinepool with settings not to trigger the messages")
+				minReplicas = "3"
+				maxReplicas = "3"
+				output, err = rosaClient.MachinePool.EditMachinePool(clusterID,
+					machinepoolName,
+					"--enable-autoscaling",
+					"--min-replicas", minReplicas,
+					"--max-replicas", maxReplicas,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring(
+					"Scaling max replicas to the maximum allowed value is subject to",
+				))
+
+				By("Check the validation of maximum allowed nodes by replicas")
+				replicas = "500"
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID,
+					machinepoolName,
+					"--replicas", replicas,
+					"--enable-autoscaling=false",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(
+					"exceeds the maximum allowed '500'"))
+				By("Check the validation of maximum allowed nodes by minReplicas")
+				minReplicas = "500"
+				maxReplicas = "500"
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID,
+					machinepoolName,
+					"--enable-autoscaling",
+					"--min-replicas", minReplicas,
+					"--max-replicas", maxReplicas,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(
+					"exceeds the maximum allowed '500'"))
+			})
+
 		It("Edit/describe hosted-cp cluster autoscaler and validations for autoscaler operations - [id:79846]",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
