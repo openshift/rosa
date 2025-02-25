@@ -53,9 +53,10 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 			// Workaround for public HCP with proxy
 			if profile.ClusterConfig.HCP && profile.ClusterConfig.ProxyEnabled && !profile.ClusterConfig.Private {
 				clusterDNS := clusterDetails.DNS
-				_, _, clusterNoProxy :=
-					clusterService.DetectProxy(clusterDetails)
-				_, err := clusterService.EditCluster(clusterID, "--no-proxy",
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				clusterNoProxy := jsonData.DigString("proxy", "no_proxy")
+				_, err = clusterService.EditCluster(clusterID, "--no-proxy",
 					fmt.Sprintf("%s,.%s", clusterNoProxy, clusterDNS))
 				Expect(err).To(BeNil())
 			}
