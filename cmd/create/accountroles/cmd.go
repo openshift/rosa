@@ -252,11 +252,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if isHostedCPValueSet && r.Creator.IsGovcloud {
-		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
-		os.Exit(1)
-	}
-
 	// Validate AWS credentials for current user
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Validating AWS credentials...")
@@ -397,9 +392,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	createClassic := args.classic
-	if r.Creator.IsGovcloud {
-		createClassic = true
-	} else if interactive.Enabled() && !isClassicValueSet && !isHostedCPValueSet {
+	if interactive.Enabled() && !isClassicValueSet && !isHostedCPValueSet {
 		createClassic, err = interactive.GetBool(interactive.Input{
 			Question: "Create Classic account roles",
 			Help:     cmd.Flags().Lookup("classic").Usage,
@@ -415,7 +408,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	createHostedCP := args.hostedCP
 	defaultValue := args.route53RoleArn != "" && args.vpcEndpointRoleArn != ""
-	if interactive.Enabled() && !isHostedCPValueSet && !cmd.Flags().Changed("classic") && !r.Creator.IsGovcloud {
+	if interactive.Enabled() && !isHostedCPValueSet && !cmd.Flags().Changed("classic") {
 		createHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Create Hosted CP account roles",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
