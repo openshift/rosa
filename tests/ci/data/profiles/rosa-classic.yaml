@@ -1,6 +1,6 @@
 profiles:
 - as: rosa-advanced
-  version: "4.15"
+  version: latest
   channel_group: "candidate"
   region: "us-west-2"
   cluster:
@@ -35,7 +35,7 @@ profiles:
     path: "/test/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
 - as: rosa-private-link
-  version: "4.15"
+  version: latest
   channel_group: "candidate"
   region: "us-east-1"
   cluster:
