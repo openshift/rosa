@@ -556,9 +556,6 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 
 		// Filter the available list of versions for a hosted machine pool
 		filteredVersionList := versions.GetFilteredVersionList(versionList, minVersion, clusterVersion)
-		if err != nil {
-			return err
-		}
 
 		if version == "" {
 			version = clusterVersion
