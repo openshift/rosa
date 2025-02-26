@@ -103,10 +103,16 @@ func LoadProfileYamlFileByENV() *Profile {
 			config.Test.GlobalENV.ChannelGroup)
 		profile.ChannelGroup = config.Test.GlobalENV.ChannelGroup
 	}
-	if config.Test.GlobalENV.Version != "" {
-		log.Logger.Infof("Got global env settings for VERSION, overwritten the profile setting with value %s",
-			config.Test.GlobalENV.Version)
-		profile.Version = config.Test.GlobalENV.Version
+	if config.Test.GlobalENV.Version != "" || config.Test.GlobalENV.OpenshiftVersion != "" {
+		if config.Test.GlobalENV.Version != "" {
+			log.Logger.Infof("Got global env settings for VERSION, overwritten the profile setting with value %s",
+				config.Test.GlobalENV.OpenshiftVersion)
+			profile.Version = config.Test.GlobalENV.Version
+		} else {
+			log.Logger.Infof("Got global env settings for OPENSHIFT_VERSION, overwritten the profile setting with value %s",
+				config.Test.GlobalENV.Version)
+			profile.Version = config.Test.GlobalENV.OpenshiftVersion
+		}
 	}
 	if config.Test.GlobalENV.Region != "" {
 		log.Logger.Infof("Got global env settings for REGION, overwritten the profile setting with value %s",

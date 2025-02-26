@@ -50,6 +50,7 @@ type TestConfig struct {
 type GlobalENVVariables struct {
 	ChannelGroup          string `env:"CHANNEL_GROUP" default:""`
 	Version               string `env:"VERSION" default:""`
+	OpenshiftVersion      string `env:"OPENSHIFT_VERSION" default:""`
 	Region                string `env:"REGION" default:""`
 	ProvisionShard        string `env:"PROVISION_SHARD" default:""`
 	NamePrefix            string `env:"NAME_PREFIX"`
@@ -122,6 +123,7 @@ func init() {
 	Test.GlobalENV = &GlobalENVVariables{
 		ChannelGroup:          os.Getenv("CHANNEL_GROUP"),
 		Version:               os.Getenv("VERSION"),
+		OpenshiftVersion:      os.Getenv("OPENSHIFT_VERSION"),
 		Region:                os.Getenv("REGION"),
 		ProvisionShard:        os.Getenv("PROVISION_SHARD"),
 		NamePrefix:            os.Getenv("NAME_PREFIX"),
