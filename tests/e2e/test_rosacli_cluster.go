@@ -630,6 +630,11 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("Load the profile")
 			profile := handler.LoadProfileYamlFileByENV()
 
+			By("Skip if the cluster is no proxy setting")
+			if !profile.ClusterConfig.ProxyEnabled {
+				Skip("This feature only work for the cluster with proxy setting")
+			}
+
 			By("Edit cluster with invalid http_proxy set")
 			if !profile.ClusterConfig.BYOVPC {
 				output, err := clusterService.EditCluster(clusterID,
