@@ -632,6 +632,9 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		It("creation in local zone subnet - [id:71319]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
+				if profile.ClusterConfig.SharedVPC {
+					Skip("This test only run on the cluster not using shared-vpc")
+				}
 				var vpcClient *vpc_client.VPC
 				var err error
 
@@ -819,10 +822,13 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 					"The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
 			By("with already existing upgrade")
+			availableUpgradeVersions := helper.ParseCommaSeparatedStrings(upgradableVersion.AvailableUpgrades)
+			Expect(len(availableUpgradeVersions)).NotTo(BeEquivalentTo(0))
+
 			_, err = machinePoolUpgradeService.CreateManualUpgrade(
 				clusterID,
 				nodePoolAutoName,
-				clusterConfig.Version.RawID,
+				availableUpgradeVersions[0],
 				"",
 				"")
 			Expect(err).ToNot(HaveOccurred())
@@ -831,7 +837,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			output, err = machinePoolUpgradeService.CreateManualUpgrade(
 				clusterID,
 				nodePoolAutoName,
-				clusterConfig.Version.RawID,
+				availableUpgradeVersions[0],
 				"",
 				"")
 			Expect(err).ToNot(HaveOccurred())

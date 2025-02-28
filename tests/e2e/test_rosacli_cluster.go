@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -688,7 +689,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			tempDir, err := os.MkdirTemp("", "*")
 			Expect(err).ToNot(HaveOccurred())
 			defer os.RemoveAll(tempDir)
-			tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
+			tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-46310"), "invalid CA")
 			Expect(err).ToNot(HaveOccurred())
 			output, err = clusterService.EditCluster(clusterID,
 				"--additional-trust-bundle-file", tempFile,
@@ -766,6 +767,239 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 
 		})
 })
+var _ = Describe("Additional security groups validation",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			profilesMap    map[string]*handler.Profile
+			profile        *handler.Profile
+			clusterHandler handler.ClusterHandler
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			// Init the client
+			rosaClient = rosacli.NewClient()
+			// Get a random profile
+			// Use hcp profiles as the region will be used for both classic and hcp
+			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
+			profilesNames := make([]string, 0, len(profilesMap))
+			for k, v := range profilesMap {
+				if !v.ClusterConfig.SharedVPC || !v.ClusterConfig.AutoscalerEnabled {
+					profilesNames = append(profilesNames, k)
+				}
+			}
+			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			clusterHandler.Destroy()
+		})
+		It("Create rosa cluster with additional security groups will validate well via rosacli - [id:68971]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				var (
+					ocmResourceService  = rosaClient.OCMResource
+					ocpVersionBelow4_14 = "4.13.44"
+					ocpVersion          string
+					index               int
+					flagName            string
+					hostedCP            = true
+					installerRoleArn    string
+					SGIdsMoreThanTen    = 11
+					caseNumber          = "68971"
+					clusterName         = "ocp-68971"
+					securityGroups      = map[string]string{
+						"--additional-infra-security-group-ids":         "sg-aisgi",
+						"--additional-control-plane-security-group-ids": "sg-acpsgi",
+						"--additional-compute-security-group-ids":       "sg-acsgi",
+					}
+					invalidSecurityGroups = map[string]string{
+						"--additional-infra-security-group-ids":         "invalid",
+						"--additional-control-plane-security-group-ids": "invalid",
+						"--additional-compute-security-group-ids":       "invalid",
+					}
+					invalidHCPSecurityGroups = map[string]string{
+						"--additional-infra-security-group-ids":         "sg-aisgi",
+						"--additional-control-plane-security-group-ids": "sg-acpsgi",
+					}
+				)
+
+				By("Get cluster upgrade version")
+				versionService := rosaClient.Version
+				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+				Expect(err).To(BeNil())
+				defaultVersion := versionList.DefaultVersion()
+				Expect(defaultVersion).ToNot(BeNil())
+				ocpVersion = defaultVersion.Version
+
+				By("Prepare a vpc for the testing")
+				resourcesHandler := clusterHandler.GetResourcesHandler()
+				_, err = resourcesHandler.PrepareVPC(caseNumber, "", true, false)
+				Expect(err).ToNot(HaveOccurred())
+				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				//Check all subnets are created successfully and are in available state. If not, wait for them to be available
+				subnetIDs := append(subnetMap["private"], subnetMap["public"]...)
+				fmt.Println("--debug 001subnetIDs: ", subnetIDs)
+
+				awsClient, err := aws_client.CreateAWSClient("", resourcesHandler.GetVPC().Region)
+				Expect(err).To(BeNil())
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					30*time.Second,
+					300*time.Second,
+					false,
+					func(context.Context) (bool, error) {
+						subnetsDetail, err := awsClient.Ec2Client.DescribeSubnets(context.TODO(),
+							&ec2.DescribeSubnetsInput{
+								SubnetIds: subnetIDs,
+							},
+						)
+						if err != nil {
+							return false, nil
+						}
+						for _, subnet := range subnetsDetail.Subnets {
+							if subnet.State != "available" {
+								return false, nil
+							}
+						}
+						return true, nil
+					})
+				helper.AssertWaitPollNoErr(err, "subnets are not available after 300s")
+
+				By("Prepare additional security group ids for testing")
+				sgIDs, err := resourcesHandler.PrepareAdditionalSecurityGroups(SGIdsMoreThanTen, caseNumber)
+				Expect(err).ToNot(HaveOccurred())
+				subnetsFlagValue := strings.Join(append(subnetMap["private"], subnetMap["public"]...), ",")
+				rosaclient := rosacli.NewClient()
+
+				By("Try creating cluster with additional security groups but no subnet-ids")
+				for additionalSecurityGroupFlag := range securityGroups {
+					output, err, _ := rosaclient.Cluster.Create(
+						clusterName,
+						"--region", resourcesHandler.GetVPC().Region,
+						"--replicas", "3",
+						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
+					)
+					Expect(err).To(HaveOccurred())
+					index = strings.Index(additionalSecurityGroupFlag, "a")
+					flagName = additionalSecurityGroupFlag[index:]
+					Expect(output.String()).To(ContainSubstring(
+						"Setting the `%s` flag is only allowed for BYO VPC clusters",
+						flagName))
+				}
+
+				By("Try creating cluster with additional security groups and ocp version lower than 4.14")
+				for additionalSecurityGroupFlag := range securityGroups {
+					output, err, _ := rosaclient.Cluster.Create(
+						clusterName,
+						"--region", resourcesHandler.GetVPC().Region,
+						"--replicas", "3",
+						"--subnet-ids", subnetsFlagValue,
+						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
+						"--version", ocpVersionBelow4_14,
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					index = strings.Index(additionalSecurityGroupFlag, "a")
+					flagName = additionalSecurityGroupFlag[index:]
+					Expect(output.String()).To(ContainSubstring(
+						"Parameter '%s' is not supported prior to version '4.14.0'",
+						flagName))
+				}
+
+				By("Try creating cluster with invalid additional security groups")
+				for additionalSecurityGroupFlag, value := range invalidSecurityGroups {
+					output, err, _ := rosaclient.Cluster.Create(
+						clusterName,
+						"--region", resourcesHandler.GetVPC().Region,
+						"--replicas", "3",
+						"--subnet-ids", subnetsFlagValue,
+						additionalSecurityGroupFlag, value,
+						"--version", ocpVersion,
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
+				}
+
+				By("Try creating cluster with additional security groups with invalid and more than 10 SG ids")
+				for additionalSecurityGroupFlag := range securityGroups {
+
+					output, err, _ := rosaclient.Cluster.Create(
+						clusterName,
+						"--region", resourcesHandler.GetVPC().Region,
+						"--replicas", "3",
+						"--subnet-ids", subnetsFlagValue,
+						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
+						"--version", ocpVersion,
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring(
+						"limit for Additional Security Groups is '10', but '11' have been supplied"),
+					)
+				}
+
+				By("Try creating HCP cluster with additional security groups flag")
+				for additionalSecurityGroupFlag := range invalidHCPSecurityGroups {
+					By("Create account-roles of hosted-cp")
+					_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+						"--prefix", "akanni",
+						"--hosted-cp",
+						"-y")
+					Expect(err).To(BeNil())
+
+					By("Get the installer role arn")
+					accountRoleList, _, err := ocmResourceService.ListAccountRole()
+					Expect(err).To(BeNil())
+					installerRole := accountRoleList.InstallerRole("akanni", hostedCP)
+					Expect(installerRole).ToNot(BeNil())
+					installerRoleArn = installerRole.RoleArn
+
+					By("Create managed=false oidc config in auto mode")
+					output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto",
+						"--prefix", "akanni",
+						"--managed=false",
+						"--installer-role-arn", installerRoleArn,
+						"-y")
+					Expect(err).To(BeNil())
+					oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
+					oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
+					unmanagedOIDCConfigID, err := ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
+					Expect(err).To(BeNil())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
+					output, err, _ = rosaclient.Cluster.Create(
+						clusterName,
+						"--region", resourcesHandler.GetVPC().Region,
+						"--replicas", "3",
+						"--subnet-ids", subnetsFlagValue,
+						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
+						"--hosted-cp",
+						"--oidc-config-id", unmanagedOIDCConfigID,
+						"--billing-account", profile.ClusterConfig.BillingAccount,
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					index = strings.Index(additionalSecurityGroupFlag, "a")
+					flagName = additionalSecurityGroupFlag[index:]
+					Expect(output.String()).To(ContainSubstring(
+						"Cannot use '%s' flag with Hosted Control Plane clusters",
+						flagName))
+					Expect(output.String()).To(ContainSubstring(
+						"only 'additional-compute-security-group-ids' is supported",
+					))
+				}
+			})
+	})
+
 var _ = Describe("Classic cluster creation validation",
 	labels.Feature.Cluster,
 	func() {
@@ -789,7 +1023,7 @@ var _ = Describe("Classic cluster creation validation",
 			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-classic.yaml"))
 			profilesNames := make([]string, 0, len(profilesMap))
 			for k, v := range profilesMap {
-				if !v.ClusterConfig.SharedVPC || !v.ClusterConfig.AutoscalerEnabled {
+				if !v.ClusterConfig.SharedVPC && !v.ClusterConfig.AutoscalerEnabled {
 					profilesNames = append(profilesNames, k)
 				}
 			}
@@ -1320,174 +1554,6 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
 			})
-
-		It("Create rosa cluster with additional security groups will validate well via rosacli - [id:68971]",
-			labels.Medium, labels.Runtime.Day1Negative,
-			func() {
-				var (
-					ocmResourceService  = rosaClient.OCMResource
-					ocpVersionBelow4_14 = "4.13.44"
-					ocpVersion          string
-					index               int
-					flagName            string
-					hostedCP            = true
-					installerRoleArn    string
-					region              = "us-west-2"
-					SGIdsMoreThanTen    = 11
-					caseNumber          = "68971"
-					clusterName         = "ocp-68971"
-					securityGroups      = map[string]string{
-						"--additional-infra-security-group-ids":         "sg-aisgi",
-						"--additional-control-plane-security-group-ids": "sg-acpsgi",
-						"--additional-compute-security-group-ids":       "sg-acsgi",
-					}
-					invalidSecurityGroups = map[string]string{
-						"--additional-infra-security-group-ids":         "invalid",
-						"--additional-control-plane-security-group-ids": "invalid",
-						"--additional-compute-security-group-ids":       "invalid",
-					}
-					invalidHCPSecurityGroups = map[string]string{
-						"--additional-infra-security-group-ids":         "sg-aisgi",
-						"--additional-control-plane-security-group-ids": "sg-acpsgi",
-					}
-				)
-
-				By("Get cluster upgrade version")
-				versionService := rosaClient.Version
-				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
-				Expect(err).To(BeNil())
-				defaultVersion := versionList.DefaultVersion()
-				Expect(defaultVersion).ToNot(BeNil())
-				ocpVersion = defaultVersion.Version
-
-				By("Prepare a vpc for the testing")
-				resourcesHandler := clusterHandler.GetResourcesHandler()
-				_, err = resourcesHandler.PrepareVPC(caseNumber, "", true, false)
-				Expect(err).ToNot(HaveOccurred())
-				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, false)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("Prepare additional security group ids for testing")
-				sgIDs, err := resourcesHandler.PrepareAdditionalSecurityGroups(SGIdsMoreThanTen, caseNumber)
-				Expect(err).ToNot(HaveOccurred())
-				subnetsFlagValue := strings.Join(append(subnetMap["private"], subnetMap["public"]...), ",")
-				rosaclient := rosacli.NewClient()
-
-				By("Try creating cluster with additional security groups but no subnet-ids")
-				for additionalSecurityGroupFlag := range securityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
-						clusterName,
-						"--region", region,
-						"--replicas", "3",
-						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-					)
-					Expect(err).To(HaveOccurred())
-					index = strings.Index(additionalSecurityGroupFlag, "a")
-					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
-						"Setting the `%s` flag is only allowed for BYO VPC clusters",
-						flagName))
-				}
-
-				By("Try creating cluster with additional security groups and ocp version lower than 4.14")
-				for additionalSecurityGroupFlag := range securityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
-						clusterName,
-						"--region", region,
-						"--replicas", "3",
-						"--subnet-ids", subnetsFlagValue,
-						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-						"--version", ocpVersionBelow4_14,
-						"-y",
-					)
-					Expect(err).To(HaveOccurred())
-					index = strings.Index(additionalSecurityGroupFlag, "a")
-					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
-						"Parameter '%s' is not supported prior to version '4.14.0'",
-						flagName))
-				}
-
-				By("Try creating cluster with invalid additional security groups")
-				for additionalSecurityGroupFlag, value := range invalidSecurityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
-						clusterName,
-						"--region", region,
-						"--replicas", "3",
-						"--subnet-ids", subnetsFlagValue,
-						additionalSecurityGroupFlag, value,
-						"--version", ocpVersion,
-					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).To(ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
-				}
-
-				By("Try creating cluster with additional security groups with invalid and more than 10 SG ids")
-				for additionalSecurityGroupFlag := range securityGroups {
-
-					output, err, _ := rosaclient.Cluster.Create(
-						clusterName,
-						"--region", region,
-						"--replicas", "3",
-						"--subnet-ids", subnetsFlagValue,
-						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-						"--version", ocpVersion,
-					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).To(ContainSubstring(
-						"limit for Additional Security Groups is '10', but '11' have been supplied"),
-					)
-				}
-
-				By("Try creating HCP cluster with additional security groups flag")
-				for additionalSecurityGroupFlag := range invalidHCPSecurityGroups {
-					By("Create account-roles of hosted-cp")
-					_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
-						"--prefix", "akanni",
-						"--hosted-cp",
-						"-y")
-					Expect(err).To(BeNil())
-
-					By("Get the installer role arn")
-					accountRoleList, _, err := ocmResourceService.ListAccountRole()
-					Expect(err).To(BeNil())
-					installerRole := accountRoleList.InstallerRole("akanni", hostedCP)
-					Expect(installerRole).ToNot(BeNil())
-					installerRoleArn = installerRole.RoleArn
-
-					By("Create managed=false oidc config in auto mode")
-					output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto",
-						"--prefix", "akanni",
-						"--managed=false",
-						"--installer-role-arn", installerRoleArn,
-						"-y")
-					Expect(err).To(BeNil())
-					oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
-					oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
-					unmanagedOIDCConfigID, err := ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
-					Expect(err).To(BeNil())
-					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
-					output, err, _ = rosaclient.Cluster.Create(
-						clusterName,
-						"--region", region,
-						"--replicas", "3",
-						"--subnet-ids", subnetsFlagValue,
-						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-						"--hosted-cp",
-						"--oidc-config-id", unmanagedOIDCConfigID,
-						"--billing-account", profile.ClusterConfig.BillingAccount,
-						"-y",
-					)
-					Expect(err).To(HaveOccurred())
-					index = strings.Index(additionalSecurityGroupFlag, "a")
-					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
-						"Parameter '%s' is not supported for Hosted Control Plane clusters",
-						flagName))
-				}
-			})
-
 	})
 
 var _ = Describe("Create cluster with invalid options will",
@@ -1719,6 +1785,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create ccs existing cluster with invalid http_proxy set")
 				output, err, _ = clusterService.Create(clusterName,
+					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -1730,6 +1797,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create ccs existing cluster with invalid http_proxy not started with http")
 				output, err, _ = clusterService.Create(clusterName,
+					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -1742,6 +1810,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create ccs existing cluster with invalid https_proxy set")
 				output, err, _ = clusterService.Create(clusterName,
+					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -1760,6 +1829,7 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(err).ToNot(HaveOccurred())
 
 				output, err, _ = clusterService.Create(clusterName,
+					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -1772,6 +1842,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
 				output, err, _ = clusterService.Create(clusterName,
+					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -1784,6 +1855,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create wide-proxy cluster with only no_proxy set")
 				output, err, _ = clusterService.Create(clusterName,
+					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -1795,6 +1867,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
 
 				output, err, _ = clusterService.Create(clusterName,
+					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -1806,7 +1879,6 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring("ERR: expected a valid user no-proxy value"))
-
 			})
 	})
 
@@ -3879,6 +3951,11 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				rosalCommand.AddFlags("--mode", "auto")
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
+				defer func() {
+					By("Delete cluster")
+					_, err := clusterService.DeleteCluster(testingClusterName, "-y")
+					Expect(err).To(BeNil())
+				}()
 				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
 
 				rosaClient.Runner.UnsetArgs()
@@ -3895,8 +3972,8 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			func() {
 				By("Create classic sts cluster in auto mode")
 				customProfile.ClusterConfig.Zones = "us-east-2a,us-east-2b,us-east-2c"
-				customProfile.NamePrefix = "rosa56224"
-				testingClusterName = "cluster56224"
+				customProfile.NamePrefix = helper.GenerateRandomName("rosa56224", 2)
+				testingClusterName = helper.GenerateRandomName("cluster56224", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).ToNot(HaveOccurred())
 
@@ -3904,6 +3981,11 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				flags = append(flags, "auto")
 				_, err, _ = clusterService.Create(testingClusterName, flags[:]...)
 				Expect(err).To(BeNil())
+				defer func() {
+					By("Delete cluster")
+					_, err = clusterService.DeleteCluster(clusterID, "-y")
+					Expect(err).To(BeNil())
+				}()
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListOut, err := clusterService.List()
@@ -4021,6 +4103,10 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				CD, err = clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				Expect(CD.STSRoleArn).NotTo(BeEmpty())
+
+				By("Delete cluster")
+				_, err = clusterService.DeleteCluster(testingClusterName, "-y")
+				Expect(err).To(BeNil())
 			})
 	})
 
