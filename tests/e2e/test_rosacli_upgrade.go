@@ -499,7 +499,6 @@ var _ = Describe("Cluster Upgrade testing",
 					}
 				}
 			})
-
 		It("to upgrade wide AMI roles with the managed policies in manual mode - [id:75445]",
 			labels.Critical, labels.Runtime.Upgrade, func() {
 				By("Check the cluster version and compare with the profile to decide if skip this case")
@@ -542,7 +541,7 @@ var _ = Describe("Cluster Upgrade testing",
 						"policies. An upgrade isn't needed", resourcesHandler.GetOperatorRolesPrefix()))
 				} else {
 					By("Find STS Classic cluster upgrade version")
-					classicUpgradingVersion, upgradingMajorVersion, err := clusterVersionList.FindUpperYStreamVersion(
+					classicUpgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
 						profile.ChannelGroup, clusterVersion)
 					Expect(err).To(BeNil())
 					if classicUpgradingVersion == "" {
@@ -601,6 +600,8 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(err).To(BeNil())
 
 					By("Check account role version")
+					expectedPolicyVersion, err := clusterVersionList.FindDefaultUpdatedPolicyVersion()
+					Expect(err).To(BeNil())
 					for _, accArn := range accRoles {
 						fmt.Println("accArn: ", accArn)
 						parse, err := arn.Parse(accArn)
@@ -611,7 +612,7 @@ var _ = Describe("Cluster Upgrade testing",
 						Expect(err).To(BeNil())
 						for _, tag := range accRole.Tags {
 							if *tag.Key == versionTagName {
-								Expect(*tag.Value).To(Equal(upgradingMajorVersion))
+								Expect(*tag.Value).To(Equal(expectedPolicyVersion))
 							}
 						}
 					}
@@ -629,7 +630,7 @@ var _ = Describe("Cluster Upgrade testing",
 						Expect(err).To(BeNil())
 						for _, tag := range policy.Tags {
 							if *tag.Key == versionTagName {
-								Expect(*tag.Value).To(Equal(upgradingMajorVersion))
+								Expect(*tag.Value).To(Equal(expectedPolicyVersion))
 							}
 						}
 					}

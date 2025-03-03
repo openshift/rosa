@@ -469,3 +469,15 @@ func (vl *OpenShiftVersionTableList) FindUpperYStreamVersion(channelGroup string
 		return upgradingVersion, upgradingMajorVersion, nil
 	}
 }
+
+// This function will find the expected version of IAM roles after manual upgrade
+// The version actually is the mayjor version of the latest cluster version
+func (vl *OpenShiftVersionTableList) FindDefaultUpdatedPolicyVersion() (string, error) {
+	sortedVersionList, err := vl.Sort(true)
+	if err != nil {
+		return "", err
+	}
+	latestVersionFromOutput := sortedVersionList.OpenShiftVersions[0].Version
+	latestMajorVersion := helper.SplitMajorVersion(latestVersionFromOutput)
+	return latestMajorVersion, nil
+}
