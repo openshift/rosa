@@ -233,12 +233,13 @@ var _ = Describe("Register ummanaged oidc config testing",
 			}
 
 			By("Cleanup created account-roles")
-			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
-				"--prefix", accountRolePrefix,
-				"-y")
-			Expect(err).To(BeNil())
+			if accountRolePrefix == "" {
+				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y")
+				Expect(err).To(BeNil())
+			}
 		})
-
 		It("to register successfully - [id:64620]", labels.High, labels.Runtime.OCMResources, func() {
 			var (
 				secretArn string
@@ -288,6 +289,10 @@ var _ = Describe("Register ummanaged oidc config testing",
 				}
 				if strings.Contains(command, "aws s3api create-bucket") {
 					commandArgs = helper.ParseCommandToArgs(command)
+					// Add '--output json' to the commandArgs
+					jsonOutputArgs := []string{"--output", "json"}
+					commandArgs = append(commandArgs, jsonOutputArgs...)
+
 					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
 					Expect(err).To(BeNil())
 					re := regexp.MustCompile(`"Location":\s*"(http://[^"]+)"`)
@@ -295,7 +300,10 @@ var _ = Describe("Register ummanaged oidc config testing",
 					if len(matches) > 1 {
 						issuerUrl = strings.Replace(matches[1], "http://", "https://", 1)
 					}
-					Expect(issuerUrl).ToNot(BeEmpty(), "issuerUrl is empty which will block coming steps.")
+					Expect(issuerUrl).ToNot(BeEmpty(),
+						"extracted issuerUrl from %s is empty which will block coming steps.",
+						stdout.String(),
+					)
 					continue
 				}
 				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
