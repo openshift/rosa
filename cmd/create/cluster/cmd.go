@@ -945,10 +945,6 @@ func run(cmd *cobra.Command, _ []string) {
 	// validate flags for cluster admin
 	isHostedCP := args.hostedClusterEnabled
 	if isHostedCP {
-		if fedramp.Enabled() {
-			r.Reporter.Errorf("Fedramp does not currently support Hosted Control Plane clusters. Please use classic")
-			os.Exit(1)
-		}
 		if cmd.Flag(securitygroups.InfraSecurityGroupFlag).Changed {
 			r.Reporter.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, only '%s' is "+
 				"supported", securitygroups.InfraSecurityGroupFlag, securitygroups.ComputeSecurityGroupFlag)
@@ -1076,7 +1072,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if interactive.Enabled() && !fedramp.Enabled() {
+	if interactive.Enabled() {
 		isHostedCP, err = interactive.GetBool(interactive.Input{
 			Question: "Deploy cluster with Hosted Control Plane",
 			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
