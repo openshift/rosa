@@ -23,10 +23,6 @@ type creator interface {
 
 func initCreator(r *rosa.Runtime, managedPolicies bool, classic bool, hostedCP bool, isClassicValueSet bool,
 	isHostedCPValueSet bool) (creator, bool) {
-	// Unmanaged should be used for fedramp
-	if r.Creator.IsGovcloud {
-		return &unmanagedPoliciesCreator{}, true
-	}
 
 	// Classic ROSA managed policies
 	if managedPolicies && !hostedCP {
