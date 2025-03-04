@@ -46,26 +46,18 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 		args.oidcConfigId = interactiveOidc.GetOidcConfigID(r, cmd)
 	}
 
-	if cmd.Flags().Changed("hosted-cp") && r.Creator.IsGovcloud {
-		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
+	isHostedCP := args.hostedCp
+	isHostedCP, err = interactive.GetBool(interactive.Input{
+		Question: "Create hosted control plane operator roles",
+		Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+		Default:  isHostedCP,
+		Required: false,
+	})
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
 		os.Exit(1)
 	}
 
-	isHostedCP := args.hostedCp
-	if r.Creator.IsGovcloud {
-		isHostedCP = false
-	} else {
-		isHostedCP, err = interactive.GetBool(interactive.Input{
-			Question: "Create hosted control plane operator roles",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-			Default:  isHostedCP,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
-			os.Exit(1)
-		}
-	}
 	args.hostedCp = isHostedCP
 	if args.hostedCp {
 		args.installerRoleArn = interactiveRoles.GetInstallerRoleArn(r, cmd, args.installerRoleArn, "",
