@@ -295,10 +295,23 @@ var _ = Describe("Register ummanaged oidc config testing",
 
 					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
 					Expect(err).To(BeNil())
-					re := regexp.MustCompile(`"Location":\s*"(http://[^"]+)"`)
+					re := regexp.MustCompile(`"Location":\s*"([^"]+)"`)
 					matches := re.FindStringSubmatch(stdout.String())
 					if len(matches) > 1 {
-						issuerUrl = strings.Replace(matches[1], "http://", "https://", 1)
+						if strings.HasPrefix(matches[1], "http://") || strings.HasPrefix(matches[1], "https://") {
+							issuerUrl = strings.Replace(matches[1], "http://", "https://", 1)
+						} else if strings.HasPrefix(matches[1], "/") {
+							issuerUrl = strings.Replace(matches[1], "/", "https://", 1)
+							region := ""
+							for i, arg := range commandArgs {
+								if arg == "--region" && i+1 < len(commandArgs) {
+									region = commandArgs[i+1]
+									break
+								}
+							}
+							Expect(region).ToNot(BeEmpty(), "extracted region from %s is empty which will block next step", commandArgs)
+							issuerUrl = issuerUrl + ".s3." + region + ".amazonaws.com/"
+						}
 					}
 					Expect(issuerUrl).ToNot(BeEmpty(),
 						"extracted issuerUrl from %s is empty which will block coming steps.",
