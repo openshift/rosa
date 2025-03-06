@@ -1428,6 +1428,10 @@ func (c *awsClient) GetAttachedPolicyWithTags(role *string,
 	if err != nil && !awserr.IsNoSuchEntityException(err) {
 		return policies, excludedPolicies, err
 	}
+	if attachedPoliciesOutput == nil || attachedPoliciesOutput.AttachedPolicies == nil {
+		return policies, excludedPolicies, errors.UserErrorf("Unable to get attached policies for cluster (possibly " +
+			"missing account roles, try running 'rosa create account-roles' again)")
+	}
 
 	for _, policy := range attachedPoliciesOutput.AttachedPolicies {
 		hasTags, err := doesPolicyHaveTags(c.iamClient, policy.PolicyArn, tagFilter)
