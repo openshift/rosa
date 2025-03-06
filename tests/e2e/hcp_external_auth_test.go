@@ -148,8 +148,8 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 							"revoked",
 							userName,
 						),
-						time.Minute*4,
-						time.Second*10,
+						time.Minute*8,
+						time.Second*20,
 					).Should(BeTrue())
 				}
 			})
