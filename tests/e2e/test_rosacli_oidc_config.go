@@ -1,9 +1,9 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -288,6 +288,10 @@ var _ = Describe("Register ummanaged oidc config testing",
 					continue
 				}
 				if strings.Contains(command, "aws s3api create-bucket") {
+					type S3BucketOutPut struct {
+						Location string `json:"Location"`
+					}
+					var s3cmdOutput S3BucketOutPut
 					commandArgs = helper.ParseCommandToArgs(command)
 					// Add '--output json' to the commandArgs
 					jsonOutputArgs := []string{"--output", "json"}
@@ -295,24 +299,23 @@ var _ = Describe("Register ummanaged oidc config testing",
 
 					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
 					Expect(err).To(BeNil())
-					re := regexp.MustCompile(`"Location":\s*"([^"]+)"`)
-					matches := re.FindStringSubmatch(stdout.String())
-					if len(matches) > 1 {
-						if strings.HasPrefix(matches[1], "http://") || strings.HasPrefix(matches[1], "https://") {
-							issuerUrl = strings.Replace(matches[1], "http://", "https://", 1)
-						} else if strings.HasPrefix(matches[1], "/") {
-							issuerUrl = strings.Replace(matches[1], "/", "https://", 1)
-							region := ""
-							for i, arg := range commandArgs {
-								if arg == "--region" && i+1 < len(commandArgs) {
-									region = commandArgs[i+1]
-									break
-								}
-							}
-							Expect(region).ToNot(BeEmpty(), "extracted region from %s is empty which will block next step", commandArgs)
-							issuerUrl = issuerUrl + ".s3." + region + ".amazonaws.com/"
-						}
+
+					err = json.Unmarshal(stdout.Bytes(), &s3cmdOutput)
+					Expect(err).To(BeNil())
+
+					//Get region from `rosa whoami`
+					whoamiOutput, err := ocmResourceService.Whoami()
+					Expect(err).To(BeNil())
+					rosaClient.Runner.UnsetFormat()
+					whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+					awsRegion := whoamiData.AWSDefaultRegion
+
+					if awsRegion == "us-east-1" {
+						issuerUrl = fmt.Sprintf("https:/%s.s3.amazonaws.com", s3cmdOutput.Location)
+					} else {
+						issuerUrl = strings.Replace(s3cmdOutput.Location, "http://", "https://", 1)
 					}
+
 					Expect(issuerUrl).ToNot(BeEmpty(),
 						"extracted issuerUrl from %s is empty which will block coming steps.",
 						stdout.String(),
