@@ -56,6 +56,12 @@ func ExtractOIDCProviderIDFromARN(arn string) string {
 func ExtractCommandsFromOIDCRegister(bf bytes.Buffer) []string {
 	var commands []string
 	commands = strings.Split(bf.String(), "\n\n")
+	// When the rosacli is not the latest version, there will be warning message
+	// This will remove the warning message from the topest command
+	if strings.Contains(commands[0], "WARN") && strings.Contains(commands[0], "aws") {
+		splitCommands := strings.Split(commands[0], "\naws")
+		commands[0] = fmt.Sprintf("aws %s", splitCommands[1])
+	}
 	for k, command := range commands {
 		if strings.Contains(command, "\naws") {
 			splitCommands := strings.Split(command, "\naws")
@@ -63,8 +69,12 @@ func ExtractCommandsFromOIDCRegister(bf bytes.Buffer) []string {
 			commands = append(commands, fmt.Sprintf("aws %s", splitCommands[1]))
 		}
 	}
+
 	var newCommands []string
 	for _, command := range commands {
+		if strings.Contains(command, "WARN") {
+			continue
+		}
 		command = strings.ReplaceAll(command, "\\", "")
 		command = strings.ReplaceAll(command, "\n", " ")
 		spaceRegex := regexp.MustCompile(`\s+`)

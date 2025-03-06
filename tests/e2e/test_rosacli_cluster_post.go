@@ -749,6 +749,15 @@ var _ = Describe("Post-Check testing for cluster deletion",
 		It("to verify the sts cluster is deleted successfully - [id:75256]",
 			labels.High, labels.Runtime.DestroyPost, labels.FedRAMP,
 			func() {
+				clusterID = config.GetClusterID()
+				By("Skip if the cluster is non-sts")
+				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+				IsSTS, err := clusterService.IsSTSCluster(clusterID)
+				Expect(err).To(BeNil())
+				if !(isHostedCP || IsSTS) {
+					Skip("Skip this case as it doesn't supports on not-sts clusters")
+				}
 				By("Check the operator-roles is deleted")
 				clusterDetail, err := handler.ParseClusterDetail()
 				Expect(err).To(BeNil())
@@ -767,7 +776,6 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				}
 
 				By("Check the cluster is deleted")
-				clusterID = config.GetClusterID()
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
 				Expect(err).To(BeNil())
