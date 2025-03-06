@@ -17,6 +17,7 @@ limitations under the License.
 package accountroles
 
 import (
+	"github.com/openshift/rosa/pkg/fedramp"
 	"os"
 	"strings"
 
@@ -496,6 +497,11 @@ func run(cmd *cobra.Command, argv []string) {
 	rolesCreator, createRoles := initCreator(r, managedPolicies, createClassic, createHostedCP,
 		isClassicValueSet, isHostedCPValueSet)
 	if !createRoles {
+		os.Exit(1)
+	}
+
+	if fedramp.Enabled() && isHcpSharedVpc {
+		r.Reporter.Errorf("HCP shared VPC not supported while using a govcloud region")
 		os.Exit(1)
 	}
 
