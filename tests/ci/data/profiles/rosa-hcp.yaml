@@ -176,7 +176,7 @@ profiles:
     autoscale: true
     kms_key: true
     networking: true
-    proxy_enabled: true
+    proxy_enabled: false
     label_enabled: false
     zones: ""
     tag_enabled: true

@@ -751,11 +751,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 			func() {
 				clusterID = config.GetClusterID()
 				By("Skip if the cluster is non-sts")
-				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).To(BeNil())
-				IsSTS, err := clusterService.IsSTSCluster(clusterID)
-				Expect(err).To(BeNil())
-				if !(isHostedCP || IsSTS) {
+				if !profile.ClusterConfig.STS {
 					Skip("Skip this case as it doesn't supports on not-sts clusters")
 				}
 				By("Check the operator-roles is deleted")
