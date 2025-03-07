@@ -77,6 +77,11 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			sgPrefix := helper.GenerateRandomName("72195", 2)
 			sgIDs, err := vpcClient.CreateAdditionalSecurityGroups(3, sgPrefix, "testing for case 72195")
 			Expect(err).ToNot(HaveOccurred())
+			defer func(sgs []string) {
+				for _, sg := range sgs {
+					vpcClient.AWSClient.DeleteSecurityGroup(sg)
+				}
+			}(sgIDs)
 
 			By("Create machinepool with security groups set")
 			mpName := "mp-72195"
