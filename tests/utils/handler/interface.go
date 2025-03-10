@@ -9,6 +9,14 @@ type Profile struct {
 	Version           string             `yaml:"version,omitempty"`
 	AccountRoleConfig *AccountRoleConfig `yaml:"account-role,omitempty"`
 	ClusterConfig     *ClusterConfig     `yaml:"cluster,omitempty"`
+	Day2Config        *Day2Config        `yaml:"day2-conf,omitempty"`
+}
+
+// Day2Config will map the configuration of day2-conf from profile settings
+type Day2Config struct {
+	LocalZoneMP    bool `yaml:"local-zone-mp,omitempty"`
+	TuningConfig   bool `yaml:" tuning-config,omitempty"`
+	TuningConfigMP bool `yaml:" tuning-config-mp,omitempty"`
 }
 
 // AccountRoleConfig will map the configuration of account roles from profile settings

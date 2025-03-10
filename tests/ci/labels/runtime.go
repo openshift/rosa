@@ -17,6 +17,7 @@ type runtimeLabels struct {
 	Day1          Labels
 	Day1Readiness Labels
 	Day1Post      Labels
+	Day2Readiness Labels
 	Day2          Labels
 	Upgrade       Labels
 	Destructive   Labels
@@ -44,6 +45,7 @@ func initRuntime() *runtimeLabels {
 	rLabels.Destructive = Label("destructive")
 	rLabels.Destroy = Label("destroy")
 	rLabels.DestroyPost = Label("destroy-post")
+	rLabels.Day2Readiness = Label("day2-readiness")
 
 	rLabels.Day1Supplemental = Label("day1-supplemental")
 	rLabels.OCMResources = Label("ocm-resources")
