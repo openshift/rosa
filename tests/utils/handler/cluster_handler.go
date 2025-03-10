@@ -812,7 +812,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			"--registry-config-additional-trusted-ca", caFile,
 			"--registry-config-insecure-registries", "test.com,*.example",
 			"--registry-config-allowed-registries-for-import",
-			"docker.io:false,registry.redhat.com:false,registry.access.redhat.com:false,quay.io:false",
+			"docker.io:false,registry.redhat.com:false,registry.access.redhat.com:false,quay.io:false,registry.redhat.io:false",
 		)
 		if ch.profile.ClusterConfig.AllowedRegistries {
 			flags = append(flags,
