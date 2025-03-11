@@ -208,6 +208,17 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 			rh.registerDNSDomain("")
 		}
 	}
+	// Delete proxy resourses
+	if resources.ProxyInstanceID != "" {
+		err = rh.CleanupProxyResources(
+			resources.ProxyInstanceID,
+			resources.FromSharedAWSAccount != nil && resources.FromSharedAWSAccount.VPC,
+		)
+		success := destroyLog(err, "proxy resources")
+		if success {
+			rh.registerProxyInstanceID("")
+		}
+	}
 	// delete resource share
 	if resources.ResourceShareArn != "" {
 		log.Logger.Infof("Find prepared resource share: %s", resources.ResourceShareArn)
@@ -450,6 +461,11 @@ func (rh *resourcesHandler) registerVpcID(vpcID string, fromSharedAccount bool) 
 
 func (rh *resourcesHandler) registerVPC(vpc *vpc_client.VPC) error {
 	rh.vpc = vpc
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerProxyInstanceID(proxyInsID string) error {
+	rh.resources.ProxyInstanceID = proxyInsID
 	return rh.saveToFile()
 }
 

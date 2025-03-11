@@ -176,7 +176,7 @@ profiles:
     autoscale: true
     kms_key: true
     networking: true
-    proxy_enabled: false
+    proxy_enabled: true
     label_enabled: false
     zones: ""
     tag_enabled: true
@@ -188,7 +188,7 @@ profiles:
     volume_size: 75
     disable_uwm: true
     autoscaler_enabled: false
-    additional_sg_number: 0
+    additional_sg_number: 3
     registries_config: true
     blocked_registries: true
   account-role:
