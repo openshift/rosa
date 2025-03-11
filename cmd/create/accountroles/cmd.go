@@ -17,7 +17,6 @@ limitations under the License.
 package accountroles
 
 import (
-	"github.com/openshift/rosa/pkg/fedramp"
 	"os"
 	"strings"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/openshift/rosa/cmd/verify/oc"
 	"github.com/openshift/rosa/cmd/verify/quota"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
