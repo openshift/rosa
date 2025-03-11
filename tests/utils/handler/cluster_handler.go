@@ -538,8 +538,11 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		ch.clusterConfig.Networking = networking
 	}
 	if ch.profile.ClusterConfig.BYOVPC {
-		var vpc *vpc_client.VPC
-		var err error
+		var (
+			vpc            *vpc_client.VPC
+			err            error
+			securityGroups []string
+		)
 		vpcPrefix := helper.TrimNameByLength(clusterName, 20)
 		log.Logger.Info("Got BYOVPC set to true. Going to prepare subnets")
 		cidrValue := constants.DefaultVPCCIDRValue
@@ -572,15 +575,57 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		}
 		flags = append(flags,
 			"--subnet-ids", subnetsFlagValue)
+		if ch.profile.ClusterConfig.AdditionalSGNumber != 0 {
+			securityGroups, err = resourcesHandler.
+				PrepareAdditionalSecurityGroups(ch.profile.ClusterConfig.AdditionalSGNumber, vpcPrefix)
+			if err != nil {
+				return flags, err
+			}
+			computeSGs := strings.Join(securityGroups, ",")
+			infraSGs := strings.Join(securityGroups, ",")
+			controlPlaneSGs := strings.Join(securityGroups, ",")
+			if ch.profile.ClusterConfig.HCP {
+				flags = append(flags,
+					"--additional-compute-security-group-ids", computeSGs,
+				)
+				ch.clusterConfig.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
+					WorkerSecurityGroups: computeSGs,
+				}
+			} else {
+				flags = append(flags,
+					"--additional-infra-security-group-ids", infraSGs,
+					"--additional-control-plane-security-group-ids", controlPlaneSGs,
+					"--additional-compute-security-group-ids", computeSGs,
+				)
+				ch.clusterConfig.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
+					ControlPlaneSecurityGroups: controlPlaneSGs,
+					InfraSecurityGroups:        infraSGs,
+					WorkerSecurityGroups:       computeSGs,
+				}
+			}
+		}
 
 		if ch.profile.ClusterConfig.SharedVPC {
-			subnetArns, err := resourcesHandler.PrepareSubnetArns(subnetsFlagValue)
+			var (
+				securityGroupARns  []string
+				sharedResourceArns []string
+			)
+			sharedResourceArns, err = resourcesHandler.PrepareSubnetArns(subnetsFlagValue)
 			if err != nil {
 				return flags, err
 			}
 
+			if len(securityGroups) > 0 {
+				securityGroupARns, err = resourcesHandler.PrepareSecurityGroupArns(securityGroups, true)
+
+				if err != nil {
+					return flags, err
+				}
+				sharedResourceArns = append(sharedResourceArns, securityGroupARns...)
+			}
+
 			resourceShareName := fmt.Sprintf("%s-%s", sharedVPCRolePrefix, "resource-share")
-			_, err = resourcesHandler.PrepareResourceShare(resourceShareName, subnetArns)
+			_, err = resourcesHandler.PrepareResourceShare(resourceShareName, sharedResourceArns)
 			if err != nil {
 				return flags, err
 			}
@@ -626,35 +671,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				}
 			}
 		}
-		if ch.profile.ClusterConfig.AdditionalSGNumber != 0 {
-			securityGroups, err := resourcesHandler.
-				PrepareAdditionalSecurityGroups(ch.profile.ClusterConfig.AdditionalSGNumber, vpcPrefix)
-			if err != nil {
-				return flags, err
-			}
-			computeSGs := strings.Join(securityGroups, ",")
-			infraSGs := strings.Join(securityGroups, ",")
-			controlPlaneSGs := strings.Join(securityGroups, ",")
-			if ch.profile.ClusterConfig.HCP {
-				flags = append(flags,
-					"--additional-compute-security-group-ids", computeSGs,
-				)
-				ch.clusterConfig.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
-					WorkerSecurityGroups: computeSGs,
-				}
-			} else {
-				flags = append(flags,
-					"--additional-infra-security-group-ids", infraSGs,
-					"--additional-control-plane-security-group-ids", controlPlaneSGs,
-					"--additional-compute-security-group-ids", computeSGs,
-				)
-				ch.clusterConfig.AdditionalSecurityGroups = &ClusterConfigure.AdditionalSecurityGroups{
-					ControlPlaneSecurityGroups: controlPlaneSGs,
-					InfraSecurityGroups:        infraSGs,
-					WorkerSecurityGroups:       computeSGs,
-				}
-			}
-		}
+
 		if ch.profile.ClusterConfig.ProxyEnabled {
 			proxyName := vpc.VPCName
 			if proxyName == "" {
@@ -679,7 +696,6 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				"--no-proxy", proxy.NoProxy,
 				"--additional-trust-bundle-file", proxy.CABundleFilePath,
 			)
-
 		}
 	}
 	if ch.profile.ClusterConfig.BillingAccount != "" {

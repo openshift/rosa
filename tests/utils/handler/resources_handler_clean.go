@@ -1,8 +1,15 @@
 package handler
 
 import (
+	"context"
+	"fmt"
 	"strings"
+	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
@@ -149,5 +156,148 @@ func (rh *resourcesHandler) DeleteAccountRoles() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (rh *resourcesHandler) GetEIPAssociationAndAllocationIDsByInstanceID(
+	publicIP string, sharedVPC bool,
+) (string, string, error) {
+	var (
+		err       error
+		awsClient *aws_client.AWSClient
+	)
+	if sharedVPC {
+		awsClient, err = rh.GetAWSClient(true)
+	} else {
+		awsClient, err = rh.GetAWSClient(false)
+	}
+	if err != nil {
+		log.Logger.Errorf("Get AWS Client failed: %s", err)
+		return "", "", err
+	}
+	input := &ec2.DescribeAddressesInput{
+		PublicIps: []string{publicIP},
+	}
+	output, err := awsClient.Ec2Client.DescribeAddresses(context.TODO(), input)
+	if err != nil {
+		log.Logger.Errorf("Failed to describe addresses: %s", err)
+		return "", "", err
+	}
+
+	if len(output.Addresses) == 0 {
+		return "", "", fmt.Errorf("no EIP association found for instance ID %s", publicIP)
+	}
+
+	associationID := *output.Addresses[0].AssociationId
+	allocationID := *output.Addresses[0].AllocationId
+	return associationID, allocationID, nil
+}
+
+func (rh *resourcesHandler) CleanupProxyResources(instID string, sharedVPC bool) error {
+	var (
+		err       error
+		awsClient *aws_client.AWSClient
+	)
+
+	if sharedVPC {
+		awsClient, err = rh.GetAWSClient(true)
+	} else {
+		awsClient, err = rh.GetAWSClient(false)
+	}
+	if err != nil {
+		log.Logger.Errorf("Get AWS Client failed: %s", err)
+		return err
+	}
+	insOut, err := awsClient.Ec2Client.DescribeInstances(
+		context.TODO(),
+		&ec2.DescribeInstancesInput{
+			InstanceIds: []string{instID},
+		},
+	)
+	if err != nil {
+		log.Logger.Errorf("Describe proxy instance failed: %s", err)
+		return err
+	}
+	if len(insOut.Reservations) == 0 || len(insOut.Reservations[0].Instances) == 0 {
+		err = fmt.Errorf("instance %s not found", rh.resources.ProxyInstanceID)
+		return err
+	}
+	instance := insOut.Reservations[0].Instances[0]
+	// release EIP
+	associationID, allocationID, err := rh.GetEIPAssociationAndAllocationIDsByInstanceID(
+		*instance.PublicIpAddress, sharedVPC,
+	)
+	keyName := *instance.KeyName
+	SGID := *instance.SecurityGroups[0].GroupId
+	if err != nil {
+		log.Logger.Errorf("Get EIP Association ID failed: %s", err)
+		return err
+	}
+	_, err = awsClient.DisassociateAddress(associationID)
+	if err != nil {
+		log.Logger.Errorf("Disassociate Addrress failed: %s", err)
+		return err
+	}
+	_, err = awsClient.ReleaseAddress(allocationID)
+	if err != nil {
+		log.Logger.Errorf("Release Address failed: %s", err)
+		return err
+	}
+	log.Logger.Infof("Released EIP: %s", allocationID)
+
+	// terminate proxy instance
+	_, err = awsClient.Ec2Client.TerminateInstances(context.TODO(), &ec2.TerminateInstancesInput{
+		InstanceIds: []string{instID},
+	})
+	if err != nil {
+		log.Logger.Errorf("Terminate instance failed: %s", err)
+		return err
+	}
+	log.Logger.Infof("Terminating instance: %s", instID)
+
+	err = wait.PollUntilContextTimeout(
+		context.TODO(),
+		30*time.Second,
+		10*time.Minute,
+		false,
+		func(ctx context.Context) (bool, error) {
+			output, err := awsClient.Ec2Client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+				InstanceIds: []string{instID},
+			})
+			if err != nil {
+				return false, err
+			}
+			if len(output.Reservations) == 0 || len(output.Reservations[0].Instances) == 0 {
+				return false, nil
+			}
+			instance := output.Reservations[0].Instances[0]
+			if instance.State != nil && instance.State.Name == types.InstanceStateNameTerminated {
+				return true, nil
+			}
+			return false, nil
+		},
+	)
+	if err != nil {
+		log.Logger.Errorf("Instance termination confirmation failed: %s", err)
+		return err
+	}
+	log.Logger.Infof("Instance %s is terminated", instID)
+
+	// Delete secrity group
+	_, err = awsClient.DeleteSecurityGroup(SGID)
+	if err != nil {
+		log.Logger.Errorf("Delete security group failed: %s", err)
+		return err
+	}
+	log.Logger.Infof("Deleted security group: %s", SGID)
+
+	// Delete key pair
+	_, err = awsClient.DeleteKeyPair(keyName)
+	if err != nil {
+		log.Logger.Errorf("Delete key pair failed: %s", err)
+		return err
+	}
+	log.Logger.Infof("Deleted key pair: %s", keyName)
+
 	return nil
 }

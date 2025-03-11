@@ -84,6 +84,7 @@ type Resources struct {
 	VpcID                        string                `json:"vpc_id,omitempty"`
 	HCPRoute53ShareRole          string                `json:"hcp_route53_share_role,omitempty"`
 	HCPVPCEndpointShareRole      string                `json:"hcp_vpc_endpoint_share_role,omitempty"`
+	ProxyInstanceID              string                `json:"proxy_instance_id,omitempty"`
 }
 
 type FromSharedAWSAccount struct {
@@ -108,4 +109,5 @@ type ProxyDetail struct {
 	HTTPProxy        string
 	CABundleFilePath string
 	NoProxy          string
+	InstanceID       string
 }

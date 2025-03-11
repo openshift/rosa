@@ -225,7 +225,7 @@ func (rh *resourcesHandler) PrepareProxy(zone string, sshPemFileName string, ssh
 	if rh.vpc == nil {
 		return nil, errors.New("VPC has not been initialized ...")
 	}
-	_, privateIP, caContent, err := rh.vpc.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
+	instance, privateIP, caContent, err := rh.vpc.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
 	if err != nil {
 		return nil, err
 	}
@@ -233,12 +233,14 @@ func (rh *resourcesHandler) PrepareProxy(zone string, sshPemFileName string, ssh
 	if err != nil {
 		return nil, err
 	}
+	err = rh.registerProxyInstanceID(*instance.InstanceId)
 	return &ProxyDetail{
 		HTTPsProxy:       fmt.Sprintf("https://%s:8080", privateIP),
 		HTTPProxy:        fmt.Sprintf("http://%s:8080", privateIP),
 		CABundleFilePath: caFile,
 		NoProxy:          "quay.io",
-	}, nil
+		InstanceID:       *instance.InstanceId,
+	}, err
 }
 
 func (rh *resourcesHandler) PrepareKMSKey(multiRegion bool, testClient string, hcp bool, etcdKMS bool) (string, error) {
@@ -806,6 +808,33 @@ func (rh *resourcesHandler) PrepareSubnetArns(subnetIDs string) ([]string, error
 		subnetArns = append(subnetArns, *subnet.SubnetArn)
 	}
 	return subnetArns, err
+}
+func (rh *resourcesHandler) PrepareSecurityGroupArns(sgIDs []string, useSharedVpcAcc bool) ([]string, error) {
+	var (
+		awsClient         *aws_client.AWSClient
+		err               error
+		awsAccountID      string
+		securityGroupArns []string
+	)
+	if useSharedVpcAcc {
+		awsClient, err = rh.GetAWSClient(true)
+	} else {
+		awsClient, err = rh.GetAWSClient(false)
+	}
+	if err != nil {
+		log.Logger.Errorf("Error happens when prepareSecurityGroupArns: %s", err.Error())
+		return securityGroupArns, err
+	}
+	awsAccountID = awsClient.AccountID
+	for _, sgid := range sgIDs {
+		securityGroupARN := fmt.Sprintf("arn:aws:ec2:%s:%s:security-group/%s",
+			rh.vpc.Region,
+			awsAccountID,
+			sgid,
+		)
+		securityGroupArns = append(securityGroupArns, securityGroupARN)
+	}
+	return securityGroupArns, err
 }
 
 func (rh *resourcesHandler) PrepareResourceShare(resourceShareName string, resourceArns []string) (string, error) {
