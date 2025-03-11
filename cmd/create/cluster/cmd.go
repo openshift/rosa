@@ -2419,7 +2419,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if isHostedCP {
 			isHcpSharedVpc = true
 			err = validateHcpSharedVpcArgs(route53RoleArn, vpcEndpointRoleArn, ingressPrivateHostedZoneId,
-				hcpInternalCommunicationHostedZoneId)
+				hcpInternalCommunicationHostedZoneId, fedramp.Enabled())
 			if err != nil {
 				r.Reporter.Errorf("Error when validating flags: %v", err)
 				os.Exit(1)
