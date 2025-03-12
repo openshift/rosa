@@ -441,21 +441,21 @@ var _ = Describe("HCP cluster testing",
 					if v["Allowed Registries"] != nil {
 						allowedList := jsonData.DigString("registry_config", "registry_sources", "allowed_registries")
 						if len(allowedList) > 2 {
-							result := strings.Replace(allowedList, " ", ",", 1)
+							result := strings.ReplaceAll(allowedList, " ", ",")
 							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Allowed Registries"])))
 						}
 					}
 					if v["Blocked Registries"] != nil {
 						blockedList := jsonData.DigString("registry_config", "registry_sources", "blocked_registries")
 						if len(blockedList) > 2 {
-							result := strings.Replace(blockedList, " ", ",", 1)
+							result := strings.ReplaceAll(blockedList, " ", ",")
 							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Blocked Registries"])))
 						}
 					}
 					if v["Insecure Registries"] != nil {
 						insecureList := jsonData.DigString("registry_config", "registry_sources", "insecure_registries")
 						if len(insecureList) > 2 {
-							result := strings.Replace(insecureList, " ", ",", 1)
+							result := strings.ReplaceAll(insecureList, " ", ",")
 							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Insecure Registries"])))
 						}
 					}
