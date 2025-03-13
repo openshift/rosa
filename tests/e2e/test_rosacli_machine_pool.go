@@ -88,10 +88,11 @@ var _ = Describe("Create machinepool",
 				By("List the default machinepool of the cluster")
 				resp, err := machinePoolService.ListAndReflectMachinePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-
+				mpID := helper.GenerateRandomName("mp-36293", 2)
+				mpIDcounter := 1
 				for key, flags := range reqFlags {
 					By("Create machinepools to the cluster")
-					mpID := helper.GenerateRandomName("mp-36293", 2)
+					mpID := fmt.Sprintf("%s-%d", mpID, mpIDcounter)
 					output, err := machinePoolService.CreateMachinePool(clusterID, mpID, flags...)
 					Expect(err).ToNot(HaveOccurred())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
@@ -130,6 +131,7 @@ var _ = Describe("Create machinepool",
 						Expect(out.Machinepool(mpID).Labels).To(
 							Equal(strings.Join(helper.ParseCommaSeparatedStrings(labels_2), ", ")))
 					}
+					mpIDcounter++
 				}
 			})
 
