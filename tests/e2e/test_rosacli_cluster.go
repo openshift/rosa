@@ -2517,7 +2517,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
 				By("Create hcp cluster using non-default ingress settings")
-				clusterName := helper.GenerateRandomName("cluster-71174", 2)
+				clusterName := helper.GenerateRandomName("c71174", 2)
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -2561,7 +2561,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				resourcesHandler := clusterHandler.GetResourcesHandler()
 				vpc, err := resourcesHandler.PrepareVPC(vpcName, "", false, false)
 				Expect(err).ToNot(HaveOccurred())
-				defer vpc.DeleteVPCChain()
+				// defer vpc.DeleteVPCChain()
 
 				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, true)
 				Expect(err).ToNot(HaveOccurred())
