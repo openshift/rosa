@@ -102,7 +102,7 @@ profiles:
     volume_size: 150
     autoscaler_enabled: false
     disable_uwm: false
-    name_length: 15
+    name_length: 54
     domain_prefix_enabled: false
     additional_sg_number: 0
     fedramp: true
