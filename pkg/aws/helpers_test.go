@@ -2,7 +2,10 @@ package aws
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -291,5 +294,117 @@ var _ = Describe("IsArnAssumedRole", func() {
 			Expect(out).To(BeFalse())
 			Expect(err).To(HaveOccurred())
 		})
+	})
+})
+
+var _ = Describe("sortAccountRolesByHCPSuffix", func() {
+	It("Sorts very jumbled list", func() {
+		list := make([]iamtypes.Role, 0)
+
+		roleList := []string{
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test2-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Control-Plane-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Installer-Role",
+		}
+
+		expectedRoleList := []string{
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test2-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Control-Plane-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Support-Role",
+		}
+
+		for _, val := range roleList {
+			roleName := strings.SplitAfter(val, "role/")[1]
+			list = append(list, iamtypes.Role{Arn: aws.String(val), RoleName: aws.String(roleName)})
+		}
+
+		sortAccountRolesByHCPSuffix(list)
+
+		Expect(len(list)).To(Equal(len(roleList)))
+		for i, role := range list {
+			Expect(expectedRoleList[i]).To(Equal(*role.Arn))
+		}
+	})
+
+	It("Sorts a large list, with similarly named roles", func() {
+		list := make([]iamtypes.Role, 0)
+
+		roleList := []string{
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test2-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Control-Plane-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/testing-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing2-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing3-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing2-local-HCP-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/testing3-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/testing-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/testing2-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/testing3-local-ROSA-Control-Plane-Role",
+			"arn:aws:iam::123123123:role/testing3-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing-local-HCP-ROSA-Installer-Role",
+		}
+
+		expectedRoleList := []string{
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/test-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test2-local-HCP-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test2-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/test3-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Control-Plane-Role",
+			"arn:aws:iam::123123123:role/test3-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/testing-local-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/testing2-local-HCP-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/testing2-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing2-local-ROSA-Worker-Role",
+			"arn:aws:iam::123123123:role/testing3-local-HCP-ROSA-Support-Role",
+			"arn:aws:iam::123123123:role/testing3-local-HCP-ROSA-Installer-Role",
+			"arn:aws:iam::123123123:role/testing3-local-ROSA-Control-Plane-Role",
+			"arn:aws:iam::123123123:role/testing3-local-ROSA-Support-Role",
+		}
+
+		for _, val := range roleList {
+			roleName := strings.SplitAfter(val, "role/")[1]
+			list = append(list, iamtypes.Role{Arn: aws.String(val), RoleName: aws.String(roleName)})
+		}
+
+		sortAccountRolesByHCPSuffix(list)
+
+		Expect(len(list)).To(Equal(len(roleList)))
+		for i, role := range list {
+			Expect(expectedRoleList[i]).To(Equal(*role.Arn))
+		}
 	})
 })

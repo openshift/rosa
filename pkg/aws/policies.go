@@ -877,6 +877,9 @@ func (c *awsClient) mapToAccountRole(version string, role iamtypes.Role) (Role, 
 func (c *awsClient) mapToAccountRoles(version string, roles []iamtypes.Role) ([]Role, error) {
 	emptyRole := Role{}
 	var accountRoles []Role
+
+	sortAccountRolesByHCPSuffix(roles)
+
 	for _, role := range roles {
 		if !checkIfAccountRole(role.RoleName) {
 			continue
