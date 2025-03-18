@@ -274,6 +274,37 @@ func (rh *resourcesHandler) PrepareAdditionalSecurityGroups(
 	return rh.vpc.CreateAdditionalSecurityGroups(securityGroupCount, namePrefix, "")
 }
 
+func (rh *resourcesHandler) PrepareZeroEgressResources() error {
+	if rh.vpc == nil {
+		return errors.New("VPC has not been initialized ...")
+	}
+
+	//STEP1
+	sgOutput, err := rh.vpc.AWSClient.CreateSecurityGroup(rh.vpc.VpcID,
+		"allow-inbound-traffic", "allow inbound traffic")
+	if err != nil {
+		return err
+	}
+	//STEP2
+	_, err = rh.vpc.AWSClient.AuthorizeSecurityGroupIngress(*sgOutput.GroupId, rh.vpc.CIDRValue, "-1", 0, 0)
+	if err != nil {
+		return err
+	}
+	//STEP3
+	err = rh.vpc.AWSClient.CreateVPCEndpoint(rh.vpc.VpcID,
+		fmt.Sprintf("com.amazonaws.%s.ecr.dkr", rh.vpc.Region), "Interface")
+	if err != nil {
+		return err
+	}
+	//STEP4
+	err = rh.vpc.AWSClient.CreateVPCEndpoint(rh.vpc.VpcID,
+		fmt.Sprintf("com.amazonaws.%s.s3", rh.vpc.Region), "Interface")
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 // PrepareAccountRoles will prepare account roles according to the parameters
 // openshiftVersion must follow 4.15.2-x format
 func (rh *resourcesHandler) PrepareAccountRoles(

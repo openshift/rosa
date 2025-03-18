@@ -109,11 +109,11 @@ func LoadProfileYamlFileByENV() *Profile {
 	if config.Test.GlobalENV.Version != "" || config.Test.GlobalENV.OpenshiftVersion != "" {
 		if config.Test.GlobalENV.Version != "" {
 			log.Logger.Infof("Got global env settings for VERSION, overwritten the profile setting with value %s",
-				config.Test.GlobalENV.OpenshiftVersion)
+				config.Test.GlobalENV.Version)
 			profile.Version = config.Test.GlobalENV.Version
 		} else {
 			log.Logger.Infof("Got global env settings for OPENSHIFT_VERSION, overwritten the profile setting with value %s",
-				config.Test.GlobalENV.Version)
+				config.Test.GlobalENV.OpenshiftVersion)
 			profile.Version = config.Test.GlobalENV.OpenshiftVersion
 		}
 	}
