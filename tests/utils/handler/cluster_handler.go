@@ -845,6 +845,18 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			)
 		}
 	}
+
+	if ch.profile.ClusterConfig.ZeroEgress {
+		err := resourcesHandler.PrepareZeroEgressResources()
+		if err != nil {
+			return flags, err
+		}
+		flags = append(flags, "--properties", fmt.Sprintf("zero_egress:%v", ch.profile.ClusterConfig.ZeroEgress))
+		ch.clusterConfig.Properties = &ClusterConfigure.Properties{
+			ZeroEgress: ch.profile.ClusterConfig.ZeroEgress,
+		}
+
+	}
 	return flags, nil
 }
 

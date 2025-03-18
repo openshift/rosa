@@ -37,6 +37,8 @@ func (client *AWSClient) LaunchInstance(subnetID string, imageID string, count i
 			instanceIDs = append(instanceIDs, *instance.InstanceId)
 		}
 		log.LogInfo("Waiting for below instances ready: %s", strings.Join(instanceIDs, "，"))
+		// Wait 2 seconds for the asynchronous bastion instance to be created
+		time.Sleep(2 * time.Second)
 		_, err = client.WaitForInstancesRunning(instanceIDs, 10)
 		if err != nil {
 			log.LogError("Error happened for instance running: %s", err)
@@ -83,6 +85,7 @@ func (client *AWSClient) WaitForInstanceReady(instanceID string, timeout time.Du
 		instanceID,
 	}
 	log.LogInfo("Waiting for below instances ready: %s ", strings.Join(instanceIDs, "|"))
+	time.Sleep(2 * time.Second)
 	_, err := client.WaitForInstancesRunning(instanceIDs, 10)
 	return err
 }
