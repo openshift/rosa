@@ -217,6 +217,11 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			"--domain-prefix", helper.TrimNameByLength(clusterName, ocm.MaxClusterDomainPrefixLength),
 		)
 	}
+	if ch.profile.ClusterConfig.UseLocalCredentials {
+		flags = append(flags,
+			"--use-local-credentials",
+		)
+	}
 	if ch.profile.ClusterConfig.STS {
 		var accRoles *rosacli.AccountRolesUnit
 		var oidcConfigID string
