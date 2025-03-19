@@ -172,3 +172,18 @@ func (client *AWSClient) DeleteVPCEndpoints(vpcID string) error {
 	}
 	return err
 }
+
+func (client *AWSClient) CreateVPCEndpoint(vpcID string, serviceName string, vpcEndpointType types.VpcEndpointType) error {
+	input := &ec2.CreateVpcEndpointInput{
+		VpcId:           &vpcID,
+		ServiceName:     &serviceName,
+		VpcEndpointType: vpcEndpointType,
+	}
+	output, err := client.Ec2Client.CreateVpcEndpoint(context.TODO(), input)
+	if err != nil {
+		log.LogError("Create vpc endpoints failed: %s", err.Error())
+	} else {
+		log.LogInfo("Create vpc endpoints %s successfully", *output.VpcEndpoint.VpcEndpointId)
+	}
+	return err
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/file"
 	"golang.org/x/crypto/bcrypt"
 	"net/url"
+	"strings"
 	"time"
 
 	CON "github.com/openshift-online/ocm-common/pkg/aws/consts"
@@ -130,15 +131,63 @@ func (vpc *VPC) PrepareBastionProxy(zone string, keypairName string, privateKeyP
 	return proxyUrl, nil
 }
 
-func (vpc *VPC) DestroyBastionProxy(instance types.Instance) error {
-	var instanceIDs []string
-	instanceIDs = append(instanceIDs, *instance.InstanceId)
-	err := vpc.AWSClient.TerminateInstances(instanceIDs, true, 10)
+func (vpc *VPC) DestroyBastionProxy() error {
+	filters := []map[string][]string{
+		{
+			"vpc-id": []string{
+				vpc.VpcID,
+			},
+		},
+	}
+	filters = append(filters, map[string][]string{
+		"tag:Name": {
+			CON.BastionName,
+		},
+	})
+
+	insts, err := vpc.AWSClient.ListInstances([]string{}, filters...)
+
 	if err != nil {
-		log.LogError("Terminate instance failed")
+		log.LogError("Error happened when list instances for vpc %s: %s", vpc.VpcID, err)
 		return err
 	}
-	return nil
+	needTermination := []string{}
+	keyPairNames := []string{}
+	for _, inst := range insts {
+		needTermination = append(needTermination, *inst.InstanceId)
+		if inst.KeyName != nil {
+			keyPairNames = append(keyPairNames, *inst.KeyName)
+		}
+	}
+	err = vpc.AWSClient.TerminateInstances(needTermination, true, 20)
+	if err != nil {
+		log.LogError("Terminating instances %s meet error: %s", strings.Join(needTermination, ","), err)
+	} else {
+		log.LogInfo("Terminating instances %s successfully", strings.Join(needTermination, ","))
+	}
+	err = vpc.DeleteKeyPair(keyPairNames)
+	if err != nil {
+		log.LogError("Delete key pair %s meet error: %s", strings.Join(keyPairNames, ","), err)
+	}
+	needCleanGroups := []types.SecurityGroup{}
+	securityGroups, err := vpc.AWSClient.ListSecurityGroups(vpc.VpcID)
+	if err != nil {
+		return err
+	}
+	for _, sg := range securityGroups {
+		for _, tag := range sg.Tags {
+			if *tag.Key == "Name" && *tag.Value == CON.AdditionalSecurityGroupName {
+				needCleanGroups = append(needCleanGroups, sg)
+			}
+		}
+	}
+	for _, sg := range needCleanGroups {
+		_, err = vpc.AWSClient.DeleteSecurityGroup(*sg.GroupId)
+		if err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 func generateBcryptPassword(plainPassword string) (string, error) {
