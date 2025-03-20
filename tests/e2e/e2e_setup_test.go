@@ -42,7 +42,8 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 			client := rosacli.NewClient()
 			clusterHandler, err := handler.NewClusterHandlerFromFilesystem(client, profile)
 			Expect(err).ToNot(HaveOccurred())
-			clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
+			err = clusterHandler.WaitForClusterReady(config.Test.GlobalENV.ClusterWaitingTime)
+			Expect(err).ToNot(HaveOccurred())
 
 			clusterID := clusterHandler.GetClusterDetail().ClusterID
 			clusterService := client.Cluster
@@ -53,10 +54,10 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 
 			// Workaround for public HCP with proxy
 			if profile.ClusterConfig.HCP && profile.ClusterConfig.ProxyEnabled && !profile.ClusterConfig.Private {
-				clusterDNS := clusterDetails.DNS
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
 				clusterNoProxy := jsonData.DigString("proxy", "no_proxy")
+				clusterDNS := fmt.Sprintf("%s.%s", clusterDetails.Name, jsonData.DigString("dns", "base_domain"))
 				_, err = clusterService.EditCluster(clusterID, "--no-proxy",
 					fmt.Sprintf("%s,.%s", clusterNoProxy, clusterDNS))
 				Expect(err).To(BeNil())
