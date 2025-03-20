@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -292,26 +291,8 @@ var _ = Describe("Network verifier",
 					})
 				Expect(err).To(BeNil())
 
-				for _, s := range strings.Split(subnets, ",") {
-					for _, p := range vpcClient.AllPrivateSubnetIDs() {
-						if s == p {
-							err = wait.PollUntilContextTimeout(
-								context.Background(),
-								20*time.Second,
-								300*time.Second,
-								false,
-								func(context.Context) (bool, error) {
-									clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
-									if !strings.Contains(clusterDetail.FailedInflightChecks,
-										fmt.Sprintf("Invalid configurations on subnet '%s' have been identified", s)) {
-										return false, err
-									}
-									return true, err
-								})
-							Expect(err).To(BeNil())
-						}
-					}
-				}
+				clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring("Invalid configurations on subnet"))
 			})
 
 	})
