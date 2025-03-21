@@ -38,6 +38,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"slices"
+
 	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
@@ -2209,9 +2211,12 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("%s", filterError)
 			os.Exit(1)
 		}
+
+		var excludedSubnetIdsDueToBeingPublic []string
 		if privateLink {
-			subnets = filterPrivateSubnets(subnets, r)
+			subnets, excludedSubnetIdsDueToBeingPublic = filterPrivateSubnets(subnets, r)
 		}
+
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
 			if isHostedCP {
@@ -2234,13 +2239,17 @@ func run(cmd *cobra.Command, _ []string) {
 		// Verify subnets provided exist.
 		if subnetsProvided {
 			for _, subnetArg := range subnetIDs {
-				verifiedSubnet := false
-				for _, subnet := range subnets {
-					if awssdk.ToString(subnet.SubnetId) == subnetArg {
-						verifiedSubnet = true
-					}
+				// Check if subnet is in the excluded list of public subnets
+				if slices.Contains(excludedSubnetIdsDueToBeingPublic, subnetArg) {
+					r.Reporter.Errorf("The command cannot be executed because %s is public and the cluster is set as private",
+						subnetArg)
+					os.Exit(1)
 				}
-				if !verifiedSubnet {
+
+				// Check if the provided subnet exists in the filtered list
+				if !slices.ContainsFunc(subnets, func(subnet ec2types.Subnet) bool {
+					return awssdk.ToString(subnet.SubnetId) == subnetArg
+				}) {
 					r.Reporter.Errorf("Could not find the following subnet provided in region '%s': %s",
 						r.AWSClient.GetRegion(), subnetArg)
 					os.Exit(1)
@@ -3700,7 +3709,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 	return oidcConfig
 }
 
-func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) []ec2types.Subnet {
+func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) ([]ec2types.Subnet, []string) {
 	excludedSubnetsDueToPublic := []string{}
 	filteredSubnets := []ec2types.Subnet{}
 	publicSubnetMap, err := r.AWSClient.FetchPublicSubnetMap(initialSubnets)
@@ -3728,7 +3737,7 @@ func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) []e
 			" because they have an Internet Gateway Targetded Route and the Cluster choice is private: %s",
 			helper.SliceToSortedString(excludedSubnetsDueToPublic))
 	}
-	return filteredSubnets
+	return filteredSubnets, excludedSubnetsDueToPublic
 }
 
 // filterCidrRangeSubnets filters the initial set of subnets to those that are part of the machine network,
