@@ -55,7 +55,7 @@ type GlobalENVVariables struct {
 	Region                string `env:"REGION" default:""`
 	ProvisionShard        string `env:"PROVISION_SHARD" default:""`
 	NamePrefix            string `env:"NAME_PREFIX"`
-	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"60"`
+	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"90"`
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
 	AWSCredetialsFile     string `env:"AWS_SHARED_CREDENTIALS_FILE" default:""`
 	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`

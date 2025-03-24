@@ -871,7 +871,7 @@ func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
 		ch.saveToFile()
 	}()
 	clusterService := ch.rosaClient.Cluster
-	err = clusterService.WaitForClusterPassWaiting(clusterID, 1, 2)
+	err = clusterService.WaitForClusterPassWaiting(clusterID, 2, 20)
 	if err != nil {
 		return err
 	}
