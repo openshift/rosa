@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -37,8 +38,6 @@ import (
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-
-	"slices"
 
 	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/idp"
