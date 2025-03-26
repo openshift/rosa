@@ -5,8 +5,10 @@ package network
 const CloudFormationTemplateFile = `
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template to create a ROSA Quickstart default VPC.
-  This CloudFormation template may not work with rosa CLI versions later than v1.2.48. 
+  This CloudFormation template may not work with rosa CLI versions later than 1.2.48.
   Please ensure that you are using the compatible CLI version before deploying this template.
+
+Transform: 'AWS::LanguageExtensions'
 
 Parameters:
   AvailabilityZoneCount:
@@ -15,6 +17,9 @@ Parameters:
     Default: 1
     MinValue: 1
     MaxValue: 3
+  AvailabilityZones:
+    Type: CommaDelimitedList
+    Description: "List of Availability Zones to use"
   Region:
     Type: String
     Description: "AWS Region"
@@ -28,9 +33,13 @@ Parameters:
     Default: '10.0.0.0/16'
 
 Conditions:
-  HasAZ1: !Equals [!Ref AvailabilityZoneCount, 1]
-  HasAZ2: !Equals [!Ref AvailabilityZoneCount, 2]
-  HasAZ3: !Equals [!Ref AvailabilityZoneCount, 3] 
+  AZ3Explicit: !Equals [Fn::Length: !Ref AvailabilityZones, 3]
+  AZ2Explicit: !Or [!Equals [Fn::Length: !Ref AvailabilityZones, 2], !Condition AZ3Explicit]
+  AZ1Explicit: !Or [!Equals [Fn::Length: !Ref AvailabilityZones, 1], !Condition AZ2Explicit]
+
+  HasAZ1: !Or [!Equals [!Ref AvailabilityZoneCount, 1], !Condition AZ1Explicit]
+  HasAZ2: !Or [!Equals [!Ref AvailabilityZoneCount, 2], !Condition AZ2Explicit]
+  HasAZ3: !Or [!Equals [!Ref AvailabilityZoneCount, 3], !Condition AZ3Explicit]
 
   One:
     Fn::Or:
@@ -76,7 +85,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !Select [0, !GetAZs '']
+      AvailabilityZone: !If [AZ1Explicit, !Select [0, !Ref AvailabilityZones], !Select [0, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -96,7 +105,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !Select [0, !GetAZs '']
+      AvailabilityZone: !If [AZ1Explicit, !Select [0, !Ref AvailabilityZones], !Select [0, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -116,7 +125,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !Select [1, !GetAZs '']
+      AvailabilityZone: !If [AZ2Explicit, !Select [1, !Ref AvailabilityZones], !Select [1, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -136,7 +145,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [3, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !Select [1, !GetAZs '']
+      AvailabilityZone: !If [AZ2Explicit, !Select [1, !Ref AvailabilityZones], !Select [1, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -156,7 +165,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [4, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !Select [2, !GetAZs '']
+      AvailabilityZone: !If [AZ3Explicit, !Select [2, !Ref AvailabilityZones], !Select [2, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -176,7 +185,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [5, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !Select [2, !GetAZs '']
+      AvailabilityZone: !If [AZ3Explicit, !Select [2, !Ref AvailabilityZones], !Select [2, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
