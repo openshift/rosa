@@ -2211,9 +2211,9 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		var excludedSubnetIdsDueToBeingPublic []string
+		var excludedPublicSubnets []string
 		if privateLink {
-			subnets, excludedSubnetIdsDueToBeingPublic = filterPrivateSubnets(subnets, r)
+			subnets, excludedPublicSubnets = filterPrivateSubnets(subnets, r)
 		}
 
 		if len(subnets) == 0 {
@@ -2239,8 +2239,8 @@ func run(cmd *cobra.Command, _ []string) {
 		if subnetsProvided {
 			for _, subnetArg := range subnetIDs {
 				// Check if subnet is in the excluded list of public subnets
-				if slices.Contains(excludedSubnetIdsDueToBeingPublic, subnetArg) {
-					r.Reporter.Errorf("The command cannot be executed because %s is public and the cluster is set as private",
+				if slices.Contains(excludedPublicSubnets, subnetArg) {
+					r.Reporter.Errorf("Cluster is set as private, cannot use public '%s'",
 						subnetArg)
 					os.Exit(1)
 				}
@@ -3709,7 +3709,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 }
 
 func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) ([]ec2types.Subnet, []string) {
-	excludedSubnetsDueToPublic := []string{}
+	excludedPublicSubnets := []string{}
 	filteredSubnets := []ec2types.Subnet{}
 	publicSubnetMap, err := r.AWSClient.FetchPublicSubnetMap(initialSubnets)
 	if err != nil {
@@ -3720,8 +3720,8 @@ func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) ([]
 		skip := false
 		if isPublic, ok := publicSubnetMap[awssdk.ToString(subnet.SubnetId)]; ok {
 			if isPublic {
-				excludedSubnetsDueToPublic = append(
-					excludedSubnetsDueToPublic,
+				excludedPublicSubnets = append(
+					excludedPublicSubnets,
 					awssdk.ToString(subnet.SubnetId),
 				)
 				skip = true
@@ -3731,12 +3731,12 @@ func filterPrivateSubnets(initialSubnets []ec2types.Subnet, r *rosa.Runtime) ([]
 			filteredSubnets = append(filteredSubnets, subnet)
 		}
 	}
-	if len(excludedSubnetsDueToPublic) > 0 {
+	if len(excludedPublicSubnets) > 0 {
 		r.Reporter.Warnf("The following subnets have been excluded"+
 			" because they have an Internet Gateway Targetded Route and the Cluster choice is private: %s",
-			helper.SliceToSortedString(excludedSubnetsDueToPublic))
+			helper.SliceToSortedString(excludedPublicSubnets))
 	}
-	return filteredSubnets, excludedSubnetsDueToPublic
+	return filteredSubnets, excludedPublicSubnets
 }
 
 // filterCidrRangeSubnets filters the initial set of subnets to those that are part of the machine network,
