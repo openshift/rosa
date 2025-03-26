@@ -74,6 +74,7 @@ func (s *network) CreateStack(templateFile *string, templateBody *[]byte,
 		Capabilities: []cfTypes.Capability{
 			cfTypes.CapabilityCapabilityIam,
 			cfTypes.CapabilityCapabilityNamedIam,
+			cfTypes.CapabilityCapabilityAutoExpand,
 		},
 	})
 	if err != nil {

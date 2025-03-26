@@ -206,7 +206,9 @@ func buildCreateStackInput(cfTemplateBody, stackName string) *cloudformation.Cre
 	// Special cloudformation capabilities are required to create IAM resources in AWS
 	cfCapabilityIAM := cloudformationtypes.CapabilityCapabilityIam
 	cfCapabilityNamedIAM := cloudformationtypes.CapabilityCapabilityNamedIam
-	cfTemplateCapabilities := []cloudformationtypes.Capability{cfCapabilityIAM, cfCapabilityNamedIAM}
+	cfCapabilityAutoExpand := cloudformationtypes.CapabilityCapabilityAutoExpand
+	cfTemplateCapabilities := []cloudformationtypes.Capability{
+		cfCapabilityIAM, cfCapabilityNamedIAM, cfCapabilityAutoExpand}
 
 	return &cloudformation.CreateStackInput{
 		Capabilities: cfTemplateCapabilities,
@@ -220,7 +222,9 @@ func buildUpdateStackInput(cfTemplateBody, stackName string) *cloudformation.Upd
 	// Special cloudformation capabilities are required to update IAM resources in AWS
 	cfCapabilityIAM := cloudformationtypes.CapabilityCapabilityIam
 	cfCapabilityNamedIAM := cloudformationtypes.CapabilityCapabilityNamedIam
-	cfTemplateCapabilities := []cloudformationtypes.Capability{cfCapabilityIAM, cfCapabilityNamedIAM}
+	cfCapabilityAutoExpand := cloudformationtypes.CapabilityCapabilityAutoExpand
+	cfTemplateCapabilities := []cloudformationtypes.Capability{
+		cfCapabilityIAM, cfCapabilityNamedIAM, cfCapabilityAutoExpand}
 
 	return &cloudformation.UpdateStackInput{
 		Capabilities: cfTemplateCapabilities,
