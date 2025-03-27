@@ -837,7 +837,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		)
 		if ch.profile.ClusterConfig.AllowedRegistries {
 			flags = append(flags,
-				"--registry-config-allowed-registries", "allowed.example.com,quay.io,*.redhat.com",
+				"--registry-config-allowed-registries", "quay.io,*.redhat.com,*.ci.openshift.org",
 			)
 		} else if ch.profile.ClusterConfig.BlockedRegistries {
 			flags = append(flags,
