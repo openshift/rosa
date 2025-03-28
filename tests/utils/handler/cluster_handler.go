@@ -833,17 +833,29 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			"--registry-config-additional-trusted-ca", caFile,
 			"--registry-config-insecure-registries", "test.com,*.example",
 			"--registry-config-allowed-registries-for-import",
-			"docker.io:false,registry.redhat.com:false,registry.access.redhat.com:false,quay.io:false",
+			"docker.io:false,registry.redhat.com:false,registry.access.redhat.com:false,quay.io:false,registry.redhat.io:false",
 		)
 		if ch.profile.ClusterConfig.AllowedRegistries {
 			flags = append(flags,
-				"--registry-config-allowed-registries", "allowed.example.com,quay.io,*.redhat.com",
+				"--registry-config-allowed-registries", "quay.io,*.redhat.com,*.ci.openshift.org",
 			)
 		} else if ch.profile.ClusterConfig.BlockedRegistries {
 			flags = append(flags,
 				"--registry-config-blocked-registries", "blocked.example.com,*.test",
 			)
 		}
+	}
+
+	if ch.profile.ClusterConfig.ZeroEgress {
+		err := resourcesHandler.PrepareZeroEgressResources()
+		if err != nil {
+			return flags, err
+		}
+		flags = append(flags, "--properties", fmt.Sprintf("zero_egress:%v", ch.profile.ClusterConfig.ZeroEgress))
+		ch.clusterConfig.Properties = &ClusterConfigure.Properties{
+			ZeroEgress: ch.profile.ClusterConfig.ZeroEgress,
+		}
+
 	}
 	return flags, nil
 }
@@ -859,7 +871,7 @@ func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
 		ch.saveToFile()
 	}()
 	clusterService := ch.rosaClient.Cluster
-	err = clusterService.WaitForClusterPassWaiting(clusterID, 1, 2)
+	err = clusterService.WaitForClusterPassWaiting(clusterID, 2, 20)
 	if err != nil {
 		return err
 	}

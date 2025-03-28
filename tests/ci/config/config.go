@@ -46,6 +46,7 @@ type TestConfig struct {
 	ProxyCABundleFile               string
 	GlobalENV                       *GlobalENVVariables
 	ClusterENV                      *ClusterENVVariables
+	Day2ConfENV                     *Day2ConfENVVariables
 }
 type GlobalENVVariables struct {
 	ChannelGroup          string `env:"CHANNEL_GROUP" default:""`
@@ -54,7 +55,7 @@ type GlobalENVVariables struct {
 	Region                string `env:"REGION" default:""`
 	ProvisionShard        string `env:"PROVISION_SHARD" default:""`
 	NamePrefix            string `env:"NAME_PREFIX"`
-	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"60"`
+	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"90"`
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
 	AWSCredetialsFile     string `env:"AWS_SHARED_CREDENTIALS_FILE" default:""`
 	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`
@@ -72,6 +73,12 @@ type ClusterENVVariables struct {
 	MultiAZ             string `env:"MULTI_AZ" default:""`
 	AllowRegistries     string `env:"ALLOW_REGISTRIES" default:""`
 	UseLocalCredentials bool   `env:"USE_LOCAL_CREDENTIALS" default:"false"`
+}
+
+type Day2ConfENVVariables struct {
+	LocalZoneMP    bool `env:"LOCAL_ZONE_MP" default:"false"`
+	TuningConfig   bool `env:"TUNING_CONFIG" default:"false"`
+	TuningConfigMP bool `env:"TUNING_CONFIG_MP" default:"false"`
 }
 
 func init() {
@@ -147,6 +154,15 @@ func init() {
 		MultiAZ:             os.Getenv("MULTI_AZ"),
 		AllowRegistries:     os.Getenv("ALLOW_REGISTRIES"),
 		UseLocalCredentials: useLocalCredentials,
+	}
+
+	local_zone_mp, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("LOCAL_ZONE_MP", "false"))
+	tuning_config, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("TUNING_CONFIG", "false"))
+	tuning_config_mp, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("TUNING_CONFIG_MP", "false"))
+	Test.Day2ConfENV = &Day2ConfENVVariables{
+		LocalZoneMP:    local_zone_mp,
+		TuningConfig:   tuning_config,
+		TuningConfigMP: tuning_config_mp,
 	}
 
 }

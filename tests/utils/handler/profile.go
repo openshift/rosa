@@ -84,6 +84,9 @@ func LoadProfileYamlFile(profileName string) *Profile {
 	p := GetProfile(profileName, GetYAMLProfilesDir())
 	log.Logger.Infof("Loaded cluster profile configuration from original profile %s : %v", profileName, *p)
 	log.Logger.Infof("Loaded cluster profile configuration from original cluster %s : %v", profileName, *p.ClusterConfig)
+	if p.Day2Config != nil {
+		log.Logger.Infof("Loaded day2 configuration from original day2 conf %s : %v", profileName, *p.Day2Config)
+	}
 	if p.AccountRoleConfig != nil {
 		log.Logger.Infof("Loaded cluster profile configuration from original account-roles %s : %v",
 			profileName, *p.AccountRoleConfig)
@@ -106,11 +109,11 @@ func LoadProfileYamlFileByENV() *Profile {
 	if config.Test.GlobalENV.Version != "" || config.Test.GlobalENV.OpenshiftVersion != "" {
 		if config.Test.GlobalENV.Version != "" {
 			log.Logger.Infof("Got global env settings for VERSION, overwritten the profile setting with value %s",
-				config.Test.GlobalENV.OpenshiftVersion)
+				config.Test.GlobalENV.Version)
 			profile.Version = config.Test.GlobalENV.Version
 		} else {
 			log.Logger.Infof("Got global env settings for OPENSHIFT_VERSION, overwritten the profile setting with value %s",
-				config.Test.GlobalENV.Version)
+				config.Test.GlobalENV.OpenshiftVersion)
 			profile.Version = config.Test.GlobalENV.OpenshiftVersion
 		}
 	}
@@ -186,5 +189,12 @@ func LoadProfileYamlFileByENV() *Profile {
 		profile.ClusterConfig.AllowedRegistries = helper.ParseBool(config.Test.ClusterENV.AllowRegistries)
 	}
 
+	if config.Test.Day2ConfENV.LocalZoneMP {
+		if profile.Day2Config != nil {
+			log.Logger.Infof("Got global env settings for LOCAL_ZONE_MP, overwritten the profile setting with value %v",
+				config.Test.Day2ConfENV.LocalZoneMP)
+			profile.Day2Config.LocalZoneMP = config.Test.Day2ConfENV.LocalZoneMP
+		}
+	}
 	return profile
 }

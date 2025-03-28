@@ -180,7 +180,7 @@ func (client *AWSClient) DeleteRouteTable(routeTableID string) error {
 	if err != nil {
 		return err
 	}
-	err = client.WaitForResourceDeleted(routeTableID, 5)
+	err = client.WaitForResourceDeleted(routeTableID, 10)
 	return err
 }
 func (client *AWSClient) DeleteRouteTableChain(routeTableID string) error {

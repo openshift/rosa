@@ -64,3 +64,37 @@ profiles:
   account-role:
     path: ""
     permission_boundary: ""
+- as: ocpe2e-rosa-hcp-zero-egress
+  version: latest
+  channel_group: stable
+  region: "us-west-2"
+  cluster:
+    multi_az: true
+    shared_vpc: false
+    instance_type: "m5.xlarge"
+    hcp: true
+    sts: true
+    byo_vpc: true
+    additional_principals: false
+    imdsv2: "required"
+    private: true
+    etcd_encryption: true
+    autoscale: true
+    kms_key: true
+    networking: true
+    proxy_enabled: true
+    label_enabled: false
+    zones: ""
+    tag_enabled: true
+    etcd_kms: true
+    fips: false
+    oidc_config: "managed"
+    admin_enabled: false
+    volume_size: 75
+    disable_uwm: true
+    additional_sg_number: 3
+    zero_egress: true
+  account-role:
+    customized_prefix: true
+    path: ""
+    permission_boundary: ""

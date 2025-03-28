@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1045,5 +1047,32 @@ func waitForStackDeleteComplete(ctx context.Context, cfClient client.CloudFormat
 	// You can also use WaitForOutput if you need the output
 	return waiter.Wait(ctx, params, maxWaitDur, func(o *cloudformation.StackDeleteCompleteWaiterOptions) {
 		// Optionally set MinDelay, MaxDelay, and other options here
+	})
+}
+
+func sortAccountRolesByHCPSuffix(roles []iamtypes.Role) {
+	sort.Slice(roles, func(i, j int) bool {
+		prefixI := strings.SplitAfter(*roles[i].RoleName, "-")[0]
+		prefixJ := strings.SplitAfter(*roles[j].RoleName, "-")[0]
+
+		roleGroupI, errI := strconv.Atoi(prefixI)
+		roleGroupJ, errJ := strconv.Atoi(prefixJ)
+
+		if errI == nil && errJ == nil {
+			if roleGroupI != roleGroupJ {
+				return roleGroupI < roleGroupJ
+			}
+		} else {
+			if prefixI != prefixJ {
+				return prefixI < prefixJ
+			}
+		}
+
+		hcpI := strings.Contains(*roles[i].RoleName, HCPSuffixPattern)
+		hcpJ := strings.Contains(*roles[j].RoleName, HCPSuffixPattern)
+		if hcpI != hcpJ {
+			return hcpI
+		}
+		return roleGroupI < roleGroupJ
 	})
 }

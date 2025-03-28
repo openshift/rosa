@@ -16,7 +16,7 @@ profiles:
     autoscale: true
     kms_key: true
     networking: true
-    proxy_enabled: true
+    proxy_enabled: false
     label_enabled: true
     tag_enabled: false
     zones: ""
@@ -34,10 +34,14 @@ profiles:
   account-role:
     path: "/test/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
+  day2-conf:
+    local-zone-mp: false
+    tuning-config: false
+    tuning-config-mp: false
 - as: rosa-private-link
   version: latest
   channel_group: "candidate"
-  region: "us-east-1"
+  region: "us-east-2"
   cluster:
     multi_az: true
     instance_type: ""
@@ -51,7 +55,7 @@ profiles:
     autoscale: true
     kms_key: true
     networking: false
-    proxy_enabled: false
+    proxy_enabled: true
     label_enabled: false
     tag_enabled: false
     zones: ""
@@ -98,7 +102,7 @@ profiles:
     volume_size: 150
     autoscaler_enabled: false
     disable_uwm: false
-    name_length: 15
+    name_length: 54
     domain_prefix_enabled: false
     additional_sg_number: 0
     fedramp: true

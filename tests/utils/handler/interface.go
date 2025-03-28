@@ -9,6 +9,14 @@ type Profile struct {
 	Version           string             `yaml:"version,omitempty"`
 	AccountRoleConfig *AccountRoleConfig `yaml:"account-role,omitempty"`
 	ClusterConfig     *ClusterConfig     `yaml:"cluster,omitempty"`
+	Day2Config        *Day2Config        `yaml:"day2-conf,omitempty"`
+}
+
+// Day2Config will map the configuration of day2-conf from profile settings
+type Day2Config struct {
+	LocalZoneMP    bool `yaml:"local-zone-mp,omitempty"`
+	TuningConfig   bool `yaml:" tuning-config,omitempty"`
+	TuningConfigMP bool `yaml:" tuning-config-mp,omitempty"`
 }
 
 // AccountRoleConfig will map the configuration of account roles from profile settings
@@ -62,6 +70,7 @@ type ClusterConfig struct {
 	BlockedRegistries             bool   `yaml:"blocked_registries" json:"blocked_registries,omitempty"`
 	ManualCreationMode            bool   `yaml:"manual_creation_mode" json:"manual_creation_mode,omitempty"`
 	FedRAMP                       bool   `yaml:"fedramp" json:"fedramp,omitempty"`
+	ZeroEgress                    bool   `yaml:"zero_egress" json:"zero_egress,omitempty"`
 	UseLocalCredentials           bool   `yaml:"use_local_credentials,omitempty" json:"use_local_credentials,omitempty"`
 }
 
