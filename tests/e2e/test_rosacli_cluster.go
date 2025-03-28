@@ -1554,6 +1554,18 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
 			})
+		It("validate use-local-credentials won't work with sts - [id:76481]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := "ocp-76481"
+
+				By("Create cluster with use-local-credentials flag but with sts")
+				errorOutput, err := clusterService.CreateDryRun(
+					clusterName, "--use-local-credentials", "--sts", "--mode=auto", "-y",
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(errorOutput.String()).To(ContainSubstring("Local credentials are not supported for STS clusters"))
+			})
 	})
 
 var _ = Describe("Create cluster with invalid options will",
@@ -4224,5 +4236,114 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 				By("Wait cluster to instaling status")
 				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
 				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+			})
+	})
+var _ = Describe("Non-STS cluster with local credentials",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+
+			customProfile      *handler.Profile
+			clusterID          string
+			ocmResourceService rosacli.OCMResourceService
+			testingClusterName string
+			clusterHandler     handler.ClusterHandler
+		)
+		BeforeEach(func() {
+			var err error
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			ocmResourceService = rosaClient.OCMResource
+
+			By("Get AWS account id")
+			rosaClient.Runner.JsonFormat()
+			rosaClient.Runner.UnsetFormat()
+
+			By("Prepare custom profile")
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
+					HCP:                 false,
+					MultiAZ:             false,
+					STS:                 false,
+					OIDCConfig:          "",
+					NetworkingSet:       false,
+					BYOVPC:              false,
+					UseLocalCredentials: true,
+				},
+				AccountRoleConfig: &handler.AccountRoleConfig{
+					Path:               "/aa/bb/",
+					PermissionBoundary: "",
+				},
+				Version:      "latest",
+				ChannelGroup: "candidate",
+				Region:       "us-east-2",
+			}
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			defer func() {
+				By("Clean resources")
+				clusterHandler.Destroy()
+			}()
+
+			By("Delete cluster")
+			rosaClient.Runner.UnsetArgs()
+			_, err := clusterService.DeleteCluster(clusterID, "-y")
+			Expect(err).To(BeNil())
+
+			rosaClient.Runner.UnsetArgs()
+			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+			Expect(err).To(BeNil())
+
+			By("Delete operator-roles")
+			_, err = ocmResourceService.DeleteOperatorRoles(
+				"-c", clusterID,
+				"--mode", "auto",
+				"-y",
+			)
+			Expect(err).To(BeNil())
+		})
+
+		It("Creating cluster with non-sts use-local-credentials should succeed - [id:65900]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Create classic cluster in auto mode")
+				testingClusterName = helper.GenerateRandomName("c65900", 2)
+				testOperatorRolePrefix := helper.GenerateRandomName("opp65900", 2)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
+				Expect(err).ToNot(HaveOccurred())
+
+				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
+				rosalCommand := config.GenerateCommand(command)
+				rosalCommand.ReplaceFlagValue(map[string]string{
+					"--operator-roles-prefix": testOperatorRolePrefix,
+				})
+
+				rosalCommand.AddFlags("--mode", "auto")
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+
+				By("Wait for the cluster to be installing")
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 20)
+				Expect(err).To(BeNil())
+
+				By("Check the properties of the cluster")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(jsonData.DigBool("properties", "use_local_credentials")).To(BeTrue())
 			})
 	})
