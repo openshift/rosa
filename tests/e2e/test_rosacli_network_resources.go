@@ -385,7 +385,7 @@ var _ = Describe("Network Resources",
 						"--template-dir", tdpWithoutVPCCIDR, fmt.Sprintf(
 							"--param=Name=%s", tdnWithoutVPCCIDR), "--param=Region=us-west-2",
 					},
-					"Parameter 'AvailabilityZoneCount' must be a number not greater than 3": {
+					"Parameter 'AvailabilityZoneCount' must be a number not greater than 4": {
 						"--param=AvailabilityZoneCount=10", "--param=Name=invalid-az"},
 					"Parameter 'AvailabilityZoneCount' must be a number not less than 1": {
 						"--param=AvailabilityZoneCount=0", "--param=Name=invalid-az"},
