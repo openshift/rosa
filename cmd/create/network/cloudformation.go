@@ -14,7 +14,7 @@ Parameters:
     Description: "Number of Availability Zones to use"
     Default: 1
     MinValue: 1
-    MaxValue: 3
+    MaxValue: 4
   AZ1:
     Type: String
     Description: "First availability zone to use"
@@ -26,6 +26,10 @@ Parameters:
   AZ3:
     Type: String
     Description: "Third availability zone to use"
+    Default: ""
+  AZ4:
+    Type: String
+    Description: "Fourth availability zone to use"
     Default: ""
   Region:
     Type: String
@@ -43,17 +47,20 @@ Conditions:
   AZ1Explicit: !Not [!Equals [!Ref AZ1, ""]]
   AZ2Explicit: !Not [!Equals [!Ref AZ2, ""]]
   AZ3Explicit: !Not [!Equals [!Ref AZ3, ""]]
+  AZ4Explicit: !Not [!Equals [!Ref AZ4, ""]]
 
-  ExplicitAZs:   !Or [!Condition AZ1Explicit, !Condition AZ2Explicit, !Condition AZ3Explicit]
+  ExplicitAZs:   !Or [!Condition AZ1Explicit, !Condition AZ2Explicit, !Condition AZ3Explicit, !Condition AZ4Explicit]
   NoExplicitAZs: !Not [!Condition ExplicitAZs]
 
-  AZ3Implicit: !Equals [!Ref AvailabilityZoneCount, 3]
+  AZ4Implicit: !Equals [!Ref AvailabilityZoneCount, 4]
+  AZ3Implicit: !Or [!Equals [!Ref AvailabilityZoneCount, 3], !Condition AZ4Implicit]
   AZ2Implicit: !Or [!Equals [!Ref AvailabilityZoneCount, 2], !Condition AZ3Implicit]
   AZ1Implicit: !Or [!Equals [!Ref AvailabilityZoneCount, 1], !Condition AZ2Implicit]
 
   One:   !Or [!And [!Condition ExplicitAZs, !Condition AZ1Explicit], !And [!Condition NoExplicitAZs, !Condition AZ1Implicit]]
   Two:   !Or [!And [!Condition ExplicitAZs, !Condition AZ2Explicit], !And [!Condition NoExplicitAZs, !Condition AZ2Implicit]]
   Three: !Or [!And [!Condition ExplicitAZs, !Condition AZ3Explicit], !And [!Condition NoExplicitAZs, !Condition AZ3Implicit]]
+  Four:  !Or [!And [!Condition ExplicitAZs, !Condition AZ4Explicit], !And [!Condition NoExplicitAZs, !Condition AZ4Implicit]]
 
 Resources:
   VPC:
@@ -87,7 +94,7 @@ Resources:
     Condition: One
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 6, 8]]
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 8, 8]]
       AvailabilityZone: !If [ExplicitAZs, !Ref AZ1, !Select [0, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
@@ -107,7 +114,7 @@ Resources:
     Condition: One
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 6, 8]]
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 8, 8]]
       AvailabilityZone: !If [ExplicitAZs, !Ref AZ1, !Select [0, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
@@ -127,7 +134,7 @@ Resources:
     Condition: Two
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 6, 8]]
+      CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 8, 8]]
       AvailabilityZone: !If [ExplicitAZs, !Ref AZ2, !Select [1, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
@@ -147,7 +154,7 @@ Resources:
     Condition: Two
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [3, !Cidr [!Ref VpcCidr, 6, 8]]
+      CidrBlock: !Select [3, !Cidr [!Ref VpcCidr, 8, 8]]
       AvailabilityZone: !If [ExplicitAZs, !Ref AZ2, !Select [1, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
@@ -167,7 +174,7 @@ Resources:
     Condition: Three
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [4, !Cidr [!Ref VpcCidr, 6, 8]]
+      CidrBlock: !Select [4, !Cidr [!Ref VpcCidr, 8, 8]]
       AvailabilityZone: !If [ExplicitAZs, !Ref AZ3, !Select [2, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
@@ -187,12 +194,52 @@ Resources:
     Condition: Three
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [5, !Cidr [!Ref VpcCidr, 6, 8]]
+      CidrBlock: !Select [5, !Cidr [!Ref VpcCidr, 8, 8]]
       AvailabilityZone: !If [ExplicitAZs, !Ref AZ3, !Select [2, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub "${Name}-Private-Subnet-3"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+        - Key: 'kubernetes.io/role/internal-elb'
+          Value: '1'
+
+  SubnetPublic4:
+    Type: AWS::EC2::Subnet
+    Condition: Three
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Select [6, !Cidr [!Ref VpcCidr, 8, 8]]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ4, !Select [3, !GetAZs '']]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Public-Subnet-4"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+        - Key: 'kubernetes.io/role/elb'
+          Value: '1'
+
+  SubnetPrivate4:
+    Type: AWS::EC2::Subnet
+    Condition: Three
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Select [7, !Cidr [!Ref VpcCidr, 8, 8]]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ4, !Select [3, !GetAZs '']]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Subnet-4"
         - Key: 'rosa_managed_policies'
           Value: 'true'
         - Key: 'rosa_hcp_policies'
@@ -266,6 +313,21 @@ Resources:
         - Key: 'service'
           Value: 'ROSA'
 
+  ElasticIP4:
+    Condition: Four
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Ref Name
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
   NATGateway1:
     Condition: One
     Type: 'AWS::EC2::NatGateway'
@@ -307,6 +369,22 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${Name}-NAT-3"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  NATGateway4:
+    Condition: Four
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt ElasticIP4.AllocationId
+      SubnetId: !Ref SubnetPublic4
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-NAT-4"
         - Key: 'rosa_managed_policies'
           Value: 'true'
         - Key: 'rosa_hcp_policies'
@@ -364,7 +442,10 @@ Resources:
           - !If
             - Three
             - !Ref NATGateway3
-            - !Ref "AWS::NoValue"
+            - !If
+              - Four
+              - !Ref NATGateway4
+              - !Ref "AWS::NoValue"
 
   PublicSubnetRouteTableAssociation1:
     Condition: One
@@ -387,6 +468,13 @@ Resources:
       SubnetId: !Ref SubnetPublic3
       RouteTableId: !Ref PublicRouteTable
 
+  PublicSubnetRouteTableAssociation4:
+    Condition: Four
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPublic4
+      RouteTableId: !Ref PublicRouteTable
+
   PrivateSubnetRouteTableAssociation1:
     Condition: One
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -406,6 +494,13 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate3
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation4:
+    Condition: Four
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPrivate4
       RouteTableId: !Ref PrivateRouteTable
   
   SecurityGroup:
@@ -444,6 +539,8 @@ Resources:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
         - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+        - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
+        - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
       SecurityGroupIds:
         - !Ref SecurityGroup
 
@@ -458,6 +555,7 @@ Resources:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
         - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+        - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
       SecurityGroupIds:
         - !Ref SecurityGroup
 
@@ -472,6 +570,7 @@ Resources:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
         - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+        - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
       SecurityGroupIds:
         - !Ref SecurityGroup
 
@@ -486,6 +585,7 @@ Resources:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
         - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+        - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
       SecurityGroupIds:
         - !Ref SecurityGroup
 
@@ -500,7 +600,8 @@ Resources:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
         - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
-      SecurityGroupIds:
+        - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
+      SecurityGroupIds: 
         - !Ref SecurityGroup
 
 Outputs:
@@ -518,13 +619,13 @@ Outputs:
 
   PublicSubnets:
     Description: "Public Subnet Ids"
-    Value: !Join [",", [!If [One, !Ref SubnetPublic1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPublic2, !Ref "AWS::NoValue"], !If [Three, !Ref SubnetPublic3, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref SubnetPublic1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPublic2, !Ref "AWS::NoValue"], !If [Three, !Ref SubnetPublic3, !Ref "AWS::NoValue"], !If [Four, !Ref SubnetPublic4, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-PublicSubnets"
 
   PrivateSubnets:
     Description: "Private Subnet Ids"
-    Value: !Join [",", [!If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"], !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"], !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"], !If [Four, !Ref SubnetPublic4, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-PrivateSubnets"
 
@@ -548,9 +649,16 @@ Outputs:
     Export:
       Name: !Sub "${Name}-EIP3-AllocationId"
 
+  EIP4AllocationId:
+    Condition: Four
+    Description: Allocation ID for ElasticIP4
+    Value: !GetAtt ElasticIP4.AllocationId
+    Export:
+      Name: !Sub "${Name}-EIP4-AllocationId"
+
   NatGatewayId:
     Description: The NAT Gateway IDs
-    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [Two, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [Three, !Ref NATGateway3, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [Two, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [Three, !Ref NATGateway3, !Ref "AWS::NoValue"], !If [Four, !Ref NATGateway4, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-NatGatewayId"
 
