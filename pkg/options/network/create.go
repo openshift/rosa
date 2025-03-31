@@ -18,7 +18,7 @@ const (
 		"\n\n" + `  # ROSA quick start HCP VPC example` +
 		"\n" + `  rosa create network rosa-quickstart-default-vpc --param Region=us-west-2` +
 		` --param Name=quickstart-stack --param AvailabilityZoneCount=1` +
-		` --param AvailabilityZones=us-west-2b,us-west-2d --param VpcCidr=10.0.0.0/16` +
+		` --param AZ1=us-west-2b --param AZ2=us-west-2d --param VpcCidr=10.0.0.0/16` +
 		"\n\n" + `  # To delete the AWS cloudformation stack` +
 		"\n" + `  aws cloudformation delete-stack --stack-name <name> --region <region>` +
 		"\n\n" + `# TEMPLATE_NAME:` +
