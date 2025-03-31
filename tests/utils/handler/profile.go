@@ -138,6 +138,10 @@ func LoadProfileYamlFileByENV() *Profile {
 			config.Test.ClusterENV.ComputeMachineType)
 		profile.ClusterConfig.InstanceType = config.Test.ClusterENV.ComputeMachineType
 	}
+	if config.Test.ClusterENV.UseLocalCredentials {
+		log.Logger.Info("Got global env setting for USE_LOCAL_CREDENTIALS, overwritten the profile setting to true")
+		profile.ClusterConfig.UseLocalCredentials = true
+	}
 	if config.Test.ClusterENV.BYOVPC != "" {
 		log.Logger.Infof("Got global env settings for BYOVPC, overwritten the profile setting with value %s",
 			config.Test.ClusterENV.BYOVPC)
