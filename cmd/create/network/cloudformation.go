@@ -8,8 +8,6 @@ Description: CloudFormation template to create a ROSA Quickstart default VPC.
   This CloudFormation template may not work with rosa CLI versions later than 1.2.48.
   Please ensure that you are using the compatible CLI version before deploying this template.
 
-Transform: 'AWS::LanguageExtensions'
-
 Parameters:
   AvailabilityZoneCount:
     Type: Number
@@ -17,9 +15,18 @@ Parameters:
     Default: 1
     MinValue: 1
     MaxValue: 3
-  AvailabilityZones:
-    Type: CommaDelimitedList
-    Description: "List of Availability Zones to use"
+  AZ1:
+    Type: String
+    Description: "First availability zone to use"
+    Default: ""
+  AZ2:
+    Type: String
+    Description: "Second availability zone to use"
+    Default: ""
+  AZ3:
+    Type: String
+    Description: "Third availability zone to use"
+    Default: ""
   Region:
     Type: String
     Description: "AWS Region"
@@ -33,24 +40,20 @@ Parameters:
     Default: '10.0.0.0/16'
 
 Conditions:
-  AZ3Explicit: !Equals [Fn::Length: !Ref AvailabilityZones, 3]
-  AZ2Explicit: !Or [!Equals [Fn::Length: !Ref AvailabilityZones, 2], !Condition AZ3Explicit]
-  AZ1Explicit: !Or [!Equals [Fn::Length: !Ref AvailabilityZones, 1], !Condition AZ2Explicit]
+  AZ1Explicit: !Not [!Equals [!Ref AZ1, ""]]
+  AZ2Explicit: !Not [!Equals [!Ref AZ2, ""]]
+  AZ3Explicit: !Not [!Equals [!Ref AZ3, ""]]
 
-  HasAZ1: !Or [!Equals [!Ref AvailabilityZoneCount, 1], !Condition AZ1Explicit]
-  HasAZ2: !Or [!Equals [!Ref AvailabilityZoneCount, 2], !Condition AZ2Explicit]
-  HasAZ3: !Or [!Equals [!Ref AvailabilityZoneCount, 3], !Condition AZ3Explicit]
+  ExplicitAZs:   !Or [!Condition AZ1Explicit, !Condition AZ2Explicit, !Condition AZ3Explicit]
+  NoExplicitAZs: !Not [!Condition ExplicitAZs]
 
-  One:
-    Fn::Or:
-      - Condition: HasAZ1
-      - Condition: HasAZ2
-      - Condition: HasAZ3
+  AZ3Implicit: !Equals [!Ref AvailabilityZoneCount, 3]
+  AZ2Implicit: !Or [!Equals [!Ref AvailabilityZoneCount, 2], !Condition AZ3Implicit]
+  AZ1Implicit: !Or [!Equals [!Ref AvailabilityZoneCount, 1], !Condition AZ2Implicit]
 
-  Two:
-    Fn::Or:
-      - Condition: HasAZ3
-      - Condition: HasAZ2
+  One:   !Or [!And [!Condition ExplicitAZs, !Condition AZ1Explicit], !And [!Condition NoExplicitAZs, !Condition AZ1Implicit]]
+  Two:   !Or [!And [!Condition ExplicitAZs, !Condition AZ2Explicit], !And [!Condition NoExplicitAZs, !Condition AZ2Implicit]]
+  Three: !Or [!And [!Condition ExplicitAZs, !Condition AZ3Explicit], !And [!Condition NoExplicitAZs, !Condition AZ3Implicit]]
 
 Resources:
   VPC:
@@ -80,12 +83,12 @@ Resources:
         - !Ref PrivateRouteTable
 
   SubnetPublic1:
-    Condition: One
     Type: AWS::EC2::Subnet
+    Condition: One
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !If [AZ1Explicit, !Select [0, !Ref AvailabilityZones], !Select [0, !GetAZs '']]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ1, !Select [0, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -95,17 +98,17 @@ Resources:
         - Key: 'rosa_hcp_policies'
           Value: 'true'
         - Key: 'service'
-          Value: 'ROSA' 
+          Value: 'ROSA'
         - Key: 'kubernetes.io/role/elb'
           Value: '1'
 
   SubnetPrivate1:
-    Condition: One
     Type: AWS::EC2::Subnet
+    Condition: One
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !If [AZ1Explicit, !Select [0, !Ref AvailabilityZones], !Select [0, !GetAZs '']]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ1, !Select [0, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -115,17 +118,17 @@ Resources:
         - Key: 'rosa_hcp_policies'
           Value: 'true'
         - Key: 'service'
-          Value: 'ROSA' 
+          Value: 'ROSA'
         - Key: 'kubernetes.io/role/internal-elb'
           Value: '1'
 
   SubnetPublic2:
-    Condition: Two
     Type: AWS::EC2::Subnet
+    Condition: Two
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !If [AZ2Explicit, !Select [1, !Ref AvailabilityZones], !Select [1, !GetAZs '']]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ2, !Select [1, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -140,12 +143,12 @@ Resources:
           Value: '1'
 
   SubnetPrivate2:
-    Condition: Two
     Type: AWS::EC2::Subnet
+    Condition: Two
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [3, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !If [AZ2Explicit, !Select [1, !Ref AvailabilityZones], !Select [1, !GetAZs '']]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ2, !Select [1, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -160,12 +163,12 @@ Resources:
           Value: '1'
 
   SubnetPublic3:
-    Condition: HasAZ3
     Type: AWS::EC2::Subnet
+    Condition: Three
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [4, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !If [AZ3Explicit, !Select [2, !Ref AvailabilityZones], !Select [2, !GetAZs '']]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ3, !Select [2, !GetAZs '']]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -180,12 +183,12 @@ Resources:
           Value: '1'
 
   SubnetPrivate3:
-    Condition: HasAZ3
     Type: AWS::EC2::Subnet
+    Condition: Three
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [5, !Cidr [!Ref VpcCidr, 6, 8]]
-      AvailabilityZone: !If [AZ3Explicit, !Select [2, !Ref AvailabilityZones], !Select [2, !GetAZs '']]
+      AvailabilityZone: !If [ExplicitAZs, !Ref AZ3, !Select [2, !GetAZs '']]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -219,6 +222,7 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
 
   ElasticIP1:
+    Condition: One
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -233,6 +237,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP2:
+    Condition: Two
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -247,7 +252,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP3:
-    Condition: HasAZ3
+    Condition: Three
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -294,7 +299,7 @@ Resources:
           Value: 'ROSA'
 
   NATGateway3:
-    Condition: HasAZ3
+    Condition: Three
     Type: 'AWS::EC2::NatGateway'
     Properties:
       AllocationId: !GetAtt ElasticIP3.AllocationId
@@ -357,7 +362,7 @@ Resources:
           - Two
           - !Ref NATGateway2
           - !If
-            - HasAZ3
+            - Three
             - !Ref NATGateway3
             - !Ref "AWS::NoValue"
 
@@ -376,7 +381,7 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
 
   PublicSubnetRouteTableAssociation3:
-    Condition: HasAZ3
+    Condition: Three
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPublic3
@@ -397,7 +402,7 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
 
   PrivateSubnetRouteTableAssociation3:
-    Condition: HasAZ3
+    Condition: Three
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate3
@@ -435,11 +440,11 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${Region}.ec2"
       PrivateDnsEnabled: true
       VpcEndpointType: Interface
-      SubnetIds: 
+      SubnetIds:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
-        - !If [HasAZ3, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
-      SecurityGroupIds: 
+        - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+      SecurityGroupIds:
         - !Ref SecurityGroup
 
   KMSVPCEndpoint:
@@ -449,11 +454,11 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${Region}.kms"
       PrivateDnsEnabled: true
       VpcEndpointType: Interface
-      SubnetIds: 
+      SubnetIds:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
-        - !If [HasAZ3, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
-      SecurityGroupIds: 
+        - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+      SecurityGroupIds:
         - !Ref SecurityGroup
 
   STSVPCEndpoint:
@@ -463,11 +468,11 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${Region}.sts"
       PrivateDnsEnabled: true
       VpcEndpointType: Interface
-      SubnetIds: 
+      SubnetIds:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
-        - !If [HasAZ3, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
-      SecurityGroupIds: 
+        - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+      SecurityGroupIds:
         - !Ref SecurityGroup
 
   EcrApiVPCEndpoint:
@@ -477,11 +482,11 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${Region}.ecr.api"
       PrivateDnsEnabled: true
       VpcEndpointType: Interface
-      SubnetIds: 
+      SubnetIds:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
-        - !If [HasAZ3, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
-      SecurityGroupIds: 
+        - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+      SecurityGroupIds:
         - !Ref SecurityGroup
 
   EcrDkrVPCEndpoint:
@@ -491,11 +496,11 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${Region}.ecr.dkr"
       PrivateDnsEnabled: true
       VpcEndpointType: Interface
-      SubnetIds: 
+      SubnetIds:
         - !If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"]
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
-        - !If [HasAZ3, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
-      SecurityGroupIds: 
+        - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
+      SecurityGroupIds:
         - !Ref SecurityGroup
 
 Outputs:
@@ -513,13 +518,13 @@ Outputs:
 
   PublicSubnets:
     Description: "Public Subnet Ids"
-    Value: !Join [",", [!If [One, !Ref SubnetPublic1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPublic2, !Ref "AWS::NoValue"], !If [HasAZ3, !Ref SubnetPublic3, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref SubnetPublic1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPublic2, !Ref "AWS::NoValue"], !If [Three, !Ref SubnetPublic3, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-PublicSubnets"
 
   PrivateSubnets:
     Description: "Private Subnet Ids"
-    Value: !Join [",", [!If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"], !If [HasAZ3, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref SubnetPrivate1, !Ref "AWS::NoValue"], !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"], !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-PrivateSubnets"
 
@@ -530,13 +535,14 @@ Outputs:
       Name: !Sub "${Name}-EIP1-AllocationId"
 
   EIP2AllocationId:
+    Condition: Two
     Description: Allocation ID for ElasticIP2
     Value: !GetAtt ElasticIP2.AllocationId
     Export:
       Name: !Sub "${Name}-EIP2-AllocationId"
 
   EIP3AllocationId:
-    Condition: HasAZ3
+    Condition: Three
     Description: Allocation ID for ElasticIP3
     Value: !GetAtt ElasticIP3.AllocationId
     Export:
@@ -544,7 +550,7 @@ Outputs:
 
   NatGatewayId:
     Description: The NAT Gateway IDs
-    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [Two, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [HasAZ3, !Ref NATGateway3, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [Two, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [Three, !Ref NATGateway3, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-NatGatewayId"
 
