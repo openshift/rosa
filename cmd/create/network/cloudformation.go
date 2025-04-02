@@ -211,7 +211,7 @@ Resources:
 
   SubnetPublic4:
     Type: AWS::EC2::Subnet
-    Condition: Three
+    Condition: Four
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [6, !Cidr [!Ref VpcCidr, 8, 8]]
@@ -231,7 +231,7 @@ Resources:
 
   SubnetPrivate4:
     Type: AWS::EC2::Subnet
-    Condition: Three
+    Condition: Four
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [7, !Cidr [!Ref VpcCidr, 8, 8]]
@@ -540,7 +540,6 @@ Resources:
         - !If [Two, !Ref SubnetPrivate2, !Ref "AWS::NoValue"]
         - !If [Three, !Ref SubnetPrivate3, !Ref "AWS::NoValue"]
         - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
-        - !If [Four, !Ref SubnetPrivate4, !Ref "AWS::NoValue"]
       SecurityGroupIds:
         - !Ref SecurityGroup
 
@@ -630,6 +629,7 @@ Outputs:
       Name: !Sub "${Name}-PrivateSubnets"
 
   EIP1AllocationId:
+    Condition: One
     Description: Allocation ID for ElasticIP1
     Value: !GetAtt ElasticIP1.AllocationId
     Export:
