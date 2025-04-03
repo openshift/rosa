@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -59,7 +60,14 @@ func NewNetworkCommand() *cobra.Command {
 					}
 
 					fmt.Printf("Available parameters in %s/%s:\n", filepath.Base(filepath.Dir(path)), d.Name())
+					paramNames := make([]string, len(parameters))
+					i := 0
 					for paramName := range parameters {
+						paramNames[i] = paramName
+						i++
+					}
+					slices.Sort(paramNames)
+					for _, paramName := range paramNames {
 						fmt.Printf("  %s\n", paramName)
 					}
 					fmt.Printf("  %s\n", "Tags")
@@ -86,7 +94,14 @@ func NewNetworkCommand() *cobra.Command {
 			}
 
 			fmt.Printf("Available parameters in default template:\n")
+			paramNames := make([]string, len(parameters))
+			i := 0
 			for paramName := range parameters {
+				paramNames[i] = paramName
+				i++
+			}
+			slices.Sort(paramNames)
+			for _, paramName := range paramNames {
 				fmt.Printf("  %s\n", paramName)
 			}
 			fmt.Printf("  %s\n", "Tags")
