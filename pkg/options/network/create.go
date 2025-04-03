@@ -15,9 +15,13 @@ const (
 	long    = "Network AWS cloudformation stack using predefined yaml templates. "
 	example = `  # Create a AWS cloudformation stack
   rosa create network <template-name> --param Param1=Value1 --param Param2=Value2 ` +
-		"\n\n" + `  # ROSA quick start HCP VPC example` +
+		"\n\n" + `  # ROSA quick start HCP VPC example with one availability zone` +
 		"\n" + `  rosa create network rosa-quickstart-default-vpc --param Region=us-west-2` +
 		` --param Name=quickstart-stack --param AvailabilityZoneCount=1` +
+		` --param VpcCidr=10.0.0.0/16` +
+		"\n\n" + `  # ROSA quick start HCP VPC example with two explicit availability zones` +
+		"\n" + `  rosa create network rosa-quickstart-default-vpc --param Region=us-west-2` +
+		` --param Name=quickstart-stack` +
 		` --param AZ1=us-west-2b --param AZ2=us-west-2d --param VpcCidr=10.0.0.0/16` +
 		"\n\n" + `  # To delete the AWS cloudformation stack` +
 		"\n" + `  aws cloudformation delete-stack --stack-name <name> --region <region>` +
