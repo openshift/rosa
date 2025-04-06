@@ -34,10 +34,11 @@ type ListRequestedServiceQuotaChangeHistoryInput struct {
 	// appropriate to the operation. If additional items exist beyond those included in
 	// the current response, the NextToken response element is present and has a value
 	// (is not null). Include that value as the NextToken request parameter in the
-	// next call to the operation to get the next part of the results. An API operation
-	// can return fewer results than the maximum even when there are more results
-	// available. You should check NextToken after every operation to ensure that you
-	// receive all of the results.
+	// next call to the operation to get the next part of the results.
+	//
+	// An API operation can return fewer results than the maximum even when there are
+	// more results available. You should check NextToken after every operation to
+	// ensure that you receive all of the results.
 	MaxResults *int32
 
 	// Specifies a value for receiving additional results after you receive a NextToken
@@ -51,7 +52,7 @@ type ListRequestedServiceQuotaChangeHistoryInput struct {
 	QuotaRequestedAtLevel types.AppliedLevelEnum
 
 	// Specifies the service identifier. To find the service code value for an Amazon
-	// Web Services service, use the ListServices operation.
+	// Web Services service, use the ListServicesoperation.
 	ServiceCode *string
 
 	// Specifies that you want to filter the results to only the requests with the
@@ -121,6 +122,9 @@ func (c *Client) addOperationListRequestedServiceQuotaChangeHistoryMiddlewares(s
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -131,6 +135,15 @@ func (c *Client) addOperationListRequestedServiceQuotaChangeHistoryMiddlewares(s
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListRequestedServiceQuotaChangeHistory(options.Region), middleware.Before); err != nil {
@@ -151,16 +164,20 @@ func (c *Client) addOperationListRequestedServiceQuotaChangeHistoryMiddlewares(s
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListRequestedServiceQuotaChangeHistoryAPIClient is a client that implements the
-// ListRequestedServiceQuotaChangeHistory operation.
-type ListRequestedServiceQuotaChangeHistoryAPIClient interface {
-	ListRequestedServiceQuotaChangeHistory(context.Context, *ListRequestedServiceQuotaChangeHistoryInput, ...func(*Options)) (*ListRequestedServiceQuotaChangeHistoryOutput, error)
-}
-
-var _ ListRequestedServiceQuotaChangeHistoryAPIClient = (*Client)(nil)
 
 // ListRequestedServiceQuotaChangeHistoryPaginatorOptions is the paginator options
 // for ListRequestedServiceQuotaChangeHistory
@@ -170,10 +187,11 @@ type ListRequestedServiceQuotaChangeHistoryPaginatorOptions struct {
 	// appropriate to the operation. If additional items exist beyond those included in
 	// the current response, the NextToken response element is present and has a value
 	// (is not null). Include that value as the NextToken request parameter in the
-	// next call to the operation to get the next part of the results. An API operation
-	// can return fewer results than the maximum even when there are more results
-	// available. You should check NextToken after every operation to ensure that you
-	// receive all of the results.
+	// next call to the operation to get the next part of the results.
+	//
+	// An API operation can return fewer results than the maximum even when there are
+	// more results available. You should check NextToken after every operation to
+	// ensure that you receive all of the results.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -236,6 +254,9 @@ func (p *ListRequestedServiceQuotaChangeHistoryPaginator) NextPage(ctx context.C
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListRequestedServiceQuotaChangeHistory(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -254,6 +275,14 @@ func (p *ListRequestedServiceQuotaChangeHistoryPaginator) NextPage(ctx context.C
 
 	return result, nil
 }
+
+// ListRequestedServiceQuotaChangeHistoryAPIClient is a client that implements the
+// ListRequestedServiceQuotaChangeHistory operation.
+type ListRequestedServiceQuotaChangeHistoryAPIClient interface {
+	ListRequestedServiceQuotaChangeHistory(context.Context, *ListRequestedServiceQuotaChangeHistoryInput, ...func(*Options)) (*ListRequestedServiceQuotaChangeHistoryOutput, error)
+}
+
+var _ ListRequestedServiceQuotaChangeHistoryAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListRequestedServiceQuotaChangeHistory(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

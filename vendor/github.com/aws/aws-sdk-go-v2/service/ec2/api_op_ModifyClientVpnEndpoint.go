@@ -42,17 +42,28 @@ type ModifyClientVpnEndpointInput struct {
 	// Amazon Web Services provided clients when a VPN session is established.
 	ClientLoginBannerOptions *types.ClientLoginBannerOptions
 
-	// Information about the client connection logging options. If you enable client
-	// connection logging, data about client connections is sent to a Cloudwatch Logs
-	// log stream. The following information is logged:
+	// Information about the client connection logging options.
+	//
+	// If you enable client connection logging, data about client connections is sent
+	// to a Cloudwatch Logs log stream. The following information is logged:
+	//
 	//   - Client connection requests
+	//
 	//   - Client connection results (successful and unsuccessful)
+	//
 	//   - Reasons for unsuccessful client connection requests
+	//
 	//   - Client connection termination time
 	ConnectionLogOptions *types.ConnectionLogOptions
 
 	// A brief description of the Client VPN endpoint.
 	Description *string
+
+	// Indicates whether the client VPN session is disconnected after the maximum
+	// timeout specified in sessionTimeoutHours is reached. If true , users are
+	// prompted to reconnect client VPN. If false , client VPN attempts to reconnect
+	// automatically. The default value is false .
+	DisconnectOnSessionTimeout *bool
 
 	// Information about the DNS servers to be used by Client VPN connections. A
 	// Client VPN endpoint can have up to two DNS servers.
@@ -74,20 +85,29 @@ type ModifyClientVpnEndpointInput struct {
 	// provisioned in Certificate Manager (ACM).
 	ServerCertificateArn *string
 
-	// The maximum VPN session duration time in hours. Valid values: 8 | 10 | 12 | 24
+	// The maximum VPN session duration time in hours.
+	//
+	// Valid values: 8 | 10 | 12 | 24
+	//
 	// Default value: 24
 	SessionTimeoutHours *int32
 
-	// Indicates whether the VPN is split-tunnel. For information about split-tunnel
-	// VPN endpoints, see Split-tunnel Client VPN endpoint (https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/split-tunnel-vpn.html)
-	// in the Client VPN Administrator Guide.
+	// Indicates whether the VPN is split-tunnel.
+	//
+	// For information about split-tunnel VPN endpoints, see [Split-tunnel Client VPN endpoint] in the Client VPN
+	// Administrator Guide.
+	//
+	// [Split-tunnel Client VPN endpoint]: https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/split-tunnel-vpn.html
 	SplitTunnel *bool
 
 	// The ID of the VPC to associate with the Client VPN endpoint.
 	VpcId *string
 
 	// The port number to assign to the Client VPN endpoint for TCP and UDP traffic.
-	// Valid Values: 443 | 1194 Default Value: 443
+	//
+	// Valid Values: 443 | 1194
+	//
+	// Default Value: 443
 	VpnPort *int32
 
 	noSmithyDocumentSerde
@@ -147,6 +167,9 @@ func (c *Client) addOperationModifyClientVpnEndpointMiddlewares(stack *middlewar
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -157,6 +180,15 @@ func (c *Client) addOperationModifyClientVpnEndpointMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyClientVpnEndpointValidationMiddleware(stack); err != nil {
@@ -178,6 +210,18 @@ func (c *Client) addOperationModifyClientVpnEndpointMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
