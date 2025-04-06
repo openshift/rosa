@@ -41,7 +41,7 @@ type CreateTrustStoreInput struct {
 
 	// The name of the trust store.
 	//
-	// This name must be unique per region and cannot be changed after creation.
+	// This name must be unique per region and can't be changed after creation.
 	//
 	// This member is required.
 	Name *string
@@ -110,6 +110,9 @@ func (c *Client) addOperationCreateTrustStoreMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -126,6 +129,9 @@ func (c *Client) addOperationCreateTrustStoreMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTrustStoreValidationMiddleware(stack); err != nil {
@@ -147,6 +153,18 @@ func (c *Client) addOperationCreateTrustStoreMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
