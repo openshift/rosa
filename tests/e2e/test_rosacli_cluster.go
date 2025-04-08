@@ -848,7 +848,6 @@ var _ = Describe("Additional security groups validation",
 
 				//Check all subnets are created successfully and are in available state. If not, wait for them to be available
 				subnetIDs := append(subnetMap["private"], subnetMap["public"]...)
-				fmt.Println("--debug 001subnetIDs: ", subnetIDs)
 
 				awsClient, err := aws_client.CreateAWSClient("", resourcesHandler.GetVPC().Region)
 				Expect(err).To(BeNil())
