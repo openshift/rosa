@@ -23,3 +23,4 @@
 - name: billing-account
 - name: network-type
 - name: ovn-internal-subnets
+- name: channel-group

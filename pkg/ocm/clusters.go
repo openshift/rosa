@@ -588,6 +588,13 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		clusterBuilder = clusterBuilder.ExpirationTimestamp(config.Expiration)
 	}
 
+	// Update channel group
+	if config.ChannelGroup != "" {
+		clusterBuilder.Version(cmv1.NewVersion().
+			ChannelGroup(config.ChannelGroup),
+		)
+	}
+
 	// Scale cluster
 	clusterNodesBuilder, updateNodes := c.getClusterNodesBuilder(config)
 	if updateNodes {
