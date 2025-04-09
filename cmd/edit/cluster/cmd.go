@@ -73,6 +73,9 @@ var args struct {
 	// SDN -> OVN Migration
 	networkType        string
 	ovnInternalSubnets string
+
+	// Added for EUS region support
+	channelGroup string
 }
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
@@ -206,6 +209,14 @@ func init() {
 			"OVN-Kubernetes. Must be supplied as a string=value pair with any of 'join', 'transit', 'masquerade' "+
 			"followed by a CIDR. \nExample: '--ovn-internal-subnets=\"join=192.168.255.0/24,transit=192.168.255.0/24,"+
 			"masquerade=192.168.255.0/24\"'",
+	)
+
+	flags.StringVar(
+		&args.channelGroup,
+		"channel-group",
+		ocm.DefaultChannelGroup,
+		"Changes the channel group used for cluster versions. "+
+			"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"eus\".",
 	)
 }
 
@@ -868,6 +879,10 @@ func run(cmd *cobra.Command, _ []string) {
 	// sets the billing account only if it has changed
 	if billingAccount != "" && billingAccount != cluster.AWS().BillingAccountID() {
 		clusterConfig.BillingAccount = billingAccount
+	}
+
+	if args.channelGroup != "" {
+		clusterConfig.ChannelGroup = args.channelGroup
 	}
 
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)
