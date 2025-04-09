@@ -46,7 +46,7 @@ linters:
     - unused
 linters-settings:
   staticcheck:
-    go: "1.21"
+    go: "1.23"
   gci:
     sections:
       - standard
