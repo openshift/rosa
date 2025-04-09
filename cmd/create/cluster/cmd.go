@@ -439,7 +439,6 @@ func initFlags(cmd *cobra.Command) {
 		ocm.DefaultChannelGroup,
 		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
 	)
-	flags.MarkHidden("channel-group")
 
 	flags.StringVar(
 		&args.flavour,
