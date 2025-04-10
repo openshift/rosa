@@ -1,8 +1,8 @@
 module github.com/openshift/rosa
 
-go 1.21
+go 1.23
 
-toolchain go1.21.3
+toolchain go1.23.8
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
@@ -89,7 +89,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
+	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
