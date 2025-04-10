@@ -372,7 +372,7 @@ github.com/modern-go/reflect2
 # github.com/mtibben/percent v0.2.1
 ## explicit; go 1.14
 github.com/mtibben/percent
-# github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
+# github.com/nathan-fiscaletti/consolesize-go v0.0.0-20220204101620-317176b6684d
 ## explicit
 github.com/nathan-fiscaletti/consolesize-go
 # github.com/onsi/ginkgo/v2 v2.17.1
