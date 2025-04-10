@@ -738,7 +738,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// SDN -> OVN Migration
 	var migrateNetworkType bool
 	// Only prompt user with migrating the cluster's network type when it is not OVN-Kubernetes
-	if cmd.Flags().Changed(ocm.NetworkTypeFlagName) && networkType == ocm.NetworkTypeOvn {
+	if cmd.Flags().Changed(ocm.NetworkTypeFlagName) && networkType == ocm.NetworkTypeOvn && !confirm.Yes() {
 		interactive.SetEnabled(true)
 	}
 	if interactive.Enabled() && args.networkType != "" {
@@ -782,12 +782,15 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if cmd.Flags().Changed(ocm.NetworkTypeFlagName) && networkType == ocm.NetworkTypeOvn {
+		if !confirm.Yes() && migrateNetworkType {
+			migrateNetworkType, err = confirmMigration()
 
-		migrateNetworkType, err = confirmMigration()
-
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
+				os.Exit(1)
+			}
+		} else if confirm.Yes() {
+			migrateNetworkType = true
 		}
 	}
 
