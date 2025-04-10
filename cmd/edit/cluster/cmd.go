@@ -224,7 +224,8 @@ func run(cmd *cobra.Command, _ []string) {
 			"registry-config-allowed-registries", "registry-config-blocked-registries",
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
-			"registry-config-allowed-registries-for-import", "enable-delete-protection"} {
+			"registry-config-allowed-registries-for-import", "enable-delete-protection",
+			"channel-group", "network-type"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
