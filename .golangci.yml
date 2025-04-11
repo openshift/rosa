@@ -15,6 +15,9 @@
 #
 
 run:
+  skip-authors:
+  - red-hat-konflux[bot]
+  - dependabot[bot]
   skip-dirs:
   - assets
   - docs
