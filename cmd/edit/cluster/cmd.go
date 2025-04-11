@@ -214,7 +214,7 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		ocm.DefaultChannelGroup,
+		"",
 		"Changes the channel group used for cluster versions. "+
 			"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"eus\".",
 	)
