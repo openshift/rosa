@@ -37,8 +37,11 @@ type DeleteStackInstancesInput struct {
 
 	// Removes the stack instances from the specified stack set, but doesn't delete
 	// the stacks. You can't reassociate a retained stack or add an existing, saved
-	// stack to a new stack set. For more information, see Stack set operation options (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-concepts.html#stackset-ops-options)
-	// .
+	// stack to a new stack set.
+	//
+	// For more information, see [Stack set operation options].
+	//
+	// [Stack set operation options]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/what-is-cfnstacksets.html#stackset-ops-options
 	//
 	// This member is required.
 	RetainStacks *bool
@@ -49,34 +52,48 @@ type DeleteStackInstancesInput struct {
 	// This member is required.
 	StackSetName *string
 
-	// [Self-managed permissions] The names of the Amazon Web Services accounts that
-	// you want to delete stack instances for. You can specify Accounts or
-	// DeploymentTargets , but not both.
+	// [Self-managed permissions] The account IDs of the Amazon Web Services accounts
+	// that you want to delete stack instances for.
+	//
+	// You can specify Accounts or DeploymentTargets , but not both.
 	Accounts []string
 
 	// [Service-managed permissions] Specifies whether you are acting as an account
 	// administrator in the organization's management account or as a delegated
-	// administrator in a member account. By default, SELF is specified. Use SELF for
-	// stack sets with self-managed permissions.
+	// administrator in a member account.
+	//
+	// By default, SELF is specified. Use SELF for stack sets with self-managed
+	// permissions.
+	//
 	//   - If you are signed in to the management account, specify SELF .
+	//
 	//   - If you are signed in to a delegated administrator account, specify
-	//   DELEGATED_ADMIN . Your Amazon Web Services account must be registered as a
-	//   delegated administrator in the management account. For more information, see
-	//   Register a delegated administrator (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html)
-	//   in the CloudFormation User Guide.
+	//   DELEGATED_ADMIN .
+	//
+	// Your Amazon Web Services account must be registered as a delegated
+	//   administrator in the management account. For more information, see [Register a delegated administrator]in the
+	//   CloudFormation User Guide.
+	//
+	// [Register a delegated administrator]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html
 	CallAs types.CallAs
 
 	// [Service-managed permissions] The Organizations accounts from which to delete
-	// stack instances. You can specify Accounts or DeploymentTargets , but not both.
+	// stack instances.
+	//
+	// You can specify Accounts or DeploymentTargets , but not both.
 	DeploymentTargets *types.DeploymentTargets
 
-	// The unique identifier for this stack set operation. If you don't specify an
-	// operation ID, the SDK generates one automatically. The operation ID also
-	// functions as an idempotency token, to ensure that CloudFormation performs the
-	// stack set operation only once, even if you retry the request multiple times. You
-	// can retry stack set operation requests to ensure that CloudFormation
-	// successfully received them. Repeating this stack set operation with a new
-	// operation ID retries all stack instances whose status is OUTDATED .
+	// The unique identifier for this stack set operation.
+	//
+	// If you don't specify an operation ID, the SDK generates one automatically.
+	//
+	// The operation ID also functions as an idempotency token, to ensure that
+	// CloudFormation performs the stack set operation only once, even if you retry the
+	// request multiple times. You can retry stack set operation requests to ensure
+	// that CloudFormation successfully received them.
+	//
+	// Repeating this stack set operation with a new operation ID retries all stack
+	// instances whose status is OUTDATED .
 	OperationId *string
 
 	// Preferences for how CloudFormation performs this stack set operation.
@@ -139,6 +156,9 @@ func (c *Client) addOperationDeleteStackInstancesMiddlewares(stack *middleware.S
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -149,6 +169,15 @@ func (c *Client) addOperationDeleteStackInstancesMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opDeleteStackInstancesMiddleware(stack, options); err != nil {
@@ -173,6 +202,18 @@ func (c *Client) addOperationDeleteStackInstancesMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

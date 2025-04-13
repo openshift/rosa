@@ -11,8 +11,10 @@ import (
 )
 
 // Disassociates an Elastic IP address from the instance or network interface it's
-// associated with. This is an idempotent operation. If you perform the operation
-// more than once, Amazon EC2 doesn't return an error.
+// associated with.
+//
+// This is an idempotent operation. If you perform the operation more than once,
+// Amazon EC2 doesn't return an error.
 func (c *Client) DisassociateAddress(ctx context.Context, params *DisassociateAddressInput, optFns ...func(*Options)) (*DisassociateAddressOutput, error) {
 	if params == nil {
 		params = &DisassociateAddressInput{}
@@ -95,6 +97,9 @@ func (c *Client) addOperationDisassociateAddressMiddlewares(stack *middleware.St
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -105,6 +110,15 @@ func (c *Client) addOperationDisassociateAddressMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDisassociateAddress(options.Region), middleware.Before); err != nil {
@@ -123,6 +137,18 @@ func (c *Client) addOperationDisassociateAddressMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

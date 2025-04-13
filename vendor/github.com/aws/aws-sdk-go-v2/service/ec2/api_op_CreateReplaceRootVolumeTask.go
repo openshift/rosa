@@ -14,9 +14,11 @@ import (
 // Replaces the EBS-backed root volume for a running instance with a new volume
 // that is restored to the original root volume's launch state, that is restored to
 // a specific snapshot taken from the original root volume, or that is restored
-// from an AMI that has the same key characteristics as that of the instance. For
-// more information, see Replace a root volume (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/replace-root.html)
-// in the Amazon Elastic Compute Cloud User Guide.
+// from an AMI that has the same key characteristics as that of the instance.
+//
+// For more information, see [Replace a root volume] in the Amazon EC2 User Guide.
+//
+// [Replace a root volume]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/replace-root.html
 func (c *Client) CreateReplaceRootVolumeTask(ctx context.Context, params *CreateReplaceRootVolumeTaskInput, optFns ...func(*Options)) (*CreateReplaceRootVolumeTaskOutput, error) {
 	if params == nil {
 		params = &CreateReplaceRootVolumeTaskInput{}
@@ -41,9 +43,9 @@ type CreateReplaceRootVolumeTaskInput struct {
 
 	// Unique, case-sensitive identifier you provide to ensure the idempotency of the
 	// request. If you do not specify a client token, a randomly generated token is
-	// used for the request to ensure idempotency. For more information, see Ensuring
-	// idempotency (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Run_Instance_Idempotency.html)
-	// .
+	// used for the request to ensure idempotency. For more information, see [Ensuring idempotency].
+	//
+	// [Ensuring idempotency]: https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-idempotency.html
 	ClientToken *string
 
 	// Indicates whether to automatically delete the original root volume after the
@@ -61,16 +63,19 @@ type CreateReplaceRootVolumeTaskInput struct {
 
 	// The ID of the AMI to use to restore the root volume. The specified AMI must
 	// have the same product code, billing information, architecture type, and
-	// virtualization type as that of the instance. If you want to restore the
-	// replacement volume from a specific snapshot, or if you want to restore it to its
-	// launch state, omit this parameter.
+	// virtualization type as that of the instance.
+	//
+	// If you want to restore the replacement volume from a specific snapshot, or if
+	// you want to restore it to its launch state, omit this parameter.
 	ImageId *string
 
 	// The ID of the snapshot from which to restore the replacement root volume. The
 	// specified snapshot must be a snapshot that you previously created from the
-	// original root volume. If you want to restore the replacement root volume to the
-	// initial launch state, or if you want to restore the replacement root volume from
-	// an AMI, omit this parameter.
+	// original root volume.
+	//
+	// If you want to restore the replacement root volume to the initial launch state,
+	// or if you want to restore the replacement root volume from an AMI, omit this
+	// parameter.
 	SnapshotId *string
 
 	// The tags to apply to the root volume replacement task.
@@ -133,6 +138,9 @@ func (c *Client) addOperationCreateReplaceRootVolumeTaskMiddlewares(stack *middl
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -143,6 +151,15 @@ func (c *Client) addOperationCreateReplaceRootVolumeTaskMiddlewares(stack *middl
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateReplaceRootVolumeTaskMiddleware(stack, options); err != nil {
@@ -167,6 +184,18 @@ func (c *Client) addOperationCreateReplaceRootVolumeTaskMiddlewares(stack *middl
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

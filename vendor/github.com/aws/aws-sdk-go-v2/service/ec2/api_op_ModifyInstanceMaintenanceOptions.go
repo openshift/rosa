@@ -14,8 +14,9 @@ import (
 // Modifies the recovery behavior of your instance to disable simplified automatic
 // recovery or set the recovery behavior to default. The default configuration will
 // not enable simplified automatic recovery for an unsupported instance type. For
-// more information, see Simplified automatic recovery (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-recover.html#instance-configuration-recovery)
-// .
+// more information, see [Simplified automatic recovery].
+//
+// [Simplified automatic recovery]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-recover.html#instance-configuration-recovery
 func (c *Client) ModifyInstanceMaintenanceOptions(ctx context.Context, params *ModifyInstanceMaintenanceOptionsInput, optFns ...func(*Options)) (*ModifyInstanceMaintenanceOptionsOutput, error) {
 	if params == nil {
 		params = &ModifyInstanceMaintenanceOptionsInput{}
@@ -108,6 +109,9 @@ func (c *Client) addOperationModifyInstanceMaintenanceOptionsMiddlewares(stack *
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -118,6 +122,15 @@ func (c *Client) addOperationModifyInstanceMaintenanceOptionsMiddlewares(stack *
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyInstanceMaintenanceOptionsValidationMiddleware(stack); err != nil {
@@ -139,6 +152,18 @@ func (c *Client) addOperationModifyInstanceMaintenanceOptionsMiddlewares(stack *
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
