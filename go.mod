@@ -1,8 +1,8 @@
 module github.com/openshift/rosa
 
-go 1.21
+go 1.23.0
 
-toolchain go1.21.3
+toolchain go1.23.8
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
@@ -125,8 +125,8 @@ require (
 	golang.org/x/oauth2 v0.19.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.20.0 // indirect
-	golang.org/x/text v0.15.0
-	golang.org/x/tools v0.17.0 // indirect
+	golang.org/x/text v0.24.0
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0
