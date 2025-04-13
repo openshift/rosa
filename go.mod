@@ -1,8 +1,8 @@
 module github.com/openshift/rosa
 
-go 1.21
+go 1.22
 
-toolchain go1.21.3
+toolchain go1.22.9
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.6
 	github.com/aws/aws-sdk-go-v2/service/servicequotas v1.21.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6
-	github.com/aws/smithy-go v1.20.3
+	github.com/aws/smithy-go v1.22.3
 	github.com/briandowns/spinner v1.11.1
 	github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
 	github.com/dustin/go-humanize v1.0.0
