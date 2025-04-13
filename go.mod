@@ -1,8 +1,8 @@
 module github.com/openshift/rosa
 
-go 1.21
+go 1.24
 
-toolchain go1.21.3
+toolchain go1.24.2
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
@@ -25,7 +25,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang/glog v1.2.0
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
@@ -50,7 +50,7 @@ require (
 require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.0 // indirect
 )
 
 require (
