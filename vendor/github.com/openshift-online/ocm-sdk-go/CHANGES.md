@@ -3,6 +3,36 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.465
+- Update model version v0.0.417
+  - Add `RhRegionID` field to `Subscription` and `ClusterAuthorizationRequest` type
+
+## 0.1.464
+- Update model version to v0.0.416
+  - Added annotation to Node Pool State
+
+## 0.1.463
+- Updated model version to v0.0.415
+  - Added `ClusterCapabilities` type
+  - Added `Capabilities` field to `Cluster` type
+
+## 0.1.462
+- Updated model version to v0.0.414
+  - Added node pool endpoint resources for aro_hcp
+  - Added node pool state model in clusters_mgmt
+  - Added node pool status resources for aro_hcp
+- Updated meta model version to v0.0.67
+  - Added async methods
+
+## 0.1.461
+- Updated model version to v0.0.413
+  - Add the new inflight check endpoints
+- Updated meta model version to v0.0.66
+
+## 0.1.460
+- Updated model version to v0.0.412
+  - Added `ClusterCondition` field to `VersionGate` type
+
 ## 0.1.459
 - Update model version to v0.0.411
   - Update json values for SDN to OVN Cluster Migration configuration properties

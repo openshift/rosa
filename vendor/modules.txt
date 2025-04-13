@@ -435,7 +435,7 @@ github.com/openshift-online/ocm-common/pkg/rosa/operatorroles
 github.com/openshift-online/ocm-common/pkg/test/kms_key
 github.com/openshift-online/ocm-common/pkg/test/vpc_client
 github.com/openshift-online/ocm-common/pkg/utils
-# github.com/openshift-online/ocm-sdk-go v0.1.459
+# github.com/openshift-online/ocm-sdk-go v0.1.465
 ## explicit; go 1.21
 github.com/openshift-online/ocm-sdk-go
 github.com/openshift-online/ocm-sdk-go/accesstransparency
