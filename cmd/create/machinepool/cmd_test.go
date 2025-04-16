@@ -29,7 +29,7 @@ var _ = Describe("Create machine pool", func() {
 			It("should create machine pool", func() {
 				serviceMock := machinepool.NewMockMachinePoolService(ctrl)
 				serviceMock.EXPECT().CreateMachinePoolBasedOnClusterType(gomock.Any(), gomock.Any(),
-					gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+					gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 				mockClassicClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 					c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
@@ -38,7 +38,8 @@ var _ = Describe("Create machine pool", func() {
 					c.Hypershift(cmv1.NewHypershift().Enabled(false))
 				})
 				err := serviceMock.CreateMachinePoolBasedOnClusterType(rosa.NewRuntime(), NewCreateMachinePoolCommand(),
-					"82339823", mockClassicClusterReady, NewCreateMachinepoolUserOptions())
+					"82339823", mockClassicClusterReady, mockClassicClusterReady.Autoscaler(),
+					NewCreateMachinepoolUserOptions())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
