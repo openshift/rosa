@@ -42,17 +42,17 @@ func (m *MockMachinePoolService) EXPECT() *MockMachinePoolServiceMockRecorder {
 }
 
 // CreateMachinePoolBasedOnClusterType mocks base method.
-func (m *MockMachinePoolService) CreateMachinePoolBasedOnClusterType(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *v1.Cluster, options *machinepool.CreateMachinepoolUserOptions) error {
+func (m *MockMachinePoolService) CreateMachinePoolBasedOnClusterType(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *v1.Cluster, clusterAutoscaler *v1.ClusterAutoscaler, options *machinepool.CreateMachinepoolUserOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMachinePoolBasedOnClusterType", r, cmd, clusterKey, cluster, options)
+	ret := m.ctrl.Call(m, "CreateMachinePoolBasedOnClusterType", r, cmd, clusterKey, cluster, clusterAutoscaler, options)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateMachinePoolBasedOnClusterType indicates an expected call of CreateMachinePoolBasedOnClusterType.
-func (mr *MockMachinePoolServiceMockRecorder) CreateMachinePoolBasedOnClusterType(r, cmd, clusterKey, cluster, options any) *gomock.Call {
+func (mr *MockMachinePoolServiceMockRecorder) CreateMachinePoolBasedOnClusterType(r, cmd, clusterKey, cluster, clusterAutoscaler, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMachinePoolBasedOnClusterType", reflect.TypeOf((*MockMachinePoolService)(nil).CreateMachinePoolBasedOnClusterType), r, cmd, clusterKey, cluster, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMachinePoolBasedOnClusterType", reflect.TypeOf((*MockMachinePoolService)(nil).CreateMachinePoolBasedOnClusterType), r, cmd, clusterKey, cluster, clusterAutoscaler, options)
 }
 
 // DeleteMachinePool mocks base method.

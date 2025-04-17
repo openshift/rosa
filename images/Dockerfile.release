@@ -1,7 +1,7 @@
 # The image is for using the latest released rosa CLI
 FROM registry.ci.openshift.org/ci/cli-ocm:latest as ocmcli
 
-FROM registry.ci.openshift.org/origin/4.16:cli
+FROM registry.ci.openshift.org/origin/scos-4.19:cli
 COPY --from=ocmcli /usr/bin/ocm /usr/bin/ocm
 RUN yum -y install --setopt=skip_missing_names_on_install=False \
     jq \
