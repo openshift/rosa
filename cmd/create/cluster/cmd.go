@@ -1448,6 +1448,8 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
+		r.Reporter.Warnf("Account roles not created by ROSA CLI cannot be listed, updated, or upgraded.")
+
 		if len(roleARNs) > 1 {
 			defaultRoleARN := roleARNs[0]
 			// Prioritize roles with the default prefix
@@ -1497,13 +1499,18 @@ func run(cmd *cobra.Command, _ []string) {
 			if isHostedCP {
 				createAccountRolesCommand = createAccountRolesCommand + " " + hostedCPFlag
 			}
-			r.Reporter.Warnf(fmt.Sprintf("No compatible account roles with version '%s' found. "+
-				"You will need to manually set them in the next steps or run '%s' to create them first.",
-				minor, createAccountRolesCommand))
+			r.Reporter.Warnf("No suitable account with ROSA CLI-created account roles were found. "+
+				"You can manually set them in the next steps or run '%s' to create them first.", createAccountRolesCommand)
 			interactive.Enable()
 		}
 
 		if roleARN != "" {
+			// Check if role has red-hat-managed tag
+			hasTag := roles.CheckHasRedHatManagedTag(roleARN, awsClient)
+			if !hasTag {
+				r.Reporter.Warnf("The role '%s' is not a Red Hat managed role", roleARN)
+			}
+
 			// check if role has hosted cp policy via AWS tag value
 			hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
 			if err != nil {
@@ -1559,12 +1566,17 @@ func run(cmd *cobra.Command, _ []string) {
 					if isHostedCP {
 						createAccountRolesCommand = createAccountRolesCommand + " " + hostedCPFlag
 					}
-					r.Reporter.Warnf(fmt.Sprintf("No compatible '%s' account roles with version '%s' found. "+
-						"You will need to manually set them in the next steps or run '%s' to create them first.",
-						role.Name, minor, createAccountRolesCommand))
+					r.Reporter.Warnf("No suitable accounts with ROSA CLI-created account roles were found. "+
+						"You can manually set them in the next steps or run '%s' to create them first.", createAccountRolesCommand)
 					interactive.Enable()
 					hasRoles = false
 					break
+				}
+
+				// Check if role has red-hat-managed tag
+				hasTag := roles.CheckHasRedHatManagedTag(selectedARN, awsClient)
+				if !hasTag {
+					r.Reporter.Warnf("The role '%s' is not a Red Hat managed role", selectedARN)
 				}
 				if !output.HasFlag() || r.Reporter.IsTerminal() {
 					r.Reporter.Infof("Using %s for the %s role", selectedARN, role.Name)
