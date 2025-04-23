@@ -60,7 +60,78 @@ var _ = Describe("Edit cluster",
 			By("Clean the cluster")
 			rosaClient.CleanResources(clusterID)
 		})
+		It("can edit cluster channel group - [id:81399]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				const STABLE_CHANNEL = "stable"
+				const CANDIDATE_CHANNEL = "candidate"
+				By("Check help message contains channel-group flag")
+				output, err := clusterService.EditCluster("", "-h")
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("--channel-group"))
 
+				By("Get original version and channel group")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				originalVersion := CD.OpenshiftVersion
+				originalChannelGroup := CD.ChannelGroup
+
+				By("Check if there is version in updating channel group")
+				var upgradingChannelGroup string
+				existingAvailabelVersion := false
+				if originalChannelGroup == STABLE_CHANNEL {
+					upgradingChannelGroup = CANDIDATE_CHANNEL
+				} else {
+					upgradingChannelGroup = STABLE_CHANNEL
+				}
+				versionService := rosaClient.Version
+				hostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).To(BeNil())
+				versionList, err := versionService.ListAndReflectJsonVersions(upgradingChannelGroup, hostedCP)
+				Expect(err).To(BeNil())
+				for _, version := range versionList {
+					if version.RAWID == originalVersion {
+						existingAvailabelVersion = true
+						break
+					}
+					continue
+				}
+
+				By("Edit cluster with channel group")
+				out, err := clusterService.EditCluster(
+					clusterID,
+					"--channel-group", upgradingChannelGroup,
+					"-y",
+				)
+				defer func() {
+					By("Recover the original channel group")
+					_, err = clusterService.EditCluster(
+						clusterID,
+						"--channel-group", originalChannelGroup,
+						"-y",
+					)
+					Expect(err).To(BeNil())
+				}()
+
+				if existingAvailabelVersion {
+					Expect(err).To(BeNil())
+					Expect(out.String()).To(ContainSubstring("Updated cluster"))
+				} else {
+					Expect(err).ToNot(BeNil())
+					Expect(out.String()).To(ContainSubstring("is not available for the desired channel group"))
+				}
+
+				By("Edit cluster with the channel group which has no available version")
+				out, err = clusterService.EditCluster(
+					clusterID,
+					"--channel-group", "fakecg",
+					"-y",
+				)
+				Expect(err).ToNot(BeNil())
+				Expect(out.String()).To(ContainSubstring("is not available for the desired channel group"))
+			})
 		It("can check the description of the cluster - [id:34102]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {

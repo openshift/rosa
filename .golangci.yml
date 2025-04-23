@@ -14,23 +14,20 @@
 # limitations under the License.
 #
 
+version: "2"
 run:
-  skip-dirs:
-  - assets
-  - docs
-  - templates
-  - vendor
+  go: "1.23"
   issues-exit-code: 1
   modules-download-mode: readonly
 issues:
+  new: true
+  exclude-dirs:
+    - assets
+    - docs
+    - templates
+    - vendor
   max-same-issues: 0
-  exclude-rules:
-    - path: '(.+)_test\.go'
-      linters:
-        - funlen
-        - goconst
-
-linters:
+formatters:
   disable-all: true
   enable:
     - gas
@@ -44,16 +41,19 @@ linters:
     - staticcheck
     - unconvert
     - unused
-linters-settings:
-  staticcheck:
-    go: "1.23"
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(k8s)
-      - prefix(sigs.k8s)
-      - prefix(github.com)
-      - prefix(gitlab)
-      - prefix(github.com/openshift/rosa)
-    custom-order: true
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(k8s)
+        - prefix(sigs.k8s)
+        - prefix(github.com)
+        - prefix(gitlab)
+        - prefix(github.com/openshift/rosa)
+      custom-order: true
+  exclusions:
+    - path: '(.+)_test\.go'
+      linters:
+        - funlen
+        - goconst

@@ -43,6 +43,22 @@ func GetOperatorRoleName(cluster *cmv1.Cluster, missingOperator *cmv1.STSOperato
 	return awsCommonUtils.TruncateRoleName(role)
 }
 
+func CheckHasRedHatManagedTag(arn string, awsClient aws.Client) bool {
+	roleName, err := awsClient.GetRoleByARN(arn)
+	if err != nil {
+		return false
+	}
+
+	roleTags := roleName.Tags
+	for _, tag := range roleTags {
+		if *tag.Key == tags.RedHatManaged {
+			return true
+		}
+	}
+
+	return false
+}
+
 func BuildMissingOperatorRoleCommand(
 	missingRoles map[string]*cmv1.STSOperator,
 	cluster *cmv1.Cluster,
