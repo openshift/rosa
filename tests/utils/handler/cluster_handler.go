@@ -878,6 +878,11 @@ func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
 	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
 	sleepTime := 0
 	for time.Now().Before(endTime) {
+		clusterJsonData, _ := clusterService.GetJSONClusterDescription(clusterID)
+		if clusterJsonData.DigString("state") == constants.Ready {
+			log.Logger.Infof("Cluster %s is ready now.", clusterID)
+			return nil
+		}
 		description, err := clusterService.DescribeClusterAndReflect(clusterID)
 		if err != nil {
 			return err
@@ -886,9 +891,6 @@ func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
 		ch.clusterDetail.ConsoleURL = description.ConsoleURL
 		ch.clusterDetail.InfraID = description.InfraID
 		switch description.State {
-		case constants.Ready:
-			log.Logger.Infof("Cluster %s is ready now.", clusterID)
-			return nil
 		case constants.Uninstalling:
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready",
 				clusterID, constants.Uninstalling)
