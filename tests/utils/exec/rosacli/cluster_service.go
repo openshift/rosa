@@ -506,11 +506,11 @@ func (c *clusterService) WaitForClusterPassUninstalled(clusterID string, interva
 func (c *clusterService) WaitForClusterPassWaiting(clusterID string, interval int, timeoutMin int) error {
 	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
 	for time.Now().Before(endTime) {
-		output, err := c.DescribeClusterAndReflect(clusterID)
+		clusterJsonData, err := c.GetJSONClusterDescription(clusterID)
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(output.State, constants.Waiting) {
+		if clusterJsonData.DigString("state") != constants.Waiting {
 			log.Logger.Infof("Cluster %s is not in waiting state anymore", clusterID)
 			return nil
 		}
