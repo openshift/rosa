@@ -76,9 +76,10 @@ type ClusterENVVariables struct {
 }
 
 type Day2ConfENVVariables struct {
-	LocalZoneMP    bool `env:"LOCAL_ZONE_MP" default:"false"`
-	TuningConfig   bool `env:"TUNING_CONFIG" default:"false"`
-	TuningConfigMP bool `env:"TUNING_CONFIG_MP" default:"false"`
+	LocalZoneMP       bool `env:"LOCAL_ZONE_MP" default:"false"`
+	TuningConfig      bool `env:"TUNING_CONFIG" default:"false"`
+	TuningConfigMP    bool `env:"TUNING_CONFIG_MP" default:"false"`
+	ClusterAutoScaler bool `env:"CLUSTER_AUTOSCALER" default:"false"`
 }
 
 func init() {
@@ -159,10 +160,12 @@ func init() {
 	local_zone_mp, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("LOCAL_ZONE_MP", "false"))
 	tuning_config, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("TUNING_CONFIG", "false"))
 	tuning_config_mp, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("TUNING_CONFIG_MP", "false"))
+	cluster_autoscaler, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("CLUSTER_AUTOSCALER", "false"))
 	Test.Day2ConfENV = &Day2ConfENVVariables{
-		LocalZoneMP:    local_zone_mp,
-		TuningConfig:   tuning_config,
-		TuningConfigMP: tuning_config_mp,
+		LocalZoneMP:       local_zone_mp,
+		TuningConfig:      tuning_config,
+		TuningConfigMP:    tuning_config_mp,
+		ClusterAutoScaler: cluster_autoscaler,
 	}
 
 }
