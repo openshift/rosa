@@ -196,5 +196,12 @@ func LoadProfileYamlFileByENV() *Profile {
 			profile.Day2Config.LocalZoneMP = config.Test.Day2ConfENV.LocalZoneMP
 		}
 	}
+	if config.Test.Day2ConfENV.ClusterAutoScaler {
+		if profile.Day2Config != nil {
+			log.Logger.Infof("Got global env settings for LOCAL_ZONE_MP, overwritten the profile setting with value %v",
+				config.Test.Day2ConfENV.ClusterAutoScaler)
+			profile.Day2Config.ClusterAutoScaler = config.Test.Day2ConfENV.ClusterAutoScaler
+		}
+	}
 	return profile
 }
