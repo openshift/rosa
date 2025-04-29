@@ -14,9 +14,10 @@ type Profile struct {
 
 // Day2Config will map the configuration of day2-conf from profile settings
 type Day2Config struct {
-	LocalZoneMP    bool `yaml:"local-zone-mp,omitempty"`
-	TuningConfig   bool `yaml:" tuning-config,omitempty"`
-	TuningConfigMP bool `yaml:" tuning-config-mp,omitempty"`
+	LocalZoneMP       bool `yaml:"local-zone-mp,omitempty"`
+	TuningConfig      bool `yaml:"tuning-config,omitempty"`
+	TuningConfigMP    bool `yaml:"tuning-config-mp,omitempty"`
+	ClusterAutoScaler bool `yaml:"cluster-autoscaler,omitempty"`
 }
 
 // AccountRoleConfig will map the configuration of account roles from profile settings

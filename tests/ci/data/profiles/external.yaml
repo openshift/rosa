@@ -100,6 +100,8 @@ profiles:
     customized_prefix: true
     path: ""
     permission_boundary: ""
+  day2-conf:
+    cluster-autoscaler: true
 - as: ocpe2e-rosa-hcp-pl
   version: latest
   channel_group: stable
@@ -129,7 +131,7 @@ profiles:
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
 - as: ocpe2e-rosa-hcp-upgrade-y-stream
   version: "y-1"
-  channel_group: stable
+  channel_group: candidate
   region: "us-west-2"
   cluster:
     multi_az: true
