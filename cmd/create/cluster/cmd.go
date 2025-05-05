@@ -1174,7 +1174,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Billing Account
 	billingAccount := args.billingAccount
-	if isHostedCP {
+	if isHostedCP && !fedramp.Enabled() {
 		isHcpBillingTechPreview, err := r.OCMClient.IsTechnologyPreview(ocm.HcpBillingAccount, time.Now())
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
@@ -1257,6 +1257,12 @@ func run(cmd *cobra.Command, _ []string) {
 	if !isHostedCP && billingAccount != "" {
 		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
 		os.Exit(1)
+	}
+
+	if isHostedCP && fedramp.Enabled() && billingAccount != "" {
+		r.Reporter.Warnf("Billing accounts when using Govcloud are associated with commercial accounts, " +
+			"using empty ID for billing account to create cluster")
+		billingAccount = ""
 	}
 
 	externalAuthProvidersEnabled := args.externalAuthProvidersEnabled
@@ -2840,12 +2846,8 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if cmd.Flags().Changed("fips") && isHostedCP {
-		r.Reporter.Errorf("FIPS support not available for Hosted Control Plane clusters")
-		os.Exit(1)
-	}
 	fips := args.fips || fedramp.Enabled()
-	if interactive.Enabled() && !fedramp.Enabled() && !isHostedCP {
+	if interactive.Enabled() {
 		fips, err = interactive.GetBool(interactive.Input{
 			Question: "Enable FIPS support",
 			Help:     cmd.Flags().Lookup("fips").Usage,
