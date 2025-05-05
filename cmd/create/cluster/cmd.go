@@ -96,6 +96,8 @@ const (
 	vpcEndpointRoleArnFlag                   = "vpc-endpoint-role-arn"
 	hcpInternalCommunicationHostedZoneIdFlag = "hcp-internal-communication-hosted-zone-id"
 	ingressPrivateHostedZoneIdFlag           = "ingress-private-hosted-zone-id"
+
+	billingAccountFlag = "billing-account"
 )
 
 var args struct {
@@ -459,8 +461,7 @@ func initFlags(cmd *cobra.Command) {
 		&args.fips,
 		"fips",
 		false,
-		"Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries. "+
-			"This is currently only available without the use of the --hosted-cp flag.",
+		"Create cluster that uses FIPS Validated / Modules in Process cryptographic libraries.",
 	)
 
 	flags.StringVar(
@@ -750,7 +751,7 @@ func initFlags(cmd *cobra.Command) {
 
 	flags.StringVar(
 		&args.billingAccount,
-		"billing-account",
+		billingAccountFlag,
 		"",
 		"Account ID used for billing subscriptions purchased through the AWS console for ROSA",
 	)
@@ -1174,7 +1175,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Billing Account
 	billingAccount := args.billingAccount
-	if isHostedCP {
+	if isHostedCP && !fedramp.Enabled() {
 		isHcpBillingTechPreview, err := r.OCMClient.IsTechnologyPreview(ocm.HcpBillingAccount, time.Now())
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
@@ -1255,8 +1256,18 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if !isHostedCP && billingAccount != "" {
-		r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
+		r.Reporter.Errorf(billingAccountsHcpErrorMsg)
 		os.Exit(1)
+	}
+
+	if isHostedCP && fedramp.Enabled() && billingAccount != "" {
+		if cmd.Flags().Changed(billingAccountFlag) {
+			r.Reporter.Errorf(billingAccountsHcpErrorMsg)
+		} else {
+			r.Reporter.Warnf("Billing accounts when using Govcloud are associated with non-govcloud accounts, " +
+				"using empty ID for billing account to create cluster")
+			billingAccount = ""
+		}
 	}
 
 	externalAuthProvidersEnabled := args.externalAuthProvidersEnabled
@@ -2821,12 +2832,8 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if cmd.Flags().Changed("fips") && isHostedCP {
-		r.Reporter.Errorf("FIPS support not available for Hosted Control Plane clusters")
-		os.Exit(1)
-	}
 	fips := args.fips || fedramp.Enabled()
-	if interactive.Enabled() && !fedramp.Enabled() && !isHostedCP {
+	if interactive.Enabled() && !fedramp.Enabled() {
 		fips, err = interactive.GetBool(interactive.Input{
 			Question: "Enable FIPS support",
 			Help:     cmd.Flags().Lookup("fips").Usage,
@@ -2836,6 +2843,10 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("Expected a valid FIPS value: %v", err)
 			os.Exit(1)
 		}
+	}
+
+	if fedramp.Enabled() {
+		r.Reporter.Infof("FIPS will always be enabled when using a Govcloud environment")
 	}
 
 	etcdEncryption := args.etcdEncryption

@@ -17,6 +17,8 @@ const (
 
 	isNotGovcloudFeature = "Hosted Control Plane shared VPC clusters are not supported on Govcloud regions; %s"
 	pleaseRemoveFlags    = "Please remove the following flags: %s"
+
+	billingAccountsHcpErrorMsg = "Billing accounts are only supported for non-govcloud Hosted Control Plane clusters"
 )
 
 func validateHcpSharedVpcArgs(route53RoleArn string, vpcEndpointRoleArn string,
