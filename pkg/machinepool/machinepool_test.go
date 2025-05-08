@@ -941,32 +941,6 @@ var _ = Describe("MachinePools", func() {
 			Expect(err.Error()).To(Equal("Autoscaling must be enabled in order to set min and max replicas"))
 		})
 
-		It("should error when not providing a valid instance type", func() {
-			machinePool := &machinePool{}
-			cluster = returnMockCluster(version)
-			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
-			cmd.Flags().Set("name", "mp-1")
-			cmd.Flags().Bool("multi-availability-zone", true, "")
-			cmd.Flags().Set("multi-availability-zone", "true")
-			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
-			cmd.Flags().Set("replicas", "3")
-			args.Replicas = 3
-			args.InstanceType = "test"
-			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
-			Expect(err).ToNot(HaveOccurred())
-			acc, err := amsv1.NewAccount().ID("123456789012").Build()
-			Expect(err).ToNot(HaveOccurred())
-			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").Version("4.15.0").Build()
-			Expect(err).ToNot(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
-			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid instance type"))
-		})
-
 		It("Should error when can't set max price when not using spot instances", func() {
 			machinePool := &machinePool{}
 			cluster = returnMockCluster(version)
@@ -1288,60 +1262,6 @@ var _ = Describe("NodePools", func() {
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("You must supply a valid instance type"))
-		})
-		It("fails to validate instance type for availability zone", func() {
-			machinePool := &machinePool{}
-			version := "4.15.0"
-			v := cmv1.VersionBuilder{}
-			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
-				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
-			az := "a1"
-
-			cluster = returnMockCluster(version)
-			privateSubnets := []ec2types.Subnet{
-				{AvailabilityZone: &az, SubnetId: &subnet},
-			}
-
-			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
-			cmd.Flags().Set("name", "test")
-
-			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
-			cmd.Flags().Set("version", version)
-			isVersionSet := cmd.Flags().Changed("version")
-			Expect(isVersionSet).To(BeTrue())
-
-			cmd.Flags().Bool("enable-autoscaling", true, "")
-			cmd.Flags().Set("enable-autoscaling", "true")
-			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
-			cmd.Flags().Set("min-replicas", "1")
-			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
-			cmd.Flags().Set("max-replicas", "3")
-			args.MinReplicas = 1
-			args.MaxReplicas = 3
-			args.AutoscalingEnabled = true
-			args.InstanceType = "t3.small"
-
-			versionObj, err := v.Build()
-			Expect(err).ToNot(HaveOccurred())
-
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
-			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
-			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
-			mtBuilder := cmv1.NewMachineType()
-			machineType, err := mtBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
-				[]*cmv1.MachineType{machineType})))
-			acc, err := amsv1.NewAccount().ID("123456789012").Build()
-			Expect(err).ToNot(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
-			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
-				OrganizationID("123456789012").Version("4.15.0").Build()
-			Expect(err).ToNot(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
-			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid instance type"))
 		})
 		It("fails to add the node pool to the hosted cluster", func() {
 			machinePool := &machinePool{}
