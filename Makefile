@@ -122,26 +122,8 @@ check-release-config:
 local-release:
 	$(GORELEASER) release --snapshot --clean
 
-# builds and publishes a pre-release of changes from the last release tag
-.PHONY: pre-release
-prerelease:
-	$(GORELEASER) release --clean
-
 # builds and publishes a latest release from tag set as env-ver GORELEASER_PREVIOUS_TAG
 # leave GORELEASER_PREVIOUS_TAG empty to build from last release tag
 .PHONY: release
 release:
-	@if [ -n "$(GORELEASER_PREVIOUS_TAG)" ]; then \
-		read -p "GORELEASER_PREVIOUS_TAG is set to '$(GORELEASER_PREVIOUS_TAG)'. Is this the correct tag for the last release? (y/N) " confirm; \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release."; \
-			exit 1; \
-		fi \
-	else \
-		read -p "GORELEASER_PREVIOUS_TAG is not set. Do you want to proceed with building and publishing the release from the last release tag? (y/N) " confirm; \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release."; \
-			exit 1; \
-		fi \
-	fi; \
-	$(GORELEASER) release --clean
+	bash ./hack/build_cli.sh
