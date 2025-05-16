@@ -1699,7 +1699,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
-	if isKubeletConfigSet || interactive.Enabled() {
+	if (isKubeletConfigSet || interactive.Enabled()) && !fedramp.Enabled() {
 		var inputKubeletConfig []string
 		kubeletConfigs := cmd.Flags().Lookup("kubelet-configs").Value.String()
 		// Get the list of available tuning configs
