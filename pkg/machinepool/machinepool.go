@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"os"
 	"regexp"
 	"slices"
@@ -762,7 +763,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 
 	kubeletConfigs := args.KubeletConfigs
 
-	if kubeletConfigs != "" || interactive.Enabled() {
+	if (kubeletConfigs != "" || interactive.Enabled()) && !fedramp.Enabled() {
 		var inputKubeletConfigs []string
 		// Get the list of available kubelet configs
 		availableKubeletConfigs, err := r.OCMClient.ListKubeletConfigNames(cluster.ID())
