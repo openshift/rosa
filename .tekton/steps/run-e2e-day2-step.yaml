@@ -1,0 +1,65 @@
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: run-e2e-day2
+spec:
+  description: |
+    This is a day2 step to run day2 cases on the prepared cluster
+  image: $(params.container-image)
+  imagePullPolicy: Always
+  workingDir: /rosa
+  params:
+    - name: container-image
+    - name: secret-volume
+    - name: output-volume
+    - name: secret-ref
+    - name: channel-group
+    - name: aws-region
+    - name: cluster-profile
+  volumeMounts:
+    - name: $(params.secret-volume)
+      mountPath: /mnt/secrets
+    - name: $(params.output-volume)
+      mountPath: /tests/output
+  env:
+    - name: AWS_CREDENTIALS
+      value: "/mnt/secrets/aws_cred"
+    - name: AWS_SHAREDVPC_CREDENTIALS
+      value: "/mnt/secrets/aws_cred"
+    - name: OCM_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: $(params.secret-ref)
+          key: oex_org_admin_token
+    - name: OCM_LOGIN_ENV
+      value: $(params.channel-group)
+    - name: AWS_REGION
+      value: $(params.aws-region)
+    - name: TEST_PROFILE
+      value: $(params.cluster-profile)
+  
+  script: |
+    #!/bin/bash
+    # setup rosacli
+    source ./tests/prow_ci.sh
+    configure_aws "${AWS_CREDENTIALS}" "${AWS_REGION}"
+    configure_aws_shared_vpc "${AWS_SHAREDVPC_CREDENTIALS}/.awscred_shared_account"
+
+    rosa login --env ${OCM_LOGIN_ENV} --token ${OCM_TOKEN}
+    rosa whoami
+
+    # run day2 cases
+    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
+      --ginkgo.timeout "4h" \
+      --ginkgo.label-filter "day2"
+    rc1=$?
+
+    # run day2 destructive cases
+    go install github.com/onsi/ginkgo/v2/ginkgo@latest
+    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
+      --ginkgo.timeout "2h" \
+      --ginkgo.label-filter "destructive"
+    rc2=$?
+    if [ $rc1 -ne 0 ] || [ $rc2 -ne 0 ]; then
+      exit 1
+    fi

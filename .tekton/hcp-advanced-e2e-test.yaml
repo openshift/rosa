@@ -1,0 +1,111 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  annotations:
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "6"
+    pipelinesascode.tekton.dev/on-cel-expression:  |
+      event == "push" || (event == "pull_request" && pull_request_title.startsWith("e2e_trigger_"))
+  name: hcp-advanced-e2e-test
+spec:
+  params:
+    - description: 'Snapshot of the application'
+      name: SNAPSHOT
+      default: '{"components": [{"name":"test-app", "containerImage": "quay.io/example/repo:latest"}]}'
+      type: string
+    - description: 'Expected output'
+      name: EXPECTED_OUTPUT
+      default: "default"
+      type: string
+    - description: 'Secret Ref for the testing'
+      name: SECRET_REF
+      default: "rosacli-ci"
+      type: string
+    - description: 'Tasks git repo'
+      name: TASKS_REPO
+      default: "git@github.com:openshift/rosa.git"
+      type: string
+    - name: OCM_LOGIN_ENV
+      type: string
+      description: "the channel group of hcp-advance-e2e-test"
+      default: "stable"
+    - name: AWS_REGION
+      type: string
+      description: "the aws region using for this job"
+      default: "us-west-2"
+
+  tasks:
+    - name: test-metadata
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/konflux-qe-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: common/tasks/test-metadata/0.1/test-metadata.yaml
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: test-name
+          value: $(context.pipelineRun.name)
+    - name: hcp-advance-e2e-test
+      retries: 0
+      timeout: 6h
+      runAfter:
+        - test-metadata
+      params:
+        - name: container-image
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+        - name: git-repo
+          value: "$(tasks.test-metadata.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.test-metadata.results.git-revision)"
+        - name: secret-ref
+          value: $(params.SECRET_REF)
+        - name: channel-group
+          value: $(params.OCM_LOGIN_ENV)
+        - name: aws-region
+          value: $(params.AWS_REGION)
+        - name: cluster-profile
+          value: "rosa-hcp-advanced"
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: $(params.TASKS_REPO)
+          - name: revision
+            value: master
+          - name: pathInRepo
+            value: .tekton/tasks/e2e-task.yaml
+  finally:  
+    - name: e2e-clean-up
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: $(params.TASKS_REPO)
+          - name: revision
+            value: master
+          - name: pathInRepo
+            value: .tekton/tasks/e2e-clean-up-task.yaml
+      retries: 0
+      timeout: 1h
+      runAfter:
+        - test-metadata
+      params:
+        - name: container-image
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+        - name: git-repo
+          value: "$(tasks.test-metadata.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.test-metadata.results.git-revision)"
+        - name: secret-ref
+          value: $(params.SECRET_REF)
+        - name: channel-group
+          value: $(params.OCM_LOGIN_ENV)
+        - name: aws-region
+          value: $(params.AWS_REGION)
+        - name: cluster-profile
+          value: "rosa-hcp-advanced"
