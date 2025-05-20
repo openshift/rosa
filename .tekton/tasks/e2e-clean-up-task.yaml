@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: e2e-clean-up
+spec:
+  description: |
+    This is a task to clean up all testing resources
+  params:
+    - name: git-revision
+      type: string
+      default: "master"
+      description: "The revision (branch or tag) of the Git repository to checkout."
+    - name: git-repo
+      type: string
+      default: "https://github.com:openshift/rosa.git"
+      description: "The revision (branch or tag) of the Git repository to checkout."
+    - name: container-image
+      type: string
+      description: "Contain the container name from Konflux Snapshot."
+      default: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+    - name: secret-ref
+      type: string
+      description: secret-volume used for the testing
+      default: "rosacli-ci"
+    - name: cluster-profile
+      type: string
+      description: cluster-profile used for the cluster creation
+      default: ""
+  steps:
+    - name: clean-up
+      ref:
+        resolver: git
+        params:
+          - name: url
+            value: $(params.git-repo).git
+          - name: revision
+            value: $(params.git-revision)
+          - name: pathInRepo
+            value: .tekton/steps/clean-up-step.yaml
+      params:
+        - name: container-image
+          value: $(params.container-image)
+        - name: output-volume
+          value: output-volume
+        - name: secret-volume
+          value: secret-volume
+        - name: secret-ref
+          value: $(params.secret-ref)
+        - name: service
+          value: $(params.service)
+        - name: cluster-profile
+          value: $(params.cluster-profile)
+  volumes:
+    - name: output-volume
+      emptyDir: {}
+    - name: secret-volume
+      secret:
+        secretName: $(params.secret-ref)

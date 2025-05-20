@@ -1,0 +1,81 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: e2e-task
+spec:
+  description: |
+    This task run the rosacli e2e tests based on given profile
+  params:
+    - name: git-revision
+      type: string
+      default: "master"
+      description: "The revision (branch or tag) of the Git repository to checkout."
+    - name: git-repo
+      type: string
+      default: "https://github.com:openshift/rosa.git"
+      description: "The revision (branch or tag) of the Git repository to checkout."
+    - name: container-image
+      type: string
+      description: "Contain the container name from Konflux Snapshot."
+      default: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+    - name: secret-ref
+      type: string
+      description: secret-volume used for the testing
+      default: "rosacli-ci"
+    - name: cluster-profile
+      type: string
+      description: cluster-profile used for the cluster creation
+      default: ""
+  steps:
+    - name: run-e2e-day1
+      ref:
+        resolver: git
+        params:
+          - name: url
+            value: $(params.git-repo).git
+          - name: revision
+            value: $(params.git-revision)
+          - name: pathInRepo
+            value: .tekton/steps/run-e2e-day1-step.yaml
+      params:
+        - name: container-image
+          value: $(params.container-image)
+        - name: output-volume
+          value: output-volume
+        - name: secret-volume
+          value: secret-volume
+        - name: secret-ref
+          value: $(params.secret-ref)
+        - name: service
+          value: $(params.service)
+        - name: cluster-profile
+          value: $(params.cluster-profile)
+    - name: run-e2e-day2
+      ref:
+        resolver: git
+        params:
+          - name: url
+            value: $(params.git-repo).git
+          - name: revision
+            value: $(params.git-revision)
+          - name: pathInRepo
+            value: .tekton/steps/run-e2e-day2-step.yaml
+      params:
+        - name: container-image
+          value: $(params.container-image)
+        - name: output-volume
+          value: output-volume
+        - name: secret-volume
+          value: secret-volume
+        - name: secret-ref
+          value: $(params.secret-ref)
+        - name: service
+          value: $(params.service)
+        - name: cluster-profile
+          value: $(params.cluster-profile)
+  volumes:
+    - name: output-volume
+      emptyDir: {}
+    - name: secret-volume
+      secret:
+        secretName: $(params.secret-ref)
