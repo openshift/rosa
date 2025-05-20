@@ -28,6 +28,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/clusterregistryconfig"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/input"
@@ -815,7 +816,7 @@ func run(cmd *cobra.Command, _ []string) {
 		billingAccount = cluster.AWS().BillingAccountID()
 	}
 
-	if interactive.Enabled() && aws.IsHostedCP(cluster) {
+	if interactive.Enabled() && aws.IsHostedCP(cluster) && !fedramp.Enabled() {
 		cloudAccounts, err := r.OCMClient.GetBillingAccounts()
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
