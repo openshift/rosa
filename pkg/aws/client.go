@@ -1152,7 +1152,7 @@ const ReadOnlyAnonUserPolicyTemplateGovcloud = `{
 		{
 			"Sid": "AllowReadPublicAccess",
 			"Principal": "*",
-			"Effect": "Allow",
+			"Effect": "Allow", // test
 			"Action": [
 				"s3:GetObject"
 			],
