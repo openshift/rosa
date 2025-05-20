@@ -9,6 +9,9 @@ metadata:
   name: hcp-advanced-e2e-test
 spec:
   params:
+    - description: Initialize SSH agent
+      name: SSH
+      command: eval $(ssh-agent -s) && ssh-add ~/.ssh/id_rsa
     - description: 'Snapshot of the application'
       name: SNAPSHOT
       default: '{"components": [{"name":"test-app", "containerImage": "quay.io/example/repo:latest"}]}'
