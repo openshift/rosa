@@ -92,8 +92,6 @@ spec:
             value: .tekton/tasks/e2e-clean-up-task.yaml
       retries: 0
       timeout: 1h
-      runAfter:
-        - test-metadata
       params:
         - name: container-image
           value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
