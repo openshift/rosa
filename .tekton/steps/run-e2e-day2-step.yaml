@@ -6,7 +6,6 @@ spec:
   description: |
     This is a day2 step to run day2 cases on the prepared cluster
   image: $(params.container-image)
-  imagePullPolicy: Always
   workingDir: /rosa
   params:
     - name: container-image
