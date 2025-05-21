@@ -271,6 +271,7 @@ func (db *doubleRolesCreator) getAccountRolesMap() map[string]aws.AccountRole {
 func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput, accRoleName string,
 	assumeRolePolicy string, tagsList map[string]string, filename string) error {
 	r.Reporter.Debugf("Creating role '%s'", accRoleName)
+
 	roleARN, err := r.AWSClient.EnsureRole(r.Reporter, accRoleName, assumeRolePolicy, input.permissionsBoundary,
 		input.defaultPolicyVersion, tagsList, input.path, false)
 	if err != nil {
@@ -305,6 +306,21 @@ func getAssumeRolePolicy(partition string, file string, input *accountRolesCreat
 		"partition":      partition,
 		"aws_account_id": aws.GetJumpAccount(input.env),
 	})
+}
+
+func CreateHCPRoles(r *rosa.Runtime, prefix string, managedPolicies bool, permissionsBoundary string, env string, policies map[string]*cmv1.AWSSTSPolicy, policyVersion string,
+	path string, isSharedVpc bool, route53RoleArn string, vpcEndpointRoleArn string) error {
+	rolesCreator, createRoles := initCreator(r, managedPolicies, false, true, false, true)
+	args.route53RoleArn = route53RoleArn
+	args.vpcEndpointRoleArn = vpcEndpointRoleArn
+
+	if !createRoles {
+		return fmt.Errorf("Can't create new account roles")
+	}
+
+	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies, policyVersion, path, isSharedVpc)
+	err := rolesCreator.createRoles(r, input)
+	return err
 }
 
 type hcpManagedPoliciesCreator struct{}

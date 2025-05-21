@@ -15,7 +15,7 @@ import (
 )
 
 type Runtime struct {
-	Reporter   *reporter.Object
+	Reporter   reporter.Logger
 	Logger     *logrus.Logger
 	OCMClient  *ocm.Client
 	AWSClient  aws.Client
