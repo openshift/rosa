@@ -8,7 +8,7 @@ import (
 const instanceType = "m5.xlarge"
 
 type CreateMachinepoolOptions struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 
 	args *mpOpts.CreateMachinepoolUserOptions
 }

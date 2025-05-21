@@ -371,7 +371,7 @@ func run(cmd *cobra.Command, argv []string) {
 			r.Reporter.Errorf("Error getting latest version: %s", err)
 			os.Exit(1)
 		}
-		err = handleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
+		err = HandleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
 			mode, policies, latestPolicyVersion, isHcpSharedVpc)
 		if err != nil {
 			r.Reporter.Errorf("Error creating operator roles: %s", err)

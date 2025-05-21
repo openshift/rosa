@@ -893,7 +893,7 @@ func (c *Client) GetVersionsList(channelGroup string, defaultFirst bool) ([]stri
 	return versionList, nil
 }
 
-func ValidateOperatorRolesMatchOidcProvider(reporter *reporter.Object, awsClient aws.Client,
+func ValidateOperatorRolesMatchOidcProvider(reporter reporter.Logger, awsClient aws.Client,
 	operatorIAMRoleList []OperatorIAMRole, oidcEndpointUrl string,
 	clusterVersion string, expectedOperatorRolePath string,
 	accountRolesHasManagedPolicies bool, logOperatorRoles bool) error {

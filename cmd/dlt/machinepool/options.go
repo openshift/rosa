@@ -12,7 +12,7 @@ type DeleteMachinepoolUserOptions struct {
 }
 
 type DeleteMachinepoolOptions struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 
 	args *DeleteMachinepoolUserOptions
 }
