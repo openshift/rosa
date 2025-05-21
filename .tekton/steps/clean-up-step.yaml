@@ -6,7 +6,6 @@ spec:
   description: |
     This is a step to clean up all testing resources
   image: $(params.container-image)
-  imagePullPolicy: Always
   workingDir: /rosa
   params:
     - name: container-image
