@@ -23,7 +23,7 @@ spec:
       type: string
     - description: 'Tasks git repo'
       name: TASKS_REPO
-      default: "git@github.com:openshift/rosa.git"
+      default: "https://github.com/openshift/rosa.git"
       type: string
     - name: OCM_LOGIN_ENV
       type: string
@@ -92,8 +92,6 @@ spec:
             value: .tekton/tasks/e2e-clean-up-task.yaml
       retries: 0
       timeout: 1h
-      runAfter:
-        - test-metadata
       params:
         - name: container-image
           value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
