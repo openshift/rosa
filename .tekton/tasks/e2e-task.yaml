@@ -67,8 +67,6 @@ spec:
           value: secret-volume
         - name: secret-ref
           value: $(params.secret-ref)
-        - name: service
-          value: $(params.service)
         - name: cluster-profile
           value: $(params.cluster-profile)
   volumes:
