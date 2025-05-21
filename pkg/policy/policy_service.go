@@ -36,7 +36,7 @@ const (
 
 type PolicyService interface {
 	ValidateAttachOptions(roleName string, policyArns []string) error
-	AutoAttachArbitraryPolicy(reporter *reporter.Object, roleName string,
+	AutoAttachArbitraryPolicy(reporter reporter.Logger, roleName string,
 		policyArns []string, accountID, orgID string) error
 	ManualAttachArbitraryPolicy(roleName string, policyArns []string, accountID, orgID string) string
 	ValidateDetachOptions(roleName string, policyArns []string) error
@@ -76,7 +76,7 @@ func (p *policyService) ValidateDetachOptions(roleName string, policyArns []stri
 	return validateRoleAndPolicies(p.AWSClient, roleName, policyArns)
 }
 
-func (p *policyService) AutoAttachArbitraryPolicy(reporter *reporter.Object, roleName string, policyArns []string,
+func (p *policyService) AutoAttachArbitraryPolicy(reporter reporter.Logger, roleName string, policyArns []string,
 	accountID, orgID string) error {
 	for _, policyArn := range policyArns {
 		err := p.AWSClient.AttachRolePolicy(reporter, roleName, policyArn)

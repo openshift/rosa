@@ -41,9 +41,9 @@ import (
 
 	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/idp"
-	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
+	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	installLogs "github.com/openshift/rosa/cmd/logs/install"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
@@ -3550,7 +3550,7 @@ func run(cmd *cobra.Command, _ []string) {
 // clusterConfigFor builds the cluster spec for the OCM API from our command-line options.
 // TODO: eventually, this method signature should be func(args) ocm.Spec.
 func clusterConfigFor(
-	reporter *reporter.Object,
+	reporter reporter.Logger,
 	clusterConfig ocm.Spec,
 	awsCreator *aws.Creator,
 	awsCredentialsGetter aws.AccessKeyGetter,
@@ -4226,7 +4226,7 @@ func getExpectedResourceIDForAccRole(hostedCPPolicies bool, roleARN string, role
 	return strings.ToLower(fmt.Sprintf("%s-%s-Role", rolePrefix, accountRoles[roleType].Name)), rolePrefix, nil
 }
 
-func getInitialValidSubnets(awsClient aws.Client, ids []string, r *reporter.Object) ([]ec2types.Subnet, error) {
+func getInitialValidSubnets(awsClient aws.Client, ids []string, r reporter.Logger) ([]ec2types.Subnet, error) {
 	var initialValidSubnets []ec2types.Subnet
 	rhManagedSubnets := []string{}
 	localZoneSubnets := []string{}

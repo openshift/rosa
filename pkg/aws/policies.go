@@ -167,7 +167,7 @@ var roleTypeMap = map[string]string{
 	WorkerAccountRole:       WorkerAccountRoleType,
 }
 
-func (c *awsClient) EnsureRole(reporter *reporter.Object, name string, policy string, permissionsBoundary string,
+func (c *awsClient) EnsureRole(reporter reporter.Logger, name string, policy string, permissionsBoundary string,
 	version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
 	output, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(name),
@@ -261,7 +261,7 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 	return fmt.Errorf("Error validating role name '%s': %v", name, err)
 }
 
-func (c *awsClient) createRole(reporter *reporter.Object, name string, policy string,
+func (c *awsClient) createRole(reporter reporter.Logger, name string, policy string,
 	permissionsBoundary string, tagList map[string]string, path string) (string, error) {
 	if !RoleNameRE.MatchString(name) {
 		return "", fmt.Errorf("Role name is invalid")
@@ -475,7 +475,7 @@ func (c *awsClient) hasCompatibleMajorMinorVersionTags(iamTags []iamtypes.Tag, v
 	return false, nil
 }
 
-func (c *awsClient) AttachRolePolicy(reporter *reporter.Object, roleName string, policyARN string) error {
+func (c *awsClient) AttachRolePolicy(reporter reporter.Logger, roleName string, policyARN string) error {
 	_, err := c.iamClient.AttachRolePolicy(context.Background(), &iam.AttachRolePolicyInput{
 		RoleName:  aws.String(roleName),
 		PolicyArn: aws.String(policyARN),
