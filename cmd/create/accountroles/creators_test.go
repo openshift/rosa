@@ -110,5 +110,33 @@ var _ = Describe("Accountroles", Ordered, func() {
 			err := (&hcpManagedPoliciesCreator{}).createRoles(r, accountRolesCreationInput)
 			Expect(err).ToNot(HaveOccurred())
 		})
+		It("createRole succeeds with hosted-cp and govcloud env", func() {
+			mockCtrl := gomock.NewController(GinkgoT())
+			mockClient := mock.NewMockClient(mockCtrl)
+			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), "test-HCP-ROSA-Installer-Role", "arn::installer").Times(1)
+			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), "test-HCP-ROSA-Support-Role", "arn::support").Times(1)
+			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), "test-HCP-ROSA-Worker-Role", "arn::worker").Times(1)
+			mockClient.EXPECT().EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+				gomock.Any(), gomock.Any(), gomock.Any()).Return("arn::role:role-123", nil).AnyTimes()
+
+			r := rosa.NewRuntime()
+			r.AWSClient = mockClient
+			r.Creator = &mock.Creator{ARN: "arn-123"}
+			r.Creator.IsGovcloud = true
+			installerPolicy, _ := (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::installer").Build()
+			workerPolicy, _ := (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::worker").Build()
+			supportPolicy, _ := (&cmv1.AWSSTSPolicyBuilder{}).ARN("arn::support").Build()
+
+			policies := map[string]*cmv1.AWSSTSPolicy{
+				"sts_hcp_installer_permission_policy":       installerPolicy,
+				"sts_hcp_instance_worker_permission_policy": workerPolicy,
+				"sts_hcp_support_permission_policy":         supportPolicy,
+			}
+
+			accountRolesCreationInput := buildRolesCreationInput("test", "mock-permissions-boundary", "account-123", "stage", policies,
+				"123", "mock-path", false)
+			err := (&hcpManagedPoliciesCreator{}).createRoles(r, accountRolesCreationInput)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 })

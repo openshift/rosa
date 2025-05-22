@@ -125,11 +125,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if cmd.Flags().Changed("hosted-cp") && r.Creator.IsGovcloud {
-		r.Reporter.Errorf("Setting `hosted-cp` is not supported for Govcloud AWS accounts")
-		os.Exit(1)
-	}
-
 	prefix := args.prefix
 	if interactive.Enabled() && prefix == "" {
 		prefix, err = interactive.GetString(interactive.Input{
@@ -170,10 +165,6 @@ func run(cmd *cobra.Command, _ []string) {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-	}
-
-	if r.Creator.IsGovcloud {
-		deleteHostedCP = false
 	}
 
 	if deleteHostedCP {
