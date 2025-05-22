@@ -72,6 +72,7 @@ type ClusterENVVariables struct {
 	Replicas            string `env:"REPLICAS" default:""`
 	MultiAZ             string `env:"MULTI_AZ" default:""`
 	AllowRegistries     string `env:"ALLOW_REGISTRIES" default:""`
+	Add_UnManaged_Tag   string `env:"ADD_UNMANAGED_TAG" default:"false"`
 	UseLocalCredentials bool   `env:"USE_LOCAL_CREDENTIALS" default:"false"`
 }
 
@@ -154,6 +155,7 @@ func init() {
 		Replicas:            os.Getenv("REPLICAS"),
 		MultiAZ:             os.Getenv("MULTI_AZ"),
 		AllowRegistries:     os.Getenv("ALLOW_REGISTRIES"),
+		Add_UnManaged_Tag:   os.Getenv("ADD_UNMANAGED_TAG"),
 		UseLocalCredentials: useLocalCredentials,
 	}
 

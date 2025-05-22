@@ -184,6 +184,47 @@ func (rh *resourcesHandler) AddTagsToSharedVPCBYOSubnets(subnets config.Subnets,
 	return nil
 }
 
+// This AddTagsToUnManagedBYOSubnets is to add tags 'kubernetes.io/cluster/unmanaged:true'
+// This is a new change for 4.19+ version cluster
+func (rh *resourcesHandler) AddTagsToUnManagedBYOSubnets(subnets []string, region string) error {
+	tags := map[string]string{
+		"kubernetes.io/cluster/unmanaged": "true",
+	}
+	awsclient, err := aws_client.CreateAWSClient("", region)
+	if err != nil {
+		return err
+	}
+
+	for _, subnetID := range subnets {
+		// Wait for the subnet id to be found by the aws client
+		err = wait.PollUntilContextTimeout(
+			context.Background(),
+			20*time.Second,
+			300*time.Second,
+			false,
+			func(context.Context) (bool, error) {
+				_, err = awsclient.Ec2Client.DescribeSubnets(context.TODO(), &ec2.DescribeSubnetsInput{
+					SubnetIds: []string{subnetID},
+				})
+				if err != nil {
+					if strings.Contains(err.Error(), "does not exist") {
+						return false, nil
+					}
+					return false, err
+				}
+				return true, err
+			})
+		if err != nil {
+			return fmt.Errorf("wait for subnet %s to be found failed: %s", subnetID, err)
+		}
+		_, err = awsclient.TagResource(subnetID, tags)
+		if err != nil {
+			return fmt.Errorf("tag subnet %s failed:%s", subnetID, err)
+		}
+	}
+	return nil
+}
+
 // PrepareSubnets will prepare pair of subnets according to the vpcID and zones
 // if zones are empty list it will list the zones and pick according to multi-zone parameter.
 // when multi-zone=true, 3 zones will be pickup

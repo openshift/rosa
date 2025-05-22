@@ -10,6 +10,7 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
+	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/tests/ci/config"
 	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
@@ -576,6 +577,21 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			subnetsFlagValue = strings.Join(subnets["private"], ",")
 			ch.clusterConfig.Subnets = &ClusterConfigure.Subnets{
 				PrivateSubnetIds: strings.Join(subnets["private"], ","),
+			}
+
+			result, err := versions.IsGreaterThanOrEqual(ch.clusterConfig.Version.RawID, "4.19.0-0.a")
+			if err != nil {
+				return flags, err
+			}
+			// It is only for classic private cluster and version is for 4.19+ now
+			// Or we use one gloabl env pramater to manage it
+			if (!ch.profile.ClusterConfig.HCP && result) ||
+				ch.profile.ClusterConfig.Add_UnManaged_Tag {
+				log.Logger.Info("Add unmanaged tag for public subnets when cluster is private + classic clusters")
+				err = resourcesHandler.AddTagsToUnManagedBYOSubnets(subnets["public"], ch.clusterConfig.Region)
+				if err != nil {
+					return flags, err
+				}
 			}
 		}
 		flags = append(flags,
