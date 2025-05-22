@@ -73,6 +73,7 @@ type ClusterConfig struct {
 	FedRAMP                       bool   `yaml:"fedramp" json:"fedramp,omitempty"`
 	ZeroEgress                    bool   `yaml:"zero_egress" json:"zero_egress,omitempty"`
 	UseLocalCredentials           bool   `yaml:"use_local_credentials,omitempty" json:"use_local_credentials,omitempty"`
+	Add_UnManaged_Tag             bool   `yaml:"add_unmanaged_tag" json:"add_unmanaged_tag,omitempty"`
 }
 
 // Resources will record the resources prepared
