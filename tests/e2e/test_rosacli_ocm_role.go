@@ -25,7 +25,7 @@ var _ = Describe("Edit ocm role", labels.Feature.OCMRole,
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
 		})
-		It("make sure no ocm-role and user role linked - [id:52106]", labels.High, labels.Runtime.Day2, func() {
+		It("make sure no ocm-role and user role linked - [id:52106]", labels.High, labels.Runtime.Day2, labels.FedRAMP, func() {
 			By("Check if there is the ocm-role linked, and delete it")
 			ocmRoleList, _, err := ocmResourceService.ListOCMRole()
 			ocmRole := ocmRoleList.FindLinkedOCMRole()

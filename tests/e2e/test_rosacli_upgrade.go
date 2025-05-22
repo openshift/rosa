@@ -680,7 +680,7 @@ var _ = Describe("Describe/List rosa upgrade",
 		})
 
 		It("to list/describe rosa upgrade via ROSA CLI - [id:57094]",
-			labels.High, labels.Runtime.Day2, labels.Runtime.Upgrade,
+			labels.High, labels.Runtime.Day2, labels.Runtime.Upgrade, labels.FedRAMP,
 			func() {
 
 				By("Check the help message of 'rosa describe upgrade -h'")
@@ -763,7 +763,7 @@ var _ = Describe("Describe/List rosa upgrade",
 			})
 
 		It("List upgrades of cluster via ROSA cli will succeed - [id:38827]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Skip testing if the cluster is not a y-1 STS classic cluster")
 				if clusterConfig.Version.VersionRequirement != constants.YStreamPreviousVersion || !clusterConfig.Sts ||
@@ -1154,7 +1154,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 	})
 
 	It("Validation for creating upgrade policy via ROSA cli will work - [id:38829]",
-		labels.Medium, labels.Runtime.Day2,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			defer func() {
 				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")

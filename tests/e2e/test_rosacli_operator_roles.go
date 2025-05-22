@@ -62,7 +62,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("to delete in-used operator-roles and byo oidc-config  [id:74761]",
-			labels.Critical, labels.Runtime.Day2, func() {
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, func() {
 				By("Get cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -128,7 +128,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				Expect(output.String()).To(ContainSubstring("There are clusters using OIDC config"))
 			})
 		It("can validate when user create operator-roles to cluster - [id:43051]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check if cluster is sts cluster")
 				clusterService := rosaClient.Cluster
@@ -169,7 +169,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			})
 
 		It("to validate operator roles and oidc provider will work well - [id:70859]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check cluster is sts cluster")
 				clusterService := rosaClient.Cluster

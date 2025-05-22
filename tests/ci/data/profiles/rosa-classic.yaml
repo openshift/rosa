@@ -74,7 +74,7 @@ profiles:
     path: "/test/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
 - as: rosa-fedramp
-  version: "4.14"
+  version: "4.15"
   channel_group: "stable"
   region: "us-gov-east-1"
   cluster:

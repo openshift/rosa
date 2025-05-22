@@ -61,7 +61,7 @@ var _ = Describe("Edit cluster",
 			rosaClient.CleanResources(clusterID)
 		})
 		It("can edit cluster channel group - [id:81399]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
@@ -133,7 +133,7 @@ var _ = Describe("Edit cluster",
 				Expect(out.String()).To(ContainSubstring("is not available for the desired channel group"))
 			})
 		It("can check the description of the cluster - [id:34102]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Describe cluster in text format")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -202,7 +202,7 @@ var _ = Describe("Edit cluster",
 			})
 
 		It("can restrict master API endpoint to direct, private connectivity or not - [id:38850]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the cluster is not private cluster")
 				private, err := clusterService.IsPrivateCluster(clusterID)
@@ -266,7 +266,7 @@ var _ = Describe("Edit cluster",
 
 		// OCM-5231 caused the description parser issue
 		It("can disable workload monitoring on/off - [id:45159]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Load the original cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
@@ -466,7 +466,7 @@ var _ = Describe("Edit cluster",
 				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
 			})
 
-		It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2,
+		It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Load the original cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
@@ -582,7 +582,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		rosaClient.CleanResources(clusterID)
 	})
 	It("can validate for deletion of upgrade policy of rosa cluster - [id:38787]",
-		labels.Medium, labels.Runtime.Day2,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
 			output, err := upgradeService.DeleteUpgrade()
@@ -604,7 +604,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		})
 
 	It("can validate create/delete upgrade policies for HCP clusters - [id:73814]",
-		labels.Medium, labels.Runtime.Day2,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			defer func() {
 				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
@@ -693,7 +693,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 					"ERR: node-drain-grace-period flag is not supported to hosted clusters"))
 		})
 
-	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2,
+	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			By("Load the original cluster config")
 			clusterConfig, err := config.ParseClusterProfile()
@@ -807,7 +807,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 
 		})
 
-	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2,
+	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			By("edit non-hcp with registry config")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
@@ -2942,7 +2942,7 @@ var _ = Describe("Create cluster with availability zones testing",
 		})
 
 		It("User can set availability zones - [id:52691]",
-			labels.Critical, labels.Runtime.Day1Post,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 				mpID := "mp-52691"
@@ -3009,7 +3009,7 @@ var _ = Describe("Create sts and hcp cluster with the IAM roles with path settin
 	})
 
 	It("to check the IAM roles can be used to create clsuters - [id:53570]",
-		labels.Critical, labels.Runtime.Day1Post,
+		labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 		func() {
 			By("Skip testing if the cluster is a Classic NON-STS cluster")
 			isSTS, err := clusterService.IsSTSCluster(clusterID)

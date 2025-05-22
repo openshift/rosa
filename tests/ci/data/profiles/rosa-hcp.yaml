@@ -201,3 +201,40 @@ profiles:
     customized_prefix: true
     path: ""
     permission_boundary: ""
+- as: rosa-hcp-fedramp
+  version: "4.15"
+  channel_group: "stable"
+  region: "us-gov-west-1"
+  cluster:
+    multi_az: true
+    instance_type: ""
+    hcp: true
+    sts: true
+    byo_vpc: true
+    private: true
+    default_ingress_private : true
+    etcd_encryption: true
+    etcd_kms: true
+    fips: true
+    autoscale: true
+    kms_key: false
+    networking: false
+    proxy_enabled: false
+    label_enabled: false
+    tag_enabled: false
+    zones: ""
+    imdsv2: ""
+    shared_vpc: false
+    ingress_customized: false
+    oidc_config: managed
+    admin_enabled: false
+    # volume_size: 75
+    autoscaler_enabled: false
+    disable_uwm: false
+    name_length: 15
+    domain_prefix_enabled: false
+    additional_sg_number: 0
+    fedramp: true
+  account-role:
+    path: ""
+    permission_boundary: ""

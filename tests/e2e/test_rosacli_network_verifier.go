@@ -43,7 +43,7 @@ var _ = Describe("Network verifier",
 
 		// Verify network via the rosa cli
 		It("can verify network - [id:64917]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -145,7 +145,7 @@ var _ = Describe("Network verifier",
 			})
 
 		It("validation should work well - [id:68751]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)

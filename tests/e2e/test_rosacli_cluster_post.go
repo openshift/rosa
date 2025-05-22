@@ -70,7 +70,7 @@ var _ = Describe("Healthy check",
 			})
 
 			It("the creation of rosa cluster with volume size will work - [id:66359]",
-				labels.Critical, labels.Runtime.Day1Post,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				func() {
 					alignDiskSize := func(diskSize string) string {
 						aligned := strings.Join(strings.Split(diskSize, " "), "")
@@ -120,7 +120,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",
-				labels.Critical, labels.Runtime.Day1Post,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				func() {
 					if isHosted {
 						SkipTestOnFeature("default machinepool labels")
@@ -235,7 +235,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("bring your own kms key functionality works on cluster creation - [id:60082]",
-				labels.Critical, labels.Runtime.Day1Post,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				func() {
 					By("Confirm current cluster profile uses kms keys")
 					if !clusterConfig.EnableCustomerManagedKey {
@@ -255,7 +255,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("additional allowed principals work on cluster creation - [id:74408]",
-				labels.Critical, labels.Runtime.Day1Post,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				func() {
 					By("Confirm current cluster profile uses additional allowed principals")
 					if !profile.ClusterConfig.AdditionalPrincipals {
@@ -276,7 +276,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("etcd encryption works on cluster creation - [id:42188]",
-				labels.Critical, labels.Runtime.Day1Post,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				func() {
 					By("Confirm current cluster profile uses etcd encryption")
 					if !clusterConfig.EtcdEncryption {
@@ -349,7 +349,7 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High,
+			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
 				func() {
 					By("Check compute machine type")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -358,7 +358,7 @@ var _ = Describe("Healthy check",
 						Equal(clusterConfig.Nodes.ComputeInstanceType))
 				})
 
-			It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical,
+			It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
@@ -400,7 +400,7 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("with private will work - [id:75526]", labels.Runtime.Day1Post, labels.Critical,
+			It("with private will work - [id:75526]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				func() {
 					private := constants.No
 					ingressPrivate := "false"
@@ -420,7 +420,7 @@ var _ = Describe("Healthy check",
 					Expect(ingress.Private).To(Equal(ingressPrivate))
 				})
 
-			It("with autoscaling will work - [id:75527]", labels.Runtime.Day1Post, labels.High,
+			It("with autoscaling will work - [id:75527]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
 				func() {
 					isAutoscale := clusterConfig.Autoscaling != nil && clusterConfig.Autoscaling.Enabled
 
@@ -435,7 +435,7 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("with subnets will work - [id:37176]", labels.Runtime.Day1Post, labels.Critical,
+			It("with subnets will work - [id:37176]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				func() {
 					By("Check the creation command help")
 					output, err, _ := clusterService.Create("cluster-37176", "-h")
@@ -491,7 +491,7 @@ var _ = Describe("Healthy check",
 
 				})
 
-			It("with proxy set will work - [id:45502]", labels.Runtime.Day1Post, labels.Critical,
+			It("with proxy set will work - [id:45502]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				func() {
 					By("Check the help message of proxy")
 					output, err, _ := clusterService.Create("cl-45502", "-h")
@@ -554,7 +554,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("rosa hcp cluster creation support imdsv2 - [id:75114]",
-				labels.Critical, labels.Runtime.Day1Post,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
@@ -591,7 +591,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("rosa cluster with fips enabled can be created successfully - [id:46312]",
-				labels.Critical, labels.Runtime.Day1Post,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				func() {
 					output, err := clusterService.DescribeCluster(clusterID)
 					Expect(err).ToNot(HaveOccurred())
@@ -606,14 +606,14 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High,
+			It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
 				func() {
 					By("Check cluster is multiarch")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 					Expect(err).To(BeNil())
 					if isHosted {
 						clusterVersion := jsonData.DigString("openshift_version")
-						if clusterVersion >= "4.14" {
+						if clusterVersion >= "4.14" && !profile.ClusterConfig.FedRAMP {
 							Expect(jsonData.DigBool("multi_arch_enabled")).To(BeTrue())
 						} else {
 							Expect(jsonData.DigBool("multi_arch_enabled")).To(BeFalse())
@@ -622,7 +622,7 @@ var _ = Describe("Healthy check",
 						Expect(jsonData.DigBool("multi_arch_enabled")).To(BeFalse())
 					}
 				})
-			It("with use-local-credentials will work - [id:65900]", labels.Runtime.Day1Post, labels.High,
+			It("with use-local-credentials will work - [id:65900]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
 				func() {
 					By("Check that the 'use_local_credentials' property matches the profile")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -631,7 +631,7 @@ var _ = Describe("Healthy check",
 						To(Equal(profile.ClusterConfig.UseLocalCredentials))
 				})
 
-			It("with policy path will work - [id:75525]", labels.Runtime.Day1Post, labels.High,
+			It("with policy path will work - [id:75525]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
 				func() {
 					if profile.AccountRoleConfig == nil || profile.AccountRoleConfig.Path == "" {
 						Skip("No account-role path defined. Skipping ...")
@@ -689,7 +689,7 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 		})
 
 		It("User can create cluster with channel group - [id:35420]",
-			labels.Critical, labels.Runtime.Day1Post,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 
@@ -863,7 +863,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 		})
 
 		It("to verify byo oidc cluster is created successfully - [id:59530]",
-			labels.Critical, labels.Runtime.Day1Post,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -946,7 +946,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 
 			})
 		It("to verify cluster with the operator-roles attaching managed policy is created successfully - [id:57410]",
-			labels.High, labels.Runtime.Day1Post,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				// Till now, only HCP clusters operator roles are attaching managed policies
 				By("Skip is the cluster is not HCP cluster")
@@ -983,20 +983,22 @@ var _ = Describe("Post-Check testing for cluster creation",
 
 					if len(attachedPolicies) > 1 {
 						managedPolicyFound := false
+						arnPattern, err := regexp.Compile(`arn:aws[-\w]*:iam::aws`)
+						Expect(err).ToNot(HaveOccurred())
 						for _, policy := range attachedPolicies {
-							if strings.Contains(*policy.PolicyArn, "arn:aws:iam::aws") {
+							if arnPattern.MatchString(*policy.PolicyArn) {
 								managedPolicyFound = true
 								break
 							}
 						}
 						Expect(managedPolicyFound).To(BeTrue())
 					} else {
-						Expect(*attachedPolicies[0].PolicyArn).To(ContainSubstring("arn:aws:iam::aws"), operatorRoleName)
+						Expect(*attachedPolicies[0].PolicyArn).To(MatchRegexp("arn:aws[-\\w]*:iam::aws"), operatorRoleName)
 					}
 				}
 			})
 		It("to verify shared-vpc hosted-cp cluster is created successfully and can be edited- [id:78240]",
-			labels.Critical, labels.Runtime.Day1Post,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 
@@ -1067,7 +1069,7 @@ var _ = Describe("Post-Check testing for cluster clusters with the --disable-scp
 		})
 
 		It(" Create MOA clusters with the --disable-scp-check flag - [id:35894]",
-			labels.Medium, labels.Runtime.Day1Post,
+			labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 				By("Skip testing if the cluster is not a y-1 STS classic cluster")

@@ -107,7 +107,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create cluster with the KMS and etcd encryption for hypershift clusters by rosa-cli - [id:60083]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				output, err, _ := clusterService.Create("", "-h")
@@ -149,7 +149,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create HCP cluster with network type can work well via rosa cli - [id:71050]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				//It is hiddened now
@@ -177,7 +177,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create ROSA HCP cluster with external_auth_config config should work well via rosa client - [id:71945]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				helpOutput, err, _ := clusterService.Create("", "-h")
@@ -212,7 +212,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("can edit ROSA HCP cluster with additional allowed principals - [id:74556]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the help message of 'rosa edit cluster -h'")
 				helpOutput, err := clusterService.EditCluster("", "-h")
@@ -283,7 +283,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("rosacli can show the details of HCP cluster well when describe - [id:54869]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Get cluster description")
 				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
@@ -323,10 +323,10 @@ var _ = Describe("HCP cluster testing",
 				}
 				Expect(clusterDesc.Network).To(ContainElements(HaveKey("Type"), HaveKey("Service CIDR"), HaveKey("Machine CIDR"),
 					HaveKey("Pod CIDR"), HaveKey("Host Prefix"), HaveKeyWithValue("Subnets", MatchRegexp("^subnet-.{17}"))))
-				Expect(clusterDesc.STSRoleArn).To(MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+-HCP-ROSA-Installer-Role"))
-				Expect(clusterDesc.SupportRoleARN).To(MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+-HCP-ROSA-Support-Role"))
+				Expect(clusterDesc.STSRoleArn).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Installer-Role"))
+				Expect(clusterDesc.SupportRoleARN).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Support-Role"))
 				Expect(clusterDesc.InstanceIAMRoles[0]).To(HaveKeyWithValue("Worker",
-					MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+-HCP-ROSA-Worker-Role")))
+					MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Worker-Role")))
 
 				By("List Operator roles")
 				roles, err := ocmResourceService.ListOperatorRoles("--prefix", clusterConfig.Aws.Sts.OperatorRolesPrefix)
@@ -337,7 +337,7 @@ var _ = Describe("HCP cluster testing",
 					Expect(clusterDesc.OperatorIAMRoles).To(ContainElement(ContainSubstring(role.RoleName)))
 				}
 
-				Expect(clusterDesc.OperatorIAMRoles).To(HaveEach(MatchRegexp("arn:aws:iam::[0-9]{12}:role/.+")))
+				Expect(clusterDesc.OperatorIAMRoles).To(HaveEach(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+")))
 				Expect(clusterDesc.State).To(Equal(constants.Ready))
 			})
 
@@ -414,7 +414,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create ROSA HCP with registry config can work well via rosa cli  - [id:76394]",
-			labels.High, labels.Runtime.Day1Post,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				By("Check the help message of 'rosa create cluster -h'")
 				helpOutput, err, _ := clusterService.Create("", "-h")
@@ -504,7 +504,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("edit ROSA HCP with registry config can work well via rosa cli  - [id:76395]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the help message of 'rosa edit cluster -h'")
 				helpOutput, err := clusterService.EditCluster("", "-h")
