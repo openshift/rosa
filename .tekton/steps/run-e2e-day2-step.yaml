@@ -6,7 +6,7 @@ spec:
   description: |
     This is a day2 step to run day2 cases on the prepared cluster
   image: $(params.container-image)
-  workingDir: /rosa
+  workingDir: /
   params:
     - name: container-image
     - name: secret-volume
@@ -15,6 +15,7 @@ spec:
     - name: channel-group
     - name: aws-region
     - name: cluster-profile
+    - name: ocm-login-env
   volumeMounts:
     - name: $(params.secret-volume)
       mountPath: /mnt/secrets
@@ -24,26 +25,32 @@ spec:
     - name: AWS_CREDENTIALS
       value: "/mnt/secrets/aws_cred"
     - name: AWS_SHAREDVPC_CREDENTIALS
-      value: "/mnt/secrets/aws_cred"
+      value: "/mnt/secrets/awscred_shared_account"
     - name: OCM_TOKEN
       valueFrom:
         secretKeyRef:
           name: $(params.secret-ref)
           key: oex_org_admin_token
     - name: OCM_LOGIN_ENV
-      value: $(params.channel-group)
+      value: $(params.ocm-login-env)
     - name: AWS_REGION
       value: $(params.aws-region)
     - name: TEST_PROFILE
       value: $(params.cluster-profile)
-  
   script: |
     #!/bin/bash
+    # setup golang
+    GO_VERSION=1.23.9
+    wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
+    export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
+
     # setup rosacli
+    git clone https://github.com/openshift/rosa.git /rosa
+    cd /rosa
     source ./tests/prow_ci.sh
     configure_aws "${AWS_CREDENTIALS}" "${AWS_REGION}"
     configure_aws_shared_vpc "${AWS_SHAREDVPC_CREDENTIALS}/.awscred_shared_account"
-
     rosa login --env ${OCM_LOGIN_ENV} --token ${OCM_TOKEN}
     rosa whoami
 

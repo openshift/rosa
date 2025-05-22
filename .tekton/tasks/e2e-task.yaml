@@ -26,56 +26,73 @@ spec:
       type: string
       description: cluster-profile used for the cluster creation
       default: ""
+    - name: channel-group
+      type: string
+      default: "stable"
+    - name: aws-region
+      type: string
+      default: "us-west-2"
+    - name: ocm-login-env
+      type: string
+      default: "staging"
   steps:
     - name: run-e2e-day1
       ref:
         resolver: git
         params:
           - name: url
-            value: $(params.git-repo).git
+            value: "$(params.git-repo).git"
           - name: revision
-            value: $(params.git-revision)
+            value: "$(params.git-revision)"
           - name: pathInRepo
-            value: .tekton/steps/run-e2e-day1-step.yaml
+            value: ".tekton/steps/run-e2e-day1-step.yaml"
       params:
         - name: container-image
-          value: $(params.container-image)
+          value: "$(params.container-image)"
         - name: output-volume
           value: output-volume
         - name: secret-volume
           value: secret-volume
         - name: secret-ref
-          value: $(params.secret-ref)
-        - name: service
-          value: $(params.service)
+          value: "$(params.secret-ref)"
         - name: cluster-profile
-          value: $(params.cluster-profile)
+          value: "$(params.cluster-profile)"
+        - name: channel-group
+          value: "$(params.channel-group)"
+        - name: aws-region
+          value: "$(params.aws-region)"
+        - name: ocm-login-env
+          value: "$(params.ocm-login-env)"
     - name: run-e2e-day2
       ref:
         resolver: git
         params:
           - name: url
-            value: $(params.git-repo).git
+            value: "$(params.git-repo).git"
           - name: revision
-            value: $(params.git-revision)
+            value: "$(params.git-revision)"
           - name: pathInRepo
-            value: .tekton/steps/run-e2e-day2-step.yaml
+            value: ".tekton/steps/run-e2e-day2-step.yaml"
       params:
         - name: container-image
-          value: $(params.container-image)
+          value: "$(params.container-image)"
         - name: output-volume
           value: output-volume
         - name: secret-volume
           value: secret-volume
         - name: secret-ref
-          value: $(params.secret-ref)
-        - name: service
-          value: $(params.service)
+          value: "$(params.secret-ref)"
         - name: cluster-profile
-          value: $(params.cluster-profile)
+          value: "$(params.cluster-profile)"
+        - name: channel-group
+          value: "$(params.channel-group)"
+        - name: aws-region
+          value: "$(params.aws-region)"
+        - name: ocm-login-env
+          value: "$(params.ocm-login-env)"
   volumes:
     - name: output-volume
       emptyDir: {}
     - name: secret-volume
       secret:
-        secretName: $(params.secret-ref)
+        secretName: "$(params.secret-ref)"
