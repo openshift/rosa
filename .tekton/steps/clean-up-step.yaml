@@ -6,7 +6,6 @@ spec:
   description: |
     This is a step to clean up all testing resources
   image: $(params.container-image)
-  imagePullPolicy: Always
   workingDir: /rosa
   params:
     - name: container-image
@@ -16,6 +15,7 @@ spec:
     - name: channel-group
     - name: aws-region
     - name: cluster-profile
+    - name: ocm-login-env
   results:
     - name: passed
       description: It shows if the step is passed or failed
@@ -30,14 +30,14 @@ spec:
     - name: AWS_CREDENTIALS
       value: "/mnt/secrets/aws_cred"
     - name: AWS_SHAREDVPC_CREDENTIALS
-      value: "/mnt/secrets/aws_cred"
+      value: "/mnt/secrets/awscred_shared_account"
     - name: OCM_TOKEN
       valueFrom:
         secretKeyRef:
           name: $(params.secret-ref)
           key: oex_org_admin_token
     - name: OCM_LOGIN_ENV
-      value: $(params.channel-group)
+      value: $(params.ocm-login-env)
     - name: AWS_REGION
       value: $(params.aws-region)
     - name: TEST_PROFILE
