@@ -32,7 +32,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -312,7 +312,7 @@ func createRoles(r *rosa.Runtime,
 	return roleARN, nil
 }
 
-func generateUserRolePolicyFiles(reporter *rprtr.Object, env string, partition string, accountID string,
+func generateUserRolePolicyFiles(reporter reporter.Logger, env string, partition string, accountID string,
 	policies map[string]*cmv1.AWSSTSPolicy) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMUserRolePolicyFile)
 	policyDetail := aws.GetPolicyDetails(policies, filename)

@@ -56,7 +56,7 @@ func NewClientWithConnection(connection *sdk.Connection) *Client {
 	}
 }
 
-func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) *Client {
+func CreateNewClientOrExit(logger *logrus.Logger, reporter reporter.Logger) *Client {
 	client, err := NewClient().
 		Logger(logger).
 		Build()

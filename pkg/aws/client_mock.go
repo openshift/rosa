@@ -61,7 +61,7 @@ func (mr *MockClientMockRecorder) AddRoleTag(roleName, key, value any) *gomock.C
 }
 
 // AttachRolePolicy mocks base method.
-func (m *MockClient) AttachRolePolicy(reporter *reporter.Object, roleName, policyARN string) error {
+func (m *MockClient) AttachRolePolicy(reporter reporter.Logger, roleName, policyARN string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AttachRolePolicy", reporter, roleName, policyARN)
 	ret0, _ := ret[0].(error)
@@ -379,7 +379,7 @@ func (mr *MockClientMockRecorder) EnsurePolicy(policyArn, document, version, tag
 }
 
 // EnsureRole mocks base method.
-func (m *MockClient) EnsureRole(reporter *reporter.Object, name, policy, permissionsBoundary, version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
+func (m *MockClient) EnsureRole(reporter reporter.Logger, name, policy, permissionsBoundary, version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureRole", reporter, name, policy, permissionsBoundary, version, tagList, path, managedPolicies)
 	ret0, _ := ret[0].(string)

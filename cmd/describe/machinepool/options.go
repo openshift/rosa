@@ -11,7 +11,7 @@ type DescribeMachinepoolUserOptions struct {
 }
 
 type DescribeMachinepoolOptions struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 
 	args *DescribeMachinepoolUserOptions
 }

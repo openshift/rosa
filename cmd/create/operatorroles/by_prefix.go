@@ -68,7 +68,22 @@ func handleOperatorRolesPrefixOptions(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 }
 
-func handleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
+func CreateOperatorRoles(r *rosa.Runtime, env string, permissionsBoundary string, mode string, policies map[string]*cmv1.AWSSTSPolicy, defaultPolicyVersion string, isSharedVpc bool,
+	prefix string, hostedCp bool, installerRoleArn string, forcePolicyCreation bool, oidcConfigId string, sharedVpcRoleArn string, channelGroup string, vpcEndpointRoleArn string) error {
+	args.prefix = prefix
+	args.hostedCp = hostedCp
+	args.installerRoleArn = installerRoleArn
+	args.permissionsBoundary = permissionsBoundary
+	args.forcePolicyCreation = forcePolicyCreation
+	args.oidcConfigId = oidcConfigId
+	args.sharedVpcRoleArn = sharedVpcRoleArn
+	args.channelGroup = channelGroup
+	args.vpcEndpointRoleArn = vpcEndpointRoleArn
+
+	return HandleOperatorRoleCreationByPrefix(r, env, permissionsBoundary, mode, policies, defaultPolicyVersion, isSharedVpc)
+}
+
+func HandleOperatorRoleCreationByPrefix(r *rosa.Runtime, env string,
 	permissionsBoundary string, mode string,
 	policies map[string]*cmv1.AWSSTSPolicy,
 	defaultPolicyVersion string, isSharedVpc bool) error {

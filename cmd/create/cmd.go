@@ -33,11 +33,11 @@ import (
 	"github.com/openshift/rosa/cmd/create/network"
 	"github.com/openshift/rosa/cmd/create/ocmrole"
 	"github.com/openshift/rosa/cmd/create/oidcconfig"
-	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	"github.com/openshift/rosa/cmd/create/service"
 	"github.com/openshift/rosa/cmd/create/tuningconfigs"
 	"github.com/openshift/rosa/cmd/create/userrole"
+	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
