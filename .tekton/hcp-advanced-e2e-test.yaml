@@ -28,6 +28,10 @@ spec:
     - name: OCM_LOGIN_ENV
       type: string
       description: "the channel group of hcp-advance-e2e-test"
+      default: "staging"
+    - name: CHANNEL_GROUP
+      type: string
+      description: "the channel group of hcp-advance-e2e-test"
       default: "stable"
     - name: AWS_REGION
       type: string
@@ -57,7 +61,7 @@ spec:
         - test-metadata
       params:
         - name: container-image
-          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:on-pr-8af857029195de034cf83652c0418bfb86d0a9f6"
         - name: git-repo
           value: "$(tasks.test-metadata.results.git-url)"
         - name: git-revision
@@ -65,11 +69,13 @@ spec:
         - name: secret-ref
           value: $(params.SECRET_REF)
         - name: channel-group
-          value: $(params.OCM_LOGIN_ENV)
+          value: $(params.CHANNEL_GROUP)
         - name: aws-region
           value: $(params.AWS_REGION)
         - name: cluster-profile
           value: "rosa-hcp-advanced"
+        - name: ocm-login-env
+          value: $(params.OCM_LOGIN_ENV)
       taskRef:
         resolver: git
         params:
@@ -94,16 +100,18 @@ spec:
       timeout: 1h
       params:
         - name: container-image
-          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:on-pr-8af857029195de034cf83652c0418bfb86d0a9f6"
         - name: git-repo
           value: "$(tasks.test-metadata.results.git-url)"
         - name: git-revision
           value: "$(tasks.test-metadata.results.git-revision)"
         - name: secret-ref
           value: $(params.SECRET_REF)
-        - name: channel-group
-          value: $(params.OCM_LOGIN_ENV)
         - name: aws-region
           value: $(params.AWS_REGION)
         - name: cluster-profile
           value: "rosa-hcp-advanced"
+        - name: ocm-login-env
+          value: $(params.OCM_LOGIN_ENV)
+        - name: channel-group
+          value: $(params.CHANNEL_GROUP)
