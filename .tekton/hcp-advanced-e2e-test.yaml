@@ -23,7 +23,7 @@ spec:
       type: string
     - description: 'Tasks git repo'
       name: TASKS_REPO
-      default: "https://github.com/openshift/rosa.git"
+      default: "https://github.com/yuwang-RH/rosa.git"
       type: string
     - name: OCM_LOGIN_ENV
       type: string
@@ -57,7 +57,7 @@ spec:
         - test-metadata
       params:
         - name: container-image
-          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:on-pr-3968457fd5c2840b61f892aedfc3a233bed5b743"
         - name: git-repo
           value: "$(tasks.test-metadata.results.git-url)"
         - name: git-revision
@@ -76,7 +76,7 @@ spec:
           - name: url
             value: $(params.TASKS_REPO)
           - name: revision
-            value: master
+            value: fix0526
           - name: pathInRepo
             value: .tekton/tasks/e2e-task.yaml
   finally:  
@@ -87,14 +87,14 @@ spec:
           - name: url
             value: $(params.TASKS_REPO)
           - name: revision
-            value: master
+            value: fix0526
           - name: pathInRepo
             value: .tekton/tasks/e2e-clean-up-task.yaml
       retries: 0
       timeout: 1h
       params:
         - name: container-image
-          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:on-pr-3968457fd5c2840b61f892aedfc3a233bed5b743"
         - name: git-repo
           value: "$(tasks.test-metadata.results.git-url)"
         - name: git-revision

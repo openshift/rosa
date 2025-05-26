@@ -6,7 +6,6 @@ spec:
   description: |
     This is a day1 step to prepare cluster for rosacli job
   image: $(params.container-image)
-  imagePullPolicy: Always
   workingDir: /rosa
   params:
     - name: container-image
