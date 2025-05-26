@@ -57,7 +57,7 @@ spec:
         - test-metadata
       params:
         - name: container-image
-          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:on-pr-3968457fd5c2840b61f892aedfc3a233bed5b743"
         - name: git-repo
           value: "$(tasks.test-metadata.results.git-url)"
         - name: git-revision
@@ -94,7 +94,7 @@ spec:
       timeout: 1h
       params:
         - name: container-image
-          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:latest"
+          value: "quay.io/redhat-user-workloads/rh-terraform-tenant/rosa:on-pr-3968457fd5c2840b61f892aedfc3a233bed5b743"
         - name: git-repo
           value: "$(tasks.test-metadata.results.git-url)"
         - name: git-revision
