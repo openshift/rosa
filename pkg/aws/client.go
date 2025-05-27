@@ -33,6 +33,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -46,6 +47,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"github.com/go-logr/logr"
 	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
@@ -222,6 +224,10 @@ type Client interface {
 	ListPolicyVersions(policyArn string) ([]PolicyVersion, error)
 	GetCallerIdentity() (*sts.GetCallerIdentityOutput, error)
 	CheckIfMachinePoolHasDedicatedHost(instanceIDs []string) (bool, error)
+	CreateStackWithParamsTags(ctx context.Context, cfTemplateBody, stackName string, stackParams, stackTags map[string]string) (*string, error)
+	GetCFStack(ctx context.Context, stackName string) (*cftypes.Stack, error)
+	DescribeCFStackResources(ctx context.Context, stackName string) (*[]cftypes.StackResource, error)
+	DeleteCFStack(ctx context.Context, stackName string) error
 }
 
 type AccessKeyGetter interface {
@@ -232,14 +238,16 @@ type AccessKeyGetter interface {
 // ClientBuilder contains the information and logic needed to build a new AWS client.
 type ClientBuilder struct {
 	logger              *logrus.Logger
+	logrLogger          *logr.Logger
 	region              *string
 	credentials         *AccessKey
 	useLocalCredentials bool
+	extCfg              *aws.Config
 }
 
 type awsClient struct {
 	cfg                 aws.Config
-	logger              *logrus.Logger
+	logger              *LoggerWrapper
 	iamClient           client.IamApiClient
 	ec2Client           client.Ec2ApiClient
 	orgClient           client.OrganizationsApiClient
@@ -272,7 +280,7 @@ func NewClient() *ClientBuilder {
 
 func New(
 	cfg aws.Config,
-	logger *logrus.Logger,
+	logger *LoggerWrapper,
 	iamClient client.IamApiClient,
 	ec2Client client.Ec2ApiClient,
 	orgClient client.OrganizationsApiClient,
@@ -335,6 +343,11 @@ func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 	return b
 }
 
+func (b *ClientBuilder) LogrLogger(value *logr.Logger) *ClientBuilder {
+	b.logrLogger = value
+	return b
+}
+
 func (b *ClientBuilder) Region(value string) *ClientBuilder {
 	b.region = aws.String(value)
 	return b
@@ -347,6 +360,11 @@ func (b *ClientBuilder) AccessKeys(value *AccessKey) *ClientBuilder {
 
 func (b *ClientBuilder) UseLocalCredentials(value bool) *ClientBuilder {
 	b.useLocalCredentials = value
+	return b
+}
+
+func (b *ClientBuilder) ExternalConfig(value *aws.Config) *ClientBuilder {
+	b.extCfg = value
 	return b
 }
 
@@ -414,7 +432,7 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (aws
 func (b *ClientBuilder) BuildSession() (aws.Config, error) {
 	var logLevel aws.ClientLogMode
 	logLevel = 0
-	if b.logger.Level == logrus.DebugLevel {
+	if b.logger != nil && b.logger.Level == logrus.DebugLevel {
 		logLevel = aws.LogRequestWithBody | aws.LogResponseWithBody
 	}
 	// Convert the map to a slice of strings.
@@ -422,6 +440,10 @@ func (b *ClientBuilder) BuildSession() (aws.Config, error) {
 		throttleErrorCodes = append(throttleErrorCodes, code)
 	}
 	allErrorCodes = append(throttleErrorCodes, awserr.InvalidClientTokenID)
+
+	if b.extCfg != nil {
+		return *b.extCfg, nil
+	}
 
 	if b.credentials != nil {
 		return b.BuildSessionWithOptionsCredentials(b.credentials, logLevel)
@@ -433,7 +455,7 @@ func (b *ClientBuilder) BuildSession() (aws.Config, error) {
 // Build uses the information stored in the builder to build a new AWS client.
 func (b *ClientBuilder) Build() (Client, error) {
 	// Check parameters:
-	if b.logger == nil {
+	if b.logger == nil && b.logrLogger == nil {
 		return nil, fmt.Errorf("logger is mandatory")
 	}
 
@@ -462,7 +484,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	}
 
 	if profile.Profile() != "" {
-		b.logger.Debugf("Using AWS profile: %s", profile.Profile())
+		b.logger.Debug(fmt.Sprintf("Using AWS profile: %s", profile.Profile()))
 	}
 
 	// IAM Service is only available in "us-east-1", need to create specific config for it
@@ -475,7 +497,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	// Create and populate the object:
 	c := &awsClient{
 		cfg:                 cfg,
-		logger:              b.logger,
+		logger:              NewLoggerWrapper(b.logger, b.logrLogger),
 		iamClient:           iam.NewFromConfig(cfg),
 		ec2Client:           ec2.NewFromConfig(cfg),
 		orgClient:           organizations.NewFromConfig(cfg),
