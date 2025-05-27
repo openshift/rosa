@@ -115,7 +115,7 @@ func (c *awsClient) EnsureOsdCcsAdminUser(stackName string, adminUserName string
 
 func (c *awsClient) CreateStack(cfTemplateBody, stackName string) (bool, error) {
 	// Create cloudformation stack
-	_, err := c.cfClient.CreateStack(context.Background(), buildCreateStackInput(cfTemplateBody, stackName))
+	_, err := c.cfClient.CreateStack(context.Background(), buildCreateStackInput(cfTemplateBody, stackName, []cloudformationtypes.Parameter{}, []cloudformationtypes.Tag{}))
 	if err != nil {
 		return false, err
 	}
@@ -126,6 +126,34 @@ func (c *awsClient) CreateStack(cfTemplateBody, stackName string) (bool, error) 
 	}
 
 	return true, nil
+}
+
+func (c *awsClient) CreateStackWithParamsTags(cfTemplateBody, stackName string, stackParams, stackTags map[string]string) (*string, error) {
+	// stack tags
+	var cfTags []cloudformationtypes.Tag
+	for k, v := range stackTags {
+		cfTags = append(cfTags, cloudformationtypes.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		})
+	}
+
+	// Create a slice for CloudFormation parameters
+	var cfParams []cloudformationtypes.Parameter
+	for k, v := range stackParams {
+		cfParams = append(cfParams, cloudformationtypes.Parameter{
+			ParameterKey:   aws.String(k),
+			ParameterValue: aws.String(v),
+		})
+	}
+
+	// Create cloudformation stack
+	stackOutput, err := c.cfClient.CreateStack(context.Background(), buildCreateStackInput(cfTemplateBody, stackName, cfParams, cfTags))
+	if err != nil {
+		return nil, err
+	}
+
+	return stackOutput.StackId, nil
 }
 
 func (c *awsClient) UpdateStack(cfTemplateBody, stackName string) error {
@@ -202,7 +230,7 @@ func (c *awsClient) DeleteOsdCcsAdminUser(stackName string) error {
 }
 
 // Build cloudformation create stack input
-func buildCreateStackInput(cfTemplateBody, stackName string) *cloudformation.CreateStackInput {
+func buildCreateStackInput(cfTemplateBody, stackName string, cfParams []cloudformationtypes.Parameter, cfTags []cloudformationtypes.Tag) *cloudformation.CreateStackInput {
 	// Special cloudformation capabilities are required to create IAM resources in AWS
 	cfCapabilityIAM := cloudformationtypes.CapabilityCapabilityIam
 	cfCapabilityNamedIAM := cloudformationtypes.CapabilityCapabilityNamedIam
@@ -214,6 +242,8 @@ func buildCreateStackInput(cfTemplateBody, stackName string) *cloudformation.Cre
 		Capabilities: cfTemplateCapabilities,
 		StackName:    aws.String(stackName),
 		TemplateBody: aws.String(cfTemplateBody),
+		Parameters:   cfParams,
+		Tags:         cfTags,
 	}
 }
 
