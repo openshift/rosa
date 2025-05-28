@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	cloudformation "github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockCloudFormationApiClient is a mock of CloudFormationApiClient interface.

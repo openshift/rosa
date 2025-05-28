@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	organizations "github.com/aws/aws-sdk-go-v2/service/organizations"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockOrganizationsApiClient is a mock of OrganizationsApiClient interface.

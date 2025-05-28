@@ -46,10 +46,17 @@ var notFoundMessage string = "Machine pool '%s' not found"
 // user is safe and that it there is no risk of SQL injection:
 var machinePoolKeyRE = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])?$`)
 
+type ListMachinePoolArgs struct {
+	ShowAZType    bool
+	ShowDedicated bool
+	ShowWindowsLI bool
+	ShowAll       bool
+}
+
 //go:generate mockgen -source=machinepool.go -package=machinepool -destination=machinepool_mock.go
 type MachinePoolService interface {
 	DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, machinePoolId string) error
-	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) error
+	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, args ListMachinePoolArgs) error
 	DeleteMachinePool(r *rosa.Runtime, machinePoolId string, clusterKey string, cluster *cmv1.Cluster) error
 	EditMachinePool(cmd *cobra.Command, machinePoolID string, clusterKey string, cluster *cmv1.Cluster,
 		r *rosa.Runtime) error
@@ -1025,7 +1032,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 }
 
 // ListMachinePools lists all machinepools (or, nodepools if hypershift) in a cluster
-func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster) error {
+func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, args ListMachinePoolArgs) error {
 	// Load any existing machine pools for this cluster
 	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
 	isHypershift := cluster.Hypershift().Enabled()
@@ -1054,7 +1061,7 @@ func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, clust
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	finalStringToOutput := getMachinePoolsString(machinePools)
+	finalStringToOutput := getMachinePoolsString(r, machinePools, args)
 	if isHypershift {
 		finalStringToOutput = getNodePoolsString(nodePools)
 	}
@@ -1228,25 +1235,88 @@ func appendUpgradesIfExist(scheduledUpgrade *cmv1.NodePoolUpgradePolicy, output 
 	return output
 }
 
-func getMachinePoolsString(machinePools []*cmv1.MachinePool) string {
-	outputString := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t" +
-		"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\tSG IDs\n"
-	for _, machinePool := range machinePools {
-		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\t%s\t%s\n",
-			machinePool.ID(),
-			ocmOutput.PrintMachinePoolAutoscaling(machinePool.Autoscaling()),
-			ocmOutput.PrintMachinePoolReplicas(machinePool.Autoscaling(), machinePool.Replicas()),
-			machinePool.InstanceType(),
-			ocmOutput.PrintLabels(machinePool.Labels()),
-			ocmOutput.PrintTaints(machinePool.Taints()),
-			output.PrintStringSlice(machinePool.AvailabilityZones()),
-			output.PrintStringSlice(machinePool.Subnets()),
-			ocmOutput.PrintMachinePoolSpot(machinePool),
-			ocmOutput.PrintMachinePoolDiskSize(machinePool),
-			output.PrintStringSlice(machinePool.AWS().AdditionalSecurityGroupIds()),
-		)
+func getMachinePoolsString(
+	runtime *rosa.Runtime,
+	machinePools []*cmv1.MachinePool,
+	args ListMachinePoolArgs,
+) string {
+	type columnDefinition struct {
+		header      string
+		isVisible   bool
+		extractData func(*cmv1.MachinePool) string
 	}
-	return outputString
+
+	allColumnDefinitions := []columnDefinition{
+		{"ID", true, func(mp *cmv1.MachinePool) string { return mp.ID() }},
+		{"AUTOSCALING", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolAutoscaling(mp.Autoscaling()) }},
+		{"REPLICAS", true, func(mp *cmv1.MachinePool) string {
+			return ocmOutput.PrintMachinePoolReplicas(mp.Autoscaling(), mp.Replicas())
+		}},
+		{"INSTANCE TYPE", true, func(mp *cmv1.MachinePool) string { return mp.InstanceType() }},
+		{"LABELS", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintLabels(mp.Labels()) }},
+		{"TAINTS", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintTaints(mp.Taints()) }},
+		{"AVAILABILITY ZONES", true, func(mp *cmv1.MachinePool) string { return output.PrintStringSlice(mp.AvailabilityZones()) }},
+		{"SUBNETS", true, func(mp *cmv1.MachinePool) string { return output.PrintStringSlice(mp.Subnets()) }},
+		{"SPOT INSTANCES", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolSpot(mp) }},
+		{"DISK SIZE", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolDiskSize(mp) }},
+		{"SG IDS", true, func(mp *cmv1.MachinePool) string {
+			return output.PrintStringSlice(mp.AWS().AdditionalSecurityGroupIds())
+		}},
+		{"AZ TYPE", args.ShowAZType || args.ShowAll, func(mp *cmv1.MachinePool) string { return getZoneType(mp) }},
+		{"WIN-LI ENABLED", args.ShowWindowsLI || args.ShowAll, func(mp *cmv1.MachinePool) string { return isWinLIEnabled(mp.Labels()) }},
+		{"DEDICATED HOST", args.ShowDedicated || args.ShowAll, func(mp *cmv1.MachinePool) string { return isDedicatedHost(mp, runtime) }},
+	}
+
+	var visibleColumnHeaders []string
+	var visibleColumnData [][]string
+	numPools := len(machinePools)
+
+	for _, column := range allColumnDefinitions {
+		if !column.isVisible {
+			continue
+		}
+
+		columnValues := make([]string, numPools)
+		hasNonEmptyValue := false
+
+		for i, pool := range machinePools {
+			if pool == nil {
+				columnValues[i] = "-"
+				continue
+			}
+
+			value := column.extractData(pool)
+			columnValues[i] = value
+			if value != "" && value != "-" {
+				hasNonEmptyValue = true
+			}
+		}
+
+		if args.ShowAll || hasNonEmptyValue || numPools == 0 {
+			visibleColumnHeaders = append(visibleColumnHeaders, column.header)
+			visibleColumnData = append(visibleColumnData, columnValues)
+		}
+	}
+
+	var tableBuilder strings.Builder
+
+	// Write header
+	if len(visibleColumnHeaders) > 0 {
+		tableBuilder.WriteString(strings.Join(visibleColumnHeaders, "\t") + "\n")
+	}
+
+	// Write data rows
+	for rowIndex := range numPools {
+		for colIndex, columnValues := range visibleColumnData {
+			if colIndex > 0 {
+				tableBuilder.WriteString("\t")
+			}
+			tableBuilder.WriteString(columnValues[rowIndex])
+		}
+		tableBuilder.WriteString("\n")
+	}
+
+	return tableBuilder.String()
 }
 
 func getNodePoolsString(nodePools []*cmv1.NodePool) string {

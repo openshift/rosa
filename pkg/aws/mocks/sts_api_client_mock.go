@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	sts "github.com/aws/aws-sdk-go-v2/service/sts"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockStsApiClient is a mock of StsApiClient interface.

@@ -1,10 +1,9 @@
 package interactive
 
 import (
-	"go.uber.org/mock/gomock"
-
 	"github.com/AlecAivazis/survey/v2/core"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 

@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	secretsmanager "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockSecretsManagerApiClient is a mock of SecretsManagerApiClient interface.

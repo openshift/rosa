@@ -3,10 +3,9 @@ package machinepool
 import (
 	"fmt"
 
-	"go.uber.org/mock/gomock"
-
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -15,6 +14,7 @@ import (
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper/features"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 	. "github.com/openshift/rosa/pkg/test"
@@ -612,5 +612,299 @@ var _ = Describe("ValidateClusterVersionWithMaxNodesLimit Function", func() {
 
 		err := validateClusterVersionWithMaxNodesLimit(clusterVersion, replicas, isHostedCp)
 		Expect(err).ToNot(HaveOccurred())
+	})
+})
+
+var _ = Describe("getZoneType Function", func() {
+	It("should return 'N/A' when machine pool has no availability zones", func() {
+		machinePool := &cmv1.MachinePool{}
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeNA))
+	})
+
+	It("should return 'Wavelength' when zone contains 'wl'", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1-wl-1").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeWavelength))
+	})
+
+	It("should return 'Wavelength' when zone contains 'WL' (case insensitive)", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1-WL-1").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeWavelength))
+	})
+
+	It("should return 'Outpost' when zone contains 'outpost'", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1-outpost-1").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeOutpost))
+	})
+
+	It("should return 'Outpost' when zone contains 'OUTPOST' (case insensitive)", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1-OUTPOST-1").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeOutpost))
+	})
+
+	It("should return 'LocalZone' when zone contains '-lz'", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1-lz-1").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeLocalZone))
+	})
+
+	It("should return 'LocalZone' when zone has more than 3 dashes", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1-zone-extra-dash").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeLocalZone))
+	})
+
+	It("should return 'Standard' for regular availability zones", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1a").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeStandard))
+	})
+
+	It("should return 'Standard' for multi-dash zones that don't match special patterns", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1b").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeStandard))
+	})
+
+	It("should check all zones and return the first special type found", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AvailabilityZones("us-east-1a", "us-east-1b", "us-east-1-wl-1").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		zoneType := getZoneType(machinePool)
+		Expect(zoneType).To(Equal(zoneTypeWavelength))
+	})
+})
+
+var _ = Describe("isWinLIEnabled Function", func() {
+	It("should return 'true' when image_type label is 'windows'", func() {
+		labels := map[string]string{
+			labelImageType: imageTypeWindows,
+		}
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringTrue))
+	})
+
+	It("should return 'false' when image_type label is not 'windows'", func() {
+		labels := map[string]string{
+			labelImageType: "linux",
+		}
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when image_type label is empty", func() {
+		labels := map[string]string{
+			labelImageType: "",
+		}
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when image_type label is not present", func() {
+		labels := map[string]string{
+			"other_label": "some_value",
+		}
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when labels map is empty", func() {
+		labels := map[string]string{}
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when labels map is nil", func() {
+		var labels map[string]string
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when image_type contains 'windows' but is not exactly 'windows'", func() {
+		labels := map[string]string{
+			labelImageType: "windows-server",
+		}
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should work with other labels present", func() {
+		labels := map[string]string{
+			labelImageType: imageTypeWindows,
+			"environment":  "production",
+			"team":         "platform",
+		}
+		result := isWinLIEnabled(labels)
+		Expect(result).To(Equal(boolStringTrue))
+	})
+})
+
+var _ = Describe("isDedicatedHost Function", func() {
+	var (
+		mockCtrl      *gomock.Controller
+		mockAWSClient *mock.MockClient
+		mockReporter  *reporter.Object
+		runtime       *rosa.Runtime
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockAWSClient = mock.NewMockClient(mockCtrl)
+
+		mockReporter = reporter.CreateReporter()
+
+		runtime = &rosa.Runtime{
+			AWSClient: mockAWSClient,
+			Reporter:  mockReporter,
+		}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	It("should return 'false' when machine pool is nil", func() {
+		result := isDedicatedHost(nil, runtime)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when machine pool has no AWS configuration", func() {
+		machinePool, err := cmv1.NewMachinePool().Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		result := isDedicatedHost(machinePool, runtime)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when machine pool AWS ID is empty", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AWS(cmv1.NewAWSMachinePool().ID("")).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		result := isDedicatedHost(machinePool, runtime)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when runtime is nil", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AWS(cmv1.NewAWSMachinePool().ID("mp-12345")).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		result := isDedicatedHost(machinePool, nil)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'false' when runtime AWSClient is nil", func() {
+		machinePool, err := cmv1.NewMachinePool().
+			AWS(cmv1.NewAWSMachinePool().ID("mp-12345")).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		runtimeWithoutClient := &rosa.Runtime{AWSClient: nil, Reporter: mockReporter}
+		result := isDedicatedHost(machinePool, runtimeWithoutClient)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'true' when machine pool has dedicated host", func() {
+		const testMachinePoolID = "mp-12345"
+		machinePool, err := cmv1.NewMachinePool().
+			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		mockAWSClient.EXPECT().
+			CheckIfMachinePoolHasDedicatedHost([]string{testMachinePoolID}).
+			Return(true, nil)
+
+		result := isDedicatedHost(machinePool, runtime)
+		Expect(result).To(Equal(boolStringTrue))
+	})
+
+	It("should return 'false' when machine pool does not have dedicated host", func() {
+		const testMachinePoolID = "mp-12345"
+		machinePool, err := cmv1.NewMachinePool().
+			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		mockAWSClient.EXPECT().
+			CheckIfMachinePoolHasDedicatedHost([]string{testMachinePoolID}).
+			Return(false, nil)
+
+		result := isDedicatedHost(machinePool, runtime)
+		Expect(result).To(Equal(boolStringFalse))
+	})
+
+	It("should return 'unknown' when AWS client returns an error", func() {
+		const testMachinePoolID = "mp-12345"
+		machinePool, err := cmv1.NewMachinePool().
+			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		expectedError := fmt.Errorf("AWS API error")
+		mockAWSClient.EXPECT().
+			CheckIfMachinePoolHasDedicatedHost([]string{testMachinePoolID}).
+			Return(false, expectedError)
+
+		result := isDedicatedHost(machinePool, runtime)
+		Expect(result).To(Equal(boolStringUnknown))
+	})
+
+	// Optional: Test specifically for the nil reporter case
+	It("should return 'unknown' when AWS client returns an error and reporter is nil", func() {
+		const testMachinePoolID = "mp-12345"
+		machinePool, err := cmv1.NewMachinePool().
+			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		expectedError := fmt.Errorf("AWS API error")
+		mockAWSClient.EXPECT().
+			CheckIfMachinePoolHasDedicatedHost([]string{testMachinePoolID}).
+			Return(false, expectedError)
+
+		result := isDedicatedHost(machinePool, runtime)
+		Expect(result).To(Equal(boolStringUnknown))
 	})
 })

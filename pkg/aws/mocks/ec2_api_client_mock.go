@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockEc2ApiClient is a mock of Ec2ApiClient interface.
@@ -78,6 +78,26 @@ func (mr *MockEc2ApiClientMockRecorder) DescribeInstanceTypeOfferings(ctx, param
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeInstanceTypeOfferings", reflect.TypeOf((*MockEc2ApiClient)(nil).DescribeInstanceTypeOfferings), varargs...)
+}
+
+// DescribeInstances mocks base method.
+func (m *MockEc2ApiClient) DescribeInstances(ctx context.Context, params *ec2.DescribeInstancesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstancesOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeInstances", varargs...)
+	ret0, _ := ret[0].(*ec2.DescribeInstancesOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeInstances indicates an expected call of DescribeInstances.
+func (mr *MockEc2ApiClientMockRecorder) DescribeInstances(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeInstances", reflect.TypeOf((*MockEc2ApiClient)(nil).DescribeInstances), varargs...)
 }
 
 // DescribeRouteTables mocks base method.
