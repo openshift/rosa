@@ -34,11 +34,26 @@ const (
 	short   = "List cluster machine pools"
 	long    = "List machine pools configured on a cluster."
 	example = `  # List all machine pools on a cluster named "mycluster"
-  rosa list machinepools --cluster=mycluster`
+  rosa list machinepools --cluster=mycluster
+  
+  # List machine pools with availability zone type information
+  rosa list machinepools --cluster=mycluster --az-type
+  
+  # List machine pools with dedicated host and Windows LI information
+  rosa list machinepools --cluster=mycluster --dedicated-host --win-li
+  
+  # List machine pools showing all additional information
+  rosa list machinepools --cluster=mycluster --all`
 )
 
 var (
 	aliases = []string{"machinepool", "machine-pools", "machine-pool"}
+	args    struct {
+		showAZType    bool
+		showDedicated bool
+		showWindowsLI bool
+		showAll       bool
+	}
 )
 
 func NewListMachinePoolCommand() *cobra.Command {
@@ -51,6 +66,36 @@ func NewListMachinePoolCommand() *cobra.Command {
 		Args:    cobra.NoArgs,
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), ListMachinePoolRunner()),
 	}
+
+	flags := cmd.Flags()
+
+	flags.BoolVar(
+		&args.showAZType,
+		"az-type",
+		false,
+		"Show the availability zone type of each machine pool",
+	)
+
+	flags.BoolVar(
+		&args.showDedicated,
+		"dedicated-host",
+		false,
+		"Show whether the machine pool is using a dedicated host",
+	)
+
+	flags.BoolVar(
+		&args.showWindowsLI,
+		"win-li",
+		false,
+		"Show whether the machine pool is Windows LI enabled",
+	)
+
+	flags.BoolVar(
+		&args.showAll,
+		"all",
+		false,
+		"Show all additional information (equivalent to --az-type --dedicated-host --win-li)",
+	)
 
 	output.AddFlag(cmd)
 	ocm.AddClusterFlag(cmd)
@@ -68,7 +113,15 @@ func ListMachinePoolRunner() rosa.CommandRunner {
 		}
 
 		service := machinepool.NewMachinePoolService()
-		err := service.ListMachinePools(runtime, clusterKey, cluster)
+		err := service.ListMachinePools(
+			runtime,
+			clusterKey,
+			cluster,
+			args.showAZType,
+			args.showDedicated,
+			args.showWindowsLI,
+			args.showAll,
+		)
 		if err != nil {
 			return fmt.Errorf("Failed to list machinepools: %s", err)
 		}

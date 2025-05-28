@@ -3,6 +3,7 @@ package machinepool
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -389,4 +390,53 @@ func (r *ReplicaSizeValidation) MaxReplicaValidatorOnClusterCreate() interactive
 			r.PrivateSubnetsCount,
 		)
 	}
+}
+
+func GetZoneType(machinePool *cmv1.MachinePool) string {
+	zones := machinePool.AvailabilityZones()
+	if len(zones) == 0 {
+		return "N/A"
+	}
+
+	for _, zone := range zones {
+		zoneLower := strings.ToLower(zone)
+
+		if strings.Contains(zoneLower, "wl") {
+			return "Wavelength"
+		}
+		if strings.Contains(zoneLower, "outpost") {
+			return "Outpost"
+		}
+		if strings.Contains(zoneLower, "-lz") || strings.Count(zoneLower, "-") > 3 {
+			return "LocalZone"
+		}
+	}
+
+	return "Standard"
+}
+
+func IsWinLIEnabled(labels map[string]string) string {
+	if val, ok := labels["image_type"]; ok && strings.ToLower(val) == "windows" {
+		return "true"
+	}
+	return "false"
+}
+
+func IsDedicatedHost(machinePool *cmv1.MachinePool, r *rosa.Runtime) string {
+	aws := r.AWSClient
+	awsMachinePoolID := machinePool.AWS().ID()
+	if awsMachinePoolID == "" {
+		return "false"
+	}
+
+	hasDedicatedHost, err := aws.CheckIfMachinePoolHasDedicatedHost([]string{awsMachinePoolID})
+	if err != nil {
+		_ = r.Reporter.Errorf("Failed to check dedicated host status: %v", err)
+		return "unknown"
+	}
+
+	if hasDedicatedHost {
+		return "true"
+	}
+	return "false"
 }
