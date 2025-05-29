@@ -40,7 +40,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -508,7 +508,7 @@ func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 	return
 }
 
-func Call(cmd *cobra.Command, argv []string, reporter *rprtr.Object) error {
+func Call(cmd *cobra.Command, argv []string, reporter reporter.Logger) error {
 	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", arguments.NewEnvFlag, "token", "insecure"}
 	hasLoginFlags := false
 	// Check if the user set login flags

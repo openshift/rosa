@@ -58,7 +58,7 @@ const (
 )
 
 type CreateMachinepoolOptions struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 
 	args *CreateMachinepoolUserOptions
 }

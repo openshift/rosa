@@ -6,7 +6,7 @@ import (
 )
 
 type Options struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 
 	args *opts.NetworkUserOptions
 }

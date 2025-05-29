@@ -40,7 +40,7 @@ type NetworkUserOptions struct {
 }
 
 type NetworkOptions struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 	args     *NetworkUserOptions
 }
 

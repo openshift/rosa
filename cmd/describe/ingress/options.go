@@ -11,7 +11,7 @@ type DescribeIngressUserOptions struct {
 }
 
 type DescribeIngressOptions struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 	args     DescribeIngressUserOptions
 }
 
