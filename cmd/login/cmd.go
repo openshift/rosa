@@ -323,6 +323,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	if args.clientID != "" {
 		clientID = args.clientID
 	}
+
+	if strings.ToLower(env) == ocm.ProductionAlias {
+		r.Reporter.Warnf("\"prod\" provided as the environment, aliasing environment to \"production\"")
+		env = ocm.Production
+	}
+
 	// Override configuration details for FedRAMP:
 	if fedramp.Enabled() {
 		clientID = fedramp.ClientID
@@ -330,6 +336,11 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 			clientID = args.clientID
 		}
 		if fedramp.HasAdminFlag(cmd) {
+			if !fedramp.IsValidEnv(env) {
+				_ = r.Reporter.Errorf("%s is an invalid environment name, please use one of: ",
+					strings.Join(ocm.ValidOCMUrlAliases(), ", "))
+				os.Exit(1)
+			}
 			gatewayURL, ok = fedramp.AdminURLAliases[env]
 			if !ok {
 				gatewayURL = env
