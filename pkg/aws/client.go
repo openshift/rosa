@@ -221,6 +221,7 @@ type Client interface {
 	GetOperatorRoleDefaultPolicy(roleName string) (string, error)
 	ListPolicyVersions(policyArn string) ([]PolicyVersion, error)
 	GetCallerIdentity() (*sts.GetCallerIdentityOutput, error)
+	CreateStackWithParamsTags(cfTemplateBody, stackName string, stackParams, stackTags map[string]string) (*string, error)
 }
 
 type AccessKeyGetter interface {
