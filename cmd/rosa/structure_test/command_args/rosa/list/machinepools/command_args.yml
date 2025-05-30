@@ -2,3 +2,7 @@
 - name: output
 - name: profile
 - name: region
+- name: az-type
+- name: dedicated-host
+- name: win-li
+- name: all
