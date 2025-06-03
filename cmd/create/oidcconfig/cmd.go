@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/cmd/create/oidcprovider"
+	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
@@ -316,6 +316,21 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+func CreateOIDCConfig(r *rosa.Runtime, managed bool, userPrefix, region string) (string, error) {
+	// userPrefix, region are used only for unmanaged
+	oidcConfigInput, err := oidcconfigs.BuildOidcConfigInput(userPrefix, region)
+	if err != nil {
+		return "", nil
+	}
+	if managed {
+		strategy := CreateManagedOidcConfigAutoStrategy{oidcConfigInput: &oidcConfigInput}
+		return strategy.executeNoExit(r)
+	}
+
+	strategy := CreateUnmanagedOidcConfigAutoStrategy{oidcConfig: &oidcConfigInput}
+	return strategy.executeNoExit(r)
+}
+
 type CreateOidcConfigStrategy interface {
 	execute(r *rosa.Runtime) string
 }
@@ -363,6 +378,50 @@ const (
 	discoveryDocumentKey = ".well-known/openid-configuration"
 	jwksKey              = "keys.json"
 )
+
+func (s *CreateUnmanagedOidcConfigAutoStrategy) executeNoExit(r *rosa.Runtime) (string, error) {
+	bucketUrl := s.oidcConfig.IssuerUrl
+	bucketName := s.oidcConfig.BucketName
+	discoveryDocument := s.oidcConfig.DiscoveryDocument
+	jwks := s.oidcConfig.Jwks
+	privateKey := s.oidcConfig.PrivateKey
+	privateKeySecretName := s.oidcConfig.PrivateKeySecretName
+	installerRoleArn := args.installerRoleArn
+	err := r.AWSClient.CreateS3Bucket(bucketName, args.region)
+	if err != nil {
+		return "", fmt.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
+	}
+	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, strings.NewReader(discoveryDocument), discoveryDocumentKey)
+	if err != nil {
+		return "", fmt.Errorf("There was a problem populating discovery "+
+			"document to S3 bucket '%s': %s", bucketName, err)
+	}
+	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
+	if err != nil {
+		return "", fmt.Errorf("There was a problem populating JWKS "+
+			"to S3 bucket '%s': %s", bucketName, err)
+	}
+	secretARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
+	if err != nil {
+		return "", fmt.Errorf("There was a problem saving private key to secrets manager: %s", err)
+	}
+	oidcConfig, err := v1.NewOidcConfig().
+		Managed(false).
+		SecretArn(secretARN).
+		IssuerUrl(bucketUrl).
+		InstallerRoleArn(installerRoleArn).
+		Build()
+	if err == nil {
+		oidcConfig, err = r.OCMClient.CreateOidcConfig(oidcConfig)
+	}
+	if err != nil {
+		return "", fmt.Errorf("There was a problem building your unmanaged OIDC Configuration: %v.\n"+
+			"Please refer to documentation and try again through:\n"+
+			"\trosa register oidc-config --issuer-url %s --secret-arn %s --role-arn %s",
+			err, bucketUrl, secretARN, installerRoleArn)
+	}
+	return oidcConfig.ID(), nil
+}
 
 func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) string {
 	bucketUrl := s.oidcConfig.IssuerUrl
@@ -596,6 +655,19 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) string {
 		r.Reporter.Infof(output)
 	}
 	return oidcConfig.ID()
+}
+
+func (s *CreateManagedOidcConfigAutoStrategy) executeNoExit(r *rosa.Runtime) (string, error) {
+	oidcConfig, err := v1.NewOidcConfig().Managed(true).Build()
+	if err != nil {
+		return "", fmt.Errorf("There was a problem building the managed OIDC Configuration: %v", err)
+	}
+	oidcConfig, err = r.OCMClient.CreateOidcConfig(oidcConfig)
+	if err != nil {
+		return "", fmt.Errorf("There was a problem building the managed OIDC Configuration: %v", err)
+	}
+	s.oidcConfigInput.IssuerUrl = oidcConfig.IssuerUrl()
+	return oidcConfig.ID(), nil
 }
 
 func getOidcConfigStrategy(mode string, input *oidcconfigs.OidcConfigInput) (CreateOidcConfigStrategy, error) {

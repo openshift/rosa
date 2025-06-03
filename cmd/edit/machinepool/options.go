@@ -24,7 +24,7 @@ type EditMachinepoolUserOptions struct {
 }
 
 type EditMachinepoolOptions struct {
-	reporter *reporter.Object
+	reporter reporter.Logger
 
 	args *EditMachinepoolUserOptions
 }

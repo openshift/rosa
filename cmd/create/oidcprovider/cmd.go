@@ -228,6 +228,16 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 }
 
+func CreateOIDCProvider(r *rosa.Runtime, oidcConfigId string, clusterId string, isProgrammaticallyCalled bool) error {
+	args.oidcConfigId = oidcConfigId
+	oidcConfig, err := r.OCMClient.GetOidcConfig(oidcConfigId)
+	if err != nil {
+		return fmt.Errorf("There was a problem retrieving OIDC Config '%s': %v", oidcConfigId, err)
+	}
+	oidcEndpointURL := oidcConfig.IssuerUrl()
+	return createProvider(r, oidcEndpointURL, clusterId, isProgrammaticallyCalled)
+}
+
 func createProvider(r *rosa.Runtime, oidcEndpointUrl string, clusterId string, isProgrammaticallyCalled bool) error {
 	inputBuilder := cmv1.NewOidcThumbprintInput()
 	if (isProgrammaticallyCalled || clusterId == "") && args.oidcConfigId != "" {

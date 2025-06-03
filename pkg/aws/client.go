@@ -122,7 +122,7 @@ type Client interface {
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
 	GetClusterRegionTagForUser(username string) (string, error)
-	EnsureRole(reporter *reporter.Object, name string, policy string, permissionsBoundary string,
+	EnsureRole(reporter reporter.Logger, name string, policy string, permissionsBoundary string,
 		version string, tagList map[string]string, path string, managedPolicies bool) (string, error)
 	ValidateRoleNameAvailable(name string) (err error)
 	PutRolePolicy(roleName string, policyName string, policy string) error
@@ -130,7 +130,7 @@ type Client interface {
 		path string) (string, error)
 	EnsurePolicy(policyArn string, document string, version string, tagList map[string]string,
 		path string) (string, error)
-	AttachRolePolicy(reporter *reporter.Object, roleName string, policyARN string) error
+	AttachRolePolicy(reporter reporter.Logger, roleName string, policyARN string) error
 	CreateOpenIDConnectProvider(issuerURL string, thumbprint string, clusterID string) (string, error)
 	DeleteOpenIDConnectProvider(providerURL string) error
 	HasOpenIDConnectProvider(issuerURL string, partition string, accountID string) (bool, error)
@@ -252,7 +252,7 @@ type awsClient struct {
 	useLocalCredentials bool
 }
 
-func CreateNewClientOrExit(logger *logrus.Logger, reporter *reporter.Object) Client {
+func CreateNewClientOrExit(logger *logrus.Logger, reporter reporter.Logger) Client {
 	awsClient, err := NewClient().
 		Logger(logger).
 		Build()

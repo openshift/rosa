@@ -35,7 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -267,7 +267,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter *rprtr.Object) {
+func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter reporter.Logger) {
 	reporter.Debugf("Logging throttle error")
 	if strings.Contains(err.Error(), "Throttling") {
 		ocmClient.LogEvent(key, map[string]string{
@@ -278,7 +278,7 @@ func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, er
 	}
 }
 
-func upgradeAccountRolePolicies(reporter *rprtr.Object, awsClient aws.Client, prefix string, partition string,
+func upgradeAccountRolePolicies(reporter reporter.Logger, awsClient aws.Client, prefix string, partition string,
 	accountID string, policies map[string]*cmv1.AWSSTSPolicy, policyVersion string,
 	policyPath string, isVersionChosen bool) error {
 	for file, role := range aws.AccountRoles {
