@@ -80,11 +80,20 @@ func WriteVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("cluster_condition")
+		stream.WriteString(object.clusterCondition)
+		count++
+	}
+	present_ = object.bitmap_&32 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("creation_timestamp")
 		stream.WriteString((object.creationTimestamp).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&32 != 0
+	present_ = object.bitmap_&64 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -93,7 +102,7 @@ func WriteVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 		stream.WriteString(object.description)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -102,7 +111,7 @@ func WriteVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 		stream.WriteString(object.documentationURL)
 		count++
 	}
-	present_ = object.bitmap_&128 != 0
+	present_ = object.bitmap_&256 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -111,7 +120,7 @@ func WriteVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 		stream.WriteString(object.label)
 		count++
 	}
-	present_ = object.bitmap_&256 != 0
+	present_ = object.bitmap_&512 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -120,7 +129,7 @@ func WriteVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 		stream.WriteString(object.value)
 		count++
 	}
-	present_ = object.bitmap_&512 != 0
+	present_ = object.bitmap_&1024 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -129,7 +138,7 @@ func WriteVersionGate(object *VersionGate, stream *jsoniter.Stream) {
 		stream.WriteString(object.versionRawIDPrefix)
 		count++
 	}
-	present_ = object.bitmap_&1024 != 0
+	present_ = object.bitmap_&2048 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -176,6 +185,10 @@ func ReadVersionGate(iterator *jsoniter.Iterator) *VersionGate {
 			value := iterator.ReadBool()
 			object.stsOnly = value
 			object.bitmap_ |= 8
+		case "cluster_condition":
+			value := iterator.ReadString()
+			object.clusterCondition = value
+			object.bitmap_ |= 16
 		case "creation_timestamp":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -183,31 +196,31 @@ func ReadVersionGate(iterator *jsoniter.Iterator) *VersionGate {
 				iterator.ReportError("", err.Error())
 			}
 			object.creationTimestamp = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		case "description":
 			value := iterator.ReadString()
 			object.description = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "documentation_url":
 			value := iterator.ReadString()
 			object.documentationURL = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		case "label":
 			value := iterator.ReadString()
 			object.label = value
-			object.bitmap_ |= 128
+			object.bitmap_ |= 256
 		case "value":
 			value := iterator.ReadString()
 			object.value = value
-			object.bitmap_ |= 256
+			object.bitmap_ |= 512
 		case "version_raw_id_prefix":
 			value := iterator.ReadString()
 			object.versionRawIDPrefix = value
-			object.bitmap_ |= 512
+			object.bitmap_ |= 1024
 		case "warning_message":
 			value := iterator.ReadString()
 			object.warningMessage = value
-			object.bitmap_ |= 1024
+			object.bitmap_ |= 2048
 		default:
 			iterator.ReadAny()
 		}

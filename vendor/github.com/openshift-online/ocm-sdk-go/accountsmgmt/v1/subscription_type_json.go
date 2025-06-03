@@ -305,11 +305,20 @@ func WriteSubscription(object *Subscription, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("rh_region_id")
+		stream.WriteString(object.rhRegionID)
+		count++
+	}
+	present_ = object.bitmap_&1073741824 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("service_level")
 		stream.WriteString(object.serviceLevel)
 		count++
 	}
-	present_ = object.bitmap_&1073741824 != 0
+	present_ = object.bitmap_&2147483648 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -318,7 +327,7 @@ func WriteSubscription(object *Subscription, stream *jsoniter.Stream) {
 		stream.WriteInt(object.socketTotal)
 		count++
 	}
-	present_ = object.bitmap_&2147483648 != 0
+	present_ = object.bitmap_&4294967296 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -327,7 +336,7 @@ func WriteSubscription(object *Subscription, stream *jsoniter.Stream) {
 		stream.WriteString(object.status)
 		count++
 	}
-	present_ = object.bitmap_&4294967296 != 0
+	present_ = object.bitmap_&8589934592 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -336,7 +345,7 @@ func WriteSubscription(object *Subscription, stream *jsoniter.Stream) {
 		stream.WriteString(object.supportLevel)
 		count++
 	}
-	present_ = object.bitmap_&8589934592 != 0
+	present_ = object.bitmap_&17179869184 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -345,7 +354,7 @@ func WriteSubscription(object *Subscription, stream *jsoniter.Stream) {
 		stream.WriteString(object.systemUnits)
 		count++
 	}
-	present_ = object.bitmap_&17179869184 != 0
+	present_ = object.bitmap_&34359738368 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -354,7 +363,7 @@ func WriteSubscription(object *Subscription, stream *jsoniter.Stream) {
 		stream.WriteString((object.trialEndDate).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&34359738368 != 0
+	present_ = object.bitmap_&68719476736 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -363,7 +372,7 @@ func WriteSubscription(object *Subscription, stream *jsoniter.Stream) {
 		stream.WriteString((object.updatedAt).Format(time.RFC3339))
 		count++
 	}
-	present_ = object.bitmap_&68719476736 != 0
+	present_ = object.bitmap_&137438953472 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -527,26 +536,30 @@ func ReadSubscription(iterator *jsoniter.Iterator) *Subscription {
 			value := iterator.ReadBool()
 			object.released = value
 			object.bitmap_ |= 268435456
+		case "rh_region_id":
+			value := iterator.ReadString()
+			object.rhRegionID = value
+			object.bitmap_ |= 536870912
 		case "service_level":
 			value := iterator.ReadString()
 			object.serviceLevel = value
-			object.bitmap_ |= 536870912
+			object.bitmap_ |= 1073741824
 		case "socket_total":
 			value := iterator.ReadInt()
 			object.socketTotal = value
-			object.bitmap_ |= 1073741824
+			object.bitmap_ |= 2147483648
 		case "status":
 			value := iterator.ReadString()
 			object.status = value
-			object.bitmap_ |= 2147483648
+			object.bitmap_ |= 4294967296
 		case "support_level":
 			value := iterator.ReadString()
 			object.supportLevel = value
-			object.bitmap_ |= 4294967296
+			object.bitmap_ |= 8589934592
 		case "system_units":
 			value := iterator.ReadString()
 			object.systemUnits = value
-			object.bitmap_ |= 8589934592
+			object.bitmap_ |= 17179869184
 		case "trial_end_date":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -554,7 +567,7 @@ func ReadSubscription(iterator *jsoniter.Iterator) *Subscription {
 				iterator.ReportError("", err.Error())
 			}
 			object.trialEndDate = value
-			object.bitmap_ |= 17179869184
+			object.bitmap_ |= 34359738368
 		case "updated_at":
 			text := iterator.ReadString()
 			value, err := time.Parse(time.RFC3339, text)
@@ -562,11 +575,11 @@ func ReadSubscription(iterator *jsoniter.Iterator) *Subscription {
 				iterator.ReportError("", err.Error())
 			}
 			object.updatedAt = value
-			object.bitmap_ |= 34359738368
+			object.bitmap_ |= 68719476736
 		case "usage":
 			value := iterator.ReadString()
 			object.usage = value
-			object.bitmap_ |= 68719476736
+			object.bitmap_ |= 137438953472
 		default:
 			iterator.ReadAny()
 		}
