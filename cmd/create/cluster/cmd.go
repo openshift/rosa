@@ -41,9 +41,9 @@ import (
 
 	"github.com/openshift/rosa/cmd/create/admin"
 	"github.com/openshift/rosa/cmd/create/idp"
+	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	clusterdescribe "github.com/openshift/rosa/cmd/describe/cluster"
-	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
 	installLogs "github.com/openshift/rosa/cmd/logs/install"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
