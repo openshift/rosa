@@ -1,0 +1,42 @@
+FROM registry.access.redhat.com/ubi9/go-toolset AS builder
+WORKDIR /rosa
+USER root
+COPY . .
+
+RUN dnf install -y --setopt=install_weak_deps=False --nodocs wget tar python3-pip unzip && \
+    pip3 install --target=/awscli awscli && \
+    dnf clean all
+
+RUN wget  https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux-amd64-rhel9.tar.gz && \
+ tar -xvf openshift-client-linux-amd64-rhel9.tar.gz && \
+    mv oc /usr/local/bin && \
+    which oc
+
+RUN wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.22.3.linux-amd64.tar.gz && \
+    rm go1.22.3.linux-amd64.tar.gz
+
+ENV GOTOOLCHAIN=local
+RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.13.2
+RUN make release
+
+FROM registry.access.redhat.com/ubi9/ubi:latest
+WORKDIR /rosa
+RUN mkdir /rosa/tests
+
+COPY --from=builder /rosa/ /rosa/
+COPY --from=builder /usr/local/go/ /usr/local/go/
+COPY --from=builder /usr/local/bin/oc /usr/local/bin/oc
+COPY --from=builder /opt/app-root/src/go/bin/ginkgo /usr/local/bin/ginkgo
+COPY --from=builder /awscli /awscli
+COPY --from=builder /awscli/bin/aws /usr/local/bin/aws
+COPY --from=builder /usr/bin/unzip /usr/local/bin/unzip
+
+RUN unzip releases/rosa_linux_amd64.zip
+RUN mv /rosa/rosa /usr/local/bin/rosa
+
+ENV PYTHONPATH=/awscli
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+
+CMD ["/bin/bash"]
