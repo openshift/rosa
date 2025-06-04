@@ -32,7 +32,7 @@ func NewRuntime() *Runtime {
 	return &Runtime{Reporter: reporter, Logger: logger, Spinner: spinner}
 }
 
-// Adds an OCM client to the runtime. Requires a deferred call to `.Cleanup()` to close connections.
+// WithOCM Adds an OCM client to the runtime. Requires a deferred call to `.Cleanup()` to close connections.
 func (r *Runtime) WithOCM() *Runtime {
 	if r.OCMClient == nil {
 		r.OCMClient = ocm.CreateNewClientOrExit(r.Logger, r.Reporter)
@@ -40,7 +40,7 @@ func (r *Runtime) WithOCM() *Runtime {
 	return r
 }
 
-// Adds an AWS client to the runtime
+// WithAWS Adds an AWS client to the runtime
 func (r *Runtime) WithAWS() *Runtime {
 	// dependency to ocm client to validate the region
 	r.WithOCM()
@@ -63,6 +63,28 @@ func (r *Runtime) WithAWS() *Runtime {
 	return r
 }
 
+// WithAWSWarnInsteadOfExit Adds an AWS client to the runtime with no region validation
+func (r *Runtime) WithAWSWarnInsteadOfExit() *Runtime {
+	// dependency to ocm client to validate the region
+	r.WithOCM()
+	err := r.OCMClient.ValidateAwsClientRegion()
+	if err != nil {
+		r.Reporter.Warnf("%v", err)
+	}
+	if r.AWSClient == nil {
+		r.AWSClient = aws.CreateNewClientOrExit(r.Logger, r.Reporter)
+	}
+	if r.Creator == nil {
+		var err error
+		r.Creator, err = r.AWSClient.GetCreator()
+		if err != nil {
+			_ = r.Reporter.Errorf("Failed to get AWS creator: %v", err)
+			os.Exit(1)
+		}
+	}
+	return r
+}
+
 func (r *Runtime) Cleanup() {
 	if r.OCMClient != nil {
 		if err := r.OCMClient.Close(); err != nil {
@@ -71,7 +93,7 @@ func (r *Runtime) Cleanup() {
 	}
 }
 
-// Load the cluster key provided by the user into the runtime and return it
+// GetClusterKey Load the cluster key provided by the user into the runtime and return it
 func (r *Runtime) GetClusterKey() string {
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
