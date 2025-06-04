@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/cmd/dlt/oidcprovider"
+	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
