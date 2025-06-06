@@ -68,7 +68,7 @@ func listClustersUsingAccountRole(creator *aws.Creator, runtime *rosa.Runtime) (
 }
 
 func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
+	r := rosa.NewRuntime().WithAWSWarnInsteadOfExit().WithOCM()
 	defer r.Cleanup()
 
 	// Retrieve the list of clusters:
