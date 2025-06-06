@@ -120,6 +120,7 @@ var args struct {
 	// Basic options
 	private                   bool
 	privateLink               bool
+	privateIngress            bool
 	multiAZ                   bool
 	expirationDuration        time.Duration
 	expirationTime            string
@@ -543,6 +544,13 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Provides private connectivity between VPCs, AWS services, and your on-premises networks, "+
 			"without exposing your traffic to the public internet.",
+	)
+
+	flags.BoolVar(
+		&args.privateIngress,
+		"default-ingress-private",
+		false,
+		"Listening method for default cluster ingress. Internal = private, External = non-private.",
 	)
 
 	flags.StringVar(
@@ -2033,25 +2041,49 @@ func run(cmd *cobra.Command, _ []string) {
 	// Cluster privacy:
 	useExistingVPC := false
 	private := args.private
-	isPrivateHostedCP := isHostedCP && private // all private hosted clusters are private-link
-	privateLink := args.privateLink || fedramp.Enabled() || isPrivateHostedCP
+	privateLink := args.privateLink || fedramp.Enabled() || (private && isHostedCP)
+	privateIngress := args.privateIngress
 
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
 	if isSTS {
 		privateLinkWarning = fmt.Sprintf("STS clusters can only be private if AWS PrivateLink is used. %s ",
 			privateLinkWarning)
 	}
-	if interactive.Enabled() && !fedramp.Enabled() && !isPrivateHostedCP {
-		privateLink, err = interactive.GetBool(interactive.Input{
-			Question: "PrivateLink cluster",
-			Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
-			Default:  privateLink || (isSTS && args.private),
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid private-link value: %s", err)
-			os.Exit(1)
+	if interactive.Enabled() && !fedramp.Enabled() {
+		if !isHostedCP {
+			question := "Private Link cluster"
+			privateLink, err = interactive.GetBool(interactive.Input{
+				Question: question,
+				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
+				Default:  privateLink || (isSTS && args.private),
+			})
+			if err != nil {
+				_ = r.Reporter.Errorf("Expected a valid private-link value: %s", err)
+				os.Exit(1)
+			}
+		} else {
+			private, err = interactive.GetBool(interactive.Input{
+				Question: "Private API",
+				Help: fmt.Sprintf("Private API allows you to change whether or not the cluster will use Private " +
+					"API"),
+				Default: args.private,
+			})
+			if err != nil {
+				_ = r.Reporter.Errorf("Expected a valid Private API value: %s", err)
+			}
+
+			privateIngress, err = interactive.GetBool(interactive.Input{
+				Question: "Private ingress",
+				Help: fmt.Sprintf("Private ingress allows you to change the default level of ingress " +
+					"visibility"),
+				Default: privateIngress,
+			})
+			if err != nil {
+				_ = r.Reporter.Errorf("Expected a valid private ingress value: %s", err)
+				os.Exit(1)
+			}
 		}
-	} else if (privateLink || (isSTS && private)) && !fedramp.Enabled() && !isPrivateHostedCP {
+	} else if (privateLink || (isSTS && private)) && !fedramp.Enabled() && !(isHostedCP && private) {
 		// do not prompt users for privatelink if it is private hosted cluster
 		r.Reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
 		if !confirm.Confirm("use AWS PrivateLink for cluster '%s'", clusterName) {
@@ -3311,6 +3343,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:            availabilityZones,
 		SubnetIds:                    subnetIDs,
 		PrivateLink:                  &privateLink,
+		PrivateIngress:               privateIngress,
 		AWSCreator:                   awsCreator,
 		IsSTS:                        isSTS,
 		RoleARN:                      roleARN,

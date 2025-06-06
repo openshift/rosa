@@ -102,6 +102,7 @@ type Spec struct {
 	HostPrefix                     int
 	Private                        *bool
 	PrivateLink                    *bool
+	PrivateIngress                 bool
 
 	// Properties
 	CustomProperties map[string]string
@@ -1072,12 +1073,15 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	clusterBuilder = clusterBuilder.AWS(awsBuilder)
 
+	clusterApiListeningMethod := cmv1.ListeningMethodExternal
+
 	if config.Private != nil {
 		if *config.Private {
 			clusterBuilder = clusterBuilder.API(
 				cmv1.NewClusterAPI().
 					Listening(cmv1.ListeningMethodInternal),
 			)
+			clusterApiListeningMethod = cmv1.ListeningMethodInternal
 		} else {
 			clusterBuilder = clusterBuilder.API(
 				cmv1.NewClusterAPI().
@@ -1139,6 +1143,13 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.NamespaceOwnershipPolicy) {
 			defaultIngress.RouteNamespaceOwnershipPolicy(
 				v1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
+		}
+
+		// Decide ingress listening method
+		if config.PrivateIngress {
+			defaultIngress.Listening(cmv1.ListeningMethodInternal)
+		} else {
+			defaultIngress.Listening(clusterApiListeningMethod)
 		}
 		clusterBuilder.Ingresses(cmv1.NewIngressList().Items(defaultIngress))
 	}
