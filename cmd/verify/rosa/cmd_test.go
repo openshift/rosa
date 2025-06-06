@@ -3,8 +3,7 @@ package rosa
 import (
 	"fmt"
 
-	"go.uber.org/mock/gomock"
-
+	"github.com/golang/mock/gomock"
 	goVer "github.com/hashicorp/go-version"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

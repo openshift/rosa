@@ -34,11 +34,15 @@ const (
 	short   = "List cluster machine pools"
 	long    = "List machine pools configured on a cluster."
 	example = `  # List all machine pools on a cluster named "mycluster"
-  rosa list machinepools --cluster=mycluster`
+  rosa list machinepools --cluster=mycluster
+  
+  # List machine pools showing all information
+  rosa list machinepools --cluster=mycluster --all`
 )
 
 var (
 	aliases = []string{"machinepool", "machine-pools", "machine-pool"}
+	args    machinepool.ListMachinePoolArgs
 )
 
 func NewListMachinePoolCommand() *cobra.Command {
@@ -51,6 +55,36 @@ func NewListMachinePoolCommand() *cobra.Command {
 		Args:    cobra.NoArgs,
 		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), ListMachinePoolRunner()),
 	}
+
+	flags := cmd.Flags()
+
+	flags.BoolVar(
+		&args.ShowAZType,
+		"az-type",
+		false,
+		"Show the availability zone type for each machine pool",
+	)
+
+	flags.BoolVar(
+		&args.ShowDedicated,
+		"dedicated-host",
+		false,
+		"Show whether each machine pool is using a dedicated host",
+	)
+
+	flags.BoolVar(
+		&args.ShowWindowsLI,
+		"win-li",
+		false,
+		"Show whether each machine pool is Windows LI enabled",
+	)
+
+	flags.BoolVar(
+		&args.ShowAll,
+		"all",
+		false,
+		"Show all additional information for each machine pool (equivalent to --az-type --dedicated-host --win-li)",
+	)
 
 	output.AddFlag(cmd)
 	ocm.AddClusterFlag(cmd)
@@ -68,7 +102,12 @@ func ListMachinePoolRunner() rosa.CommandRunner {
 		}
 
 		service := machinepool.NewMachinePoolService()
-		err := service.ListMachinePools(runtime, clusterKey, cluster)
+		err := service.ListMachinePools(
+			runtime,
+			clusterKey,
+			cluster,
+			args,
+		)
 		if err != nil {
 			return fmt.Errorf("Failed to list machinepools: %s", err)
 		}

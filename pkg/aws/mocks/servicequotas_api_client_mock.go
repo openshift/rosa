@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	servicequotas "github.com/aws/aws-sdk-go-v2/service/servicequotas"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockServiceQuotasApiClient is a mock of ServiceQuotasApiClient interface.

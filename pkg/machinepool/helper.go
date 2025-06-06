@@ -3,6 +3,7 @@ package machinepool
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -23,6 +24,20 @@ import (
 
 const (
 	hcpMaxNodesLimit = 500
+
+	zoneTypeWavelength = "Wavelength"
+	zoneTypeOutpost    = "Outpost"
+	zoneTypeLocalZone  = "LocalZone"
+	zoneTypeStandard   = "Standard"
+	zoneTypeNA         = "N/A"
+
+	boolStringTrue    = "true"
+	boolStringFalse   = "false"
+	boolStringUnknown = "unknown"
+
+	imageTypeWindows = "windows"
+
+	labelImageType = "image_type"
 )
 
 type ReplicaSizeValidation struct {
@@ -389,4 +404,61 @@ func (r *ReplicaSizeValidation) MaxReplicaValidatorOnClusterCreate() interactive
 			r.PrivateSubnetsCount,
 		)
 	}
+}
+
+func getZoneType(machinePool *cmv1.MachinePool) string {
+	zones := machinePool.AvailabilityZones()
+	if len(zones) == 0 {
+		return zoneTypeNA
+	}
+
+	for _, zone := range zones {
+		zoneLower := strings.ToLower(zone)
+
+		if strings.Contains(zoneLower, "wl") {
+			return zoneTypeWavelength
+		}
+		if strings.Contains(zoneLower, "outpost") {
+			return zoneTypeOutpost
+		}
+		if strings.Contains(zoneLower, "-lz") || strings.Count(zoneLower, "-") > 3 {
+			return zoneTypeLocalZone
+		}
+	}
+
+	return zoneTypeStandard
+}
+
+func isWinLIEnabled(labels map[string]string) string {
+	if val, ok := labels[labelImageType]; ok && strings.ToLower(val) == imageTypeWindows {
+		return boolStringTrue
+	}
+	return boolStringFalse
+}
+
+func isDedicatedHost(machinePool *cmv1.MachinePool, runtime *rosa.Runtime) string {
+	if machinePool == nil {
+		return boolStringFalse
+	}
+
+	awsConfig := machinePool.AWS()
+	if awsConfig == nil {
+		return boolStringFalse
+	}
+
+	awsMachinePoolID := awsConfig.ID()
+	if awsMachinePoolID == "" || runtime == nil || runtime.AWSClient == nil {
+		return boolStringFalse
+	}
+
+	hasDedicatedHost, err := runtime.AWSClient.CheckIfMachinePoolHasDedicatedHost([]string{awsMachinePoolID})
+	if err != nil {
+		_ = runtime.Reporter.Errorf("Failed to check dedicated host status: %v", err)
+		return boolStringUnknown
+	}
+
+	if hasDedicatedHost {
+		return boolStringTrue
+	}
+	return boolStringFalse
 }

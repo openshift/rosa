@@ -1,8 +1,7 @@
 package accountroles
 
 import (
-	"go.uber.org/mock/gomock"
-
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/gomega"

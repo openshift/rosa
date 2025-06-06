@@ -22,10 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/mock/gomock"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocmCommonValidations "github.com/openshift-online/ocm-common/pkg/ocm/validations"

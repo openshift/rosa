@@ -12,6 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package gomock is a mock framework for Go.
+//
+// Standard usage:
+//   (1) Define an interface that you wish to mock.
+//         type MyInterface interface {
+//           SomeMethod(x int64, y string)
+//         }
+//   (2) Use mockgen to generate a mock from the interface.
+//   (3) Use the mock in a test:
+//         func TestMyThing(t *testing.T) {
+//           mockCtrl := gomock.NewController(t)
+//           defer mockCtrl.Finish()
+//
+//           mockObj := something.NewMockMyInterface(mockCtrl)
+//           mockObj.EXPECT().SomeMethod(4, "blah")
+//           // pass mockObj to a real object and play with it.
+//         }
+//
+// By default, expected calls are not enforced to run in any particular order.
+// Call order dependency can be enforced by use of InOrder and/or Call.After.
+// Call.After can create more varied call order dependencies, but InOrder is
+// often more convenient.
+//
+// The following examples create equivalent call order dependencies.
+//
+// Example of using Call.After to chain expected call order:
+//
+//     firstCall := mockObj.EXPECT().SomeMethod(1, "first")
+//     secondCall := mockObj.EXPECT().SomeMethod(2, "second").After(firstCall)
+//     mockObj.EXPECT().SomeMethod(3, "third").After(secondCall)
+//
+// Example of using InOrder to declare expected call order:
+//
+//     gomock.InOrder(
+//         mockObj.EXPECT().SomeMethod(1, "first"),
+//         mockObj.EXPECT().SomeMethod(2, "second"),
+//         mockObj.EXPECT().SomeMethod(3, "third"),
+//     )
 package gomock
 
 import (
@@ -25,8 +63,8 @@ import (
 // A TestReporter is something that can be used to report test failures.  It
 // is satisfied by the standard library's *testing.T.
 type TestReporter interface {
-	Errorf(format string, args ...any)
-	Fatalf(format string, args ...any)
+	Errorf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
 }
 
 // TestHelper is a TestReporter that has the Helper method.  It is satisfied
@@ -51,21 +89,24 @@ type cleanuper interface {
 // goroutines. Each test should create a new Controller and invoke Finish via
 // defer.
 //
-//	func TestFoo(t *testing.T) {
-//	  ctrl := gomock.NewController(t)
-//	  // ..
-//	}
+//   func TestFoo(t *testing.T) {
+//     ctrl := gomock.NewController(t)
+//     defer ctrl.Finish()
+//     // ..
+//   }
 //
-//	func TestBar(t *testing.T) {
-//	  t.Run("Sub-Test-1", st) {
-//	    ctrl := gomock.NewController(st)
-//	    // ..
-//	  })
-//	  t.Run("Sub-Test-2", st) {
-//	    ctrl := gomock.NewController(st)
-//	    // ..
-//	  })
-//	})
+//   func TestBar(t *testing.T) {
+//     t.Run("Sub-Test-1", st) {
+//       ctrl := gomock.NewController(st)
+//       defer ctrl.Finish()
+//       // ..
+//     })
+//     t.Run("Sub-Test-2", st) {
+//       ctrl := gomock.NewController(st)
+//       defer ctrl.Finish()
+//       // ..
+//     })
+//   })
 type Controller struct {
 	// T should only be called within a generated mock. It is not intended to
 	// be used in user code and may be changed in future versions. T is the
@@ -78,11 +119,12 @@ type Controller struct {
 	finished      bool
 }
 
-// NewController returns a new Controller. It is the preferred way to create a Controller.
+// NewController returns a new Controller. It is the preferred way to create a
+// Controller.
 //
-// Passing [*testing.T] registers cleanup function to automatically call [Controller.Finish]
-// when the test and all its subtests complete.
-func NewController(t TestReporter, opts ...ControllerOption) *Controller {
+// New in go1.14+, if you are passing a *testing.T into this function you no
+// longer need to call ctrl.Finish() in your test methods.
+func NewController(t TestReporter) *Controller {
 	h, ok := t.(TestHelper)
 	if !ok {
 		h = &nopTestHelper{t}
@@ -90,9 +132,6 @@ func NewController(t TestReporter, opts ...ControllerOption) *Controller {
 	ctrl := &Controller{
 		T:             h,
 		expectedCalls: newCallSet(),
-	}
-	for _, opt := range opts {
-		opt.apply(ctrl)
 	}
 	if c, ok := isCleanuper(ctrl.T); ok {
 		c.Cleanup(func() {
@@ -104,32 +143,15 @@ func NewController(t TestReporter, opts ...ControllerOption) *Controller {
 	return ctrl
 }
 
-// ControllerOption configures how a Controller should behave.
-type ControllerOption interface {
-	apply(*Controller)
-}
-
-type overridableExpectationsOption struct{}
-
-// WithOverridableExpectations allows for overridable call expectations
-// i.e., subsequent call expectations override existing call expectations
-func WithOverridableExpectations() overridableExpectationsOption {
-	return overridableExpectationsOption{}
-}
-
-func (o overridableExpectationsOption) apply(ctrl *Controller) {
-	ctrl.expectedCalls = newOverridableCallSet()
-}
-
 type cancelReporter struct {
 	t      TestHelper
 	cancel func()
 }
 
-func (r *cancelReporter) Errorf(format string, args ...any) {
+func (r *cancelReporter) Errorf(format string, args ...interface{}) {
 	r.t.Errorf(format, args...)
 }
-func (r *cancelReporter) Fatalf(format string, args ...any) {
+func (r *cancelReporter) Fatalf(format string, args ...interface{}) {
 	defer r.cancel()
 	r.t.Fatalf(format, args...)
 }
@@ -154,17 +176,17 @@ type nopTestHelper struct {
 	t TestReporter
 }
 
-func (h *nopTestHelper) Errorf(format string, args ...any) {
+func (h *nopTestHelper) Errorf(format string, args ...interface{}) {
 	h.t.Errorf(format, args...)
 }
-func (h *nopTestHelper) Fatalf(format string, args ...any) {
+func (h *nopTestHelper) Fatalf(format string, args ...interface{}) {
 	h.t.Fatalf(format, args...)
 }
 
 func (h nopTestHelper) Helper() {}
 
 // RecordCall is called by a mock. It should not be called by user code.
-func (ctrl *Controller) RecordCall(receiver any, method string, args ...any) *Call {
+func (ctrl *Controller) RecordCall(receiver interface{}, method string, args ...interface{}) *Call {
 	ctrl.T.Helper()
 
 	recv := reflect.ValueOf(receiver)
@@ -178,7 +200,7 @@ func (ctrl *Controller) RecordCall(receiver any, method string, args ...any) *Ca
 }
 
 // RecordCallWithMethodType is called by a mock. It should not be called by user code.
-func (ctrl *Controller) RecordCallWithMethodType(receiver any, method string, methodType reflect.Type, args ...any) *Call {
+func (ctrl *Controller) RecordCallWithMethodType(receiver interface{}, method string, methodType reflect.Type, args ...interface{}) *Call {
 	ctrl.T.Helper()
 
 	call := newCall(ctrl.T, receiver, method, methodType, args...)
@@ -191,11 +213,11 @@ func (ctrl *Controller) RecordCallWithMethodType(receiver any, method string, me
 }
 
 // Call is called by a mock. It should not be called by user code.
-func (ctrl *Controller) Call(receiver any, method string, args ...any) []any {
+func (ctrl *Controller) Call(receiver interface{}, method string, args ...interface{}) []interface{} {
 	ctrl.T.Helper()
 
 	// Nest this code so we can use defer to make sure the lock is released.
-	actions := func() []func([]any) []any {
+	actions := func() []func([]interface{}) []interface{} {
 		ctrl.T.Helper()
 		ctrl.mu.Lock()
 		defer ctrl.mu.Unlock()
@@ -224,7 +246,7 @@ func (ctrl *Controller) Call(receiver any, method string, args ...any) []any {
 		return actions
 	}()
 
-	var rets []any
+	var rets []interface{}
 	for _, action := range actions {
 		if r := action(args); r != nil {
 			rets = r
@@ -234,8 +256,12 @@ func (ctrl *Controller) Call(receiver any, method string, args ...any) []any {
 	return rets
 }
 
-// Finish checks to see if all the methods that were expected to be called were called.
-// It is not idempotent and therefore can only be invoked once.
+// Finish checks to see if all the methods that were expected to be called
+// were called. It should be invoked for each Controller. It is not idempotent
+// and therefore can only be invoked once.
+//
+// New in go1.14+, if you are passing a *testing.T into NewController function you no
+// longer need to call ctrl.Finish() in your test methods.
 func (ctrl *Controller) Finish() {
 	// If we're currently panicking, probably because this is a deferred call.
 	// This must be recovered in the deferred function.
@@ -243,13 +269,7 @@ func (ctrl *Controller) Finish() {
 	ctrl.finish(false, err)
 }
 
-// Satisfied returns whether all expected calls bound to this Controller have been satisfied.
-// Calling Finish is then guaranteed to not fail due to missing calls.
-func (ctrl *Controller) Satisfied() bool {
-	return ctrl.expectedCalls.Satisfied()
-}
-
-func (ctrl *Controller) finish(cleanup bool, panicErr any) {
+func (ctrl *Controller) finish(cleanup bool, panicErr interface{}) {
 	ctrl.T.Helper()
 
 	ctrl.mu.Lock()

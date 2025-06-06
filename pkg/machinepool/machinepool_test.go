@@ -9,9 +9,8 @@ import (
 	"reflect"
 	"time"
 
-	"go.uber.org/mock/gomock"
-
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -28,7 +27,6 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
-	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 )
@@ -340,32 +338,209 @@ var _ = Describe("Machinepool and nodepool", func() {
 				Expect(boolean).To(BeFalse())
 			})
 		})
-		It("Test printMachinePools", func() {
+		It("Test printMachinePools with basic functionality", func() {
 			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
 				MachinePools(cmv1.NewMachinePoolList().
-					Items(cmv1.NewMachinePool().ID("np").Replicas(8).Subnets("sn1", "sn2").
-						InstanceType("test instance type").Taints(cmv1.NewTaint().Value("test").
-						Key("taint"))))
+					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(3).
+						InstanceType("m5.large").Subnets("subnet-1", "subnet-2").
+						Taints(cmv1.NewTaint().Value("test-value").Key("test-key"))))
 			cluster, err := clusterBuilder.Build()
 			Expect(err).ToNot(HaveOccurred())
-			out := getMachinePoolsString(cluster.MachinePools().Slice())
-			Expect(err).ToNot(HaveOccurred())
-			Expect(out).To(Equal(fmt.Sprintf("ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\t\tTAINTS\t"+
-				"\tAVAILABILITY ZONES\t\tSUBNETS\t\tSPOT INSTANCES\tDISK SIZE\tSG IDs\n"+
-				"%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\t%s\t%s\n",
-				cluster.MachinePools().Get(0).ID(),
-				ocmOutput.PrintMachinePoolAutoscaling(cluster.MachinePools().Get(0).Autoscaling()),
-				ocmOutput.PrintMachinePoolReplicas(cluster.MachinePools().Get(0).Autoscaling(),
-					cluster.MachinePools().Get(0).Replicas()),
-				cluster.MachinePools().Get(0).InstanceType(),
-				ocmOutput.PrintLabels(cluster.MachinePools().Get(0).Labels()),
-				ocmOutput.PrintTaints(cluster.MachinePools().Get(0).Taints()),
-				output.PrintStringSlice(cluster.MachinePools().Get(0).AvailabilityZones()),
-				output.PrintStringSlice(cluster.MachinePools().Get(0).Subnets()),
-				ocmOutput.PrintMachinePoolSpot(cluster.MachinePools().Get(0)),
-				ocmOutput.PrintMachinePoolDiskSize(cluster.MachinePools().Get(0)),
-				output.PrintStringSlice(cluster.MachinePools().Get(0).AWS().AdditionalSecurityGroupIds()))))
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tTAINTS\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\n" +
+				"mp-1\tNo\t3\tm5.large\ttest-key=test-value:\tsubnet-1, subnet-2\tNo\tdefault\n"
+			Expect(out).To(Equal(expectedOutput))
 		})
+
+		It("Test printMachinePools with no machine pools", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList())
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			// When there are no machine pools, only headers are returned
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\tTAINTS\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\tSG IDS\n"
+
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with showAll flag", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(3).
+						InstanceType("m5.large")))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{ShowAll: true}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\tTAINTS\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\tSG IDS\tAZ TYPE\tWIN-LI ENABLED\tDEDICATED HOST\n" +
+				"mp-1\tNo\t3\tm5.large\t\t\t\t\tNo\tdefault\t\tN/A\tfalse\tfalse\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with showAZType flag", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(3).
+						InstanceType("m5.large")))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{ShowAZType: true}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tAZ TYPE\n" +
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tN/A\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with showDedicated flag", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(3).
+						InstanceType("m5.large")))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{ShowDedicated: true}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tDEDICATED HOST\n" +
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tfalse\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with showWindowsLI flag", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(3).
+						InstanceType("m5.large")))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{ShowWindowsLI: true}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tWIN-LI ENABLED\n" +
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tfalse\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with multiple flags", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(3).
+						InstanceType("m5.large")))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{ShowAZType: true, ShowDedicated: true}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tAZ TYPE\tDEDICATED HOST\n" +
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tN/A\tfalse\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with autoscaling machine pool", func() {
+			autoscaling := cmv1.NewMachinePoolAutoscaling().MinReplicas(2).MaxReplicas(10)
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(cmv1.NewMachinePool().ID("mp-autoscale").
+						Autoscaling(autoscaling).
+						InstanceType("m5.xlarge")))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\n" +
+				"mp-autoscale\tYes\t2-10\tm5.xlarge\tNo\tdefault\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with multiple machine pools", func() {
+			autoscaling := cmv1.NewMachinePoolAutoscaling().MinReplicas(1).MaxReplicas(5)
+
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(
+						cmv1.NewMachinePool().ID("mp-1").Replicas(3).InstanceType("m5.large"),
+						cmv1.NewMachinePool().ID("mp-2").Autoscaling(autoscaling).InstanceType("c5.xlarge"),
+						cmv1.NewMachinePool().ID("mp-3").Replicas(1).InstanceType("t3.medium"),
+					))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\n" +
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\n" +
+				"mp-2\tYes\t1-5\tc5.xlarge\tNo\tdefault\n" +
+				"mp-3\tNo\t1\tt3.medium\tNo\tdefault\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools column filtering logic", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(
+						// Machine pool with minimal data
+						cmv1.NewMachinePool().ID("mp-minimal").Replicas(1).InstanceType("t3.small"),
+						// Machine pool with more complete data
+						cmv1.NewMachinePool().ID("mp-complete").Replicas(3).InstanceType("m5.large").
+							Subnets("subnet-1").AvailabilityZones("us-east-1a"),
+					))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\n" +
+				"mp-minimal\tNo\t1\tt3.small\t\t\tNo\tdefault\n" +
+				"mp-complete\tNo\t3\tm5.large\tus-east-1a\tsubnet-1\tNo\tdefault\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
+		It("Test printMachinePools with empty data columns filtered out", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				MachinePools(cmv1.NewMachinePoolList().
+					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(2).
+						InstanceType("m5.medium")))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := &rosa.Runtime{}
+			args := ListMachinePoolArgs{}
+			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
+
+			// Only columns with actual data should be included
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\n" +
+				"mp-1\tNo\t2\tm5.medium\tNo\tdefault\n"
+			Expect(out).To(Equal(expectedOutput))
+		})
+
 		It("Validate invalid regex", func() {
 			Expect(MachinePoolKeyRE.MatchString("$%%$%$%^$%^$%^$%^")).To(BeFalse())
 			Expect(MachinePoolKeyRE.MatchString("machinepool1")).To(BeTrue())

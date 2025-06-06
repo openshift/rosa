@@ -221,6 +221,7 @@ type Client interface {
 	GetOperatorRoleDefaultPolicy(roleName string) (string, error)
 	ListPolicyVersions(policyArn string) ([]PolicyVersion, error)
 	GetCallerIdentity() (*sts.GetCallerIdentityOutput, error)
+	CheckIfMachinePoolHasDedicatedHost(instanceIDs []string) (bool, error)
 }
 
 type AccessKeyGetter interface {
@@ -300,6 +301,32 @@ func New(
 		awsAccessKeys,
 		useLocalCredentials,
 	}
+}
+
+// CheckIfMachinePoolHasDedicatedHost checks if any of the given instances are running on dedicated hosts
+func (c *awsClient) CheckIfMachinePoolHasDedicatedHost(instanceIDs []string) (bool, error) {
+	if len(instanceIDs) == 0 {
+		return false, nil
+	}
+
+	input := &ec2.DescribeInstancesInput{
+		InstanceIds: instanceIDs,
+	}
+
+	result, err := c.ec2Client.DescribeInstances(context.Background(), input)
+	if err != nil {
+		return false, fmt.Errorf("failed to describe instances: %w", err)
+	}
+
+	for _, reservation := range result.Reservations {
+		for _, instance := range reservation.Instances {
+			if instance.Placement != nil && instance.Placement.Tenancy == ec2types.TenancyHost {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // Logger sets the logger that the AWS client will use to send messages to the log.
