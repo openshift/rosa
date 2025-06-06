@@ -90,6 +90,7 @@
 - name: default-ingress-excluded-namespaces
 - name: default-ingress-wildcard-policy
 - name: default-ingress-namespace-ownership-policy
+- name: default-ingress-private
 - name: private-hosted-zone-id
 - name: shared-vpc-role-arn
 - name: route53-role-arn

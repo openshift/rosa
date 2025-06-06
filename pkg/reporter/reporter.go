@@ -78,6 +78,8 @@ func (r *Object) Warnf(format string, args ...interface{}) {
 // Errorf prints an error message with the given format and arguments. It also return an error
 // containing the same information, which will be usually discarded, except when the caller needs to
 // report the error and also return it.
+//
+//nolint:errcheck
 func (r *Object) Errorf(format string, args ...interface{}) error {
 	message := fmt.Sprintf(format, args...)
 	if color.UseColor() {
