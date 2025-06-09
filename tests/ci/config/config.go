@@ -16,16 +16,17 @@ var Test *TestConfig
 // TestConfig contains platforms info for the rosacli testing
 type TestConfig struct {
 	// Env is the OpenShift Cluster Management environment used to provision clusters.
-	ENV               string `env:"OCM_LOGIN_ENV" default:""`
-	TestProfile       string `env:"TEST_PROFILE" default:""`
-	ResourcesDir      string `env:"RESOURCES_DIR" default:""`
-	OutputDir         string `env:"OUTPUT_DIR" default:""`
-	YAMLProfilesDir   string `env:"TEST_PROFILE_DIR" default:""`
-	RootDir           string `env:"WORKSPACE" default:""`
-	ClusterConfigFile string
-	ArtifactDir       string `env:"ARTIFACT_DIR" default:""`
-	UserDataFile      string
-	CreateCommandFile string
+	ENV                 string `env:"OCM_LOGIN_ENV" default:""`
+	TestProfile         string `env:"TEST_PROFILE" default:""`
+	ResourcesDir        string `env:"RESOURCES_DIR" default:""`
+	OutputDir           string `env:"OUTPUT_DIR" default:""`
+	YAMLProfilesDir     string `env:"TEST_PROFILE_DIR" default:""`
+	RootDir             string `env:"WORKSPACE" default:""`
+	ClusterConfigFile   string
+	ArtifactDir         string `env:"ARTIFACT_DIR" default:""`
+	UserDataFile        string
+	KonfluxUserDataFile string
+	CreateCommandFile   string
 	// Temporary file to compatible to current CI jobs. Will remove once all CI jobs migration finished
 	ClusterIDFile     string
 	APIURLFile        string
@@ -103,6 +104,7 @@ func init() {
 	}
 	Test.ClusterConfigFile = path.Join(Test.OutputDir, "cluster-config")
 	Test.UserDataFile = path.Join(Test.OutputDir, "resources.json")
+	Test.KonfluxUserDataFile = path.Join(Test.OutputDir, "konflux_resources.json")
 	Test.APIURLFile = path.Join(Test.OutputDir, "api.url")
 
 	// Temporary files to compatible to current CI jobs. Will remove once all CI jobs migration finished

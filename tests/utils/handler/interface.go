@@ -78,6 +78,7 @@ type ClusterConfig struct {
 
 // Resources will record the resources prepared
 type Resources struct {
+	ClusterID                    string                `json:"cluster_id,omitempty"`
 	AccountRolesPrefix           string                `json:"account_roles_prefix,omitempty"`
 	AdditionalPrincipals         string                `json:"additional_principals,omitempty"`
 	AuditLogArn                  string                `json:"audit_log,omitempty"`
