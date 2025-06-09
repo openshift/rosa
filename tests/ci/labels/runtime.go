@@ -14,15 +14,16 @@ var E2EReport = Label("e2e-report")
 // The lables is always defined on each test case.
 type runtimeLabels struct {
 	// Test cases based on a cluster created by profiles.
-	Day1          Labels
-	Day1Readiness Labels
-	Day1Post      Labels
-	Day2Readiness Labels
-	Day2          Labels
-	Upgrade       Labels
-	Destructive   Labels
-	Destroy       Labels
-	DestroyPost   Labels
+	Day1             Labels
+	Day1Readiness    Labels
+	Day1Post         Labels
+	Day2Readiness    Labels
+	Day2             Labels
+	Upgrade          Labels
+	Destructive      Labels
+	Destroy          Labels
+	DestroyPost      Labels
+	DestroyOnKonflux Labels
 
 	// Test cases beyond the cluster created by profiles.
 	Day1Supplemental Labels
@@ -46,6 +47,7 @@ func initRuntime() *runtimeLabels {
 	rLabels.Destroy = Label("destroy")
 	rLabels.DestroyPost = Label("destroy-post")
 	rLabels.Day2Readiness = Label("day2-readiness")
+	rLabels.DestroyOnKonflux = Label("destroy-on-konflux")
 
 	rLabels.Day1Supplemental = Label("day1-supplemental")
 	rLabels.OCMResources = Label("ocm-resources")

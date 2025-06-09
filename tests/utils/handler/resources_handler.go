@@ -133,6 +133,26 @@ func newResourcesHandler(client *rosacli.Client, region string, persist bool,
 
 	return resourcesHandler, nil
 }
+func newResourcesHandlerForKonflux(client *rosacli.Client, region string,
+	awsCredentialsFile string,
+	awsSharedAccountCredentialsFile string) (*resourcesHandler, error) {
+
+	resourcesHandler := &resourcesHandler{
+		rosaClient:                      client,
+		resources:                       &Resources{Region: region},
+		persist:                         true,
+		awsCredentialsFile:              awsCredentialsFile,
+		awsSharedAccountCredentialsFile: awsSharedAccountCredentialsFile,
+	}
+
+	err := helper.ReadFileContentToObject(config.Test.KonfluxUserDataFile, &resourcesHandler.resources)
+	if err != nil {
+		log.Logger.Errorf("Error happened when parse resource file data to KonfluxUserDataFile struct: %s", err.Error())
+		return nil, err
+	}
+
+	return resourcesHandler, nil
+}
 
 func (rh *resourcesHandler) DestroyResources() (errors []error) {
 	var err error
@@ -313,6 +333,11 @@ func (rh *resourcesHandler) saveToFile() (err error) {
 	if err != nil {
 		return
 	}
+	// Save data for konflux ci
+	_, err = helper.CreateFileWithContent(config.Test.KonfluxUserDataFile, &rh.resources)
+	if err != nil {
+		return
+	}
 	if rh.vpc != nil {
 		_, err = helper.CreateFileWithContent(config.Test.VPCIDFile, rh.vpc.VpcID)
 		if err != nil {
@@ -377,6 +402,10 @@ func (rh *resourcesHandler) GetVpcID() string {
 	return rh.resources.VpcID
 }
 
+func (rh *resourcesHandler) registerClusterID(clusterID string) error {
+	rh.resources.ClusterID = clusterID
+	return rh.saveToFile()
+}
 func (rh *resourcesHandler) registerAccountRolesPrefix(accountRolesPrefix string) error {
 	rh.resources.AccountRolesPrefix = accountRolesPrefix
 	return rh.saveToFile()

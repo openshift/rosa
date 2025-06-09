@@ -57,6 +57,42 @@ func NewClusterHandlerFromFilesystem(client *rosacli.Client, profile *Profile) (
 	return newClusterHandler(client, profile, true, true)
 }
 
+func NewClusterHandlerForKonflux(client *rosacli.Client, profile *Profile) (ClusterHandler, error) {
+	// Make sure shared VPC credentials file based on profile
+	awsCredentialsFile := config.Test.GlobalENV.AWSCredetialsFile
+	awsSharedAccountCredentialsFile := config.Test.GlobalENV.SVPC_CREDENTIALS_FILE
+	if profile.ClusterConfig.SharedVPC && awsSharedAccountCredentialsFile == "" {
+		return nil, fmt.Errorf(envVariableErrMsg, awsSharedAccountCredentialsFile)
+	}
+	resourcesHandler, err := newResourcesHandlerForKonflux(
+		client,
+		profile.Region,
+		awsCredentialsFile,
+		awsSharedAccountCredentialsFile,
+	)
+	if err != nil {
+		return nil, err
+	}
+	// Make sure shared VPC credentials file based on loaded resources
+	if (resourcesHandler.resources.SharedVPCRole != "" ||
+		resourcesHandler.resources.AdditionalPrincipals != "" ||
+		resourcesHandler.resources.HCPRoute53ShareRole != "" ||
+		resourcesHandler.resources.HCPVPCEndpointShareRole != "" ||
+		resourcesHandler.resources.ResourceShareArn != "") &&
+		resourcesHandler.awsSharedAccountCredentialsFile == "" {
+
+		log.Logger.Errorf(envVariableErrMsg, awsCredentialsFile)
+		return nil, fmt.Errorf(envVariableErrMsg, awsCredentialsFile)
+
+	}
+
+	return &clusterHandler{
+		rosaClient:       client,
+		profile:          profile,
+		resourcesHandler: resourcesHandler,
+	}, nil
+}
+
 func newClusterHandler(client *rosacli.Client,
 	profile *Profile,
 	persist bool,
@@ -1021,6 +1057,10 @@ func (ch *clusterHandler) CreateCluster(waitForClusterReady bool) (err error) {
 		return err
 	}
 	clusterID := ch.clusterDetail.ClusterID
+	err = ch.resourcesHandler.registerClusterID(clusterID)
+	if err != nil {
+		return err
+	}
 	if ch.profile.ClusterConfig.BYOVPC {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", clusterID)
 		ch.reverifyClusterNetwork()
@@ -1036,9 +1076,14 @@ func (ch *clusterHandler) CreateCluster(waitForClusterReady bool) (err error) {
 }
 
 func (ch *clusterHandler) destroyCluster() (errors []error) {
-	if ch.clusterDetail.ClusterID != "" {
+	var clusterID string
+	if ch.clusterDetail != nil && ch.clusterDetail.ClusterID != "" {
+		clusterID = ch.clusterDetail.ClusterID
+	} else if ch.resourcesHandler != nil && ch.resourcesHandler.resources.ClusterID != "" {
+		clusterID = ch.resourcesHandler.resources.ClusterID
+	}
+	if clusterID != "" {
 		clusterService := ch.rosaClient.Cluster
-		clusterID := ch.clusterDetail.ClusterID
 		output, errDeleteCluster := clusterService.DeleteCluster(clusterID, "-y")
 		if errDeleteCluster != nil {
 			if strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterID)) {
