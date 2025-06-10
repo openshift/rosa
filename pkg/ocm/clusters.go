@@ -32,6 +32,7 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/interactive/consts"
@@ -1145,11 +1146,13 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 				v1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
 		}
 
-		// Decide ingress listening method
-		if config.PrivateIngress {
-			defaultIngress.Listening(cmv1.ListeningMethodInternal)
-		} else {
-			defaultIngress.Listening(clusterApiListeningMethod)
+		// Decide ingress listening method if HCP and not fedramp enabled
+		if !fedramp.Enabled() && config.Hypershift.Enabled {
+			if config.PrivateIngress {
+				defaultIngress.Listening(cmv1.ListeningMethodInternal)
+			} else {
+				defaultIngress.Listening(clusterApiListeningMethod)
+			}
 		}
 		clusterBuilder.Ingresses(cmv1.NewIngressList().Items(defaultIngress))
 	}
