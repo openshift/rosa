@@ -536,7 +536,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("with wrong instance-type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--instance-type", "wrong")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Expected a valid instance type"))
+			Expect(err.Error()).Should(ContainSubstring("is not supported in availability zone"))
 
 			By("with non existing subnet")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--subnet", "subnet-xxx")

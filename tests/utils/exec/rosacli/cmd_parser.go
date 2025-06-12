@@ -153,6 +153,7 @@ func (td *textData) YamlToObj(obj interface{}) (err error) {
 func escapeYamlStringValues(input string) (string, error) {
 	var lines []string
 	scanner := bufio.NewScanner(strings.NewReader(input))
+	reLeadingZeroNum := regexp.MustCompile(`^0\d+$`)
 	for scanner.Scan() {
 		line := scanner.Text()
 		key, value, found := strings.Cut(line, ":")
@@ -160,7 +161,10 @@ func escapeYamlStringValues(input string) (string, error) {
 			value = strings.TrimSpace(value)
 
 			// Checks to perform
-			if !strings.HasPrefix(value, "'") && strings.Contains(value, ": ") {
+			if reLeadingZeroNum.MatchString(value) {
+				// If the value is a number with leading zero, add quotes
+				line = fmt.Sprintf("%s: \"%s\"", key, value)
+			} else if !strings.HasPrefix(value, "'") && strings.Contains(value, ": ") {
 				line = fmt.Sprintf("%s: '%s'", key, value)
 			}
 		}
