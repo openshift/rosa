@@ -17,6 +17,7 @@ RUN wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz && \
     rm go1.22.3.linux-amd64.tar.gz
 
 ENV GOTOOLCHAIN=local
+ENV GOFLAGS=-buildvcs=false
 RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.13.2
 RUN make release
 
