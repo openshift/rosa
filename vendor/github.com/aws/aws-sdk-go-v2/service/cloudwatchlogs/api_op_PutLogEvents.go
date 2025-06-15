@@ -11,28 +11,38 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Uploads a batch of log events to the specified log stream. The sequence token
-// is now ignored in PutLogEvents actions. PutLogEvents actions are always
-// accepted and never return InvalidSequenceTokenException or
+// Uploads a batch of log events to the specified log stream.
+//
+// The sequence token is now ignored in PutLogEvents actions. PutLogEvents actions
+// are always accepted and never return InvalidSequenceTokenException or
 // DataAlreadyAcceptedException even if the sequence token is not valid. You can
-// use parallel PutLogEvents actions on the same log stream. The batch of events
-// must satisfy the following constraints:
+// use parallel PutLogEvents actions on the same log stream.
+//
+// The batch of events must satisfy the following constraints:
+//
 //   - The maximum batch size is 1,048,576 bytes. This size is calculated as the
 //     sum of all event messages in UTF-8, plus 26 bytes for each log event.
+//
 //   - None of the log events in the batch can be more than 2 hours in the future.
+//
 //   - None of the log events in the batch can be more than 14 days in the past.
 //     Also, none of the log events can be from earlier than the retention period of
 //     the log group.
+//
 //   - The log events in the batch must be in chronological order by their
 //     timestamp. The timestamp is the time that the event occurred, expressed as the
 //     number of milliseconds after Jan 1, 1970 00:00:00 UTC . (In Amazon Web
 //     Services Tools for PowerShell and the Amazon Web Services SDK for .NET, the
 //     timestamp is specified in .NET format: yyyy-mm-ddThh:mm:ss . For example,
 //     2017-09-15T13:45:30 .)
+//
 //   - A batch of log events in a single request cannot span more than 24 hours.
 //     Otherwise, the operation fails.
-//   - Each log event can be no larger than 256 KB.
+//
+//   - Each log event can be no larger than 1 MB.
+//
 //   - The maximum number of log events in a batch is 10,000.
+//
 //   - The quota of five requests per second per log stream has been removed.
 //     Instead, PutLogEvents actions are throttled based on a per-second per-account
 //     quota. You can request an increase to the per-second throttling quota by using
@@ -72,11 +82,14 @@ type PutLogEventsInput struct {
 	// This member is required.
 	LogStreamName *string
 
-	// The sequence token obtained from the response of the previous PutLogEvents
-	// call. The sequenceToken parameter is now ignored in PutLogEvents actions.
-	// PutLogEvents actions are now accepted and never return
-	// InvalidSequenceTokenException or DataAlreadyAcceptedException even if the
-	// sequence token is not valid.
+	// The entity associated with the log events.
+	Entity *types.Entity
+
+	// The sequence token obtained from the response of the previous PutLogEvents call.
+	//
+	// The sequenceToken parameter is now ignored in PutLogEvents actions. PutLogEvents
+	// actions are now accepted and never return InvalidSequenceTokenException or
+	// DataAlreadyAcceptedException even if the sequence token is not valid.
 	SequenceToken *string
 
 	noSmithyDocumentSerde
@@ -84,12 +97,22 @@ type PutLogEventsInput struct {
 
 type PutLogEventsOutput struct {
 
-	// The next sequence token. This field has been deprecated. The sequence token is
-	// now ignored in PutLogEvents actions. PutLogEvents actions are always accepted
-	// even if the sequence token is not valid. You can use parallel PutLogEvents
-	// actions on the same log stream and you do not need to wait for the response of a
-	// previous PutLogEvents action to obtain the nextSequenceToken value.
+	// The next sequence token.
+	//
+	// This field has been deprecated.
+	//
+	// The sequence token is now ignored in PutLogEvents actions. PutLogEvents actions
+	// are always accepted even if the sequence token is not valid. You can use
+	// parallel PutLogEvents actions on the same log stream and you do not need to
+	// wait for the response of a previous PutLogEvents action to obtain the
+	// nextSequenceToken value.
 	NextSequenceToken *string
+
+	// Information about why the entity is rejected when calling PutLogEvents . Only
+	// returned when the entity is rejected.
+	//
+	// When the entity is rejected, the events may still be accepted.
+	RejectedEntityInfo *types.RejectedEntityInfo
 
 	// The rejected events.
 	RejectedLogEventsInfo *types.RejectedLogEventsInfo
@@ -143,6 +166,9 @@ func (c *Client) addOperationPutLogEventsMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -153,6 +179,15 @@ func (c *Client) addOperationPutLogEventsMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutLogEventsValidationMiddleware(stack); err != nil {
@@ -174,6 +209,18 @@ func (c *Client) addOperationPutLogEventsMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

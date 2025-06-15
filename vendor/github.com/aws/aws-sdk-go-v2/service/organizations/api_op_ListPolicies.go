@@ -12,12 +12,14 @@ import (
 )
 
 // Retrieves the list of all policies in an organization of a specified type.
+//
 // Always check the NextToken response parameter for a null value when calling a
 // List* operation. These operations can occasionally return an empty set of
 // results even when there are more results available. The NextToken response
-// parameter value is null only when there are no more results to display. This
-// operation can be called only from the organization's management account or by a
-// member account that is a delegated administrator for an Amazon Web Services
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator for an Amazon Web Services
 // service.
 func (c *Client) ListPolicies(ctx context.Context, params *ListPoliciesInput, optFns ...func(*Options)) (*ListPoliciesOutput, error) {
 	if params == nil {
@@ -38,10 +40,28 @@ type ListPoliciesInput struct {
 
 	// Specifies the type of policy that you want to include in the response. You must
 	// specify one of the following values:
-	//   - AISERVICES_OPT_OUT_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html)
-	//   - BACKUP_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html)
-	//   - SERVICE_CONTROL_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html)
-	//   - TAG_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html)
+	//
+	// [SERVICE_CONTROL_POLICY]
+	//
+	// [RESOURCE_CONTROL_POLICY]
+	//
+	// [DECLARATIVE_POLICY_EC2]
+	//
+	// [BACKUP_POLICY]
+	//
+	// [TAG_POLICY]
+	//
+	// [CHATBOT_POLICY]
+	//
+	// [AISERVICES_OPT_OUT_POLICY]
+	//
+	// [AISERVICES_OPT_OUT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html
+	// [BACKUP_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html
+	// [SERVICE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html
+	// [CHATBOT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_chatbot.html
+	// [TAG_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html
+	// [DECLARATIVE_POLICY_EC2]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html
+	// [RESOURCE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html
 	//
 	// This member is required.
 	Filter types.PolicyType
@@ -75,8 +95,7 @@ type ListPoliciesOutput struct {
 	NextToken *string
 
 	// A list of policies that match the filter criteria in the request. The output
-	// list doesn't include the policy contents. To see the content for a policy, see
-	// DescribePolicy .
+	// list doesn't include the policy contents. To see the content for a policy, see DescribePolicy.
 	Policies []types.PolicySummary
 
 	// Metadata pertaining to the operation's result.
@@ -128,6 +147,9 @@ func (c *Client) addOperationListPoliciesMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -138,6 +160,15 @@ func (c *Client) addOperationListPoliciesMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListPoliciesValidationMiddleware(stack); err != nil {
@@ -161,15 +192,20 @@ func (c *Client) addOperationListPoliciesMiddlewares(stack *middleware.Stack, op
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListPoliciesAPIClient is a client that implements the ListPolicies operation.
-type ListPoliciesAPIClient interface {
-	ListPolicies(context.Context, *ListPoliciesInput, ...func(*Options)) (*ListPoliciesOutput, error)
-}
-
-var _ ListPoliciesAPIClient = (*Client)(nil)
 
 // ListPoliciesPaginatorOptions is the paginator options for ListPolicies
 type ListPoliciesPaginatorOptions struct {
@@ -242,6 +278,9 @@ func (p *ListPoliciesPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListPolicies(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -260,6 +299,13 @@ func (p *ListPoliciesPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 
 	return result, nil
 }
+
+// ListPoliciesAPIClient is a client that implements the ListPolicies operation.
+type ListPoliciesAPIClient interface {
+	ListPolicies(context.Context, *ListPoliciesInput, ...func(*Options)) (*ListPoliciesOutput, error)
+}
+
+var _ ListPoliciesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListPolicies(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

@@ -12,13 +12,16 @@ import (
 )
 
 // Lists the account creation requests that match the specified status that is
-// currently being tracked for the organization. Always check the NextToken
-// response parameter for a null value when calling a List* operation. These
-// operations can occasionally return an empty set of results even when there are
-// more results available. The NextToken response parameter value is null only
-// when there are no more results to display. This operation can be called only
-// from the organization's management account or by a member account that is a
-// delegated administrator for an Amazon Web Services service.
+// currently being tracked for the organization.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// List* operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator for an Amazon Web Services
+// service.
 func (c *Client) ListCreateAccountStatus(ctx context.Context, params *ListCreateAccountStatusInput, optFns ...func(*Options)) (*ListCreateAccountStatusOutput, error) {
 	if params == nil {
 		params = &ListCreateAccountStatusInput{}
@@ -122,6 +125,9 @@ func (c *Client) addOperationListCreateAccountStatusMiddlewares(stack *middlewar
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -132,6 +138,15 @@ func (c *Client) addOperationListCreateAccountStatusMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListCreateAccountStatus(options.Region), middleware.Before); err != nil {
@@ -152,16 +167,20 @@ func (c *Client) addOperationListCreateAccountStatusMiddlewares(stack *middlewar
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListCreateAccountStatusAPIClient is a client that implements the
-// ListCreateAccountStatus operation.
-type ListCreateAccountStatusAPIClient interface {
-	ListCreateAccountStatus(context.Context, *ListCreateAccountStatusInput, ...func(*Options)) (*ListCreateAccountStatusOutput, error)
-}
-
-var _ ListCreateAccountStatusAPIClient = (*Client)(nil)
 
 // ListCreateAccountStatusPaginatorOptions is the paginator options for
 // ListCreateAccountStatus
@@ -236,6 +255,9 @@ func (p *ListCreateAccountStatusPaginator) NextPage(ctx context.Context, optFns 
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListCreateAccountStatus(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -254,6 +276,14 @@ func (p *ListCreateAccountStatusPaginator) NextPage(ctx context.Context, optFns 
 
 	return result, nil
 }
+
+// ListCreateAccountStatusAPIClient is a client that implements the
+// ListCreateAccountStatus operation.
+type ListCreateAccountStatusAPIClient interface {
+	ListCreateAccountStatus(context.Context, *ListCreateAccountStatusInput, ...func(*Options)) (*ListCreateAccountStatusOutput, error)
+}
+
+var _ ListCreateAccountStatusAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListCreateAccountStatus(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

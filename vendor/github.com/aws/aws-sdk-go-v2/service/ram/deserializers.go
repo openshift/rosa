@@ -14,6 +14,7 @@ import (
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithytime "github.com/aws/smithy-go/time"
+	"github.com/aws/smithy-go/tracing"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"io"
 	"strings"
@@ -43,6 +44,10 @@ func (m *awsRestjson1_deserializeOpAcceptResourceShareInvitation) HandleDeserial
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -82,6 +87,7 @@ func (m *awsRestjson1_deserializeOpAcceptResourceShareInvitation) HandleDeserial
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -226,6 +232,10 @@ func (m *awsRestjson1_deserializeOpAssociateResourceShare) HandleDeserialize(ctx
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -265,6 +275,7 @@ func (m *awsRestjson1_deserializeOpAssociateResourceShare) HandleDeserialize(ctx
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -412,6 +423,10 @@ func (m *awsRestjson1_deserializeOpAssociateResourceSharePermission) HandleDeser
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -451,6 +466,7 @@ func (m *awsRestjson1_deserializeOpAssociateResourceSharePermission) HandleDeser
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -590,6 +606,10 @@ func (m *awsRestjson1_deserializeOpCreatePermission) HandleDeserialize(ctx conte
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -629,6 +649,7 @@ func (m *awsRestjson1_deserializeOpCreatePermission) HandleDeserialize(ctx conte
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -773,6 +794,10 @@ func (m *awsRestjson1_deserializeOpCreatePermissionVersion) HandleDeserialize(ct
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -812,6 +837,7 @@ func (m *awsRestjson1_deserializeOpCreatePermissionVersion) HandleDeserialize(ct
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -956,6 +982,10 @@ func (m *awsRestjson1_deserializeOpCreateResourceShare) HandleDeserialize(ctx co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -995,6 +1025,7 @@ func (m *awsRestjson1_deserializeOpCreateResourceShare) HandleDeserialize(ctx co
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -1145,6 +1176,10 @@ func (m *awsRestjson1_deserializeOpDeletePermission) HandleDeserialize(ctx conte
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1184,6 +1219,7 @@ func (m *awsRestjson1_deserializeOpDeletePermission) HandleDeserialize(ctx conte
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -1332,6 +1368,10 @@ func (m *awsRestjson1_deserializeOpDeletePermissionVersion) HandleDeserialize(ct
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1371,6 +1411,7 @@ func (m *awsRestjson1_deserializeOpDeletePermissionVersion) HandleDeserialize(ct
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -1522,6 +1563,10 @@ func (m *awsRestjson1_deserializeOpDeleteResourceShare) HandleDeserialize(ctx co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1561,6 +1606,7 @@ func (m *awsRestjson1_deserializeOpDeleteResourceShare) HandleDeserialize(ctx co
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -1706,6 +1752,10 @@ func (m *awsRestjson1_deserializeOpDisassociateResourceShare) HandleDeserialize(
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1745,6 +1795,7 @@ func (m *awsRestjson1_deserializeOpDisassociateResourceShare) HandleDeserialize(
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -1889,6 +1940,10 @@ func (m *awsRestjson1_deserializeOpDisassociateResourceSharePermission) HandleDe
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1928,6 +1983,7 @@ func (m *awsRestjson1_deserializeOpDisassociateResourceSharePermission) HandleDe
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -2070,6 +2126,10 @@ func (m *awsRestjson1_deserializeOpEnableSharingWithAwsOrganization) HandleDeser
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2109,6 +2169,7 @@ func (m *awsRestjson1_deserializeOpEnableSharingWithAwsOrganization) HandleDeser
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -2227,6 +2288,10 @@ func (m *awsRestjson1_deserializeOpGetPermission) HandleDeserialize(ctx context.
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2266,6 +2331,7 @@ func (m *awsRestjson1_deserializeOpGetPermission) HandleDeserialize(ctx context.
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -2389,6 +2455,10 @@ func (m *awsRestjson1_deserializeOpGetResourcePolicies) HandleDeserialize(ctx co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2428,6 +2498,7 @@ func (m *awsRestjson1_deserializeOpGetResourcePolicies) HandleDeserialize(ctx co
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -2560,6 +2631,10 @@ func (m *awsRestjson1_deserializeOpGetResourceShareAssociations) HandleDeseriali
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2599,6 +2674,7 @@ func (m *awsRestjson1_deserializeOpGetResourceShareAssociations) HandleDeseriali
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -2734,6 +2810,10 @@ func (m *awsRestjson1_deserializeOpGetResourceShareInvitations) HandleDeserializ
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2773,6 +2853,7 @@ func (m *awsRestjson1_deserializeOpGetResourceShareInvitations) HandleDeserializ
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -2911,6 +2992,10 @@ func (m *awsRestjson1_deserializeOpGetResourceShares) HandleDeserialize(ctx cont
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2950,6 +3035,7 @@ func (m *awsRestjson1_deserializeOpGetResourceShares) HandleDeserialize(ctx cont
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -3082,6 +3168,10 @@ func (m *awsRestjson1_deserializeOpListPendingInvitationResources) HandleDeseria
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -3121,6 +3211,7 @@ func (m *awsRestjson1_deserializeOpListPendingInvitationResources) HandleDeseria
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -3262,6 +3353,10 @@ func (m *awsRestjson1_deserializeOpListPermissionAssociations) HandleDeserialize
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -3301,6 +3396,7 @@ func (m *awsRestjson1_deserializeOpListPermissionAssociations) HandleDeserialize
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -3430,6 +3526,10 @@ func (m *awsRestjson1_deserializeOpListPermissions) HandleDeserialize(ctx contex
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -3469,6 +3569,7 @@ func (m *awsRestjson1_deserializeOpListPermissions) HandleDeserialize(ctx contex
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -3598,6 +3699,10 @@ func (m *awsRestjson1_deserializeOpListPermissionVersions) HandleDeserialize(ctx
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -3637,6 +3742,7 @@ func (m *awsRestjson1_deserializeOpListPermissionVersions) HandleDeserialize(ctx
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -3772,6 +3878,10 @@ func (m *awsRestjson1_deserializeOpListPrincipals) HandleDeserialize(ctx context
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -3811,6 +3921,7 @@ func (m *awsRestjson1_deserializeOpListPrincipals) HandleDeserialize(ctx context
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -3943,6 +4054,10 @@ func (m *awsRestjson1_deserializeOpListReplacePermissionAssociationsWork) Handle
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -3982,6 +4097,7 @@ func (m *awsRestjson1_deserializeOpListReplacePermissionAssociationsWork) Handle
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -4108,6 +4224,10 @@ func (m *awsRestjson1_deserializeOpListResources) HandleDeserialize(ctx context.
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -4147,6 +4267,7 @@ func (m *awsRestjson1_deserializeOpListResources) HandleDeserialize(ctx context.
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -4282,6 +4403,10 @@ func (m *awsRestjson1_deserializeOpListResourceSharePermissions) HandleDeseriali
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -4321,6 +4446,7 @@ func (m *awsRestjson1_deserializeOpListResourceSharePermissions) HandleDeseriali
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -4456,6 +4582,10 @@ func (m *awsRestjson1_deserializeOpListResourceTypes) HandleDeserialize(ctx cont
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -4495,6 +4625,7 @@ func (m *awsRestjson1_deserializeOpListResourceTypes) HandleDeserialize(ctx cont
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -4621,6 +4752,10 @@ func (m *awsRestjson1_deserializeOpPromotePermissionCreatedFromPolicy) HandleDes
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -4660,6 +4795,7 @@ func (m *awsRestjson1_deserializeOpPromotePermissionCreatedFromPolicy) HandleDes
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -4795,6 +4931,10 @@ func (m *awsRestjson1_deserializeOpPromoteResourceShareCreatedFromPolicy) Handle
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -4834,6 +4974,7 @@ func (m *awsRestjson1_deserializeOpPromoteResourceShareCreatedFromPolicy) Handle
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -4973,6 +5114,10 @@ func (m *awsRestjson1_deserializeOpRejectResourceShareInvitation) HandleDeserial
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -5012,6 +5157,7 @@ func (m *awsRestjson1_deserializeOpRejectResourceShareInvitation) HandleDeserial
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -5156,6 +5302,10 @@ func (m *awsRestjson1_deserializeOpReplacePermissionAssociations) HandleDeserial
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -5195,6 +5345,7 @@ func (m *awsRestjson1_deserializeOpReplacePermissionAssociations) HandleDeserial
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -5333,6 +5484,10 @@ func (m *awsRestjson1_deserializeOpSetDefaultPermissionVersion) HandleDeserializ
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -5372,6 +5527,7 @@ func (m *awsRestjson1_deserializeOpSetDefaultPermissionVersion) HandleDeserializ
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -5511,6 +5667,10 @@ func (m *awsRestjson1_deserializeOpTagResource) HandleDeserialize(ctx context.Co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -5522,6 +5682,7 @@ func (m *awsRestjson1_deserializeOpTagResource) HandleDeserialize(ctx context.Co
 	output := &TagResourceOutput{}
 	out.Result = output
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -5615,6 +5776,10 @@ func (m *awsRestjson1_deserializeOpUntagResource) HandleDeserialize(ctx context.
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -5626,6 +5791,7 @@ func (m *awsRestjson1_deserializeOpUntagResource) HandleDeserialize(ctx context.
 	output := &UntagResourceOutput{}
 	out.Result = output
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -5710,6 +5876,10 @@ func (m *awsRestjson1_deserializeOpUpdateResourceShare) HandleDeserialize(ctx co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -5749,6 +5919,7 @@ func (m *awsRestjson1_deserializeOpUpdateResourceShare) HandleDeserialize(ctx co
 		}
 	}
 
+	span.End()
 	return out, metadata, err
 }
 
@@ -7049,7 +7220,7 @@ func awsRestjson1_deserializeDocumentIdempotentParameterMismatchException(v **ty
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7089,7 +7260,7 @@ func awsRestjson1_deserializeDocumentInvalidClientTokenException(v **types.Inval
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7129,7 +7300,7 @@ func awsRestjson1_deserializeDocumentInvalidMaxResultsException(v **types.Invali
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7169,7 +7340,7 @@ func awsRestjson1_deserializeDocumentInvalidNextTokenException(v **types.Invalid
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7209,7 +7380,7 @@ func awsRestjson1_deserializeDocumentInvalidParameterException(v **types.Invalid
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7249,7 +7420,7 @@ func awsRestjson1_deserializeDocumentInvalidPolicyException(v **types.InvalidPol
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7289,7 +7460,7 @@ func awsRestjson1_deserializeDocumentInvalidResourceTypeException(v **types.Inva
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7329,7 +7500,7 @@ func awsRestjson1_deserializeDocumentInvalidStateTransitionException(v **types.I
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7369,7 +7540,7 @@ func awsRestjson1_deserializeDocumentMalformedArnException(v **types.MalformedAr
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7409,7 +7580,7 @@ func awsRestjson1_deserializeDocumentMalformedPolicyTemplateException(v **types.
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7449,7 +7620,7 @@ func awsRestjson1_deserializeDocumentMissingRequiredParameterException(v **types
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7489,7 +7660,7 @@ func awsRestjson1_deserializeDocumentOperationNotPermittedException(v **types.Op
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7529,7 +7700,7 @@ func awsRestjson1_deserializeDocumentPermissionAlreadyExistsException(v **types.
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7569,7 +7740,7 @@ func awsRestjson1_deserializeDocumentPermissionLimitExceededException(v **types.
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -7609,7 +7780,7 @@ func awsRestjson1_deserializeDocumentPermissionVersionsLimitExceededException(v 
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -8095,7 +8266,7 @@ func awsRestjson1_deserializeDocumentResourceArnNotFoundException(v **types.Reso
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -8575,7 +8746,7 @@ func awsRestjson1_deserializeDocumentResourceShareInvitationAlreadyAcceptedExcep
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -8615,7 +8786,7 @@ func awsRestjson1_deserializeDocumentResourceShareInvitationAlreadyRejectedExcep
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -8655,7 +8826,7 @@ func awsRestjson1_deserializeDocumentResourceShareInvitationArnNotFoundException
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -8695,7 +8866,7 @@ func awsRestjson1_deserializeDocumentResourceShareInvitationExpiredException(v *
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -8769,7 +8940,7 @@ func awsRestjson1_deserializeDocumentResourceShareLimitExceededException(v **typ
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9184,7 +9355,7 @@ func awsRestjson1_deserializeDocumentServerInternalException(v **types.ServerInt
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9316,7 +9487,7 @@ func awsRestjson1_deserializeDocumentServiceUnavailableException(v **types.Servi
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9405,7 +9576,7 @@ func awsRestjson1_deserializeDocumentTagLimitExceededException(v **types.TagLimi
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9479,7 +9650,7 @@ func awsRestjson1_deserializeDocumentTagPolicyViolationException(v **types.TagPo
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9519,7 +9690,7 @@ func awsRestjson1_deserializeDocumentThrottlingException(v **types.ThrottlingExc
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9559,7 +9730,7 @@ func awsRestjson1_deserializeDocumentUnknownResourceException(v **types.UnknownR
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9599,7 +9770,7 @@ func awsRestjson1_deserializeDocumentUnmatchedPolicyPermissionException(v **type
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {

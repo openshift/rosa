@@ -12,12 +12,18 @@ import (
 )
 
 // Creates a policy of a specified type that you can attach to a root, an
-// organizational unit (OU), or an individual Amazon Web Services account. For more
-// information about policies and their use, see Managing Organizations policies (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html)
-// . If the request includes tags, then the requester must have the
-// organizations:TagResource permission. This operation can be called only from the
-// organization's management account or by a member account that is a delegated
-// administrator for an Amazon Web Services service.
+// organizational unit (OU), or an individual Amazon Web Services account.
+//
+// For more information about policies and their use, see [Managing Organizations policies].
+//
+// If the request includes tags, then the requester must have the
+// organizations:TagResource permission.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator for an Amazon Web Services
+// service.
+//
+// [Managing Organizations policies]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html
 func (c *Client) CreatePolicy(ctx context.Context, params *CreatePolicyInput, optFns ...func(*Options)) (*CreatePolicyOutput, error) {
 	if params == nil {
 		params = &CreatePolicyInput{}
@@ -36,10 +42,12 @@ func (c *Client) CreatePolicy(ctx context.Context, params *CreatePolicyInput, op
 type CreatePolicyInput struct {
 
 	// The policy text content to add to the new policy. The text that you supply must
-	// adhere to the rules of the policy type you specify in the Type parameter. The
-	// maximum size of a policy document depends on the policy's type. For more
-	// information, see Maximum and minimum values (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html#min-max-values)
-	// in the Organizations User Guide.
+	// adhere to the rules of the policy type you specify in the Type parameter.
+	//
+	// The maximum size of a policy document depends on the policy's type. For more
+	// information, see [Maximum and minimum values]in the Organizations User Guide.
+	//
+	// [Maximum and minimum values]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html#min-max-values
 	//
 	// This member is required.
 	Content *string
@@ -49,18 +57,39 @@ type CreatePolicyInput struct {
 	// This member is required.
 	Description *string
 
-	// The friendly name to assign to the policy. The regex pattern (http://wikipedia.org/wiki/regex)
-	// that is used to validate this parameter is a string of any of the characters in
-	// the ASCII character range.
+	// The friendly name to assign to the policy.
+	//
+	// The [regex pattern] that is used to validate this parameter is a string of any of the
+	// characters in the ASCII character range.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	Name *string
 
 	// The type of policy to create. You can specify one of the following values:
-	//   - AISERVICES_OPT_OUT_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html)
-	//   - BACKUP_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html)
-	//   - SERVICE_CONTROL_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html)
-	//   - TAG_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html)
+	//
+	// [SERVICE_CONTROL_POLICY]
+	//
+	// [RESOURCE_CONTROL_POLICY]
+	//
+	// [DECLARATIVE_POLICY_EC2]
+	//
+	// [BACKUP_POLICY]
+	//
+	// [TAG_POLICY]
+	//
+	// [CHATBOT_POLICY]
+	//
+	// [AISERVICES_OPT_OUT_POLICY]
+	//
+	// [AISERVICES_OPT_OUT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html
+	// [BACKUP_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html
+	// [SERVICE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html
+	// [CHATBOT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_chatbot.html
+	// [TAG_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html
+	// [DECLARATIVE_POLICY_EC2]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html
+	// [RESOURCE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html
 	//
 	// This member is required.
 	Type types.PolicyType
@@ -68,10 +97,12 @@ type CreatePolicyInput struct {
 	// A list of tags that you want to attach to the newly created policy. For each
 	// tag in the list, you must specify both a tag key and a value. You can set the
 	// value to an empty string, but you can't set it to null . For more information
-	// about tagging, see Tagging Organizations resources (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tagging.html)
-	// in the Organizations User Guide. If any one of the tags is not valid or if you
-	// exceed the allowed number of tags for a policy, then the entire request fails
-	// and the policy is not created.
+	// about tagging, see [Tagging Organizations resources]in the Organizations User Guide.
+	//
+	// If any one of the tags is not valid or if you exceed the allowed number of tags
+	// for a policy, then the entire request fails and the policy is not created.
+	//
+	// [Tagging Organizations resources]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tagging.html
 	Tags []types.Tag
 
 	noSmithyDocumentSerde
@@ -131,6 +162,9 @@ func (c *Client) addOperationCreatePolicyMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -141,6 +175,15 @@ func (c *Client) addOperationCreatePolicyMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreatePolicyValidationMiddleware(stack); err != nil {
@@ -162,6 +205,18 @@ func (c *Client) addOperationCreatePolicyMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
