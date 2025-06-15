@@ -48,6 +48,7 @@ func (client *AWSClient) AllocateEIPAndAssociateInstance(instanceID string) (str
 	allocRes, err := client.AllocateEIPAddress()
 	if err != nil {
 		log.LogError("Failed allocated EIP: %s", err)
+		return "", err
 	} else {
 		log.LogInfo("Successfully allocated EIP: %s", *allocRes.PublicIp)
 	}

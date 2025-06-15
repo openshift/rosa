@@ -2,7 +2,9 @@ package aws_client
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-common/pkg/log"
@@ -26,6 +28,24 @@ func (client *AWSClient) DescribeNetWorkInterface(vpcID string) ([]types.Network
 		return nil, err
 	}
 	return resp.NetworkInterfaces, err
+}
+
+func (client *AWSClient) GetNetworkInterfacesByInstanceID(instanceID string) ([]types.NetworkInterface, error) {
+	input := &ec2.DescribeNetworkInterfacesInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("attachment.instance-id"),
+				Values: []string{instanceID},
+			},
+		},
+	}
+
+	output, err := client.Ec2Client.DescribeNetworkInterfaces(context.TODO(), input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe network interfaces: %w", err)
+	}
+
+	return output.NetworkInterfaces, nil
 }
 
 func (client *AWSClient) DeleteNetworkInterface(networkinterface types.NetworkInterface) error {
