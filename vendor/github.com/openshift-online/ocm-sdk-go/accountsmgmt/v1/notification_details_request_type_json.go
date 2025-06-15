@@ -92,11 +92,20 @@ func WriteNotificationDetailsRequest(object *NotificationDetailsRequest, stream 
 		if count > 0 {
 			stream.WriteMore()
 		}
+		stream.WriteObjectField("log_type")
+		stream.WriteString(object.logType)
+		count++
+	}
+	present_ = object.bitmap_&64 != 0
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
 		stream.WriteObjectField("subject")
 		stream.WriteString(object.subject)
 		count++
 	}
-	present_ = object.bitmap_&64 != 0
+	present_ = object.bitmap_&128 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -148,14 +157,18 @@ func ReadNotificationDetailsRequest(iterator *jsoniter.Iterator) *NotificationDe
 			value := iterator.ReadBool()
 			object.internalOnly = value
 			object.bitmap_ |= 16
+		case "log_type":
+			value := iterator.ReadString()
+			object.logType = value
+			object.bitmap_ |= 32
 		case "subject":
 			value := iterator.ReadString()
 			object.subject = value
-			object.bitmap_ |= 32
+			object.bitmap_ |= 64
 		case "subscription_id":
 			value := iterator.ReadString()
 			object.subscriptionID = value
-			object.bitmap_ |= 64
+			object.bitmap_ |= 128
 		default:
 			iterator.ReadAny()
 		}

@@ -27,6 +27,7 @@ type AzureNodePoolBuilder struct {
 	osDiskSizeGibibytes      int
 	osDiskStorageAccountType string
 	vmSize                   string
+	encryptionAtHost         *AzureNodePoolEncryptionAtHostBuilder
 	resourceName             string
 	ephemeralOSDiskEnabled   bool
 }
@@ -62,17 +63,31 @@ func (b *AzureNodePoolBuilder) VMSize(value string) *AzureNodePoolBuilder {
 	return b
 }
 
+// EncryptionAtHost sets the value of the 'encryption_at_host' attribute to the given value.
+//
+// AzureNodePoolEncryptionAtHost defines the encryption setting for Encryption At Host.
+// If not specified, Encryption at Host is not enabled.
+func (b *AzureNodePoolBuilder) EncryptionAtHost(value *AzureNodePoolEncryptionAtHostBuilder) *AzureNodePoolBuilder {
+	b.encryptionAtHost = value
+	if value != nil {
+		b.bitmap_ |= 8
+	} else {
+		b.bitmap_ &^= 8
+	}
+	return b
+}
+
 // EphemeralOSDiskEnabled sets the value of the 'ephemeral_OS_disk_enabled' attribute to the given value.
 func (b *AzureNodePoolBuilder) EphemeralOSDiskEnabled(value bool) *AzureNodePoolBuilder {
 	b.ephemeralOSDiskEnabled = value
-	b.bitmap_ |= 8
+	b.bitmap_ |= 16
 	return b
 }
 
 // ResourceName sets the value of the 'resource_name' attribute to the given value.
 func (b *AzureNodePoolBuilder) ResourceName(value string) *AzureNodePoolBuilder {
 	b.resourceName = value
-	b.bitmap_ |= 16
+	b.bitmap_ |= 32
 	return b
 }
 
@@ -85,6 +100,11 @@ func (b *AzureNodePoolBuilder) Copy(object *AzureNodePool) *AzureNodePoolBuilder
 	b.osDiskSizeGibibytes = object.osDiskSizeGibibytes
 	b.osDiskStorageAccountType = object.osDiskStorageAccountType
 	b.vmSize = object.vmSize
+	if object.encryptionAtHost != nil {
+		b.encryptionAtHost = NewAzureNodePoolEncryptionAtHost().Copy(object.encryptionAtHost)
+	} else {
+		b.encryptionAtHost = nil
+	}
 	b.ephemeralOSDiskEnabled = object.ephemeralOSDiskEnabled
 	b.resourceName = object.resourceName
 	return b
@@ -97,6 +117,12 @@ func (b *AzureNodePoolBuilder) Build() (object *AzureNodePool, err error) {
 	object.osDiskSizeGibibytes = b.osDiskSizeGibibytes
 	object.osDiskStorageAccountType = b.osDiskStorageAccountType
 	object.vmSize = b.vmSize
+	if b.encryptionAtHost != nil {
+		object.encryptionAtHost, err = b.encryptionAtHost.Build()
+		if err != nil {
+			return
+		}
+	}
 	object.ephemeralOSDiskEnabled = b.ephemeralOSDiskEnabled
 	object.resourceName = b.resourceName
 	return

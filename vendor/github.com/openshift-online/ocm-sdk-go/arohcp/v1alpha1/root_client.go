@@ -57,3 +57,11 @@ func (c *Client) Clusters() *ClustersClient {
 		path.Join(c.path, "clusters"),
 	)
 }
+
+// Versions returns the target 'versions' resource.
+func (c *Client) Versions() *VersionsClient {
+	return NewVersionsClient(
+		c.transport,
+		path.Join(c.path, "versions"),
+	)
+}

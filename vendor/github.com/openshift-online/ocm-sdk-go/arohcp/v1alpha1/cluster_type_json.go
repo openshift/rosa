@@ -649,7 +649,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("version")
-		v1.WriteVersion(object.version, stream)
+		WriteVersion(object.version, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -1078,7 +1078,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.subscription = value
 			object.bitmap_ |= 2305843009213693952
 		case "version":
-			value := v1.ReadVersion(iterator)
+			value := ReadVersion(iterator)
 			object.version = value
 			object.bitmap_ |= 4611686018427387904
 		default:

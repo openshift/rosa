@@ -123,7 +123,7 @@ type ClusterBuilder struct {
 	status                            *ClusterStatusBuilder
 	storageQuota                      *ValueBuilder
 	subscription                      *v1.SubscriptionBuilder
-	version                           *v1.VersionBuilder
+	version                           *VersionBuilder
 	fips                              bool
 	disableUserWorkloadMonitoring     bool
 	etcdEncryption                    bool
@@ -828,7 +828,7 @@ func (b *ClusterBuilder) Subscription(value *v1.SubscriptionBuilder) *ClusterBui
 // Version sets the value of the 'version' attribute to the given value.
 //
 // Representation of an _OpenShift_ version.
-func (b *ClusterBuilder) Version(value *v1.VersionBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Version(value *VersionBuilder) *ClusterBuilder {
 	b.version = value
 	if value != nil {
 		b.bitmap_ |= 4611686018427387904
@@ -1073,7 +1073,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.subscription = nil
 	}
 	if object.version != nil {
-		b.version = v1.NewVersion().Copy(object.version)
+		b.version = NewVersion().Copy(object.version)
 	} else {
 		b.version = nil
 	}

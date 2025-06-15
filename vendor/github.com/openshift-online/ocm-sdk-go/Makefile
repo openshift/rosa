@@ -27,11 +27,11 @@ export PATH := $(LOCAL_BIN_PATH):$(PATH)
 export CGO_ENABLED=0
 
 # Details of the model to use:
-model_version:=v0.0.417
+model_version:=v0.0.419
 model_url:=https://github.com/openshift-online/ocm-api-model.git
 
 # Details of the metamodel to use:
-metamodel_version:=v0.0.67
+metamodel_version:=v0.0.68
 
 goimports_version:=v0.4.0
 
@@ -46,6 +46,11 @@ GINKGO := $(LOCAL_BIN_PATH)/ginkgo
 ginkgo-install:
 	@GOBIN=$(LOCAL_BIN_PATH) go install github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 ;\
 
+verify: lint examples
+	go vet $(find . -maxdepth 1 -type d  ! -name 'vendor' ! -name '.')
+	hack/verify-gofmt.sh
+.PHONY: verify
+
 .PHONY: examples
 examples:
 	cd examples && \
@@ -55,7 +60,12 @@ examples:
 
 .PHONY: test tests
 test tests: ginkgo-install
+ifndef JUNITFILE
 	$(GINKGO) run -r $(ginkgo_flags)
+else
+	$(GINKGO) run -r $(ginkgo_flags) --junit-report=junit_golang_tests_junit.xml --output-dir=${ARTIFACT_DIR}
+endif
+
 
 .PHONY: fmt
 fmt:
