@@ -28,6 +28,7 @@ type NotificationDetailsRequest struct {
 	bccAddress              string
 	clusterID               string
 	clusterUUID             string
+	logType                 string
 	subject                 string
 	subscriptionID          string
 	includeRedHatAssociates bool
@@ -154,12 +155,35 @@ func (o *NotificationDetailsRequest) GetInternalOnly() (value bool, ok bool) {
 	return
 }
 
+// LogType returns the value of the 'log_type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Indicates the type of the service log.
+func (o *NotificationDetailsRequest) LogType() string {
+	if o != nil && o.bitmap_&32 != 0 {
+		return o.logType
+	}
+	return ""
+}
+
+// GetLogType returns the value of the 'log_type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Indicates the type of the service log.
+func (o *NotificationDetailsRequest) GetLogType() (value string, ok bool) {
+	ok = o != nil && o.bitmap_&32 != 0
+	if ok {
+		value = o.logType
+	}
+	return
+}
+
 // Subject returns the value of the 'subject' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The email subject.
 func (o *NotificationDetailsRequest) Subject() string {
-	if o != nil && o.bitmap_&32 != 0 {
+	if o != nil && o.bitmap_&64 != 0 {
 		return o.subject
 	}
 	return ""
@@ -170,7 +194,7 @@ func (o *NotificationDetailsRequest) Subject() string {
 //
 // The email subject.
 func (o *NotificationDetailsRequest) GetSubject() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&32 != 0
+	ok = o != nil && o.bitmap_&64 != 0
 	if ok {
 		value = o.subject
 	}
@@ -182,7 +206,7 @@ func (o *NotificationDetailsRequest) GetSubject() (value string, ok bool) {
 //
 // Indicates which Subscription the resource type belongs to.
 func (o *NotificationDetailsRequest) SubscriptionID() string {
-	if o != nil && o.bitmap_&64 != 0 {
+	if o != nil && o.bitmap_&128 != 0 {
 		return o.subscriptionID
 	}
 	return ""
@@ -193,7 +217,7 @@ func (o *NotificationDetailsRequest) SubscriptionID() string {
 //
 // Indicates which Subscription the resource type belongs to.
 func (o *NotificationDetailsRequest) GetSubscriptionID() (value string, ok bool) {
-	ok = o != nil && o.bitmap_&64 != 0
+	ok = o != nil && o.bitmap_&128 != 0
 	if ok {
 		value = o.subscriptionID
 	}

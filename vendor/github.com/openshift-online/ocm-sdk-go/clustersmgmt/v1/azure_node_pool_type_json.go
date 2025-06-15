@@ -69,7 +69,16 @@ func WriteAzureNodePool(object *AzureNodePool, stream *jsoniter.Stream) {
 		stream.WriteString(object.vmSize)
 		count++
 	}
-	present_ = object.bitmap_&8 != 0
+	present_ = object.bitmap_&8 != 0 && object.encryptionAtHost != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("encryption_at_host")
+		WriteAzureNodePoolEncryptionAtHost(object.encryptionAtHost, stream)
+		count++
+	}
+	present_ = object.bitmap_&16 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -78,7 +87,7 @@ func WriteAzureNodePool(object *AzureNodePool, stream *jsoniter.Stream) {
 		stream.WriteBool(object.ephemeralOSDiskEnabled)
 		count++
 	}
-	present_ = object.bitmap_&16 != 0
+	present_ = object.bitmap_&32 != 0
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -122,14 +131,18 @@ func ReadAzureNodePool(iterator *jsoniter.Iterator) *AzureNodePool {
 			value := iterator.ReadString()
 			object.vmSize = value
 			object.bitmap_ |= 4
+		case "encryption_at_host":
+			value := ReadAzureNodePoolEncryptionAtHost(iterator)
+			object.encryptionAtHost = value
+			object.bitmap_ |= 8
 		case "ephemeral_os_disk_enabled":
 			value := iterator.ReadBool()
 			object.ephemeralOSDiskEnabled = value
-			object.bitmap_ |= 8
+			object.bitmap_ |= 16
 		case "resource_name":
 			value := iterator.ReadString()
 			object.resourceName = value
-			object.bitmap_ |= 16
+			object.bitmap_ |= 32
 		default:
 			iterator.ReadAny()
 		}

@@ -135,7 +135,7 @@ type Cluster struct {
 	status                            *ClusterStatus
 	storageQuota                      *Value
 	subscription                      *v1.Subscription
-	version                           *v1.Version
+	version                           *Version
 	fips                              bool
 	disableUserWorkloadMonitoring     bool
 	etcdEncryption                    bool
@@ -1600,7 +1600,7 @@ func (o *Cluster) GetSubscription() (value *v1.Subscription, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
-func (o *Cluster) Version() *v1.Version {
+func (o *Cluster) Version() *Version {
 	if o != nil && o.bitmap_&4611686018427387904 != 0 {
 		return o.version
 	}
@@ -1611,7 +1611,7 @@ func (o *Cluster) Version() *v1.Version {
 // a flag indicating if the attribute has a value.
 //
 // Link to the version of _OpenShift_ that will be used to install the cluster.
-func (o *Cluster) GetVersion() (value *v1.Version, ok bool) {
+func (o *Cluster) GetVersion() (value *Version, ok bool) {
 	ok = o != nil && o.bitmap_&4611686018427387904 != 0
 	if ok {
 		value = o.version

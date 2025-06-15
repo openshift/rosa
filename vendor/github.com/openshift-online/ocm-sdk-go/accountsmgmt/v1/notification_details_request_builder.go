@@ -28,6 +28,7 @@ type NotificationDetailsRequestBuilder struct {
 	bccAddress              string
 	clusterID               string
 	clusterUUID             string
+	logType                 string
 	subject                 string
 	subscriptionID          string
 	includeRedHatAssociates bool
@@ -79,17 +80,24 @@ func (b *NotificationDetailsRequestBuilder) InternalOnly(value bool) *Notificati
 	return b
 }
 
+// LogType sets the value of the 'log_type' attribute to the given value.
+func (b *NotificationDetailsRequestBuilder) LogType(value string) *NotificationDetailsRequestBuilder {
+	b.logType = value
+	b.bitmap_ |= 32
+	return b
+}
+
 // Subject sets the value of the 'subject' attribute to the given value.
 func (b *NotificationDetailsRequestBuilder) Subject(value string) *NotificationDetailsRequestBuilder {
 	b.subject = value
-	b.bitmap_ |= 32
+	b.bitmap_ |= 64
 	return b
 }
 
 // SubscriptionID sets the value of the 'subscription_ID' attribute to the given value.
 func (b *NotificationDetailsRequestBuilder) SubscriptionID(value string) *NotificationDetailsRequestBuilder {
 	b.subscriptionID = value
-	b.bitmap_ |= 64
+	b.bitmap_ |= 128
 	return b
 }
 
@@ -104,6 +112,7 @@ func (b *NotificationDetailsRequestBuilder) Copy(object *NotificationDetailsRequ
 	b.clusterUUID = object.clusterUUID
 	b.includeRedHatAssociates = object.includeRedHatAssociates
 	b.internalOnly = object.internalOnly
+	b.logType = object.logType
 	b.subject = object.subject
 	b.subscriptionID = object.subscriptionID
 	return b
@@ -118,6 +127,7 @@ func (b *NotificationDetailsRequestBuilder) Build() (object *NotificationDetails
 	object.clusterUUID = b.clusterUUID
 	object.includeRedHatAssociates = b.includeRedHatAssociates
 	object.internalOnly = b.internalOnly
+	object.logType = b.logType
 	object.subject = b.subject
 	object.subscriptionID = b.subscriptionID
 	return
