@@ -284,6 +284,8 @@ func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput
 		policyARN, err = r.AWSClient.ForceEnsurePolicy(policyARN, policyPermissionDetail,
 			input.defaultPolicyVersion, tagsList, input.path)
 	} else {
+		r.Reporter.Warnf("If policies created are not attached, or are missing, try re-running "+
+			"\"rosa create account-roles\" with \"%s\"", forcePolicyCreationFlag)
 		policyARN, err = r.AWSClient.EnsurePolicy(policyARN, policyPermissionDetail,
 			input.defaultPolicyVersion, tagsList, input.path)
 	}
