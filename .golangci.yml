@@ -16,7 +16,7 @@
 
 version: "2"
 run:
-  go: "1.23"
+  go: "1.23.1"
   issues-exit-code: 1
   modules-download-mode: readonly
 issues:

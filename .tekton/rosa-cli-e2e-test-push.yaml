@@ -7,8 +7,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "master"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: rh-rosa-cli
@@ -528,6 +527,13 @@ spec:
       params:
       - name: IMAGE
         value: $(tasks.build-image-index.results.IMAGE_URL)
+      - name: ADDITIONAL_TAGS
+        value: >-
+          {{- if (startsWith(target_branch, "refs/tags/v")) -}}
+            e2e_test_releasing_latest
+          {{- else -}}
+            e2e_test_latest
+          {{- end -}}
       runAfter:
       - build-image-index
       taskRef:
