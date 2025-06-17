@@ -35,8 +35,9 @@ import (
 )
 
 const (
-	route53RoleArnFlag     = "route53-role-arn"
-	vpcEndpointRoleArnFlag = "vpc-endpoint-role-arn"
+	route53RoleArnFlag      = "route53-role-arn"
+	vpcEndpointRoleArnFlag  = "vpc-endpoint-role-arn"
+	forcePolicyCreationFlag = "force-policy-creation"
 )
 
 var args struct {
@@ -122,7 +123,7 @@ func init() {
 
 	flags.BoolVarP(
 		&args.forcePolicyCreation,
-		"force-policy-creation",
+		forcePolicyCreationFlag,
 		"f",
 		false,
 		"Forces creation of policies skipping compatibility check",
