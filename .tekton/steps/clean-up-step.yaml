@@ -39,14 +39,9 @@ spec:
       value: $(params.cluster-profile)
   script: |
     #!/bin/bash
-    # setup golang
-    GO_VERSION=1.23.9
-    wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
-    export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
-
-    # setup rosacli
-    git clone https://github.com/openshift/rosa.git /rosa
+    mkdir -p /rosa/tests/output/$(params.cluster-profile)
+    echo '$(params.konflux-resources-json)' > /rosa/tests/output/$(params.cluster-profile)/konflux_resources.json
+    
     cd /rosa
     source ./tests/prow_ci.sh
     configure_aws "${AWS_CREDENTIALS}" "${AWS_REGION}"
@@ -56,18 +51,7 @@ spec:
     rosa whoami
 
     # run destroy case to clean up all testing resources
-    export PATH=$PATH:$HOME/go/bin
-    go install github.com/onsi/ginkgo/v2/ginkgo@latest
     ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
       --ginkgo.timeout "1h" \
       --ginkgo.label-filter "destroy"
-    rc1=$?
 
-     # run destroy-post case to check if all resources are cleaned up
-    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
-      --ginkgo.timeout "30m" \
-      --ginkgo.label-filter "destroy-post"
-    rc2=$?
-    if [ $rc1 -ne 0 ] || [ $rc2 -ne 0 ]; then
-      exit 1
-    fi

@@ -1,9 +1,6 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  annotations:
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "push" || (event == "pull_request" && pull_request_title.startsWith("e2e_trigger_"))
   name: hcp-advanced-e2e-test
 spec:
   params:
@@ -109,3 +106,5 @@ spec:
           value: "$(params.OCM_LOGIN_ENV)"
         - name: channel-group
           value: "$(params.CHANNEL_GROUP)"
+        - name: konflux-resources-json
+          value: $(tasks.hcp-advance-e2e-test.results.konflux-resources-json)

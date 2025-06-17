@@ -35,6 +35,9 @@ spec:
     - name: ocm-login-env
       type: string
       default: "staging"
+  results:
+    - name: konflux-resources-json
+      description: testing cluster resources in json format
   steps:
     - name: run-e2e-day1
       ref:
@@ -90,6 +93,23 @@ spec:
           value: "$(params.aws-region)"
         - name: ocm-login-env
           value: "$(params.ocm-login-env)"
+    - name: export-resources-record
+      ref:
+        resolver: git
+        params:
+          - name: url
+            value: "$(params.git-repo).git"
+          - name: revision
+            value: "$(params.git-revision)"
+          - name: pathInRepo
+            value: ".tekton/steps/export-resources-record-step.yaml"
+      params:
+        - name: container-image
+          value: "$(params.container-image)"
+        - name: output-volume
+          value: output-volume
+        - name: cluster-profile
+          value: "$(params.cluster-profile)"
   volumes:
     - name: output-volume
       emptyDir: {}
