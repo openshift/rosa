@@ -1144,6 +1144,7 @@ func run(cmd *cobra.Command, _ []string) {
 		isClusterAdmin, err = interactive.GetBool(interactive.Input{
 			Question: "Create cluster admin user",
 			Default:  false,
+			Help:     cmd.Flags().Lookup("create-admin-user").Usage,
 			Required: true,
 		})
 		if err != nil {
@@ -3203,7 +3204,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if isVersionCompatibleManagedIngressV2 {
 		shouldAskCustomIngress := false
 		if interactive.Enabled() && !confirm.Yes() && !isHostedCP {
-			shouldAskCustomIngress = confirm.Prompt(false, "Customize the default Ingress Controller?")
+			shouldAskCustomIngress, err = interactive.GetBool(interactive.Input{
+				Question: "Customize the default Ingress Controller",
+				Help: "Decides whether or not to customize the default Ingress Controller. Example question:\n" +
+					"    \"Router Ingress Sharding: Route Selector (e.g. 'route=external')\"",
+				Default: shouldAskCustomIngress,
+			})
+			if err != nil {
+				_ = r.Reporter.Errorf("Expected a valid boolean value: %s", err)
+				os.Exit(1)
+			}
 		}
 		if cmd.Flags().Changed(ingress.DefaultIngressRouteSelectorFlag) {
 			if isHostedCP {
@@ -3725,6 +3735,7 @@ func handleOidcConfigOptions(r *rosa.Runtime, cmd *cobra.Command, isSTS bool, is
 			_isOidcConfig, err := interactive.GetBool(interactive.Input{
 				Question: "Deploy cluster using pre registered OIDC Configuration ID",
 				Default:  true,
+				Help:     cmd.Flags().Lookup(OidcConfigIdFlag).Usage,
 				Required: true,
 			})
 			if err != nil {
