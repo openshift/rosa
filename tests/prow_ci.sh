@@ -99,6 +99,7 @@ rosa_login () {
   echo "[CI] Running rosa/ocm login based on env $1"
   rosa login --env "${ocmENV}" --token "${ocmToken}"
   ocm login --url "${ocmENV}" --token "${ocmToken}"
+  rosa init
 }
 
 # generate_label_filter_switch is used to generate label-filter for the test run

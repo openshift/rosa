@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,6 +33,7 @@ var _ = Describe("Network Resources",
 			err                     error
 			defaultName             string
 			region                  string
+			stackNameToClean        []string
 		)
 
 		const usWest2Region = "us-west-2"
@@ -40,33 +43,39 @@ var _ = Describe("Network Resources",
 			rosaClient = rosacli.NewClient()
 			networkResourcesService = rosaClient.NetworkResources
 			ocmResourceService = rosaClient.OCMResource
+
+			By("Create aws client")
+			region = usWest2Region
+			awsClient, err = aws_client.CreateAWSClient("", region)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		AfterEach(func() {
+			if len(stackNameToClean) > 0 {
+				for _, stackname := range stackNameToClean {
+					params := cloudformation.DeleteStackInput{
+						StackName: &stackname,
+					}
+					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+					Expect(err).ToNot(HaveOccurred())
+				}
+			}
 		})
 		It("should be created successfully with default template successfully- [id:81295]",
 			labels.High, labels.Runtime.OCMResources,
 			func() {
-				By("Create aws client")
-				region = usWest2Region
-				awsClient, err = aws_client.CreateAWSClient("", region)
-				Expect(err).ToNot(HaveOccurred())
-
 				By("Get the organization id")
 				accInfo, err := ocmResourceService.UserInfo()
 				Expect(err).ToNot(HaveOccurred())
 				awsAccountID := accInfo.AWSAccountID
 
-				By("Create network resources without passing template name and parameter")
+				By("Create network resources without passing template name and parameter then delete it")
 				defaultName = fmt.Sprintf("rosa-network-stack-%s", awsAccountID)
 				output, err := networkResourcesService.CreateNetworkResources(false,
 					fmt.Sprintf("--param=Region=%s", region),
 				)
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &defaultName,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
 				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = append(stackNameToClean, defaultName)
+
 				resp := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(resp).To(And(
 					ContainSubstring("Name not provided, using default name %s", defaultName),
@@ -79,6 +88,32 @@ var _ = Describe("Network Resources",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(subnets)).To(Equal(2))
 
+				By("Delete the cloudformation created in previous step")
+				params := cloudformation.DeleteStackInput{
+					StackName: &defaultName,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, defaultName)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &defaultName,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", defaultName))
+
 				By("Create network with default CF template and setting specific AvailabilityZones param")
 				stackName1 := helper.GenerateRandomName("ocp-81295", 3)
 				paramNameFlag := fmt.Sprintf("--param=Name=%s", stackName1)
@@ -88,14 +123,8 @@ var _ = Describe("Network Resources",
 					paramRegionFlag,
 					"--param=AvailabilityZoneCount=4",
 				)
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName1,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
 				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = append(stackNameToClean, stackName1)
 
 				By("Check one pair of public and private subnets created")
 				createdVPCID, err = helper.ExtractVPCIDFromNetworkOutput(output)
@@ -103,6 +132,32 @@ var _ = Describe("Network Resources",
 				subnets, err = awsClient.ListSubnetByVpcID(createdVPCID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(subnets)).To(Equal(8))
+
+				By("Delete the cloudformation created in previous step")
+				params = cloudformation.DeleteStackInput{
+					StackName: &stackName1,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName1)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &stackName1,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName1))
 
 				By("Create network with default CF template with params which AvailabilityZoneCount>len(AvailabilityZones)")
 				stackName2 := helper.GenerateRandomName("ocp-81295", 3)
@@ -114,14 +169,8 @@ var _ = Describe("Network Resources",
 					"--param=AZ1=us-west-2a",
 					"--param=AZ2=us-west-2b",
 				)
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName2,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
 				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = append(stackNameToClean, stackName2)
 
 				By("Check one pair of public and private subnets created")
 				createdVPCID, err = helper.ExtractVPCIDFromNetworkOutput(output)
@@ -129,6 +178,32 @@ var _ = Describe("Network Resources",
 				subnets, err = awsClient.ListSubnetByVpcID(createdVPCID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(subnets)).To(Equal(4))
+
+				By("Delete the cloudformation created in previous step")
+				params = cloudformation.DeleteStackInput{
+					StackName: &stackName2,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName2)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &stackName2,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName2))
 
 				By("Create network with default CF template with params which AvailabilityZoneCount<len(AvailabilityZones)")
 				stackName3 := helper.GenerateRandomName("ocp-81295", 3)
@@ -142,14 +217,8 @@ var _ = Describe("Network Resources",
 					"--param=AZ3=us-west-2b",
 					"--param=AZ4=us-west-2d",
 				)
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName3,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
 				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = append(stackNameToClean, stackName3)
 
 				By("Check one pair of public and private subnets created")
 				createdVPCID, err = helper.ExtractVPCIDFromNetworkOutput(output)
@@ -157,6 +226,32 @@ var _ = Describe("Network Resources",
 				subnets, err = awsClient.ListSubnetByVpcID(createdVPCID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(subnets)).To(Equal(8))
+
+				By("Delete the cloudformation created in previous step")
+				params = cloudformation.DeleteStackInput{
+					StackName: &stackName3,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName3)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &stackName3,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName3))
 			})
 		It("should be created with local template successfully - [id:77140]",
 			labels.High, labels.Runtime.OCMResources,
@@ -225,14 +320,9 @@ var _ = Describe("Network Resources",
 					"--param=AZ2=us-west-2c",
 					"--param=AZ3=us-west-2b",
 					"--param=AZ4=us-west-2d")
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName1,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
 				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = append(stackNameToClean, stackName1)
+
 				resp_tip := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				resp := rosaClient.Parser.TextData.Input(output).Parse().Output()
 				Expect(resp_tip).ToNot(
@@ -247,6 +337,32 @@ var _ = Describe("Network Resources",
 				subnets, err := awsClient.ListSubnetByVpcID(createdVPCID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(subnets)).To(Equal(8))
+
+				By("Delete the cloudformation created in previous step")
+				params := cloudformation.DeleteStackInput{
+					StackName: &stackName1,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName1)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &stackName1,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName1))
 
 				By("Try to create network by setting OCM_TEMPLATE_DIR env variable")
 				err = os.Setenv("OCM_TEMPLATE_DIR", templateDirPath)
@@ -264,16 +380,36 @@ var _ = Describe("Network Resources",
 					"--param=AZ3=us-west-2b",
 				)
 				Expect(err).To(HaveOccurred())
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName2,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
+				stackNameToClean = append(stackNameToClean, stackName2)
 
 				Expect(output.String()).To(
 					ContainSubstring("when using a custom template please use `--template-dir` to specify the template directory"))
+
+				By("Delete the cloudformation created in previous step")
+				params = cloudformation.DeleteStackInput{
+					StackName: &stackName2,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName2)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &stackName2,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName2))
 
 				By("Try to override 'OCM_TEMPLATE_DIR' env variable using --template-dir flag")
 				err = os.Setenv("OCM_TEMPLATE_DIR", "/fake/dir")
@@ -284,17 +420,37 @@ var _ = Describe("Network Resources",
 					paramNameFlag,
 					paramRegionFlag,
 					"--template-dir", templateDirPath)
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName3,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
 				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName3)
 				resp = rosaClient.Parser.TextData.Input(output).Parse().Output()
 				Expect(resp).To(
 					ContainSubstring("msg=\"Stack %s created\"", stackName3))
+
+				By("Delete the cloudformation created in previous step")
+				params = cloudformation.DeleteStackInput{
+					StackName: &stackName3,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName3)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &stackName3,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName3))
 
 				By("Create network using manual mode")
 				stackName4 := helper.GenerateRandomName("ocp-77140", 3)
@@ -332,14 +488,33 @@ var _ = Describe("Network Resources",
 				_, err = rosaClient.Runner.RunCMD(strings.Split(newCommand.String(), " "))
 
 				Expect(err).ToNot(HaveOccurred())
-				defer func() {
-					params := cloudformation.DeleteStackInput{
-						StackName: &stackName4,
-					}
-					_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
-					Expect(err).ToNot(HaveOccurred())
-				}()
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName4)
 
+				By("Delete the cloudformation created in previous step")
+				params = cloudformation.DeleteStackInput{
+					StackName: &stackName4,
+				}
+				_, err = awsClient.StackFormationClient.DeleteStack(context.TODO(), &params)
+				Expect(err).ToNot(HaveOccurred())
+				stackNameToClean = helper.RemoveFromStringSlice(stackNameToClean, stackName4)
+
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					20*time.Second,
+					10*time.Minute, false,
+					func(ctx context.Context) (done bool, err error) {
+						_, err = awsClient.StackFormationClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+							StackName: &stackName4,
+						})
+						if err != nil {
+							if strings.Contains(err.Error(), "does not exist") {
+								return true, nil
+							}
+							return false, err
+						}
+						return false, nil
+					})
+				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName4))
 			})
 
 		It("should be validated successfully - [id:77159]",
