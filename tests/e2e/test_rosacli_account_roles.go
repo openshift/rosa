@@ -217,8 +217,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).To(ContainSubstring("Successfully deleted the classic account roles"))
 
 			By("List account-roles to check they are deleted")
-			accountRoleList, _, err = ocmResourceService.ListAccountRole()
-			Expect(err).To(BeNil())
+			accountRoleList, _, _ = ocmResourceService.ListAccountRole()
 
 			accountRoleSetB = accountRoleList.AccountRoles(userRolePrefixB)
 			accountRoleSetH = accountRoleList.AccountRoles(userRolePrefixH)
@@ -284,8 +283,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).To(ContainSubstring("Successfully deleted the hosted CP account roles"))
 
 			By("List account-roles to check they are deleted")
-			accountRoleList, _, err := ocmResourceService.ListAccountRole()
-			Expect(err).To(BeNil())
+			accountRoleList, _, _ := ocmResourceService.ListAccountRole()
 			Expect(len(accountRoleList.AccountRoles(accrolePrefix))).To(Equal(0))
 		})
 
@@ -339,8 +337,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).To(ContainSubstring("Successfully deleted the hosted CP account roles"))
 
 			By("List account-roles to check they are deleted")
-			accountRoleList, _, err := ocmResourceService.ListAccountRole()
-			Expect(err).To(BeNil())
+			accountRoleList, _, _ := ocmResourceService.ListAccountRole()
 			Expect(len(accountRoleList.AccountRoles(accrolePrefix))).To(Equal(0))
 		})
 
