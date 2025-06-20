@@ -3353,7 +3353,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:            availabilityZones,
 		SubnetIds:                    subnetIDs,
 		PrivateLink:                  &privateLink,
-		PrivateIngress:               privateIngress,
+		PrivateIngress:               &privateIngress,
 		AWSCreator:                   awsCreator,
 		IsSTS:                        isSTS,
 		RoleARN:                      roleARN,

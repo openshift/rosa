@@ -103,7 +103,7 @@ type Spec struct {
 	HostPrefix                     int
 	Private                        *bool
 	PrivateLink                    *bool
-	PrivateIngress                 bool
+	PrivateIngress                 *bool
 
 	// Properties
 	CustomProperties map[string]string
@@ -1130,30 +1130,37 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		clusterBuilder = clusterBuilder.Htpasswd(htPasswdIDP)
 	}
 
-	if !reflect.DeepEqual(config.DefaultIngress, NewDefaultIngressSpec()) {
-		defaultIngress := cmv1.NewIngress().Default(true)
-		if len(config.DefaultIngress.RouteSelectors) != 0 {
-			defaultIngress.RouteSelectors(config.DefaultIngress.RouteSelectors)
-		}
-		if len(config.DefaultIngress.ExcludedNamespaces) != 0 {
-			defaultIngress.ExcludedNamespaces(config.DefaultIngress.ExcludedNamespaces...)
-		}
-		if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.WildcardPolicy) {
-			defaultIngress.RouteWildcardPolicy(v1.WildcardPolicy(config.DefaultIngress.WildcardPolicy))
-		}
-		if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.NamespaceOwnershipPolicy) {
-			defaultIngress.RouteNamespaceOwnershipPolicy(
-				v1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
-		}
+	// Build default ingress if changes detected in config
+	defaultIngress := cmv1.NewIngress().Default(true)
+	if len(config.DefaultIngress.RouteSelectors) != 0 {
+		defaultIngress.RouteSelectors(config.DefaultIngress.RouteSelectors)
+	}
+	if len(config.DefaultIngress.ExcludedNamespaces) != 0 {
+		defaultIngress.ExcludedNamespaces(config.DefaultIngress.ExcludedNamespaces...)
+	}
+	if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.WildcardPolicy) {
+		defaultIngress.RouteWildcardPolicy(v1.WildcardPolicy(config.DefaultIngress.WildcardPolicy))
+	}
+	if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.NamespaceOwnershipPolicy) {
+		defaultIngress.RouteNamespaceOwnershipPolicy(
+			v1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
+	}
 
-		// Decide ingress listening method if HCP and not fedramp enabled
-		if !fedramp.Enabled() && config.Hypershift.Enabled {
-			if config.PrivateIngress {
+	// Decide ingress listening method if HCP and not fedramp enabled
+	isHcpNotFedramp := !fedramp.Enabled() && config.Hypershift.Enabled
+	if isHcpNotFedramp {
+		if config.PrivateIngress != nil {
+			if *config.PrivateIngress {
 				defaultIngress.Listening(cmv1.ListeningMethodInternal)
 			} else {
-				defaultIngress.Listening(clusterApiListeningMethod)
+				defaultIngress.Listening(cmv1.ListeningMethodExternal)
 			}
+		} else {
+			defaultIngress.Listening(clusterApiListeningMethod)
 		}
+	}
+
+	if !reflect.DeepEqual(config.DefaultIngress, NewDefaultIngressSpec()) || isHcpNotFedramp {
 		clusterBuilder.Ingresses(cmv1.NewIngressList().Items(defaultIngress))
 	}
 
