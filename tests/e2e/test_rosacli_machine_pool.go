@@ -804,7 +804,7 @@ var _ = Describe("Create machinepool",
 						"--instance-type", fakeInstanceType)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
-						ContainSubstring("Expected a valid instance type: Machine type '%s' not found", fakeInstanceType))
+						ContainSubstring("Machine type '%s' is not supported for cloud provider", fakeInstanceType))
 
 					By("Set replicas and enable-autoscaling at the same time")
 					output, err = rosaClient.MachinePool.CreateMachinePool(

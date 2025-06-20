@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 )
 
@@ -64,6 +65,10 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 		It("Validation info/error about the MaxNodeLimit and MaxNodeLimitation - [id:79848]",
 			labels.Critical, labels.Runtime.Day2,
 			func() {
+				profile := handler.LoadProfileYamlFileByENV()
+				if !profile.ClusterConfig.NetworkingSet {
+					Skip("Skip this case as network configuration makes the MaxNodeLimitation less then the default maximum number since OCM-13822")
+				}
 				var (
 					minReplicas     string
 					maxReplicas     string

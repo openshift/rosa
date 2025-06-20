@@ -567,9 +567,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.NetworkingSet {
 		networking := &ClusterConfigure.Networking{
 			MachineCIDR: "10.0.0.0/16",
-			PodCIDR:     "192.168.0.0/18",
+			PodCIDR:     "10.128.0.0/14",
 			ServiceCIDR: "172.31.0.0/24",
-			HostPrefix:  "25",
+			HostPrefix:  "23",
 		}
 		flags = append(flags,
 			"--machine-cidr", networking.MachineCIDR, // Placeholder, it should be vpc CIDR
