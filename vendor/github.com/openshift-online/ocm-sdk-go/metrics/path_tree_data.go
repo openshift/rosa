@@ -165,6 +165,10 @@ var pathTreeData = `{
             },
             "status": null
           }
+        },
+        "managed_identities_requirements": null,
+        "versions": {
+          "-": null
         }
       }
     },
@@ -406,6 +410,7 @@ var pathTreeData = `{
         }
       }
     },
+    "dependencymagnet": {},
     "job_queue": {
       "v1": {
         "queues": {

@@ -3,6 +3,24 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.469
+- Update model to add arohcp ManagedIdentitiesRequirements types and endpoints
+ 
+## 0.1.468
+- update golangci to v2
+- add macgregor, cristianoveiga to owners/approvers
+- leadership flag enhancement: precheck handler added
+- move JSON structs (serialization) to ocm-api-model
+
+## 0.1.467
+- Update model version v0.0.419
+  - Add `LogType` to `NotificationDetailsRequest`
+
+## 0.1.466
+- Update model version v0.0.418
+  - Add arohcp Version types and endpoints
+  - Add missing not-yet-generated changes for node pool encryption
+
 ## 0.1.465
 - Update model version v0.0.417
   - Add `RhRegionID` field to `Subscription` and `ClusterAuthorizationRequest` type
