@@ -1592,3 +1592,18 @@ func (mr *MockAccessKeyGetterMockRecorder) GetLocalAWSAccessKeys() *gomock.Call 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLocalAWSAccessKeys", reflect.TypeOf((*MockAccessKeyGetter)(nil).GetLocalAWSAccessKeys))
 }
+
+// DetachRolePolicy mocks base method.
+func (m *MockClient) CreateStackWithParamsTags(cfTemplateBody, stackName string, stackParams, stackTags map[string]string) (*string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateStackWithParamsTags", cfTemplateBody, stackName, stackParams, stackTags)
+	ret0, _ := ret[0].(*string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DetachRolePolicy indicates an expected call of DetachRolePolicy.
+func (mr *MockClientMockRecorder) CreateStackWithParamTags(cfTemplateBody, stackName string, stackParams, stackTags map[string]string) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStackWithParamsTags", reflect.TypeOf((*MockClient)(nil).CreateStackWithParamsTags), cfTemplateBody, stackName, stackParams, stackTags)
+}
