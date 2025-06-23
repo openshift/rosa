@@ -122,8 +122,7 @@ check-release-config:
 local-release:
 	$(GORELEASER) release --snapshot --clean
 
-# builds and publishes a latest release from tag set as env-ver GORELEASER_PREVIOUS_TAG
-# leave GORELEASER_PREVIOUS_TAG empty to build from last release tag
+# replaces the GORELEASER release command; for use with konflux
 .PHONY: release
 release:
 	bash ./hack/build_cli.sh
