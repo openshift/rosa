@@ -1,6 +1,6 @@
 # Contributing to ROSA
 Welcome, and thank you for considering to contribute to ROSA.
-Before you begin, or have more questions reach out to us on [Slack](https://redhat-internal.slack.com/archives/CB53T9ZHQ)
+Before you begin, or have more questions reach out to us on [Slack @rosa-cli](https://redhat.enterprise.slack.com/archives/CB53T9ZHQ)
 
 ## Contributing Code
 To contribute bug fixes or features to ROSA:
