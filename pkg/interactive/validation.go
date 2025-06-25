@@ -235,7 +235,8 @@ func SubnetsValidator(awsClient aws.Client, multiAZ bool, privateLink bool, host
 					subnetIDs[i] = aws.ParseOption(subnet.Value)
 				}
 
-				_, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
+				privateIngress := false
+				_, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs, privateIngress)
 				return err
 			}
 			return ocm.ValidateSubnetsCount(multiAZ, privateLink, len(answers))
