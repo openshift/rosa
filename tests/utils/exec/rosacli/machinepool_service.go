@@ -21,7 +21,7 @@ import (
 type MachinePoolService interface {
 	ResourcesCleaner
 
-	ListMachinePool(clusterID string) (bytes.Buffer, error)
+	ListMachinePool(clusterID string, flags ...string) (bytes.Buffer, error)
 	DescribeMachinePool(clusterID string, mpID string) (bytes.Buffer, error)
 	CreateMachinePool(clusterID string, name string, flags ...string) (bytes.Buffer, error)
 	EditMachinePool(clusterID string, machinePoolName string, flags ...string) (bytes.Buffer, error)
@@ -29,7 +29,7 @@ type MachinePoolService interface {
 
 	ReflectMachinePoolList(result bytes.Buffer) (mpl MachinePoolList, err error)
 	ReflectMachinePoolDescription(result bytes.Buffer) (*MachinePoolDescription, error)
-	ListAndReflectMachinePools(clusterID string) (mpl MachinePoolList, err error)
+	ListAndReflectMachinePools(clusterID string, flags ...string) (mpl MachinePoolList, err error)
 	DescribeAndReflectMachinePool(clusterID string, name string) (*MachinePoolDescription, error)
 
 	ReflectNodePoolList(result bytes.Buffer) (*NodePoolList, error)
@@ -79,6 +79,9 @@ type MachinePool struct {
 	Subnets          string `json:"SUBNETS,omitempty"`
 	SpotInstances    string `json:"SPOT INSTANCES,omitempty"`
 	SecurityGroupIDs string `json:"SG IDs,omitempty"`
+	AZType           string `json:"AZ TYPE,omitempty"`
+	WINLIEnable      string `json:"WIN-LI ENABLED,omitempty"`
+	DedicatedHost    string `json:"DEDICATED HOST,omitempty"`
 }
 type MachinePoolList struct {
 	MachinePools []*MachinePool `json:"MachinePools,omitempty"`
@@ -169,10 +172,13 @@ func (m *machinepoolService) CreateMachinePool(
 }
 
 // List MachinePool
-func (m *machinepoolService) ListMachinePool(clusterID string) (bytes.Buffer, error) {
+func (m *machinepoolService) ListMachinePool(clusterID string, flags ...string) (bytes.Buffer, error) {
 	listMachinePool := m.client.Runner.
 		Cmd("list", "machinepool").
 		CmdFlags("-c", clusterID)
+	if len(flags) > 0 {
+		listMachinePool.AddCmdFlags(flags...)
+	}
 	return listMachinePool.Run()
 }
 
@@ -240,9 +246,9 @@ func (m *machinepoolService) ReflectMachinePoolList(result bytes.Buffer) (mpl Ma
 }
 
 // Pasrse the result of 'rosa list machinepool' to MachinePoolList struct
-func (m *machinepoolService) ListAndReflectMachinePools(clusterID string) (mpl MachinePoolList, err error) {
+func (m *machinepoolService) ListAndReflectMachinePools(clusterID string, flags ...string) (mpl MachinePoolList, err error) {
 	mpl = MachinePoolList{}
-	output, err := m.ListMachinePool(clusterID)
+	output, err := m.ListMachinePool(clusterID, flags...)
 	if err != nil {
 		return mpl, err
 	}
