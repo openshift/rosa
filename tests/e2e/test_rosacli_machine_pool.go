@@ -84,9 +84,38 @@ var _ = Describe("Create machinepool",
 					"auto_scaling": {"--enable-autoscaling", "--max-replicas", maxReplicas,
 						"--min-replicas", minReplicas, "--labels", labels_2},
 				}
+				By("Check the output colume of the machinepool list with --dedicated-host/--all/--az-type/--win-li flags")
+				resp, err := machinePoolService.ListAndReflectMachinePools(
+					clusterID,
+					"--all",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.MachinePools[0].AZType).ToNot(BeEmpty())
+				Expect(resp.MachinePools[0].DedicatedHost).ToNot(BeEmpty())
+				Expect(resp.MachinePools[0].WINLIEnable).ToNot(BeEmpty())
+
+				resp, err = machinePoolService.ListAndReflectMachinePools(
+					clusterID,
+					"--az-type",
+					"--dedicated-host",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.MachinePools[0].AZType).ToNot(BeEmpty())
+				Expect(resp.MachinePools[0].DedicatedHost).ToNot(BeEmpty())
+				Expect(resp.MachinePools[0].WINLIEnable).To(BeEmpty())
+
+				resp, err = machinePoolService.ListAndReflectMachinePools(
+					clusterID,
+					"--win-li",
+					"--dedicated-host",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.MachinePools[0].AZType).To(BeEmpty())
+				Expect(resp.MachinePools[0].DedicatedHost).ToNot(BeEmpty())
+				Expect(resp.MachinePools[0].WINLIEnable).ToNot(BeEmpty())
 
 				By("List the default machinepool of the cluster")
-				resp, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				resp, err = machinePoolService.ListAndReflectMachinePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				mpID := helper.GenerateRandomName("mp-36293", 2)
 				mpIDcounter := 1
@@ -708,11 +737,12 @@ var _ = Describe("Create machinepool",
 				defer machinePoolService.DeleteMachinePool(clusterID, localZoneMpName)
 
 				By("List the machinepools and check")
-				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
+				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID, "--az-type")
 				Expect(err).ToNot(HaveOccurred())
 				mp := mpList.Machinepool(localZoneMpName)
 				Expect(mp.Replicas).To(Equal("1-2"))
 				Expect(mp.Subnets).To(Equal(privateSubnet.ID))
+				Expect(mp.AZType).To(Equal("LocalZone"))
 			})
 		Context("validation", func() {
 			It("will validate name/replicas/labels/taints  - [id:67057]",
