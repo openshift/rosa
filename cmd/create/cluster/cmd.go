@@ -2084,13 +2084,6 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
-	} else if (privateLink || (isSTS && private)) && !fedramp.Enabled() && !(isHostedCP && private) {
-		// do not prompt users for privatelink if it is private hosted cluster
-		r.Reporter.Warnf("You are choosing to use AWS PrivateLink for your cluster. %s", privateLinkWarning)
-		if !confirm.Confirm("use AWS PrivateLink for cluster '%s'", clusterName) {
-			os.Exit(0)
-		}
-		privateLink = true
 	}
 
 	if privateLink {
@@ -2263,7 +2256,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		var excludedPublicSubnets []string
-		if privateLink {
+		if privateLink && privateIngress {
 			subnets, excludedPublicSubnets = filterPrivateSubnets(subnets, r)
 		}
 
@@ -2364,8 +2357,9 @@ func run(cmd *cobra.Command, _ []string) {
 			} else {
 				// Hosted cluster should validate that
 				// - Public hosted clusters have at least one public subnet
-				// - Private hosted clusters have all subnets private
-				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs)
+				// - Private hosted clusters have all subnets private, except when those clusters have public ingress
+				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs,
+					args.privateIngress)
 			}
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
@@ -3353,7 +3347,7 @@ func run(cmd *cobra.Command, _ []string) {
 		AvailabilityZones:            availabilityZones,
 		SubnetIds:                    subnetIDs,
 		PrivateLink:                  &privateLink,
-		PrivateIngress:               privateIngress,
+		PrivateIngress:               &privateIngress,
 		AWSCreator:                   awsCreator,
 		IsSTS:                        isSTS,
 		RoleARN:                      roleARN,
