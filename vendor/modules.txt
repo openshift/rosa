@@ -525,6 +525,9 @@ github.com/zgalor/weberr
 # gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a
 ## explicit
 gitlab.com/c0b/go-ordered-json
+# go.yaml.in/yaml/v2 v2.4.2
+## explicit; go 1.15
+go.yaml.in/yaml/v2
 # golang.org/x/crypto v0.23.0
 ## explicit; go 1.18
 golang.org/x/crypto/bcrypt
@@ -658,7 +661,7 @@ k8s.io/utils/clock
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/strings/slices
-# sigs.k8s.io/yaml v1.3.0
-## explicit; go 1.12
+# sigs.k8s.io/yaml v1.5.0
+## explicit; go 1.22
 sigs.k8s.io/yaml
 # github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
