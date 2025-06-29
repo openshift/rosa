@@ -13,13 +13,15 @@ import (
 
 // Lists the policies that are directly attached to the specified target root,
 // organizational unit (OU), or account. You must specify the policy type that you
-// want included in the returned list. Always check the NextToken response
-// parameter for a null value when calling a List* operation. These operations can
-// occasionally return an empty set of results even when there are more results
-// available. The NextToken response parameter value is null only when there are
-// no more results to display. This operation can be called only from the
-// organization's management account or by a member account that is a delegated
-// administrator for an Amazon Web Services service.
+// want included in the returned list.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// List* operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
 func (c *Client) ListPoliciesForTarget(ctx context.Context, params *ListPoliciesForTargetInput, optFns ...func(*Options)) (*ListPoliciesForTargetOutput, error) {
 	if params == nil {
 		params = &ListPoliciesForTargetInput{}
@@ -39,24 +41,51 @@ type ListPoliciesForTargetInput struct {
 
 	// The type of policy that you want to include in the returned list. You must
 	// specify one of the following values:
-	//   - AISERVICES_OPT_OUT_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html)
-	//   - BACKUP_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html)
-	//   - SERVICE_CONTROL_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html)
-	//   - TAG_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html)
+	//
+	// [SERVICE_CONTROL_POLICY]
+	//
+	// [RESOURCE_CONTROL_POLICY]
+	//
+	// [DECLARATIVE_POLICY_EC2]
+	//
+	// [BACKUP_POLICY]
+	//
+	// [TAG_POLICY]
+	//
+	// [CHATBOT_POLICY]
+	//
+	// [AISERVICES_OPT_OUT_POLICY]
+	//
+	// [SECURITYHUB_POLICY]
+	//
+	// [AISERVICES_OPT_OUT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html
+	// [SECURITYHUB_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_security_hub.html
+	// [BACKUP_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html
+	// [SERVICE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html
+	// [CHATBOT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_chatbot.html
+	// [TAG_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html
+	// [DECLARATIVE_POLICY_EC2]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html
+	// [RESOURCE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html
 	//
 	// This member is required.
 	Filter types.PolicyType
 
 	// The unique identifier (ID) of the root, organizational unit, or account whose
-	// policies you want to list. The regex pattern (http://wikipedia.org/wiki/regex)
-	// for a target ID string requires one of the following:
+	// policies you want to list.
+	//
+	// The [regex pattern] for a target ID string requires one of the following:
+	//
 	//   - Root - A string that begins with "r-" followed by from 4 to 32 lowercase
 	//   letters or digits.
+	//
 	//   - Account - A string that consists of exactly 12 digits.
+	//
 	//   - Organizational unit (OU) - A string that begins with "ou-" followed by from
 	//   4 to 32 lowercase letters or digits (the ID of the root that the OU is in). This
 	//   string is followed by a second "-" dash and from 8 to 32 additional lowercase
 	//   letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	TargetId *string
@@ -141,6 +170,9 @@ func (c *Client) addOperationListPoliciesForTargetMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -151,6 +183,15 @@ func (c *Client) addOperationListPoliciesForTargetMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListPoliciesForTargetValidationMiddleware(stack); err != nil {
@@ -174,16 +215,20 @@ func (c *Client) addOperationListPoliciesForTargetMiddlewares(stack *middleware.
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListPoliciesForTargetAPIClient is a client that implements the
-// ListPoliciesForTarget operation.
-type ListPoliciesForTargetAPIClient interface {
-	ListPoliciesForTarget(context.Context, *ListPoliciesForTargetInput, ...func(*Options)) (*ListPoliciesForTargetOutput, error)
-}
-
-var _ ListPoliciesForTargetAPIClient = (*Client)(nil)
 
 // ListPoliciesForTargetPaginatorOptions is the paginator options for
 // ListPoliciesForTarget
@@ -257,6 +302,9 @@ func (p *ListPoliciesForTargetPaginator) NextPage(ctx context.Context, optFns ..
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListPoliciesForTarget(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -275,6 +323,14 @@ func (p *ListPoliciesForTargetPaginator) NextPage(ctx context.Context, optFns ..
 
 	return result, nil
 }
+
+// ListPoliciesForTargetAPIClient is a client that implements the
+// ListPoliciesForTarget operation.
+type ListPoliciesForTargetAPIClient interface {
+	ListPoliciesForTarget(context.Context, *ListPoliciesForTargetInput, ...func(*Options)) (*ListPoliciesForTargetOutput, error)
+}
+
+var _ ListPoliciesForTargetAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListPoliciesForTarget(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

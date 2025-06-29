@@ -31,16 +31,22 @@ func (c *Client) ListTypes(ctx context.Context, params *ListTypesInput, optFns .
 type ListTypesInput struct {
 
 	// The deprecation status of the extension that you want to get summary
-	// information about. Valid values include:
+	// information about.
+	//
+	// Valid values include:
+	//
 	//   - LIVE : The extension is registered for use in CloudFormation operations.
+	//
 	//   - DEPRECATED : The extension has been deregistered and can no longer be used
 	//   in CloudFormation operations.
 	DeprecatedStatus types.DeprecatedStatus
 
-	// Filter criteria to use in determining which extensions to return. Filters must
-	// be compatible with Visibility to return valid results. For example, specifying
-	// AWS_TYPES for Category and PRIVATE for Visibility returns an empty list of
-	// types, but specifying PUBLIC for Visibility returns the desired list.
+	// Filter criteria to use in determining which extensions to return.
+	//
+	// Filters must be compatible with Visibility to return valid results. For
+	// example, specifying AWS_TYPES for Category and PRIVATE for Visibility returns
+	// an empty list of types, but specifying PUBLIC for Visibility returns the
+	// desired list.
 	Filters *types.TypeFilters
 
 	// The maximum number of results to be returned with a single call. If the number
@@ -58,14 +64,19 @@ type ListTypesInput struct {
 
 	// For resource types, the provisioning behavior of the resource type.
 	// CloudFormation determines the provisioning type during registration, based on
-	// the types of handlers in the schema handler package submitted. Valid values
-	// include:
+	// the types of handlers in the schema handler package submitted.
+	//
+	// Valid values include:
+	//
 	//   - FULLY_MUTABLE : The resource type includes an update handler to process
 	//   updates to the type during stack update operations.
+	//
 	//   - IMMUTABLE : The resource type doesn't include an update handler, so the type
 	//   can't be updated and must instead be replaced during stack update operations.
+	//
 	//   - NON_PROVISIONABLE : The resource type doesn't include create, read, and
 	//   delete handlers, and therefore can't actually be provisioned.
+	//
 	// The default is FULLY_MUTABLE .
 	ProvisioningType types.ProvisioningType
 
@@ -73,14 +84,21 @@ type ListTypesInput struct {
 	Type types.RegistryType
 
 	// The scope at which the extensions are visible and usable in CloudFormation
-	// operations. Valid values include:
+	// operations.
+	//
+	// Valid values include:
+	//
 	//   - PRIVATE : Extensions that are visible and usable within this account and
 	//   Region. This includes:
+	//
 	//   - Private extensions you have registered in this account and Region.
+	//
 	//   - Public extensions that you have activated in this account and Region.
+	//
 	//   - PUBLIC : Extensions that are publicly visible and available to be activated
 	//   within any Amazon Web Services account. This includes extensions from Amazon Web
 	//   Services, in addition to third-party publishers.
+	//
 	// The default is PRIVATE .
 	Visibility types.Visibility
 
@@ -148,6 +166,9 @@ func (c *Client) addOperationListTypesMiddlewares(stack *middleware.Stack, optio
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -158,6 +179,15 @@ func (c *Client) addOperationListTypesMiddlewares(stack *middleware.Stack, optio
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTypes(options.Region), middleware.Before); err != nil {
@@ -178,15 +208,20 @@ func (c *Client) addOperationListTypesMiddlewares(stack *middleware.Stack, optio
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListTypesAPIClient is a client that implements the ListTypes operation.
-type ListTypesAPIClient interface {
-	ListTypes(context.Context, *ListTypesInput, ...func(*Options)) (*ListTypesOutput, error)
-}
-
-var _ ListTypesAPIClient = (*Client)(nil)
 
 // ListTypesPaginatorOptions is the paginator options for ListTypes
 type ListTypesPaginatorOptions struct {
@@ -254,6 +289,9 @@ func (p *ListTypesPaginator) NextPage(ctx context.Context, optFns ...func(*Optio
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListTypes(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -272,6 +310,13 @@ func (p *ListTypesPaginator) NextPage(ctx context.Context, optFns ...func(*Optio
 
 	return result, nil
 }
+
+// ListTypesAPIClient is a client that implements the ListTypes operation.
+type ListTypesAPIClient interface {
+	ListTypes(context.Context, *ListTypesInput, ...func(*Options)) (*ListTypesOutput, error)
+}
+
+var _ ListTypesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListTypes(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

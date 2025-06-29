@@ -37,14 +37,21 @@ type ListStackSetOperationsInput struct {
 
 	// [Service-managed permissions] Specifies whether you are acting as an account
 	// administrator in the organization's management account or as a delegated
-	// administrator in a member account. By default, SELF is specified. Use SELF for
-	// stack sets with self-managed permissions.
+	// administrator in a member account.
+	//
+	// By default, SELF is specified. Use SELF for stack sets with self-managed
+	// permissions.
+	//
 	//   - If you are signed in to the management account, specify SELF .
+	//
 	//   - If you are signed in to a delegated administrator account, specify
-	//   DELEGATED_ADMIN . Your Amazon Web Services account must be registered as a
-	//   delegated administrator in the management account. For more information, see
-	//   Register a delegated administrator (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html)
-	//   in the CloudFormation User Guide.
+	//   DELEGATED_ADMIN .
+	//
+	// Your Amazon Web Services account must be registered as a delegated
+	//   administrator in the management account. For more information, see [Register a delegated administrator]in the
+	//   CloudFormation User Guide.
+	//
+	// [Register a delegated administrator]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html
 	CallAs types.CallAs
 
 	// The maximum number of results to be returned with a single call. If the number
@@ -124,6 +131,9 @@ func (c *Client) addOperationListStackSetOperationsMiddlewares(stack *middleware
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -134,6 +144,15 @@ func (c *Client) addOperationListStackSetOperationsMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListStackSetOperationsValidationMiddleware(stack); err != nil {
@@ -157,16 +176,20 @@ func (c *Client) addOperationListStackSetOperationsMiddlewares(stack *middleware
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListStackSetOperationsAPIClient is a client that implements the
-// ListStackSetOperations operation.
-type ListStackSetOperationsAPIClient interface {
-	ListStackSetOperations(context.Context, *ListStackSetOperationsInput, ...func(*Options)) (*ListStackSetOperationsOutput, error)
-}
-
-var _ ListStackSetOperationsAPIClient = (*Client)(nil)
 
 // ListStackSetOperationsPaginatorOptions is the paginator options for
 // ListStackSetOperations
@@ -235,6 +258,9 @@ func (p *ListStackSetOperationsPaginator) NextPage(ctx context.Context, optFns .
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListStackSetOperations(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -253,6 +279,14 @@ func (p *ListStackSetOperationsPaginator) NextPage(ctx context.Context, optFns .
 
 	return result, nil
 }
+
+// ListStackSetOperationsAPIClient is a client that implements the
+// ListStackSetOperations operation.
+type ListStackSetOperationsAPIClient interface {
+	ListStackSetOperations(context.Context, *ListStackSetOperationsInput, ...func(*Options)) (*ListStackSetOperationsOutput, error)
+}
+
+var _ ListStackSetOperationsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListStackSetOperations(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
