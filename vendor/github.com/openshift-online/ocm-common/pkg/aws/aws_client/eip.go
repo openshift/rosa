@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
@@ -21,7 +22,7 @@ func (client *AWSClient) AllocateEIPAddress() (*ec2.AllocateAddressOutput, error
 
 	respEIP, err := client.Ec2Client.AllocateAddress(context.TODO(), inputs)
 	if err != nil {
-		log.LogError("Create eip failed " + err.Error())
+		log.LogError("Create EIP failed %s", err.Error())
 		return nil, err
 	}
 	log.LogInfo("Allocated EIP %s with ip %s", *respEIP.AllocationId, *respEIP.PublicIp)
@@ -31,16 +32,14 @@ func (client *AWSClient) AllocateEIPAddress() (*ec2.AllocateAddressOutput, error
 func (client *AWSClient) DisassociateAddress(associateID string) (*ec2.DisassociateAddressOutput, error) {
 	inputDisassociate := &ec2.DisassociateAddressInput{
 		AssociationId: aws.String(associateID),
-		DryRun:        nil,
-		PublicIp:      nil,
 	}
 
-	respDisassociate, err := client.Ec2Client.DisassociateAddress(context.TODO(), inputDisassociate)
+	respDisassociate, err := client.EC2().DisassociateAddress(context.TODO(), inputDisassociate)
 	if err != nil {
-		log.LogError("Disassociate eip failed " + err.Error())
+		log.LogError("Disassociate EIP failed %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Disassociate eip success")
+	log.LogInfo("Disassociate EIP successfully")
 	return respDisassociate, err
 }
 
@@ -48,6 +47,7 @@ func (client *AWSClient) AllocateEIPAndAssociateInstance(instanceID string) (str
 	allocRes, err := client.AllocateEIPAddress()
 	if err != nil {
 		log.LogError("Failed allocated EIP: %s", err)
+		return "", err
 	} else {
 		log.LogInfo("Successfully allocated EIP: %s", *allocRes.PublicIp)
 	}
@@ -58,7 +58,7 @@ func (client *AWSClient) AllocateEIPAndAssociateInstance(instanceID string) (str
 		})
 	if err != nil {
 		defer func() {
-			_, err := client.ReleaseAddress(*allocRes.AllocationId)
+			err := client.ReleaseAddressWithAllocationID(*allocRes.AllocationId)
 			log.LogError("Associate EIP allocation %s failed to instance ID %s", *allocRes.AllocationId, instanceID)
 			if err != nil {
 				log.LogError("Failed allocated EIP: %s", err)
@@ -72,18 +72,63 @@ func (client *AWSClient) AllocateEIPAndAssociateInstance(instanceID string) (str
 	return *allocRes.PublicIp, nil
 }
 
-func (client *AWSClient) ReleaseAddress(allocationID string) (*ec2.ReleaseAddressOutput, error) {
+func (client *AWSClient) ReleaseAddressWithAllocationID(allocationID string) error {
 	inputRelease := &ec2.ReleaseAddressInput{
 		AllocationId:       aws.String(allocationID),
 		DryRun:             nil,
 		NetworkBorderGroup: nil,
 		PublicIp:           nil,
 	}
-	respRelease, err := client.Ec2Client.ReleaseAddress(context.TODO(), inputRelease)
+	_, err := client.Ec2Client.ReleaseAddress(context.TODO(), inputRelease)
 	if err != nil {
-		log.LogError("Release eip failed " + err.Error())
+		log.LogError("Release EIP %s failed: %s", allocationID, err.Error())
+		return err
+	}
+	log.LogInfo("Release EIP %s successsully ", allocationID)
+	return nil
+}
+
+func (client *AWSClient) DescribeAddresses(filters ...map[string][]string) (*ec2.DescribeAddressesOutput, error) {
+	filterInput := []types.Filter{}
+	for _, filter := range filters {
+		for k, v := range filter {
+			copyKey := k
+			awsFilter := types.Filter{
+				Name:   &copyKey,
+				Values: v,
+			}
+			filterInput = append(filterInput, awsFilter)
+		}
+	}
+	inputAdd := &ec2.DescribeAddressesInput{
+		Filters: filterInput,
+	}
+	output, err := client.EC2().DescribeAddresses(context.TODO(), inputAdd)
+	if err != nil {
+		log.LogError("Describe EIP met error: %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Release eip success: " + allocationID)
-	return respRelease, err
+	return output, nil
+}
+
+func (client *AWSClient) ReleaseAddressWithFilter(filters ...map[string][]string) error {
+	addOutput, err := client.DescribeAddresses(filters...)
+	if err != nil {
+		return err
+	}
+	if addOutput != nil {
+		for _, add := range addOutput.Addresses {
+			if add.AllocationId != nil {
+				_, err = client.DisassociateAddress(*add.AssociationId)
+				if err != nil {
+					return err
+				}
+				err = client.ReleaseAddressWithAllocationID(*add.AllocationId)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

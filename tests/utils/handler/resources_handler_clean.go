@@ -238,7 +238,7 @@ func (rh *resourcesHandler) CleanupProxyResources(instID string, sharedVPC bool)
 		log.Logger.Errorf("Disassociate Addrress failed: %s", err)
 		return err
 	}
-	_, err = awsClient.ReleaseAddress(allocationID)
+	err = awsClient.ReleaseAddressWithAllocationID(allocationID)
 	if err != nil {
 		log.Logger.Errorf("Release Address failed: %s", err)
 		return err
