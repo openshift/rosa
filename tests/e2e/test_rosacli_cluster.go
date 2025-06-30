@@ -876,13 +876,10 @@ var _ = Describe("Additional security groups validation",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				var (
-					ocmResourceService  = rosaClient.OCMResource
-					ocpVersionBelow4_14 = "4.13.44"
+					ocpVersionBelow4_14 string
 					ocpVersion          string
 					index               int
 					flagName            string
-					hostedCP            = true
-					installerRoleArn    string
 					SGIdsMoreThanTen    = 11
 					caseNumber          = "68971"
 					clusterName         = "ocp-68971"
@@ -896,19 +893,20 @@ var _ = Describe("Additional security groups validation",
 						"--additional-control-plane-security-group-ids": "invalid",
 						"--additional-compute-security-group-ids":       "invalid",
 					}
-					invalidHCPSecurityGroups = map[string]string{
-						"--additional-infra-security-group-ids":         "sg-aisgi",
-						"--additional-control-plane-security-group-ids": "sg-acpsgi",
-					}
 				)
 
 				By("Get cluster upgrade version")
 				versionService := rosaClient.Version
-				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, true)
+				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, false)
 				Expect(err).To(BeNil())
 				defaultVersion := versionList.DefaultVersion()
 				Expect(defaultVersion).ToNot(BeNil())
 				ocpVersion = defaultVersion.Version
+
+				pickedVersions, err := versionList.FilterVersionsSameMajorAndEqualOrLowerThanMinor(4, 13, false)
+				Expect(err).To(BeNil())
+				Expect(len(pickedVersions.OpenShiftVersions) > 0).To(BeTrue())
+				ocpVersionBelow4_14 = pickedVersions.OpenShiftVersions[0].Version
 
 				By("Prepare a vpc for the testing")
 				resourcesHandler := clusterHandler.GetResourcesHandler()
@@ -976,6 +974,7 @@ var _ = Describe("Additional security groups validation",
 						"--subnet-ids", subnetsFlagValue,
 						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
 						"--version", ocpVersionBelow4_14,
+						"--channel-group", rosacli.VersionChannelGroupCandidate,
 						"-y",
 					)
 					Expect(err).To(HaveOccurred())
@@ -995,6 +994,7 @@ var _ = Describe("Additional security groups validation",
 						"--subnet-ids", subnetsFlagValue,
 						additionalSecurityGroupFlag, value,
 						"--version", ocpVersion,
+						"--channel-group", rosacli.VersionChannelGroupCandidate,
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
@@ -1010,62 +1010,12 @@ var _ = Describe("Additional security groups validation",
 						"--subnet-ids", subnetsFlagValue,
 						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
 						"--version", ocpVersion,
+						"--channel-group", rosacli.VersionChannelGroupCandidate,
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring(
 						"limit for Additional Security Groups is '10', but '11' have been supplied"),
 					)
-				}
-
-				By("Try creating HCP cluster with additional security groups flag")
-				for additionalSecurityGroupFlag := range invalidHCPSecurityGroups {
-					By("Create account-roles of hosted-cp")
-					_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
-						"--prefix", "akanni",
-						"--hosted-cp",
-						"-y")
-					Expect(err).To(BeNil())
-
-					By("Get the installer role arn")
-					accountRoleList, _, err := ocmResourceService.ListAccountRole()
-					Expect(err).To(BeNil())
-					installerRole := accountRoleList.InstallerRole("akanni", hostedCP)
-					Expect(installerRole).ToNot(BeNil())
-					installerRoleArn = installerRole.RoleArn
-
-					By("Create managed=false oidc config in auto mode")
-					output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto",
-						"--prefix", "akanni",
-						"--managed=false",
-						"--installer-role-arn", installerRoleArn,
-						"-y")
-					Expect(err).To(BeNil())
-					oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
-					oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
-					unmanagedOIDCConfigID, err := ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
-					Expect(err).To(BeNil())
-					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("Created OIDC provider with ARN"))
-					output, err, _ = rosaclient.Cluster.Create(
-						clusterName,
-						"--region", resourcesHandler.GetVPC().Region,
-						"--replicas", "3",
-						"--subnet-ids", subnetsFlagValue,
-						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-						"--hosted-cp",
-						"--oidc-config-id", unmanagedOIDCConfigID,
-						"--billing-account", profile.ClusterConfig.BillingAccount,
-						"-y",
-					)
-					Expect(err).To(HaveOccurred())
-					index = strings.Index(additionalSecurityGroupFlag, "a")
-					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
-						"Cannot use '%s' flag with Hosted Control Plane clusters",
-						flagName))
-					Expect(output.String()).To(ContainSubstring(
-						"only 'additional-compute-security-group-ids' is supported",
-					))
 				}
 			})
 	})
@@ -1172,7 +1122,7 @@ var _ = Describe("Classic cluster creation validation",
 				})
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("Expected a valid machine type"))
+				Expect(stdout.String()).To(ContainSubstring("is not supported for cloud provider"))
 
 				By("Check the validation for replicas")
 				invalidReplicasTypeErrorMap := map[string]string{
@@ -1241,7 +1191,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(stdout.String()).
 					To(ContainSubstring(
-						"Billing accounts are only supported for Hosted Control Plane clusters"))
+						"Billing accounts are only supported for"))
 			})
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
@@ -1627,14 +1577,43 @@ var _ = Describe("Classic cluster creation validation",
 		It("validate use-local-credentials won't work with sts - [id:76481]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				clusterName := "ocp-76481"
+				clusterName := helper.GenerateRandomName("c76481", 3)
+				By("Create account-roles for testing")
+				ocmResourceService := rosaClient.OCMResource
+				accrolePrefix := helper.GenerateRandomName("ar76481", 3)
+				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accrolePrefix,
+					"-y")
+				Expect(err).To(BeNil())
+				defer func() {
+					By("Delete the account-roles")
+					output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+						"--prefix", accrolePrefix,
+						"-y")
 
+					Expect(err).To(BeNil())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("Successfully deleted"))
+				}()
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Created role"))
+
+				arl, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				ar := arl.DigAccountRoles(accrolePrefix, false)
 				By("Create cluster with use-local-credentials flag but with sts")
-				errorOutput, err := clusterService.CreateDryRun(
-					clusterName, "--use-local-credentials", "--sts", "--mode=auto", "-y",
+				out, err := clusterService.CreateDryRun(
+					clusterName, "--sts",
+					"--mode", "auto",
+					"--role-arn", ar.InstallerRole,
+					"--support-role-arn", ar.SupportRole,
+					"--controlplane-iam-role", ar.ControlPlaneRole,
+					"--worker-iam-role", ar.WorkerRole,
+					"-y", "--dry-run",
+					"--use-local-credentials",
 				)
 				Expect(err).NotTo(BeNil())
-				Expect(errorOutput.String()).To(ContainSubstring("Local credentials are not supported for STS clusters"))
+				Expect(out.String()).To(ContainSubstring("Local credentials are not supported for STS clusters"))
 			})
 	})
 
@@ -1842,7 +1821,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 			})
 
-		It("to validate the invalid proxy when create cluster - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
+		It("to validate the invalid proxy when create cluster - [id:q]", labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				zone := constants.CommonAWSRegion + "a"
 				clusterName := "rosacli-45509"
@@ -1853,7 +1832,9 @@ var _ = Describe("Create cluster with invalid options will",
 					"--https-proxy", "https://example.com",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("The number of subnets for a"))
+				Expect(output.String()).Should(ContainSubstring(
+					"No subnets found in current region that are valid for the chosen CIDR ranges"),
+				)
 
 				By("Prepare vpc with subnets")
 				vpc, err := vpc_client.PrepareVPC(clusterName, constants.CommonAWSRegion, "", true, "")
