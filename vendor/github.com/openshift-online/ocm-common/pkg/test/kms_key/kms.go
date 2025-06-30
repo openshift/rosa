@@ -14,7 +14,7 @@ func CreateOCMTestKMSKey(region string, multiRegion bool, testClient string) (st
 	if err != nil {
 		return "", err
 	}
-	accountRoleArns := []string{fmt.Sprintf("arn:aws:iam::%s:root", client.AccountID)}
+	accountRoleArns := []string{fmt.Sprintf("arn:%s:iam::%s:root", client.GetAWSPartition(), client.AccountID)}
 	testKMSKeyPolicy := KMSKeyPolicy{
 		Statement: []Statement{
 			{

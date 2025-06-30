@@ -14,7 +14,13 @@ func (vpc *VPC) DeleteVPCNatGateways(vpcID string) error {
 		return err
 	}
 	var wg sync.WaitGroup
+	allocationId := ""
 	for _, ngw := range natGateways {
+		if len(ngw.NatGatewayAddresses) > 0 {
+			for _, add := range ngw.NatGatewayAddresses {
+				allocationId = *add.AllocationId
+			}
+		}
 		log.LogInfo("Deleting nat gateway %s", *ngw.NatGatewayId)
 		wg.Add(1)
 		go func(gateWayID string) {
@@ -26,5 +32,11 @@ func (vpc *VPC) DeleteVPCNatGateways(vpcID string) error {
 		}(*ngw.NatGatewayId)
 	}
 	wg.Wait()
-	return delERR
+	if delERR != nil {
+		return delERR
+	}
+	if allocationId != "" {
+		err = vpc.AWSClient.ReleaseAddressWithAllocationID(allocationId)
+	}
+	return err
 }

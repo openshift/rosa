@@ -270,8 +270,8 @@ func GenerateVPCByID(vpcID string, region string, awsSharedCredentialFile ...str
 
 // GenerateVPCBySubnet will return a VPC with CIDRpool and subnets based on one of the subnet ID
 // If you know the subnet ID on AWS, then try to generate it on AWS.
-func GenerateVPCBySubnet(subnetID string, region string) (*VPC, error) {
-	awsClient, err := aws_client.CreateAWSClient("", region)
+func GenerateVPCBySubnet(subnetID string, region string, awsSharedCredentialFile ...string) (*VPC, error) {
+	awsClient, err := aws_client.CreateAWSClient("", region, awsSharedCredentialFile...)
 	if err != nil {
 		return nil, err
 	}
@@ -279,6 +279,6 @@ func GenerateVPCBySubnet(subnetID string, region string) (*VPC, error) {
 	if err != nil {
 		return nil, err
 	}
-	vpc, err := GenerateVPCByID(*subnetDetail[0].VpcId, region)
+	vpc, err := GenerateVPCByID(*subnetDetail[0].VpcId, region, awsSharedCredentialFile...)
 	return vpc, err
 }
