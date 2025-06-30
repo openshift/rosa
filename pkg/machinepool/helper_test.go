@@ -714,56 +714,56 @@ var _ = Describe("getZoneType Function", func() {
 })
 
 var _ = Describe("isWinLIEnabled Function", func() {
-	It("should return 'true' when image_type label is 'windows'", func() {
+	It("should return 'Yes' when image_type label is 'windows'", func() {
 		labels := map[string]string{
 			labelImageType: imageTypeWindows,
 		}
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringTrue))
+		Expect(result).To(Equal(displayValueYes))
 	})
 
-	It("should return 'false' when image_type label is not 'windows'", func() {
+	It("should return 'No' when image_type label is not 'windows'", func() {
 		labels := map[string]string{
 			labelImageType: "linux",
 		}
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when image_type label is empty", func() {
+	It("should return 'No' when image_type label is empty", func() {
 		labels := map[string]string{
 			labelImageType: "",
 		}
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when image_type label is not present", func() {
+	It("should return 'No' when image_type label is not present", func() {
 		labels := map[string]string{
 			"other_label": "some_value",
 		}
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when labels map is empty", func() {
+	It("should return 'No' when labels map is empty", func() {
 		labels := map[string]string{}
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when labels map is nil", func() {
+	It("should return 'No' when labels map is nil", func() {
 		var labels map[string]string
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when image_type contains 'windows' but is not exactly 'windows'", func() {
+	It("should return 'No' when image_type contains 'windows' but is not exactly 'windows'", func() {
 		labels := map[string]string{
 			labelImageType: "windows-server",
 		}
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
 	It("should work with other labels present", func() {
@@ -773,7 +773,7 @@ var _ = Describe("isWinLIEnabled Function", func() {
 			"team":         "platform",
 		}
 		result := isWinLIEnabled(labels)
-		Expect(result).To(Equal(boolStringTrue))
+		Expect(result).To(Equal(displayValueYes))
 	})
 })
 
@@ -801,40 +801,40 @@ var _ = Describe("isDedicatedHost Function", func() {
 		mockCtrl.Finish()
 	})
 
-	It("should return 'false' when machine pool is nil", func() {
+	It("should return 'No' when machine pool is nil", func() {
 		result := isDedicatedHost(nil, runtime)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when machine pool has no AWS configuration", func() {
+	It("should return 'No' when machine pool has no AWS configuration", func() {
 		machinePool, err := cmv1.NewMachinePool().Build()
 		Expect(err).ToNot(HaveOccurred())
 
 		result := isDedicatedHost(machinePool, runtime)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when machine pool AWS ID is empty", func() {
+	It("should return 'No' when machine pool AWS ID is empty", func() {
 		machinePool, err := cmv1.NewMachinePool().
 			AWS(cmv1.NewAWSMachinePool().ID("")).
 			Build()
 		Expect(err).ToNot(HaveOccurred())
 
 		result := isDedicatedHost(machinePool, runtime)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when runtime is nil", func() {
+	It("should return 'No' when runtime is nil", func() {
 		machinePool, err := cmv1.NewMachinePool().
 			AWS(cmv1.NewAWSMachinePool().ID("mp-12345")).
 			Build()
 		Expect(err).ToNot(HaveOccurred())
 
 		result := isDedicatedHost(machinePool, nil)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'false' when runtime AWSClient is nil", func() {
+	It("should return 'No' when runtime AWSClient is nil", func() {
 		machinePool, err := cmv1.NewMachinePool().
 			AWS(cmv1.NewAWSMachinePool().ID("mp-12345")).
 			Build()
@@ -842,10 +842,10 @@ var _ = Describe("isDedicatedHost Function", func() {
 
 		runtimeWithoutClient := &rosa.Runtime{AWSClient: nil, Reporter: mockReporter}
 		result := isDedicatedHost(machinePool, runtimeWithoutClient)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'true' when machine pool has dedicated host", func() {
+	It("should return 'Yes' when machine pool has dedicated host", func() {
 		const testMachinePoolID = "mp-12345"
 		machinePool, err := cmv1.NewMachinePool().
 			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
@@ -857,10 +857,10 @@ var _ = Describe("isDedicatedHost Function", func() {
 			Return(true, nil)
 
 		result := isDedicatedHost(machinePool, runtime)
-		Expect(result).To(Equal(boolStringTrue))
+		Expect(result).To(Equal(displayValueYes))
 	})
 
-	It("should return 'false' when machine pool does not have dedicated host", func() {
+	It("should return 'No' when machine pool does not have dedicated host", func() {
 		const testMachinePoolID = "mp-12345"
 		machinePool, err := cmv1.NewMachinePool().
 			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
@@ -872,10 +872,10 @@ var _ = Describe("isDedicatedHost Function", func() {
 			Return(false, nil)
 
 		result := isDedicatedHost(machinePool, runtime)
-		Expect(result).To(Equal(boolStringFalse))
+		Expect(result).To(Equal(displayValueNo))
 	})
 
-	It("should return 'unknown' when AWS client returns an error", func() {
+	It("should return 'Unknown' when AWS client returns an error", func() {
 		const testMachinePoolID = "mp-12345"
 		machinePool, err := cmv1.NewMachinePool().
 			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
@@ -888,11 +888,11 @@ var _ = Describe("isDedicatedHost Function", func() {
 			Return(false, expectedError)
 
 		result := isDedicatedHost(machinePool, runtime)
-		Expect(result).To(Equal(boolStringUnknown))
+		Expect(result).To(Equal(displayValueUnknown))
 	})
 
 	// Optional: Test specifically for the nil reporter case
-	It("should return 'unknown' when AWS client returns an error and reporter is nil", func() {
+	It("should return 'Unknown' when AWS client returns an error and reporter is nil", func() {
 		const testMachinePoolID = "mp-12345"
 		machinePool, err := cmv1.NewMachinePool().
 			AWS(cmv1.NewAWSMachinePool().ID(testMachinePoolID)).
@@ -905,6 +905,6 @@ var _ = Describe("isDedicatedHost Function", func() {
 			Return(false, expectedError)
 
 		result := isDedicatedHost(machinePool, runtime)
-		Expect(result).To(Equal(boolStringUnknown))
+		Expect(result).To(Equal(displayValueUnknown))
 	})
 })

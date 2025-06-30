@@ -385,7 +385,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
 			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\tTAINTS\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\tSG IDS\tAZ TYPE\tWIN-LI ENABLED\tDEDICATED HOST\n" +
-				"mp-1\tNo\t3\tm5.large\t\t\t\t\tNo\tdefault\t\tN/A\tfalse\tfalse\n"
+				"mp-1\tNo\t3\tm5.large\t\t\t\t\tNo\tdefault\t\tN/A\tNo\tNo\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -419,7 +419,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
 			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tDEDICATED HOST\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tfalse\n"
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tNo\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -436,7 +436,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
 			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tWIN-LI ENABLED\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tfalse\n"
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tNo\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -453,7 +453,7 @@ var _ = Describe("Machinepool and nodepool", func() {
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
 			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tAZ TYPE\tDEDICATED HOST\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tN/A\tfalse\n"
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tN/A\tNo\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 

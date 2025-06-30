@@ -31,9 +31,9 @@ const (
 	zoneTypeStandard   = "Standard"
 	zoneTypeNA         = "N/A"
 
-	boolStringTrue    = "true"
-	boolStringFalse   = "false"
-	boolStringUnknown = "unknown"
+	displayValueYes     = "Yes"
+	displayValueNo      = "No"
+	displayValueUnknown = "Unknown"
 
 	imageTypeWindows = "windows"
 
@@ -431,34 +431,34 @@ func getZoneType(machinePool *cmv1.MachinePool) string {
 
 func isWinLIEnabled(labels map[string]string) string {
 	if val, ok := labels[labelImageType]; ok && strings.ToLower(val) == imageTypeWindows {
-		return boolStringTrue
+		return displayValueYes
 	}
-	return boolStringFalse
+	return displayValueNo
 }
 
 func isDedicatedHost(machinePool *cmv1.MachinePool, runtime *rosa.Runtime) string {
 	if machinePool == nil {
-		return boolStringFalse
+		return displayValueNo
 	}
 
 	awsConfig := machinePool.AWS()
 	if awsConfig == nil {
-		return boolStringFalse
+		return displayValueNo
 	}
 
 	awsMachinePoolID := awsConfig.ID()
 	if awsMachinePoolID == "" || runtime == nil || runtime.AWSClient == nil {
-		return boolStringFalse
+		return displayValueNo
 	}
 
 	hasDedicatedHost, err := runtime.AWSClient.CheckIfMachinePoolHasDedicatedHost([]string{awsMachinePoolID})
 	if err != nil {
 		_ = runtime.Reporter.Errorf("Failed to check dedicated host status: %v", err)
-		return boolStringUnknown
+		return displayValueUnknown
 	}
 
 	if hasDedicatedHost {
-		return boolStringTrue
+		return displayValueYes
 	}
-	return boolStringFalse
+	return displayValueNo
 }
