@@ -37,6 +37,20 @@ func (vpc *VPC) TerminateVPCInstances(nonClusterOnly bool) error {
 			keyPairNames = append(keyPairNames, *inst.KeyName)
 		}
 	}
+	for _, inst := range needTermination {
+		filters = []map[string][]string{
+			{
+				"instance-id": []string{
+					inst,
+				},
+			},
+		}
+		err = vpc.AWSClient.ReleaseAddressWithFilter(filters...)
+		if err != nil {
+			log.LogError("Release instance's %s EIP met error: %s", inst, err)
+		}
+	}
+
 	err = vpc.AWSClient.TerminateInstances(needTermination, true, 20)
 	if err != nil {
 		log.LogError("Terminating instances %s meet error: %s", strings.Join(needTermination, ","), err)

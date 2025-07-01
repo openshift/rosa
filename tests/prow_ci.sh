@@ -102,6 +102,29 @@ rosa_login () {
   rosa init
 }
 
+# rosa_login_with_client configure rosa login
+# Three parameters must be provided
+# first parameter should be env which is required
+# second parameter should be client ID which is required
+# third parameter should be client secret which is required
+# usage: rosa_login <env> <client_id> <client_secret>
+rosa_login_with_clinet (){
+  if [[ $# != 3 ]]; then
+    echo "ERROR: There must be three parameters passed. usage rosa_login <env> <client_id> <client_secret>"
+    exit 1
+  fi
+  if [[ -z "$1" ]] || [[ -z "$2" ]] || [[ -z "$3" ]] ; then
+    echo "ERROR: env, client ID and secret are required for rosa login"
+    exit 1
+  fi
+  ocmENV=$1
+  clientID=$2
+  clientSecret=$3
+  echo "[CI] Running rosa/ocm login based on env $1"
+  rosa login --env "${ocmENV}" --client-id "${clientID}" --client-secret "${clientSecret}"
+  ocm login --url "${ocmENV}" --client-id "${clientID}" --client-secret "${clientSecret}"
+}
+
 # generate_label_filter_switch is used to generate label-filter for the test run
 # Two paramters are optional
 # Need to clarify the LABEL_FILTER_SWITCH in steps script 

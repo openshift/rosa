@@ -3,6 +3,7 @@ package aws_client
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -113,6 +114,22 @@ func (client *AWSClient) GetAWSAccountID() string {
 		return ""
 	}
 	return *out.Account
+}
+
+func (client *AWSClient) GetAWSPartition() string {
+	defaultPartition := "aws"
+	input := &sts.GetCallerIdentityInput{}
+	out, err := client.StsClient.GetCallerIdentity(client.ClientContext, input)
+	if err != nil {
+		// Failed to get caller identity, return default partition
+		return defaultPartition
+	}
+	segments := strings.Split(*out.Arn, ":")
+	if len(segments) < 2 {
+		// Failed to parse ARN, return default partition
+		return defaultPartition
+	}
+	return segments[1]
 }
 
 func (client *AWSClient) EC2() *ec2.Client {
