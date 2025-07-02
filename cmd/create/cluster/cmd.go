@@ -2330,8 +2330,10 @@ func run(cmd *cobra.Command, _ []string) {
 				}
 			}
 		}
+		privateValueToCheck := privateLink
 		if isHostedCP && !subnetsProvided {
 			interactive.Enable()
+			privateValueToCheck = private
 		}
 		if ((privateLink && !subnetsProvided) || interactive.Enabled()) &&
 			len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3 || isHostedCP) {
@@ -2342,7 +2344,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Options:  options,
 				Default:  defaultOptions,
 				Validators: []interactive.Validator{
-					interactive.SubnetsValidator(awsClient, multiAZ, privateLink, isHostedCP),
+					interactive.SubnetsValidator(awsClient, multiAZ, privateValueToCheck, isHostedCP, privateIngress),
 				},
 			})
 			if err != nil {
@@ -2362,8 +2364,8 @@ func run(cmd *cobra.Command, _ []string) {
 				// Hosted cluster should validate that
 				// - Public hosted clusters have at least one public subnet
 				// - Private hosted clusters have all subnets private, except when those clusters have public ingress
-				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs,
-					args.privateIngress)
+				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, private, subnetIDs,
+					privateIngress)
 			}
 			if err != nil {
 				r.Reporter.Errorf("%s", err)

@@ -787,7 +787,7 @@ func ValidateHostedClusterSubnets(awsClient aws.Client, isPrivate bool, subnetID
 		if publicSubnetsCount > 0 {
 			return 0, fmt.Errorf("The number of public subnets for a private hosted cluster should be zero")
 		}
-	} else {
+	} else if !privateIngress {
 		if publicSubnetsCount == 0 {
 			return 0, fmt.Errorf("The number of public subnets for a public hosted " +
 				"cluster should be at least one")
