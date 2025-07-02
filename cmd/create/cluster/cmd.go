@@ -2046,9 +2046,13 @@ func run(cmd *cobra.Command, _ []string) {
 	privateIngress := args.privateIngress
 
 	privateLinkWarning := "Once the cluster is created, this option cannot be changed."
+	typeOfPrivate := "PrivateLink"
 	if isSTS {
-		privateLinkWarning = fmt.Sprintf("STS clusters can only be private if AWS PrivateLink is used. %s ",
-			privateLinkWarning)
+		if isHostedCP {
+			typeOfPrivate = "Private API"
+		}
+		privateLinkWarning = fmt.Sprintf("STS clusters can only be private if AWS %s is used. %s ",
+			typeOfPrivate, privateLinkWarning)
 	}
 	if interactive.Enabled() && !fedramp.Enabled() {
 		if !isHostedCP {
@@ -2065,9 +2069,8 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			private, err = interactive.GetBool(interactive.Input{
 				Question: "Private API",
-				Help: fmt.Sprintf("Private API allows you to change whether or not the cluster will use Private " +
-					"API"),
-				Default: args.private,
+				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateLinkWarning),
+				Default:  args.private,
 			})
 			if err != nil {
 				_ = r.Reporter.Errorf("Expected a valid Private API value: %s", err)
@@ -2086,10 +2089,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	notPrivateLinkWarning := "Private STS clusters are only supported through AWS %s"
 	if privateLink {
 		private = true
-	} else if isSTS && private {
-		r.Reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
+	} else if isSTS && !privateLink && (!private && !privateIngress) {
+		_ = r.Reporter.Errorf(notPrivateLinkWarning, typeOfPrivate)
 		os.Exit(1)
 	} else if !isSTS {
 		privateWarning := "You will not be able to access your cluster until " +
@@ -2112,8 +2116,8 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if isSTS && private && !privateLink {
-		r.Reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
+	if isSTS && (!private && !privateIngress) && !privateLink {
+		_ = r.Reporter.Errorf("Private STS clusters are only supported through AWS %s", typeOfPrivate)
 		os.Exit(1)
 	}
 
