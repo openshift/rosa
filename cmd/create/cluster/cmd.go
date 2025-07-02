@@ -2052,7 +2052,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 	if interactive.Enabled() && !fedramp.Enabled() {
 		if !isHostedCP {
-			question := "Private Link cluster"
+			question := "PrivateLink cluster"
 			privateLink, err = interactive.GetBool(interactive.Input{
 				Question: question,
 				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
@@ -2065,9 +2065,8 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			private, err = interactive.GetBool(interactive.Input{
 				Question: "Private API",
-				Help: fmt.Sprintf("Private API allows you to change whether or not the cluster will use Private " +
-					"API"),
-				Default: args.private,
+				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateLinkWarning),
+				Default:  args.private,
 			})
 			if err != nil {
 				_ = r.Reporter.Errorf("Expected a valid Private API value: %s", err)
@@ -2086,8 +2085,9 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if privateLink {
+	if privateLink || (private && isHostedCP) {
 		private = true
+		privateLink = true
 	} else if isSTS && private {
 		r.Reporter.Errorf("Private STS clusters are only supported through AWS PrivateLink")
 		os.Exit(1)
