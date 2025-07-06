@@ -42,20 +42,24 @@ type ListTypeRegistrationsInput struct {
 	// response object's NextToken parameter is set to null .
 	NextToken *string
 
-	// The current status of the extension registration request. The default is
-	// IN_PROGRESS .
+	// The current status of the extension registration request.
+	//
+	// The default is IN_PROGRESS .
 	RegistrationStatusFilter types.RegistrationStatus
 
-	// The kind of extension. Conditional: You must specify either TypeName and Type ,
-	// or Arn .
+	// The kind of extension.
+	//
+	// Conditional: You must specify either TypeName and Type , or Arn .
 	Type types.RegistryType
 
-	// The Amazon Resource Name (ARN) of the extension. Conditional: You must specify
-	// either TypeName and Type , or Arn .
+	// The Amazon Resource Name (ARN) of the extension.
+	//
+	// Conditional: You must specify either TypeName and Type , or Arn .
 	TypeArn *string
 
-	// The name of the extension. Conditional: You must specify either TypeName and
-	// Type , or Arn .
+	// The name of the extension.
+	//
+	// Conditional: You must specify either TypeName and Type , or Arn .
 	TypeName *string
 
 	noSmithyDocumentSerde
@@ -69,8 +73,9 @@ type ListTypeRegistrationsOutput struct {
 	// all results, NextToken is set to null .
 	NextToken *string
 
-	// A list of extension registration tokens. Use DescribeTypeRegistration to return
-	// detailed information about a type registration request.
+	// A list of extension registration tokens.
+	//
+	// Use DescribeTypeRegistration to return detailed information about a type registration request.
 	RegistrationTokenList []string
 
 	// Metadata pertaining to the operation's result.
@@ -122,6 +127,9 @@ func (c *Client) addOperationListTypeRegistrationsMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -132,6 +140,15 @@ func (c *Client) addOperationListTypeRegistrationsMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTypeRegistrations(options.Region), middleware.Before); err != nil {
@@ -152,16 +169,20 @@ func (c *Client) addOperationListTypeRegistrationsMiddlewares(stack *middleware.
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListTypeRegistrationsAPIClient is a client that implements the
-// ListTypeRegistrations operation.
-type ListTypeRegistrationsAPIClient interface {
-	ListTypeRegistrations(context.Context, *ListTypeRegistrationsInput, ...func(*Options)) (*ListTypeRegistrationsOutput, error)
-}
-
-var _ ListTypeRegistrationsAPIClient = (*Client)(nil)
 
 // ListTypeRegistrationsPaginatorOptions is the paginator options for
 // ListTypeRegistrations
@@ -230,6 +251,9 @@ func (p *ListTypeRegistrationsPaginator) NextPage(ctx context.Context, optFns ..
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListTypeRegistrations(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -248,6 +272,14 @@ func (p *ListTypeRegistrationsPaginator) NextPage(ctx context.Context, optFns ..
 
 	return result, nil
 }
+
+// ListTypeRegistrationsAPIClient is a client that implements the
+// ListTypeRegistrations operation.
+type ListTypeRegistrationsAPIClient interface {
+	ListTypeRegistrations(context.Context, *ListTypeRegistrationsInput, ...func(*Options)) (*ListTypeRegistrationsOutput, error)
+}
+
+var _ ListTypeRegistrationsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListTypeRegistrations(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
