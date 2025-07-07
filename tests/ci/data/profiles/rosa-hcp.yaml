@@ -12,6 +12,7 @@ profiles:
     additional_principals: false
     imdsv2: "required"
     private: false
+    default_ingress_private: false
     etcd_encryption: true
     autoscale: true
     kms_key: true
@@ -46,6 +47,7 @@ profiles:
     sts: true
     byo_vpc: true
     private: true
+    default_ingress_private : true
     additional_principals: true
     imdsv2: ""
     etcd_encryption: false
@@ -73,6 +75,7 @@ profiles:
     sts: true
     byo_vpc: true
     private: false
+    default_ingress_private: false
     additional_principals: false
     imdsv2: "optional"
     etcd_encryption: true
@@ -107,6 +110,7 @@ profiles:
     sts: true
     byo_vpc: true
     private: false
+    default_ingress_private: false
     additional_principals: false
     imdsv2: "optional"
     etcd_encryption: true
@@ -136,6 +140,7 @@ profiles:
     sts: true
     byo_vpc: true
     private: false
+    default_ingress_private: false
     additional_principals: false
     imdsv2: "optional"
     etcd_encryption: true
@@ -172,6 +177,7 @@ profiles:
     additional_principals: false
     imdsv2: "required"
     private: false
+    default_ingress_private: false
     etcd_encryption: true
     autoscale: true
     kms_key: true

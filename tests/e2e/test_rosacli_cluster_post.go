@@ -313,6 +313,39 @@ var _ = Describe("Healthy check",
 					Expect(ingress.Private).To(Equal(ingressPrivate))
 
 				})
+			It("with API private and ingress pravate works on hosted-cp cluster - [id:83155]",
+				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
+				func() {
+					if !isHosted {
+						SkipNotHosted()
+					}
+
+					By("Describe the cluster the cluster should be private")
+					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+					Expect(err).To(BeNil())
+					apiListening := jsonData.DigString("api", "listening")
+					if profile.ClusterConfig.Private {
+						Expect(apiListening).To(Equal("internal"))
+					} else {
+						Expect(apiListening).To(Equal("external"))
+					}
+
+					By("Check the ingress should be private")
+					output, err := rosaClient.Ingress.ListIngress(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					ingressList, err := rosaClient.Ingress.ReflectIngressList(output)
+					Expect(err).ToNot(HaveOccurred())
+					for _, ingress := range ingressList.Ingresses {
+						if ingress.Default == "yes" {
+							if profile.ClusterConfig.DefaultIngressPrivate {
+								Expect(ingress.Private).To(Equal("yes"))
+							} else {
+								Expect(ingress.Private).To(Equal("no"))
+							}
+						}
+
+					}
+				})
 
 			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High,
 				func() {

@@ -60,6 +60,7 @@ type ClusterConfig struct {
 	MultiAZ                       bool   `yaml:"multi_az,omitempty" json:"multi_az,omitempty"`
 	NetworkingSet                 bool   `yaml:"networking,omitempty" json:"networking,omitempty"`
 	PrivateLink                   bool   `yaml:"private_link,omitempty" json:"private_link,omitempty"`
+	DefaultIngressPrivate         bool   `yaml:"default_ingress_private,omitempty" json:"default_ingress_private,omitempty"`
 	Private                       bool   `yaml:"private,omitempty" json:"private,omitempty"`
 	ProxyEnabled                  bool   `yaml:"proxy_enabled,omitempty" json:"proxy_enabled,omitempty"`
 	STS                           bool   `yaml:"sts,omitempty" json:"sts,omitempty"`
