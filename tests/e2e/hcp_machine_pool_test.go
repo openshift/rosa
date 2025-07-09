@@ -666,6 +666,15 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(subNetMap).ToNot(BeNil())
 				privateSubnet := subNetMap["private"]
+				for _, subnet := range subNetMap {
+					_, err := vpcClient.AWSClient.TagResource(
+						subnet.ID,
+						map[string]string{
+							"kubernetes.io/cluster/unmanaged": "true",
+						},
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}
 
 				By("Create machinepool into the local zone subnet")
 				name := helper.GenerateRandomName("mp-71319", 2)

@@ -74,6 +74,15 @@ var _ = Describe("Cluster Day2 preparation", labels.Feature.Cluster, func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(subNetMap).ToNot(BeNil())
 				privateSubnet := subNetMap["private"]
+				for _, subnet := range subNetMap {
+					_, err := vpcClient.AWSClient.TagResource(
+						subnet.ID,
+						map[string]string{
+							"kubernetes.io/cluster/unmanaged": "true",
+						},
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}
 
 				By("Describe the cluster to get the infra ID for tagging")
 				tagKey := fmt.Sprintf("kubernetes.io/cluster/%s", clusterDetails.InfraID)
