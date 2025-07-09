@@ -456,6 +456,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			ch.profile.ClusterConfig.PrivateLink = true
 		}
 	}
+	if ch.profile.ClusterConfig.DefaultIngressPrivate {
+		flags = append(flags, "--default-ingress-private")
+	}
 
 	if ch.profile.ClusterConfig.AdminEnabled {
 		// Comment below part due to OCM-7112
@@ -608,7 +611,8 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			PrivateSubnetIds: strings.Join(subnets["private"], ","),
 			PublicSubnetIds:  strings.Join(subnets["public"], ","),
 		}
-		if ch.profile.ClusterConfig.PrivateLink {
+		if (ch.profile.ClusterConfig.PrivateLink && !ch.profile.ClusterConfig.HCP) ||
+			(ch.profile.ClusterConfig.HCP && ch.profile.ClusterConfig.Private && ch.profile.ClusterConfig.DefaultIngressPrivate) {
 			log.Logger.Info("Got private link set to true. Only set private subnets to cluster flags")
 			subnetsFlagValue = strings.Join(subnets["private"], ",")
 			ch.clusterConfig.Subnets = &ClusterConfigure.Subnets{
