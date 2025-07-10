@@ -359,3 +359,23 @@ func (mr *MockCloudFormationApiClientMockRecorder) UpdateStack(ctx, params any, 
 	varargs := append([]any{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStack", reflect.TypeOf((*MockCloudFormationApiClient)(nil).UpdateStack), varargs...)
 }
+
+// DescribeStackResources mocks base method.
+func (m *MockCloudFormationApiClient) DescribeStackResources(ctx context.Context, params *cloudformation.DescribeStackResourcesInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeStackResourcesOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeStackResources", varargs...)
+	ret0, _ := ret[0].(*cloudformation.DescribeStackResourcesOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeStackResources indicates an expected call of DescribeStackResources.
+func (mr *MockCloudFormationApiClientMockRecorder) DescribeStackResources(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeStackResources", reflect.TypeOf((*MockCloudFormationApiClient)(nil).DescribeStackResources), varargs...)
+}

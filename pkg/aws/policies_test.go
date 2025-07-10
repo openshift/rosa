@@ -249,7 +249,7 @@ var _ = Describe("Is Policy Compatible", func() {
 		mockSecretsManagerAPI = mocks.NewMockSecretsManagerApiClient(mockCtrl)
 		client = New(
 			awsSdk.Config{},
-			logrus.New(),
+			NewLoggerWrapper(logrus.New(), nil),
 			mockIamAPI,
 			mockEC2API,
 			mocks.NewMockOrganizationsApiClient(mockCtrl),
@@ -837,7 +837,7 @@ var _ = Describe("validateManagedPolicy", func() {
 		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
 		client = awsClient{
 			iamClient: mockIamAPI,
-			logger:    logging.NewLogger(),
+			logger:    NewLoggerWrapper(logging.NewLogger(), nil),
 		}
 	})
 
