@@ -107,6 +107,9 @@ func (c *Client) addOperationDescribeSubscriptionFiltersMiddlewares(stack *middl
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -117,6 +120,15 @@ func (c *Client) addOperationDescribeSubscriptionFiltersMiddlewares(stack *middl
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeSubscriptionFiltersValidationMiddleware(stack); err != nil {
@@ -140,16 +152,20 @@ func (c *Client) addOperationDescribeSubscriptionFiltersMiddlewares(stack *middl
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeSubscriptionFiltersAPIClient is a client that implements the
-// DescribeSubscriptionFilters operation.
-type DescribeSubscriptionFiltersAPIClient interface {
-	DescribeSubscriptionFilters(context.Context, *DescribeSubscriptionFiltersInput, ...func(*Options)) (*DescribeSubscriptionFiltersOutput, error)
-}
-
-var _ DescribeSubscriptionFiltersAPIClient = (*Client)(nil)
 
 // DescribeSubscriptionFiltersPaginatorOptions is the paginator options for
 // DescribeSubscriptionFilters
@@ -218,6 +234,9 @@ func (p *DescribeSubscriptionFiltersPaginator) NextPage(ctx context.Context, opt
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeSubscriptionFilters(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -236,6 +255,14 @@ func (p *DescribeSubscriptionFiltersPaginator) NextPage(ctx context.Context, opt
 
 	return result, nil
 }
+
+// DescribeSubscriptionFiltersAPIClient is a client that implements the
+// DescribeSubscriptionFilters operation.
+type DescribeSubscriptionFiltersAPIClient interface {
+	DescribeSubscriptionFilters(context.Context, *DescribeSubscriptionFiltersInput, ...func(*Options)) (*DescribeSubscriptionFiltersOutput, error)
+}
+
+var _ DescribeSubscriptionFiltersAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeSubscriptionFilters(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
