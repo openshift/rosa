@@ -543,7 +543,9 @@ func initFlags(cmd *cobra.Command) {
 		"private-link",
 		false,
 		"Provides private connectivity between VPCs, AWS services, and your on-premises networks, "+
-			"without exposing your traffic to the public internet.",
+			"without exposing your traffic to the public internet.\n\n"+
+			"--private-link is only to be used with Classic clusters after ROSA CLI v1.2.55. \n"+
+			"For Hosted Control Plane clusters, use the '--private' and '--default-ingress-private' flags instead.",
 	)
 
 	flags.BoolVar(
