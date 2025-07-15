@@ -2361,7 +2361,7 @@ func run(cmd *cobra.Command, _ []string) {
 				// - Public hosted clusters have at least one public subnet
 				// - Private hosted clusters have all subnets private, except when those clusters have public ingress
 				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs,
-					args.privateIngress)
+					privateIngress)
 			}
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
