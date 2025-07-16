@@ -53,7 +53,7 @@ var _ = Describe("Client", func() {
 		mockSecretsManagerAPI = mocks.NewMockSecretsManagerApiClient(mockCtrl)
 		client = New(
 			awsSdk.Config{},
-			logrus.New(),
+			NewLoggerWrapper(logrus.New(), nil),
 			mockIamAPI,
 			mockEC2API,
 			mocks.NewMockOrganizationsApiClient(mockCtrl),

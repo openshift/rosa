@@ -5,10 +5,12 @@
 package aws
 
 import (
+	"context"
 	io "io"
 	reflect "reflect"
 
 	aws "github.com/aws/aws-sdk-go-v2/aws"
+	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iam "github.com/aws/aws-sdk-go-v2/service/iam"
 	types0 "github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -1591,4 +1593,63 @@ func (m *MockAccessKeyGetter) GetLocalAWSAccessKeys() (*AccessKey, error) {
 func (mr *MockAccessKeyGetterMockRecorder) GetLocalAWSAccessKeys() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLocalAWSAccessKeys", reflect.TypeOf((*MockAccessKeyGetter)(nil).GetLocalAWSAccessKeys))
+}
+
+// CreateStackWithParamsTags mocks base method.
+func (m *MockClient) CreateStackWithParamsTags(ctx context.Context, cfTemplateBody, stackName string, stackParams, stackTags map[string]string) (*string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateStackWithParamsTags", cfTemplateBody, stackName, stackParams, stackTags)
+	ret0, _ := ret[0].(*string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateStackWithParamsTags indicates an expected call of CreateStackWithParamsTags.
+func (mr *MockClientMockRecorder) CreateStackWithParamsTags(ctx context.Context, cfTemplateBody, stackName string, stackParams, stackTags map[string]string) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStackWithParamsTags", reflect.TypeOf((*MockClient)(nil).CreateStackWithParamsTags), cfTemplateBody, stackName, stackParams, stackTags)
+}
+
+// GetCFStack mocks base method.
+func (m *MockClient) GetCFStack(ctx context.Context, stackName string) (*cftypes.Stack, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCFStack", ctx, stackName)
+	ret0, _ := ret[0].(*cftypes.Stack)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCFStack indicates an expected call of GetCFStack.
+func (mr *MockClientMockRecorder) GetCFStack(ctx context.Context, stackName string) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCFStack", reflect.TypeOf((*MockClient)(nil).GetCFStack), ctx, stackName)
+}
+
+// DescribeCFStackResources mocks base method.
+func (m *MockClient) DescribeCFStackResources(ctx context.Context, stackName string) (*[]cftypes.StackResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DescribeCFStackResources", ctx, stackName)
+	ret0, _ := ret[0].(*[]cftypes.StackResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeCFStackResources indicates an expected call of DescribeCFStackResources.
+func (mr *MockClientMockRecorder) DescribeCFStackResources(ctx context.Context, stackName string) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeCFStackResources", reflect.TypeOf((*MockClient)(nil).DescribeCFStackResources), ctx, stackName)
+}
+
+// DeleteCFStack mocks base method.
+func (m *MockClient) DeleteCFStack(ctx context.Context, stackName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCFStack", ctx, stackName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCFStack indicates an expected call of DeleteCFStack.
+func (mr *MockClientMockRecorder) DeleteCFStack(ctx context.Context, stackName string) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCFStack", reflect.TypeOf((*MockClient)(nil).DeleteCFStack), ctx, stackName)
 }

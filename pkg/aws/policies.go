@@ -1151,7 +1151,7 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool,
 					sharedVpcPoliciesNotDeleted[*policyOutput.Policy.Arn] = false
 
 					// Add to list of sharedVpc policies to be actually deleted
-					c.logger.Infof("Deleting policy '%s'", policy)
+					c.logger.Info(fmt.Sprintf("Deleting policy '%s'", policy))
 					sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
 				} else {
 					// Print warning message after all roles are checked (will result in duplicated warnings without
@@ -1255,11 +1255,11 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 			}
 			if containsManagedTag && containsHcpSharedVpcTag {
 				if *policyOutput.Policy.AttachmentCount == 0 {
-					c.logger.Infof("Deleting policy '%s'", policy)
+					c.logger.Info(fmt.Sprintf("Deleting policy '%s'", policy))
 					sharedVpcHcpPolicies = append(sharedVpcHcpPolicies, policy)
 				} else {
-					c.logger.Warnf("Unable to delete policy %s: Policy still attached to %v other resource(s)",
-						*policyOutput.Policy.PolicyName, *policyOutput.Policy.AttachmentCount)
+					c.logger.Warn(fmt.Sprintf("Unable to delete policy %s: Policy still attached to %v other resource(s)",
+						*policyOutput.Policy.PolicyName, *policyOutput.Policy.AttachmentCount))
 				}
 			}
 		}
@@ -2186,7 +2186,7 @@ func (c *awsClient) validateManagedPolicy(policies map[string]*cmv1.AWSSTSPolicy
 	if err != nil {
 		// EC2 policy is only available to orgs for zero-egress feature toggle enabled
 		if policyKey == WorkerEC2RegistryKey {
-			c.logger.Infof("Ignored check for policy key '%s' (zero egress feature toggle is not enabled)", policyKey)
+			c.logger.Info(fmt.Sprintf("Ignored check for policy key '%s' (zero egress feature toggle is not enabled)", policyKey))
 			return nil
 		}
 		return err
