@@ -26,10 +26,10 @@ import (
 type LoggerWrapper struct {
 	loggerType   string
 	logrusLogger *logrus.Logger
-	logrLogger   *logr.Logger
+	capaLogger   *logr.Logger
 }
 
-func NewLoggerWrapper(logrusLog *logrus.Logger, logrLog *logr.Logger) *LoggerWrapper {
+func NewLoggerWrapper(logrusLog *logrus.Logger, capaLogger *logr.Logger) *LoggerWrapper {
 	if logrusLog != nil {
 		return &LoggerWrapper{
 			loggerType:   "logrus",
@@ -37,10 +37,10 @@ func NewLoggerWrapper(logrusLog *logrus.Logger, logrLog *logr.Logger) *LoggerWra
 		}
 	}
 
-	if logrLog != nil {
+	if capaLogger != nil {
 		return &LoggerWrapper{
-			loggerType: "logr",
-			logrLogger: logrLog,
+			loggerType: "capa",
+			capaLogger: capaLogger,
 		}
 	}
 
@@ -51,8 +51,8 @@ func (lw *LoggerWrapper) GetLevel() (lvl int) {
 	switch lw.loggerType {
 	case "logrus":
 		lvl = int(lw.logrusLogger.GetLevel())
-	case "logr":
-		lvl = lw.logrLogger.GetV()
+	case "capa":
+		lvl = lw.capaLogger.GetV()
 	}
 
 	return lvl
@@ -62,8 +62,8 @@ func (lw *LoggerWrapper) Debug(args ...interface{}) {
 	switch lw.loggerType {
 	case "logrus":
 		lw.logrusLogger.Debug(args...)
-	case "logr":
-		lw.logrLogger.Info(args[0].(string))
+	case "capa":
+		lw.capaLogger.Info(args[0].(string))
 	}
 }
 
@@ -71,8 +71,8 @@ func (lw *LoggerWrapper) Info(args ...interface{}) {
 	switch lw.loggerType {
 	case "logrus":
 		lw.logrusLogger.Info(args...)
-	case "logr":
-		lw.logrLogger.Info(args[0].(string))
+	case "capa":
+		lw.capaLogger.Info(args[0].(string))
 	}
 }
 
@@ -80,8 +80,8 @@ func (lw *LoggerWrapper) Warn(args ...interface{}) {
 	switch lw.loggerType {
 	case "logrus":
 		lw.logrusLogger.Warn(args...)
-	case "logr":
-		lw.logrLogger.Info(args[0].(string))
+	case "capa":
+		lw.capaLogger.Info(args[0].(string))
 	}
 }
 
@@ -89,8 +89,8 @@ func (lw *LoggerWrapper) Error(args ...interface{}) {
 	switch lw.loggerType {
 	case "logrus":
 		lw.logrusLogger.Error(args...)
-	case "logr":
-		lw.logrLogger.Error(fmt.Errorf("awsClient error"), args[0].(string))
+	case "capa":
+		lw.capaLogger.Error(fmt.Errorf("awsClient error"), args[0].(string))
 	}
 }
 
@@ -98,7 +98,7 @@ func (lw *LoggerWrapper) Fatal(args ...interface{}) {
 	switch lw.loggerType {
 	case "logrus":
 		lw.logrusLogger.Fatal(args...)
-	case "logr":
-		lw.logrLogger.Error(fmt.Errorf("awsClient error"), args[0].(string))
+	case "capa":
+		lw.capaLogger.Error(fmt.Errorf("awsClient error"), args[0].(string))
 	}
 }
