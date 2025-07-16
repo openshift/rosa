@@ -238,7 +238,7 @@ type AccessKeyGetter interface {
 // ClientBuilder contains the information and logic needed to build a new AWS client.
 type ClientBuilder struct {
 	logger              *logrus.Logger
-	logrLogger          *logr.Logger
+	capaLogger          *logr.Logger
 	region              *string
 	credentials         *AccessKey
 	useLocalCredentials bool
@@ -343,8 +343,8 @@ func (b *ClientBuilder) Logger(value *logrus.Logger) *ClientBuilder {
 	return b
 }
 
-func (b *ClientBuilder) LogrLogger(value *logr.Logger) *ClientBuilder {
-	b.logrLogger = value
+func (b *ClientBuilder) CapaLogger(value *logr.Logger) *ClientBuilder {
+	b.capaLogger = value
 	return b
 }
 
@@ -455,7 +455,7 @@ func (b *ClientBuilder) BuildSession() (aws.Config, error) {
 // Build uses the information stored in the builder to build a new AWS client.
 func (b *ClientBuilder) Build() (Client, error) {
 	// Check parameters:
-	if b.logger == nil && b.logrLogger == nil {
+	if b.logger == nil && b.capaLogger == nil {
 		return nil, fmt.Errorf("logger is mandatory")
 	}
 
@@ -497,7 +497,7 @@ func (b *ClientBuilder) Build() (Client, error) {
 	// Create and populate the object:
 	c := &awsClient{
 		cfg:                 cfg,
-		logger:              NewLoggerWrapper(b.logger, b.logrLogger),
+		logger:              NewLoggerWrapper(b.logger, b.capaLogger),
 		iamClient:           iam.NewFromConfig(cfg),
 		ec2Client:           ec2.NewFromConfig(cfg),
 		orgClient:           organizations.NewFromConfig(cfg),
