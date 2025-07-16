@@ -123,7 +123,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 	Context("When cluster is hosted", func() {
 		It("Returns an error when the number of subnets is not at least two", func() {
-			validator = SubnetsValidator(mockClient, false, false, true)
+			validator = SubnetsValidator(mockClient, false, false, true, false)
 			answers := []core.OptionAnswer{
 				{Value: "subnet-public-1 (us-west-2a)"},
 			}
@@ -135,7 +135,7 @@ var _ = Describe("SubnetsValidator", func() {
 		})
 
 		It("Returns an error when the number of public subnets is not at least one", func() {
-			validator = SubnetsValidator(mockClient, false, false, true)
+			validator = SubnetsValidator(mockClient, false, false, true, false)
 			answers := []core.OptionAnswer{
 				{Value: "subnet-private-2 (us-west-2a)"},
 				{Value: "subnet-private-3 (us-west-2b)"},
@@ -160,7 +160,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 	Context("When cluster is not hosted", func() {
 		It("Returns and error when the number of subnets is not correct", func() {
-			validator = SubnetsValidator(mockClient, true, true, false)
+			validator = SubnetsValidator(mockClient, true, true, false, true)
 			answers := []core.OptionAnswer{
 				{Value: "subnet-123 (us-west-2a)"},
 				{Value: "subnet-456 (us-west-2b)"},
@@ -173,7 +173,7 @@ var _ = Describe("SubnetsValidator", func() {
 		})
 
 		It("Should not return an error when the number of subnets is correct", func() {
-			validator = SubnetsValidator(mockClient, true, true, false)
+			validator = SubnetsValidator(mockClient, true, true, false, true)
 			answers := []core.OptionAnswer{
 				{Value: "subnet-123 (us-west-2a)"},
 				{Value: "subnet-456 (us-west-2b)"},

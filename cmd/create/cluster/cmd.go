@@ -99,6 +99,9 @@ const (
 	ingressPrivateHostedZoneIdFlag           = "ingress-private-hosted-zone-id"
 
 	billingAccountFlag = "billing-account"
+
+	privateLinkFlagName = "private-link"
+	privateFlagName     = "private"
 )
 
 var args struct {
@@ -540,7 +543,7 @@ func initFlags(cmd *cobra.Command) {
 
 	flags.BoolVar(
 		&args.privateLink,
-		"private-link",
+		privateLinkFlagName,
 		false,
 		"Provides private connectivity between VPCs, AWS services, and your on-premises networks, "+
 			"without exposing your traffic to the public internet.\n\n"+
@@ -679,7 +682,7 @@ func initFlags(cmd *cobra.Command) {
 	)
 	flags.BoolVar(
 		&args.private,
-		"private",
+		privateFlagName,
 		false,
 		"Restrict master API endpoint and application routes to direct, private connectivity.",
 	)
@@ -953,19 +956,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// validate flags for cluster admin
+	// validate flags for cluster admin and private ingress/private API
 	isHostedCP := args.hostedClusterEnabled
 	if isHostedCP {
-		if cmd.Flag(securitygroups.InfraSecurityGroupFlag).Changed {
-			r.Reporter.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, only '%s' is "+
-				"supported", securitygroups.InfraSecurityGroupFlag, securitygroups.ComputeSecurityGroupFlag)
-			os.Exit(1)
-		}
-		if cmd.Flag(securitygroups.ControlPlaneSecurityGroupFlag).Changed {
-			r.Reporter.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, only '%s' is "+
-				"supported", securitygroups.ControlPlaneSecurityGroupFlag, securitygroups.ComputeSecurityGroupFlag)
-			os.Exit(1)
-		}
+		validateHcpFlags(cmd, r.Reporter)
 	}
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
@@ -2057,7 +2051,7 @@ func run(cmd *cobra.Command, _ []string) {
 			question := "PrivateLink cluster"
 			privateLink, err = interactive.GetBool(interactive.Input{
 				Question: question,
-				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private-link").Usage, privateLinkWarning),
+				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup(privateLinkFlagName).Usage, privateLinkWarning),
 				Default:  privateLink || (isSTS && args.private),
 			})
 			if err != nil {
@@ -2067,7 +2061,7 @@ func run(cmd *cobra.Command, _ []string) {
 		} else {
 			private, err = interactive.GetBool(interactive.Input{
 				Question: "Private API",
-				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateLinkWarning),
+				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup(privateFlagName).Usage, privateLinkWarning),
 				Default:  args.private,
 			})
 			if err != nil {
@@ -2099,7 +2093,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if interactive.Enabled() {
 			private, err = interactive.GetBool(interactive.Input{
 				Question: "Private cluster",
-				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup("private").Usage, privateWarning),
+				Help:     fmt.Sprintf("%s %s", cmd.Flags().Lookup(privateFlagName).Usage, privateWarning),
 				Default:  private,
 			})
 			if err != nil {
@@ -2333,6 +2327,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		if ((privateLink && !subnetsProvided) || interactive.Enabled()) &&
 			len(options) > 0 && (!multiAZ || len(mapAZCreated) >= 3 || isHostedCP) {
+			privateValue := privateLink
+			if isHostedCP {
+				privateValue = private
+			}
 			subnetIDs, err = interactive.GetMultipleOptions(interactive.Input{
 				Question: "Subnet IDs",
 				Help:     cmd.Flags().Lookup("subnet-ids").Usage,
@@ -2340,7 +2338,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Options:  options,
 				Default:  defaultOptions,
 				Validators: []interactive.Validator{
-					interactive.SubnetsValidator(awsClient, multiAZ, privateLink, isHostedCP),
+					interactive.SubnetsValidator(awsClient, multiAZ, privateValue, isHostedCP, privateIngress),
 				},
 			})
 			if err != nil {
@@ -2360,7 +2358,7 @@ func run(cmd *cobra.Command, _ []string) {
 				// Hosted cluster should validate that
 				// - Public hosted clusters have at least one public subnet
 				// - Private hosted clusters have all subnets private, except when those clusters have public ingress
-				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs,
+				privateSubnetsCount, err = ocm.ValidateHostedClusterSubnets(awsClient, private, subnetIDs,
 					privateIngress)
 			}
 			if err != nil {

@@ -226,7 +226,8 @@ func RegExpBoolean(restr string) Validator {
 
 // SubnetsCountValidator get a slice of `[]core.OptionAnswer` as an interface.
 // e.g. core.OptionAnswer { Value: subnet-04f67939f44a97dbe (us-west-2b), Index: 0 }
-func SubnetsValidator(awsClient aws.Client, multiAZ bool, privateLink bool, hostedCP bool) Validator {
+func SubnetsValidator(awsClient aws.Client, multiAZ bool, privateValue bool, hostedCP bool,
+	privateIngress bool) Validator {
 	return func(input interface{}) (err error) {
 		if answers, ok := input.([]core.OptionAnswer); ok {
 			if hostedCP {
@@ -235,11 +236,10 @@ func SubnetsValidator(awsClient aws.Client, multiAZ bool, privateLink bool, host
 					subnetIDs[i] = aws.ParseOption(subnet.Value)
 				}
 
-				privateIngress := false
-				_, err = ocm.ValidateHostedClusterSubnets(awsClient, privateLink, subnetIDs, privateIngress)
+				_, err = ocm.ValidateHostedClusterSubnets(awsClient, privateValue, subnetIDs, privateIngress)
 				return err
 			}
-			return ocm.ValidateSubnetsCount(multiAZ, privateLink, len(answers))
+			return ocm.ValidateSubnetsCount(multiAZ, privateValue, len(answers))
 		}
 		return fmt.Errorf("can only validate a slice of string, got %v", input)
 	}

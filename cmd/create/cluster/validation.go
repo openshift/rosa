@@ -2,9 +2,14 @@ package cluster
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/interactive/securitygroups"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 const (
@@ -59,4 +64,22 @@ func validateHcpSharedVpcArgs(route53RoleArn string, vpcEndpointRoleArn string,
 		return fmt.Errorf(hcpSharedVpcFlagNotFilledErrorMsg, hcpInternalCommunicationHostedZoneIdFlag)
 	}
 	return nil
+}
+
+func validateHcpFlags(cmd *cobra.Command, r reporter.Logger) {
+	if cmd.Flag(securitygroups.InfraSecurityGroupFlag).Changed {
+		_ = r.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, only '%s' is "+
+			"supported", securitygroups.InfraSecurityGroupFlag, securitygroups.ComputeSecurityGroupFlag)
+		os.Exit(1)
+	}
+	if cmd.Flag(securitygroups.ControlPlaneSecurityGroupFlag).Changed {
+		_ = r.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, only '%s' is "+
+			"supported", securitygroups.ControlPlaneSecurityGroupFlag, securitygroups.ComputeSecurityGroupFlag)
+		os.Exit(1)
+	}
+	if cmd.Flag(privateLinkFlagName).Changed {
+		_ = r.Errorf("Cannot use '%s' flag with Hosted Control Plane clusters, '%s' is the "+
+			"supported equivalent", privateLinkFlagName, privateFlagName)
+		os.Exit(1)
+	}
 }
