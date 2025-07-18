@@ -452,9 +452,6 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.Private {
 		flags = append(flags, "--private")
 		ch.clusterConfig.Private = ch.profile.ClusterConfig.Private
-		if ch.profile.ClusterConfig.HCP {
-			ch.profile.ClusterConfig.PrivateLink = true
-		}
 	}
 	if ch.profile.ClusterConfig.DefaultIngressPrivate {
 		flags = append(flags, "--default-ingress-private")
