@@ -906,6 +906,9 @@ var _ = Describe("Additional security groups validation",
 				pickedVersions, err := versionList.FilterVersionsSameMajorAndEqualOrLowerThanMinor(4, 13, false)
 				Expect(err).To(BeNil())
 				Expect(len(pickedVersions.OpenShiftVersions) > 0).To(BeTrue())
+				if len(pickedVersions.OpenShiftVersions) <= 0 {
+					Skip("There is no version bellow 4.14.0, skip this case")
+				}
 				ocpVersionBelow4_14 = pickedVersions.OpenShiftVersions[0].Version
 
 				By("Prepare a vpc for the testing")
