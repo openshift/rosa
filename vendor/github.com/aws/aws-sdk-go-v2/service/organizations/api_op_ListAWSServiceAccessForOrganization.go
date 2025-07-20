@@ -14,13 +14,16 @@ import (
 // Returns a list of the Amazon Web Services services that you enabled to
 // integrate with your organization. After a service on this list creates the
 // resources that it requires for the integration, it can perform operations on
-// your organization and its accounts. For more information about integrating other
-// services with Organizations, including the list of services that currently work
-// with Organizations, see Using Organizations with other Amazon Web Services
-// services (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services.html)
-// in the Organizations User Guide. This operation can be called only from the
-// organization's management account or by a member account that is a delegated
-// administrator for an Amazon Web Services service.
+// your organization and its accounts.
+//
+// For more information about integrating other services with Organizations,
+// including the list of services that currently work with Organizations, see [Using Organizations with other Amazon Web Services services]in
+// the Organizations User Guide.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
+//
+// [Using Organizations with other Amazon Web Services services]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services.html
 func (c *Client) ListAWSServiceAccessForOrganization(ctx context.Context, params *ListAWSServiceAccessForOrganizationInput, optFns ...func(*Options)) (*ListAWSServiceAccessForOrganizationOutput, error) {
 	if params == nil {
 		params = &ListAWSServiceAccessForOrganizationInput{}
@@ -120,6 +123,9 @@ func (c *Client) addOperationListAWSServiceAccessForOrganizationMiddlewares(stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -130,6 +136,15 @@ func (c *Client) addOperationListAWSServiceAccessForOrganizationMiddlewares(stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListAWSServiceAccessForOrganization(options.Region), middleware.Before); err != nil {
@@ -150,16 +165,20 @@ func (c *Client) addOperationListAWSServiceAccessForOrganizationMiddlewares(stac
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListAWSServiceAccessForOrganizationAPIClient is a client that implements the
-// ListAWSServiceAccessForOrganization operation.
-type ListAWSServiceAccessForOrganizationAPIClient interface {
-	ListAWSServiceAccessForOrganization(context.Context, *ListAWSServiceAccessForOrganizationInput, ...func(*Options)) (*ListAWSServiceAccessForOrganizationOutput, error)
-}
-
-var _ ListAWSServiceAccessForOrganizationAPIClient = (*Client)(nil)
 
 // ListAWSServiceAccessForOrganizationPaginatorOptions is the paginator options
 // for ListAWSServiceAccessForOrganization
@@ -235,6 +254,9 @@ func (p *ListAWSServiceAccessForOrganizationPaginator) NextPage(ctx context.Cont
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListAWSServiceAccessForOrganization(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -253,6 +275,14 @@ func (p *ListAWSServiceAccessForOrganizationPaginator) NextPage(ctx context.Cont
 
 	return result, nil
 }
+
+// ListAWSServiceAccessForOrganizationAPIClient is a client that implements the
+// ListAWSServiceAccessForOrganization operation.
+type ListAWSServiceAccessForOrganizationAPIClient interface {
+	ListAWSServiceAccessForOrganization(context.Context, *ListAWSServiceAccessForOrganizationInput, ...func(*Options)) (*ListAWSServiceAccessForOrganizationOutput, error)
+}
+
+var _ ListAWSServiceAccessForOrganizationAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListAWSServiceAccessForOrganization(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

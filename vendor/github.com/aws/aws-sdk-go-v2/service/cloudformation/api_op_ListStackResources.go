@@ -11,9 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns descriptions of all resources of the specified stack. For deleted
-// stacks, ListStackResources returns resource information for up to 90 days after
-// the stack has been deleted.
+// Returns descriptions of all resources of the specified stack.
+//
+// For deleted stacks, ListStackResources returns resource information for up to
+// 90 days after the stack has been deleted.
 func (c *Client) ListStackResources(ctx context.Context, params *ListStackResourcesInput, optFns ...func(*Options)) (*ListStackResourcesOutput, error) {
 	if params == nil {
 		params = &ListStackResourcesInput{}
@@ -34,10 +35,11 @@ type ListStackResourcesInput struct {
 
 	// The name or the unique stack ID that is associated with the stack, which aren't
 	// always interchangeable:
+	//
 	//   - Running stacks: You can specify either the stack's name or its unique stack
 	//   ID.
+	//
 	//   - Deleted stacks: You must specify the unique stack ID.
-	// Default: There is no default value.
 	//
 	// This member is required.
 	StackName *string
@@ -108,6 +110,9 @@ func (c *Client) addOperationListStackResourcesMiddlewares(stack *middleware.Sta
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -118,6 +123,15 @@ func (c *Client) addOperationListStackResourcesMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListStackResourcesValidationMiddleware(stack); err != nil {
@@ -141,16 +155,20 @@ func (c *Client) addOperationListStackResourcesMiddlewares(stack *middleware.Sta
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListStackResourcesAPIClient is a client that implements the ListStackResources
-// operation.
-type ListStackResourcesAPIClient interface {
-	ListStackResources(context.Context, *ListStackResourcesInput, ...func(*Options)) (*ListStackResourcesOutput, error)
-}
-
-var _ ListStackResourcesAPIClient = (*Client)(nil)
 
 // ListStackResourcesPaginatorOptions is the paginator options for
 // ListStackResources
@@ -204,6 +222,9 @@ func (p *ListStackResourcesPaginator) NextPage(ctx context.Context, optFns ...fu
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListStackResources(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -222,6 +243,14 @@ func (p *ListStackResourcesPaginator) NextPage(ctx context.Context, optFns ...fu
 
 	return result, nil
 }
+
+// ListStackResourcesAPIClient is a client that implements the ListStackResources
+// operation.
+type ListStackResourcesAPIClient interface {
+	ListStackResources(context.Context, *ListStackResourcesInput, ...func(*Options)) (*ListStackResourcesOutput, error)
+}
+
+var _ ListStackResourcesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListStackResources(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
