@@ -91,7 +91,8 @@ func (vpc *VPC) LaunchProxyInstance(zone string, keypairName string, privateKeyP
 		return inst, "", "", err
 	}
 	tags := map[string]string{
-		"Name": CON.ProxyName,
+		"Name":  CON.ProxyName,
+		"VpcId": vpc.VpcID,
 	}
 	_, err = vpc.AWSClient.TagResource(*key.KeyPairId, tags)
 	if err != nil {
