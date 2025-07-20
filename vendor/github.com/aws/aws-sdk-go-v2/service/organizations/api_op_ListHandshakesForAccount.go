@@ -12,14 +12,18 @@ import (
 )
 
 // Lists the current handshakes that are associated with the account of the
-// requesting user. Handshakes that are ACCEPTED , DECLINED , CANCELED , or EXPIRED
-// appear in the results of this API for only 30 days after changing to that state.
-// After that, they're deleted and no longer accessible. Always check the NextToken
-// response parameter for a null value when calling a List* operation. These
-// operations can occasionally return an empty set of results even when there are
-// more results available. The NextToken response parameter value is null only
-// when there are no more results to display. This operation can be called from any
-// account in the organization.
+// requesting user.
+//
+// Handshakes that are ACCEPTED , DECLINED , CANCELED , or EXPIRED appear in the
+// results of this API for only 30 days after changing to that state. After that,
+// they're deleted and no longer accessible.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// List* operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called from any account in the organization.
 func (c *Client) ListHandshakesForAccount(ctx context.Context, params *ListHandshakesForAccountInput, optFns ...func(*Options)) (*ListHandshakesForAccountOutput, error) {
 	if params == nil {
 		params = &ListHandshakesForAccountInput{}
@@ -67,8 +71,8 @@ type ListHandshakesForAccountInput struct {
 
 type ListHandshakesForAccountOutput struct {
 
-	// A list of Handshake objects with details about each of the handshakes that is
-	// associated with the specified account.
+	// A list of Handshake objects with details about each of the handshakes that is associated
+	// with the specified account.
 	Handshakes []types.Handshake
 
 	// If present, indicates that more output is available than is included in the
@@ -126,6 +130,9 @@ func (c *Client) addOperationListHandshakesForAccountMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -136,6 +143,15 @@ func (c *Client) addOperationListHandshakesForAccountMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListHandshakesForAccount(options.Region), middleware.Before); err != nil {
@@ -156,16 +172,20 @@ func (c *Client) addOperationListHandshakesForAccountMiddlewares(stack *middlewa
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListHandshakesForAccountAPIClient is a client that implements the
-// ListHandshakesForAccount operation.
-type ListHandshakesForAccountAPIClient interface {
-	ListHandshakesForAccount(context.Context, *ListHandshakesForAccountInput, ...func(*Options)) (*ListHandshakesForAccountOutput, error)
-}
-
-var _ ListHandshakesForAccountAPIClient = (*Client)(nil)
 
 // ListHandshakesForAccountPaginatorOptions is the paginator options for
 // ListHandshakesForAccount
@@ -240,6 +260,9 @@ func (p *ListHandshakesForAccountPaginator) NextPage(ctx context.Context, optFns
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListHandshakesForAccount(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -258,6 +281,14 @@ func (p *ListHandshakesForAccountPaginator) NextPage(ctx context.Context, optFns
 
 	return result, nil
 }
+
+// ListHandshakesForAccountAPIClient is a client that implements the
+// ListHandshakesForAccount operation.
+type ListHandshakesForAccountAPIClient interface {
+	ListHandshakesForAccount(context.Context, *ListHandshakesForAccountInput, ...func(*Options)) (*ListHandshakesForAccountOutput, error)
+}
+
+var _ ListHandshakesForAccountAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListHandshakesForAccount(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

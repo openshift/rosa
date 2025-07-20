@@ -170,6 +170,32 @@ func (e *GeneratedTemplateNotFoundException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
 
+// The specified target doesn't have any requested Hook invocations.
+type HookResultNotFoundException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *HookResultNotFoundException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *HookResultNotFoundException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *HookResultNotFoundException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "HookResultNotFound"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *HookResultNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // The template contains resources with capabilities that weren't specified in the
 // Capabilities parameter.
 type InsufficientCapabilitiesException struct {
@@ -251,8 +277,10 @@ func (e *InvalidOperationException) ErrorCode() string {
 }
 func (e *InvalidOperationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// Error reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-// . CloudFormation doesn't return this error to users.
+// Error reserved for use by the [CloudFormation CLI]. CloudFormation doesn't return this error to
+// users.
+//
+// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 type InvalidStateTransitionException struct {
 	Message *string
 
@@ -278,9 +306,12 @@ func (e *InvalidStateTransitionException) ErrorCode() string {
 }
 func (e *InvalidStateTransitionException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// The quota for the resource has already been reached. For information about
-// resource and stack limitations, see CloudFormation quotas (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html)
-// in the CloudFormation User Guide.
+// The quota for the resource has already been reached.
+//
+// For information about resource and stack limitations, see [CloudFormation quotas] in the
+// CloudFormation User Guide.
+//
+// [CloudFormation quotas]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
 type LimitExceededException struct {
 	Message *string
 
@@ -411,8 +442,10 @@ func (e *OperationNotFoundException) ErrorCode() string {
 }
 func (e *OperationNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// Error reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-// . CloudFormation doesn't return this error to users.
+// Error reserved for use by the [CloudFormation CLI]. CloudFormation doesn't return this error to
+// users.
+//
+// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 type OperationStatusCheckFailedException struct {
 	Message *string
 
@@ -468,9 +501,12 @@ func (e *ResourceScanInProgressException) ErrorCode() string {
 func (e *ResourceScanInProgressException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The limit on resource scans has been exceeded. Reasons include:
+//
 //   - Exceeded the daily quota for resource scans.
+//
 //   - A resource scan recently failed. You must wait 10 minutes before starting a
 //     new resource scan.
+//
 //   - The last resource scan failed after exceeding 100,000 resources. When this
 //     happens, you must wait 24 hours before starting a new resource scan.
 type ResourceScanLimitExceededException struct {
@@ -578,6 +614,32 @@ func (e *StackNotFoundException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *StackNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The specified stack refactor can't be found.
+type StackRefactorNotFoundException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *StackRefactorNotFoundException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *StackRefactorNotFoundException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *StackRefactorNotFoundException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "StackRefactorNotFoundException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *StackRefactorNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // You can't yet delete this stack set, because it still contains one or more
 // stack instances. Delete all stack instances from the stack set before deleting
