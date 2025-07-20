@@ -39,46 +39,27 @@ Hard tabs are required rather than spaces.
 ## Releasing a new OCM API Model version
 
 To use any updates to the [ocm-api-model](https://github.com/openshift-online/ocm-api-model), the version
-must be incremented for consumption in ocm-sdk-go generation. The version is defined by the latest git tag.
-The version is also defined in the ocm-api-model/CHANGES.md file.
+must be incremented for consumption in ocm-sdk-go generation. The version is defined by the latest git commit-SHA.
 
-Once all changes to the OCM API Model have been committed to the main branch, submit a separate change with
-an update to ocm-api-model/CHANGES.md. This update should indicate the version and describe the changes
-included with the version update. The following is an example update to version 0.0.9:
+Once all changes to the OCM API Model have been defined and reviewed the client types for the model need to be generated via `make update` target
+in the `ocm-api-model` project.
 
-```
-== 0.0.9 Oct 7 2019
-
-- Add `type` attribute to the `ResourceQuota` type.
-- Add `config_managed` attribute to the `RoleBinding` type.
-```
-
-Submit an MR with the CHANGES.md modification and review/merge.
-
-Finally, create and submit a new tag with the new version following the below example:
-
-```shell
-git checkout main
-git pull
-git tag -a -m 'Release 0.0.9' v0.0.9
-git push origin v0.0.9
-```
-
-Note that a repository administrator may need to push the tag to the repository due to access restrictions.
+Once all changes to the OCM API Model have been committed to the main branch you will need to update these changes in the SDK.
 
 ## Updating the OCM SDK
 
 The OCM SDK can be generated simply by running the following after all changes have been made:
 
 ```shell
-make generate
+./hack/update-model.sh
+make update
 ```
 
-In most cases, the ocm-api-model version will be incremented prior to generation. To increment the ocm-api-model
-version, update the `model_version` constant in [Makefile](Makefile).
+The `./hack/update-model.sh` script will ensure the `ocm-api-model` modules are all up to date with the latest commit SHA across the OCM-SDK project.
+To verify that they are all in-sync one can use the `./hack/verify-model-version.sh` script.
 
 Whenever an update is made, ensure that the corresponding example in [examples](examples) is also updated where
-necessary. Any new endpoints should have a new example created.
+necessary. It is *highly recommended* that new endpoints have a new example created.
 
 ## Releasing a new OCM SDK Version
 
