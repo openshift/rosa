@@ -455,6 +455,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 	}
 	if ch.profile.ClusterConfig.DefaultIngressPrivate {
 		flags = append(flags, "--default-ingress-private")
+		ch.clusterConfig.DefaultIngressPrivate = ch.profile.ClusterConfig.DefaultIngressPrivate
 	}
 
 	if ch.profile.ClusterConfig.AdminEnabled {
