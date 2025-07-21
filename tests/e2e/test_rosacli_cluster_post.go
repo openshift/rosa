@@ -298,9 +298,11 @@ var _ = Describe("Healthy check",
 				func() {
 					private := constants.No
 					ingressPrivate := "false"
-					if clusterConfig.PrivateLink {
+					if clusterConfig.Private {
 						private = constants.Yes
-						ingressPrivate = "true" // nolint
+					}
+					if clusterConfig.DefaultIngressPrivate {
+						ingressPrivate = "true"
 					}
 					By("Describe the cluster the cluster should be private")
 					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)

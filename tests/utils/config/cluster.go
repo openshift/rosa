@@ -116,6 +116,7 @@ type ClusterConfig struct {
 	Hypershift                bool                      `json:"hypershift,omitempty"`
 	MultiAZ                   bool                      `json:"multi_az,omitempty"`
 	Private                   bool                      `json:"private,omitempty"`
+	DefaultIngressPrivate     bool                      `json:"default_ingress_private,omitempty"`
 	PrivateLink               bool                      `json:"private_link,omitempty"`
 	Sts                       bool                      `json:"sts,omitempty"`
 	AuditLogArn               string                    `json:"audit_log_arn,omitempty"`

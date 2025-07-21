@@ -1824,7 +1824,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 			})
 
-		It("to validate the invalid proxy when create cluster - [id:q]", labels.Medium, labels.Runtime.Day1Negative,
+		It("to validate the invalid proxy when create cluster - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				zone := constants.CommonAWSRegion + "a"
 				clusterName := "rosacli-45509"
@@ -2694,6 +2694,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 				By("Create a private cluster with 1 private subnet")
 				rosalCommand.AddFlags("--private")
+				rosalCommand.AddFlags("--default-ingress-private")
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": subnetMap["private"][0]})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).ToNot(HaveOccurred())
