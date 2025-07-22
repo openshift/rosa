@@ -4088,10 +4088,14 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.HostPrefix != 0 {
 		command += fmt.Sprintf(" --host-prefix %d", spec.HostPrefix)
 	}
-	if spec.PrivateLink != nil && *spec.PrivateLink {
+	if !spec.Hypershift.Enabled && spec.PrivateLink != nil && *spec.PrivateLink {
 		command += " --private-link"
-	} else if spec.Private != nil && *spec.Private {
+	}
+	if spec.Hypershift.Enabled && spec.Private != nil && *spec.Private {
 		command += " --private"
+	}
+	if spec.Hypershift.Enabled && spec.PrivateIngress != nil && *spec.PrivateIngress {
+		command += " --default-ingress-private"
 	}
 	if len(spec.SubnetIds) > 0 {
 		command += fmt.Sprintf(" --subnet-ids %s", strings.Join(spec.SubnetIds, ","))
