@@ -20,11 +20,12 @@ import (
 	"fmt"
 	"testing"
 
+	"go.uber.org/mock/gomock"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas/types"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	sdk "github.com/openshift-online/ocm-sdk-go"

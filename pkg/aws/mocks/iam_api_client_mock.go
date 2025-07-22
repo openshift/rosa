@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	iam "github.com/aws/aws-sdk-go-v2/service/iam"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockIamApiClient is a mock of IamApiClient interface.
