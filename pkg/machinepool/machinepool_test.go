@@ -9,8 +9,9 @@ import (
 	"reflect"
 	"time"
 
+	"go.uber.org/mock/gomock"
+
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"

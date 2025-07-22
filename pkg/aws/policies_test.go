@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	gomock "go.uber.org/mock/gomock"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	gomock "github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"

@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	s3 "github.com/aws/aws-sdk-go-v2/service/s3"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockS3ApiClient is a mock of S3ApiClient interface.

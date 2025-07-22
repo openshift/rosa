@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockEc2ApiClient is a mock of Ec2ApiClient interface.
