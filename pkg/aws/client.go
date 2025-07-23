@@ -1195,6 +1195,23 @@ const ReadOnlyAnonUserPolicyTemplate = `{
 	]
 }`
 
+const ReadOnlyAnonUserPolicyTemplateGovcloud = `{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowReadPublicAccess",
+			"Principal": "*",
+			"Effect": "Allow",
+			"Action": [
+				"s3:GetObject"
+			],
+			"Resource": [
+				"arn:aws-us-gov:s3:::%s/*"
+			]
+		}
+	]
+}`
+
 func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 	_, err := c.s3Client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
@@ -1229,9 +1246,14 @@ func (c *awsClient) CreateS3Bucket(bucketName string, region string) error {
 		return err
 	}
 
+	policyTemplate := ReadOnlyAnonUserPolicyTemplate
+	if fedramp.Enabled() {
+		policyTemplate = ReadOnlyAnonUserPolicyTemplateGovcloud
+	}
+
 	_, err = c.s3Client.PutBucketPolicy(context.TODO(), &s3.PutBucketPolicyInput{
 		Bucket: aws.String(bucketName),
-		Policy: aws.String(fmt.Sprintf(ReadOnlyAnonUserPolicyTemplate, bucketName)),
+		Policy: aws.String(fmt.Sprintf(policyTemplate, bucketName)),
 	})
 	if err != nil {
 		return err
