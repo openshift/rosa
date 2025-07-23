@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -50,7 +49,6 @@ type ListMachinePoolArgs struct {
 	ShowAZType    bool
 	ShowDedicated bool
 	ShowWindowsLI bool
-	ShowAll       bool
 }
 
 //go:generate mockgen -source=machinepool.go -package=machinepool -destination=machinepool_mock.go
@@ -1058,15 +1056,11 @@ func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, clust
 		return output.Print(machinePools)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-
-	finalStringToOutput := getMachinePoolsString(r, machinePools, args)
 	if isHypershift {
-		finalStringToOutput = getNodePoolsString(nodePools)
+		fmt.Print(getNodePoolsString(nodePools))
+	} else {
+		fmt.Print(getMachinePoolsString(r, machinePools, args))
 	}
-	fmt.Fprint(writer, finalStringToOutput)
-	writer.Flush()
 	return nil
 }
 
@@ -1240,90 +1234,65 @@ func getMachinePoolsString(
 	machinePools []*cmv1.MachinePool,
 	args ListMachinePoolArgs,
 ) string {
-	type columnDefinition struct {
-		header      string
-		isVisible   bool
-		extractData func(*cmv1.MachinePool) string
+	tb := output.NewTableBuilder()
+
+	// Build headers
+	headers := []string{"ID", "AUTOSCALING", "REPLICAS", "INSTANCE TYPE", "LABELS", "TAINTS",
+		"AVAILABILITY ZONES", "SUBNETS", "SPOT INSTANCES", "DISK SIZE", "SG IDS"}
+
+	// Add optional headers based on flags
+	if args.ShowAZType {
+		headers = append(headers, "AZ TYPE")
+	}
+	if args.ShowWindowsLI {
+		headers = append(headers, "WIN-LI ENABLED")
+	}
+	if args.ShowDedicated {
+		headers = append(headers, "DEDICATED HOST")
 	}
 
-	allColumnDefinitions := []columnDefinition{
-		{"ID", true, func(mp *cmv1.MachinePool) string { return mp.ID() }},
-		{"AUTOSCALING", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolAutoscaling(mp.Autoscaling()) }},
-		{"REPLICAS", true, func(mp *cmv1.MachinePool) string {
-			return ocmOutput.PrintMachinePoolReplicas(mp.Autoscaling(), mp.Replicas())
-		}},
-		{"INSTANCE TYPE", true, func(mp *cmv1.MachinePool) string { return mp.InstanceType() }},
-		{"LABELS", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintLabels(mp.Labels()) }},
-		{"TAINTS", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintTaints(mp.Taints()) }},
-		{"AVAILABILITY ZONES", true, func(mp *cmv1.MachinePool) string { return output.PrintStringSlice(mp.AvailabilityZones()) }},
-		{"SUBNETS", true, func(mp *cmv1.MachinePool) string { return output.PrintStringSlice(mp.Subnets()) }},
-		{"SPOT INSTANCES", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolSpot(mp) }},
-		{"DISK SIZE", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolDiskSize(mp) }},
-		{"SG IDS", true, func(mp *cmv1.MachinePool) string {
-			return output.PrintStringSlice(mp.AWS().AdditionalSecurityGroupIds())
-		}},
-		{"AZ TYPE", args.ShowAZType || args.ShowAll, func(mp *cmv1.MachinePool) string { return getZoneType(mp) }},
-		{"WIN-LI ENABLED", args.ShowWindowsLI || args.ShowAll, func(mp *cmv1.MachinePool) string { return isWinLIEnabled(mp.Labels()) }},
-		{"DEDICATED HOST", args.ShowDedicated || args.ShowAll, func(mp *cmv1.MachinePool) string { return isDedicatedHost(mp, runtime) }},
-	}
+	tb.SetHeaders(headers...)
 
-	var visibleColumnHeaders []string
-	var visibleColumnData [][]string
-	numPools := len(machinePools)
-
-	for _, column := range allColumnDefinitions {
-		if !column.isVisible {
-			continue
+	// Add each machine pool row
+	for _, mp := range machinePools {
+		values := []string{
+			mp.ID(),
+			ocmOutput.PrintMachinePoolAutoscaling(mp.Autoscaling()),
+			ocmOutput.PrintMachinePoolReplicas(mp.Autoscaling(), mp.Replicas()),
+			mp.InstanceType(),
+			ocmOutput.PrintLabels(mp.Labels()),
+			ocmOutput.PrintTaints(mp.Taints()),
+			output.PrintStringSlice(mp.AvailabilityZones()),
+			output.PrintStringSlice(mp.Subnets()),
+			ocmOutput.PrintMachinePoolSpot(mp),
+			ocmOutput.PrintMachinePoolDiskSize(mp),
+			output.PrintStringSlice(mp.AWS().AdditionalSecurityGroupIds()),
 		}
 
-		columnValues := make([]string, numPools)
-		hasNonEmptyValue := false
-
-		for i, pool := range machinePools {
-			if pool == nil {
-				columnValues[i] = "-"
-				continue
-			}
-
-			value := column.extractData(pool)
-			columnValues[i] = value
-			if value != "" && value != "-" {
-				hasNonEmptyValue = true
-			}
+		// Add optional values based on flags
+		if args.ShowAZType {
+			values = append(values, getZoneType(mp))
+		}
+		if args.ShowWindowsLI {
+			values = append(values, isWinLIEnabled(mp.Labels()))
+		}
+		if args.ShowDedicated {
+			values = append(values, isDedicatedHost(mp, runtime))
 		}
 
-		if args.ShowAll || hasNonEmptyValue || numPools == 0 {
-			visibleColumnHeaders = append(visibleColumnHeaders, column.header)
-			visibleColumnData = append(visibleColumnData, columnValues)
-		}
+		tb.AddRow(values...)
 	}
 
-	var tableBuilder strings.Builder
-
-	// Write header
-	if len(visibleColumnHeaders) > 0 {
-		tableBuilder.WriteString(strings.Join(visibleColumnHeaders, "\t") + "\n")
-	}
-
-	// Write data rows
-	for rowIndex := range numPools {
-		for colIndex, columnValues := range visibleColumnData {
-			if colIndex > 0 {
-				tableBuilder.WriteString("\t")
-			}
-			tableBuilder.WriteString(columnValues[rowIndex])
-		}
-		tableBuilder.WriteString("\n")
-	}
-
-	return tableBuilder.String()
+	return tb.RenderToString()
 }
 
 func getNodePoolsString(nodePools []*cmv1.NodePool) string {
-	outputString := "ID\tAUTOSCALING\tREPLICAS\t" +
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "AUTOSCALING", "REPLICAS", "INSTANCE TYPE", "LABELS", "TAINTS",
+		"AVAILABILITY ZONE", "SUBNET", "DISK SIZE", "VERSION", "AUTOREPAIR")
+
 	for _, nodePool := range nodePools {
-		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
+		tb.AddRow(
 			nodePool.ID(),
 			ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
 			ocmOutput.PrintNodePoolReplicasShort(
@@ -1340,7 +1309,7 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 			ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
 		)
 	}
-	return outputString
+	return tb.RenderToString()
 }
 
 func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, clusterKey string,

@@ -190,24 +190,11 @@ var _ = Describe("Machinepool and nodepool", func() {
 			Expect(err).ToNot(HaveOccurred())
 			out := getNodePoolsString(cluster.NodePools().Slice())
 			Expect(err).ToNot(HaveOccurred())
-			Expect(out).To(Equal(fmt.Sprintf("ID\tAUTOSCALING\tREPLICAS\t"+
-				"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"+
-				"%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
-				cluster.NodePools().Get(0).ID(),
-				ocmOutput.PrintNodePoolAutoscaling(cluster.NodePools().Get(0).Autoscaling()),
-				ocmOutput.PrintNodePoolReplicasShort(
-					ocmOutput.PrintNodePoolCurrentReplicas(cluster.NodePools().Get(0).Status()),
-					ocmOutput.PrintNodePoolReplicas(cluster.NodePools().Get(0).Autoscaling(),
-						cluster.NodePools().Get(0).Replicas()),
-				),
-				ocmOutput.PrintNodePoolInstanceType(cluster.NodePools().Get(0).AWSNodePool()),
-				ocmOutput.PrintLabels(cluster.NodePools().Get(0).Labels()),
-				ocmOutput.PrintTaints(cluster.NodePools().Get(0).Taints()),
-				cluster.NodePools().Get(0).AvailabilityZone(),
-				cluster.NodePools().Get(0).Subnet(),
-				ocmOutput.PrintNodePoolDiskSize(cluster.NodePools().Get(0).AWSNodePool()),
-				ocmOutput.PrintNodePoolVersion(cluster.NodePools().Get(0).Version()),
-				ocmOutput.PrintNodePoolAutorepair(cluster.NodePools().Get(0).AutoRepair()))))
+
+			// Expected output with TableBuilder format (space-aligned columns)
+			expectedOutput := "ID  AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR\n" +
+				"np  No           /8                                       az                 sn      256 GiB    1        No\n"
+			Expect(out).To(Equal(expectedOutput))
 		})
 		It("Test appendUpgradesIfExist", func() {
 			policy, err := policyBuilder.Build()
@@ -351,8 +338,9 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tTAINTS\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\n" +
-				"mp-1\tNo\t3\tm5.large\ttest-key=test-value:\tsubnet-1, subnet-2\tNo\tdefault\n"
+			// The expected output should match the tabwriter-formatted output with proper spacing
+			expectedOutput := "ID    AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS                AVAILABILITY ZONES  SUBNETS             SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+				"mp-1  No           3         m5.large               test-key=test-value:                      subnet-1, subnet-2  No              default    \n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -367,25 +355,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
 			// When there are no machine pools, only headers are returned
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\tTAINTS\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\tSG IDS\n"
+			expectedOutput := "ID  AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n"
 
-			Expect(out).To(Equal(expectedOutput))
-		})
-
-		It("Test printMachinePools with showAll flag", func() {
-			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
-				MachinePools(cmv1.NewMachinePoolList().
-					Items(cmv1.NewMachinePool().ID("mp-1").Replicas(3).
-						InstanceType("m5.large")))
-			cluster, err := clusterBuilder.Build()
-			Expect(err).ToNot(HaveOccurred())
-
-			r := &rosa.Runtime{}
-			args := ListMachinePoolArgs{ShowAll: true}
-			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
-
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\tTAINTS\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\tSG IDS\tAZ TYPE\tWIN-LI ENABLED\tDEDICATED HOST\n" +
-				"mp-1\tNo\t3\tm5.large\t\t\t\t\tNo\tdefault\t\tN/A\tNo\tNo\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -401,8 +372,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{ShowAZType: true}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tAZ TYPE\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tN/A\n"
+			expectedOutput := "ID    AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS  AZ TYPE\n" +
+				"mp-1  No           3         m5.large                                                    No              default            N/A\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -418,8 +389,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{ShowDedicated: true}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tDEDICATED HOST\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tNo\n"
+			expectedOutput := "ID    AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS  DEDICATED HOST\n" +
+				"mp-1  No           3         m5.large                                                    No              default            No\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -435,8 +406,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{ShowWindowsLI: true}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tWIN-LI ENABLED\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tNo\n"
+			expectedOutput := "ID    AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS  WIN-LI ENABLED\n" +
+				"mp-1  No           3         m5.large                                                    No              default            No\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -452,8 +423,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{ShowAZType: true, ShowDedicated: true}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tAZ TYPE\tDEDICATED HOST\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tN/A\tNo\n"
+			expectedOutput := "ID    AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS  AZ TYPE  DEDICATED HOST\n" +
+				"mp-1  No           3         m5.large                                                    No              default            N/A      No\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -471,8 +442,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\n" +
-				"mp-autoscale\tYes\t2-10\tm5.xlarge\tNo\tdefault\n"
+			expectedOutput := "ID            AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+				"mp-autoscale  Yes          2-10      m5.xlarge                                                   No              default    \n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -493,10 +464,10 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\n" +
-				"mp-1\tNo\t3\tm5.large\tNo\tdefault\n" +
-				"mp-2\tYes\t1-5\tc5.xlarge\tNo\tdefault\n" +
-				"mp-3\tNo\t1\tt3.medium\tNo\tdefault\n"
+			expectedOutput := "ID    AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+				"mp-1  No           3         m5.large                                                    No              default    \n" +
+				"mp-2  Yes          1-5       c5.xlarge                                                   No              default    \n" +
+				"mp-3  No           1         t3.medium                                                   No              default    \n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -517,9 +488,9 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\n" +
-				"mp-minimal\tNo\t1\tt3.small\t\t\tNo\tdefault\n" +
-				"mp-complete\tNo\t3\tm5.large\tus-east-1a\tsubnet-1\tNo\tdefault\n"
+			expectedOutput := "ID           AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS   SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+				"mp-minimal   No           1         t3.small                                                     No              default    \n" +
+				"mp-complete  No           3         m5.large                       us-east-1a          subnet-1  No              default    \n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 
@@ -535,9 +506,9 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			// Only columns with actual data should be included
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\n" +
-				"mp-1\tNo\t2\tm5.medium\tNo\tdefault\n"
+			// All base columns are included by default, even if empty
+			expectedOutput := "ID    AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+				"mp-1  No           2         m5.medium                                                   No              default    \n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 

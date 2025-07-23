@@ -34,10 +34,7 @@ const (
 	short   = "List cluster machine pools"
 	long    = "List machine pools configured on a cluster."
 	example = `  # List all machine pools on a cluster named "mycluster"
-  rosa list machinepools --cluster=mycluster
-  
-  # List machine pools showing all information
-  rosa list machinepools --cluster=mycluster --all`
+  rosa list machinepools --cluster=mycluster`
 )
 
 var (
@@ -77,13 +74,6 @@ func NewListMachinePoolCommand() *cobra.Command {
 		"win-li",
 		false,
 		"Show whether each machine pool is Windows LI enabled",
-	)
-
-	flags.BoolVar(
-		&args.ShowAll,
-		"all",
-		false,
-		"Show all additional information for each machine pool (equivalent to --az-type --dedicated-host --win-li)",
 	)
 
 	output.AddFlag(cmd)

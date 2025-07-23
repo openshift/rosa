@@ -19,7 +19,6 @@ package oidcprovider
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -136,24 +135,15 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "OIDC PROVIDER ARN\tCluster ID\tIn Use\n")
-	for _, provider := range providers {
-		printProvider(writer, providersInUse, provider)
-	}
-	writer.Flush()
-}
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("OIDC PROVIDER ARN", "Cluster ID", "In Use")
 
-func printProvider(writer *tabwriter.Writer, providersInUse map[string]bool, provider aws.OidcProviderOutput) {
-	providerInUse := "No"
-	if ok := providersInUse[provider.Arn]; ok {
-		providerInUse = "Yes"
+	for _, provider := range providers {
+		inUse := "No"
+		if providersInUse[provider.Arn] {
+			inUse = "Yes"
+		}
+		tb.AddRow(provider.Arn, provider.ClusterId, inUse)
 	}
-	fmt.Fprintf(
-		writer,
-		"%s\t%s\t%v\n",
-		provider.Arn,
-		provider.ClusterId,
-		providerInUse,
-	)
+	tb.Render()
 }

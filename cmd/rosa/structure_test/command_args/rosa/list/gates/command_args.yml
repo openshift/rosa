@@ -4,3 +4,4 @@
 - name: profile
 - name: region
 - name: version
+- name: hide-empty-fields

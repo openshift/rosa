@@ -19,7 +19,6 @@ package oidcconfig
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -69,16 +68,16 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "MANAGED", "ISSUER URL", "SECRET ARN")
 
-	fmt.Fprintf(writer, "ID\tMANAGED\tISSUER URL\tSECRET ARN\n")
 	for _, oidcConfig := range oidcConfigs {
-		fmt.Fprintf(writer, "%s\t%v\t%s\t%s\n",
+		tb.AddRow(
 			oidcConfig.ID(),
-			oidcConfig.Managed(),
+			fmt.Sprintf("%v", oidcConfig.Managed()),
 			oidcConfig.IssuerUrl(),
 			oidcConfig.SecretArn(),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 }

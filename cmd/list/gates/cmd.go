@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	semver "github.com/hashicorp/go-version"
 	"github.com/nathan-fiscaletti/consolesize-go"
@@ -186,30 +185,31 @@ func run(_ *cobra.Command, _ []string) {
 	// Create the writer that will be used to print the tabulated results:
 	cols, _ := consolesize.GetConsoleSize()
 	descriptionSize := float64(cols) * 0.30
-	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
-	fmt.Fprintln(writer, "Gate Description\tSTS\tOCP Version\tDocumentation URL\t")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("Gate Description", "STS", "OCP Version", "Documentation URL")
 
 	for _, gate := range versionGates {
 		wrappedDescription := wordWrap(strings.TrimSuffix(gate.Description(), "\n"), int(descriptionSize))
 
 		for i, line := range strings.Split(wrappedDescription, "\n") {
 			if i == 0 {
-				fmt.Fprintf(writer,
-					"%s\t%t\t%s\t%s\t\n",
+				tb.AddRow(
 					line,
-					gate.STSOnly(),
+					fmt.Sprintf("%t", gate.STSOnly()),
 					gate.VersionRawIDPrefix(),
 					gate.DocumentationURL(),
 				)
 			} else {
-				fmt.Fprintf(writer,
-					"%s\t \t \t \t\n",
+				tb.AddRow(
 					line,
+					"",
+					"",
+					"",
 				)
 			}
 		}
 	}
-	writer.Flush()
+	tb.Render()
 }
 
 func parseMajorMinor(version string) (string, error) {

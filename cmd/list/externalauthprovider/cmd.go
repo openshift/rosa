@@ -19,7 +19,6 @@ package externalauthprovider
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -86,16 +85,16 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("NAME", "ISSUER URL")
 
-	fmt.Fprintf(writer, "NAME\tISSUER URL\n")
 	for _, externalAuthProvider := range externalAuthProviders {
-		fmt.Fprintf(writer, "%s\t%s\n",
+		tb.AddRow(
 			externalAuthProvider.ID(),
 			externalAuthProvider.Issuer().URL(),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 
 	return nil
 }

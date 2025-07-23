@@ -21,7 +21,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -156,8 +155,9 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "VERSION\tNOTES\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("VERSION", "NOTES")
+
 	for i, availableUpgrade := range availableUpgrades {
 		notes := make([]string, 0)
 		if i == 0 || availableUpgrade == latestRev {
@@ -181,9 +181,9 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 				}
 			}
 		}
-		fmt.Fprintf(writer, "%s\t%s\n", availableUpgrade, strings.Join(notes, " - "))
+		tb.AddRow(availableUpgrade, strings.Join(notes, " - "))
 	}
-	writer.Flush()
+	tb.Render()
 	return nil
 }
 
