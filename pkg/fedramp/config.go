@@ -33,8 +33,8 @@ func IsGovRegion(region string) bool {
 }
 
 func IsValidEnv(env string) bool {
-	for _, r := range URLAliases {
-		if r == env {
+	for urlAlias := range URLAliases {
+		if urlAlias == env {
 			return true
 		}
 	}
