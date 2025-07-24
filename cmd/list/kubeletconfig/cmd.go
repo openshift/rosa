@@ -3,12 +3,9 @@ package kubeletconfig
 import (
 	"context"
 	"fmt"
-	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -60,9 +57,23 @@ func ListKubeletConfigRunner() rosa.CommandRunner {
 				return nil
 			}
 
-			writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			fmt.Fprint(writer, kubeletconfig.PrintKubeletConfigsForTabularOutput(kubeletConfigs))
-			return writer.Flush()
+			// Create the writer that will be used to print the tabulated results:
+			tb := output.NewTableBuilder()
+			tb.SetHeaders("ID", "NAME", "POD PIDS LIMIT")
+
+			for _, kc := range kubeletConfigs {
+				name := kc.ID()
+				if kc.Name() != "" {
+					name = kc.Name()
+				}
+				tb.AddRow(
+					kc.ID(),
+					name,
+					fmt.Sprintf("%d", kc.PodPidsLimit()),
+				)
+			}
+			tb.Render()
+			return nil
 		}
 
 		return nil

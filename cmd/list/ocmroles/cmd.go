@@ -19,7 +19,6 @@ package ocmroles
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -85,8 +84,9 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\tAWS Managed\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ROLE NAME", "ROLE ARN", "LINKED", "ADMIN", "AWS Managed")
+
 	for _, ocmRole := range ocmRoles {
 		var awsManaged string
 		if ocmRole.ManagedPolicy {
@@ -94,10 +94,15 @@ func run(_ *cobra.Command, _ []string) {
 		} else {
 			awsManaged = "No"
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", ocmRole.RoleName, ocmRole.RoleARN, ocmRole.Linked, ocmRole.Admin,
-			awsManaged)
+		tb.AddRow(
+			ocmRole.RoleName,
+			ocmRole.RoleARN,
+			ocmRole.Linked,
+			ocmRole.Admin,
+			awsManaged,
+		)
 	}
-	writer.Flush()
+	tb.Render()
 }
 
 func listOCMRoles(r *rosa.Runtime) ([]aws.Role, error) {

@@ -45,6 +45,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/userroles"
 	"github.com/openshift/rosa/cmd/list/version"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/output"
 )
 
 var Cmd = &cobra.Command{
@@ -86,6 +87,7 @@ func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
 	arguments.AddRegionFlag(flags)
+	output.AddHideEmptyFieldsFlag(flags)
 
 	globallyAvailableCommands := []*cobra.Command{
 		accountroles.Cmd, userroles.Cmd,

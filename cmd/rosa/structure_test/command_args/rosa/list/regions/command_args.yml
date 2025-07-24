@@ -5,3 +5,4 @@
 - name: profile
 - name: region
 - name: role-arn
+- name: hide-empty-fields

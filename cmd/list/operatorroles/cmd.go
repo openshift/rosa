@@ -19,7 +19,7 @@ package operatorroles
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -155,8 +155,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	if clusterId != "" {
 		for key, value := range operatorsMap {
 			if value[0].ClusterID == clusterId {
@@ -164,17 +162,19 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 	}
+
 	if args.prefix == "" {
-		fmt.Fprintf(writer, "ROLE PREFIX\tAMOUNT IN BUNDLE\n")
+		tb := output.NewTableBuilder()
+		tb.SetHeaders("ROLE PREFIX", "AMOUNT IN BUNDLE")
+
 		for _, key := range prefixes {
-			fmt.Fprintf(
-				writer,
-				"%s\t%d\n",
+			tb.AddRow(
 				key,
-				len(operatorsMap[key]),
+				fmt.Sprintf("%d", len(operatorsMap[key])),
 			)
 		}
-		writer.Flush()
+		tb.Render()
+
 		if !interactive.Enabled() {
 			os.Exit(0)
 		}
@@ -210,8 +210,10 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		fmt.Fprintf(writer, "OPERATOR NAME\tOPERATOR NAMESPACE\tROLE NAME\t"+
-			"ROLE ARN\tCLUSTER ID\tVERSION\tPOLICIES\tAWS Managed\tIN USE\n")
+		tb := output.NewTableBuilder()
+		tb.SetHeaders("OPERATOR NAME", "OPERATOR NAMESPACE", "ROLE NAME",
+			"ROLE ARN", "CLUSTER ID", "VERSION", "POLICIES", "AWS Managed", "IN USE")
+
 		for _, operatorRole := range operatorsMap[args.prefix] {
 			awsManaged := "No"
 			inUse := "No"
@@ -221,20 +223,18 @@ func run(cmd *cobra.Command, _ []string) {
 			if hasClusterUsingOperatorRolesPrefix {
 				inUse = "Yes"
 			}
-			fmt.Fprintf(
-				writer,
-				"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			tb.AddRow(
 				operatorRole.OperatorName,
 				operatorRole.OperatorNamespace,
 				operatorRole.RoleName,
 				operatorRole.RoleARN,
 				operatorRole.ClusterID,
 				operatorRole.Version,
-				operatorRole.AttachedPolicies,
+				strings.Join(operatorRole.AttachedPolicies, ", "),
 				awsManaged,
 				inUse,
 			)
 		}
-		writer.Flush()
+		tb.Render()
 	}
 }

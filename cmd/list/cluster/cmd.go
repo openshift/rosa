@@ -17,9 +17,7 @@ limitations under the License.
 package cluster
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -108,8 +106,9 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTOPOLOGY\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "NAME", "STATE", "TOPOLOGY")
+
 	for _, cluster := range clusters {
 		typeOutput := "Classic"
 		if cluster.AWS() != nil && cluster.AWS().STS() != nil && cluster.AWS().STS().Enabled() {
@@ -118,14 +117,12 @@ func run(_ *cobra.Command, _ []string) {
 		if cluster.Hypershift().Enabled() {
 			typeOutput = "Hosted CP"
 		}
-		fmt.Fprintf(
-			writer,
-			"%s\t%s\t%s\t%s\n",
+		tb.AddRow(
 			cluster.ID(),
 			cluster.Name(),
-			cluster.State(),
+			string(cluster.State()),
 			typeOutput,
 		)
 	}
-	writer.Flush()
+	tb.Render()
 }

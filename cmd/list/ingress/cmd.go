@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -83,24 +82,24 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "APPLICATION ROUTER", "PRIVATE", "DEFAULT", "ROUTE SELECTORS", "LB-TYPE",
+		"EXCLUDED NAMESPACE", "WILDCARD POLICY", "NAMESPACE OWNERSHIP")
 
-	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\tPRIVATE\tDEFAULT\tROUTE SELECTORS\tLB-TYPE"+
-		"\tEXCLUDED NAMESPACE\tWILDCARD POLICY\tNAMESPACE OWNERSHIP\n")
 	for _, ingress := range ingresses {
-		fmt.Fprintf(writer, "%s\thttps://%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		tb.AddRow(
 			ingress.ID(),
-			ingress.DNSName(),
+			"https://"+ingress.DNSName(),
 			isPrivate(ingress.Listening()),
 			isDefault(ingress),
 			printRouteSelectors(ingress),
-			ingress.LoadBalancerType(),
+			string(ingress.LoadBalancerType()),
 			helper.SliceToSortedString(ingress.ExcludedNamespaces()),
-			ingress.RouteWildcardPolicy(),
-			ingress.RouteNamespaceOwnershipPolicy(),
+			string(ingress.RouteWildcardPolicy()),
+			string(ingress.RouteNamespaceOwnershipPolicy()),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 }
 
 func isPrivate(listeningMethod cmv1.ListeningMethod) string {

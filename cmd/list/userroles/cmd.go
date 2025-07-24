@@ -16,7 +16,6 @@ package userroles
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -82,12 +81,13 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ROLE NAME", "ROLE ARN", "LINKED")
+
 	for _, userRole := range userRoles {
-		fmt.Fprintf(writer, "%s\t%s\t%s\n", userRole.RoleName, userRole.RoleARN, userRole.Linked)
+		tb.AddRow(userRole.RoleName, userRole.RoleARN, userRole.Linked)
 	}
-	writer.Flush()
+	tb.Render()
 }
 
 func listUserRoles(r *rosa.Runtime) ([]aws.Role, error) {
