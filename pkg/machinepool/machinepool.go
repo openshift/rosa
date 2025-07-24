@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/features"
 	"github.com/openshift/rosa/pkg/helper/machinepools"
@@ -766,7 +767,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 
 	kubeletConfigs := args.KubeletConfigs
 
-	if kubeletConfigs != "" || interactive.Enabled() {
+	if (kubeletConfigs != "" || interactive.Enabled()) && !fedramp.Enabled() {
 		var inputKubeletConfigs []string
 		// Get the list of available kubelet configs
 		availableKubeletConfigs, err := r.OCMClient.ListKubeletConfigNames(cluster.ID())
@@ -1765,7 +1766,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
-	if isKubeletConfigSet || interactive.Enabled() {
+	if (isKubeletConfigSet || interactive.Enabled()) && !fedramp.Enabled() {
 		var inputKubeletConfig []string
 		kubeletConfigs := cmd.Flags().Lookup("kubelet-configs").Value.String()
 		// Get the list of available tuning configs
