@@ -1,4 +1,3 @@
-- name: approve
 - name: attach-policy-arn
 - name: cluster
 - name: inline-policy

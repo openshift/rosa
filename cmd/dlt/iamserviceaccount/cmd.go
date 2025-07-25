@@ -35,7 +35,6 @@ var args struct {
 	serviceAccountName string
 	namespace          string
 	roleName           string
-	approve            bool
 }
 
 var Cmd = &cobra.Command{
@@ -84,13 +83,6 @@ func init() {
 
 	// Mark required flags
 	_ = Cmd.MarkFlagRequired("cluster")
-
-	flags.BoolVar(
-		&args.approve,
-		"approve",
-		false,
-		"Approve the operation without confirmation prompt.",
-	)
 
 	interactive.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
@@ -253,40 +245,18 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if !isServiceAccountRole {
 		r.Reporter.Warnf("Role '%s' does not appear to be a service account role", roleName)
-		if !args.approve {
-			continueDeletion, err := interactive.GetBool(interactive.Input{
-				Question: "Continue with deletion?",
-				Default:  false,
-				Required: false,
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
-				os.Exit(1)
-			}
-			if !continueDeletion {
-				r.Reporter.Infof("Operation cancelled")
-				os.Exit(0)
-			}
+		if !confirm.Prompt(false, "Continue with deletion?") {
+			r.Reporter.Infof("Operation cancelled")
+			os.Exit(0)
 		}
 	}
 
 	// Verify cluster matches if we have the tag
 	if clusterName != "" && clusterName != cluster.Name() {
 		r.Reporter.Warnf("Role '%s' belongs to cluster '%s', but you specified cluster '%s'", roleName, clusterName, cluster.Name())
-		if !args.approve {
-			continueDeletion, err := interactive.GetBool(interactive.Input{
-				Question: "Continue with deletion?",
-				Default:  false,
-				Required: false,
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
-				os.Exit(1)
-			}
-			if !continueDeletion {
-				r.Reporter.Infof("Operation cancelled")
-				os.Exit(0)
-			}
+		if !confirm.Prompt(false, "Continue with deletion?") {
+			r.Reporter.Infof("Operation cancelled")
+			os.Exit(0)
 		}
 	}
 
@@ -321,20 +291,9 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 
-		if !args.approve {
-			confirmDelete, err := interactive.GetBool(interactive.Input{
-				Question: fmt.Sprintf("Delete IAM role '%s' and all associated policies?", roleName),
-				Default:  false,
-				Required: false,
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
-				os.Exit(1)
-			}
-			if !confirmDelete {
-				r.Reporter.Infof("Operation cancelled")
-				os.Exit(0)
-			}
+		if !confirm.Prompt(false, "Delete IAM role '%s' and all associated policies?", roleName) {
+			r.Reporter.Infof("Operation cancelled")
+			os.Exit(0)
 		}
 
 		// Delete the role

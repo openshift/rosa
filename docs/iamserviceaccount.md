@@ -45,7 +45,6 @@ rosa create iamserviceaccount [flags]
 - `--inline-policy`: Inline policy document (JSON) or path to policy file (use file://path/to/policy.json)
 - `--permissions-boundary`: ARN of IAM policy to use as permissions boundary
 - `--path`: IAM path for the role (default: "/")
-- `--approve`: Approve operation without confirmation prompt
 - `--mode`: Creation mode (auto or manual)
 
 #### Examples
@@ -83,7 +82,7 @@ rosa create iamserviceaccount --cluster my-cluster \
   --namespace default \
   --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
   --permissions-boundary arn:aws:iam::123456789012:policy/boundary \
-  --approve
+  --yes
 ```
 
 **Manual mode (generate AWS CLI commands):**
@@ -156,7 +155,6 @@ rosa delete iamserviceaccount [flags]
 - `--name`: Name of the Kubernetes service account
 - `--namespace`: Kubernetes namespace for the service account (default: "default")
 - `--role-name`: Name of the IAM role to delete (auto-detected if not specified)
-- `--approve`: Approve operation without confirmation prompt
 - `--mode`: Deletion mode (auto or manual)
 
 #### Examples
@@ -171,7 +169,7 @@ rosa delete iamserviceaccount --cluster my-cluster \
 **Delete by explicit role name:**
 ```bash
 rosa delete iamserviceaccount --cluster my-cluster \
-  --role-name my-custom-role --approve
+  --role-name my-custom-role --yes
 ```
 
 **Manual mode (generate AWS CLI commands):**
@@ -697,7 +695,7 @@ To use these commands, you need the following AWS IAM permissions:
 - For unmanaged OIDC, ensure the provider exists in your AWS account
 
 **3. "Role already exists"**
-- Use `--approve` flag to continue with existing role
+- Use `--yes` flag to continue with existing role
 - Or choose a different role name with `--role-name`
 
 **4. "Invalid policy ARN"**

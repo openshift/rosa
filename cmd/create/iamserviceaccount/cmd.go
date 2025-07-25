@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -40,7 +41,6 @@ var args struct {
 	inlinePolicy        string
 	permissionsBoundary string
 	path                string
-	approve             bool
 }
 
 var Cmd = &cobra.Command{
@@ -137,13 +137,6 @@ func init() {
 	)
 
 	// Note: --name is required but can be specified multiple times, so we validate in the run function
-
-	flags.BoolVar(
-		&args.approve,
-		"approve",
-		false,
-		"Approve the operation without confirmation prompt.",
-	)
 
 	interactive.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
@@ -430,20 +423,9 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if exists {
 		r.Reporter.Warnf("Role '%s' already exists with ARN '%s'", roleName, existingRoleARN)
-		if !args.approve {
-			continueWithRole, err := interactive.GetBool(interactive.Input{
-				Question: "Role already exists. Continue with existing role?",
-				Default:  false,
-				Required: false,
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
-				os.Exit(1)
-			}
-			if !continueWithRole {
-				r.Reporter.Infof("Operation cancelled")
-				os.Exit(0)
-			}
+		if !confirm.Prompt(false, "Role already exists. Continue with existing role?") {
+			r.Reporter.Infof("Operation cancelled")
+			os.Exit(0)
 		}
 		return
 	}
@@ -473,33 +455,22 @@ func run(cmd *cobra.Command, _ []string) {
 
 	switch mode {
 	case interactive.ModeAuto:
-		if !args.approve {
-			r.Reporter.Infof("This will create the following resources:")
-			r.Reporter.Infof("  - IAM role: %s", roleName)
-			if len(serviceAccountNames) == 1 {
-				r.Reporter.Infof("  - Service account: %s/%s", namespace, serviceAccountNames[0])
-			} else {
-				r.Reporter.Infof("  - Service accounts:")
-				for _, saName := range serviceAccountNames {
-					r.Reporter.Infof("    - %s/%s", namespace, saName)
-				}
+		r.Reporter.Infof("This will create the following resources:")
+		r.Reporter.Infof("  - IAM role: %s", roleName)
+		if len(serviceAccountNames) == 1 {
+			r.Reporter.Infof("  - Service account: %s/%s", namespace, serviceAccountNames[0])
+		} else {
+			r.Reporter.Infof("  - Service accounts:")
+			for _, saName := range serviceAccountNames {
+				r.Reporter.Infof("    - %s/%s", namespace, saName)
 			}
-			if len(policyArns) > 0 {
-				r.Reporter.Infof("  - Attached policies: %d", len(policyArns))
-			}
-			createRole, err := interactive.GetBool(interactive.Input{
-				Question: "Create IAM role for service account?",
-				Default:  false,
-				Required: false,
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
-				os.Exit(1)
-			}
-			if !createRole {
-				r.Reporter.Infof("Operation cancelled")
-				os.Exit(0)
-			}
+		}
+		if len(policyArns) > 0 {
+			r.Reporter.Infof("  - Attached policies: %d", len(policyArns))
+		}
+		if !confirm.Prompt(false, "Create IAM role for service account?") {
+			r.Reporter.Infof("Operation cancelled")
+			os.Exit(0)
 		}
 
 		// Create the role
