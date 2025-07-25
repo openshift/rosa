@@ -50,7 +50,7 @@ var Cmd = &cobra.Command{
 
   # Delete by explicit role name with approval
   rosa delete iamserviceaccount --cluster my-cluster \
-    --role-name my-custom-role --approve`,
+    --role-name my-custom-role --yes`,
 	Run:  run,
 	Args: cobra.NoArgs,
 }
