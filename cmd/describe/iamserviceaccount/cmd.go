@@ -135,7 +135,7 @@ func run(cmd *cobra.Command, _ []string) {
 			var err error
 			serviceAccountName, err = interactive.GetString(interactive.Input{
 				Question: "Service account name",
-				Help:     cmd.Flags().Lookup("service-account-name").Usage,
+				Help:     cmd.Flags().Lookup("name").Usage,
 				Required: true,
 				Validators: []interactive.Validator{
 					func(val interface{}) error {
