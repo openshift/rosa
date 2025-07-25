@@ -32,7 +32,7 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 	defer GinkgoRecover()
 
 	var (
-		rosaClient         *rosacli.Client
+		rosaClient *rosacli.Client
 		// Track resources for cleanup
 		serviceAccountRolesToClean []string
 		testClusterID              string
@@ -55,7 +55,7 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 			// Get detailed cluster description to check if it's an STS cluster
 			clusterDesc, err := rosaClient.Cluster.DescribeClusterAndReflect(cluster.ID)
 			Expect(err).ToNot(HaveOccurred())
-			
+
 			if clusterDesc.STSRoleArn != "" {
 				testCluster = clusterDesc
 				testClusterID = cluster.ID
