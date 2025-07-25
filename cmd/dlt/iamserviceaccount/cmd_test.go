@@ -47,14 +47,14 @@ var _ = Describe("Delete IAM Service Account", Ordered, func() {
 	Context("Command Validation", func() {
 		It("should require cluster parameter", func() {
 			Cmd.SetArgs([]string{
-				"--service-account-name", "test-app",
+				"--name", "test-app",
 			})
 
 			err := Cmd.Execute()
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should require either role-name or service-account-name", func() {
+		It("should require either role-name or name", func() {
 			Cmd.SetArgs([]string{
 				"--cluster", "test-cluster",
 			})
@@ -141,7 +141,7 @@ var _ = Describe("Delete IAM Service Account", Ordered, func() {
 
 			Cmd.SetArgs([]string{
 				"--cluster", "test-cluster",
-				"--service-account-name", "test-app",
+				"--name", "test-app",
 				"--namespace", "default",
 				"--mode", "auto",
 				"--yes",
