@@ -156,7 +156,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get interactive mode
 	mode, err := interactive.GetMode()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		_ = r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -168,7 +168,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get cluster key using OCM standard method
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		_ = r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -176,28 +176,28 @@ func run(cmd *cobra.Command, _ []string) {
 	if cluster.Name() != clusterKey && cluster.ID() != clusterKey {
 		cluster, err = r.OCMClient.GetCluster(clusterKey, r.Creator)
 		if err != nil {
-			r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
+			_ = r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
 			os.Exit(1)
 		}
 	}
 
 	// Validate cluster has STS enabled
 	if cluster.AWS().STS().RoleARN() == "" {
-		r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
+		_ = r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
 		os.Exit(1)
 	}
 
 	// Get OIDC configuration
 	oidcConfig := cluster.AWS().STS().OidcConfig()
 	if oidcConfig == nil {
-		r.Reporter.Errorf("Cluster '%s' does not have OIDC configuration", cluster.Name())
+		_ = r.Reporter.Errorf("Cluster '%s' does not have OIDC configuration", cluster.Name())
 		os.Exit(1)
 	}
 
 	// Get OIDC provider ARN
 	oidcProviderARN, err := getOIDCProviderARN(r, cluster)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get OIDC provider ARN: %s", err)
+		_ = r.Reporter.Errorf("Failed to get OIDC provider ARN: %s", err)
 		os.Exit(1)
 	}
 
@@ -217,7 +217,7 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid service account name: %s", err)
+				_ = r.Reporter.Errorf("Expected a valid service account name: %s", err)
 				os.Exit(1)
 			}
 			serviceAccountNames = []string{saName}
@@ -242,13 +242,13 @@ func run(cmd *cobra.Command, _ []string) {
 					},
 				})
 				if err != nil {
-					r.Reporter.Errorf("Expected a valid service account name: %s", err)
+					_ = r.Reporter.Errorf("Expected a valid service account name: %s", err)
 					os.Exit(1)
 				}
 				serviceAccountNames = append(serviceAccountNames, saName)
 			}
 		} else {
-			r.Reporter.Errorf("At least one service account name is required")
+			_ = r.Reporter.Errorf("At least one service account name is required")
 			os.Exit(1)
 		}
 	}
@@ -256,7 +256,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Validate all service account names
 	for _, saName := range serviceAccountNames {
 		if err := iamserviceaccount.ValidateServiceAccountName(saName); err != nil {
-			r.Reporter.Errorf("Invalid service account name '%s': %s", saName, err)
+			_ = r.Reporter.Errorf("Invalid service account name '%s': %s", saName, err)
 			os.Exit(1)
 		}
 	}
@@ -276,13 +276,13 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid namespace: %s", err)
+			_ = r.Reporter.Errorf("Expected a valid namespace: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	if err := iamserviceaccount.ValidateNamespaceName(namespace); err != nil {
-		r.Reporter.Errorf("Invalid namespace: %s", err)
+		_ = r.Reporter.Errorf("Invalid namespace: %s", err)
 		os.Exit(1)
 	}
 
@@ -294,7 +294,7 @@ func run(cmd *cobra.Command, _ []string) {
 			roleName = iamserviceaccount.GenerateRoleName(cluster.Name(), namespace, serviceAccountNames[0])
 		} else if !interactive.Enabled() {
 			// Multiple service accounts in non-interactive mode - require explicit role name
-			r.Reporter.Errorf("Role name (--role-name) is required when specifying multiple service accounts")
+			_ = r.Reporter.Errorf("Role name (--role-name) is required when specifying multiple service accounts")
 			os.Exit(1)
 		}
 		// In interactive mode with multiple service accounts, roleName will be empty and we'll prompt below
@@ -322,7 +322,7 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role name: %s", err)
+			_ = r.Reporter.Errorf("Expected a valid role name: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -335,7 +335,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("policy-arns").Usage,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected valid policy ARNs: %s", err)
+			_ = r.Reporter.Errorf("Expected valid policy ARNs: %s", err)
 			os.Exit(1)
 		}
 		if policyArnsStr != "" {
@@ -349,7 +349,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Validate each policy ARN
 	for _, arn := range policyArns {
 		if err := aws.ARNValidator(arn); err != nil {
-			r.Reporter.Errorf("Invalid policy ARN '%s': %s", arn, err)
+			_ = r.Reporter.Errorf("Invalid policy ARN '%s': %s", arn, err)
 			os.Exit(1)
 		}
 	}
@@ -362,7 +362,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("inline-policy").Usage,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected valid inline policy: %s", err)
+			_ = r.Reporter.Errorf("Expected valid inline policy: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -372,7 +372,7 @@ func run(cmd *cobra.Command, _ []string) {
 		policyPath := strings.TrimPrefix(inlinePolicy, "file://")
 		policyBytes, err := os.ReadFile(policyPath)
 		if err != nil {
-			r.Reporter.Errorf("Failed to read policy file '%s': %s", policyPath, err)
+			_ = r.Reporter.Errorf("Failed to read policy file '%s': %s", policyPath, err)
 			os.Exit(1)
 		}
 		inlinePolicy = string(policyBytes)
@@ -394,21 +394,21 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected valid permissions boundary ARN: %s", err)
+			_ = r.Reporter.Errorf("Expected valid permissions boundary ARN: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	if permissionsBoundary != "" {
 		if err := aws.ARNValidator(permissionsBoundary); err != nil {
-			r.Reporter.Errorf("Invalid permissions boundary ARN: %s", err)
+			_ = r.Reporter.Errorf("Invalid permissions boundary ARN: %s", err)
 			os.Exit(1)
 		}
 	}
 
 	// Validate that at least one policy is specified
 	if len(policyArns) == 0 && inlinePolicy == "" {
-		r.Reporter.Errorf("At least one policy ARN or inline policy must be specified")
+		_ = r.Reporter.Errorf("At least one policy ARN or inline policy must be specified")
 		os.Exit(1)
 	}
 
@@ -416,7 +416,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "IAM service account role creation mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid creation mode: %s", err)
+			_ = r.Reporter.Errorf("Expected a valid creation mode: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -424,7 +424,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Check if role already exists
 	exists, existingRoleARN, err := r.AWSClient.CheckRoleExists(roleName)
 	if err != nil {
-		r.Reporter.Errorf("Failed to check if role exists: %s", err)
+		_ = r.Reporter.Errorf("Failed to check if role exists: %s", err)
 		os.Exit(1)
 	}
 
@@ -437,7 +437,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: false,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Failed to get confirmation: %s", err)
+				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
 				os.Exit(1)
 			}
 			if !continueWithRole {
@@ -459,7 +459,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	trustPolicy := iamserviceaccount.GenerateTrustPolicyMultiple(oidcProviderARN, serviceAccounts)
 	if trustPolicy == "" {
-		r.Reporter.Errorf("Failed to generate trust policy")
+		_ = r.Reporter.Errorf("Failed to generate trust policy")
 		os.Exit(1)
 	}
 
@@ -493,7 +493,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: false,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Failed to get confirmation: %s", err)
+				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
 				os.Exit(1)
 			}
 			if !createRole {
@@ -505,7 +505,7 @@ func run(cmd *cobra.Command, _ []string) {
 		// Create the role
 		roleARN, err := r.AWSClient.CreateServiceAccountRole(roleName, trustPolicy, permissionsBoundary, args.path, tags)
 		if err != nil {
-			r.Reporter.Errorf("Failed to create IAM role: %s", err)
+			_ = r.Reporter.Errorf("Failed to create IAM role: %s", err)
 			os.Exit(1)
 		}
 
@@ -515,7 +515,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if len(policyArns) > 0 {
 			err = r.AWSClient.AttachPoliciesToServiceAccountRole(roleName, policyArns)
 			if err != nil {
-				r.Reporter.Errorf("Failed to attach policies: %s", err)
+				_ = r.Reporter.Errorf("Failed to attach policies: %s", err)
 				os.Exit(1)
 			}
 			r.Reporter.Infof("Attached %d policies to role", len(policyArns))
@@ -526,7 +526,7 @@ func run(cmd *cobra.Command, _ []string) {
 			policyName := fmt.Sprintf("%s-inline-policy", roleName)
 			err = r.AWSClient.PutInlinePolicyOnServiceAccountRole(roleName, policyName, inlinePolicy)
 			if err != nil {
-				r.Reporter.Errorf("Failed to add inline policy: %s", err)
+				_ = r.Reporter.Errorf("Failed to add inline policy: %s", err)
 				os.Exit(1)
 			}
 			r.Reporter.Infof("Added inline policy to role")
@@ -564,7 +564,7 @@ func run(cmd *cobra.Command, _ []string) {
 		fmt.Println(commands)
 
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
+		_ = r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }
@@ -616,7 +616,7 @@ func generateManualCommands(roleName, trustPolicy, permissionsBoundary, path str
 	commands := []string{}
 
 	// Save trust policy to file
-	commands = append(commands, fmt.Sprintf("# Save the trust policy to a file"))
+	commands = append(commands, "# Save the trust policy to a file")
 	commands = append(commands, fmt.Sprintf("cat > %s-trust-policy.json << 'EOF'", roleName))
 	commands = append(commands, trustPolicy)
 	commands = append(commands, "EOF")
@@ -653,7 +653,7 @@ func generateManualCommands(roleName, trustPolicy, permissionsBoundary, path str
 	// Add inline policy
 	if inlinePolicy != "" {
 		commands = append(commands, "")
-		commands = append(commands, fmt.Sprintf("# Save the inline policy to a file"))
+		commands = append(commands, "# Save the inline policy to a file")
 		commands = append(commands, fmt.Sprintf("cat > %s-inline-policy.json << 'EOF'", roleName))
 		commands = append(commands, inlinePolicy)
 		commands = append(commands, "EOF")

@@ -91,7 +91,7 @@ func init() {
 	)
 
 	// Mark required flags
-	Cmd.MarkFlagRequired("cluster")
+	_ = Cmd.MarkFlagRequired("cluster")
 
 	interactive.AddFlag(flags)
 	output.AddFlag(Cmd)
@@ -104,7 +104,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get cluster key using OCM standard method
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		_ = r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -113,14 +113,14 @@ func run(cmd *cobra.Command, _ []string) {
 		var err error
 		cluster, err = r.OCMClient.GetCluster(clusterKey, r.Creator)
 		if err != nil {
-			r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
+			_ = r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
 			os.Exit(1)
 		}
 	}
 
 	// Validate cluster has STS enabled
 	if cluster.AWS().STS().RoleARN() == "" {
-		r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
+		_ = r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
 		os.Exit(1)
 	}
 
@@ -144,18 +144,18 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid service account name: %s", err)
+				_ = r.Reporter.Errorf("Expected a valid service account name: %s", err)
 				os.Exit(1)
 			}
 		}
 
 		if serviceAccountName == "" {
-			r.Reporter.Errorf("Service account name is required when role name is not specified")
+			_ = r.Reporter.Errorf("Service account name is required when role name is not specified")
 			os.Exit(1)
 		}
 
 		if err := iamserviceaccount.ValidateServiceAccountName(serviceAccountName); err != nil {
-			r.Reporter.Errorf("Invalid service account name: %s", err)
+			_ = r.Reporter.Errorf("Invalid service account name: %s", err)
 			os.Exit(1)
 		}
 
@@ -174,13 +174,13 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid namespace: %s", err)
+				_ = r.Reporter.Errorf("Expected a valid namespace: %s", err)
 				os.Exit(1)
 			}
 		}
 
 		if err := iamserviceaccount.ValidateNamespaceName(namespace); err != nil {
-			r.Reporter.Errorf("Invalid namespace: %s", err)
+			_ = r.Reporter.Errorf("Invalid namespace: %s", err)
 			os.Exit(1)
 		}
 
@@ -197,7 +197,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: true,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid role name: %s", err)
+				_ = r.Reporter.Errorf("Expected a valid role name: %s", err)
 				os.Exit(1)
 			}
 		}
@@ -206,7 +206,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get role details
 	role, attachedPolicies, inlinePolicies, err := r.AWSClient.GetServiceAccountRoleDetails(roleName)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get role details: %s", err)
+		_ = r.Reporter.Errorf("Failed to get role details: %s", err)
 		os.Exit(1)
 	}
 
@@ -223,7 +223,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if output.HasFlag() {
 		err = output.Print(roleOutput)
 		if err != nil {
-			r.Reporter.Errorf("Failed to print output: %s", err)
+			_ = r.Reporter.Errorf("Failed to print output: %s", err)
 			os.Exit(1)
 		}
 		return

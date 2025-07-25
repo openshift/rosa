@@ -82,7 +82,7 @@ func init() {
 	)
 
 	// Mark required flags
-	Cmd.MarkFlagRequired("cluster")
+	_ = Cmd.MarkFlagRequired("cluster")
 
 	flags.BoolVar(
 		&args.approve,
@@ -102,7 +102,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get interactive mode
 	mode, err := interactive.GetMode()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		_ = r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -114,7 +114,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get cluster key using OCM standard method
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		_ = r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
@@ -122,14 +122,14 @@ func run(cmd *cobra.Command, _ []string) {
 	if cluster.Name() != clusterKey && cluster.ID() != clusterKey {
 		cluster, err = r.OCMClient.GetCluster(clusterKey, r.Creator)
 		if err != nil {
-			r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
+			_ = r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
 			os.Exit(1)
 		}
 	}
 
 	// Validate cluster has STS enabled
 	if cluster.AWS().STS().RoleARN() == "" {
-		r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
+		_ = r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
 		os.Exit(1)
 	}
 
@@ -152,18 +152,18 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid service account name: %s", err)
+				_ = r.Reporter.Errorf("Expected a valid service account name: %s", err)
 				os.Exit(1)
 			}
 		}
 
 		if serviceAccountName == "" {
-			r.Reporter.Errorf("Service account name is required when role name is not specified")
+			_ = r.Reporter.Errorf("Service account name is required when role name is not specified")
 			os.Exit(1)
 		}
 
 		if err := iamserviceaccount.ValidateServiceAccountName(serviceAccountName); err != nil {
-			r.Reporter.Errorf("Invalid service account name: %s", err)
+			_ = r.Reporter.Errorf("Invalid service account name: %s", err)
 			os.Exit(1)
 		}
 
@@ -181,13 +181,13 @@ func run(cmd *cobra.Command, _ []string) {
 				},
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid namespace: %s", err)
+				_ = r.Reporter.Errorf("Expected a valid namespace: %s", err)
 				os.Exit(1)
 			}
 		}
 
 		if err := iamserviceaccount.ValidateNamespaceName(namespace); err != nil {
-			r.Reporter.Errorf("Invalid namespace: %s", err)
+			_ = r.Reporter.Errorf("Invalid namespace: %s", err)
 			os.Exit(1)
 		}
 
@@ -203,7 +203,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: true,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid role name: %s", err)
+				_ = r.Reporter.Errorf("Expected a valid role name: %s", err)
 				os.Exit(1)
 			}
 		}
@@ -212,7 +212,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Check if role exists
 	exists, roleARN, err := r.AWSClient.CheckRoleExists(roleName)
 	if err != nil {
-		r.Reporter.Errorf("Failed to check if role exists: %s", err)
+		_ = r.Reporter.Errorf("Failed to check if role exists: %s", err)
 		os.Exit(1)
 	}
 
@@ -224,7 +224,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Get role details to verify it's a service account role
 	role, attachedPolicies, inlinePolicies, err := r.AWSClient.GetServiceAccountRoleDetails(roleName)
 	if err != nil {
-		r.Reporter.Errorf("Failed to get role details: %s", err)
+		_ = r.Reporter.Errorf("Failed to get role details: %s", err)
 		os.Exit(1)
 	}
 
@@ -258,7 +258,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: false,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Failed to get confirmation: %s", err)
+				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
 				os.Exit(1)
 			}
 			if !continueDeletion {
@@ -278,7 +278,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: false,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Failed to get confirmation: %s", err)
+				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
 				os.Exit(1)
 			}
 			if !continueDeletion {
@@ -292,7 +292,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "IAM service account role deletion mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid deletion mode: %s", err)
+			_ = r.Reporter.Errorf("Expected a valid deletion mode: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -326,7 +326,7 @@ func run(cmd *cobra.Command, _ []string) {
 				Required: false,
 			})
 			if err != nil {
-				r.Reporter.Errorf("Failed to get confirmation: %s", err)
+				_ = r.Reporter.Errorf("Failed to get confirmation: %s", err)
 				os.Exit(1)
 			}
 			if !confirmDelete {
@@ -338,7 +338,7 @@ func run(cmd *cobra.Command, _ []string) {
 		// Delete the role
 		err = r.AWSClient.DeleteServiceAccountRole(roleName)
 		if err != nil {
-			r.Reporter.Errorf("Failed to delete IAM role: %s", err)
+			_ = r.Reporter.Errorf("Failed to delete IAM role: %s", err)
 			os.Exit(1)
 		}
 
@@ -353,7 +353,7 @@ func run(cmd *cobra.Command, _ []string) {
 		fmt.Println(commands)
 
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
+		_ = r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
 }

@@ -87,14 +87,14 @@ func run(cmd *cobra.Command, _ []string) {
 	if args.clusterKey != "" {
 		cluster, err := r.OCMClient.GetCluster(args.clusterKey, r.Creator)
 		if err != nil {
-			r.Reporter.Errorf("Failed to get cluster '%s': %s", args.clusterKey, err)
+			_ = r.Reporter.Errorf("Failed to get cluster '%s': %s", args.clusterKey, err)
 			os.Exit(1)
 		}
 		clusterName = cluster.Name()
 
 		// Validate cluster has STS enabled
 		if cluster.AWS().STS().RoleARN() == "" {
-			r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
+			_ = r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
 			os.Exit(1)
 		}
 	}
@@ -102,7 +102,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// List service account roles
 	roles, err := r.AWSClient.ListServiceAccountRoles(clusterName)
 	if err != nil {
-		r.Reporter.Errorf("Failed to list service account roles: %s", err)
+		_ = r.Reporter.Errorf("Failed to list service account roles: %s", err)
 		os.Exit(1)
 	}
 
@@ -131,7 +131,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if output.HasFlag() {
 		err = output.Print(serviceAccountRoles)
 		if err != nil {
-			r.Reporter.Errorf("Failed to print output: %s", err)
+			_ = r.Reporter.Errorf("Failed to print output: %s", err)
 			os.Exit(1)
 		}
 		return
