@@ -59,6 +59,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
@@ -228,6 +229,14 @@ type Client interface {
 	GetCFStack(ctx context.Context, stackName string) (*cftypes.Stack, error)
 	DescribeCFStackResources(ctx context.Context, stackName string) (*[]cftypes.StackResource, error)
 	DeleteCFStack(ctx context.Context, stackName string) error
+	// IAM Service Account methods
+	CreateServiceAccountRole(roleName, trustPolicy, permissionsBoundary, path string, tags map[string]string) (string, error)
+	AttachPoliciesToServiceAccountRole(roleName string, policyARNs []string) error
+	PutInlinePolicyOnServiceAccountRole(roleName, policyName, policyDocument string) error
+	DeleteServiceAccountRole(roleName string) error
+	ListServiceAccountRoles(clusterName string) ([]iamtypes.Role, error)
+	GetServiceAccountRoleDetails(roleName string) (*iamtypes.Role, []iamtypes.AttachedPolicy, []string, error)
+	ListOpenIDConnectProviders(ctx context.Context, params *iam.ListOpenIDConnectProvidersInput) (*iam.ListOpenIDConnectProvidersOutput, error)
 }
 
 type AccessKeyGetter interface {
@@ -1401,4 +1410,211 @@ func Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
 		}
 	}
 	return false
+}
+
+// CreateServiceAccountRole creates an IAM role for a Kubernetes service account
+func (c *awsClient) CreateServiceAccountRole(roleName, trustPolicy, permissionsBoundary, path string, tags map[string]string) (string, error) {
+	input := &iam.CreateRoleInput{
+		RoleName:                 aws.String(roleName),
+		AssumeRolePolicyDocument: aws.String(trustPolicy),
+		Path:                     aws.String(path),
+	}
+
+	if permissionsBoundary != "" {
+		input.PermissionsBoundary = aws.String(permissionsBoundary)
+	}
+
+	if len(tags) > 0 {
+		iamTags := make([]iamtypes.Tag, 0, len(tags))
+		for key, value := range tags {
+			iamTags = append(iamTags, iamtypes.Tag{
+				Key:   aws.String(key),
+				Value: aws.String(value),
+			})
+		}
+		input.Tags = iamTags
+	}
+
+	result, err := c.iamClient.CreateRole(context.Background(), input)
+	if err != nil {
+		return "", err
+	}
+
+	return aws.ToString(result.Role.Arn), nil
+}
+
+// AttachPoliciesToServiceAccountRole attaches managed policies to a service account role
+func (c *awsClient) AttachPoliciesToServiceAccountRole(roleName string, policyARNs []string) error {
+	for _, policyARN := range policyARNs {
+		_, err := c.iamClient.AttachRolePolicy(context.Background(), &iam.AttachRolePolicyInput{
+			RoleName:  aws.String(roleName),
+			PolicyArn: aws.String(policyARN),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to attach policy %s to role %s: %w", policyARN, roleName, err)
+		}
+	}
+	return nil
+}
+
+// PutInlinePolicyOnServiceAccountRole puts an inline policy on a service account role
+func (c *awsClient) PutInlinePolicyOnServiceAccountRole(roleName, policyName, policyDocument string) error {
+	_, err := c.iamClient.PutRolePolicy(context.Background(), &iam.PutRolePolicyInput{
+		RoleName:       aws.String(roleName),
+		PolicyName:     aws.String(policyName),
+		PolicyDocument: aws.String(policyDocument),
+	})
+	return err
+}
+
+// DeleteServiceAccountRole deletes an IAM role and its associated policies
+func (c *awsClient) DeleteServiceAccountRole(roleName string) error {
+	// First, list and detach all managed policies
+	listAttachedPoliciesResult, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		var noSuchEntity *iamtypes.NoSuchEntityException
+		if errors.As(err, &noSuchEntity) {
+			// Role doesn't exist, nothing to delete
+			return nil
+		}
+		return fmt.Errorf("failed to list attached policies for role %s: %w", roleName, err)
+	}
+
+	// Detach all managed policies
+	for _, policy := range listAttachedPoliciesResult.AttachedPolicies {
+		_, err := c.iamClient.DetachRolePolicy(context.Background(), &iam.DetachRolePolicyInput{
+			RoleName:  aws.String(roleName),
+			PolicyArn: policy.PolicyArn,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to detach policy %s from role %s: %w", aws.ToString(policy.PolicyArn), roleName, err)
+		}
+	}
+
+	// List and delete all inline policies
+	listRolePoliciesResult, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list inline policies for role %s: %w", roleName, err)
+	}
+
+	// Delete all inline policies
+	for _, policyName := range listRolePoliciesResult.PolicyNames {
+		_, err := c.iamClient.DeleteRolePolicy(context.Background(), &iam.DeleteRolePolicyInput{
+			RoleName:   aws.String(roleName),
+			PolicyName: aws.String(policyName),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete inline policy %s from role %s: %w", policyName, roleName, err)
+		}
+	}
+
+	// Finally, delete the role
+	_, err = c.iamClient.DeleteRole(context.Background(), &iam.DeleteRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		var noSuchEntity *iamtypes.NoSuchEntityException
+		if errors.As(err, &noSuchEntity) {
+			// Role was already deleted
+			return nil
+		}
+		return fmt.Errorf("failed to delete role %s: %w", roleName, err)
+	}
+
+	return nil
+}
+
+// ListServiceAccountRoles lists IAM roles tagged as service account roles
+func (c *awsClient) ListServiceAccountRoles(clusterName string) ([]iamtypes.Role, error) {
+	var roles []iamtypes.Role
+	var marker *string
+
+	for {
+		input := &iam.ListRolesInput{
+			MaxItems: aws.Int32(1000),
+		}
+		if marker != nil {
+			input.Marker = marker
+		}
+
+		result, err := c.iamClient.ListRoles(context.Background(), input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list roles: %w", err)
+		}
+
+		// Filter roles by service account role type and cluster
+		for _, role := range result.Roles {
+			isServiceAccountRole := false
+			hasClusterTag := false
+
+			// ListRoles doesn't include tags by default, need to get them separately
+			listTagsResult, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
+				RoleName: role.RoleName,
+			})
+			if err != nil {
+				// Skip roles we can't get tags for (might be permission issues)
+				continue
+			}
+
+			for _, tag := range listTagsResult.Tags {
+				if aws.ToString(tag.Key) == iamserviceaccount.RoleTypeTagKey && aws.ToString(tag.Value) == iamserviceaccount.ServiceAccountRoleType {
+					isServiceAccountRole = true
+				}
+				if aws.ToString(tag.Key) == iamserviceaccount.ClusterTagKey && aws.ToString(tag.Value) == clusterName {
+					hasClusterTag = true
+				}
+			}
+
+			if isServiceAccountRole && (clusterName == "" || hasClusterTag) {
+				// Populate the Tags field since ListRoles doesn't include them
+				role.Tags = listTagsResult.Tags
+				roles = append(roles, role)
+			}
+		}
+
+		if !result.IsTruncated {
+			break
+		}
+		marker = result.Marker
+	}
+
+	return roles, nil
+}
+
+// GetServiceAccountRoleDetails gets detailed information about a service account role
+func (c *awsClient) GetServiceAccountRoleDetails(roleName string) (*iamtypes.Role, []iamtypes.AttachedPolicy, []string, error) {
+	// Get role details
+	getRoleResult, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get role %s: %w", roleName, err)
+	}
+
+	// Get attached managed policies
+	listAttachedPoliciesResult, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to list attached policies for role %s: %w", roleName, err)
+	}
+
+	// Get inline policies
+	listRolePoliciesResult, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to list inline policies for role %s: %w", roleName, err)
+	}
+
+	return getRoleResult.Role, listAttachedPoliciesResult.AttachedPolicies, listRolePoliciesResult.PolicyNames, nil
+}
+
+// ListOpenIDConnectProviders lists OIDC providers
+func (c *awsClient) ListOpenIDConnectProviders(ctx context.Context, params *iam.ListOpenIDConnectProvidersInput) (*iam.ListOpenIDConnectProvidersOutput, error) {
+	return c.iamClient.ListOpenIDConnectProviders(ctx, params)
 }

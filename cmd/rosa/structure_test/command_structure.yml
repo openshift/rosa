@@ -21,6 +21,7 @@ children:
     - name: dns-domain
     - name: idp
     - name: external-auth-provider
+    - name: iamserviceaccount
     - name: kubeletconfig
     - name: machinepool
     - name: ocm-role
@@ -40,6 +41,7 @@ children:
     - name: cluster
     - name: dns-domain
     - name: external-auth-provider
+    - name: iamserviceaccount
     - name: idp
     - name: ingress
     - name: kubeletconfig
@@ -61,6 +63,7 @@ children:
     - name: break-glass-credential
     - name: cluster
     - name: external-auth-provider
+    - name: iamserviceaccount
     - name: ingress
     - name: addon-installation
     - name: kubeletconfig
@@ -112,6 +115,7 @@ children:
     - name: dns-domain
     - name: external-auth-providers
     - name: gates
+    - name: iamserviceaccounts
     - name: idps
     - name: ingresses
     - name: instance-types

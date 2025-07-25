@@ -3,6 +3,7 @@
 - name: availability-zone
 - name: cluster
 - name: disk-size
+- name: ec2-metadata-http-tokens
 - name: enable-autoscaling
 - name: instance-type
 - name: interactive
@@ -24,4 +25,3 @@
 - name: tuning-configs
 - name: use-spot-instances
 - name: version
-- name: ec2-metadata-http-tokens
