@@ -26,6 +26,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -93,6 +94,7 @@ func init() {
 
 	interactive.AddModeFlag(Cmd)
 	interactive.AddFlag(flags)
+	confirm.AddFlag(flags)
 }
 
 func run(cmd *cobra.Command, _ []string) {
