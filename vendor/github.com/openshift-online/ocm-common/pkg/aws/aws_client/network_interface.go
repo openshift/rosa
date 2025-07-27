@@ -30,6 +30,26 @@ func (client *AWSClient) DescribeNetWorkInterface(vpcID string) ([]types.Network
 	return resp.NetworkInterfaces, err
 }
 
+func (client *AWSClient) DescribeNetWorkInterfaceBySG(securityGroupID string) ([]types.NetworkInterface, error) {
+	sgFilter := "group-id"
+	filter := []types.Filter{
+		types.Filter{
+			Name: &sgFilter,
+			Values: []string{
+				securityGroupID,
+			},
+		},
+	}
+	input := &ec2.DescribeNetworkInterfacesInput{
+		Filters: filter,
+	}
+	resp, err := client.Ec2Client.DescribeNetworkInterfaces(context.TODO(), input)
+	if err != nil {
+		return nil, err
+	}
+	return resp.NetworkInterfaces, err
+}
+
 func (client *AWSClient) GetNetworkInterfacesByInstanceID(instanceID string) ([]types.NetworkInterface, error) {
 	input := &ec2.DescribeNetworkInterfacesInput{
 		Filters: []types.Filter{

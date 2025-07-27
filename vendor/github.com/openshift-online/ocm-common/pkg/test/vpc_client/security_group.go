@@ -2,6 +2,7 @@ package vpc_client
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	con "github.com/openshift-online/ocm-common/pkg/aws/consts"
@@ -97,4 +98,26 @@ func (vpc *VPC) CreateAdditionalSecurityGroups(count int, namePrefix string, des
 		createdsgNum++
 	}
 	return preparedSGs, nil
+}
+
+// WaitforSecrityGroupDeleted will delete security group first and then wait for it deleted in AWS
+// It is required 2 parameters. Ons is security group ID, another is wait time value.
+func (vpc *VPC) WaitforSecrityGroupDeleted(sgID string, waitTime int) (result bool, err error) {
+	_, err = vpc.AWSClient.DeleteSecurityGroup(sgID)
+	if err != nil {
+		return false, err
+	}
+
+	timeout := time.Duration(waitTime) * time.Minute
+	start := time.Now()
+	result = false
+	for time.Since(start) < timeout {
+		output, err := vpc.AWSClient.GetSecurityGroupWithID(sgID)
+		if err != nil && output == nil {
+			result = true
+			return result, nil
+		}
+		time.Sleep(time.Second)
+	}
+	return result, err
 }
