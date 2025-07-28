@@ -34,6 +34,7 @@ type AWSClient struct {
 	IamClient            *iam.Client
 	ClientContext        context.Context
 	AccountID            string
+	Arn                  string
 	KmsClient            *kms.Client
 	CloudWatchLogsClient *cloudwatchlogs.Client
 	AWSConfig            *aws.Config
@@ -103,17 +104,23 @@ func CreateAWSClient(profileName string, region string, awsSharedCredentialFile 
 		RamClient:            ram.NewFromConfig(cfg),
 		CloudWatchLogsClient: cloudwatchlogs.NewFromConfig(cfg),
 	}
-	awsClient.AccountID = awsClient.GetAWSAccountID()
+	out, err := awsClient.GetCallerIdentity()
+	if err != nil {
+		return nil, err
+	}
+	awsClient.AccountID = *out.Account
+	awsClient.Arn = *out.Arn
 	return awsClient, nil
 }
 
-func (client *AWSClient) GetAWSAccountID() string {
+func (client *AWSClient) GetCallerIdentity() (*sts.GetCallerIdentityOutput, error) {
 	input := &sts.GetCallerIdentityInput{}
 	out, err := client.StsClient.GetCallerIdentity(client.ClientContext, input)
 	if err != nil {
-		return ""
+		log.LogError("Error happened when calling GetCallerIdentity: %s", err)
+		return nil, err
 	}
-	return *out.Account
+	return out, nil
 }
 
 func (client *AWSClient) GetAWSPartition() string {
