@@ -421,6 +421,7 @@ github.com/openshift-online/ocm-common/pkg/aws/errors
 github.com/openshift-online/ocm-common/pkg/aws/utils
 github.com/openshift-online/ocm-common/pkg/aws/validations
 github.com/openshift-online/ocm-common/pkg/cluster/validations
+github.com/openshift-online/ocm-common/pkg/deprecation
 github.com/openshift-online/ocm-common/pkg/file
 github.com/openshift-online/ocm-common/pkg/idp/utils
 github.com/openshift-online/ocm-common/pkg/idp/validations
