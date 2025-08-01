@@ -17,9 +17,7 @@ limitations under the License.
 package idp
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -86,18 +84,22 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+
 	if len(idps) == 1 && !ocm.HasAuthURLSupport(idps[0]) {
-		fmt.Fprintf(writer, "NAME\t\tTYPE\n")
-	} else {
-		fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
-	}
-	for _, idp := range idps {
-		oauthURL, err := ocm.GetOAuthURL(cluster, idp)
-		if err != nil {
-			r.Reporter.Warnf("Error building OAuth URL for %s: %v", idp.Name(), err)
+		tb.SetHeaders("NAME", "TYPE")
+		for _, idp := range idps {
+			tb.AddRow(idp.Name(), ocm.IdentityProviderType(idp))
 		}
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), ocm.IdentityProviderType(idp), oauthURL)
+	} else {
+		tb.SetHeaders("NAME", "TYPE", "AUTH URL")
+		for _, idp := range idps {
+			oauthURL, err := ocm.GetOAuthURL(cluster, idp)
+			if err != nil {
+				r.Reporter.Warnf("Error building OAuth URL for %s: %v", idp.Name(), err)
+			}
+			tb.AddRow(idp.Name(), ocm.IdentityProviderType(idp), oauthURL)
+		}
 	}
-	writer.Flush()
+	tb.Render()
 }

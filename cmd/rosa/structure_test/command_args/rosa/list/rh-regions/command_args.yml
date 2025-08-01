@@ -1,3 +1,4 @@
 - name: discovery-url
 - name: profile
 - name: region
+- name: hide-empty-fields

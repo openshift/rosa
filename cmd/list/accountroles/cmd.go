@@ -17,9 +17,7 @@ limitations under the License.
 package accountroles
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -109,16 +107,15 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ROLE NAME\tROLE TYPE\tROLE ARN\tOPENSHIFT VERSION\tAWS Managed\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ROLE NAME", "ROLE TYPE", "ROLE ARN", "OPENSHIFT VERSION", "AWS Managed")
+
 	for _, accountRole := range accountRoles {
 		awsManaged := "No"
 		if accountRole.ManagedPolicy {
 			awsManaged = "Yes"
 		}
-		fmt.Fprintf(
-			writer,
-			"%s\t%s\t%s\t%s\t%s\n",
+		tb.AddRow(
 			accountRole.RoleName,
 			accountRole.RoleType,
 			accountRole.RoleARN,
@@ -126,5 +123,5 @@ func run(_ *cobra.Command, _ []string) {
 			awsManaged,
 		)
 	}
-	writer.Flush()
+	tb.Render()
 }

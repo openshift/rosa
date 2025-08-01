@@ -3,8 +3,6 @@ package accessrequests
 import (
 	"context"
 	"fmt"
-	"os"
-	"text/tabwriter"
 	"time"
 
 	v1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
@@ -67,12 +65,10 @@ func ListAccessRequestsRunner() rosa.CommandRunner {
 				}
 				return nil
 			}
-			writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			output, hasPending, pendingId := getAccessRequestsOutput(clusterId, accessRequests)
-			fmt.Fprint(writer, output)
-			if err := writer.Flush(); err != nil {
-				return err
-			}
+			// Create the writer that will be used to print the tabulated results:
+			outputStr, hasPending, pendingId := getAccessRequestsOutput(clusterId, accessRequests)
+			fmt.Print(outputStr)
+
 			if hasPending {
 				r.Reporter.Infof("Run the following command to approve or deny the Access Request:\n\n"+
 					"   rosa create decision --access-request %s --decision Approved\n"+
@@ -85,7 +81,9 @@ func ListAccessRequestsRunner() rosa.CommandRunner {
 }
 
 func getAccessRequestsOutput(clusterId string, accessRequests []*v1.AccessRequest) (string, bool, string) {
-	output := "STATE\tID\tCLUSTER ID\tUPDATED AT\n"
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("STATE", "ID", "CLUSTER ID", "UPDATED AT")
+
 	hasPending := false
 	id := "<ID>"
 	for _, accessRequest := range accessRequests {
@@ -95,12 +93,13 @@ func getAccessRequestsOutput(clusterId string, accessRequests []*v1.AccessReques
 				id = accessRequest.ID()
 			}
 		}
-		output += fmt.Sprintf("%s\t%s\t%s\t%s\n",
-			accessRequest.Status().State(),
+		tb.AddRow(
+			string(accessRequest.Status().State()),
 			accessRequest.ID(),
 			accessRequest.ClusterId(),
-			accessRequest.UpdatedAt().Format(time.UnixDate))
+			accessRequest.UpdatedAt().Format(time.UnixDate),
+		)
 	}
 
-	return output, hasPending, id
+	return tb.RenderToString(), hasPending, id
 }

@@ -3,3 +3,4 @@
 - name: profile
 - name: region
 - name: hosted-cp
+- name: hide-empty-fields

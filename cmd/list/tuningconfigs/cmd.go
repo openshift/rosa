@@ -17,9 +17,7 @@ limitations under the License.
 package tuningconfigs
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -77,14 +75,14 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "NAME")
 
-	fmt.Fprintf(writer, "ID\tNAME\n")
 	for _, tuningConfig := range tuningConfigs {
-		fmt.Fprintf(writer, "%s\t%s\n",
+		tb.AddRow(
 			tuningConfig.ID(),
 			tuningConfig.Name(),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 }

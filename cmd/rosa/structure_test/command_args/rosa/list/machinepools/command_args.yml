@@ -5,4 +5,4 @@
 - name: az-type
 - name: dedicated-host
 - name: win-li
-- name: all
+- name: hide-empty-fields

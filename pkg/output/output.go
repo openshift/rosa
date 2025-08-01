@@ -30,6 +30,7 @@ import (
 	arv1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
+	"github.com/spf13/pflag"
 
 	"gitlab.com/c0b/go-ordered-json"
 
@@ -42,8 +43,34 @@ import (
 // that the output can be shown correctly.
 var emptyBuffer = []byte{91, 10, 32, 32, 10, 93}
 
+var hideEmptyFields bool
+
+// AddHideEmptyFieldsFlag adds the --hide-empty-fields flag to a command
+func AddHideEmptyFieldsFlag(fs *pflag.FlagSet) {
+	fs.BoolVar(
+		&hideEmptyFields,
+		"hide-empty-fields",
+		false,
+		"Hide fields that do not contain any data",
+	)
+}
+
+// HasHideEmptyFieldsFlag returns true if the hide-empty-fields flag was set
+func HasHideEmptyFieldsFlag() bool {
+	return hideEmptyFields
+}
+
 func Print(resource interface{}) error {
 	var b bytes.Buffer
+
+	// Process the resource to remove empty fields if flag is set
+	if HasHideEmptyFieldsFlag() {
+		processedResource, err := ProcessStructuredOutput(resource)
+		if err == nil {
+			resource = processedResource
+		}
+		// If error, continue with original resource
+	}
 
 	switch reflect.TypeOf(resource).String() {
 	case "[]*v1.ManagedService":
