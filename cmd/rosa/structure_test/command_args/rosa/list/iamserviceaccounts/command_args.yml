@@ -1,5 +1,5 @@
-- name: all
-- name: hosted-cp
+- name: cluster
+- name: namespace
 - name: output
 - name: profile
 - name: region

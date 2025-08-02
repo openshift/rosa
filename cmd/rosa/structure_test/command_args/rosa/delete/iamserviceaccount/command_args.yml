@@ -1,7 +1,9 @@
 - name: cluster
-- name: delete-hcp-shared-vpc-policies
+- name: interactive
 - name: mode
-- name: prefix
+- name: name
+- name: namespace
 - name: profile
 - name: region
+- name: role-name
 - name: "yes"

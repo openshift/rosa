@@ -10,7 +10,7 @@
 - name: profile
 - name: region
 - name: role-arn
-- name: shared-vpc-role-arn
-- name: "yes"
-- name: vpc-endpoint-role-arn
 - name: route53-role-arn
+- name: shared-vpc-role-arn
+- name: vpc-endpoint-role-arn
+- name: "yes"

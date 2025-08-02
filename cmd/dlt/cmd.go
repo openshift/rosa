@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/cluster"
 	"github.com/openshift/rosa/cmd/dlt/dnsdomains"
 	"github.com/openshift/rosa/cmd/dlt/externalauthprovider"
+	"github.com/openshift/rosa/cmd/dlt/iamserviceaccount"
 	"github.com/openshift/rosa/cmd/dlt/idp"
 	"github.com/openshift/rosa/cmd/dlt/ingress"
 	"github.com/openshift/rosa/cmd/dlt/kubeletconfig"
@@ -52,6 +53,7 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(admin.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(iamserviceaccount.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	machinepoolCommand := machinepool.NewDeleteMachinePoolCommand()
@@ -81,7 +83,7 @@ func init() {
 		accountroles.Cmd, operatorrole.Cmd,
 		userrole.Cmd, ocmrole.Cmd,
 		oidcprovider.Cmd, upgrade.Cmd, admin.Cmd,
-		service.Cmd, autoscalerCommand, idp.Cmd,
+		service.Cmd, autoscalerCommand, iamserviceaccount.Cmd, idp.Cmd,
 		cluster.Cmd, dnsdomains.Cmd, externalauthprovider.Cmd,
 		kubeletconfig, machinepoolCommand, tuningconfigs.Cmd,
 	}

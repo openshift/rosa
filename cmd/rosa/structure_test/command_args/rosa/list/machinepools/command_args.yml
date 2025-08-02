@@ -1,8 +1,8 @@
+- name: all
+- name: az-type
 - name: cluster
+- name: dedicated-host
 - name: output
 - name: profile
 - name: region
-- name: az-type
-- name: dedicated-host
 - name: win-li
-- name: all
