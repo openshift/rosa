@@ -19,10 +19,13 @@ package iamserviceaccount
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -48,6 +51,18 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 		// Validate service account names
 		if len(userOptions.ServiceAccountNames) == 0 {
 			return fmt.Errorf("at least one service account name is required")
+		}
+
+		// Validate that at least one policy is specified
+		if len(userOptions.PolicyArns) == 0 && userOptions.InlinePolicy == "" {
+			return fmt.Errorf("at least one policy ARN or inline policy must be specified")
+		}
+
+		// Validate policy ARNs
+		for _, arn := range userOptions.PolicyArns {
+			if err := aws.ARNValidator(arn); err != nil {
+				return fmt.Errorf("invalid policy ARN '%s': %s", arn, err)
+			}
 		}
 
 		// Generate role name if not provided
@@ -89,6 +104,38 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 		}
 
 		r.Reporter.Infof("Created IAM role '%s' with ARN '%s'", roleName, roleARN)
+
+		// Attach managed policies
+		for _, policyARN := range userOptions.PolicyArns {
+			err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyARN)
+			if err != nil {
+				return fmt.Errorf("failed to attach policy '%s' to role '%s': %s", policyARN, roleName, err)
+			}
+		}
+
+		// Handle inline policy
+		if userOptions.InlinePolicy != "" {
+			inlinePolicy := userOptions.InlinePolicy
+
+			// Process inline policy if it's a file reference
+			if strings.HasPrefix(inlinePolicy, "file://") {
+				policyPath := strings.TrimPrefix(inlinePolicy, "file://")
+				policyBytes, err := os.ReadFile(policyPath)
+				if err != nil {
+					return fmt.Errorf("failed to read policy file '%s': %s", policyPath, err)
+				}
+				inlinePolicy = string(policyBytes)
+			}
+
+			// Generate inline policy name
+			policyName := fmt.Sprintf("%s-inline-policy", roleName)
+			err = r.AWSClient.PutRolePolicy(roleName, policyName, inlinePolicy)
+			if err != nil {
+				return fmt.Errorf("failed to attach inline policy to role '%s': %s", roleName, err)
+			}
+			r.Reporter.Infof("Attached inline policy '%s' to role '%s(https://console.aws.amazon.com/iam/home?#/roles/%s)'", policyName, roleName, roleName)
+		}
+
 		return nil
 	}
 }

@@ -66,9 +66,14 @@ var _ = Describe("Create IAM Service Account", func() {
 					EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), "", "", gomock.Any(), gomock.Any(), false).
 					Return("arn:aws:iam::123456789012:role/test-cluster-default-test-sa", nil)
 
+				mockAWS.EXPECT().
+					AttachRolePolicy(gomock.Any(), gomock.Any(), "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess").
+					Return(nil)
+
 				options := &iamServiceAccountOpts.CreateIamServiceAccountUserOptions{
 					ServiceAccountNames: []string{"test-sa"},
 					Namespace:           "default",
+					PolicyArns:          []string{"arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"},
 				}
 				testRunner := CreateIamServiceAccountRunner(options)
 
@@ -88,12 +93,79 @@ var _ = Describe("Create IAM Service Account", func() {
 				options := &iamServiceAccountOpts.CreateIamServiceAccountUserOptions{
 					ServiceAccountNames: []string{"test-sa"},
 					Namespace:           "default",
+					PolicyArns:          []string{"arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"},
 				}
 				testRunner := CreateIamServiceAccountRunner(options)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("not an STS cluster"))
+			})
+
+			It("should fail when no policies are provided", func() {
+				cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+					c.ID("test-cluster-id")
+					c.Name("test-cluster")
+					c.AWS(cmv1.NewAWS().
+						STS(cmv1.NewSTS().
+							RoleARN("arn:aws:iam::123456789012:role/test-role")))
+				})
+
+				t.SetCluster(cluster.ID(), cluster)
+
+				options := &iamServiceAccountOpts.CreateIamServiceAccountUserOptions{
+					ServiceAccountNames: []string{"test-sa"},
+					Namespace:           "default",
+					// No policies provided
+				}
+				testRunner := CreateIamServiceAccountRunner(options)
+
+				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("at least one policy ARN or inline policy must be specified"))
+			})
+
+			It("should create a service account role with inline policy", func() {
+				cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+					c.ID("test-cluster-id")
+					c.Name("test-cluster")
+					c.AWS(cmv1.NewAWS().
+						STS(cmv1.NewSTS().
+							RoleARN("arn:aws:iam::123456789012:role/test-role").
+							OidcConfig(cmv1.NewOidcConfig().
+								ID("test-oidc-id").
+								IssuerUrl("https://test.example.com"))))
+				})
+
+				t.SetCluster(cluster.ID(), cluster)
+
+				providers := []aws.OidcProviderOutput{
+					{
+						Arn: "arn:aws:iam::123456789012:oidc-provider/test.example.com",
+					},
+				}
+
+				mockAWS.EXPECT().
+					ListOidcProviders("", cluster.AWS().STS().OidcConfig()).
+					Return(providers, nil)
+
+				mockAWS.EXPECT().
+					EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), "", "", gomock.Any(), gomock.Any(), false).
+					Return("arn:aws:iam::123456789012:role/test-cluster-default-test-sa", nil)
+
+				mockAWS.EXPECT().
+					PutRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil)
+
+				options := &iamServiceAccountOpts.CreateIamServiceAccountUserOptions{
+					ServiceAccountNames: []string{"test-sa"},
+					Namespace:           "default",
+					InlinePolicy:        `{"Version": "2012-10-17", "Statement": []}`,
+				}
+				testRunner := CreateIamServiceAccountRunner(options)
+
+				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
