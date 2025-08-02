@@ -7,8 +7,8 @@ package version
 import (
 	reflect "reflect"
 
-	go_version "github.com/hashicorp/go-version"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
+	version "github.com/hashicorp/go-version"
 )
 
 // MockRosaVersion is a mock of RosaVersion interface.
@@ -35,10 +35,10 @@ func (m *MockRosaVersion) EXPECT() *MockRosaVersionMockRecorder {
 }
 
 // IsLatest mocks base method.
-func (m *MockRosaVersion) IsLatest(latestVersion string) (*go_version.Version, bool, error) {
+func (m *MockRosaVersion) IsLatest(latestVersion string) (*version.Version, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsLatest", latestVersion)
-	ret0, _ := ret[0].(*go_version.Version)
+	ret0, _ := ret[0].(*version.Version)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2

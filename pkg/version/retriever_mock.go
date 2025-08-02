@@ -7,8 +7,8 @@ package version
 import (
 	reflect "reflect"
 
-	go_version "github.com/hashicorp/go-version"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
+	version "github.com/hashicorp/go-version"
 )
 
 // MockRetriever is a mock of Retriever interface.
@@ -35,10 +35,10 @@ func (m *MockRetriever) EXPECT() *MockRetrieverMockRecorder {
 }
 
 // RetrieveLatestVersionFromMirror mocks base method.
-func (m *MockRetriever) RetrieveLatestVersionFromMirror() (*go_version.Version, error) {
+func (m *MockRetriever) RetrieveLatestVersionFromMirror() (*version.Version, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RetrieveLatestVersionFromMirror")
-	ret0, _ := ret[0].(*go_version.Version)
+	ret0, _ := ret[0].(*version.Version)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -17,9 +17,9 @@ limitations under the License.
 package iamserviceaccount
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -29,208 +29,143 @@ import (
 
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/ocm"
+	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var args struct {
-	serviceAccountName string
-	namespace          string
-	roleName           string
+func NewDescribeIamServiceAccountCommand() *cobra.Command {
+	cmd, options := iamServiceAccountOpts.BuildIamServiceAccountDescribeCommandWithOptions()
+	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCMAndAWS(), DescribeIamServiceAccountRunner(options))
+	return cmd
 }
 
-var Cmd = &cobra.Command{
-	Use:     "iamserviceaccount",
-	Aliases: []string{"iam-service-account"},
-	Short:   "Describe IAM role for Kubernetes service account",
-	Long: "Show detailed information about an IAM role that was created for a " +
-		"Kubernetes service account, including trust policy and attached permissions.",
-	Example: `  # Describe by service account details
-  rosa describe iamserviceaccount --cluster my-cluster \
-    --name my-app \
-    --namespace default
+var Cmd = NewDescribeIamServiceAccountCommand()
 
-  # Describe by explicit role name
-  rosa describe iamserviceaccount --cluster my-cluster \
-    --role-name my-custom-role
-
-  # Output as JSON
-  rosa describe iamserviceaccount --cluster my-cluster \
-    --name my-app \
-    --namespace default \
-    --output json`,
-	Run:  run,
-	Args: cobra.NoArgs,
-}
-
-func init() {
-	flags := Cmd.Flags()
-
-	ocm.AddClusterFlag(Cmd)
-
-	flags.StringVar(
-		&args.serviceAccountName,
-		"name",
-		"",
-		"Name of the Kubernetes service account.",
-	)
-
-	flags.StringVar(
-		&args.namespace,
-		"namespace",
-		"default",
-		"Kubernetes namespace for the service account.",
-	)
-
-	flags.StringVar(
-		&args.roleName,
-		"role-name",
-		"",
-		"Name of the IAM role to describe (auto-detected if not specified).",
-	)
-
-	// Mark required flags
-	_ = Cmd.MarkFlagRequired("cluster")
-
-	interactive.AddFlag(flags)
-	output.AddFlag(Cmd)
-}
-
-func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
-
-	// Get cluster key using OCM standard method
-	clusterKey, err := ocm.GetClusterKey()
-	if err != nil {
-		_ = r.Reporter.Errorf("%s", err)
-		os.Exit(1)
-	}
-
-	cluster := r.FetchCluster()
-	if cluster.Name() != clusterKey && cluster.ID() != clusterKey {
+func DescribeIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DescribeIamServiceAccountUserOptions) rosa.CommandRunner {
+	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		var err error
-		cluster, err = r.OCMClient.GetCluster(clusterKey, r.Creator)
-		if err != nil {
-			_ = r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
-			os.Exit(1)
+		clusterKey := r.GetClusterKey()
+
+		cluster := r.FetchCluster()
+		if cluster.Name() != clusterKey && cluster.ID() != clusterKey {
+			cluster, err = r.OCMClient.GetCluster(clusterKey, r.Creator)
+			if err != nil {
+				_ = r.Reporter.Errorf("Failed to get cluster '%s': %s", clusterKey, err)
+				return err
+			}
 		}
-	}
 
-	// Validate cluster has STS enabled
-	if cluster.AWS().STS().RoleARN() == "" {
-		_ = r.Reporter.Errorf("Cluster '%s' is not an STS cluster", cluster.Name())
-		os.Exit(1)
-	}
+		// Validate cluster has STS enabled
+		if cluster.AWS().STS().RoleARN() == "" {
+			return fmt.Errorf("cluster '%s' is not an STS cluster", cluster.Name())
+		}
 
-	// Get role name - either explicit or derived from service account
-	roleName := args.roleName
-	serviceAccountName := args.serviceAccountName
-	namespace := args.namespace
+		// Get role name - either explicit or derived from service account
+		roleName := userOptions.RoleName
+		serviceAccountName := userOptions.ServiceAccountName
+		namespace := userOptions.Namespace
 
-	if roleName == "" {
-		// Need service account details to derive role name
-		if interactive.Enabled() && serviceAccountName == "" {
-			var err error
-			serviceAccountName, err = interactive.GetString(interactive.Input{
-				Question: "Service account name",
-				Help:     cmd.Flags().Lookup("name").Usage,
-				Required: true,
-				Validators: []interactive.Validator{
-					func(val interface{}) error {
-						return iamserviceaccount.ValidateServiceAccountName(val.(string))
+		if roleName == "" {
+			// Need service account details to derive role name
+			if interactive.Enabled() && serviceAccountName == "" {
+				serviceAccountName, err = interactive.GetString(interactive.Input{
+					Question: "Service account name",
+					Help:     cmd.Flags().Lookup("name").Usage,
+					Required: true,
+					Validators: []interactive.Validator{
+						func(val interface{}) error {
+							return iamserviceaccount.ValidateServiceAccountName(val.(string))
+						},
 					},
-				},
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Expected a valid service account name: %s", err)
-				os.Exit(1)
+				})
+				if err != nil {
+					_ = r.Reporter.Errorf("Expected a valid service account name: %s", err)
+					return err
+				}
 			}
-		}
 
-		if serviceAccountName == "" {
-			_ = r.Reporter.Errorf("Service account name is required when role name is not specified")
-			os.Exit(1)
-		}
+			if serviceAccountName == "" {
+				return fmt.Errorf("service account name is required when role name is not specified")
+			}
 
-		if err := iamserviceaccount.ValidateServiceAccountName(serviceAccountName); err != nil {
-			_ = r.Reporter.Errorf("Invalid service account name: %s", err)
-			os.Exit(1)
-		}
+			if err := iamserviceaccount.ValidateServiceAccountName(serviceAccountName); err != nil {
+				_ = r.Reporter.Errorf("Invalid service account name: %s", err)
+				return fmt.Errorf("invalid service account name: %s", err)
+			}
 
-		// Validate namespace
-		if interactive.Enabled() {
-			var err error
-			namespace, err = interactive.GetString(interactive.Input{
-				Question: "Namespace",
-				Help:     cmd.Flags().Lookup("namespace").Usage,
-				Default:  namespace,
-				Required: true,
-				Validators: []interactive.Validator{
-					func(val interface{}) error {
-						return iamserviceaccount.ValidateNamespaceName(val.(string))
+			// Validate namespace
+			if interactive.Enabled() {
+				namespace, err = interactive.GetString(interactive.Input{
+					Question: "Namespace",
+					Help:     cmd.Flags().Lookup("namespace").Usage,
+					Default:  namespace,
+					Required: true,
+					Validators: []interactive.Validator{
+						func(val interface{}) error {
+							return iamserviceaccount.ValidateNamespaceName(val.(string))
+						},
 					},
-				},
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Expected a valid namespace: %s", err)
-				os.Exit(1)
+				})
+				if err != nil {
+					_ = r.Reporter.Errorf("Expected a valid namespace: %s", err)
+					return err
+				}
+			}
+
+			if err := iamserviceaccount.ValidateNamespaceName(namespace); err != nil {
+				_ = r.Reporter.Errorf("Invalid namespace: %s", err)
+				return fmt.Errorf("invalid namespace: %s", err)
+			}
+
+			// Generate role name
+			roleName = iamserviceaccount.GenerateRoleName(cluster.Name(), namespace, serviceAccountName)
+		} else {
+			// Using explicit role name
+			if interactive.Enabled() {
+				roleName, err = interactive.GetString(interactive.Input{
+					Question: "IAM role name",
+					Help:     cmd.Flags().Lookup("role-name").Usage,
+					Default:  roleName,
+					Required: true,
+				})
+				if err != nil {
+					_ = r.Reporter.Errorf("Expected a valid role name: %s", err)
+					return err
+				}
 			}
 		}
 
-		if err := iamserviceaccount.ValidateNamespaceName(namespace); err != nil {
-			_ = r.Reporter.Errorf("Invalid namespace: %s", err)
-			os.Exit(1)
-		}
-
-		// Generate role name
-		roleName = iamserviceaccount.GenerateRoleName(cluster.Name(), namespace, serviceAccountName)
-	} else {
-		// Using explicit role name
-		if interactive.Enabled() {
-			var err error
-			roleName, err = interactive.GetString(interactive.Input{
-				Question: "IAM role name",
-				Help:     cmd.Flags().Lookup("role-name").Usage,
-				Default:  roleName,
-				Required: true,
-			})
-			if err != nil {
-				_ = r.Reporter.Errorf("Expected a valid role name: %s", err)
-				os.Exit(1)
-			}
-		}
-	}
-
-	// Get role details
-	role, attachedPolicies, inlinePolicies, err := r.AWSClient.GetServiceAccountRoleDetails(roleName)
-	if err != nil {
-		_ = r.Reporter.Errorf("Failed to get role details: %s", err)
-		os.Exit(1)
-	}
-
-	// Parse trust policy to extract OIDC information
-	trustPolicyInfo, err := parseTrustPolicy(aws.ToString(role.AssumeRolePolicyDocument))
-	if err != nil {
-		r.Reporter.Debugf("Failed to parse trust policy: %s", err)
-	}
-
-	// Convert to output format
-	roleOutput := convertRoleToOutput(role, attachedPolicies, inlinePolicies, trustPolicyInfo)
-
-	// Output results
-	if output.HasFlag() {
-		err = output.Print(roleOutput)
+		// Get role details
+		role, attachedPolicies, inlinePolicies, err := r.AWSClient.GetServiceAccountRoleDetails(roleName)
 		if err != nil {
-			_ = r.Reporter.Errorf("Failed to print output: %s", err)
-			os.Exit(1)
+			_ = r.Reporter.Errorf("Failed to get role details: %s", err)
+			return err
 		}
-		return
-	}
 
-	// Text format
-	printRoleDetails(roleOutput)
+		// Parse trust policy to extract OIDC information
+		trustPolicyInfo, err := parseTrustPolicy(aws.ToString(role.AssumeRolePolicyDocument))
+		if err != nil {
+			r.Reporter.Debugf("Failed to parse trust policy: %s", err)
+		}
+
+		// Convert to output format
+		roleOutput := convertRoleToOutput(role, attachedPolicies, inlinePolicies, trustPolicyInfo)
+
+		// Output results
+		if output.HasFlag() {
+			err = output.Print(roleOutput)
+			if err != nil {
+				_ = r.Reporter.Errorf("Failed to print output: %s", err)
+				return err
+			}
+			return nil
+		}
+
+		// Text format
+		printRoleDetails(roleOutput)
+		return nil
+	}
 }
 
 type ServiceAccountRoleDetails struct {

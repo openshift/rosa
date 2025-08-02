@@ -16,9 +16,9 @@ import (
 	types1 "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	servicequotas "github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	sts "github.com/aws/aws-sdk-go-v2/service/sts"
+	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	reporter "github.com/openshift/rosa/pkg/reporter"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockClient is a mock of Client interface.
