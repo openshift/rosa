@@ -63,20 +63,6 @@ func (mr *MockClientMockRecorder) AddRoleTag(roleName, key, value any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRoleTag", reflect.TypeOf((*MockClient)(nil).AddRoleTag), roleName, key, value)
 }
 
-// AttachPoliciesToServiceAccountRole mocks base method.
-func (m *MockClient) AttachPoliciesToServiceAccountRole(roleName string, policyARNs []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AttachPoliciesToServiceAccountRole", roleName, policyARNs)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AttachPoliciesToServiceAccountRole indicates an expected call of AttachPoliciesToServiceAccountRole.
-func (mr *MockClientMockRecorder) AttachPoliciesToServiceAccountRole(roleName, policyARNs any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AttachPoliciesToServiceAccountRole", reflect.TypeOf((*MockClient)(nil).AttachPoliciesToServiceAccountRole), roleName, policyARNs)
-}
-
 // AttachRolePolicy mocks base method.
 func (m *MockClient) AttachRolePolicy(reporter reporter.Logger, roleName, policyARN string) error {
 	m.ctrl.T.Helper()
@@ -208,21 +194,6 @@ func (m *MockClient) CreateSecretInSecretsManager(name, secret string) (string, 
 func (mr *MockClientMockRecorder) CreateSecretInSecretsManager(name, secret any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSecretInSecretsManager", reflect.TypeOf((*MockClient)(nil).CreateSecretInSecretsManager), name, secret)
-}
-
-// CreateServiceAccountRole mocks base method.
-func (m *MockClient) CreateServiceAccountRole(roleName, trustPolicy, permissionsBoundary, path string, tags map[string]string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateServiceAccountRole", roleName, trustPolicy, permissionsBoundary, path, tags)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateServiceAccountRole indicates an expected call of CreateServiceAccountRole.
-func (mr *MockClientMockRecorder) CreateServiceAccountRole(roleName, trustPolicy, permissionsBoundary, path, tags any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateServiceAccountRole", reflect.TypeOf((*MockClient)(nil).CreateServiceAccountRole), roleName, trustPolicy, permissionsBoundary, path, tags)
 }
 
 // CreateStackWithParamsTags mocks base method.
@@ -1416,21 +1387,6 @@ func (mr *MockClientMockRecorder) ListOidcProviders(targetClusterId, config any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOidcProviders", reflect.TypeOf((*MockClient)(nil).ListOidcProviders), targetClusterId, config)
 }
 
-// ListOpenIDConnectProviderArns mocks base method.
-func (m *MockClient) ListOpenIDConnectProviderArns() ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListOpenIDConnectProviderArns")
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListOpenIDConnectProviderArns indicates an expected call of ListOpenIDConnectProviderArns.
-func (mr *MockClientMockRecorder) ListOpenIDConnectProviderArns() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOpenIDConnectProviderArns", reflect.TypeOf((*MockClient)(nil).ListOpenIDConnectProviderArns))
-}
-
 // ListOperatorRoles mocks base method.
 func (m *MockClient) ListOperatorRoles(version, clusterID, prefix string) (map[string][]OperatorRoleDetail, error) {
 	m.ctrl.T.Helper()
@@ -1508,20 +1464,6 @@ func (m *MockClient) ListUserRoles() ([]Role, error) {
 func (mr *MockClientMockRecorder) ListUserRoles() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUserRoles", reflect.TypeOf((*MockClient)(nil).ListUserRoles))
-}
-
-// PutInlinePolicyOnServiceAccountRole mocks base method.
-func (m *MockClient) PutInlinePolicyOnServiceAccountRole(roleName, policyName, policyDocument string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutInlinePolicyOnServiceAccountRole", roleName, policyName, policyDocument)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// PutInlinePolicyOnServiceAccountRole indicates an expected call of PutInlinePolicyOnServiceAccountRole.
-func (mr *MockClientMockRecorder) PutInlinePolicyOnServiceAccountRole(roleName, policyName, policyDocument any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutInlinePolicyOnServiceAccountRole", reflect.TypeOf((*MockClient)(nil).PutInlinePolicyOnServiceAccountRole), roleName, policyName, policyDocument)
 }
 
 // PutPublicReadObjectInS3Bucket mocks base method.

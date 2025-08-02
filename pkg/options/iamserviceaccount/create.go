@@ -23,34 +23,8 @@ const (
 	long  = "Create an IAM role that can be assumed by a Kubernetes service account using " +
 		"OpenID Connect (OIDC) identity federation. This allows pods running in the service " +
 		"account to assume the IAM role and access AWS resources."
-	example = `  # Create an IAM role for a service account with S3 access
-  rosa create iamserviceaccount --cluster my-cluster \
-    --name my-app \
-    --namespace default \
-    --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-
-  # Create with custom role name and inline policy
-  rosa create iamserviceaccount --cluster my-cluster \
-    --name my-app \
-    --namespace my-namespace \
-    --role-name my-custom-role \
-    --inline-policy file://my-policy.json
-
-  # Create with permissions boundary and approval
-  rosa create iamserviceaccount --cluster my-cluster \
-    --name my-app \
-    --namespace default \
-    --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
-    --permissions-boundary arn:aws:iam::123456789012:policy/boundary \
-    --approve
-
-  # Create for multiple service accounts (e.g., AWS Load Balancer Controller)
-  rosa create iamserviceaccount --cluster my-cluster \
-    --name aws-load-balancer-operator-controller-manager \
-    --name aws-load-balancer-controller-cluster \
-    --namespace aws-load-balancer-operator \
-    --role-name my-cluster-alb-controller-role \
-    --attach-policy-arn arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess`
+	example = `  # Create an IAM role for a service account
+  rosa create iamserviceaccount --cluster my-cluster --name my-app --namespace default`
 )
 
 func NewCreateIamServiceAccountUserOptions() *CreateIamServiceAccountUserOptions {

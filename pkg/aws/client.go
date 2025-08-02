@@ -227,14 +227,10 @@ type Client interface {
 	GetCFStack(ctx context.Context, stackName string) (*cftypes.Stack, error)
 	DescribeCFStackResources(ctx context.Context, stackName string) (*[]cftypes.StackResource, error)
 	DeleteCFStack(ctx context.Context, stackName string) error
-	// IAM Service Account methods
-	CreateServiceAccountRole(roleName, trustPolicy, permissionsBoundary, path string, tags map[string]string) (string, error)
-	AttachPoliciesToServiceAccountRole(roleName string, policyARNs []string) error
-	PutInlinePolicyOnServiceAccountRole(roleName, policyName, policyDocument string) error
-	DeleteServiceAccountRole(roleName string) error
+	// Service account role filtering (only add the filtering functionality we need)
 	ListServiceAccountRoles(clusterName string) ([]iamtypes.Role, error)
 	GetServiceAccountRoleDetails(roleName string) (*iamtypes.Role, []iamtypes.AttachedPolicy, []string, error)
-	ListOpenIDConnectProviderArns() ([]string, error)
+	DeleteServiceAccountRole(roleName string) error
 }
 
 type AccessKeyGetter interface {
@@ -1406,122 +1402,6 @@ func Ec2ResourceHasTag(tags []ec2types.Tag, tagName, tagValue string) bool {
 	return false
 }
 
-// CreateServiceAccountRole creates an IAM role for a Kubernetes service account
-func (c *awsClient) CreateServiceAccountRole(roleName, trustPolicy, permissionsBoundary, path string, tags map[string]string) (string, error) {
-	input := &iam.CreateRoleInput{
-		RoleName:                 aws.String(roleName),
-		AssumeRolePolicyDocument: aws.String(trustPolicy),
-		Path:                     aws.String(path),
-	}
-
-	if permissionsBoundary != "" {
-		input.PermissionsBoundary = aws.String(permissionsBoundary)
-	}
-
-	if len(tags) > 0 {
-		iamTags := make([]iamtypes.Tag, 0, len(tags))
-		for key, value := range tags {
-			iamTags = append(iamTags, iamtypes.Tag{
-				Key:   aws.String(key),
-				Value: aws.String(value),
-			})
-		}
-		input.Tags = iamTags
-	}
-
-	result, err := c.iamClient.CreateRole(context.Background(), input)
-	if err != nil {
-		return "", err
-	}
-
-	return aws.ToString(result.Role.Arn), nil
-}
-
-// AttachPoliciesToServiceAccountRole attaches managed policies to a service account role
-func (c *awsClient) AttachPoliciesToServiceAccountRole(roleName string, policyARNs []string) error {
-	for _, policyARN := range policyARNs {
-		_, err := c.iamClient.AttachRolePolicy(context.Background(), &iam.AttachRolePolicyInput{
-			RoleName:  aws.String(roleName),
-			PolicyArn: aws.String(policyARN),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to attach policy %s to role %s: %w", policyARN, roleName, err)
-		}
-	}
-	return nil
-}
-
-// PutInlinePolicyOnServiceAccountRole puts an inline policy on a service account role
-func (c *awsClient) PutInlinePolicyOnServiceAccountRole(roleName, policyName, policyDocument string) error {
-	_, err := c.iamClient.PutRolePolicy(context.Background(), &iam.PutRolePolicyInput{
-		RoleName:       aws.String(roleName),
-		PolicyName:     aws.String(policyName),
-		PolicyDocument: aws.String(policyDocument),
-	})
-	return err
-}
-
-// DeleteServiceAccountRole deletes an IAM role and its associated policies
-func (c *awsClient) DeleteServiceAccountRole(roleName string) error {
-	// First, list and detach all managed policies
-	listAttachedPoliciesResult, err := c.iamClient.ListAttachedRolePolicies(context.Background(), &iam.ListAttachedRolePoliciesInput{
-		RoleName: aws.String(roleName),
-	})
-	if err != nil {
-		var noSuchEntity *iamtypes.NoSuchEntityException
-		if errors.As(err, &noSuchEntity) {
-			// Role doesn't exist, nothing to delete
-			return nil
-		}
-		return fmt.Errorf("failed to list attached policies for role %s: %w", roleName, err)
-	}
-
-	// Detach all managed policies
-	for _, policy := range listAttachedPoliciesResult.AttachedPolicies {
-		_, err := c.iamClient.DetachRolePolicy(context.Background(), &iam.DetachRolePolicyInput{
-			RoleName:  aws.String(roleName),
-			PolicyArn: policy.PolicyArn,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to detach policy %s from role %s: %w", aws.ToString(policy.PolicyArn), roleName, err)
-		}
-	}
-
-	// List and delete all inline policies
-	listRolePoliciesResult, err := c.iamClient.ListRolePolicies(context.Background(), &iam.ListRolePoliciesInput{
-		RoleName: aws.String(roleName),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to list inline policies for role %s: %w", roleName, err)
-	}
-
-	// Delete all inline policies
-	for _, policyName := range listRolePoliciesResult.PolicyNames {
-		_, err := c.iamClient.DeleteRolePolicy(context.Background(), &iam.DeleteRolePolicyInput{
-			RoleName:   aws.String(roleName),
-			PolicyName: aws.String(policyName),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to delete inline policy %s from role %s: %w", policyName, roleName, err)
-		}
-	}
-
-	// Finally, delete the role
-	_, err = c.iamClient.DeleteRole(context.Background(), &iam.DeleteRoleInput{
-		RoleName: aws.String(roleName),
-	})
-	if err != nil {
-		var noSuchEntity *iamtypes.NoSuchEntityException
-		if errors.As(err, &noSuchEntity) {
-			// Role was already deleted
-			return nil
-		}
-		return fmt.Errorf("failed to delete role %s: %w", roleName, err)
-	}
-
-	return nil
-}
-
 // ListServiceAccountRoles lists IAM roles tagged as service account roles
 func (c *awsClient) ListServiceAccountRoles(clusterName string) ([]iamtypes.Role, error) {
 	var roles []iamtypes.Role
@@ -1579,12 +1459,10 @@ func (c *awsClient) ListServiceAccountRoles(clusterName string) ([]iamtypes.Role
 	return roles, nil
 }
 
-// GetServiceAccountRoleDetails gets detailed information about a service account role
+// GetServiceAccountRoleDetails gets detailed information about a service account role using existing methods
 func (c *awsClient) GetServiceAccountRoleDetails(roleName string) (*iamtypes.Role, []iamtypes.AttachedPolicy, []string, error) {
-	// Get role details
-	getRoleResult, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	})
+	// Use existing GetRoleByName method
+	role, err := c.GetRoleByName(roleName)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get role %s: %w", roleName, err)
 	}
@@ -1605,21 +1483,21 @@ func (c *awsClient) GetServiceAccountRoleDetails(roleName string) (*iamtypes.Rol
 		return nil, nil, nil, fmt.Errorf("failed to list inline policies for role %s: %w", roleName, err)
 	}
 
-	return getRoleResult.Role, listAttachedPoliciesResult.AttachedPolicies, listRolePoliciesResult.PolicyNames, nil
+	return &role, listAttachedPoliciesResult.AttachedPolicies, listRolePoliciesResult.PolicyNames, nil
 }
 
-// ListOpenIDConnectProviderArns returns a list of OIDC provider ARNs
-func (c *awsClient) ListOpenIDConnectProviderArns() ([]string, error) {
-	output, err := c.iamClient.ListOpenIDConnectProviders(context.Background(), &iam.ListOpenIDConnectProvidersInput{})
+// DeleteServiceAccountRole deletes an IAM role using existing methods
+func (c *awsClient) DeleteServiceAccountRole(roleName string) error {
+	// Use existing role deletion functionality - delegate to DeleteOperatorRole with managedPolicies=false
+	roleMap, err := c.DeleteOperatorRole(roleName, false, false)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to delete role %s: %w", roleName, err)
 	}
-
-	arns := make([]string, 0, len(output.OpenIDConnectProviderList))
-	for _, provider := range output.OpenIDConnectProviderList {
-		if provider.Arn != nil {
-			arns = append(arns, *provider.Arn)
-		}
+	
+	// Check if the role was successfully deleted
+	if deleted, exists := roleMap[roleName]; exists && !deleted {
+		return fmt.Errorf("failed to delete role %s", roleName)
 	}
-	return arns, nil
+	
+	return nil
 }
