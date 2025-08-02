@@ -454,7 +454,7 @@ func getOIDCProviderARN(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) 
 
 	// For unmanaged OIDC, we need to find the provider ARN
 	// This requires listing OIDC providers and matching by URL
-	providers, err := r.AWSClient.ListOpenIDConnectProviders(context.Background(), nil)
+	providerArns, err := r.AWSClient.ListOpenIDConnectProviderArns()
 	if err != nil {
 		return "", fmt.Errorf("failed to list OIDC providers: %w", err)
 	}
@@ -466,9 +466,9 @@ func getOIDCProviderARN(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) 
 
 	issuerURL = strings.TrimPrefix(issuerURL, "https://")
 
-	for _, provider := range providers.OpenIDConnectProviderList {
-		if strings.Contains(*provider.Arn, issuerURL) {
-			return *provider.Arn, nil
+	for _, arn := range providerArns {
+		if strings.Contains(arn, issuerURL) {
+			return arn, nil
 		}
 	}
 

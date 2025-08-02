@@ -1411,19 +1411,19 @@ func (mr *MockClientMockRecorder) ListOidcProviders(targetClusterId, config inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOidcProviders", reflect.TypeOf((*MockClient)(nil).ListOidcProviders), targetClusterId, config)
 }
 
-// ListOpenIDConnectProviders mocks base method.
-func (m *MockClient) ListOpenIDConnectProviders(ctx context.Context, params *iam.ListOpenIDConnectProvidersInput) (*iam.ListOpenIDConnectProvidersOutput, error) {
+// ListOpenIDConnectProviderArns mocks base method.
+func (m *MockClient) ListOpenIDConnectProviderArns() ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListOpenIDConnectProviders", ctx, params)
-	ret0, _ := ret[0].(*iam.ListOpenIDConnectProvidersOutput)
+	ret := m.ctrl.Call(m, "ListOpenIDConnectProviderArns")
+	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListOpenIDConnectProviders indicates an expected call of ListOpenIDConnectProviders.
-func (mr *MockClientMockRecorder) ListOpenIDConnectProviders(ctx, params interface{}) *gomock.Call {
+// ListOpenIDConnectProviderArns indicates an expected call of ListOpenIDConnectProviderArns.
+func (mr *MockClientMockRecorder) ListOpenIDConnectProviderArns() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOpenIDConnectProviders", reflect.TypeOf((*MockClient)(nil).ListOpenIDConnectProviders), ctx, params)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOpenIDConnectProviderArns", reflect.TypeOf((*MockClient)(nil).ListOpenIDConnectProviderArns))
 }
 
 // ListOperatorRoles mocks base method.

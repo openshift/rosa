@@ -21,9 +21,6 @@ import (
 
 	"go.uber.org/mock/gomock"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
-	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -82,21 +79,17 @@ var _ = Describe("Create IAM Service Account Functions", func() {
 							Managed(false))))
 			})
 
-			// Mock the ListOpenIDConnectProviders call
+			// Mock the ListOpenIDConnectProviderArns call
 			mockAWS := awsClient.NewMockClient(mockCtrl)
 			testRuntime.RosaRuntime.AWSClient = mockAWS
 
-			providerList := &iam.ListOpenIDConnectProvidersOutput{
-				OpenIDConnectProviderList: []iamtypes.OpenIDConnectProviderListEntry{
-					{
-						Arn: aws.String("arn:aws:iam::123456789012:oidc-provider/example.com/oidc"),
-					},
-				},
+			providerArns := []string{
+				"arn:aws:iam::123456789012:oidc-provider/example.com/oidc",
 			}
 
 			mockAWS.EXPECT().
-				ListOpenIDConnectProviders(gomock.Any(), gomock.Any()).
-				Return(providerList, nil)
+				ListOpenIDConnectProviderArns().
+				Return(providerArns, nil)
 
 			arn, err := getOIDCProviderARN(testRuntime.RosaRuntime, unmanagedCluster)
 			Expect(err).ToNot(HaveOccurred())
@@ -120,13 +113,11 @@ var _ = Describe("Create IAM Service Account Functions", func() {
 			mockAWS := awsClient.NewMockClient(mockCtrl)
 			testRuntime.RosaRuntime.AWSClient = mockAWS
 
-			emptyList := &iam.ListOpenIDConnectProvidersOutput{
-				OpenIDConnectProviderList: []iamtypes.OpenIDConnectProviderListEntry{},
-			}
+			emptyArns := []string{}
 
 			mockAWS.EXPECT().
-				ListOpenIDConnectProviders(gomock.Any(), gomock.Any()).
-				Return(emptyList, nil)
+				ListOpenIDConnectProviderArns().
+				Return(emptyArns, nil)
 
 			_, err := getOIDCProviderARN(testRuntime.RosaRuntime, unmanagedCluster)
 			Expect(err).To(HaveOccurred())

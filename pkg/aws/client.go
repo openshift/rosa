@@ -236,7 +236,7 @@ type Client interface {
 	DeleteServiceAccountRole(roleName string) error
 	ListServiceAccountRoles(clusterName string) ([]iamtypes.Role, error)
 	GetServiceAccountRoleDetails(roleName string) (*iamtypes.Role, []iamtypes.AttachedPolicy, []string, error)
-	ListOpenIDConnectProviders(ctx context.Context, params *iam.ListOpenIDConnectProvidersInput) (*iam.ListOpenIDConnectProvidersOutput, error)
+	ListOpenIDConnectProviderArns() ([]string, error)
 }
 
 type AccessKeyGetter interface {
@@ -974,10 +974,6 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 				time.Sleep(wait)
 			}
 
-			if i == maxAttempts {
-				logger.Error("Error waiting for IAM credentials to become ready")
-				return err
-			}
 		} else {
 			waited := time.Since(start)
 			logger.Debug(fmt.Sprintf("\nCredentials ready in %.2fs\n", waited.Seconds()))
@@ -1614,7 +1610,18 @@ func (c *awsClient) GetServiceAccountRoleDetails(roleName string) (*iamtypes.Rol
 	return getRoleResult.Role, listAttachedPoliciesResult.AttachedPolicies, listRolePoliciesResult.PolicyNames, nil
 }
 
-// ListOpenIDConnectProviders lists OIDC providers
-func (c *awsClient) ListOpenIDConnectProviders(ctx context.Context, params *iam.ListOpenIDConnectProvidersInput) (*iam.ListOpenIDConnectProvidersOutput, error) {
-	return c.iamClient.ListOpenIDConnectProviders(ctx, params)
+// ListOpenIDConnectProviderArns returns a list of OIDC provider ARNs
+func (c *awsClient) ListOpenIDConnectProviderArns() ([]string, error) {
+	output, err := c.iamClient.ListOpenIDConnectProviders(context.Background(), &iam.ListOpenIDConnectProvidersInput{})
+	if err != nil {
+		return nil, err
+	}
+
+	arns := make([]string, 0, len(output.OpenIDConnectProviderList))
+	for _, provider := range output.OpenIDConnectProviderList {
+		if provider.Arn != nil {
+			arns = append(arns, *provider.Arn)
+		}
+	}
+	return arns, nil
 }
