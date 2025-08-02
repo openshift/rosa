@@ -177,34 +177,6 @@ var _ = Describe("Create IAM Service Account Functions", func() {
 	})
 
 	Context("Command Validation", func() {
-		var originalArgs struct {
-			serviceAccountNames []string
-			namespace           string
-			roleName            string
-			policyArns          []string
-			inlinePolicy        string
-			permissionsBoundary string
-			path                string
-		}
-
-		BeforeEach(func() {
-			// Save original args
-			originalArgs = args
-
-			// Reset command state before each test
-			args.serviceAccountNames = []string{}
-			args.namespace = "default"
-			args.roleName = ""
-			args.policyArns = []string{}
-			args.inlinePolicy = ""
-			args.permissionsBoundary = ""
-			args.path = "/"
-		})
-
-		AfterEach(func() {
-			// Restore original args
-			args = originalArgs
-		})
 
 		DescribeTable("Validate required flags",
 			func(testArgs []string, shouldFail bool, expectedError string) {

@@ -18,7 +18,6 @@ const (
 	GobName = "ocm-cache.gob"
 )
 
-//go:generate mockgen -source=cache.go -package=cache -destination=./cache_mock.go
 type RosaCache interface {
 	Set(k string, x interface{}, d time.Time)
 	Get(k string) (interface{}, bool)
