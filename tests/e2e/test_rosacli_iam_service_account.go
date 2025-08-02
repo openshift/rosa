@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021 Red Hat, Inc.
+Copyright (c) 2025 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@ package e2e
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,6 +38,8 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 		// Track resources for cleanup
 		serviceAccountRolesToClean []string
 		testClusterID              string
+		// Generate unique namespace for tests
+		testNamespace string
 	)
 
 	BeforeEach(func() {
@@ -69,6 +73,10 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 		}
 
 		By(fmt.Sprintf("Using cluster: %s (%s)", testCluster.Name, testCluster.ID))
+
+		// Generate unique namespace for this test run
+		rand.Seed(time.Now().UnixNano())
+		testNamespace = fmt.Sprintf("test-ns-%d", rand.Intn(10000))
 	})
 
 	AfterEach(func() {
@@ -94,11 +102,11 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 
 	Context("IAM Service Account Management", func() {
 		It("can create, list, describe, and delete IAM service account role - [id:70001]",
-			labels.High, labels.Runtime.OCMResources,
+			labels.High, labels.Runtime.OCMResources, labels.Runtime.Day2,
 			func() {
 				By("Create an IAM service account role")
 				serviceAccountName := "test-service-account"
-				namespace := "test-namespace"
+				namespace := testNamespace
 				policyArn := "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
 				createOutput, err := rosaClient.IAMServiceAccount.CreateIAMServiceAccountRole(
@@ -185,11 +193,11 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 			})
 
 		It("can create role with custom name and multiple policies - [id:70002]",
-			labels.Medium, labels.Runtime.OCMResources,
+			labels.Medium, labels.Runtime.OCMResources, labels.Runtime.Day2,
 			func() {
 				By("Create an IAM service account role with custom name and multiple policies")
 				serviceAccountName := "multi-policy-app"
-				namespace := "prod-namespace"
+				namespace := testNamespace + "-multi"
 				customRoleName := "custom-test-role-" + GenerateRandomStringWithSymbols(5)
 				policyArns := []string{
 					"arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
@@ -250,11 +258,11 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 			})
 
 		It("can handle manual mode operations - [id:70003]",
-			labels.Low, labels.Runtime.OCMResources,
+			labels.Low, labels.Runtime.OCMResources, labels.Runtime.Day2,
 			func() {
 				By("Create IAM service account role in manual mode")
 				serviceAccountName := "manual-test-app"
-				namespace := "manual-test"
+				namespace := testNamespace + "-manual"
 				policyArn := "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
 				createOutput, err := rosaClient.IAMServiceAccount.CreateIAMServiceAccountRole(
@@ -290,7 +298,7 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 			})
 
 		It("can validate input parameters - [id:70004]",
-			labels.Low, labels.Runtime.OCMResources,
+			labels.Low, labels.Runtime.OCMResources, labels.Runtime.Day2,
 			func() {
 				By("Test invalid service account name")
 				_, err := rosaClient.IAMServiceAccount.CreateIAMServiceAccountRole(
@@ -323,7 +331,7 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 			})
 
 		It("can handle non-existent resources gracefully - [id:70005]",
-			labels.Low, labels.Runtime.OCMResources,
+			labels.Low, labels.Runtime.OCMResources, labels.Runtime.Day2,
 			func() {
 				By("Try to describe non-existent role")
 				_, err := rosaClient.IAMServiceAccount.DescribeIAMServiceAccountRole(

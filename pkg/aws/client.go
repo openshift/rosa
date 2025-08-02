@@ -1493,11 +1493,11 @@ func (c *awsClient) DeleteServiceAccountRole(roleName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete role %s: %w", roleName, err)
 	}
-	
+
 	// Check if the role was successfully deleted
 	if deleted, exists := roleMap[roleName]; exists && !deleted {
 		return fmt.Errorf("failed to delete role %s", roleName)
 	}
-	
+
 	return nil
 }

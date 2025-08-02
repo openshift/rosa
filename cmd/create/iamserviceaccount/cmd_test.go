@@ -3,12 +3,13 @@ package iamserviceaccount
 import (
 	"context"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/spf13/cobra"
 	"go.uber.org/mock/gomock"
 
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/rosa/pkg/aws"
 	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/test"
@@ -70,7 +71,7 @@ var _ = Describe("Create IAM Service Account", func() {
 					Namespace:           "default",
 				}
 				testRunner := CreateIamServiceAccountRunner(options)
-				
+
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
 				Expect(err).ToNot(HaveOccurred())
 			})
