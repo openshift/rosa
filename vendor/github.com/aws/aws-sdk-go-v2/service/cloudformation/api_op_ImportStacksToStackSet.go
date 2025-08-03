@@ -40,7 +40,9 @@ type ImportStacksToStackSetInput struct {
 
 	// By default, SELF is specified. Use SELF for stack sets with self-managed
 	// permissions.
+	//
 	//   - If you are signed in to the management account, specify SELF .
+	//
 	//   - For service managed stack sets, specify DELEGATED_ADMIN .
 	CallAs types.CallAs
 
@@ -48,9 +50,12 @@ type ImportStacksToStackSetInput struct {
 	OperationId *string
 
 	// The user-specified preferences for how CloudFormation performs a stack set
-	// operation. For more information about maximum concurrent accounts and failure
-	// tolerance, see Stack set operation options (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-concepts.html#stackset-ops-options)
-	// .
+	// operation.
+	//
+	// For more information about maximum concurrent accounts and failure tolerance,
+	// see [Stack set operation options].
+	//
+	// [Stack set operation options]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/what-is-cfnstacksets.html#stackset-ops-options
 	OperationPreferences *types.StackSetOperationPreferences
 
 	// The list of OU ID's to which the stacks being imported has to be mapped as
@@ -58,11 +63,14 @@ type ImportStacksToStackSetInput struct {
 	OrganizationalUnitIds []string
 
 	// The IDs of the stacks you are importing into a stack set. You import up to 10
-	// stacks per stack set at a time. Specify either StackIds or StackIdsUrl .
+	// stacks per stack set at a time.
+	//
+	// Specify either StackIds or StackIdsUrl .
 	StackIds []string
 
-	// The Amazon S3 URL which contains list of stack ids to be inputted. Specify
-	// either StackIds or StackIdsUrl .
+	// The Amazon S3 URL which contains list of stack ids to be inputted.
+	//
+	// Specify either StackIds or StackIdsUrl .
 	StackIdsUrl *string
 
 	noSmithyDocumentSerde
@@ -122,6 +130,9 @@ func (c *Client) addOperationImportStacksToStackSetMiddlewares(stack *middleware
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -132,6 +143,15 @@ func (c *Client) addOperationImportStacksToStackSetMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opImportStacksToStackSetMiddleware(stack, options); err != nil {
@@ -156,6 +176,48 @@ func (c *Client) addOperationImportStacksToStackSetMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
