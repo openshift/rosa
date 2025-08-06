@@ -25,6 +25,8 @@ spec:
     value: quay.io/redhat-user-workloads/rh-terraform-tenant/rosa-cli-e2e-test:{{revision}}
   - name: dockerfile
     value: /images/Dockerfile.konflux
+  - name: target_branch
+    value: '{{target_branch}}'
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -523,17 +525,13 @@ spec:
         operator: in
         values:
         - "false"
-    - name: apply-tags
+    - name: apply-tags-released
       params:
       - name: IMAGE
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: ADDITIONAL_TAGS
-        value: >-
-          {{- if (startsWith(target_branch, "refs/tags/v")) -}}
-            e2e_test_releasing_latest
-          {{- else -}}
-            e2e_test_latest
-          {{- end -}}
+        value:
+        - e2e_test_releasing_latest
       runAfter:
       - build-image-index
       taskRef:
@@ -545,6 +543,32 @@ spec:
         - name: kind
           value: task
         resolver: bundles
+      when:
+        - input: $(params.target_branch)
+          operator: startsWith
+          values: ["refs/tags/v"]
+    - name: apply-tags-latest
+      params:
+      - name: IMAGE
+        value: $(tasks.build-image-index.results.IMAGE_URL)
+      - name: ADDITIONAL_TAGS
+        value:
+        - e2e_test_latest
+      runAfter:
+      - build-image-index
+      taskRef:
+        params:
+        - name: name
+          value: apply-tags
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.1@sha256:1c6f673fe100a49f58aaef62580c8adf0c397790964f4e7bac7fcd3f4d07c92e
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+        - input: $(params.target_branch)
+          operator: notin
+          values: ["refs/tags/v"]
     - name: push-dockerfile
       params:
       - name: IMAGE
