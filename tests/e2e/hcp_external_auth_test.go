@@ -52,7 +52,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 		})
 
 		It("to create/list/describe/delete HCP cluster with break_glass_credentials can work well - [id:72899]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				var resp bytes.Buffer
 				var err error
@@ -155,7 +155,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 			})
 
 		It("create/list/describe/delete external_auth for a HCP cluster can work well via rosa client - [id:72536]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -280,7 +280,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 
 	Describe("validation testing", func() {
 		It("to validate create/list/describe/delete break_glass_credentials can work well - [id:73018]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Create/list/revoke break-glass-credential to non-HCP cluster")
 				hosted, err := clusterService.IsHostedCPCluster(clusterID)
@@ -401,7 +401,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 			})
 
 		It("to validate create/list/delete idp and user/admin to external_auth_config cluster can work well - [id:71946]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Skip testing if the cluster is not a HCP cluster")
 				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
@@ -468,7 +468,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 			})
 
 		It("to validate HCP cluster creation/list with external auth - [id:72602]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Create non HCP cluster with external_auths")
 				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)

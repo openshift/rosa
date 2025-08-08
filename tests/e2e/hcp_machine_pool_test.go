@@ -56,7 +56,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	})
 
 	Describe("Create/delete/view a machine pool", func() {
-		It("should succeed with additional security group IDs [id:72195]", labels.Critical, labels.Runtime.Day2, func() {
+		It("should succeed with additional security group IDs [id:72195]", labels.Critical, labels.Runtime.Day2, labels.FedRAMP, func() {
 			By("check the throttle version")
 			throttleVersion, _ := semver.NewVersion("4.15.0-a.0")
 			clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
@@ -124,7 +124,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	})
 
 	DescribeTable("create machinepool with volume size set - [id:66872]",
-		labels.Runtime.Day2,
+		labels.Runtime.Day2, labels.FedRAMP,
 		labels.Critical,
 		func(diskSize, instanceType, expectedDiskSize string) {
 			npID := helper.GenerateRandomName("np-66872", 2)
@@ -169,7 +169,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	)
 
 	It("machinepool AWS preflight tag validation[id:73638]",
-		labels.Medium, labels.Runtime.Day2,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 
 			By("Check the help message of machinepool creation")
@@ -266,7 +266,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(out.String()).Should(ContainSubstring("ERR: expected a valid user tag value '#'"))
 		})
 
-	DescribeTable("Scale up/down a machine pool", labels.Critical, labels.Runtime.Day2,
+	DescribeTable("Scale up/down a machine pool", labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 		func(instanceType string, amdOrArm string) {
 			if !isMultiArch && amdOrArm == constants.ARM {
 				SkipNotMultiArch()
@@ -324,7 +324,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		Entry("For arm64 cpu architecture [id:60278]", constants.M6gXLarge, constants.ARM),
 	)
 
-	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Medium, labels.Runtime.Day2,
+	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func(instanceType string, updatedReplicas string, expectedErrMsg string) {
 			By("Create machinepool with instance " + instanceType)
 			mpName := helper.GenerateRandomName("mp-60278", 2)
@@ -350,7 +350,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	)
 
 	Describe("Scale up/down a machine pool enabling autoscale", func() {
-		It("should succeed to scale with valid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, func() {
+		It("should succeed to scale with valid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
 			instanceType := constants.M52XLarge
 			By("Create machinepool with " + " instance " + instanceType + " and enable autoscale")
 
@@ -400,7 +400,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should raise error message with the invalid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, func() {
+		It("should raise error message with the invalid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
 			instanceType := constants.M52XLarge
 			By("Create machinepool with" + " instance " + instanceType + " and enable autoscale")
 
@@ -599,7 +599,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 					ContainSubstring("Setting `multi-availability-zone` flag is not supported for HCP clusters"))
 		})
 
-		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, func() {
+		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
 			By("with no machinepool id")
 			_, err := machinePoolService.DeleteMachinePool(clusterID, "")
 			Expect(err).To(HaveOccurred())
@@ -635,7 +635,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		})
 
 		It("creation in local zone subnet - [id:71319]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				if profile.ClusterConfig.SharedVPC {
 					Skip("This test only run on the cluster not using shared-vpc")
@@ -691,7 +691,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 							fmt.Sprintf("Creating a node pool a in local zone '%s' isn't supported", localZone)))
 			})
 
-		It("upgrade - [id:67419]", labels.Medium, labels.Runtime.Day2, func() {
+		It("upgrade - [id:67419]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
 			var err error
 
 			clusterService := rosaClient.Cluster
@@ -860,7 +860,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		})
 
 		It("will validate root volume size - [id:66874]",
-			labels.Runtime.Day2, labels.Medium,
+			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
 			func() {
 				npName := helper.GenerateRandomName("np-66874", 2)
 				By("Create with too small disk size will fail")

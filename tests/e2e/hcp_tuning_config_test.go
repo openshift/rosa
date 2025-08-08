@@ -40,7 +40,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 	})
 
 	It("can be created/updated/deleted to hosted cluster - [id:63164]",
-		labels.Critical, labels.Runtime.Day2,
+		labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
 			tc1Name := helper.GenerateRandomName("tuned01", 2)
@@ -126,7 +126,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 		})
 
 	It("can validate creation - [id:63169]",
-		labels.Medium, labels.Runtime.Day2,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
 
@@ -223,7 +223,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 		})
 
 	It("can validate update - [id:63174]",
-		labels.Medium, labels.Runtime.Day2,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			tuningConfigService := rosaClient.TuningConfig
 

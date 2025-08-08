@@ -299,7 +299,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("can create/delete the HTPasswd IDPs - [id:49137]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				var (
 					idpType            = "htpasswd"
@@ -375,7 +375,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("Validation for Create/Delete the HTPasswd IDPs by the rosacli command - [id:53031]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				if profile.ClusterConfig.ExternalAuthConfig {
 					Skip("Skip this case as IDP is not supported for external auth")
@@ -440,7 +440,7 @@ var _ = Describe("Edit IDP",
 			})
 
 		It("Check the help message and the validation for the IDP creation commands by the rosa cli - [id:38788]",
-			labels.Medium, labels.Runtime.Day2, labels.Feature.IDP,
+			labels.Medium, labels.Runtime.Day2, labels.Feature.IDP, labels.FedRAMP,
 			func() {
 				if profile.ClusterConfig.ExternalAuthConfig {
 					Skip("IDP is not supported for external auth")
@@ -745,7 +745,7 @@ var _ = Describe("Edit IDP",
 				})
 
 				It("Create admin first",
-					labels.Medium, labels.Runtime.Day2,
+					labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 					func() {
 
 						By("Create admin")
@@ -805,7 +805,7 @@ var _ = Describe("Edit IDP",
 					})
 
 				It("Create admin last",
-					labels.Medium, labels.Runtime.Day2,
+					labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 					func() {
 
 						By("Create one htpasswd idp with --from-file")

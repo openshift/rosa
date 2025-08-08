@@ -72,7 +72,7 @@ var _ = Describe("Edit nodepool",
 		})
 
 		It("can create/edit/list/delete nodepool - [id:56782]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				nodePoolName := helper.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
@@ -175,7 +175,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create nodepool with defined subnets - [id:60202]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				var subnets []string
 				nodePoolName := helper.GenerateRandomName("np-60202", 2)
@@ -315,7 +315,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create nodepool with tuning config - [id:63178]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := helper.GenerateRandomName("np-63178", 2)
@@ -386,7 +386,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create nodepool with tuning config will validate well - [id:63179]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				tuningConfigService := rosaClient.TuningConfig
 				nodePoolName := helper.GenerateRandomName("np-63179", 2)
@@ -452,7 +452,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("does support 'version' parameter on nodepool - [id:61138]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				nodePoolName := helper.GenerateRandomName("np-61138", 2)
 
@@ -543,7 +543,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can validate the version parameter on nodepool creation/editing - [id:61139]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				testVersionFailFunc := func(flags ...string) {
 					Logger.Infof("Creating nodepool with flags %v", flags)
@@ -626,7 +626,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can list/describe/delete nodepool upgrade policies - [id:67414]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				currentDateTimeUTC := time.Now().UTC()
 
@@ -823,7 +823,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/edit nodepool with node_drain_grace_period to HCP cluster via ROSA cli can work well - [id:72715]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("check help message for create/edit machinepool")
 				help, err := machinePoolService.RetrieveHelpForCreate()
@@ -907,7 +907,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("validations will work for editing machinepool via rosa cli - [id:73391]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				nonExistingMachinepoolName := helper.GenerateRandomName("mp-fake", 2)
 				machinepoolName := helper.GenerateRandomName("mp-73391", 2)
@@ -987,7 +987,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/describe machinepool with user tags for HCP - [id:73492]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Get the Organization Id")
 				rosaClient.Runner.JsonFormat()
@@ -1001,8 +1001,12 @@ var _ = Describe("Edit nodepool",
 
 				By("Get OCM Env")
 				if strings.Contains(ocmApi, "stage") {
-					OCMEnv = "staging"
-				} else if strings.Contains(ocmApi, "integration") {
+					if profile.ClusterConfig.FedRAMP {
+						OCMEnv = "stage"
+					} else {
+						OCMEnv = "staging"
+					}
+				} else if strings.Contains(ocmApi, "integration") || strings.Contains(ocmApi, "int") {
 					OCMEnv = "integration"
 				} else {
 					OCMEnv = "production"
@@ -1125,7 +1129,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/edit/describe maxunavailable/maxsurge for HCP nodepools - [id:74387]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Retrieve help for create/edit machinepool")
 				output, err := machinePoolService.RetrieveHelpForCreate()
@@ -1345,7 +1349,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("validation for create/edit HCP nodepool with maxunavailable/maxsurge - [id:74430]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				rangeofNumbers := "must be between 0 and 100"
 				parseMsg := "Failed to parse percentage "
@@ -1665,7 +1669,7 @@ var _ = Describe("Edit nodepool",
 		})
 
 		It("create/describe rosa hcp machinepool support imdsv2 - [id:75227]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check the help message of 'rosa create machinepool -h'")
 				res, err := machinePoolService.RetrieveHelpForCreate()
@@ -1713,7 +1717,7 @@ var _ = Describe("Edit nodepool",
 								"value should be one of 'required', 'optional'"))
 			})
 
-		It("Edit machine pool to the ROSA Hypershift cluster - [id:56778]", labels.Runtime.Day2, labels.High,
+		It("Edit machine pool to the ROSA Hypershift cluster - [id:56778]", labels.Runtime.Day2, labels.High, labels.FedRAMP,
 			func() {
 				var (
 					replicas         string

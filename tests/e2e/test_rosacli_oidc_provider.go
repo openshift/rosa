@@ -39,7 +39,7 @@ var _ = Describe("OIDC provider",
 		})
 
 		It("validate when user create oidc-provider to cluster - [id:43046]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Check if cluster is sts cluster")
 				StsCluster, err := clusterService.IsSTSCluster(clusterID)

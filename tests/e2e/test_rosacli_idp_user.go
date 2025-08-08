@@ -3,6 +3,7 @@ package e2e
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
@@ -166,6 +167,8 @@ var _ = Describe("Validate user", // TODO could be transformed as day1 negative
 
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
+			awsClient      *aws_client.AWSClient
+			err            error
 		)
 
 		BeforeEach(func() {
@@ -176,23 +179,31 @@ var _ = Describe("Validate user", // TODO could be transformed as day1 negative
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
+
+			awsClient, err = aws_client.CreateAWSClient("", "")
+			Expect(err).To(BeNil())
 		})
 
 		It("try to create cluster with invalid usernames, passwords or unsupported configurations - [id:66362]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				clusterID = "fake-cluster" // these tests do not create or use a real cluster so no need to address an existing one.
 
+				region := "us-east-2"
+				if awsClient.GetAWSPartition() == "aws-us-gov" {
+					region = "us-gov-east-1"
+				}
+
 				By("Try to create classic non STS cluster with invalid admin password")
 				output, err := clusterService.CreateDryRun(clusterID, "--cluster-admin-password", invalidPassword,
-					"--region", "us-east-2", "--mode", "auto", "-y")
+					"--region", region, "--mode", "auto", "-y")
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
 				Expect(textData).Should(ContainSubstring("assword must be at least"))
 
 				By("Try to create cluster with invalid admin password on classic STS cluster")
 				output, err = clusterService.CreateDryRun(clusterID, "--sts", "--cluster-admin-password", invalidPassword,
-					"--region", "us-east-2", "--mode", "auto", "-y")
+					"--region", region, "--mode", "auto", "-y")
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
 				Expect(textData).Should(ContainSubstring("assword must be at least"))

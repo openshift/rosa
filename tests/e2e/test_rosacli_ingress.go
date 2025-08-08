@@ -146,7 +146,7 @@ var _ = Describe("Edit default ingress",
 			})
 
 		It("can describe ingress of a cluster - [id:73538]",
-			labels.Low, labels.Runtime.Day2,
+			labels.Low, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Retrieve cluster and get default ingress id")
 				output, err := ingressService.ListIngress(clusterID)
@@ -162,7 +162,7 @@ var _ = Describe("Edit default ingress",
 			})
 
 		It("can describe ingress of a cluster negative - [id:75052]",
-			labels.Low, labels.Runtime.Day2,
+			labels.Low, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Get default ingress id with no clusterID provided")
 				emptyClusterID := ""
@@ -182,7 +182,7 @@ var _ = Describe("Edit default ingress",
 
 		It("change load balancer type - [id:64767]",
 			labels.Critical,
-			labels.Runtime.Day2,
+			labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Skip testing if the cluster is not a Classic cluster")
 				if isHosted {
@@ -240,6 +240,7 @@ var _ = Describe("Edit default ingress",
 		It("can customize ingress controller at install - [id:65798]",
 			labels.High,
 			labels.Runtime.Day1Post,
+			labels.FedRAMP,
 			func() {
 				By("Skip testing if the cluster is not a Classic cluster")
 				if isHosted {
@@ -289,7 +290,7 @@ var _ = Describe("Edit default ingress",
 
 		It("can update ingress controller attributes - [id:65799]",
 			labels.Critical,
-			labels.Runtime.Day2,
+			labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Skip testing if the cluster is not a Classic cluster")
 				if isHosted {
@@ -352,7 +353,7 @@ var _ = Describe("Edit default ingress",
 			})
 		It("can change labels and private - [id:38835]",
 			labels.Critical,
-			labels.Runtime.Day2,
+			labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				By("Skip testing if the cluster is not a Classic cluster")
 				if isHosted {
@@ -477,7 +478,7 @@ var _ = Describe("Edit ingress",
 		})
 
 		It("can validate well - [id:38837]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				if isHosted {
 					SkipNotClassic()
@@ -542,7 +543,7 @@ var _ = Describe("Delete ingress validations",
 		})
 
 		It("will fail as expected on incorrect deletions (negative) - [id:38780]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				if isHosted {
 					SkipNotClassic()
