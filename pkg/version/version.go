@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	DownloadLatestMirrorFolder = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa/latest/"
-	baseReleasesFolder         = "https://mirror.openshift.com/pub/openshift-v4/clients/rosa/"
+	DownloadLatestMirrorFolder = "https://mirror.openshift.com/pub/cgw/rosa/latest/"
+	baseReleasesFolder         = "https://mirror.openshift.com/pub/cgw/rosa/"
 	ConsoleLatestFolder        = "https://console.redhat.com/openshift/downloads#tool-rosa"
 )
 
