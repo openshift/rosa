@@ -19,7 +19,6 @@ package region
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -154,18 +153,16 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	headerFormat := "ID\t\tNAME\t\tMULTI-AZ SUPPORT\t\tHOSTED-CP SUPPORT\n"
-	fmt.Fprint(writer, headerFormat)
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "NAME", "MULTI-AZ SUPPORT", "HOSTED-CP SUPPORT")
 
 	for _, region := range availableRegions {
-		fmt.Fprintf(writer,
-			"%s\t\t%s\t\t%t\t\t%t\n",
+		tb.AddRow(
 			region.ID(),
 			region.DisplayName(),
-			region.SupportsMultiAZ(),
-			region.SupportsHypershift(),
+			fmt.Sprintf("%t", region.SupportsMultiAZ()),
+			fmt.Sprintf("%t", region.SupportsHypershift()),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 }

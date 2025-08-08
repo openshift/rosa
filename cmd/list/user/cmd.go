@@ -17,11 +17,9 @@ limitations under the License.
 package user
 
 import (
-	"fmt"
 	"math"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -117,11 +115,11 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, int(longestUserId)+2, 4, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tGROUPS\t\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "GROUPS")
 
 	for u, r := range groups {
-		fmt.Fprintf(writer, "%s\t%s\t\n", u, strings.Join(r, ", "))
-		writer.Flush()
+		tb.AddRow(u, strings.Join(r, ", "))
 	}
+	tb.Render()
 }

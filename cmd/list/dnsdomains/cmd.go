@@ -17,9 +17,7 @@ limitations under the License.
 package dnsdomains
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -100,23 +98,23 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "CLUSTER ID", "RESERVED TIME", "USER DEFINED", "ARCHITECTURE")
 
-	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\tARCHITECTURE\n")
 	for _, dnsdomain := range dnsDomains {
 		userDefined := "No"
 		if dnsdomain.UserDefined() {
 			userDefined = "Yes"
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
+		tb.AddRow(
 			dnsdomain.ID(),
 			dnsdomain.Cluster().ID(),
 			dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
 			userDefined,
-			dnsdomain.ClusterArch(),
+			string(dnsdomain.ClusterArch()),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 }
 
 func filterByClusterArch(domains []*v1.DNSDomain, arch v1.ClusterArchitecture) []*v1.DNSDomain {

@@ -3,3 +3,4 @@
 - name: account-role-arn
 - name: profile
 - name: region
+- name: hide-empty-fields

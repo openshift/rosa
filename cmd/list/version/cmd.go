@@ -17,10 +17,8 @@ limitations under the License.
 package version
 
 import (
-	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -105,13 +103,14 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+
 	if isHostedCp {
 		r.Reporter.Infof("Hosted cluster upgrades are cluster-based. To list available upgrades for a cluster, "+
 			"please use '%s'", upgrade.Cmd.CommandPath())
-		fmt.Fprintf(writer, "VERSION\t\tDEFAULT\n")
+		tb.SetHeaders("VERSION", "DEFAULT")
 	} else {
-		fmt.Fprintf(writer, "VERSION\t\tDEFAULT\t\tAVAILABLE UPGRADES\n")
+		tb.SetHeaders("VERSION", "DEFAULT", "AVAILABLE UPGRADES")
 	}
 
 	for _, version := range availableVersions {
@@ -128,12 +127,19 @@ func run(_ *cobra.Command, _ []string) {
 			}
 			availableUpgrades = strings.Join(version.AvailableUpgrades(), ", ")
 		}
-		fmt.Fprintf(writer,
-			"%s\t\t%s\t\t%s\n",
-			version.RawID(),
-			isDefault,
-			availableUpgrades,
-		)
+
+		if isHostedCp {
+			tb.AddRow(
+				version.RawID(),
+				isDefault,
+			)
+		} else {
+			tb.AddRow(
+				version.RawID(),
+				isDefault,
+				availableUpgrades,
+			)
+		}
 	}
-	writer.Flush()
+	tb.Render()
 }

@@ -17,9 +17,7 @@ limitations under the License.
 package addon
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -82,16 +80,17 @@ func listAllAddOns(r *rosa.Runtime) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tAVAILABILITY\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "NAME", "AVAILABILITY")
+
 	for _, addOnResource := range addOnResources {
 		availability := "unavailable"
 		if addOnResource.Available {
 			availability = "available"
 		}
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name(), availability)
+		tb.AddRow(addOnResource.AddOn.ID(), addOnResource.AddOn.Name(), availability)
 	}
-	writer.Flush()
+	tb.Render()
 
 	os.Exit(0)
 }
@@ -143,12 +142,13 @@ func listClusterAddOns(clusterKey string, r *rosa.Runtime) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tSTATE\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "NAME", "STATE")
+
 	for _, clusterAddOn := range clusterAddOns {
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", clusterAddOn.ID, clusterAddOn.Name, clusterAddOn.State)
+		tb.AddRow(clusterAddOn.ID, clusterAddOn.Name, clusterAddOn.State)
 	}
-	writer.Flush()
+	tb.Render()
 }
 
 func run(_ *cobra.Command, _ []string) {

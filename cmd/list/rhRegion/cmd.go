@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var (
-	writer = tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', tabwriter.TabIndent)
-	args   struct {
+	args struct {
 		discoveryURL string
 	}
 )
@@ -68,7 +67,10 @@ func ListRhRegions(discoveryURL string, r *rosa.Runtime) error {
 		return fmt.Errorf("Failed to determine gateway URL: %v", err)
 	}
 
-	fmt.Fprintf(writer, "Discovery URL: %s\n\n", gatewayURL)
+	// Create the writer that will be used to print the tabulated results:
+	tb := output.NewTableBuilder()
+
+	fmt.Printf("Discovery URL: %s\n\n", gatewayURL)
 	regions, err := sdk.GetRhRegions(gatewayURL)
 	if err != nil {
 		return fmt.Errorf("Failed to get OCM regions: %v", err)
@@ -79,10 +81,11 @@ func ListRhRegions(discoveryURL string, r *rosa.Runtime) error {
 		r.Reporter.Warnf("No regions found")
 		return nil
 	}
-	fmt.Fprintf(writer, "RH Region\t\tGateway URL\n")
+
+	tb.SetHeaders("RH Region", "Gateway URL")
 	for regionName, region := range regions {
-		fmt.Fprintf(writer, "%s\t\t%v\n", regionName, region.URL)
+		tb.AddRow(regionName, region.URL)
 	}
-	writer.Flush()
+	tb.Render()
 	return nil
 }

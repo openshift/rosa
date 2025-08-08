@@ -17,9 +17,7 @@ limitations under the License.
 package service
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 	"github.com/spf13/cobra"
@@ -77,12 +75,17 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "SERVICE_ID\tSERVICE\tSERVICE_STATE\tCLUSTER_NAME\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("SERVICE_ID", "SERVICE", "SERVICE_STATE", "CLUSTER_NAME")
+
 	servicesList.Each(func(srv *msv1.ManagedService) bool {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
-			srv.ID(), srv.Service(), srv.ServiceState(), srv.Cluster().Name())
+		tb.AddRow(
+			srv.ID(),
+			srv.Service(),
+			string(srv.ServiceState()),
+			srv.Cluster().Name(),
+		)
 		return true
 	})
-	writer.Flush()
+	tb.Render()
 }

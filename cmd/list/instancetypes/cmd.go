@@ -19,7 +19,6 @@ package instancetypes
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -173,22 +172,22 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\n")
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "CATEGORY", "CPU_CORES", "MEMORY")
 
 	for _, machine := range machineTypes.Items {
 		if !machine.Available {
 			continue
 		}
 		availableMachine := machine.MachineType
-		fmt.Fprintf(writer,
-			"%s\t%s\t%d\t%s\n",
-			availableMachine.ID(), availableMachine.Category(), int(availableMachine.CPU().Value()),
-			ByteCountIEC(int(availableMachine.Memory().Value()),
-				availableMachine.Memory().Unit()),
+		tb.AddRow(
+			availableMachine.ID(),
+			string(availableMachine.Category()),
+			fmt.Sprintf("%d", int(availableMachine.CPU().Value())),
+			ByteCountIEC(int(availableMachine.Memory().Value()), availableMachine.Memory().Unit()),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 
 	return nil
 }
