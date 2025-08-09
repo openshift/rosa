@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
-	. "github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -44,13 +44,13 @@ func GetInstallerRoleArn(r *rosa.Runtime, cmd *cobra.Command,
 			}
 		}
 		r.Reporter.Warnf("More than one %s role found", role.Name)
-		if !Enabled() && confirm.Yes() {
+		if !interactive.Enabled() && confirm.Yes() {
 			roleARN = defaultRoleARN
 		} else {
 			if roleARN != "" {
 				defaultRoleARN = roleARN
 			}
-			roleARN, err = GetOption(Input{
+			roleARN, err = interactive.GetOption(interactive.Input{
 				Question: fmt.Sprintf("%s role ARN", role.Name),
 				Help:     cmd.Flags().Lookup("role-arn").Usage,
 				Options:  roleARNs,

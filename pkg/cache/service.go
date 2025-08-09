@@ -15,7 +15,6 @@ type RosaCacheData struct {
 	Data map[string]Item
 }
 
-//go:generate mockgen -source=service.go -package=cache -destination=./service_mock.go
 type RosaCacheService interface {
 	LoadCache() (RosaCache, error)
 	Get(key string) (interface{}, bool)

@@ -101,6 +101,17 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=pkg/aws/api_interface/ec2_api_client.go -package=mocks -destination=pkg/aws/mocks/ec2_api_client_mock.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/s3_api_client.go -package=mocks -destination=pkg/aws/mocks/s3_api_client_mock.go
 	$(MOCKGEN) -source=pkg/aws/api_interface/secretsmanager_api_client.go -package=mocks -destination=pkg/aws/mocks/secretsmanager_api_client_mock.go
+	$(MOCKGEN) -source=pkg/aws/client.go -package=aws -destination=pkg/aws/client_mock.go
+	$(MOCKGEN) -source=pkg/version/version.go -package=version -destination=pkg/version/version_mock.go
+	$(MOCKGEN) -source=pkg/version/retriever.go -package=version -destination=pkg/version/retriever_mock.go
+	$(MOCKGEN) -source=cmd/verify/rosa/cmd.go -package=rosa -destination=cmd/verify/rosa/cmd_mock.go
+	$(MOCKGEN) -source=pkg/clients/http.go -package=clients -destination=pkg/clients/http_mock.go
+	$(MOCKGEN) -source=pkg/cache/service.go -package=cache -destination=pkg/cache/service_mock.go
+	$(MOCKGEN) -source=pkg/cache/cache.go -package=cache -destination=pkg/cache/cache_mock.go
+	$(MOCKGEN) -source=pkg/network/network.go -package=network -destination=pkg/network/network_mock.go
+	$(MOCKGEN) -source=pkg/machinepool/machinepool.go -package=machinepool -destination=pkg/machinepool/machinepool_mock.go
+	$(MOCKGEN) -source=pkg/kubeletconfig/config.go -package=kubeletconfig -destination=pkg/kubeletconfig/capability_checker_mock.go
+	$(MOCKGEN) -source=cmd/create/idp/cmd.go -package=mocks -destination=cmd/create/idp/mocks/identityprovider.go
 
 
 .PHONY: e2e_test

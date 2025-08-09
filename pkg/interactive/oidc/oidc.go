@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	. "github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -25,7 +25,7 @@ func GetOidcConfigID(r *rosa.Runtime, cmd *cobra.Command) string {
 	for _, oidcConfig := range oidcConfigs {
 		oidcConfigsIds = append(oidcConfigsIds, fmt.Sprintf("%s | %s", oidcConfig.ID(), oidcConfig.IssuerUrl()))
 	}
-	oidcConfigId, err := GetOption(Input{
+	oidcConfigId, err := interactive.GetOption(interactive.Input{
 		Question: "OIDC Configuration ID",
 		Help:     cmd.Flags().Lookup("oidc-config-id").Usage,
 		Options:  oidcConfigsIds,
