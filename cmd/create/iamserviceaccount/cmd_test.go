@@ -73,7 +73,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				}
 
 				mockAWS.EXPECT().
-					ListOidcProviders("", cluster.AWS().STS().OidcConfig()).
+					ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
 					Return(providers, nil)
 
 				mockAWS.EXPECT().
@@ -160,7 +160,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				}
 
 				mockAWS.EXPECT().
-					ListOidcProviders("", cluster.AWS().STS().OidcConfig()).
+					ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
 					Return(providers, nil)
 
 				mockAWS.EXPECT().
@@ -203,7 +203,7 @@ var _ = Describe("Create IAM Service Account", func() {
 			}
 
 			mockAWS.EXPECT().
-				ListOidcProviders("", cluster.AWS().STS().OidcConfig()).
+				ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
 				Return(providers, nil)
 
 			arn, err := getOIDCProviderARN(t.RosaRuntime, cluster)
@@ -223,7 +223,7 @@ var _ = Describe("Create IAM Service Account", func() {
 			})
 
 			mockAWS.EXPECT().
-				ListOidcProviders("", cluster.AWS().STS().OidcConfig()).
+				ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
 				Return([]aws.OidcProviderOutput{}, nil)
 
 			_, err := getOIDCProviderARN(t.RosaRuntime, cluster)

@@ -50,27 +50,15 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 		clusters, err := rosaClient.Cluster.ReflectClusterList(clusterOutput)
 		Expect(err).ToNot(HaveOccurred())
 
-		// Find an STS cluster for testing
-		var testCluster *rosacli.ClusterDescription
-		found := false
-		for _, cluster := range clusters.Clusters {
-			// Get detailed cluster description to check if it's an STS cluster
-			clusterDesc, err := rosaClient.Cluster.DescribeClusterAndReflect(cluster.ID)
-			Expect(err).ToNot(HaveOccurred())
-
-			if clusterDesc.STSRoleArn != "" {
-				testCluster = clusterDesc
-				testClusterID = cluster.ID
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			Skip("No STS cluster available for testing")
-		}
-
-		By(fmt.Sprintf("Using cluster: %s (%s)", testCluster.Name, testCluster.ID))
+		// Use the first available cluster for testing
+		Expect(clusters.Clusters).ToNot(BeEmpty(), "No clusters available for testing")
+		
+		testCluster := clusters.Clusters[0]
+		clusterDesc, err := rosaClient.Cluster.DescribeClusterAndReflect(testCluster.ID)
+		Expect(err).ToNot(HaveOccurred())
+		
+		testClusterID = testCluster.ID
+		By(fmt.Sprintf("Using cluster: %s (%s)", clusterDesc.Name, clusterDesc.ID))
 
 		// Generate unique namespace for this test run
 		rand.Seed(time.Now().UnixNano())

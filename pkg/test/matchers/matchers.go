@@ -2,7 +2,7 @@ package matchers
 
 import (
 	"github.com/google/go-cmp/cmp"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 )
 
@@ -11,7 +11,7 @@ import (
 //
 //	Expect(actual).To(MatchExpected(expected))
 func MatchExpected(expected any, opts ...cmp.Option) types.GomegaMatcher {
-	return gomega.WithTransform(func(actual any) string {
+	return WithTransform(func(actual any) string {
 		return cmp.Diff(actual, expected, opts...)
-	}, gomega.BeEmpty())
+	}, BeEmpty())
 }

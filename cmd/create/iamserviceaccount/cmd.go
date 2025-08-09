@@ -78,7 +78,6 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 			return fmt.Errorf("cluster '%s' does not have OIDC configuration", cluster.Name())
 		}
 
-		// Use existing AWS client functions
 		serviceAccounts := make([]iamserviceaccount.ServiceAccountIdentifier, len(userOptions.ServiceAccountNames))
 		for i, name := range userOptions.ServiceAccountNames {
 			serviceAccounts[i] = iamserviceaccount.ServiceAccountIdentifier{
@@ -95,13 +94,13 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 		trustPolicy := iamserviceaccount.GenerateTrustPolicyMultiple(oidcProviderARN, serviceAccounts)
 		tags := iamserviceaccount.GenerateDefaultTags(cluster.Name(), userOptions.Namespace, userOptions.ServiceAccountNames[0])
 
-		// Use existing EnsureRole function
-		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, trustPolicy, userOptions.PermissionsBoundary, "", tags, userOptions.Path, false)
+		managedPolicies := false
+		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, trustPolicy, userOptions.PermissionsBoundary, "", tags, userOptions.Path, managedPolicies)
 		if err != nil {
 			return fmt.Errorf("failed to create role: %s", err)
 		}
 
-		r.Reporter.Infof("Created IAM role '%s' with ARN '%s'", roleName, roleARN)
+		r.Reporter.Infof("Created IAM role '%s' with ARN '%s' using OIDC '%s'", roleName, roleARN, oidcProviderARN)
 
 		// Attach managed policies
 		for _, policyARN := range userOptions.PolicyArns {
@@ -131,7 +130,7 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 			if err != nil {
 				return fmt.Errorf("failed to attach inline policy to role '%s': %s", roleName, err)
 			}
-			r.Reporter.Infof("Attached inline policy '%s' to role '%s(https://console.aws.amazon.com/iam/home?#/roles/%s)'", policyName, roleName, roleName)
+			r.Reporter.Infof("Attached inline policy '%s' to role '%s'", policyName, roleName)
 		}
 
 		return nil
@@ -144,7 +143,7 @@ func getOIDCProviderARN(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) 
 		return "", fmt.Errorf("cluster does not have OIDC configuration")
 	}
 
-	providers, err := r.AWSClient.ListOidcProviders("", oidcConfig)
+	providers, err := r.AWSClient.ListOidcProviders(cluster.ID(), oidcConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to list OIDC providers: %w", err)
 	}
