@@ -33,14 +33,10 @@ const (
 	deleteShort = "Delete IAM role for Kubernetes service account"
 	deleteLong  = "Delete an IAM role that was created for a Kubernetes service account. " +
 		"This will remove the role and all attached policies."
-	deleteExample = `  # Delete by service account details
+	deleteExample = `  # Delete IAM role for service account
   rosa delete iamserviceaccount --cluster my-cluster \
     --name my-app \
-    --namespace default
-
-  # Delete by explicit role name with approval
-  rosa delete iamserviceaccount --cluster my-cluster \
-    --role-name my-custom-role --yes`
+    --namespace default`
 )
 
 func NewDeleteIamServiceAccountUserOptions() *DeleteIamServiceAccountUserOptions {

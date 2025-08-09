@@ -33,20 +33,10 @@ const (
 	describeShort = "Describe IAM role for Kubernetes service account"
 	describeLong  = "Show detailed information about an IAM role that was created for a " +
 		"Kubernetes service account, including trust policy and attached permissions."
-	describeExample = `  # Describe by service account details
+	describeExample = `  # Describe IAM role for service account
   rosa describe iamserviceaccount --cluster my-cluster \
     --name my-app \
-    --namespace default
-
-  # Describe by explicit role name
-  rosa describe iamserviceaccount --cluster my-cluster \
-    --role-name my-custom-role
-
-  # Output as JSON
-  rosa describe iamserviceaccount --cluster my-cluster \
-    --name my-app \
-    --namespace default \
-    --output json`
+    --namespace default`
 )
 
 func NewDescribeIamServiceAccountUserOptions() *DescribeIamServiceAccountUserOptions {

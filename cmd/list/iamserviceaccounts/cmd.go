@@ -40,17 +40,8 @@ var Cmd = &cobra.Command{
 	Short:   "List IAM roles for Kubernetes service accounts",
 	Long: "List IAM roles that were created for Kubernetes service accounts using " +
 		"OpenID Connect (OIDC) identity federation.",
-	Example: `  # List all service account roles
-  rosa list iamserviceaccounts
-
-  # List service account roles for a specific cluster
-  rosa list iamserviceaccounts --cluster my-cluster
-
-  # List service account roles in a specific namespace
-  rosa list iamserviceaccounts --cluster my-cluster --namespace my-namespace
-
-  # Output as JSON
-  rosa list iamserviceaccounts --output json`,
+	Example: `  # List IAM roles for service accounts
+  rosa list iamserviceaccounts --cluster my-cluster`,
 	Run:  run,
 	Args: cobra.NoArgs,
 }

@@ -82,7 +82,7 @@ rosa create iamserviceaccount --cluster my-cluster \
   --namespace default \
   --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
   --permissions-boundary arn:aws:iam::123456789012:policy/boundary \
-  --yes
+  --approve
 ```
 
 **Manual mode (generate AWS CLI commands):**
@@ -101,9 +101,6 @@ rosa create iamserviceaccount --cluster my-cluster \
 Created IAM role 'my-cluster-default-my-app' with ARN 'arn:aws:iam::123456789012:role/my-cluster-default-my-app'
 Attached 1 policies to role
 Successfully created IAM service account role
-
-To use this role, annotate your service account:
-  oc annotate serviceaccount/my-app -n default eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/my-cluster-default-my-app
 ```
 
 **Manual mode**: Outputs AWS CLI commands to run manually:
@@ -169,7 +166,7 @@ rosa delete iamserviceaccount --cluster my-cluster \
 **Delete by explicit role name:**
 ```bash
 rosa delete iamserviceaccount --cluster my-cluster \
-  --role-name my-custom-role --yes
+  --role-name my-custom-role --approve
 ```
 
 **Manual mode (generate AWS CLI commands):**
@@ -695,7 +692,7 @@ To use these commands, you need the following AWS IAM permissions:
 - For unmanaged OIDC, ensure the provider exists in your AWS account
 
 **3. "Role already exists"**
-- Use `--yes` flag to continue with existing role
+- Use `--approve` flag to continue with existing role
 - Or choose a different role name with `--role-name`
 
 **4. "Invalid policy ARN"**
