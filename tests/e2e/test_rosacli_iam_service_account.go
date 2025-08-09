@@ -52,11 +52,11 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 
 		// Use the first available cluster for testing
 		Expect(clusters.Clusters).ToNot(BeEmpty(), "No clusters available for testing")
-		
+
 		testCluster := clusters.Clusters[0]
 		clusterDesc, err := rosaClient.Cluster.DescribeClusterAndReflect(testCluster.ID)
 		Expect(err).ToNot(HaveOccurred())
-		
+
 		testClusterID = testCluster.ID
 		By(fmt.Sprintf("Using cluster: %s (%s)", clusterDesc.Name, clusterDesc.ID))
 
