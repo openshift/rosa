@@ -42,13 +42,14 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.2
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
-	sigs.k8s.io/yaml v1.3.0
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 )
 
 require (
