@@ -47,6 +47,7 @@ func (r retriever) RetrieveLatestVersionFromMirror() (*goVer.Version, error) {
 	if err != nil {
 		return nil, fmt.Errorf("there was a problem retrieving possible versions from mirror: %v", err)
 	}
+	possibleVersions = parseVersionURIsToVersionStreams(possibleVersions)
 	if len(possibleVersions) == 0 {
 		return nil, fmt.Errorf("no versions available in mirror %s", baseReleasesFolder)
 	}
@@ -116,4 +117,24 @@ func (r retriever) RetrievePossibleVersionsFromMirror() ([]string, error) {
 	}
 	r.logger.Debugf("Versions available for download: %v", possibleVersions)
 	return possibleVersions, nil
+}
+
+func parseVersionURIsToVersionStreams(uriList []string) []string {
+	parsedList := make([]string, len(uriList))
+	for i, uri := range uriList {
+		if strings.HasPrefix(uri, "https://") {
+			// Needs to be parsed, find last segment
+			split := strings.Split(uri, "/")
+			slashCount := strings.Count(uri, "/")
+
+			parsedList[i] = split[slashCount]
+			for len(split[slashCount]) == 0 {
+				parsedList[i] = split[slashCount-1]
+				slashCount--
+			}
+		} else {
+			parsedList[i] = uri
+		}
+	}
+	return parsedList
 }

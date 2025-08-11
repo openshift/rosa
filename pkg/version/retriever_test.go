@@ -201,4 +201,27 @@ var _ = Describe("RetrievePossibleVersionsFromMirror", func() {
 			Expect(versions).To(Equal(expectedVersions))
 		})
 	})
+
+	When("Version URIs are converted into version strings properly", func() {
+		It("should return version streams", func() {
+			testVersions := []string{"https://www.test.com/version/pub/.../1.2.54/", "https://downloadlink.net/v/1.2.4",
+				"https://test.com/version/pub/1.1/", "https://zzz.zz/z///zz/1"}
+			output := parseVersionURIsToVersionStreams(testVersions)
+			Expect(output).To(Equal([]string{"1.2.54", "1.2.4", "1.1", "1"}))
+		})
+
+		It("should handle edge cases correctly", func() {
+			testVersions := []string{"https://www.test.com/version/pub/latest/", "https://downloadlink.net/v/latest",
+				"https:////////1.2.3", "https:////test/test/test/test/2.0.0/", "https:///test//test//2.1/////////////"}
+			output := parseVersionURIsToVersionStreams(testVersions)
+			Expect(output).To(Equal([]string{"latest", "latest", "1.2.3", "2.0.0", "2.1"}))
+		})
+
+		It("should not parse non-https URIs", func() {
+			testVersions := []string{"$HOME/test/1.2.3/", "http://malicious-website.com/version/1.2.54/",
+				"/123/", "1.2.54"}
+			output := parseVersionURIsToVersionStreams(testVersions)
+			Expect(output).To(Equal(testVersions))
+		})
+	})
 })
