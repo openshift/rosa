@@ -6,9 +6,13 @@ override_rosacli_build () {
   rosaDownloadTempDir=$(mktemp -d)
   cd $rosaDownloadTempDir
 
-  # get the rosa downboad binary according to the version
-  wget https://github.com/openshift/rosa/releases/download/$ROSACLI_BUILD/rosa_Linux_x86_64.tar.gz
-
+  if [[ "$ROSACLI_BUILD" == "latest" ]]; then
+    # get the latest rosa binary from release page
+    wget $(curl -s https://api.github.com/repos/openshift/rosa/releases/latest | jq -r '.assets[] | select(.name == "rosa_Linux_x86_64.tar.gz") | .browser_download_url')
+  else
+    # get the rosa downboad binary according to the version
+    wget https://github.com/openshift/rosa/releases/download/$ROSACLI_BUILD/rosa_Linux_x86_64.tar.gz
+  fi
 
   tar -xvf rosa_Linux_x86_64.tar.gz
   chmod +x ./rosa
