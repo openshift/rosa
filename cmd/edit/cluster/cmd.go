@@ -26,6 +26,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/clusterregistryconfig"
 	"github.com/openshift/rosa/pkg/fedramp"
@@ -39,6 +40,8 @@ import (
 )
 
 const enableDeleteProtectionFlagName = "enable-delete-protection"
+
+const disableWorkloadMonitoringFlagName = "disable-workload-monitoring"
 
 var args struct {
 	// Basic options
@@ -88,9 +91,6 @@ var Cmd = &cobra.Command{
 	Example: `  # Edit a cluster named "mycluster" to make it private
   rosa edit cluster -c mycluster --private
 
-  # Edit a cluster named "mycluster" to enable User Workload Monitoring
-  rosa edit cluster -c mycluster --disable-workload-monitoring=false
-
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
 	Run:  run,
@@ -136,7 +136,7 @@ func init() {
 	)
 	flags.BoolVar(
 		&args.disableWorkloadMonitoring,
-		"disable-workload-monitoring",
+		disableWorkloadMonitoringFlagName,
 		false,
 		"Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) "+
 			"platform metrics.",
@@ -219,6 +219,10 @@ func init() {
 		"Changes the channel group used for cluster versions. "+
 			"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"eus\".",
 	)
+
+	// Deprecate and hide disable-workload-monitoring
+	_ = flags.MarkHidden(disableWorkloadMonitoringFlagName)
+	_ = flags.MarkDeprecated(disableWorkloadMonitoringFlagName, arguments.DisableWorkloadMonitoringDeprecationMessage)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -230,14 +234,13 @@ func run(cmd *cobra.Command, _ []string) {
 	// Enable interactive mode if no flags have been set
 	if !interactive.Enabled() {
 		changedFlags := false
-		for _, flag := range []string{"expiration-time", "expiration", "private",
-			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy",
-			"additional-trust-bundle-file", "additional-allowed-principals", "audit-log-arn",
-			"registry-config-allowed-registries", "registry-config-blocked-registries",
-			"registry-config-insecure-registries", "allowed-registries-for-import",
-			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
-			"registry-config-allowed-registries-for-import", "enable-delete-protection",
-			"channel-group", "network-type"} {
+		for _, flag := range []string{"expiration-time", "expiration", "private", "http-proxy",
+			"https-proxy", "no-proxy", "additional-trust-bundle-file",
+			"additional-allowed-principals", "audit-log-arn", "registry-config-allowed-registries",
+			"registry-config-blocked-registries", "registry-config-insecure-registries",
+			"allowed-registries-for-import", "registry-config-platform-allowlist",
+			"registry-config-additional-trusted-ca", "billing-account", "registry-config-allowed-registries-for-import",
+			"enable-delete-protection", "channel-group", "network-type"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
@@ -356,33 +359,6 @@ func run(cmd *cobra.Command, _ []string) {
 	} else if privateValue {
 		r.Reporter.Warnf("You are choosing to make your cluster API private. %s", privateWarning)
 		if !confirm.Confirm("set cluster '%s' as private", clusterKey) {
-			os.Exit(0)
-		}
-	}
-
-	var disableWorkloadMonitoring *bool
-	var disableWorkloadMonitoringValue bool
-
-	if cmd.Flags().Changed("disable-workload-monitoring") {
-		disableWorkloadMonitoringValue = args.disableWorkloadMonitoring
-		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
-	} else if interactive.Enabled() {
-		disableWorkloadMonitoringValue = cluster.DisableUserWorkloadMonitoring()
-	}
-
-	if interactive.Enabled() {
-		disableWorkloadMonitoringValue, err = interactive.GetBool(interactive.Input{
-			Question: "Disable Workload monitoring",
-			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
-			Default:  disableWorkloadMonitoringValue,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
-			os.Exit(1)
-		}
-		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
-	} else if disableWorkloadMonitoringValue {
-		if !confirm.Confirm("disable workload monitoring for your cluster %s", clusterKey) {
 			os.Exit(0)
 		}
 	}
@@ -645,9 +621,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := ocm.Spec{
-		Expiration:                expiration,
-		Private:                   private,
-		DisableWorkloadMonitoring: disableWorkloadMonitoring,
+		Expiration: expiration,
+		Private:    private,
 	}
 
 	if httpProxy != nil {

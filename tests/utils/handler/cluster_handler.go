@@ -765,10 +765,6 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		flags = append(flags, "--disable-scp-checks")
 		ch.clusterConfig.DisableScpChecks = true
 	}
-	if ch.profile.ClusterConfig.DisableUserWorKloadMonitoring {
-		flags = append(flags, "--disable-workload-monitoring")
-		ch.clusterConfig.DisableWorkloadMonitoring = true
-	}
 	if ch.profile.ClusterConfig.EtcdKMS {
 		keyArn, err := resourcesHandler.PrepareKMSKey(false, "rosacli", ch.profile.ClusterConfig.HCP, true)
 		if err != nil {
