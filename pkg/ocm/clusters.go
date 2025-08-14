@@ -626,10 +626,6 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		)
 	}
 
-	if config.DisableWorkloadMonitoring != nil {
-		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
-	}
-
 	// SDN -> OVN Migration
 	if config.NetworkType == NetworkTypes[1] {
 		// Create a request body for the specific cluster migration.
@@ -844,10 +840,6 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	if config.DomainPrefix != "" {
 		clusterBuilder.DomainPrefix(config.DomainPrefix)
-	}
-
-	if config.DisableWorkloadMonitoring != nil {
-		clusterBuilder = clusterBuilder.DisableUserWorkloadMonitoring(*config.DisableWorkloadMonitoring)
 	}
 
 	registryConfigBuilder, err := BuildRegistryConfig(config)

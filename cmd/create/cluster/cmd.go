@@ -100,8 +100,9 @@ const (
 
 	billingAccountFlag = "billing-account"
 
-	privateLinkFlagName = "private-link"
-	privateFlagName     = "private"
+	privateLinkFlagName               = "private-link"
+	privateFlagName                   = "private"
+	disableWorkloadMonitoringFlagName = "disable-workload-monitoring"
 )
 
 var args struct {
@@ -926,6 +927,10 @@ func initFlags(cmd *cobra.Command) {
 		"The additional Security Group IDs to be added to the control plane nodes. "+
 			listInputMessage,
 	)
+
+	// Deprecate and hide disable-workload-monitoring
+	_ = flags.MarkHidden(disableWorkloadMonitoringFlagName)
+	_ = flags.MarkDeprecated(disableWorkloadMonitoringFlagName, arguments.DisableWorkloadMonitoringDeprecationMessage)
 
 	interactive.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
@@ -2952,19 +2957,6 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	disableWorkloadMonitoring := args.disableWorkloadMonitoring
-	if interactive.Enabled() {
-		disableWorkloadMonitoring, err = interactive.GetBool(interactive.Input{
-			Question: "Disable Workload monitoring",
-			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
-			Default:  disableWorkloadMonitoring,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
-			os.Exit(1)
-		}
-	}
-
 	// Cluster-wide proxy configuration
 	if (subnetsProvided || (useExistingVPC && !enableProxy)) && interactive.Enabled() {
 		enableProxy, err = interactive.GetBool(interactive.Input{
@@ -3360,7 +3352,6 @@ func run(cmd *cobra.Command, _ []string) {
 		Mode:                         mode,
 		Tags:                         tagsList,
 		KMSKeyArn:                    kmsKeyARN,
-		DisableWorkloadMonitoring:    &disableWorkloadMonitoring,
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
@@ -4136,9 +4127,6 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.KMSKeyArn != "" {
 		command += fmt.Sprintf(" --kms-key-arn %s", spec.KMSKeyArn)
-	}
-	if spec.DisableWorkloadMonitoring != nil && *spec.DisableWorkloadMonitoring {
-		command += " --disable-workload-monitoring"
 	}
 	if userSelectedAvailabilityZones {
 		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))

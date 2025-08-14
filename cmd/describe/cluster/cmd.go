@@ -457,11 +457,6 @@ func run(cmd *cobra.Command, argv []string) {
 		deleteProtection,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
-	str = fmt.Sprintf("%s"+
-		"User Workload Monitoring:   %s\n",
-		str,
-		getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
-
 	if cluster.FIPS() {
 		str = fmt.Sprintf("%s"+
 			"FIPS mode:                  %s\n",
@@ -841,13 +836,6 @@ func getDetailsLink(environment string) string {
 	default:
 		return ""
 	}
-}
-
-func getUseworkloadMonitoring(disabled bool) string {
-	if disabled {
-		return DisabledOutput
-	}
-	return EnabledOutput
 }
 
 func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
