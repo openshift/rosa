@@ -44,6 +44,7 @@ var args struct {
 	controlPlane             bool
 	schedule                 string
 	allowMinorVersionUpdates bool
+	dryRun                   bool
 }
 
 var nodeDrainOptions = []string{
@@ -59,12 +60,16 @@ var nodeDrainOptions = []string{
 var Cmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Upgrade cluster",
-	Long:  "Upgrade cluster to a new available version",
+	Long: "Upgrade cluster to a new available version. Use '--dry-run' to acknowledge any gates prior to attempting" +
+		" an upgrade",
 	Example: `  # Interactively schedule an upgrade on the cluster named "mycluster"
   rosa upgrade cluster --cluster=mycluster --interactive
 
   # Schedule a cluster upgrade within the hour
-  rosa upgrade cluster -c mycluster --version 4.12.20`,
+  rosa upgrade cluster -c mycluster --version 4.12.20
+
+  # Check if any gates need to be acknowledged prior to attempting an upgrading
+  rosa upgrade cluster -c mycluster --version 4.12.20 --dry-run`,
 	Run:  run,
 	Args: cobra.NoArgs,
 }
@@ -135,6 +140,14 @@ func init() {
 		"For Hosted Control Plane, whether the upgrade should cover only the control plane",
 	)
 
+	flags.BoolVar(
+		&args.dryRun,
+		"dry-run",
+		false,
+		"Simulate upgrading the cluster, or run through acknowledgements required to upgrade prior to upgrading"+
+			" a cluster.",
+	)
+
 	flags.MarkDeprecated("control-plane", "Flag is deprecated, and can be omitted when running this "+
 		"command in the future")
 
@@ -179,6 +192,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	if currentUpgradeScheduling.Schedule != "" && args.version != "" {
 		return fmt.Errorf("The '--schedule' option is mutually exclusive with '--version'")
+	}
+
+	if args.dryRun {
+		r.Reporter.Infof("Running in dry-run mode. Will not perform cluster upgrade")
 	}
 
 	// Check cluster preconditions
@@ -339,7 +356,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			return fmt.Errorf("Error parsing version to upgrade to")
 		}
 
-		if r.Reporter.IsTerminal() && !confirm.Confirm("upgrade cluster to version '%s'", version) {
+		if r.Reporter.IsTerminal() && !args.dryRun && !confirm.Confirm("upgrade cluster to version '%s'", version) {
 			os.Exit(0)
 		}
 	} else {
@@ -358,6 +375,14 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 	if err != nil {
 		return fmt.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
+	}
+
+	if args.dryRun {
+		r.Reporter.Infof(
+			"Upgrading cluster '%s' should succeed. Please wait 1 to 2 minutes, then rerun this command"+
+				" without the '--dry-run' flag, to allow time for the acknowledged agreements to be reflected.",
+			cluster.ID())
+		return nil
 	}
 
 	// Update cluster with grace period configuration
@@ -390,6 +415,10 @@ func createUpgradePolicyHypershift(r *rosa.Runtime, clusterKey string,
 		return err
 	}
 
+	if args.dryRun {
+		return nil
+	}
+
 	_, err = r.OCMClient.ScheduleHypershiftControlPlaneUpgrade(cluster.ID(), upgradePolicy)
 	if err != nil {
 		return err
@@ -409,6 +438,10 @@ func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey 
 	err = checkAndAckMissingAgreementsClassic(r, cluster, upgradePolicy, clusterKey)
 	if err != nil {
 		return err
+	}
+
+	if args.dryRun {
+		return nil
 	}
 
 	nextRun, err := interactive.BuildManualUpgradeSchedule(cmd, scheduleDate, scheduleTime)
@@ -600,6 +633,10 @@ func checkAndAckMissingAgreementsHypershift(r *rosa.Runtime, cluster *cmv1.Clust
 
 func checkGates(r *rosa.Runtime, cluster *cmv1.Cluster, gates []*cmv1.VersionGate, clusterKey string) error {
 	isWarningDisplayed := false
+	if !args.dryRun {
+		r.Reporter.Warnf("To check and acknowledge gates prior to scheduling an upgrade, run this command with " +
+			"'--dry-run'")
+	}
 	for _, gate := range gates {
 		if !gate.STSOnly() {
 			if !isWarningDisplayed {
