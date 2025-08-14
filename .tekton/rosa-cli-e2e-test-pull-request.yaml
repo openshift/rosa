@@ -8,8 +8,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && pull_request_title.startsWith("e2e_trigger_")
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && '{{pull_request_title}}'.startsWith("e2e_trigger_")
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: rh-rosa-cli
