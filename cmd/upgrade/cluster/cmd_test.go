@@ -68,6 +68,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 
 	BeforeEach(func() {
 		testRuntime.InitRuntime()
+		args.dryRun = false
 	})
 
 	It("Fails if cluster is not hypershift and we are using hypershift specific flags", func() {
@@ -207,6 +208,35 @@ var _ = Describe("Upgrade", Ordered, func() {
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 		Expect(err).To(BeNil())
 		Expect(stdout).To(ContainSubstring("INFO: Upgrade successfully scheduled for cluster 'cluster1'"))
+		Expect(stderr).To(Equal("WARN: To check and acknowledge gates prior to scheduling an upgrade, run this" +
+			" command with '--dry-run'\n"))
+	})
+	It("Cluster is ready and with automatic scheduling, dry run flag doesn't allow cluster upgrade", func() {
+		args.schedule = "20 5 * * *"
+		args.scheduleDate = ""
+		args.scheduleTime = ""
+		args.version = ""
+		args.dryRun = true
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReadyWithUpdates))
+		// No existing policy upgrade
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+		// POST -
+		// /api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8/control_plane/upgrade_policies?dryRun=true
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+		// POST - /api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8/control_plane/upgrade_policies
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, ""))
+		// GET - /api/clusters_mgmt/v1/clusters/24vf9iitg3p6tlml88iml6j6mu095mh8
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReadyWithUpdates))
+		// PATCH - /api/clusters_mgmt/v1/clusters
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReadyWithUpdates))
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(BeNil())
+		Expect(stdout).To(ContainSubstring("INFO: Running in dry-run mode. Will not perform cluster upgrade"))
+		Expect(stdout).To(ContainSubstring("INFO: Upgrading cluster '24vf9iitg3p6tlml88iml6j6mu095mh8' should succeed. " +
+			"Please wait 1 to 2 minutes, then rerun this command without the '--dry-run' flag, to allow time for the " +
+			"acknowledged agreements to be reflected.\n"))
 		Expect(stderr).To(BeEmpty())
 	})
 	It("Cluster is ready and with manual scheduling and available upgrades but a wrong version in input", func() {

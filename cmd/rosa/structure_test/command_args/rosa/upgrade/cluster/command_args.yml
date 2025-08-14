@@ -11,3 +11,4 @@
 - name: interactive
 - name: profile
 - name: region
+- name: dry-run
