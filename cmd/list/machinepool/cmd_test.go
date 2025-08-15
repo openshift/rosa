@@ -18,20 +18,20 @@ import (
 const (
 	nodePoolName         = "nodepool85"
 	clusterId            = "24vf9iitg3p6tlml88iml6j6mu095mh8"
-	singleNodePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS    TAINTS    AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR  \n" +
-		"nodepool85  No           /0        m5.xlarge                          us-east-1a                 default    4.12.24  No          \n"
+	singleNodePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR\n" +
+		"nodepool85  No           /0        m5.xlarge                      us-east-1a                 default    4.12.24  No\n"
 
-	singleMachinePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  AVAILABILITY ZONES                  SPOT INSTANCES  DISK SIZE\n" +
-		"nodepool85  No           0         m5.xlarge      us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n"
+	singleMachinePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES                  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+		"nodepool85  No           0         m5.xlarge                      us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n"
 
-	multipleMachinePoolOutput = "ID           AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS      TAINTS       AVAILABILITY ZONES                  SPOT INSTANCES  DISK SIZE\n" +
-		"nodepool85   No           0         m5.xlarge                               us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n" +
-		"nodepool852  No           0         m5.xlarge      test=label               us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n" +
-		"nodepool853  Yes          1-100     m5.xlarge      test=label  test=taint:  us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n"
+	multipleMachinePoolOutput = "ID           AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS      TAINTS       AVAILABILITY ZONES                  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+		"nodepool85   No           0         m5.xlarge                               us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n" +
+		"nodepool852  No           0         m5.xlarge      test=label               us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n" +
+		"nodepool853  Yes          1-100     m5.xlarge      test=label  test=taint:  us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n"
 
-	multipleNodePoolsOutput = "ID           AUTOSCALING  REPLICAS   INSTANCE TYPE  LABELS        TAINTS    AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR  \n" +
-		"nodepool85   No           /0         m5.xlarge                              us-east-1a                 default    4.12.24  No          \n" +
-		"nodepool852  Yes          /100-1000  m5.xlarge      test=label              us-east-1a                 default    4.12.24  No          \n"
+	multipleNodePoolsOutput = "ID           AUTOSCALING  REPLICAS   INSTANCE TYPE  LABELS      TAINTS  AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR\n" +
+		"nodepool85   No           /0         m5.xlarge                          us-east-1a                 default    4.12.24  No\n" +
+		"nodepool852  Yes          /100-1000  m5.xlarge      test=label          us-east-1a                 default    4.12.24  No\n"
 )
 
 var _ = Describe("List machine pool", func() {
@@ -133,7 +133,7 @@ var _ = Describe("List machine pool", func() {
 			})
 		})
 		Context("Flag behavior tests", func() {
-			It("Shows all columns when --all flag is used", func() {
+			It("Shows additional columns when specific flags are used", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
 				runner := ListMachinePoolRunner()
@@ -142,30 +142,7 @@ var _ = Describe("List machine pool", func() {
 				cmd := NewListMachinePoolCommand()
 				err = cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
-				err = cmd.Flag("all").Value.Set("true")
-				Expect(err).ToNot(HaveOccurred())
-				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).ToNot(HaveOccurred())
-				stdout, err := t.StdOutReader.Read()
-				Expect(err).ToNot(HaveOccurred())
-
-				// With --all, should include columns like SUBNETS and SG IDS even if empty
-				Expect(stdout).To(ContainSubstring("SUBNETS"))
-				Expect(stdout).To(ContainSubstring("SG IDS"))
-				Expect(stdout).To(ContainSubstring("AZ TYPE"))
-				Expect(stdout).To(ContainSubstring("WIN-LI ENABLED"))
-				Expect(stdout).To(ContainSubstring("DEDICATED HOST"))
-			})
-
-			It("Shows AZ TYPE column when --az-type flag is used", func() {
-				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
-				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
-				runner := ListMachinePoolRunner()
-				err := t.StdOutReader.Record()
-				Expect(err).ToNot(HaveOccurred())
-				cmd := NewListMachinePoolCommand()
-				err = cmd.Flag("cluster").Value.Set(clusterId)
-				Expect(err).ToNot(HaveOccurred())
+				// Test with --az-type flag
 				err = cmd.Flag("az-type").Value.Set("true")
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
@@ -173,7 +150,7 @@ var _ = Describe("List machine pool", func() {
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 
-				// Should include AZ TYPE column
+				// With --az-type, should include AZ TYPE column
 				Expect(stdout).To(ContainSubstring("AZ TYPE"))
 			})
 
@@ -299,7 +276,7 @@ var _ = Describe("List machine pool", func() {
 				Expect(stdout).To(ContainSubstring("sg-1, sg-2"))
 			})
 
-			It("Hides empty columns by default", func() {
+			It("Shows all base columns by default", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
 				runner := ListMachinePoolRunner()
@@ -313,11 +290,11 @@ var _ = Describe("List machine pool", func() {
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 
-				// Should not include empty columns like SUBNETS and SG IDS by default
-				Expect(stdout).ToNot(ContainSubstring("SUBNETS"))
-				Expect(stdout).ToNot(ContainSubstring("SG IDS"))
-				Expect(stdout).ToNot(ContainSubstring("LABELS"))
-				Expect(stdout).ToNot(ContainSubstring("TAINTS"))
+				// Should include all base columns even if empty
+				Expect(stdout).To(ContainSubstring("SUBNETS"))
+				Expect(stdout).To(ContainSubstring("SG IDS"))
+				Expect(stdout).To(ContainSubstring("LABELS"))
+				Expect(stdout).To(ContainSubstring("TAINTS"))
 			})
 
 			It("Shows columns with mixed data (some empty, some not)", func() {

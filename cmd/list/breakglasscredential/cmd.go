@@ -3,7 +3,6 @@ package breakglasscredential
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -70,17 +69,17 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	tb := output.NewTableBuilder()
+	tb.SetHeaders("ID", "USERNAME", "STATUS")
 
-	fmt.Fprintf(writer, "ID\tUSERNAME\tSTATUS\n")
 	for _, credential := range breakGlassCredentials {
-		fmt.Fprintf(writer, "%s\t%s\t%s\n",
+		tb.AddRow(
 			credential.ID(),
 			credential.Username(),
-			credential.Status(),
+			string(credential.Status()),
 		)
 	}
-	writer.Flush()
+	tb.Render()
 
 	return nil
 }
