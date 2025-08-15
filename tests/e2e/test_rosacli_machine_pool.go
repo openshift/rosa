@@ -242,7 +242,6 @@ var _ = Describe("Create machinepool",
 		It("List newly added instance-types - [id:73308]",
 			labels.Runtime.Day2,
 			labels.Medium,
-			labels.FedRAMP,
 			func() {
 				By("List the available instance-types and verify the presence of newly added instance-types")
 				newlyAddedTypes := []string{

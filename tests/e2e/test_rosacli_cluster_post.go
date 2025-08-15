@@ -301,7 +301,7 @@ var _ = Describe("Healthy check",
 					if clusterConfig.Private {
 						private = constants.Yes
 					}
-					if clusterConfig.DefaultIngressPrivate {
+					if clusterConfig.DefaultIngressPrivate || clusterConfig.PrivateLink {
 						ingressPrivate = "true"
 					}
 					By("Describe the cluster the cluster should be private")
