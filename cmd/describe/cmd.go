@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/cmd/describe/breakglasscredential"
 	"github.com/openshift/rosa/cmd/describe/cluster"
 	"github.com/openshift/rosa/cmd/describe/externalauthprovider"
+	"github.com/openshift/rosa/cmd/describe/iamserviceaccount"
 	"github.com/openshift/rosa/cmd/describe/ingress"
 	"github.com/openshift/rosa/cmd/describe/installation"
 	"github.com/openshift/rosa/cmd/describe/kubeletconfig"
@@ -49,7 +50,7 @@ func init() {
 	kubeletconfig := kubeletconfig.NewDescribeKubeletConfigCommand()
 	accessrequestCommand := accessrequest.NewDescribeAccessRequestCommand()
 	cmds := []*cobra.Command{
-		addon.Cmd, admin.Cmd, cluster.Cmd, service.Cmd,
+		addon.Cmd, admin.Cmd, cluster.Cmd, iamserviceaccount.Cmd, service.Cmd,
 		installation.Cmd, upgrade.Cmd, tuningconfigs.Cmd,
 		machinePoolCommand, kubeletconfig,
 		autoscaler.NewDescribeAutoscalerCommand(), ingressCommand,

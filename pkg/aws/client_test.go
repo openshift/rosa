@@ -762,4 +762,195 @@ var _ = Describe("Client", func() {
 			),
 		)
 	})
+
+	Context("ListServiceAccountRoles", func() {
+		var (
+			clusterName string
+		)
+
+		BeforeEach(func() {
+			clusterName = "test-cluster"
+		})
+
+		It("should list roles with proper tag filtering", func() {
+			// Mock ListRoles response
+			role1 := "test-cluster-ns1-app1-role"
+			role2 := "test-cluster-ns2-app2-role"
+			role3 := "other-role-without-tags"
+
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+				Roles: []iamtypes.Role{
+					{
+						RoleName: &role1,
+						Arn:      awsSdk.String("arn:aws:iam::123456789012:role/" + role1),
+					},
+					{
+						RoleName: &role2,
+						Arn:      awsSdk.String("arn:aws:iam::123456789012:role/" + role2),
+					},
+					{
+						RoleName: &role3,
+						Arn:      awsSdk.String("arn:aws:iam::123456789012:role/" + role3),
+					},
+				},
+			}, nil)
+
+			// Mock ListRoleTags for each role
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &role1,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: awsSdk.String("rosa_role_type"), Value: awsSdk.String("ServiceAccountRole")},
+					{Key: awsSdk.String("rosa.openshift.io/cluster"), Value: awsSdk.String("test-cluster")},
+					{Key: awsSdk.String("rosa.openshift.io/namespace"), Value: awsSdk.String("ns1")},
+					{Key: awsSdk.String("rosa.openshift.io/service-account"), Value: awsSdk.String("app1")},
+				},
+			}, nil)
+
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &role2,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: awsSdk.String("rosa_role_type"), Value: awsSdk.String("ServiceAccountRole")},
+					{Key: awsSdk.String("rosa.openshift.io/cluster"), Value: awsSdk.String("test-cluster")},
+					{Key: awsSdk.String("rosa.openshift.io/namespace"), Value: awsSdk.String("ns2")},
+					{Key: awsSdk.String("rosa.openshift.io/service-account"), Value: awsSdk.String("app2")},
+				},
+			}, nil)
+
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &role3,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: awsSdk.String("some-other-tag"), Value: awsSdk.String("value")},
+				},
+			}, nil)
+
+			// Call the function
+			roles, err := client.ListServiceAccountRoles(clusterName)
+
+			// Verify results
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roles).To(HaveLen(2))
+		})
+
+		It("should return multiple roles for the same cluster", func() {
+			// Mock ListRoles response
+			role1 := "test-cluster-ns1-app1-role"
+			role2 := "test-cluster-ns1-app2-role"
+
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+				Roles: []iamtypes.Role{
+					{
+						RoleName: &role1,
+						Arn:      awsSdk.String("arn:aws:iam::123456789012:role/" + role1),
+					},
+					{
+						RoleName: &role2,
+						Arn:      awsSdk.String("arn:aws:iam::123456789012:role/" + role2),
+					},
+				},
+			}, nil)
+
+			// Mock ListRoleTags for each role
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &role1,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: awsSdk.String("rosa_role_type"), Value: awsSdk.String("ServiceAccountRole")},
+					{Key: awsSdk.String("rosa.openshift.io/cluster"), Value: awsSdk.String("test-cluster")},
+					{Key: awsSdk.String("rosa.openshift.io/namespace"), Value: awsSdk.String("ns1")},
+					{Key: awsSdk.String("rosa.openshift.io/service-account"), Value: awsSdk.String("app1")},
+				},
+			}, nil)
+
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &role2,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: awsSdk.String("rosa_role_type"), Value: awsSdk.String("ServiceAccountRole")},
+					{Key: awsSdk.String("rosa.openshift.io/cluster"), Value: awsSdk.String("test-cluster")},
+					{Key: awsSdk.String("rosa.openshift.io/namespace"), Value: awsSdk.String("ns1")},
+					{Key: awsSdk.String("rosa.openshift.io/service-account"), Value: awsSdk.String("app2")},
+				},
+			}, nil)
+
+			// Call the function
+			roles, err := client.ListServiceAccountRoles(clusterName)
+
+			// Verify results
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roles).To(HaveLen(2))
+			Expect(*roles[0].RoleName).To(Equal(role1))
+			Expect(*roles[1].RoleName).To(Equal(role2))
+		})
+
+		It("should handle ListRoles errors", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("aws error"))
+
+			roles, err := client.ListServiceAccountRoles(clusterName)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("aws error"))
+			Expect(roles).To(BeNil())
+		})
+
+		It("should handle ListRoleTags errors gracefully", func() {
+			// Mock ListRoles response
+			role1 := "test-cluster-ns1-app1-role"
+
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+				Roles: []iamtypes.Role{
+					{
+						RoleName: &role1,
+						Arn:      awsSdk.String("arn:aws:iam::123456789012:role/" + role1),
+					},
+				},
+			}, nil)
+
+			// Mock ListRoleTags to return an error
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &role1,
+			}).Return(nil, fmt.Errorf("tag error"))
+
+			// Call the function
+			roles, err := client.ListServiceAccountRoles(clusterName)
+
+			// Should succeed but with empty results (error is logged but not returned)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roles).To(HaveLen(0))
+		})
+
+		It("should handle roles without required tags", func() {
+			// Mock ListRoles response
+			role1 := "test-cluster-ns1-app1-role"
+
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+				Roles: []iamtypes.Role{
+					{
+						RoleName: &role1,
+						Arn:      awsSdk.String("arn:aws:iam::123456789012:role/" + role1),
+					},
+				},
+			}, nil)
+
+			// Mock ListRoleTags with missing required tags
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &role1,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: awsSdk.String("rosa_role_type"), Value: awsSdk.String("ServiceAccountRole")},
+					// Missing cluster tag
+					{Key: awsSdk.String("rosa.openshift.io/namespace"), Value: awsSdk.String("ns1")},
+				},
+			}, nil)
+
+			// Call the function
+			roles, err := client.ListServiceAccountRoles(clusterName)
+
+			// Should succeed but with empty results (role doesn't match cluster)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roles).To(HaveLen(0))
+		})
+	})
 })

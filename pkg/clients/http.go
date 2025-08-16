@@ -4,7 +4,6 @@ import (
 	"net/http"
 )
 
-//go:generate mockgen -source=http.go -package=clients -destination=./http_mock.go
 type HTTPClient interface {
 	Get(url string) (*http.Response, error)
 }

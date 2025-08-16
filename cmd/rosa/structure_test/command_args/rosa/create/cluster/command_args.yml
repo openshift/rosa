@@ -34,6 +34,7 @@
 - name: expiration-time
 - name: expiration
 - name: private-link
+- name: default-ingress-private
 - name: ec2-metadata-http-tokens
 - name: subnet-ids
 - name: availability-zones
@@ -41,6 +42,12 @@
 - name: compute-nodes
 - name: replicas
 - name: enable-autoscaling
+- name: registry-config-allowed-registries
+- name: registry-config-insecure-registries
+- name: registry-config-blocked-registries
+- name: registry-config-allowed-registries-for-import
+- name: registry-config-platform-allowlist
+- name: registry-config-additional-trusted-ca
 - name: autoscaler-balance-similar-node-groups
 - name: autoscaler-skip-nodes-with-local-storage
 - name: autoscaler-log-verbosity
@@ -90,11 +97,10 @@
 - name: default-ingress-excluded-namespaces
 - name: default-ingress-wildcard-policy
 - name: default-ingress-namespace-ownership-policy
-- name: default-ingress-private
 - name: private-hosted-zone-id
 - name: shared-vpc-role-arn
-- name: route53-role-arn
 - name: vpc-endpoint-role-arn
+- name: route53-role-arn
 - name: hcp-internal-communication-hosted-zone-id
 - name: ingress-private-hosted-zone-id
 - name: base-domain
@@ -105,9 +111,3 @@
 - name: interactive
 - name: output
 - name: "yes"
-- name: registry-config-allowed-registries
-- name: registry-config-insecure-registries
-- name: registry-config-blocked-registries
-- name: registry-config-allowed-registries-for-import
-- name: registry-config-platform-allowlist
-- name: registry-config-additional-trusted-ca

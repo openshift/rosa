@@ -11,7 +11,7 @@
 - name: prefix
 - name: profile
 - name: region
-- name: version
-- name: "yes"
 - name: route53-role-arn
+- name: version
 - name: vpc-endpoint-role-arn
+- name: "yes"

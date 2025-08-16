@@ -1,8 +1,8 @@
 - name: classic
+- name: delete-hcp-shared-vpc-policies
 - name: hosted-cp
 - name: mode
 - name: prefix
 - name: profile
 - name: region
-- name: delete-hcp-shared-vpc-policies
 - name: "yes"

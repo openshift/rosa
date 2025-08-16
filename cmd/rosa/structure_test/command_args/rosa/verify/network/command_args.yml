@@ -1,10 +1,10 @@
 - name: cluster
 - name: hosted-cp
 - name: output
+- name: profile
 - name: region
 - name: role-arn
 - name: status-only
 - name: subnet-ids
 - name: tags
 - name: watch
-- name: profile

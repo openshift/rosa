@@ -21,7 +21,6 @@ const (
 	ConsoleLatestFolder        = "https://console.redhat.com/openshift/downloads#tool-rosa"
 )
 
-//go:generate mockgen -source=version.go -package=version -destination=./version_mock.go
 type RosaVersion interface {
 	IsLatest(latestVersion string) (*goVer.Version, bool, error)
 }

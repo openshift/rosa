@@ -30,7 +30,11 @@ type Client struct {
 
 	// services
 	// Keep in alphabetical order
+	AutoScaler           AutoScalerService
+	BreakGlassCredential BreakGlassCredentialService
 	Cluster              ClusterService
+	ExternalAuthProvider ExternalAuthProviderService
+	IAMServiceAccount    IAMServiceAccountService
 	IDP                  IDPService
 	Ingress              IngressService
 	KubeletConfig        KubeletConfigService
@@ -39,15 +43,12 @@ type Client struct {
 	NetworkVerifier      NetworkVerifierService
 	NetworkResources     NetworkResourcesService
 	OCMResource          OCMResourceService
+	Policy               PolicyService
 	TuningConfig         TuningConfigService
 	User                 UserService
-	Version              VersionService
-	BreakGlassCredential BreakGlassCredentialService
-	ExternalAuthProvider ExternalAuthProviderService
-	Policy               PolicyService
-	AutoScaler           AutoScalerService
 	Upgrade              UpgradeService
 	Verify               VerifyService
+	Version              VersionService
 }
 
 func NewClient() *Client {
@@ -60,7 +61,11 @@ func NewClient() *Client {
 	}
 
 	// Keep in alphabetical order
+	client.AutoScaler = NewAutoScalerService(client)
+	client.BreakGlassCredential = NewBreakGlassCredentialService(client)
 	client.Cluster = NewClusterService(client)
+	client.ExternalAuthProvider = NewExternalAuthProviderService(client)
+	client.IAMServiceAccount = NewIAMServiceAccountService(client)
 	client.IDP = NewIDPService(client)
 	client.Ingress = NewIngressService(client)
 	client.KubeletConfig = NewKubeletConfigService(client)
@@ -69,15 +74,12 @@ func NewClient() *Client {
 	client.NetworkVerifier = NewNetworkVerifierService(client)
 	client.NetworkResources = NewNetworkResourceService(client)
 	client.OCMResource = NewOCMResourceService(client)
+	client.Policy = NewPolicyService(client)
 	client.TuningConfig = NewTuningConfigService(client)
 	client.User = NewUserService(client)
-	client.Version = NewVersionService(client)
-	client.BreakGlassCredential = NewBreakGlassCredentialService(client)
-	client.ExternalAuthProvider = NewExternalAuthProviderService(client)
-	client.Policy = NewPolicyService(client)
-	client.AutoScaler = NewAutoScalerService(client)
 	client.Upgrade = NewUpgradeService(client)
 	client.Verify = NewVerifyService(client)
+	client.Version = NewVersionService(client)
 
 	return client
 }

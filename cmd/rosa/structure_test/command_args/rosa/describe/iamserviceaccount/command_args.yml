@@ -1,0 +1,6 @@
+- name: cluster
+- name: interactive
+- name: name
+- name: namespace
+- name: output
+- name: role-name

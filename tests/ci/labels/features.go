@@ -14,6 +14,7 @@ type featureLabels struct {
 	BreakGlassCredential Labels
 	ExternalAuthProvider Labels
 	Gates                Labels
+	IAMServiceAccount    Labels
 	IDP                  Labels
 	Ingress              Labels
 	InstanceTypes        Labels
@@ -47,6 +48,7 @@ func initFeatureLabels() *featureLabels {
 	fLabels.BreakGlassCredential = Label("feature-break-glass-credential")
 	fLabels.ExternalAuthProvider = Label("feature-external-auth-provider")
 	fLabels.Gates = Label("feature-gates")
+	fLabels.IAMServiceAccount = Label("feature-iam-service-account")
 	fLabels.IDP = Label("feature-idp")
 	fLabels.Ingress = Label("feature-ingress")
 	fLabels.InstanceTypes = Label("feature-instance-types")

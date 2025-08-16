@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/dnsdomains"
 	"github.com/openshift/rosa/cmd/list/externalauthprovider"
 	"github.com/openshift/rosa/cmd/list/gates"
+	"github.com/openshift/rosa/cmd/list/iamserviceaccounts"
 	"github.com/openshift/rosa/cmd/list/idp"
 	"github.com/openshift/rosa/cmd/list/ingress"
 	"github.com/openshift/rosa/cmd/list/instancetypes"
@@ -58,6 +59,7 @@ func init() {
 	Cmd.AddCommand(addon.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
 	Cmd.AddCommand(gates.Cmd)
+	Cmd.AddCommand(iamserviceaccounts.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	Cmd.AddCommand(ingress.Cmd)
 	machinePoolCommand := machinepool.NewListMachinePoolCommand()
@@ -93,7 +95,7 @@ func init() {
 		oidcprovider.Cmd, cluster.Cmd,
 		breakglasscredential.Cmd, addon.Cmd,
 		externalauthprovider.Cmd, dnsdomains.Cmd,
-		gates.Cmd, idp.Cmd, ingress.Cmd, machinePoolCommand,
+		gates.Cmd, iamserviceaccounts.Cmd, idp.Cmd, ingress.Cmd, machinePoolCommand,
 		operatorroles.Cmd, region.Cmd, rhRegion.Cmd,
 		service.Cmd, tuningconfigs.Cmd, upgrade.Cmd,
 		user.Cmd, version.Cmd, kubeletconfig, accessrequest,
