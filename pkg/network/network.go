@@ -12,7 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//go:generate mockgen -source=network.go -package=network -destination=network_mock.go
 type NetworkService interface {
 	CreateStack(templateFile *string, templateBody *[]byte, params map[string]string, tags map[string]string) error
 }

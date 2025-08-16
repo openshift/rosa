@@ -22,7 +22,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/AlecAivazis/survey/v2"
+	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"

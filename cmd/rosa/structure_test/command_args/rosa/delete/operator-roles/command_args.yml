@@ -1,7 +1,7 @@
 - name: cluster
+- name: delete-hcp-shared-vpc-policies
 - name: mode
 - name: prefix
 - name: profile
 - name: region
-- name: delete-hcp-shared-vpc-policies
 - name: "yes"

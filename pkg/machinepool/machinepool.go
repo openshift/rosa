@@ -54,7 +54,6 @@ type ListMachinePoolArgs struct {
 	ShowAll       bool
 }
 
-//go:generate mockgen -source=machinepool.go -package=machinepool -destination=machinepool_mock.go
 type MachinePoolService interface {
 	DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, machinePoolId string) error
 	ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, args ListMachinePoolArgs) error
