@@ -60,7 +60,6 @@ func VerifyRosaRunner() rosa.CommandRunner {
 	}
 }
 
-//go:generate mockgen -source=cmd.go -package=rosa -destination=./cmd_mock.go
 type VerifyRosa interface {
 	Verify() error
 }

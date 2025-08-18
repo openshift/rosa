@@ -1,5 +1,5 @@
 - name: all
+- name: hosted-cp
 - name: output
 - name: profile
 - name: region
-- name: hosted-cp

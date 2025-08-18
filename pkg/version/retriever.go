@@ -13,7 +13,6 @@ import (
 	"github.com/openshift/rosa/pkg/clients"
 )
 
-//go:generate mockgen -source=retriever.go -package=version -destination=./retriever_mock.go
 type Retriever interface {
 	RetrieveLatestVersionFromMirror() (*goVer.Version, error)
 	RetrievePossibleVersionsFromCache() ([]string, bool)

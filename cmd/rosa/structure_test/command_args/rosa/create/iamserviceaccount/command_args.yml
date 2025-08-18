@@ -1,0 +1,13 @@
+- name: attach-policy-arn
+- name: cluster
+- name: inline-policy
+- name: interactive
+- name: mode
+- name: name
+- name: namespace
+- name: path
+- name: permissions-boundary
+- name: profile
+- name: region
+- name: role-name
+- name: "yes"

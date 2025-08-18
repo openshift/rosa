@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/decision"
 	"github.com/openshift/rosa/cmd/create/dnsdomains"
 	"github.com/openshift/rosa/cmd/create/externalauthprovider"
+	"github.com/openshift/rosa/cmd/create/iamserviceaccount"
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/kubeletconfig"
 	"github.com/openshift/rosa/cmd/create/machinepool"
@@ -54,6 +55,7 @@ func init() {
 	Cmd.AddCommand(accountroles.Cmd)
 	Cmd.AddCommand(admin.Cmd)
 	Cmd.AddCommand(cluster.Cmd)
+	Cmd.AddCommand(iamserviceaccount.Cmd)
 	Cmd.AddCommand(idp.Cmd)
 	machinepool := machinepool.NewCreateMachinePoolCommand()
 	Cmd.AddCommand(machinepool)
@@ -85,7 +87,7 @@ func init() {
 		userrole.Cmd, ocmrole.Cmd,
 		oidcprovider.Cmd, breakglasscredential.Cmd,
 		admin.Cmd, autoscalerCommand, dnsdomains.Cmd,
-		externalauthprovider.Cmd, idp.Cmd, kubeletConfig, tuningconfigs.Cmd,
+		externalauthprovider.Cmd, iamserviceaccount.Cmd, idp.Cmd, kubeletConfig, tuningconfigs.Cmd,
 		decisionCommand,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)

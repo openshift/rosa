@@ -1,0 +1,9 @@
+- name: cluster
+- name: interactive
+- name: mode
+- name: name
+- name: namespace
+- name: profile
+- name: region
+- name: role-name
+- name: "yes"

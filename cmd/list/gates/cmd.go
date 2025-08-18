@@ -23,7 +23,7 @@ import (
 	"text/tabwriter"
 
 	semver "github.com/hashicorp/go-version"
-	"github.com/nathan-fiscaletti/consolesize-go"
+	consolesize "github.com/nathan-fiscaletti/consolesize-go"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 

@@ -11,9 +11,6 @@
 - name: additional-trust-bundle-file
 - name: audit-log-arn
 - name: additional-allowed-principals
-- name: interactive
-- name: profile
-- name: region
 - name: registry-config-allowed-registries
 - name: registry-config-insecure-registries
 - name: registry-config-blocked-registries
@@ -24,3 +21,6 @@
 - name: network-type
 - name: ovn-internal-subnets
 - name: channel-group
+- name: interactive
+- name: profile
+- name: region

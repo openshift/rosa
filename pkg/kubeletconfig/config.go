@@ -9,7 +9,6 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-//go:generate mockgen -source=config.go -package=kubeletconfig -destination=capability_checker_mock.go
 type CapabilityChecker interface {
 	IsCapabilityEnabled(capability string) (bool, error)
 }
