@@ -36,9 +36,8 @@ const boolType string = "bool"
 
 const regionFlagName = "region"
 const regionDeprecationMessage = "Region flag will be removed from this command in future versions"
-const DisableWorkloadMonitoringDeprecationMessage = "Disabling user workload monitoring" +
-	" (--disable-workload-monitoring) is deprecated and will be removed in a future version of ROSA CLI.\nPlease" +
-	" update your usage to avoid issues when this endpoint is removed."
+const DisableWorkloadMonitoringDeprecationMessage = "Disable user workload monitoring" +
+	" (--disable-workload-monitoring) is deprecated and will be discontinued in a future version of ROSA CLI."
 
 const MustUseBothFlagsErrorMessage = "Must supply '%s' flag when using the '%s' flag"
 
