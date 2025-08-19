@@ -37,7 +37,8 @@ var (
 		`{"displayName":"displayname","id":"bar","kind":"Cluster","migrations":[{"id":"123123123","state":"started",` +
 			`"type":"sdnToOvn"}],"name":"foo"}`)
 	expectClusterWithExternalAuthConfig = []byte(
-		`{"displayName":"displayname","external_auth_config":{"enabled":true},"kind":"Cluster","migrations":[]}`)
+		`{"displayName":"displayname","external_auth_config":{"enabled":true,"kind":"ExternalAuthConfig"},"kind":` +
+			`"Cluster","migrations":[]}`)
 	expectClusterWithEtcd = []byte(
 		`{"aws":{"etcd_encryption":{"kms_key_arn":"arn:aws:kms:us-west-2:125374464689:key/` +
 			`41fccc11-b089-test-aeff-test"}},"displayName":"displayname","etcd_encryption":true,"kind":"Cluster",` +
