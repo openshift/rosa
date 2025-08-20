@@ -36,26 +36,6 @@ struct AzureNodePool {
     // Required during creation.
     VMSize String
 
-    // The size in GiB to assign to the OS disks of the
-    // Nodes in the Node Pool. The property
-    // is the number of bytes x 1024^3.
-    // If not specified, OS disk size is 30 GiB.
-    OSDiskSizeGibibytes Integer
-
-    // The disk storage account type to use for the OS disks of the Nodes in the
-    // Node Pool. Valid values are:
-    // * Standard_LRS: HDD
-    // * StandardSSD_LRS: Standard SSD
-    // * Premium_LRS: Premium SDD
-    // * UltraSSD_LRS: Ultra SDD
-    //
-    // If not specified, `Premium_LRS` is used.
-    OSDiskStorageAccountType String
-
-    // Enables Ephemeral OS Disks for the Nodes in the Node Pool.
-    // If not specified, no Ephemeral OS Disks are used.
-    EphemeralOSDiskEnabled Boolean
-
     // EncryptionAtHost contains Encryption At Host disk encryption configuration.
     // When enabled, it enhances Azure Disk Storage Server-Side Encryption to ensure that all temporary disks
     // and disk caches are encrypted at rest and flow encrypted to the Storage clusters.

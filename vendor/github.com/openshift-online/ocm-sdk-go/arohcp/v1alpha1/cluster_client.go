@@ -81,6 +81,14 @@ func (c *ClusterClient) Get() *ClusterGetRequest {
 	}
 }
 
+// Autoscaler returns the target 'autoscaler' resource.
+func (c *ClusterClient) Autoscaler() *AutoscalerClient {
+	return NewAutoscalerClient(
+		c.transport,
+		path.Join(c.path, "autoscaler"),
+	)
+}
+
 // ExternalAuthConfig returns the target 'external_auth_config' resource.
 func (c *ClusterClient) ExternalAuthConfig() *ExternalAuthConfigClient {
 	return NewExternalAuthConfigClient(

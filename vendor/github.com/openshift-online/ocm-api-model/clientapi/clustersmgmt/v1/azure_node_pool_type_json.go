@@ -47,29 +47,11 @@ func WriteAzureNodePool(object *AzureNodePool, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("os_disk_size_gibibytes")
-		stream.WriteInt(object.osDiskSizeGibibytes)
-		count++
-	}
-	present_ = len(object.fieldSet_) > 1 && object.fieldSet_[1]
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("os_disk_storage_account_type")
-		stream.WriteString(object.osDiskStorageAccountType)
-		count++
-	}
-	present_ = len(object.fieldSet_) > 2 && object.fieldSet_[2]
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
 		stream.WriteObjectField("vm_size")
 		stream.WriteString(object.vmSize)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 3 && object.fieldSet_[3] && object.encryptionAtHost != nil
+	present_ = len(object.fieldSet_) > 1 && object.fieldSet_[1] && object.encryptionAtHost != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -78,16 +60,7 @@ func WriteAzureNodePool(object *AzureNodePool, stream *jsoniter.Stream) {
 		WriteAzureNodePoolEncryptionAtHost(object.encryptionAtHost, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 4 && object.fieldSet_[4]
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("ephemeral_os_disk_enabled")
-		stream.WriteBool(object.ephemeralOSDiskEnabled)
-		count++
-	}
-	present_ = len(object.fieldSet_) > 5 && object.fieldSet_[5] && object.osDisk != nil
+	present_ = len(object.fieldSet_) > 2 && object.fieldSet_[2] && object.osDisk != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -96,7 +69,7 @@ func WriteAzureNodePool(object *AzureNodePool, stream *jsoniter.Stream) {
 		WriteAzureNodePoolOsDisk(object.osDisk, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 6 && object.fieldSet_[6]
+	present_ = len(object.fieldSet_) > 3 && object.fieldSet_[3]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -122,7 +95,7 @@ func UnmarshalAzureNodePool(source interface{}) (object *AzureNodePool, err erro
 // ReadAzureNodePool reads a value of the 'azure_node_pool' type from the given iterator.
 func ReadAzureNodePool(iterator *jsoniter.Iterator) *AzureNodePool {
 	object := &AzureNodePool{
-		fieldSet_: make([]bool, 7),
+		fieldSet_: make([]bool, 4),
 	}
 	for {
 		field := iterator.ReadObject()
@@ -130,34 +103,22 @@ func ReadAzureNodePool(iterator *jsoniter.Iterator) *AzureNodePool {
 			break
 		}
 		switch field {
-		case "os_disk_size_gibibytes":
-			value := iterator.ReadInt()
-			object.osDiskSizeGibibytes = value
-			object.fieldSet_[0] = true
-		case "os_disk_storage_account_type":
-			value := iterator.ReadString()
-			object.osDiskStorageAccountType = value
-			object.fieldSet_[1] = true
 		case "vm_size":
 			value := iterator.ReadString()
 			object.vmSize = value
-			object.fieldSet_[2] = true
+			object.fieldSet_[0] = true
 		case "encryption_at_host":
 			value := ReadAzureNodePoolEncryptionAtHost(iterator)
 			object.encryptionAtHost = value
-			object.fieldSet_[3] = true
-		case "ephemeral_os_disk_enabled":
-			value := iterator.ReadBool()
-			object.ephemeralOSDiskEnabled = value
-			object.fieldSet_[4] = true
+			object.fieldSet_[1] = true
 		case "os_disk":
 			value := ReadAzureNodePoolOsDisk(iterator)
 			object.osDisk = value
-			object.fieldSet_[5] = true
+			object.fieldSet_[2] = true
 		case "resource_name":
 			value := iterator.ReadString()
 			object.resourceName = value
-			object.fieldSet_[6] = true
+			object.fieldSet_[3] = true
 		default:
 			iterator.ReadAny()
 		}
