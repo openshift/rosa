@@ -232,7 +232,7 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterKey := r.GetClusterKey()
 
 	// Enable interactive mode if no flags have been set
-	if !interactive.Enabled() {
+	if !interactive.Enabled() || cmd.Flags().Changed(disableWorkloadMonitoringFlagName) {
 		changedFlags := false
 		for _, flag := range []string{"expiration-time", "expiration", "private", "http-proxy",
 			"https-proxy", "no-proxy", "additional-trust-bundle-file",
@@ -240,13 +240,18 @@ func run(cmd *cobra.Command, _ []string) {
 			"registry-config-blocked-registries", "registry-config-insecure-registries",
 			"allowed-registries-for-import", "registry-config-platform-allowlist",
 			"registry-config-additional-trusted-ca", "billing-account", "registry-config-allowed-registries-for-import",
-			"enable-delete-protection", "channel-group", "network-type"} {
+			"enable-delete-protection", "channel-group", "network-type", "ovn-internal-subnets"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
 			}
 		}
 		if !changedFlags {
+			if cmd.Flags().Changed(disableWorkloadMonitoringFlagName) {
+				r.Reporter.Errorf(fmt.Sprintf("'%s' is deprecated, the only change provided, and cannot be "+
+					"updated.", disableWorkloadMonitoringFlagName))
+				os.Exit(1)
+			}
 			interactive.Enable()
 		}
 	}
