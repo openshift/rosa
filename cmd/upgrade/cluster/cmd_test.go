@@ -208,8 +208,9 @@ var _ = Describe("Upgrade", Ordered, func() {
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 		Expect(err).To(BeNil())
 		Expect(stdout).To(ContainSubstring("INFO: Upgrade successfully scheduled for cluster 'cluster1'"))
-		Expect(stderr).To(Equal("WARN: To check and acknowledge gates prior to scheduling an upgrade, run this" +
-			" command with '--dry-run'\n"))
+		Expect(stderr).To(Equal("WARN: To check and acknowledge gates prior to scheduling an upgrade, run" +
+			" this command with '--dry-run', particularly if you encounter an upgrade failure related to " +
+			"acknowledged agreements.\n"))
 	})
 	It("Cluster is ready and with automatic scheduling, dry run flag doesn't allow cluster upgrade", func() {
 		args.schedule = "20 5 * * *"
