@@ -17,8 +17,10 @@ limitations under the License.
 // Market type for AWS Capacity Reservations.
 enum MarketType {
     // EC2 instances run as standard On-Demand instances.
+	@json(name = "OnDemand")
     OnDemand
 
     // Scheduled pre-purchased compute capacity.
+	@json(name = "CapacityBlocks")
     CapacityBlocks
 } 

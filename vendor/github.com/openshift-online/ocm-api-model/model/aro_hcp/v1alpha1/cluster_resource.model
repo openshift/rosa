@@ -53,4 +53,9 @@ resource Cluster {
 	locator ExternalAuthConfig {
 		target ExternalAuthConfig
 	}
+
+	locator Autoscaler {
+		target Autoscaler
+	}
+
 }

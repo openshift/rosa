@@ -24,7 +24,7 @@ type MarketType string
 
 const (
 	// Scheduled pre-purchased compute capacity.
-	MarketTypeCapacityBlocks MarketType = "capacity_blocks"
+	MarketTypeCapacityBlocks MarketType = "CapacityBlocks"
 	// EC2 instances run as standard On-Demand instances.
-	MarketTypeOnDemand MarketType = "on_demand"
+	MarketTypeOnDemand MarketType = "OnDemand"
 )

@@ -93,7 +93,7 @@ type Cluster struct {
 	additionalTrustBundle             string
 	addons                            *v1.AddOnInstallationList
 	autoNode                          *ClusterAutoNode
-	autoscaler                        *v1.ClusterAutoscaler
+	autoscaler                        *ClusterAutoscaler
 	azure                             *Azure
 	billingModel                      BillingModel
 	byoOidc                           *ByoOidc
@@ -494,7 +494,7 @@ func (o *Cluster) GetAutoNode() (value *ClusterAutoNode, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to an optional _ClusterAutoscaler_ that is coupled with the cluster.
-func (o *Cluster) Autoscaler() *v1.ClusterAutoscaler {
+func (o *Cluster) Autoscaler() *ClusterAutoscaler {
 	if o != nil && len(o.fieldSet_) > 15 && o.fieldSet_[15] {
 		return o.autoscaler
 	}
@@ -505,7 +505,7 @@ func (o *Cluster) Autoscaler() *v1.ClusterAutoscaler {
 // a flag indicating if the attribute has a value.
 //
 // Link to an optional _ClusterAutoscaler_ that is coupled with the cluster.
-func (o *Cluster) GetAutoscaler() (value *v1.ClusterAutoscaler, ok bool) {
+func (o *Cluster) GetAutoscaler() (value *ClusterAutoscaler, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 15 && o.fieldSet_[15]
 	if ok {
 		value = o.autoscaler

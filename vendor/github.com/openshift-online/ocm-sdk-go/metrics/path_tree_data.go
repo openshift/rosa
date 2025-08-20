@@ -155,6 +155,7 @@ var pathTreeData = `{
       "v1alpha1": {
         "clusters": {
           "-": {
+            "autoscaler": null,
             "external_auth_config": {
               "external_auths": {
                 "-": null

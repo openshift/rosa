@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.475
+- Update model to version 0.0.430
+  - update MarketType enum to match the camelcase values expected by CS
+  - deprecate os disk configuration old design
+  - Add API endpoints for cluster autoscaler in ARO HCP
+
 ## 0.1.474
 - Update mode to version 0.0.429
   - Add support for AutoNode for ROSA HCP 
