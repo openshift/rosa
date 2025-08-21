@@ -8,8 +8,6 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push"
-    pipelinesascode.tekton.dev/params: |
-      image_tag = target_branch.startsWith("refs/tags/v") ? "e2e_test_" + target_branch.split("/").last() : "e2e_test_latest"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: rh-rosa-cli
@@ -27,8 +25,6 @@ spec:
     value: quay.io/redhat-user-workloads/rh-terraform-tenant/rosa-cli-e2e-test:{{revision}}
   - name: dockerfile
     value: /images/Dockerfile.konflux
-  - name: image_tag
-    value: '{{image_tag}}'
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -533,7 +529,7 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: ADDITIONAL_TAGS
         value:
-        - $(params.image_tag)
+        - latest
       runAfter:
       - build-image-index
       taskRef:
