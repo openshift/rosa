@@ -2257,7 +2257,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 
 		var excludedPublicSubnets []string
-		if privateLink && privateIngress {
+		if (isHostedCP && private && privateIngress) || (!isHostedCP && privateLink) {
 			subnets, excludedPublicSubnets = filterPrivateSubnets(subnets, r)
 		}
 
