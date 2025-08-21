@@ -80,6 +80,7 @@ func init() {
 	)
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -153,19 +154,29 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	headerFormat := "ID\t\tNAME\t\tMULTI-AZ SUPPORT\t\tHOSTED-CP SUPPORT\n"
-	fmt.Fprint(writer, headerFormat)
-
+	headers := []string{"ID", "NAME", "MULTI-AZ SUPPORT", "HOSTED-CP SUPPORT"}
+	var tableData [][]string
 	for _, region := range availableRegions {
-		fmt.Fprintf(writer,
-			"%s\t\t%s\t\t%t\t\t%t\n",
+		row := []string{
 			region.ID(),
 			region.DisplayName(),
-			region.SupportsMultiAZ(),
-			region.SupportsHypershift(),
-		)
+			fmt.Sprintf("%t", region.SupportsMultiAZ()),
+			fmt.Sprintf("%t", region.SupportsHypershift()),
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
 }

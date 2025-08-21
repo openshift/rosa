@@ -17,7 +17,6 @@ limitations under the License.
 package accountroles
 
 import (
-	"fmt"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -55,6 +54,7 @@ func init() {
 		"List only account-roles that are associated with the given version.",
 	)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -108,23 +108,34 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ROLE NAME\tROLE TYPE\tROLE ARN\tOPENSHIFT VERSION\tAWS Managed\n")
+	headers := []string{"ROLE NAME", "ROLE TYPE", "ROLE ARN", "OPENSHIFT VERSION", "AWS Managed"}
+
+	var tableData [][]string
 	for _, accountRole := range accountRoles {
 		awsManaged := "No"
 		if accountRole.ManagedPolicy {
 			awsManaged = "Yes"
 		}
-		fmt.Fprintf(
-			writer,
-			"%s\t%s\t%s\t%s\t%s\n",
+		tableData = append(tableData, []string{
 			accountRole.RoleName,
 			accountRole.RoleType,
 			accountRole.RoleARN,
 			accountRole.Version,
 			awsManaged,
-		)
+		})
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t", tableData)
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
+
 }

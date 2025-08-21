@@ -1,4 +1,5 @@
 - name: external-id
+- name: hide-empty-columns
 - name: hosted-cp
 - name: multi-az
 - name: output

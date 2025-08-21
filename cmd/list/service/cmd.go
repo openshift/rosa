@@ -17,7 +17,6 @@ limitations under the License.
 package service
 
 import (
-	"fmt"
 	"os"
 	"text/tabwriter"
 
@@ -47,6 +46,7 @@ func init() {
 	flags.SortFlags = false
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -77,12 +77,30 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "SERVICE_ID\tSERVICE\tSERVICE_STATE\tCLUSTER_NAME\n")
+	headers := []string{"SERVICE_ID", "SERVICE", "SERVICE_STATE", "CLUSTER_NAME"}
+	var tableData [][]string
 	servicesList.Each(func(srv *msv1.ManagedService) bool {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
-			srv.ID(), srv.Service(), srv.ServiceState(), srv.Cluster().Name())
+		row := []string{
+			srv.ID(),
+			srv.Service(),
+			srv.ServiceState(),
+			srv.Cluster().Name(),
+		}
+		tableData = append(tableData, row)
 		return true
 	})
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
 }

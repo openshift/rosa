@@ -1,3 +1,4 @@
 - name: output
+- name: hide-empty-columns
 - name: profile
 - name: region

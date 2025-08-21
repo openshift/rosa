@@ -18,20 +18,20 @@ import (
 const (
 	nodePoolName         = "nodepool85"
 	clusterId            = "24vf9iitg3p6tlml88iml6j6mu095mh8"
-	singleNodePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS    TAINTS    AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR  \n" +
-		"nodepool85  No           /0        m5.xlarge                          us-east-1a                 default    4.12.24  No          \n"
+	singleNodePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR\n" +
+		"nodepool85  No           /0        m5.xlarge                      us-east-1a                 default    4.12.24  No\n"
 
-	singleMachinePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  AVAILABILITY ZONES                  SPOT INSTANCES  DISK SIZE\n" +
-		"nodepool85  No           0         m5.xlarge      us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n"
+	singleMachinePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES                  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+		"nodepool85  No           0         m5.xlarge                      us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n"
 
-	multipleMachinePoolOutput = "ID           AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS      TAINTS       AVAILABILITY ZONES                  SPOT INSTANCES  DISK SIZE\n" +
-		"nodepool85   No           0         m5.xlarge                               us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n" +
-		"nodepool852  No           0         m5.xlarge      test=label               us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n" +
-		"nodepool853  Yes          1-100     m5.xlarge      test=label  test=taint:  us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n"
+	multipleMachinePoolOutput = "ID           AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS      TAINTS       AVAILABILITY ZONES                  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
+		"nodepool85   No           0         m5.xlarge                               us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n" +
+		"nodepool852  No           0         m5.xlarge      test=label               us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n" +
+		"nodepool853  Yes          1-100     m5.xlarge      test=label  test=taint:  us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n"
 
-	multipleNodePoolsOutput = "ID           AUTOSCALING  REPLICAS   INSTANCE TYPE  LABELS        TAINTS    AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR  \n" +
-		"nodepool85   No           /0         m5.xlarge                              us-east-1a                 default    4.12.24  No          \n" +
-		"nodepool852  Yes          /100-1000  m5.xlarge      test=label              us-east-1a                 default    4.12.24  No          \n"
+	multipleNodePoolsOutput = "ID           AUTOSCALING  REPLICAS   INSTANCE TYPE  LABELS      TAINTS  AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR\n" +
+		"nodepool85   No           /0         m5.xlarge                          us-east-1a                 default    4.12.24  No\n" +
+		"nodepool852  Yes          /100-1000  m5.xlarge      test=label          us-east-1a                 default    4.12.24  No\n"
 )
 
 var _ = Describe("List machine pool", func() {
@@ -144,17 +144,20 @@ var _ = Describe("List machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = cmd.Flag("all").Value.Set("true")
 				Expect(err).ToNot(HaveOccurred())
+				err = cmd.Flag("hide-empty-columns").Value.Set("true")
+				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 				Expect(err).ToNot(HaveOccurred())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 
-				// With --all, should include columns like SUBNETS and SG IDS even if empty
-				Expect(stdout).To(ContainSubstring("SUBNETS"))
-				Expect(stdout).To(ContainSubstring("SG IDS"))
+				// With --all, should show the 3 special columns (empty columns are still hidden)
 				Expect(stdout).To(ContainSubstring("AZ TYPE"))
 				Expect(stdout).To(ContainSubstring("WIN-LI ENABLED"))
 				Expect(stdout).To(ContainSubstring("DEDICATED HOST"))
+				// Empty columns should NOT be shown even with --all
+				Expect(stdout).ToNot(ContainSubstring("SUBNETS"))
+				Expect(stdout).ToNot(ContainSubstring("SG IDS"))
 			})
 
 			It("Shows AZ TYPE column when --az-type flag is used", func() {
@@ -299,7 +302,7 @@ var _ = Describe("List machine pool", func() {
 				Expect(stdout).To(ContainSubstring("sg-1, sg-2"))
 			})
 
-			It("Hides empty columns by default", func() {
+			It("Hides empty columns when --hide-empty-columns is used", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterReady))
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
 				runner := ListMachinePoolRunner()
@@ -308,12 +311,14 @@ var _ = Describe("List machine pool", func() {
 				cmd := NewListMachinePoolCommand()
 				err = cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
+				err = cmd.Flag("hide-empty-columns").Value.Set("true")
+				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 				Expect(err).ToNot(HaveOccurred())
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 
-				// Should not include empty columns like SUBNETS and SG IDS by default
+				// Should not include empty columns like SUBNETS and SG IDS when flag is set
 				Expect(stdout).ToNot(ContainSubstring("SUBNETS"))
 				Expect(stdout).ToNot(ContainSubstring("SG IDS"))
 				Expect(stdout).ToNot(ContainSubstring("LABELS"))

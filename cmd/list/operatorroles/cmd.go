@@ -74,6 +74,7 @@ func init() {
 	interactive.AddFlag(flags)
 	ocm.AddOptionalClusterFlag(Cmd)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -165,16 +166,34 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if args.prefix == "" {
-		fmt.Fprintf(writer, "ROLE PREFIX\tAMOUNT IN BUNDLE\n")
+		// Define headers once
+		headers := []string{"ROLE PREFIX", "AMOUNT IN BUNDLE"}
+
+		// Prepare table data
+		var tableData [][]string
 		for _, key := range prefixes {
-			fmt.Fprintf(
-				writer,
-				"%s\t%d\n",
+			row := []string{
 				key,
-				len(operatorsMap[key]),
-			)
+				fmt.Sprintf("%d", len(operatorsMap[key])),
+			}
+			tableData = append(tableData, row)
 		}
-		writer.Flush()
+
+		// Process headers and data if hiding empty columns
+		if output.ShouldHideEmptyColumns() {
+			tableData = output.RemoveEmptyColumns(headers, tableData)
+		} else {
+			tableData = append([][]string{headers}, tableData...)
+		}
+
+		// Print the table
+		output.BuildTable(writer, "\t", tableData)
+
+		// Check for flush errors
+		if err := writer.Flush(); err != nil {
+			_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+			os.Exit(1)
+		}
 		if !interactive.Enabled() {
 			os.Exit(0)
 		}
@@ -210,8 +229,9 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		fmt.Fprintf(writer, "OPERATOR NAME\tOPERATOR NAMESPACE\tROLE NAME\t"+
-			"ROLE ARN\tCLUSTER ID\tVERSION\tPOLICIES\tAWS Managed\tIN USE\n")
+		headers := []string{"OPERATOR NAME", "OPERATOR NAMESPACE", "ROLE NAME", "ROLE ARN",
+			"CLUSTER ID", "VERSION", "POLICIES", "AWS Managed", "IN USE"}
+		var tableData [][]string
 		for _, operatorRole := range operatorsMap[args.prefix] {
 			awsManaged := "No"
 			inUse := "No"
@@ -221,20 +241,31 @@ func run(cmd *cobra.Command, _ []string) {
 			if hasClusterUsingOperatorRolesPrefix {
 				inUse = "Yes"
 			}
-			fmt.Fprintf(
-				writer,
-				"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			row := []string{
 				operatorRole.OperatorName,
 				operatorRole.OperatorNamespace,
 				operatorRole.RoleName,
 				operatorRole.RoleARN,
 				operatorRole.ClusterID,
 				operatorRole.Version,
-				operatorRole.AttachedPolicies,
+				output.PrintStringSlice(operatorRole.AttachedPolicies),
 				awsManaged,
 				inUse,
-			)
+			}
+			tableData = append(tableData, row)
 		}
-		writer.Flush()
+
+		if output.ShouldHideEmptyColumns() {
+			tableData = output.RemoveEmptyColumns(headers, tableData)
+		} else {
+			tableData = append([][]string{headers}, tableData...)
+		}
+
+		output.BuildTable(writer, "\t", tableData)
+
+		if err := writer.Flush(); err != nil {
+			_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+			os.Exit(1)
+		}
 	}
 }

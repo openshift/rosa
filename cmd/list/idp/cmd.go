@@ -17,7 +17,6 @@ limitations under the License.
 package idp
 
 import (
-	"fmt"
 	"os"
 	"text/tabwriter"
 
@@ -43,6 +42,7 @@ var Cmd = &cobra.Command{
 func init() {
 	ocm.AddClusterFlag(Cmd)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -85,19 +85,41 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	if len(idps) == 1 && !ocm.HasAuthURLSupport(idps[0]) {
-		fmt.Fprintf(writer, "NAME\t\tTYPE\n")
-	} else {
-		fmt.Fprintf(writer, "NAME\t\tTYPE\t\tAUTH URL\n")
+	includeAuthURL := !(len(idps) == 1 && !ocm.HasAuthURLSupport(idps[0]))
+
+	headers := []string{"NAME", "TYPE"}
+	if includeAuthURL {
+		headers = append(headers, "AUTH URL")
 	}
+
+	var tableData [][]string
 	for _, idp := range idps {
-		oauthURL, err := ocm.GetOAuthURL(cluster, idp)
-		if err != nil {
-			r.Reporter.Warnf("Error building OAuth URL for %s: %v", idp.Name(), err)
+		row := []string{
+			idp.Name(),
+			ocm.IdentityProviderType(idp),
 		}
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", idp.Name(), ocm.IdentityProviderType(idp), oauthURL)
+
+		if includeAuthURL {
+			oauthURL, err := ocm.GetOAuthURL(cluster, idp)
+			if err != nil {
+				r.Reporter.Warnf("Error building OAuth URL for %s: %v", idp.Name(), err)
+			}
+			row = append(row, oauthURL)
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
 }

@@ -86,6 +86,7 @@ func init() {
 	Cmd.MarkFlagRequired("version")
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 const (
@@ -183,33 +184,62 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
 	cols, _ := consolesize.GetConsoleSize()
 	descriptionSize := float64(cols) * 0.30
-	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
-	fmt.Fprintln(writer, "Gate Description\tSTS\tOCP Version\tDocumentation URL\t")
+
+	headers := []string{"Gate Description", "STS", "OCP Version", "Documentation URL"}
+	var tableData [][]string
 
 	for _, gate := range versionGates {
 		wrappedDescription := wordWrap(strings.TrimSuffix(gate.Description(), "\n"), int(descriptionSize))
+		lines := strings.Split(wrappedDescription, "\n")
 
-		for i, line := range strings.Split(wrappedDescription, "\n") {
+		for i, line := range lines {
 			if i == 0 {
-				fmt.Fprintf(writer,
-					"%s\t%t\t%s\t%s\t\n",
+				// First line has all data
+				row := []string{
 					line,
-					gate.STSOnly(),
+					fmt.Sprintf("%t", gate.STSOnly()),
 					gate.VersionRawIDPrefix(),
 					gate.DocumentationURL(),
-				)
+				}
+				tableData = append(tableData, row)
 			} else {
-				fmt.Fprintf(writer,
-					"%s\t \t \t \t\n",
-					line,
-				)
+				// Continuation lines have description only
+				row := []string{line, "", "", ""}
+				tableData = append(tableData, row)
 			}
 		}
 	}
-	writer.Flush()
+
+	var finalTableData [][]string
+
+	if output.ShouldHideEmptyColumns() {
+		finalTableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		finalTableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+
+	headerLine := strings.Join(finalTableData[0], "\t") + "\t"
+	fmt.Fprintln(writer, headerLine)
+
+	for i := 1; i < len(finalTableData); i++ {
+		row := finalTableData[i]
+		if output.ShouldHideEmptyColumns() || len(row) < 2 || row[1] != "" {
+			// Normal row or when hiding empty columns
+			fmt.Fprintf(writer, "%s\t\n", strings.Join(row, "\t"))
+		} else {
+			// Continuation row - preserve spacing (only when not hiding empty columns)
+			fmt.Fprintf(writer, "%s\t \t \t \t\n", row[0])
+		}
+	}
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
 }
 
 func parseMajorMinor(version string) (string, error) {
