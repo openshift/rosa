@@ -1061,12 +1061,42 @@ func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, clust
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	finalStringToOutput := getMachinePoolsString(r, machinePools, args)
+	// Get table as string first (hunterkepley's suggestion - less invasive approach)
+	var tableString string
 	if isHypershift {
-		finalStringToOutput = getNodePoolsString(nodePools)
+		tableString = getNodePoolsString(nodePools)
+	} else {
+		tableString = getMachinePoolsString(r, machinePools, args)
 	}
-	fmt.Fprint(writer, finalStringToOutput)
-	writer.Flush()
+
+	// Parse the string output into headers and data
+	headers, tableData := parseTableString(tableString)
+
+	// Only hide empty columns if the flag is set
+	if output.ShouldHideEmptyColumns() {
+		// Find which columns are special (controlled by flags)
+		specialColumns := make(map[int]bool)
+		if !isHypershift {
+			for i, header := range headers {
+				if (header == "AZ TYPE" && (args.ShowAZType || args.ShowAll)) ||
+					(header == "WIN-LI ENABLED" && (args.ShowWindowsLI || args.ShowAll)) ||
+					(header == "DEDICATED HOST" && (args.ShowDedicated || args.ShowAll)) {
+					specialColumns[i] = true
+				}
+			}
+		}
+
+		// Remove empty columns but preserve special columns when their flags are set
+		headers, tableData = output.FilterColumnsWithConditions(headers, tableData, specialColumns)
+	}
+
+	fullTableData := [][]string{headers}
+	fullTableData = append(fullTableData, tableData...)
+	output.BuildTable(writer, "\t", fullTableData)
+
+	if err := writer.Flush(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1235,11 +1265,55 @@ func appendUpgradesIfExist(scheduledUpgrade *cmv1.NodePoolUpgradePolicy, output 
 	return output
 }
 
+// parseTableString parses a tab-delimited string into headers and table data
+// This implements hunterkepley's suggestion to parse string output
+func parseTableString(tableString string) ([]string, [][]string) {
+	lines := strings.Split(strings.TrimSpace(tableString), "\n")
+	if len(lines) == 0 {
+		return nil, nil
+	}
+
+	// First line is headers
+	headers := strings.Split(lines[0], "\t")
+
+	// Rest are data rows
+	var tableData [][]string
+	for i := 1; i < len(lines); i++ {
+		if lines[i] != "" {
+			row := strings.Split(lines[i], "\t")
+			tableData = append(tableData, row)
+		}
+	}
+
+	return headers, tableData
+}
+
+// getMachinePoolsString returns machine pools as a formatted string
 func getMachinePoolsString(
 	runtime *rosa.Runtime,
 	machinePools []*cmv1.MachinePool,
 	args ListMachinePoolArgs,
 ) string {
+	headers, tableData := getMachinePoolsData(runtime, machinePools, args)
+
+	// Build string output
+	var result strings.Builder
+	result.WriteString(strings.Join(headers, "\t"))
+	result.WriteString("\n")
+
+	for _, row := range tableData {
+		result.WriteString(strings.Join(row, "\t"))
+		result.WriteString("\n")
+	}
+
+	return result.String()
+}
+
+func getMachinePoolsData(
+	runtime *rosa.Runtime,
+	machinePools []*cmv1.MachinePool,
+	args ListMachinePoolArgs,
+) ([]string, [][]string) {
 	type columnDefinition struct {
 		header      string
 		isVisible   bool
@@ -1267,63 +1341,58 @@ func getMachinePoolsString(
 		{"DEDICATED HOST", args.ShowDedicated || args.ShowAll, func(mp *cmv1.MachinePool) string { return isDedicatedHost(mp, runtime) }},
 	}
 
-	var visibleColumnHeaders []string
-	var visibleColumnData [][]string
-	numPools := len(machinePools)
-
+	var headers []string
+	var tableData [][]string
 	for _, column := range allColumnDefinitions {
-		if !column.isVisible {
-			continue
+		if column.isVisible {
+			headers = append(headers, column.header)
 		}
+	}
 
-		columnValues := make([]string, numPools)
-		hasNonEmptyValue := false
-
-		for i, pool := range machinePools {
-			if pool == nil {
-				columnValues[i] = "-"
+	for _, pool := range machinePools {
+		var row []string
+		for _, column := range allColumnDefinitions {
+			if !column.isVisible {
 				continue
 			}
 
-			value := column.extractData(pool)
-			columnValues[i] = value
-			if value != "" && value != "-" {
-				hasNonEmptyValue = true
+			if pool == nil {
+				row = append(row, "")
+			} else {
+				value := column.extractData(pool)
+				row = append(row, value)
 			}
 		}
-
-		if args.ShowAll || hasNonEmptyValue || numPools == 0 {
-			visibleColumnHeaders = append(visibleColumnHeaders, column.header)
-			visibleColumnData = append(visibleColumnData, columnValues)
-		}
+		tableData = append(tableData, row)
 	}
 
-	var tableBuilder strings.Builder
-
-	// Write header
-	if len(visibleColumnHeaders) > 0 {
-		tableBuilder.WriteString(strings.Join(visibleColumnHeaders, "\t") + "\n")
-	}
-
-	// Write data rows
-	for rowIndex := range numPools {
-		for colIndex, columnValues := range visibleColumnData {
-			if colIndex > 0 {
-				tableBuilder.WriteString("\t")
-			}
-			tableBuilder.WriteString(columnValues[rowIndex])
-		}
-		tableBuilder.WriteString("\n")
-	}
-
-	return tableBuilder.String()
+	return headers, tableData
 }
 
+// getNodePoolsString returns node pools as a formatted string
 func getNodePoolsString(nodePools []*cmv1.NodePool) string {
-	outputString := "ID\tAUTOSCALING\tREPLICAS\t" +
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"
+	headers, tableData := getNodePoolsData(nodePools)
+
+	// Build string output
+	var result strings.Builder
+	result.WriteString(strings.Join(headers, "\t"))
+	result.WriteString("\n")
+
+	for _, row := range tableData {
+		result.WriteString(strings.Join(row, "\t"))
+		result.WriteString("\n")
+	}
+
+	return result.String()
+}
+
+func getNodePoolsData(nodePools []*cmv1.NodePool) ([]string, [][]string) {
+	headers := []string{"ID", "AUTOSCALING", "REPLICAS", "INSTANCE TYPE", "LABELS", "TAINTS",
+		"AVAILABILITY ZONE", "SUBNET", "DISK SIZE", "VERSION", "AUTOREPAIR"}
+
+	var tableData [][]string
 	for _, nodePool := range nodePools {
-		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
+		row := []string{
 			nodePool.ID(),
 			ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
 			ocmOutput.PrintNodePoolReplicasShort(
@@ -1338,9 +1407,11 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 			ocmOutput.PrintNodePoolDiskSize(nodePool.AWSNodePool()),
 			ocmOutput.PrintNodePoolVersion(nodePool.Version()),
 			ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
-		)
+		}
+		tableData = append(tableData, row)
 	}
-	return outputString
+
+	return headers, tableData
 }
 
 func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, clusterKey string,

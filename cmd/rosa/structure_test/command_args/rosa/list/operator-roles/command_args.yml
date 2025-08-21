@@ -3,5 +3,6 @@
 - name: interactive
 - name: cluster
 - name: output
+- name: hide-empty-columns
 - name: profile
 - name: region
