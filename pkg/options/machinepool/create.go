@@ -35,6 +35,7 @@ type CreateMachinepoolUserOptions struct {
 	MaxSurge              string
 	MaxUnavailable        string
 	EC2MetadataHttpTokens string
+	CapacityReservationId string
 }
 
 const (
@@ -276,6 +277,14 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 		"The maximum number of nodes in the machinepool that can be unavailable during the upgrade. It can be an "+
 			"absolute number i.e. 1, or a percentage i.e. '20%'.",
 	)
+
+	flags.StringVar(&options.CapacityReservationId,
+		"capacity-reservation-id",
+		"",
+		"The ID of an AWS On-Demand Capacity Reservation. The 'capacity-reservation-id' must be pre-created "+
+			"in advance, before creating a NodePool.")
+
+	_ = flags.MarkHidden("capacity-reservation-id") // Mark hidden for m1
 
 	output.AddFlag(cmd)
 	interactive.AddFlag(flags)
