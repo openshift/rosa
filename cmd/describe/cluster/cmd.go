@@ -457,8 +457,14 @@ func run(cmd *cobra.Command, argv []string) {
 		deleteProtection,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
-	str = fmt.Sprintf("%s"+
-		"User Workload Monitoring:   %s\n",
+	uwmString := "%s" +
+		"User Workload Monitoring:   %s\n"
+	if isHypershift {
+		uwmString = "%s" +
+			"[DEPRECATED] User Workload Monitoring:   %s\n"
+	}
+
+	str = fmt.Sprintf(uwmString,
 		str,
 		getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
 
