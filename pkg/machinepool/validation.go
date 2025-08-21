@@ -52,3 +52,11 @@ func validateEditInput(poolType string, autoscaling bool, minReplicas int, maxRe
 
 	return nil
 }
+
+func validateCapacityReservationId(proposedId, nodepoolId, existingId string) error {
+	if existingId != "" {
+		return fmt.Errorf("Unable to change 'capacity-reservation-id' to '%s'. AWS NodePool '%s' already has a "+
+			"Capacity Reservation ID: '%s'", proposedId, nodepoolId, existingId)
+	}
+	return nil
+}

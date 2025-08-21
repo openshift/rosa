@@ -147,3 +147,21 @@ func PrintNodePoolDiskSize(aws *cmv1.AWSNodePool) string {
 
 	return diskSizeStr
 }
+
+func PrintCapacityReservationDetails(capacityReservation *cmv1.AWSCapacityReservation) string {
+	if capacityReservation != nil {
+		id, ok := capacityReservation.GetId()
+		if !ok {
+			return ""
+		}
+		marketType, ok := capacityReservation.GetMarketType()
+		if !ok {
+			return ""
+		}
+		return fmt.Sprintf("\n"+
+			" - ID:                                 %s\n"+
+			" - Type:                               %s",
+			id, marketType)
+	}
+	return ""
+}

@@ -109,4 +109,15 @@ var _ = Describe("MachinePool validation", func() {
 				false, "test")).To(Succeed())
 		})
 	})
+	Context("Validate capacity-reservation-id", func() {
+		It("Passes when no capacity reservation ID is set", func() {
+			Expect(validateCapacityReservationId("new-id", "aws-nodepool-1",
+				"")).To(Succeed())
+		})
+		It("Fails when capacity reservation ID is set", func() {
+			Expect(validateCapacityReservationId("new-id", "aws-nodepool-1", "old-id").Error()).
+				Should(ContainSubstring("Unable to change 'capacity-reservation-id' to 'new-id'. " +
+					"AWS NodePool 'aws-nodepool-1' already has a Capacity Reservation ID: 'old-id'"))
+		})
+	})
 })

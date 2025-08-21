@@ -764,6 +764,26 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		npBuilder.TuningConfigs(inputTuningConfig...)
 	}
 
+	// Capacity reservation ID
+	capacityReservationId := args.CapacityReservationId
+
+	if interactive.Enabled() {
+		capacityReservationId, err = interactive.GetString(interactive.Input{
+			Question: "Capacity Reservation ID",
+			Help:     cmd.Flags().Lookup("capacity-reservation-id").Usage,
+			Default:  capacityReservationId,
+			Required: false,
+			Validators: []interactive.Validator{
+				machinepools.ValidateNodeDrainGracePeriod,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("Expected a valid value for Capacity Reservation ID: %s", err)
+		}
+	}
+
+	capacityReservation := cmv1.NewAWSCapacityReservation().Id(capacityReservationId)
+
 	kubeletConfigs := args.KubeletConfigs
 
 	if (kubeletConfigs != "" || interactive.Enabled()) && !fedramp.Enabled() {
@@ -886,7 +906,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		httpTokens,
 		awsTags,
 		rootDiskSize,
-	))
+	).CapacityReservation(capacityReservation))
 
 	nodeDrainGracePeriod := args.NodeDrainGracePeriod
 	if interactive.Enabled() {
