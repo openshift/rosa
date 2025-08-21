@@ -17,7 +17,6 @@ limitations under the License.
 package addon
 
 import (
-	"fmt"
 	"os"
 	"text/tabwriter"
 
@@ -56,6 +55,7 @@ func init() {
 	)
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 // When no specific cluster id is provided by the user, this function lists all available AddOns
@@ -81,18 +81,34 @@ func listAllAddOns(r *rosa.Runtime) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tAVAILABILITY\n")
+	headers := []string{"ID", "NAME", "AVAILABILITY"}
+	var tableData [][]string
 	for _, addOnResource := range addOnResources {
 		availability := "unavailable"
 		if addOnResource.Available {
 			availability = "available"
 		}
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name(), availability)
+		row := []string{
+			addOnResource.AddOn.ID(),
+			addOnResource.AddOn.Name(),
+			availability,
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
 
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
 	os.Exit(0)
 }
 
@@ -142,13 +158,31 @@ func listClusterAddOns(clusterKey string, r *rosa.Runtime) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tSTATE\n")
+	headers := []string{"ID", "NAME", "STATE"}
+
+	var tableData [][]string
 	for _, clusterAddOn := range clusterAddOns {
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", clusterAddOn.ID, clusterAddOn.Name, clusterAddOn.State)
+		row := []string{
+			clusterAddOn.ID,
+			clusterAddOn.Name,
+			clusterAddOn.State,
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
 }
 
 func run(_ *cobra.Command, _ []string) {

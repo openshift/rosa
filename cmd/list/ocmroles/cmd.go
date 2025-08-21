@@ -44,6 +44,7 @@ rosa list ocm-roles`,
 
 func init() {
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -84,20 +85,37 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\tAWS Managed\n")
+	headers := []string{"ROLE NAME", "ROLE ARN", "LINKED", "ADMIN", "AWS Managed"}
+	var tableData [][]string
 	for _, ocmRole := range ocmRoles {
-		var awsManaged string
+		awsManaged := "No"
 		if ocmRole.ManagedPolicy {
 			awsManaged = "Yes"
-		} else {
-			awsManaged = "No"
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", ocmRole.RoleName, ocmRole.RoleARN, ocmRole.Linked, ocmRole.Admin,
-			awsManaged)
+		row := []string{
+			ocmRole.RoleName,
+			ocmRole.RoleARN,
+			ocmRole.Linked,
+			ocmRole.Admin,
+			awsManaged,
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
+
 }
 
 func listOCMRoles(r *rosa.Runtime) ([]aws.Role, error) {
