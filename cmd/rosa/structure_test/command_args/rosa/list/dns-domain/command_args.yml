@@ -1,4 +1,5 @@
 - name: all
+- name: hide-empty-columns
 - name: hosted-cp
 - name: output
 - name: profile
