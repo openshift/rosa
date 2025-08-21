@@ -635,7 +635,7 @@ func checkGates(r *rosa.Runtime, cluster *cmv1.Cluster, gates []*cmv1.VersionGat
 	isWarningDisplayed := false
 	if !args.dryRun {
 		r.Reporter.Warnf("To check and acknowledge gates prior to scheduling an upgrade, run this command with " +
-			"'--dry-run'")
+			"'--dry-run', particularly if you encounter an upgrade failure related to acknowledged agreements.")
 	}
 	for _, gate := range gates {
 		if !gate.STSOnly() {
