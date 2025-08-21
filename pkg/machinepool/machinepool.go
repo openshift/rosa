@@ -1060,7 +1060,6 @@ func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, clust
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-
 	finalStringToOutput := getMachinePoolsString(r, machinePools, args)
 	if isHypershift {
 		finalStringToOutput = getNodePoolsString(nodePools)
@@ -1292,7 +1291,7 @@ func getMachinePoolsString(
 			}
 		}
 
-		if args.ShowAll || hasNonEmptyValue || numPools == 0 {
+		if hasNonEmptyValue || numPools == 0 {
 			visibleColumnHeaders = append(visibleColumnHeaders, column.header)
 			visibleColumnData = append(visibleColumnData, columnValues)
 		}

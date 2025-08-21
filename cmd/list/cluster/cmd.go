@@ -19,6 +19,7 @@ package cluster
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -52,6 +53,7 @@ func init() {
 	flags.SortFlags = false
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 	flags.BoolVarP(&args.listAll, "all", "a", false, "List all clusters across different AWS "+
 		"accounts under the same Red Hat organization")
 	flags.StringVar(&args.accountRoleArn, "account-role-arn", "", "List all clusters "+
@@ -107,25 +109,42 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTOPOLOGY\n")
+	headers := []string{"ID", "NAME", "STATE", "TOPOLOGY"}
+	var tableData [][]string
+
 	for _, cluster := range clusters {
-		typeOutput := "Classic"
+		typeOutput := ""
 		if cluster.AWS() != nil && cluster.AWS().STS() != nil && cluster.AWS().STS().Enabled() {
 			typeOutput = "Classic (STS)"
 		}
 		if cluster.Hypershift().Enabled() {
 			typeOutput = "Hosted CP"
 		}
-		fmt.Fprintf(
-			writer,
-			"%s\t%s\t%s\t%s\n",
+
+		row := []string{
 			cluster.ID(),
 			cluster.Name(),
-			cluster.State(),
+			string(cluster.State()),
 			typeOutput,
-		)
+		}
+		tableData = append(tableData, row)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTOPOLOGY\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -63,6 +64,7 @@ func NewListIamServiceAccountsCommand() *cobra.Command {
 	)
 
 	output.AddFlag(cmd)
+	output.AddHideEmptyColumnsFlag(cmd)
 
 	return cmd
 }
@@ -130,25 +132,42 @@ func ListIamServiceAccountsRunner(userOptions *ListIamServiceAccountsUserOptions
 			return nil
 		}
 
-		// Print table
-		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(writer, "NAME\tARN\tCLUSTER\tNAMESPACE\tSERVICE ACCOUNT\tCREATED")
-
+		headers := []string{"NAME", "ARN", "CLUSTER", "NAMESPACE", "SERVICE ACCOUNT", "CREATED"}
+		var tableData [][]string
 		for _, role := range serviceAccountRoles {
 			created := ""
 			if role.CreatedDate != nil {
 				created = role.CreatedDate.Format("2006-01-02 15:04:05")
 			}
-			fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			row := []string{
 				role.RoleName,
 				role.ARN,
 				role.Cluster,
 				role.Namespace,
 				role.ServiceAccount,
 				created,
-			)
+			}
+			tableData = append(tableData, row)
 		}
 
+		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+		if output.ShouldHideEmptyColumns() {
+			newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+
+			config := output.TableConfig{
+				Separator:            "\t",
+				HasTrailingSeparator: false,
+				UseFprintln:          true,
+			}
+			output.PrintTable(writer, newHeaders, newData, config)
+
+		} else {
+			fmt.Fprintln(writer, "NAME\tARN\tCLUSTER\tNAMESPACE\tSERVICE ACCOUNT\tCREATED")
+			for _, row := range tableData {
+				fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+			}
+		}
 		return writer.Flush()
 	}
 }

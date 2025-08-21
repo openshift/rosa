@@ -1,5 +1,6 @@
 - name: cluster
 - name: gate
+- name: hide-empty-columns
 - name: output
 - name: profile
 - name: region

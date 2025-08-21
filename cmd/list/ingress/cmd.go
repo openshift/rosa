@@ -45,6 +45,7 @@ var Cmd = &cobra.Command{
 func init() {
 	ocm.AddClusterFlag(Cmd)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -82,23 +83,41 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-
-	fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\tPRIVATE\tDEFAULT\tROUTE SELECTORS\tLB-TYPE"+
-		"\tEXCLUDED NAMESPACE\tWILDCARD POLICY\tNAMESPACE OWNERSHIP\n")
+	headers := []string{"ID", "APPLICATION ROUTER", "PRIVATE", "DEFAULT", "ROUTE SELECTORS",
+		"LB-TYPE", "EXCLUDED NAMESPACE", "WILDCARD POLICY", "NAMESPACE OWNERSHIP"}
+	var tableData [][]string
 	for _, ingress := range ingresses {
-		fmt.Fprintf(writer, "%s\thttps://%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		row := []string{
 			ingress.ID(),
-			ingress.DNSName(),
+			fmt.Sprintf("https://%s", ingress.DNSName()),
 			isPrivate(ingress.Listening()),
 			isDefault(ingress),
 			printRouteSelectors(ingress),
-			ingress.LoadBalancerType(),
+			string(ingress.LoadBalancerType()),
 			helper.SliceToSortedString(ingress.ExcludedNamespaces()),
-			ingress.RouteWildcardPolicy(),
-			ingress.RouteNamespaceOwnershipPolicy(),
-		)
+			string(ingress.RouteWildcardPolicy()),
+			string(ingress.RouteNamespaceOwnershipPolicy()),
+		}
+		tableData = append(tableData, row)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ID\tAPPLICATION ROUTER\tPRIVATE\tDEFAULT\tROUTE SELECTORS\tLB-TYPE"+
+			"\tEXCLUDED NAMESPACE\tWILDCARD POLICY\tNAMESPACE OWNERSHIP\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
 }

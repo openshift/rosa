@@ -19,6 +19,7 @@ package ocmroles
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -44,6 +45,7 @@ rosa list ocm-roles`,
 
 func init() {
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -84,20 +86,40 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\tAWS Managed\n")
+	headers := []string{"ROLE NAME", "ROLE ARN", "LINKED", "ADMIN", "AWS Managed"}
+	var tableData [][]string
 	for _, ocmRole := range ocmRoles {
-		var awsManaged string
+		awsManaged := "No"
 		if ocmRole.ManagedPolicy {
 			awsManaged = "Yes"
-		} else {
-			awsManaged = "No"
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", ocmRole.RoleName, ocmRole.RoleARN, ocmRole.Linked, ocmRole.Admin,
-			awsManaged)
+		row := []string{
+			ocmRole.RoleName,
+			ocmRole.RoleARN,
+			ocmRole.Linked,
+			ocmRole.Admin,
+			awsManaged,
+		}
+		tableData = append(tableData, row)
+	}
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\tAWS Managed\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
+
 }
 
 func listOCMRoles(r *rosa.Runtime) ([]aws.Role, error) {

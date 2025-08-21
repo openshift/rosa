@@ -2,7 +2,6 @@ package accessrequests
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -18,23 +17,23 @@ import (
 )
 
 var (
-	accessRequestsOutput = `STATE     ID         CLUSTER ID         UPDATED AT
-Approved  mock-id-1  mock-cluster-id-1  Sat Sep 28 20:35:00 UTC 2024
-Pending   mock-id-2  mock-cluster-id-2  Sat Sep 28 20:35:00 UTC 2024
-INFO: Run the following command to approve or deny the Access Request:
+	accessRequestsOutput = `INFO: Run the following command to approve or deny the Access Request:
 
    rosa create decision --access-request <ID> --decision Approved
    rosa create decision --access-request <ID> --decision Denied --justification "justification"
 
+STATE     ID         CLUSTER ID         UPDATED AT
+Approved  mock-id-1  mock-cluster-id-1  Sat Sep 28 20:35:00 UTC 2024
+Pending   mock-id-2  mock-cluster-id-2  Sat Sep 28 20:35:00 UTC 2024
 `
-	clusterAccessRequestsOutput = `STATE    ID         CLUSTER ID       UPDATED AT
-Pending  mock-id-1  mock-cluster-id  Sat Sep 28 21:35:00 UTC 2024
-Denied   mock-id-2  mock-cluster-id  Sat Sep 28 20:35:00 UTC 2024
-INFO: Run the following command to approve or deny the Access Request:
+	clusterAccessRequestsOutput = `INFO: Run the following command to approve or deny the Access Request:
 
    rosa create decision --access-request mock-id-1 --decision Approved
    rosa create decision --access-request mock-id-1 --decision Denied --justification "justification"
 
+STATE    ID         CLUSTER ID       UPDATED AT
+Pending  mock-id-1  mock-cluster-id  Sat Sep 28 21:35:00 UTC 2024
+Denied   mock-id-2  mock-cluster-id  Sat Sep 28 20:35:00 UTC 2024
 `
 )
 
@@ -126,7 +125,6 @@ var _ = Describe("rosa attach policy", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			stdOut, _ := t.StdOutReader.Read()
-			fmt.Println(stdOut)
 			Expect(stdOut).To(Equal(accessRequestsOutput))
 		})
 

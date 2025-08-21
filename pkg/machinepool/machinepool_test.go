@@ -385,8 +385,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			args := ListMachinePoolArgs{ShowAll: true}
 			out := getMachinePoolsString(r, cluster.MachinePools().Slice(), args)
 
-			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tLABELS\tTAINTS\tAVAILABILITY ZONES\tSUBNETS\tSPOT INSTANCES\tDISK SIZE\tSG IDS\tAZ TYPE\tWIN-LI ENABLED\tDEDICATED HOST\n" +
-				"mp-1\tNo\t3\tm5.large\t\t\t\t\tNo\tdefault\t\tN/A\tNo\tNo\n"
+			expectedOutput := "ID\tAUTOSCALING\tREPLICAS\tINSTANCE TYPE\tSPOT INSTANCES\tDISK SIZE\tAZ TYPE\tWIN-LI ENABLED\tDEDICATED HOST\n" +
+				"mp-1\tNo\t3\tm5.large\tNo\tdefault\tN/A\tNo\tNo\n"
 			Expect(out).To(Equal(expectedOutput))
 		})
 

@@ -19,6 +19,7 @@ package operatorroles
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -74,6 +75,7 @@ func init() {
 	interactive.AddFlag(flags)
 	ocm.AddOptionalClusterFlag(Cmd)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -165,16 +167,32 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if args.prefix == "" {
-		fmt.Fprintf(writer, "ROLE PREFIX\tAMOUNT IN BUNDLE\n")
+		headers := []string{"ROLE PREFIX", "AMOUNT IN BUNDLE"}
+		var tableData [][]string
 		for _, key := range prefixes {
-			fmt.Fprintf(
-				writer,
-				"%s\t%d\n",
+			row := []string{
 				key,
-				len(operatorsMap[key]),
-			)
+				fmt.Sprintf("%d", len(operatorsMap[key])),
+			}
+			tableData = append(tableData, row)
 		}
-		writer.Flush()
+
+		if output.ShouldHideEmptyColumns() {
+			newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+			config := output.TableConfig{
+				Separator:            "\t",
+				HasTrailingSeparator: false,
+				UseFprintln:          false,
+			}
+			output.PrintTable(writer, newHeaders, newData, config)
+			writer.Flush()
+		} else {
+			fmt.Fprintf(writer, "ROLE PREFIX\tAMOUNT IN BUNDLE\n")
+			for _, row := range tableData {
+				fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+			}
+			writer.Flush()
+		}
 		if !interactive.Enabled() {
 			os.Exit(0)
 		}
@@ -210,8 +228,9 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 
-		fmt.Fprintf(writer, "OPERATOR NAME\tOPERATOR NAMESPACE\tROLE NAME\t"+
-			"ROLE ARN\tCLUSTER ID\tVERSION\tPOLICIES\tAWS Managed\tIN USE\n")
+		headers := []string{"OPERATOR NAME", "OPERATOR NAMESPACE", "ROLE NAME", "ROLE ARN",
+			"CLUSTER ID", "VERSION", "POLICIES", "AWS Managed", "IN USE"}
+		var tableData [][]string
 		for _, operatorRole := range operatorsMap[args.prefix] {
 			awsManaged := "No"
 			inUse := "No"
@@ -221,20 +240,36 @@ func run(cmd *cobra.Command, _ []string) {
 			if hasClusterUsingOperatorRolesPrefix {
 				inUse = "Yes"
 			}
-			fmt.Fprintf(
-				writer,
-				"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			row := []string{
 				operatorRole.OperatorName,
 				operatorRole.OperatorNamespace,
 				operatorRole.RoleName,
 				operatorRole.RoleARN,
 				operatorRole.ClusterID,
 				operatorRole.Version,
-				operatorRole.AttachedPolicies,
+				output.PrintStringSlice(operatorRole.AttachedPolicies),
 				awsManaged,
 				inUse,
-			)
+			}
+			tableData = append(tableData, row)
 		}
-		writer.Flush()
+
+		if output.ShouldHideEmptyColumns() {
+			newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+			config := output.TableConfig{
+				Separator:            "\t",
+				HasTrailingSeparator: false,
+				UseFprintln:          false,
+			}
+			output.PrintTable(writer, newHeaders, newData, config)
+			writer.Flush()
+		} else {
+			fmt.Fprintf(writer, "OPERATOR NAME\tOPERATOR NAMESPACE\tROLE NAME\t"+
+				"ROLE ARN\tCLUSTER ID\tVERSION\tPOLICIES\tAWS Managed\tIN USE\n")
+			for _, row := range tableData {
+				fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+			}
+			writer.Flush()
+		}
 	}
 }

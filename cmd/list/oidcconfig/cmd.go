@@ -19,6 +19,7 @@ package oidcconfig
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -40,6 +41,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -68,17 +70,34 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-
-	fmt.Fprintf(writer, "ID\tMANAGED\tISSUER URL\tSECRET ARN\n")
+	headers := []string{"ID", "MANAGED", "ISSUER URL", "SECRET ARN"}
+	var tableData [][]string
 	for _, oidcConfig := range oidcConfigs {
-		fmt.Fprintf(writer, "%s\t%v\t%s\t%s\n",
+		row := []string{
 			oidcConfig.ID(),
-			oidcConfig.Managed(),
+			fmt.Sprintf("%v", oidcConfig.Managed()),
 			oidcConfig.IssuerUrl(),
 			oidcConfig.SecretArn(),
-		)
+		}
+		tableData = append(tableData, row)
 	}
+	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ID\tMANAGED\tISSUER URL\tSECRET ARN\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
+	}
+
 	writer.Flush()
+
 }
