@@ -53,10 +53,10 @@ var _ = Describe("Accountroles", Ordered, func() {
 			err := (&hcpManagedPoliciesCreator{}).createRoles(r, accountRolesCreationInput)
 			Expect(err).ToNot(HaveOccurred())
 		})
-		It("createRole succeeds with ec2 policy", func() {
+		It("createRole succeeds when ec2 policy is available but not attached", func() {
 			mockCtrl := gomock.NewController(GinkgoT())
 			mockClient := mock.NewMockClient(mockCtrl)
-			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(4)
+			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(3)
 			mockClient.EXPECT().EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any(), gomock.Any()).Return("role-123", nil).AnyTimes()
 
@@ -82,7 +82,7 @@ var _ = Describe("Accountroles", Ordered, func() {
 		It("createRole succeeds with hosted-cp and shared-vpc roles", func() {
 			mockCtrl := gomock.NewController(GinkgoT())
 			mockClient := mock.NewMockClient(mockCtrl)
-			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(6)
+			mockClient.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(5)
 			mockClient.EXPECT().EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 				gomock.Any(), gomock.Any(), gomock.Any()).Return("arn::role:role-123", nil).AnyTimes()
 			mockClient.EXPECT().EnsurePolicy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
