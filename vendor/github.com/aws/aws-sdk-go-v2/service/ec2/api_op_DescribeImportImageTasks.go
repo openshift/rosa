@@ -111,6 +111,9 @@ func (c *Client) addOperationDescribeImportImageTasksMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -121,6 +124,15 @@ func (c *Client) addOperationDescribeImportImageTasksMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeImportImageTasks(options.Region), middleware.Before); err != nil {
@@ -141,16 +153,50 @@ func (c *Client) addOperationDescribeImportImageTasksMiddlewares(stack *middlewa
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeImportImageTasksAPIClient is a client that implements the
-// DescribeImportImageTasks operation.
-type DescribeImportImageTasksAPIClient interface {
-	DescribeImportImageTasks(context.Context, *DescribeImportImageTasksInput, ...func(*Options)) (*DescribeImportImageTasksOutput, error)
-}
-
-var _ DescribeImportImageTasksAPIClient = (*Client)(nil)
 
 // DescribeImportImageTasksPaginatorOptions is the paginator options for
 // DescribeImportImageTasks
@@ -217,6 +263,9 @@ func (p *DescribeImportImageTasksPaginator) NextPage(ctx context.Context, optFns
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeImportImageTasks(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -235,6 +284,14 @@ func (p *DescribeImportImageTasksPaginator) NextPage(ctx context.Context, optFns
 
 	return result, nil
 }
+
+// DescribeImportImageTasksAPIClient is a client that implements the
+// DescribeImportImageTasks operation.
+type DescribeImportImageTasksAPIClient interface {
+	DescribeImportImageTasks(context.Context, *DescribeImportImageTasksInput, ...func(*Options)) (*DescribeImportImageTasksOutput, error)
+}
+
+var _ DescribeImportImageTasksAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeImportImageTasks(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
