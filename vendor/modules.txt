@@ -359,8 +359,8 @@ github.com/mattn/go-isatty
 # github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 ## explicit
 github.com/mgutz/ansi
-# github.com/microcosm-cc/bluemonday v1.0.26
-## explicit; go 1.21
+# github.com/microcosm-cc/bluemonday v1.0.27
+## explicit; go 1.19
 github.com/microcosm-cc/bluemonday
 github.com/microcosm-cc/bluemonday/css
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
