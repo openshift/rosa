@@ -773,9 +773,6 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			Help:     cmd.Flags().Lookup("capacity-reservation-id").Usage,
 			Default:  capacityReservationId,
 			Required: false,
-			Validators: []interactive.Validator{
-				machinepools.ValidateNodeDrainGracePeriod,
-			},
 		})
 		if err != nil {
 			return fmt.Errorf("Expected a valid value for Capacity Reservation ID: %s", err)
@@ -900,13 +897,19 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
-	npBuilder.AWSNodePool(createAwsNodePoolBuilder(
+	awsNodepoolBuilder := createAwsNodePoolBuilder(
 		instanceType,
 		securityGroupIds,
 		httpTokens,
 		awsTags,
 		rootDiskSize,
-	).CapacityReservation(capacityReservation))
+	)
+
+	if capacityReservationId != "" {
+		awsNodepoolBuilder = awsNodepoolBuilder.CapacityReservation(capacityReservation)
+	}
+
+	npBuilder.AWSNodePool(awsNodepoolBuilder)
 
 	nodeDrainGracePeriod := args.NodeDrainGracePeriod
 	if interactive.Enabled() {
