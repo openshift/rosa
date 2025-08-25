@@ -86,6 +86,7 @@ func init() {
 	Cmd.MarkFlagRequired("version")
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 const (
@@ -183,29 +184,53 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
 	cols, _ := consolesize.GetConsoleSize()
 	descriptionSize := float64(cols) * 0.30
-	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
-	fmt.Fprintln(writer, "Gate Description\tSTS\tOCP Version\tDocumentation URL\t")
+
+	headers := []string{"Gate Description", "STS", "OCP Version", "Documentation URL"}
+	var tableData [][]string
 
 	for _, gate := range versionGates {
 		wrappedDescription := wordWrap(strings.TrimSuffix(gate.Description(), "\n"), int(descriptionSize))
+		lines := strings.Split(wrappedDescription, "\n")
 
-		for i, line := range strings.Split(wrappedDescription, "\n") {
+		for i, line := range lines {
 			if i == 0 {
-				fmt.Fprintf(writer,
-					"%s\t%t\t%s\t%s\t\n",
+				// First line has all data
+				row := []string{
 					line,
-					gate.STSOnly(),
+					fmt.Sprintf("%t", gate.STSOnly()),
 					gate.VersionRawIDPrefix(),
 					gate.DocumentationURL(),
-				)
+				}
+				tableData = append(tableData, row)
 			} else {
-				fmt.Fprintf(writer,
-					"%s\t \t \t \t\n",
-					line,
-				)
+				// Continuation lines have description only
+				row := []string{line, "", "", ""}
+				tableData = append(tableData, row)
+			}
+		}
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: true,
+			UseFprintln:          true,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintln(writer, "Gate Description\tSTS\tOCP Version\tDocumentation URL\t")
+
+		for _, row := range tableData {
+			if row[1] != "" {
+				// Full data row
+				fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+			} else {
+				// Continuation row
+				fmt.Fprintf(writer, "%s\t \t \t \t\n", row[0])
 			}
 		}
 	}

@@ -19,6 +19,7 @@ package accountroles
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -55,6 +56,7 @@ func init() {
 		"List only account-roles that are associated with the given version.",
 	)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -108,23 +110,39 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ROLE NAME\tROLE TYPE\tROLE ARN\tOPENSHIFT VERSION\tAWS Managed\n")
+	headers := []string{"ROLE NAME", "ROLE TYPE", "ROLE ARN", "OPENSHIFT VERSION", "AWS Managed"}
+	var tableData [][]string
 	for _, accountRole := range accountRoles {
 		awsManaged := "No"
 		if accountRole.ManagedPolicy {
 			awsManaged = "Yes"
 		}
-		fmt.Fprintf(
-			writer,
-			"%s\t%s\t%s\t%s\t%s\n",
+		row := []string{
 			accountRole.RoleName,
 			accountRole.RoleType,
 			accountRole.RoleARN,
 			accountRole.Version,
 			awsManaged,
-		)
+		}
+		tableData = append(tableData, row)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ROLE NAME\tROLE TYPE\tROLE ARN\tOPENSHIFT VERSION\tAWS Managed\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
+
 }

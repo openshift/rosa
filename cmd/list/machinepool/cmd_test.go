@@ -149,12 +149,13 @@ var _ = Describe("List machine pool", func() {
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 
-				// With --all, should include columns like SUBNETS and SG IDS even if empty
-				Expect(stdout).To(ContainSubstring("SUBNETS"))
-				Expect(stdout).To(ContainSubstring("SG IDS"))
+				// With --all, should show the 3 special columns (empty columns are still hidden)
 				Expect(stdout).To(ContainSubstring("AZ TYPE"))
 				Expect(stdout).To(ContainSubstring("WIN-LI ENABLED"))
 				Expect(stdout).To(ContainSubstring("DEDICATED HOST"))
+				// Empty columns should NOT be shown even with --all
+				Expect(stdout).ToNot(ContainSubstring("SUBNETS"))
+				Expect(stdout).ToNot(ContainSubstring("SG IDS"))
 			})
 
 			It("Shows AZ TYPE column when --az-type flag is used", func() {

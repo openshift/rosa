@@ -19,6 +19,7 @@ package addon
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -56,6 +57,7 @@ func init() {
 	)
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 // When no specific cluster id is provided by the user, this function lists all available AddOns
@@ -81,18 +83,38 @@ func listAllAddOns(r *rosa.Runtime) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tAVAILABILITY\n")
+	headers := []string{"ID", "NAME", "AVAILABILITY"}
+	var tableData [][]string
 	for _, addOnResource := range addOnResources {
 		availability := "unavailable"
 		if addOnResource.Available {
 			availability = "available"
 		}
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", addOnResource.AddOn.ID(), addOnResource.AddOn.Name(), availability)
+		row := []string{
+			addOnResource.AddOn.ID(),
+			addOnResource.AddOn.Name(),
+			availability,
+		}
+		tableData = append(tableData, row)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ID\t\tNAME\t\tAVAILABILITY\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
-
 	os.Exit(0)
 }
 
@@ -142,11 +164,32 @@ func listClusterAddOns(clusterKey string, r *rosa.Runtime) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\t\tNAME\t\tSTATE\n")
+	headers := []string{"ID", "NAME", "STATE"}
+	var tableData [][]string
 	for _, clusterAddOn := range clusterAddOns {
-		fmt.Fprintf(writer, "%s\t\t%s\t\t%s\n", clusterAddOn.ID, clusterAddOn.Name, clusterAddOn.State)
+		row := []string{
+			clusterAddOn.ID,
+			clusterAddOn.Name,
+			clusterAddOn.State,
+		}
+		tableData = append(tableData, row)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ID\t\tNAME\t\tSTATE\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t\t"))
+		}
 	}
 	writer.Flush()
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -38,6 +39,7 @@ func NewListAccessRequestsCommand() *cobra.Command {
 	}
 
 	output.AddFlag(cmd)
+	output.AddHideEmptyColumnsFlag(cmd)
 	ocm.AddOptionalClusterFlag(cmd)
 	return cmd
 }
@@ -67,40 +69,57 @@ func ListAccessRequestsRunner() rosa.CommandRunner {
 				}
 				return nil
 			}
-			writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			output, hasPending, pendingId := getAccessRequestsOutput(clusterId, accessRequests)
-			fmt.Fprint(writer, output)
-			if err := writer.Flush(); err != nil {
-				return err
+
+			hasPending := false
+			pendingId := "<ID>"
+			for _, accessRequest := range accessRequests {
+				if accessRequest.Status().State() == v1.AccessRequestStatePending ||
+					accessRequest.Status().State() == v1.AccessRequestStateApproved {
+					hasPending = true
+					if clusterId != "" {
+						pendingId = accessRequest.ID()
+					}
+				}
 			}
+
 			if hasPending {
 				r.Reporter.Infof("Run the following command to approve or deny the Access Request:\n\n"+
 					"   rosa create decision --access-request %s --decision Approved\n"+
 					"   rosa create decision --access-request %s --decision Denied --justification \"justification\"\n",
 					pendingId, pendingId)
 			}
+
+			headers := []string{"STATE", "ID", "CLUSTER ID", "UPDATED AT"}
+			var tableData [][]string
+			for _, accessRequest := range accessRequests {
+				row := []string{
+					string(accessRequest.Status().State()),
+					accessRequest.ID(),
+					accessRequest.ClusterId(),
+					accessRequest.UpdatedAt().UTC().Format(time.UnixDate),
+				}
+				tableData = append(tableData, row)
+			}
+
+			writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+
+			if output.ShouldHideEmptyColumns() {
+				newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+				config := output.TableConfig{
+					Separator:            "\t",
+					HasTrailingSeparator: false,
+					UseFprintln:          false,
+				}
+				output.PrintTable(writer, newHeaders, newData, config)
+			} else {
+				fmt.Fprint(writer, "STATE\tID\tCLUSTER ID\tUPDATED AT\n")
+				for _, row := range tableData {
+					fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+				}
+			}
+
+			writer.Flush()
 		}
 		return nil
 	}
-}
-
-func getAccessRequestsOutput(clusterId string, accessRequests []*v1.AccessRequest) (string, bool, string) {
-	output := "STATE\tID\tCLUSTER ID\tUPDATED AT\n"
-	hasPending := false
-	id := "<ID>"
-	for _, accessRequest := range accessRequests {
-		if accessRequest.Status().State() == v1.AccessRequestStatePending {
-			hasPending = true
-			if clusterId != "" {
-				id = accessRequest.ID()
-			}
-		}
-		output += fmt.Sprintf("%s\t%s\t%s\t%s\n",
-			accessRequest.Status().State(),
-			accessRequest.ID(),
-			accessRequest.ClusterId(),
-			accessRequest.UpdatedAt().Format(time.UnixDate))
-	}
-
-	return output, hasPending, id
 }

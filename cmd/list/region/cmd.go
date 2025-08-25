@@ -19,6 +19,7 @@ package region
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -80,6 +81,7 @@ func init() {
 	)
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -153,19 +155,33 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	headerFormat := "ID\t\tNAME\t\tMULTI-AZ SUPPORT\t\tHOSTED-CP SUPPORT\n"
-	fmt.Fprint(writer, headerFormat)
-
+	headers := []string{"ID", "NAME", "MULTI-AZ SUPPORT", "HOSTED-CP SUPPORT"}
+	var tableData [][]string
 	for _, region := range availableRegions {
-		fmt.Fprintf(writer,
-			"%s\t\t%s\t\t%t\t\t%t\n",
+		row := []string{
 			region.ID(),
 			region.DisplayName(),
-			region.SupportsMultiAZ(),
-			region.SupportsHypershift(),
-		)
+			fmt.Sprintf("%t", region.SupportsMultiAZ()),
+			fmt.Sprintf("%t", region.SupportsHypershift()),
+		}
+		tableData = append(tableData, row)
+	}
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+
+		config := output.TableConfig{
+			Separator:            "\t\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprint(writer, "ID\t\tNAME\t\tMULTI-AZ SUPPORT\t\tHOSTED-CP SUPPORT\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
 }

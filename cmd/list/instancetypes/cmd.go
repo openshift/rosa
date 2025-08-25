@@ -19,6 +19,7 @@ package instancetypes
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -48,6 +49,7 @@ func makeCmd() *cobra.Command {
 		Args: cobra.NoArgs,
 	}
 
+	output.AddHideEmptyColumnsFlag(cmd)
 	return cmd
 }
 
@@ -172,21 +174,35 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		return fmt.Errorf("There are no machine types supported for your account. Contact Red Hat support.")
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\n")
-
+	headers := []string{"ID", "CATEGORY", "CPU_CORES", "MEMORY"}
+	var tableData [][]string
 	for _, machine := range machineTypes.Items {
 		if !machine.Available {
 			continue
 		}
 		availableMachine := machine.MachineType
-		fmt.Fprintf(writer,
-			"%s\t%s\t%d\t%s\n",
-			availableMachine.ID(), availableMachine.Category(), int(availableMachine.CPU().Value()),
-			ByteCountIEC(int(availableMachine.Memory().Value()),
-				availableMachine.Memory().Unit()),
-		)
+		row := []string{
+			availableMachine.ID(),
+			string(availableMachine.Category()),
+			fmt.Sprintf("%d", int(availableMachine.CPU().Value())),
+			ByteCountIEC(int(availableMachine.Memory().Value()), availableMachine.Memory().Unit()),
+		}
+		tableData = append(tableData, row)
+	}
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
 

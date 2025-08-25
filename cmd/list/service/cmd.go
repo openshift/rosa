@@ -19,6 +19,7 @@ package service
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
@@ -47,6 +48,7 @@ func init() {
 	flags.SortFlags = false
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, argv []string) {
@@ -77,12 +79,35 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "SERVICE_ID\tSERVICE\tSERVICE_STATE\tCLUSTER_NAME\n")
+	headers := []string{"SERVICE_ID", "SERVICE", "SERVICE_STATE", "CLUSTER_NAME"}
+	var tableData [][]string
 	servicesList.Each(func(srv *msv1.ManagedService) bool {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
-			srv.ID(), srv.Service(), srv.ServiceState(), srv.Cluster().Name())
+		row := []string{
+			srv.ID(),
+			srv.Service(),
+			srv.ServiceState(),
+			srv.Cluster().Name(),
+		}
+		tableData = append(tableData, row)
 		return true
 	})
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "SERVICE_ID\tSERVICE\tSERVICE_STATE\tCLUSTER_NAME\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
+	}
 	writer.Flush()
 }

@@ -3,6 +3,7 @@ package breakglasscredential
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -27,6 +28,7 @@ var Cmd = &cobra.Command{
 func init() {
 	ocm.AddClusterFlag(Cmd)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -69,18 +71,34 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		return nil
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-
-	fmt.Fprintf(writer, "ID\tUSERNAME\tSTATUS\n")
+	headers := []string{"ID", "USERNAME", "STATUS"}
+	var tableData [][]string
 	for _, credential := range breakGlassCredentials {
-		fmt.Fprintf(writer, "%s\t%s\t%s\n",
+		row := []string{
 			credential.ID(),
 			credential.Username(),
-			credential.Status(),
-		)
+			string(credential.Status()),
+		}
+		tableData = append(tableData, row)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+
+	if output.ShouldHideEmptyColumns() {
+		newHeaders, newData := output.RemoveEmptyColumns(headers, tableData)
+
+		config := output.TableConfig{
+			Separator:            "\t",
+			HasTrailingSeparator: false,
+			UseFprintln:          false,
+		}
+		output.PrintTable(writer, newHeaders, newData, config)
+	} else {
+		fmt.Fprintf(writer, "ID\tUSERNAME\tSTATUS\n")
+		for _, row := range tableData {
+			fmt.Fprintf(writer, "%s\n", strings.Join(row, "\t"))
+		}
 	}
 	writer.Flush()
-
 	return nil
 }
