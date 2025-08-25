@@ -697,8 +697,10 @@ func initFlags(cmd *cobra.Command) {
 		&args.disableWorkloadMonitoring,
 		"disable-workload-monitoring",
 		false,
-		"Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) "+
-			"platform metrics.",
+		"[DEPRECATED FOR ROSA HCP] Enables you to monitor your own projects in isolation from Red Hat Site "+
+			"Reliability Engineer (SRE) platform metrics. \n\n"+
+			"User workload monitoring is deprecated for Hosted Control Plane clusters, and will be removed in a future "+
+			"version.",
 	)
 
 	flags.BoolVarP(
@@ -959,6 +961,9 @@ func run(cmd *cobra.Command, _ []string) {
 	// validate flags for cluster admin and private ingress/private API
 	isHostedCP := args.hostedClusterEnabled
 	if isHostedCP {
+		if cmd.Flags().Changed("disable-workload-monitoring") {
+			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
+		}
 		validateHcpFlags(cmd, r.Reporter)
 	}
 
@@ -1087,6 +1092,9 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
 			os.Exit(1)
+		}
+		if isHostedCP {
+			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
 		}
 	}
 
@@ -2962,6 +2970,9 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			_ = r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
 			os.Exit(1)
+		}
+		if isHostedCP {
+			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
 		}
 	}
 

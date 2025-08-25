@@ -26,6 +26,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/clusterregistryconfig"
 	"github.com/openshift/rosa/pkg/fedramp"
@@ -138,7 +139,8 @@ func init() {
 		&args.disableWorkloadMonitoring,
 		"disable-workload-monitoring",
 		false,
-		"Enables you to monitor your own projects in isolation from Red Hat Site Reliability Engineer (SRE) "+
+		"[DEPRECATED FOR ROSA HCP] Enables you to monitor your own projects in isolation from Red Hat Site "+
+			"Reliability Engineer (SRE) "+
 			"platform metrics.",
 	)
 	flags.StringVar(
@@ -249,6 +251,10 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	cluster := r.FetchCluster()
+
+	if cluster.Hypershift().Enabled() && cmd.Flags().Changed("disable-workload-monitoring") {
+		r.Reporter.Warnf(arguments.UwmDeprecationMessage)
+	}
 
 	// Validate flags:
 	expiration, err := validateExpiration()
@@ -380,6 +386,9 @@ func run(cmd *cobra.Command, _ []string) {
 			_ = r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
 			_ = r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
 			os.Exit(1)
+		}
+		if aws.IsHostedCP(cluster) {
+			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
 		}
 		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
 	} else if disableWorkloadMonitoringValue {
