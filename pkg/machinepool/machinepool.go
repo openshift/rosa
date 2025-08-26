@@ -767,7 +767,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	// Capacity reservation ID
 	capacityReservationId := args.CapacityReservationId
 
-	if interactive.Enabled() {
+	if interactive.Enabled() && !autoscaling {
 		capacityReservationId, err = interactive.GetString(interactive.Input{
 			Question: "Capacity Reservation ID",
 			Help:     cmd.Flags().Lookup("capacity-reservation-id").Usage,
