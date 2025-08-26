@@ -294,6 +294,9 @@ var pathTreeData = `{
                 }
               }
             },
+            "image_mirrors": {
+              "-": null
+            },
             "inflight_checks": {
               "-": null
             },

@@ -217,4 +217,9 @@ resource Cluster {
 	locator Migrations {
 	    target ClusterMigrations
 	}
+
+	// Reference to the resource that manages image mirror configurations for the cluster.
+	locator ImageMirrors {
+		target ImageMirrors
+	}
 }
