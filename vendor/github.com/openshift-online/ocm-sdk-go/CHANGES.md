@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.476
+- Update model to version 0.0.431
+  - Add support for ImageMirrors for ROSA HCP 
+
 ## 0.1.475
 - Update model to version 0.0.430
   - update MarketType enum to match the camelcase values expected by CS
