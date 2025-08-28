@@ -2342,7 +2342,7 @@ func run(cmd *cobra.Command, _ []string) {
 			subnetIDs, err = interactive.GetMultipleOptions(interactive.Input{
 				Question: "Subnet IDs",
 				Help:     cmd.Flags().Lookup("subnet-ids").Usage,
-				Required: false,
+				Required: isHostedCP,
 				Options:  options,
 				Default:  defaultOptions,
 				Validators: []interactive.Validator{
