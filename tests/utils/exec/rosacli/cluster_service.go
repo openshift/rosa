@@ -206,6 +206,7 @@ func (c *clusterService) ReflectClusterDescription(result bytes.Buffer) (res *Cl
 			newStr = strings.ReplaceAll(newStr, "not found: Role name", "not found:Role name")
 			//Until https://issues.redhat.com/browse/OCM-11830 fixed
 			newStr = strings.Replace(newStr, "Platform Allowlist:", "Platform Allowlist: \n    - ID:", 1)
+			newStr = strings.Replace(newStr, "[DEPRECATED] User Workload Monitoring:", "User Workload Monitoring:", 1)
 			return
 		}).
 		YamlToMap()
