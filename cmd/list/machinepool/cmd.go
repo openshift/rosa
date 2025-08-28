@@ -87,6 +87,7 @@ func NewListMachinePoolCommand() *cobra.Command {
 	)
 
 	output.AddFlag(cmd)
+	output.AddHideEmptyColumnsFlag(cmd)
 	ocm.AddClusterFlag(cmd)
 	return cmd
 }
