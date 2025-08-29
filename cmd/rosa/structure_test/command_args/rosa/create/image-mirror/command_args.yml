@@ -1,0 +1,6 @@
+- name: cluster
+- name: type
+- name: source
+- name: mirrors
+- name: profile
+- name: region

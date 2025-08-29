@@ -1,0 +1,7 @@
+- name: cluster
+- name: id
+- name: interactive
+- name: mirrors
+- name: profile
+- name: region
+- name: yes
