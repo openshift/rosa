@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/gates"
 	"github.com/openshift/rosa/cmd/list/iamserviceaccounts"
 	"github.com/openshift/rosa/cmd/list/idp"
+	"github.com/openshift/rosa/cmd/list/imagemirrors"
 	"github.com/openshift/rosa/cmd/list/ingress"
 	"github.com/openshift/rosa/cmd/list/instancetypes"
 	"github.com/openshift/rosa/cmd/list/kubeletconfig"
@@ -61,6 +62,8 @@ func init() {
 	Cmd.AddCommand(gates.Cmd)
 	Cmd.AddCommand(iamserviceaccounts.Cmd)
 	Cmd.AddCommand(idp.Cmd)
+	imageMirrorsCommand := imagemirrors.NewListImageMirrorsCommand()
+	Cmd.AddCommand(imageMirrorsCommand)
 	Cmd.AddCommand(ingress.Cmd)
 	machinePoolCommand := machinepool.NewListMachinePoolCommand()
 	Cmd.AddCommand(machinePoolCommand)
