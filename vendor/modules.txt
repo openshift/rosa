@@ -18,7 +18,7 @@ github.com/PuerkitoBio/goquery
 # github.com/alessio/shellescape v1.4.1
 ## explicit; go 1.14
 github.com/alessio/shellescape
-# github.com/andybalholm/cascadia v1.3.2
+# github.com/andybalholm/cascadia v1.3.3
 ## explicit; go 1.16
 github.com/andybalholm/cascadia
 # github.com/apparentlymart/go-cidr v1.1.0
