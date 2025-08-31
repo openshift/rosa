@@ -267,8 +267,8 @@ github.com/mtibben/percent v0.2.1 h1:5gssi8Nqo8QU/r2pynCm+hBQHpkB/uNK7BJCFogWdzs
 github.com/mtibben/percent v0.2.1/go.mod h1:KG9uO+SZkUp+VkRHsCdYQV3XSZrrSpR3O9ibNBTZrns=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d h1:PQW4Aqovdqc9efHl9EVA+bhKmuZ4ME1HvSYYDvaDiK0=
-github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d/go.mod h1:cxIIfNMTwff8f/ZvRouvWYF6wOoO7nj99neWSx2q/Es=
+github.com/nathan-fiscaletti/consolesize-go v0.0.0-20220204101620-317176b6684d h1:NqRhLdNVlozULwM1B3VaHhcXYSgrOAv8V5BE65om+1Q=
+github.com/nathan-fiscaletti/consolesize-go v0.0.0-20220204101620-317176b6684d/go.mod h1:cxIIfNMTwff8f/ZvRouvWYF6wOoO7nj99neWSx2q/Es=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/onsi/ginkgo/v2 v2.17.1 h1:V++EzdbhI4ZV4ev0UTIj0PzhzOcReJFyJaLjtSF55M8=
 github.com/onsi/ginkgo/v2 v2.17.1/go.mod h1:llBI3WDLL9Z6taip6f33H76YcWtJv+7R3HigUjbIBOs=
