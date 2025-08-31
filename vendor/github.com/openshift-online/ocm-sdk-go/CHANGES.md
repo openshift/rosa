@@ -3,6 +3,9 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.477
+- Add resource-scoped permissions for WIF configurations
+
 ## 0.1.476
 - Update model to version 0.0.431
   - Add support for ImageMirrors for ROSA HCP 
