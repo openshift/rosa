@@ -16,6 +16,7 @@ spec:
     - name: aws-region
     - name: cluster-profile
     - name: ocm-login-env
+    - name: konflux-resources-json
   volumeMounts:
     - name: $(params.secret-volume)
       mountPath: /mnt/secrets
@@ -37,10 +38,12 @@ spec:
       value: $(params.aws-region)
     - name: TEST_PROFILE
       value: $(params.cluster-profile)
+    - name: KonfluxResourcesJson
+      value: $(params.konflux-resources-json)
   script: |
     #!/bin/bash
-    mkdir -p /rosa/tests/output/$(params.cluster-profile)
-    echo '$(params.konflux-resources-json)' > /rosa/tests/output/$(params.cluster-profile)/konflux_resources.json
+    mkdir -p /rosa/tests/output/$(TEST_PROFILE)
+    echo '$(KonfluxResourcesJson)' > /rosa/tests/output/$(TEST_PROFILE)/konflux_resources.json
     
     cd /rosa
     source ./tests/prow_ci.sh

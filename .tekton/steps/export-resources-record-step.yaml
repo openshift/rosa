@@ -11,9 +11,15 @@ spec:
     - name: container-image
     - name: output-volume
     - name: cluster-profile
+    - name: konflux-resources-json
   volumeMounts:
     - name: $(params.output-volume)
       mountPath: /tests/output
+  env:
+    - name: KonfluxResourcesJson
+      value: $(params.konflux-resources-json)
+    - name: TEST_PROFILE
+      value: $(params.cluster-profile)
   script: |
     #!/bin/bash
-    cat /rosa/tests/output/$(params.cluster-profile)/konflux_resources.json > $(results.konflux-resources-json.path)
+    cat /rosa/tests/output/$(TEST_PROFILE)/konflux_resources.json > $(KonfluxResourcesJson)
