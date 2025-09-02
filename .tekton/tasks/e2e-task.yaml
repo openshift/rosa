@@ -110,6 +110,8 @@ spec:
           value: output-volume
         - name: cluster-profile
           value: "$(params.cluster-profile)"
+        - name: konflux-resources-json
+          value: $(results.konflux-resources-json.path)
   volumes:
     - name: output-volume
       emptyDir: {}

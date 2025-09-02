@@ -68,7 +68,7 @@ spec:
         - name: ocm-login-env
           value: "$(params.ocm-login-env)"
         - name: konflux-resources-json
-          value: "$(params.konflux-resources-json)"
+          value: $(tasks.hcp-advance-e2e-test.results.konflux-resources-json)
   volumes:
     - name: output-volume
       emptyDir: {}
