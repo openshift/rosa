@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/rosa/cmd/edit/addon"
 	"github.com/openshift/rosa/cmd/edit/autoscaler"
 	"github.com/openshift/rosa/cmd/edit/cluster"
+	"github.com/openshift/rosa/cmd/edit/imagemirror"
 	"github.com/openshift/rosa/cmd/edit/ingress"
 	"github.com/openshift/rosa/cmd/edit/kubeletconfig"
 	"github.com/openshift/rosa/cmd/edit/machinepool"
@@ -50,6 +51,8 @@ func init() {
 	Cmd.AddCommand(autoscalerCommand)
 	kubeletConfig := kubeletconfig.NewEditKubeletConfigCommand()
 	Cmd.AddCommand(kubeletConfig)
+	imageMirrorCommand := imagemirror.NewEditImageMirrorCommand()
+	Cmd.AddCommand(imageMirrorCommand)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -62,7 +65,7 @@ func init() {
 	globallyAvailableCommands := []*cobra.Command{
 		autoscalerCommand, addon.Cmd,
 		service.Cmd, cluster.Cmd,
-		ingress.Cmd, kubeletConfig,
+		imageMirrorCommand, ingress.Cmd, kubeletConfig,
 		machinepoolCommand, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)

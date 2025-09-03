@@ -297,6 +297,10 @@ func FormatResource(resource interface{}) string {
 		if res, ok := resource.(*accessv1.AccessRequest); ok {
 			err = accessv1.MarshalAccessRequest(res, &outputJson)
 		}
+	case "*v1.ImageMirror":
+		if res, ok := resource.(*v1.ImageMirror); ok {
+			err = v1.MarshalImageMirror(res, &outputJson)
+		}
 	default:
 		{
 			return "NOTIMPLEMENTED"

@@ -22,6 +22,7 @@ children:
     - name: idp
     - name: external-auth-provider
     - name: iamserviceaccount
+    - name: image-mirror
     - name: kubeletconfig
     - name: machinepool
     - name: ocm-role
@@ -43,6 +44,7 @@ children:
     - name: external-auth-provider
     - name: iamserviceaccount
     - name: idp
+    - name: image-mirror
     - name: ingress
     - name: kubeletconfig
     - name: machinepool
@@ -84,6 +86,7 @@ children:
     - name: addon
     - name: autoscaler
     - name: cluster
+    - name: image-mirror
     - name: ingress
     - name: kubeletconfig
     - name: machinepool
@@ -117,6 +120,7 @@ children:
     - name: gates
     - name: iamserviceaccounts
     - name: idps
+    - name: image-mirrors
     - name: ingresses
     - name: instance-types
     - name: kubeletconfigs
