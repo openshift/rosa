@@ -24,3 +24,4 @@ const DefaultVersion = "1.2.56"
 var Build = "local"
 
 const DefaultUserAgent = "ROSACLI"
+
