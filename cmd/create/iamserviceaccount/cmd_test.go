@@ -61,7 +61,8 @@ var _ = Describe("Create IAM Service Account", func() {
 							RoleARN("arn:aws:iam::123456789012:role/test-role").
 							OidcConfig(cmv1.NewOidcConfig().
 								ID("test-oidc-id").
-								IssuerUrl("https://test.example.com"))))
+								IssuerUrl("https://test.example.com")).
+							OIDCEndpointURL("https://test.example.com")))
 				})
 
 				t.SetCluster(cluster.ID(), cluster)
@@ -84,8 +85,8 @@ var _ = Describe("Create IAM Service Account", func() {
 				}
 
 				mockAWS.EXPECT().
-					ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
-					Return(providers, nil)
+					GetOpenIDConnectProviderByOidcEndpointUrl("https://test.example.com").
+					Return(providers[0].Arn, nil)
 
 				mockAWS.EXPECT().
 					EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), "", "", gomock.Any(), gomock.Any(), false).
@@ -170,7 +171,8 @@ var _ = Describe("Create IAM Service Account", func() {
 							RoleARN("arn:aws:iam::123456789012:role/test-role").
 							OidcConfig(cmv1.NewOidcConfig().
 								ID("test-oidc-id").
-								IssuerUrl("https://test.example.com"))))
+								IssuerUrl("https://test.example.com")).
+							OIDCEndpointURL("https://test.example.com")))
 				})
 
 				t.SetCluster(cluster.ID(), cluster)
@@ -193,8 +195,8 @@ var _ = Describe("Create IAM Service Account", func() {
 				}
 
 				mockAWS.EXPECT().
-					ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
-					Return(providers, nil)
+					GetOpenIDConnectProviderByOidcEndpointUrl("https://test.example.com").
+					Return(providers[0].Arn, nil)
 
 				mockAWS.EXPECT().
 					EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), "", "", gomock.Any(), gomock.Any(), false).
@@ -224,7 +226,8 @@ var _ = Describe("Create IAM Service Account", func() {
 							RoleARN("arn:aws-us-gov:iam::123456789012:role/test-role").
 							OidcConfig(cmv1.NewOidcConfig().
 								ID("test-oidc-id").
-								IssuerUrl("https://test.gov.example.com"))))
+								IssuerUrl("https://test.gov.example.com")).
+							OIDCEndpointURL("https://test.gov.example.com")))
 				})
 
 				t.SetCluster(cluster.ID(), cluster)
@@ -247,8 +250,8 @@ var _ = Describe("Create IAM Service Account", func() {
 				}
 
 				mockAWS.EXPECT().
-					ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
-					Return(providers, nil)
+					GetOpenIDConnectProviderByOidcEndpointUrl("https://test.gov.example.com").
+					Return(providers[0].Arn, nil)
 
 				mockAWS.EXPECT().
 					EnsureRole(gomock.Any(), gomock.Any(), gomock.Any(), "", "", gomock.Any(), gomock.Any(), false).
@@ -280,7 +283,8 @@ var _ = Describe("Create IAM Service Account", func() {
 					STS(cmv1.NewSTS().
 						OidcConfig(cmv1.NewOidcConfig().
 							ID("test-oidc-id").
-							IssuerUrl("https://test.example.com"))))
+							IssuerUrl("https://test.example.com")).
+						OIDCEndpointURL("https://test.example.com")))
 			})
 
 			providers := []aws.OidcProviderOutput{
@@ -290,8 +294,8 @@ var _ = Describe("Create IAM Service Account", func() {
 			}
 
 			mockAWS.EXPECT().
-				ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
-				Return(providers, nil)
+				GetOpenIDConnectProviderByOidcEndpointUrl("https://test.example.com").
+				Return(providers[0].Arn, nil)
 
 			arn, err := getOIDCProviderARN(t.RosaRuntime, cluster)
 			Expect(err).ToNot(HaveOccurred())
@@ -306,16 +310,18 @@ var _ = Describe("Create IAM Service Account", func() {
 					STS(cmv1.NewSTS().
 						OidcConfig(cmv1.NewOidcConfig().
 							ID("test-oidc-id").
-							IssuerUrl("https://test.example.com"))))
+							IssuerUrl("https://test.example.com")).
+						OIDCEndpointURL("https://test123.example.com")))
 			})
 
 			mockAWS.EXPECT().
-				ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
-				Return([]aws.OidcProviderOutput{}, nil)
+				GetOpenIDConnectProviderByOidcEndpointUrl("https://test123.example.com").
+				Return("", nil)
 
 			_, err := getOIDCProviderARN(t.RosaRuntime, cluster)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("no OIDC provider found"))
+			Expect(err.Error()).To(ContainSubstring("no OIDC provider found for cluster with ID " +
+				"'test-cluster-id'"))
 		})
 	})
 })
