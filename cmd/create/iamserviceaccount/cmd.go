@@ -78,12 +78,6 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 			roleName = iamserviceaccount.GenerateRoleName(cluster.Name(), userOptions.Namespace, userOptions.ServiceAccountNames[0])
 		}
 
-		// Generate trust policy using existing helpers
-		oidcConfig := cluster.AWS().STS().OidcConfig()
-		if oidcConfig == nil {
-			return fmt.Errorf("cluster '%s' does not have OIDC configuration", cluster.Name())
-		}
-
 		serviceAccounts := make([]iamserviceaccount.ServiceAccountIdentifier, len(userOptions.ServiceAccountNames))
 		for i, name := range userOptions.ServiceAccountNames {
 			serviceAccounts[i] = iamserviceaccount.ServiceAccountIdentifier{
@@ -149,19 +143,16 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 }
 
 func getOIDCProviderARN(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
-	oidcConfig := cluster.AWS().STS().OidcConfig()
-	if oidcConfig == nil {
-		return "", fmt.Errorf("cluster does not have OIDC configuration")
+	oidcConfigEndpointUrl, ok := cluster.AWS().STS().GetOIDCEndpointURL()
+	if oidcConfigEndpointUrl == "" || !ok {
+		return "", fmt.Errorf("cluster with ID '%s' does not have an OIDC configuration", cluster.ID())
 	}
 
-	providers, err := r.AWSClient.ListOidcProviders(cluster.ID(), oidcConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to list OIDC providers: %w", err)
+	providerArn, err := r.AWSClient.GetOpenIDConnectProviderByOidcEndpointUrl(oidcConfigEndpointUrl)
+
+	if err != nil || providerArn == "" {
+		return "", fmt.Errorf("no OIDC provider found for cluster with ID '%s'", cluster.ID())
 	}
 
-	if len(providers) == 0 {
-		return "", fmt.Errorf("no OIDC provider found for cluster")
-	}
-
-	return providers[0].Arn, nil
+	return providerArn, nil
 }
