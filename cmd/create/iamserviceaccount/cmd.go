@@ -150,18 +150,56 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 
 func getOIDCProviderARN(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
 	oidcConfig := cluster.AWS().STS().OidcConfig()
-	if oidcConfig == nil {
+	oidcEndpointURL := cluster.AWS().STS().OIDCEndpointURL()
+
+	// For clusters with OIDC configuration, try the standard approach first
+	if oidcConfig != nil {
+		providers, err := r.AWSClient.ListOidcProviders(cluster.ID(), oidcConfig)
+		if err != nil {
+			return "", fmt.Errorf("failed to list OIDC providers: %w", err)
+		}
+
+		if len(providers) > 0 {
+			return providers[0].Arn, nil
+		}
+	}
+
+	// Fallback: For classic OIDC or BYO OIDC where cluster ID-based search fails,
+	// use the OIDC endpoint URL to check for existing providers
+	if oidcEndpointURL != "" {
+		creator, err := r.AWSClient.GetCreator()
+		if err != nil {
+			return "", fmt.Errorf("failed to get AWS creator information: %s", err)
+		}
+
+		// Check if OIDC provider exists using endpoint URL
+		exists, err := r.AWSClient.HasOpenIDConnectProvider(oidcEndpointURL, creator.Partition, creator.AccountID)
+		if err != nil {
+			return "", fmt.Errorf("failed to check OIDC provider existence: %w", err)
+		}
+
+		if exists {
+			// Generate the provider ARN using the endpoint URL
+			return generateOIDCProviderARN(oidcEndpointURL, creator.Partition, creator.AccountID), nil
+		}
+	}
+
+	// If we reach here, no OIDC provider was found
+	if oidcConfig == nil && oidcEndpointURL == "" {
 		return "", fmt.Errorf("cluster does not have OIDC configuration")
 	}
 
-	providers, err := r.AWSClient.ListOidcProviders(cluster.ID(), oidcConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to list OIDC providers: %w", err)
+	return "", fmt.Errorf("no OIDC provider found for cluster")
+}
+
+func generateOIDCProviderARN(oidcEndpointURL, partition, accountID string) string {
+	// Parse the endpoint URL to extract the host part
+	// e.g., "https://example.com/path" -> "example.com/path"
+	if strings.HasPrefix(oidcEndpointURL, "https://") {
+		oidcEndpointURL = strings.TrimPrefix(oidcEndpointURL, "https://")
+	} else if strings.HasPrefix(oidcEndpointURL, "http://") {
+		oidcEndpointURL = strings.TrimPrefix(oidcEndpointURL, "http://")
 	}
 
-	if len(providers) == 0 {
-		return "", fmt.Errorf("no OIDC provider found for cluster")
-	}
-
-	return providers[0].Arn, nil
+	return fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, oidcEndpointURL)
 }

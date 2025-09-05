@@ -317,5 +317,83 @@ var _ = Describe("Create IAM Service Account", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no OIDC provider found"))
 		})
+
+		It("should handle classic OIDC scenario (no oidcConfig but has OIDCEndpointURL)", func() {
+			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.ID("test-cluster-id")
+				c.Name("test-cluster")
+				c.AWS(cmv1.NewAWS().
+					STS(cmv1.NewSTS().
+						OIDCEndpointURL("https://test.example.com")))
+			})
+
+			mockAWS.EXPECT().
+				GetCreator().
+				Return(&aws.Creator{
+					ARN:        "arn:aws:iam::123456789012:user/test-user",
+					AccountID:  "123456789012",
+					IsSTS:      false,
+					IsGovcloud: false,
+					Partition:  "aws",
+				}, nil)
+
+			mockAWS.EXPECT().
+				HasOpenIDConnectProvider("https://test.example.com", "aws", "123456789012").
+				Return(true, nil)
+
+			arn, err := getOIDCProviderARN(t.RosaRuntime, cluster)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arn).To(Equal("arn:aws:iam::123456789012:oidc-provider/test.example.com"))
+		})
+
+		It("should handle BYO OIDC scenario (cluster ID search fails but endpoint URL works)", func() {
+			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.ID("test-cluster-id")
+				c.Name("test-cluster")
+				c.AWS(cmv1.NewAWS().
+					STS(cmv1.NewSTS().
+						OIDCEndpointURL("https://byo.example.com").
+						OidcConfig(cmv1.NewOidcConfig().
+							ID("test-oidc-id").
+							IssuerUrl("https://byo.example.com"))))
+			})
+
+			// First try cluster ID-based search which fails for BYO OIDC
+			mockAWS.EXPECT().
+				ListOidcProviders(cluster.ID(), cluster.AWS().STS().OidcConfig()).
+				Return([]aws.OidcProviderOutput{}, nil)
+
+			// Then fallback to endpoint URL-based search
+			mockAWS.EXPECT().
+				GetCreator().
+				Return(&aws.Creator{
+					ARN:        "arn:aws:iam::123456789012:user/test-user",
+					AccountID:  "123456789012",
+					IsSTS:      false,
+					IsGovcloud: false,
+					Partition:  "aws",
+				}, nil)
+
+			mockAWS.EXPECT().
+				HasOpenIDConnectProvider("https://byo.example.com", "aws", "123456789012").
+				Return(true, nil)
+
+			arn, err := getOIDCProviderARN(t.RosaRuntime, cluster)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arn).To(Equal("arn:aws:iam::123456789012:oidc-provider/byo.example.com"))
+		})
+
+		It("should return error when cluster has no OIDC configuration at all", func() {
+			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.ID("test-cluster-id")
+				c.Name("test-cluster")
+				c.AWS(cmv1.NewAWS().
+					STS(cmv1.NewSTS()))
+			})
+
+			_, err := getOIDCProviderARN(t.RosaRuntime, cluster)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("does not have OIDC configuration"))
+		})
 	})
 })
