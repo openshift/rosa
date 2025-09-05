@@ -6,3 +6,4 @@
 - name: profile
 - name: region
 - name: win-li
+- name: hide-empty-columns
