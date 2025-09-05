@@ -736,8 +736,22 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			if proxyName == "" {
 				proxyName = clusterName
 			}
-			proxy, err := resourcesHandler.
-				PrepareProxy(ch.profile.Region, proxyName, config.Test.OutputDir, config.Test.ProxyCABundleFile)
+			proxy := &ProxyDetail{}
+			if ch.profile.ClusterConfig.ProxyType == "auth" {
+				log.Logger.Infof("Proxy auth is enabled. Going to generate the user and password and record in %s",
+					config.Test.ProxyAuthFile)
+				username := "proxyuser"
+				_, password := resourcesHandler.PrepareAdminUser()
+				_, err = helper.CreateFileWithContent(config.Test.ProxyAuthFile, fmt.Sprintf("%s:%s", username, password))
+				if err != nil {
+					return flags, err
+				}
+				proxy, err = resourcesHandler.
+					PrepareProxyWithAuth(ch.profile.Region, proxyName, config.Test.OutputDir, config.Test.ProxyCABundleFile, username, password)
+			} else {
+				proxy, err = resourcesHandler.
+					PrepareProxy(ch.profile.Region, proxyName, config.Test.OutputDir, config.Test.ProxyCABundleFile)
+			}
 			if err != nil {
 				return flags, err
 			}
