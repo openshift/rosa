@@ -223,7 +223,7 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 				return fmt.Errorf("failed to write role details: %s", err)
 			}
 
-			if !confirm.Prompt(false, "Delete IAM role '%s' and all associated policies?", roleName) {
+			if !confirm.Prompt(false, "Delete IAM role '%s'?", roleName) {
 				r.Reporter.Infof("Operation cancelled")
 				return nil
 			}
