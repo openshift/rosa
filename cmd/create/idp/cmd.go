@@ -82,8 +82,8 @@ var args struct {
 	htpasswdFile     string
 }
 
-var validIdps = []string{"github", "gitlab", "google", "htpasswd", "ldap", "openid"}
-var validMappingMethods = []string{"add", "claim", "generate", "lookup"}
+var validIdps []string = []string{"github", "gitlab", "google", "ldap", "openid"}
+var validMappingMethods []string = []string{"add", "claim", "generate", "lookup"}
 
 var idRE = regexp.MustCompile(`(?i)^[0-9a-z]+([-_][0-9a-z]+)*$`)
 
@@ -411,9 +411,6 @@ func run(cmd *cobra.Command, _ []string) {
 		idpBuilder, err = buildGitlabIdp(cmd, cluster, idpName)
 	case "google":
 		idpBuilder, err = buildGoogleIdp(cmd, cluster, idpName)
-	case "htpasswd":
-		createHTPasswdIDP(cmd, cluster, clusterKey, idpName, r)
-		os.Exit(0)
 	case "ldap":
 		idpBuilder, err = buildLdapIdp(cmd, cluster, idpName)
 	case "openid":
