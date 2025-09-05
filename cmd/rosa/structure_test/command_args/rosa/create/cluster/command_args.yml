@@ -111,3 +111,5 @@
 - name: interactive
 - name: output
 - name: "yes"
+- name: master-machine-type
+- name: infra-machine-type

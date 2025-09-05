@@ -191,6 +191,10 @@ type Spec struct {
 	PlatformAllowlist          string
 	AdditionalTrustedCaFile    string
 	AdditionalTrustedCa        map[string]string
+
+	// Master/Infra Machine Config
+	MasterMachineType string
+	InfraMachineType  string
 }
 
 // Volume represents a volume property for a disk
@@ -924,6 +928,12 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		}
 		if len(config.ComputeLabels) > 0 {
 			clusterNodesBuilder = clusterNodesBuilder.ComputeLabels(config.ComputeLabels)
+		}
+		if config.MasterMachineType != "" {
+			clusterNodesBuilder.MasterMachineType(cmv1.NewMachineType().ID(config.MasterMachineType))
+		}
+		if config.InfraMachineType != "" {
+			clusterNodesBuilder.InfraMachineType(cmv1.NewMachineType().ID(config.InfraMachineType))
 		}
 		clusterBuilder = clusterBuilder.Nodes(clusterNodesBuilder)
 	}
