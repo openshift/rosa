@@ -73,7 +73,19 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 		serviceAccountName := userOptions.ServiceAccountName
 		namespace := userOptions.Namespace
 
-		if roleName == "" {
+		useExplicitRoleName, err := interactive.GetBool(interactive.Input{
+			Question: "Do you want to provide an explicit role name",
+			Help: "Whether or not to delete based on an explicit role name. If you choose 'No' to this prompt," +
+				" you will be prompted for a service account name and namespace to generate the iam service account " +
+				"role name to delete.",
+			Required: true,
+			Default:  true,
+		})
+		if err != nil {
+			return fmt.Errorf("expected a valid response to yes/no prompt: %s", err)
+		}
+
+		if !useExplicitRoleName {
 			// Need service account details to derive role name
 			if interactive.Enabled() && serviceAccountName == "" {
 				serviceAccountName, err = interactive.GetString(interactive.Input{
