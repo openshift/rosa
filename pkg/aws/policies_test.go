@@ -853,9 +853,9 @@ var _ = Describe("validateManagedPolicy", func() {
 			Expect(err.Error()).To(ContainSubstring(expectedErr))
 		}
 	},
-		Entry("succeeds if ECR policy does not exist", map[string]*cmv1.AWSSTSPolicy{
+		Entry("fails if ECR policy does not exist", map[string]*cmv1.AWSSTSPolicy{
 			"sts_hcp_instance_worker_permission_policy": workerPolicy},
-			"sts_hcp_ec2_registry_permission_policy", "worker", ""),
+			"sts_hcp_ec2_registry_permission_policy", "worker", "failed to find policy ARN for 'sts_hcp_ec2_registry_permission_policy'"),
 		Entry("fails to find worker policy", map[string]*cmv1.AWSSTSPolicy{
 			"sts_hcp_ec2_registry_permission_policy": ec2ContainerPolicy},
 			"sts_hcp_instance_worker_permission_policy", "worker",
