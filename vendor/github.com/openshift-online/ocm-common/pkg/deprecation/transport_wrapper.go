@@ -1,5 +1,7 @@
 package deprecation
 
+//go:generate mockgen -destination=test/mock_roundtripper.go -package=test net/http RoundTripper
+
 import (
 	"fmt"
 	"net/http"
