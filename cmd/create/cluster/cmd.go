@@ -257,6 +257,10 @@ var args struct {
 	allowedRegistriesForImport string
 	platformAllowlist          string
 	additionalTrustedCa        string
+
+	// Master / Infra Machine Config
+	masterMachineType string
+	infraMachineType  string
 }
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
@@ -928,6 +932,22 @@ func initFlags(cmd *cobra.Command) {
 		"The additional Security Group IDs to be added to the control plane nodes. "+
 			listInputMessage,
 	)
+
+	flags.StringVar(
+		&args.masterMachineType,
+		"master-machine-type",
+		"",
+		"Instance type for the Master nodes",
+	)
+	_ = flags.MarkHidden("master-machine-type")
+
+	flags.StringVar(
+		&args.infraMachineType,
+		"infra-machine-type",
+		"",
+		"Instance type for the Infra nodes",
+	)
+	_ = flags.MarkHidden("infra-machine-type")
 
 	interactive.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
@@ -3389,6 +3409,8 @@ func run(cmd *cobra.Command, _ []string) {
 		AdditionalInfraSecurityGroupIds:        additionalInfraSecurityGroupIds,
 		AdditionalControlPlaneSecurityGroupIds: additionalControlPlaneSecurityGroupIds,
 		AdditionalAllowedPrincipals:            additionalAllowedPrincipals,
+		MasterMachineType:                      args.masterMachineType,
+		InfraMachineType:                       args.infraMachineType,
 	}
 
 	if httpTokens != "" {
