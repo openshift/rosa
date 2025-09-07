@@ -42,7 +42,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.2
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
-	sigs.k8s.io/yaml v1.3.0
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
@@ -52,6 +52,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.431 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.431 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 )
 
 require (
