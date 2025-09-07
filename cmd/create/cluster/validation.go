@@ -24,6 +24,7 @@ const (
 	pleaseRemoveFlags    = "Please remove the following flags: %s"
 
 	billingAccountsHcpErrorMsg = "Billing accounts are only supported for non-govcloud Hosted Control Plane clusters"
+	billingAccountsGovcloudErrorMsg = "Billing accounts are not supported for Govcloud clusters"
 )
 
 func validateHcpSharedVpcArgs(route53RoleArn string, vpcEndpointRoleArn string,
