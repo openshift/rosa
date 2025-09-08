@@ -51,7 +51,8 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 		}
 
 		// Determine if interactive mode is needed
-		if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+		if !interactive.Enabled() && !cmd.Flags().Changed("mode") && !cmd.Flags().Changed("role-name") &&
+			(!cmd.Flags().Changed("name") || !cmd.Flags().Changed("namespace")) {
 			interactive.Enable()
 		}
 
@@ -72,25 +73,33 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 		roleName := userOptions.RoleName
 		serviceAccountName := userOptions.ServiceAccountName
 		namespace := userOptions.Namespace
-
-		useExplicitRoleName, err := interactive.GetBool(interactive.Input{
-			Question: "Do you want to provide an explicit role name",
-			Help: "Whether or not to delete based on an explicit role name. If you choose 'No' to this prompt," +
-				" you will be prompted for a service account name and namespace to generate the iam service account " +
-				"role name to delete.",
-			Required: true,
-			Default:  true,
-		})
-		if err != nil {
-			return fmt.Errorf("expected a valid response to yes/no prompt: %s", err)
+		useExplicitRoleName := false
+		if roleName != "" {
+			useExplicitRoleName = true
 		}
 
-		if !useExplicitRoleName {
-			// Need service account details to derive role name
-			if interactive.Enabled() && serviceAccountName == "" {
+		if interactive.Enabled() {
+			// Ask which path, if all values are empty
+			if roleName == "" && (namespace == "default" || namespace == "") && serviceAccountName == "" {
+				useExplicitRoleName, err = interactive.GetBool(interactive.Input{
+					Question: "Do you want to provide an explicit role name",
+					Help: "Whether or not to delete based on an explicit role name. If you choose 'No' to this prompt," +
+						" you will be prompted for a service account name and namespace to generate the iam service account " +
+						"role name to delete.",
+					Required: true,
+					Default:  true,
+				})
+				if err != nil {
+					return fmt.Errorf("expected a valid response to yes/no prompt: %s", err)
+				}
+			}
+
+			if !useExplicitRoleName {
+				// Need service account details to derive role name
 				serviceAccountName, err = interactive.GetString(interactive.Input{
 					Question: "Service account name",
 					Help:     cmd.Flags().Lookup("name").Usage,
+					Default:  serviceAccountName,
 					Required: true,
 					Validators: []interactive.Validator{
 						iamserviceaccount.ServiceAccountNameValidator,
@@ -99,18 +108,12 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 				if err != nil {
 					return fmt.Errorf("expected a valid service account name: %s", err)
 				}
-			}
 
-			if serviceAccountName == "" {
-				return fmt.Errorf("service account name is required when role name is not specified")
-			}
+				if serviceAccountName == "" {
+					return fmt.Errorf("service account name is required when role name is not specified")
+				}
 
-			if err := iamserviceaccount.ValidateServiceAccountName(serviceAccountName); err != nil {
-				return fmt.Errorf("invalid service account name: %s", err)
-			}
-
-			// Validate namespace
-			if interactive.Enabled() {
+				// Need namespace to generate role name
 				namespace, err = interactive.GetString(interactive.Input{
 					Question: "Namespace",
 					Help:     cmd.Flags().Lookup("namespace").Usage,
@@ -123,27 +126,37 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 				if err != nil {
 					return fmt.Errorf("expected a valid namespace: %s", err)
 				}
+
+				if namespace == "" {
+					return fmt.Errorf("namespace is required when role name is not specified")
+				}
+			} else {
+				// Using explicit role name
+				if interactive.Enabled() {
+					roleName, err = interactive.GetString(interactive.Input{
+						Question: "IAM role name",
+						Help:     cmd.Flags().Lookup("role-name").Usage,
+						Default:  roleName,
+						Required: true,
+					})
+					if err != nil {
+						return fmt.Errorf("expected a valid role name: %s", err)
+					}
+				}
+			}
+		}
+
+		if roleName == "" {
+			if err := iamserviceaccount.ValidateServiceAccountName(serviceAccountName); err != nil {
+				return fmt.Errorf("invalid service account name: %s", err)
 			}
 
 			if err := iamserviceaccount.ValidateNamespaceName(namespace); err != nil {
 				return fmt.Errorf("invalid namespace: %s", err)
 			}
 
-			// Generate role name
+			// Generate role name if one not provided
 			roleName = iamserviceaccount.GenerateRoleName(cluster.Name(), namespace, serviceAccountName)
-		} else {
-			// Using explicit role name
-			if interactive.Enabled() {
-				roleName, err = interactive.GetString(interactive.Input{
-					Question: "IAM role name",
-					Help:     cmd.Flags().Lookup("role-name").Usage,
-					Default:  roleName,
-					Required: true,
-				})
-				if err != nil {
-					return fmt.Errorf("expected a valid role name: %s", err)
-				}
-			}
 		}
 
 		// Check if role exists
