@@ -80,7 +80,8 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 
 		if interactive.Enabled() {
 			// Ask which path, if all values are empty
-			if roleName == "" && (namespace == "default" || namespace == "") && serviceAccountName == "" {
+			if !cmd.Flags().Changed("name") && !cmd.Flags().Changed("namespace") &&
+				!cmd.Flags().Changed("role-name") {
 				useExplicitRoleName, err = interactive.GetBool(interactive.Input{
 					Question: "Do you want to provide an explicit role name",
 					Help: "Whether or not to delete based on an explicit role name. If you choose 'No' to this prompt," +
@@ -214,7 +215,11 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 			}
 		}
 
-		// Get interactive mode confirmation
+		if mode == "" {
+			interactive.Enable()
+		}
+
+		// Get interactive mode user choice
 		if interactive.Enabled() {
 			mode, err = interactive.GetOptionMode(cmd, mode, "IAM service account role deletion mode")
 			if err != nil {
