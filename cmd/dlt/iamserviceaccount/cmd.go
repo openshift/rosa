@@ -258,6 +258,13 @@ func DeleteIamServiceAccountRunner(userOptions *iamServiceAccountOpts.DeleteIamS
 				return nil
 			}
 
+			// Delete inline policies
+			if len(inlinePolicies) > 0 {
+				err = r.AWSClient.DeleteInlineRolePolicies(roleName)
+				if err != nil {
+					return fmt.Errorf("failed to delete inline role policies: %s", err)
+				}
+			}
 			// Delete the role
 			err = r.AWSClient.DeleteServiceAccountRole(roleName)
 			if err != nil {
