@@ -828,10 +828,12 @@ func run(cmd *cobra.Command, _ []string) {
 	if cmd.Flags().Changed("billing-account") {
 		billingAccount = args.billingAccount
 
-		if billingAccount != "" && !aws.IsHostedCP(cluster) {
-			r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
+		// FedRAMP blocking for both HCP and Classic clusters
+		if billingAccount != "" && fedramp.Enabled() {
+			r.Reporter.Errorf("Billing accounts are not supported for Govcloud clusters")
 			os.Exit(1)
 		}
+		
 		if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
 			r.Reporter.Errorf("Provided billing account number %s is not valid. "+
 				"Rerun the command with a valid billing account number", billingAccount)
@@ -841,53 +843,70 @@ func run(cmd *cobra.Command, _ []string) {
 		billingAccount = cluster.AWS().BillingAccountID()
 	}
 
-	if interactive.Enabled() && aws.IsHostedCP(cluster) && !fedramp.Enabled() {
-		cloudAccounts, err := r.OCMClient.GetBillingAccounts()
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
-		}
-
-		billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
-		if len(billingAccounts) > 0 {
-			billingAccount, err = interactive.GetOption(interactive.Input{
-				Question:       "Update billing account",
-				Help:           cmd.Flags().Lookup("billing-account").Usage,
-				Default:        billingAccount,
-				DefaultMessage: fmt.Sprintf("current = '%s'", cluster.AWS().BillingAccountID()),
-				Required:       true,
-				Options:        billingAccounts,
-			})
-
+	// Enable interactive billing account selection for both HCP and Classic (if not FedRAMP)
+	if interactive.Enabled() && !fedramp.Enabled() {
+		// Check capability for Classic clusters
+		enableBillingAccount := false
+		if aws.IsHostedCP(cluster) {
+			enableBillingAccount = true
+		} else {
+			// For Classic: check if hybrid billing is enabled for this organization
+			hasHybridBilling, err := r.OCMClient.IsCapabilityEnabled("capability.cluster.enable_rosa_hybrid_billing")
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid billing account: '%s'", err)
+				r.Reporter.Errorf("Failed to check hybrid billing capability: %s", err)
+				os.Exit(1)
+			}
+			enableBillingAccount = hasHybridBilling
+		}
+		
+		if enableBillingAccount {
+			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
+			if err != nil {
+				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
 
-			billingAccount = aws.ParseOption(billingAccount)
-		}
+			billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
+			if len(billingAccounts) > 0 {
+				billingAccount, err = interactive.GetOption(interactive.Input{
+					Question:       "Update billing account",
+					Help:           cmd.Flags().Lookup("billing-account").Usage,
+					Default:        billingAccount,
+					DefaultMessage: fmt.Sprintf("current = '%s'", cluster.AWS().BillingAccountID()),
+					Required:       true,
+					Options:        billingAccounts,
+				})
 
-		err = ocm.ValidateBillingAccount(billingAccount)
-		if err != nil {
-			r.Reporter.Errorf("%v", err)
-			os.Exit(1)
-		}
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid billing account: '%s'", err)
+					os.Exit(1)
+				}
 
-		// Get contract info
-		contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
+				billingAccount = aws.ParseOption(billingAccount)
+			}
 
-		if billingAccount != r.Creator.AccountID {
-			r.Reporter.Infof(
-				"The AWS billing account you selected is different from your AWS infrastructure account. " +
-					"The AWS billing account will be charged for subscription usage. " +
-					"The AWS infrastructure account contains the ROSA infrastructure.",
-			)
-		}
+			err = ocm.ValidateBillingAccount(billingAccount)
+			if err != nil {
+				r.Reporter.Errorf("%v", err)
+				os.Exit(1)
+			}
 
-		if isContractEnabled && len(contracts) > 0 {
-			//currently, an AWS account will have only one ROSA HCP active contract at a time
-			contractDisplay := ocm.GenerateContractDisplay(contracts[0])
-			r.Reporter.Infof(contractDisplay)
+			// Get contract info
+			contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
+
+			if billingAccount != r.Creator.AccountID {
+				r.Reporter.Infof(
+					"The AWS billing account you selected is different from your AWS infrastructure account. " +
+						"The AWS billing account will be charged for subscription usage. " +
+						"The AWS infrastructure account contains the ROSA infrastructure.",
+				)
+			}
+
+			if isContractEnabled && len(contracts) > 0 {
+				//currently, an AWS account will have only one ROSA HCP active contract at a time
+				contractDisplay := ocm.GenerateContractDisplay(contracts[0])
+				r.Reporter.Infof(contractDisplay)
+			}
 		}
 	}
 
