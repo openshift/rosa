@@ -130,3 +130,14 @@ func ExtractAWSCmdsForClusterCreation(bf bytes.Buffer) []string {
 	}
 	return newCommands
 }
+
+func ExtractCommandsToDeleteIAMServiceAccount(bf bytes.Buffer) []string {
+	var commands []string
+	output := strings.Split(bf.String(), "\n")
+	for _, message := range output {
+		if strings.HasPrefix(message, "aws iam") {
+			commands = append(commands, message)
+		}
+	}
+	return commands
+}
