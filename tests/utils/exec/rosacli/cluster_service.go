@@ -48,6 +48,7 @@ type ClusterService interface {
 	WaitClusterDeleted(clusterID string, interval int, duration int) error
 	WaitForClusterPassUninstalled(clusterID string, interval int, timeoutMin int) error
 	WaitForClusterPassWaiting(clusterID string, interval int, timeoutMin int) error
+	GetClusterName(clusterID string) (clusterName string, err error)
 }
 
 type clusterService struct {
@@ -345,6 +346,12 @@ func (c *clusterService) GetClusterVersion(clusterID string) (clusterVersion con
 		}
 	}
 	return
+}
+
+func (c *clusterService) GetClusterName(clusterID string) (clusterName string, err error) {
+	var clusterConfig *config.ClusterConfig
+	clusterConfig, err = config.ParseClusterProfile()
+	return clusterConfig.Name, err
 }
 
 func (c *clusterService) GetJSONClusterDescription(clusterID string) (*jsonData, error) {

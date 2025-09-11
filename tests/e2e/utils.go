@@ -24,3 +24,8 @@ func SkipNotMultiArch() {
 	message := fmt.Sprintln("The cluster can not handle multiple CPU architecture")
 	Skip(message)
 }
+
+func SkipNotSTS() {
+	message := fmt.Sprintln("The test profile is not sts")
+	Skip(message)
+}
