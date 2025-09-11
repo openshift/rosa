@@ -40,6 +40,7 @@ type TestConfig struct {
 	ClusterDetailFile               string
 	ClusterInstallLogArtifactFile   string
 	ClusterAdminFile                string
+	ProxyAuthFile                   string
 	ClusterIDPAdminUsernamePassword string
 	TestFocusFile                   string
 	TestLabelFilterFile             string
@@ -121,6 +122,7 @@ func init() {
 	Test.ClusterDetailFile = path.Join(Test.OutputDir, "cluster-detail.json")
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
+	Test.ProxyAuthFile = path.Join(Test.ArtifactDir, ".proxy-auth")
 	Test.ClusterIDPAdminUsernamePassword = path.Join(Test.ArtifactDir, ".idp-admin-username-password")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
 	Test.TestLabelFilterFile = path.Join(Test.RootDir, "tests", "ci", "data", "label-filter")

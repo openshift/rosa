@@ -216,6 +216,7 @@ profiles:
     kms_key: true
     networking: true
     proxy_enabled: true
+    proxy_type: "auth"
     label_enabled: false
     zones: ""
     tag_enabled: true
