@@ -7,7 +7,7 @@ RUN go test -c -o /go/bin/rosatest ./tests/e2e
 RUN rosa verify openshift-client
 RUN rosatest --ginkgo.no-color --ginkgo.label-filter "e2e-commit"
 
-FROM quay.io/projectquay/golang:1.23 AS rosa-support
+FROM quay.io/projectquay/golang:1.25 AS rosa-support
 WORKDIR /rosa-support
 RUN go install github.com/openshift-online/rosa-support@latest
 
