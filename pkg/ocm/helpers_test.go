@@ -588,6 +588,110 @@ var _ = Describe("ValidateClaimValidationRules()", func() {
 		Entry("should not error when an empty claim validation rule is given", "", false, ""),
 		Entry("shoud error when claim validation rule is not a valid value", "9hjh9", true,
 			"invalid identifier '9hjh9' for 'claim validation rule. 'Should be in a <claim>:<required_value> format."),
-		Entry("should not error when claim validation rule with single pair is valid", "abc:efg", false, ""))
-	Entry("should not error when claim validation rule with multiple pairs is valid", "abc:efg,lala:wuwu", false, "")
+		Entry("should not error when claim validation rule with single pair is valid", "abc:efg", false, ""),
+		Entry("should not error when claim validation rule with multiple pairs is valid", "abc:efg,lala:wuwu", false, ""))
+})
+
+var _ = Describe("GetAutoNodeMode", func() {
+	It("returns empty string and false when cluster is nil", func() {
+		mode, exists := GetAutoNodeMode(nil)
+		Expect(mode).To(Equal(""))
+		Expect(exists).To(BeFalse())
+	})
+
+	It("returns empty string and false when AutoNode is nil", func() {
+		cluster, err := cmv1.NewCluster().Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		mode, exists := GetAutoNodeMode(cluster)
+		Expect(mode).To(Equal(""))
+		Expect(exists).To(BeFalse())
+	})
+
+	It("returns empty string and false when AutoNode mode is empty", func() {
+		cluster, err := cmv1.NewCluster().
+			AutoNode(cmv1.NewClusterAutoNode().Mode("")).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		mode, exists := GetAutoNodeMode(cluster)
+		Expect(mode).To(Equal(""))
+		Expect(exists).To(BeFalse())
+	})
+
+	It("returns enabled and true when AutoNode mode is enabled", func() {
+		cluster, err := cmv1.NewCluster().
+			AutoNode(cmv1.NewClusterAutoNode().Mode("enabled")).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		mode, exists := GetAutoNodeMode(cluster)
+		Expect(mode).To(Equal("enabled"))
+		Expect(exists).To(BeTrue())
+	})
+
+	It("returns correct mode and true for other valid modes", func() {
+		// Test with a hypothetical future mode
+		cluster, err := cmv1.NewCluster().
+			AutoNode(cmv1.NewClusterAutoNode().Mode("disabled")).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		mode, exists := GetAutoNodeMode(cluster)
+		Expect(mode).To(Equal("disabled"))
+		Expect(exists).To(BeTrue())
+	})
+})
+
+var _ = Describe("GetAutoNodeRoleArn", func() {
+	It("returns empty string and false when cluster is nil", func() {
+		roleArn, exists := GetAutoNodeRoleArn(nil)
+		Expect(roleArn).To(Equal(""))
+		Expect(exists).To(BeFalse())
+	})
+
+	It("returns empty string and false when AWS is nil", func() {
+		cluster, err := cmv1.NewCluster().Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		roleArn, exists := GetAutoNodeRoleArn(cluster)
+		Expect(roleArn).To(Equal(""))
+		Expect(exists).To(BeFalse())
+	})
+
+	It("returns empty string and false when AWS.AutoNode is nil", func() {
+		cluster, err := cmv1.NewCluster().
+			AWS(cmv1.NewAWS()).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		roleArn, exists := GetAutoNodeRoleArn(cluster)
+		Expect(roleArn).To(Equal(""))
+		Expect(exists).To(BeFalse())
+	})
+
+	It("returns empty string and false when role ARN is empty", func() {
+		cluster, err := cmv1.NewCluster().
+			AWS(cmv1.NewAWS().
+				AutoNode(cmv1.NewAwsAutoNode().RoleArn(""))).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		roleArn, exists := GetAutoNodeRoleArn(cluster)
+		Expect(roleArn).To(Equal(""))
+		Expect(exists).To(BeFalse())
+	})
+
+	It("returns correct role ARN and true when role ARN is set", func() {
+		expectedRoleArn := "arn:aws:iam::123456789012:role/MyAutoNodeRole"
+		cluster, err := cmv1.NewCluster().
+			AWS(cmv1.NewAWS().
+				AutoNode(cmv1.NewAwsAutoNode().RoleArn(expectedRoleArn))).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		roleArn, exists := GetAutoNodeRoleArn(cluster)
+		Expect(roleArn).To(Equal(expectedRoleArn))
+		Expect(exists).To(BeTrue())
+	})
 })
