@@ -10,6 +10,8 @@
 - name: no-proxy
 - name: additional-trust-bundle-file
 - name: audit-log-arn
+- name: autonode
+- name: autonode-iam-role-arn
 - name: additional-allowed-principals
 - name: registry-config-allowed-registries
 - name: registry-config-insecure-registries

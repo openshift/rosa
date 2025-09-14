@@ -1122,3 +1122,17 @@ func ValidateClaimValidationRules(input interface{}) error {
 	}
 	return nil
 }
+
+// AutoNodeExists checks if AutoNode is enabled on the cluster
+func AutoNodeExists(cluster *cmv1.Cluster) bool {
+	return cluster.AutoNode() != nil && cluster.AutoNode().Mode() == "enabled"
+}
+
+// GetAutoNodeRoleArn returns the AutoNode IAM role ARN and whether it exists
+func GetAutoNodeRoleArn(cluster *cmv1.Cluster) (string, bool) {
+	if cluster.AWS() != nil && cluster.AWS().AutoNode() != nil {
+		roleArn := cluster.AWS().AutoNode().RoleArn()
+		return roleArn, roleArn != ""
+	}
+	return "", false
+}
