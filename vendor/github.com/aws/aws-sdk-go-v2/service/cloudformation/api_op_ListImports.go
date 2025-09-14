@@ -12,10 +12,12 @@ import (
 
 // Lists all stacks that are importing an exported output value. To modify or
 // remove an exported output value, first use this action to see which stacks are
-// using it. To see the exported output values in your account, see ListExports .
-// For more information about importing an exported output value, see the
-// Fn::ImportValue (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-importvalue.html)
+// using it. To see the exported output values in your account, see ListExports.
+//
+// For more information about importing an exported output value, see the [Fn::ImportValue]
 // function.
+//
+// [Fn::ImportValue]: https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/intrinsic-function-reference-importvalue.html
 func (c *Client) ListImports(ctx context.Context, params *ListImportsInput, optFns ...func(*Options)) (*ListImportsOutput, error) {
 	if params == nil {
 		params = &ListImportsInput{}
@@ -39,8 +41,8 @@ type ListImportsInput struct {
 	// This member is required.
 	ExportName *string
 
-	// A string (provided by the ListImports response output) that identifies the next
-	// page of stacks that are importing the specified exported output value.
+	// A string (provided by the ListImports response output) that identifies the next page of
+	// stacks that are importing the specified exported output value.
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -104,6 +106,9 @@ func (c *Client) addOperationListImportsMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -114,6 +119,15 @@ func (c *Client) addOperationListImportsMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListImportsValidationMiddleware(stack); err != nil {
@@ -137,15 +151,50 @@ func (c *Client) addOperationListImportsMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListImportsAPIClient is a client that implements the ListImports operation.
-type ListImportsAPIClient interface {
-	ListImports(context.Context, *ListImportsInput, ...func(*Options)) (*ListImportsOutput, error)
-}
-
-var _ ListImportsAPIClient = (*Client)(nil)
 
 // ListImportsPaginatorOptions is the paginator options for ListImports
 type ListImportsPaginatorOptions struct {
@@ -198,6 +247,9 @@ func (p *ListImportsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListImports(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -216,6 +268,13 @@ func (p *ListImportsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 
 	return result, nil
 }
+
+// ListImportsAPIClient is a client that implements the ListImports operation.
+type ListImportsAPIClient interface {
+	ListImports(context.Context, *ListImportsInput, ...func(*Options)) (*ListImportsOutput, error)
+}
+
+var _ ListImportsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListImports(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

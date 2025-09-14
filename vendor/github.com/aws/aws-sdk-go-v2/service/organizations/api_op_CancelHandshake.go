@@ -11,13 +11,15 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Cancels a handshake. Canceling a handshake sets the handshake state to CANCELED
-// . This operation can be called only from the account that originated the
-// handshake. The recipient of the handshake can't cancel it, but can use
-// DeclineHandshake instead. After a handshake is canceled, the recipient can no
-// longer respond to that handshake. After you cancel a handshake, it continues to
-// appear in the results of relevant APIs for only 30 days. After that, it's
-// deleted.
+// Cancels a handshake. Canceling a handshake sets the handshake state to CANCELED .
+//
+// This operation can be called only from the account that originated the
+// handshake. The recipient of the handshake can't cancel it, but can use DeclineHandshakeinstead.
+// After a handshake is canceled, the recipient can no longer respond to that
+// handshake.
+//
+// After you cancel a handshake, it continues to appear in the results of relevant
+// APIs for only 30 days. After that, it's deleted.
 func (c *Client) CancelHandshake(ctx context.Context, params *CancelHandshakeInput, optFns ...func(*Options)) (*CancelHandshakeOutput, error) {
 	if params == nil {
 		params = &CancelHandshakeInput{}
@@ -36,9 +38,12 @@ func (c *Client) CancelHandshake(ctx context.Context, params *CancelHandshakeInp
 type CancelHandshakeInput struct {
 
 	// The unique identifier (ID) of the handshake that you want to cancel. You can
-	// get the ID from the ListHandshakesForOrganization operation. The regex pattern (http://wikipedia.org/wiki/regex)
-	// for handshake ID string requires "h-" followed by from 8 to 32 lowercase letters
-	// or digits.
+	// get the ID from the ListHandshakesForOrganizationoperation.
+	//
+	// The [regex pattern] for handshake ID string requires "h-" followed by from 8 to 32 lowercase
+	// letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	HandshakeId *string
@@ -100,6 +105,9 @@ func (c *Client) addOperationCancelHandshakeMiddlewares(stack *middleware.Stack,
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -110,6 +118,15 @@ func (c *Client) addOperationCancelHandshakeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCancelHandshakeValidationMiddleware(stack); err != nil {
@@ -131,6 +148,48 @@ func (c *Client) addOperationCancelHandshakeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
