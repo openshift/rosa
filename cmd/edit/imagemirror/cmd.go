@@ -66,6 +66,13 @@ func NewEditImageMirrorCommand() *cobra.Command {
 		"ID of the image mirror configuration to edit",
 	)
 
+	flags.StringVar(
+		&options.Args().Type,
+		"type",
+		"digest",
+		"Type of image mirror (default: digest)",
+	)
+
 	flags.StringSliceVar(
 		&options.Args().Mirrors,
 		"mirrors",
@@ -112,7 +119,7 @@ func EditImageMirrorRunner(options *EditImageMirrorOptions) rosa.CommandRunner {
 		}
 
 		updatedMirror, err := runtime.OCMClient.UpdateImageMirror(
-			cluster.ID(), args.Id, args.Mirrors)
+			cluster.ID(), args.Id, args.Mirrors, &args.Type)
 		if err != nil {
 			return fmt.Errorf("Failed to edit image mirror: %v", err)
 		}
