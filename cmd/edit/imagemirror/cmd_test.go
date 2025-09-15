@@ -221,7 +221,7 @@ var _ = Describe("Edit image mirror", func() {
 
 			It("Has expected flags", func() {
 				cmd := NewEditImageMirrorCommand()
-				flags := []string{"cluster", "id", "mirrors", "profile", "region"}
+				flags := []string{"cluster", "id", "type", "mirrors", "profile", "region"}
 				for _, flagName := range flags {
 					flag := cmd.Flag(flagName)
 					Expect(flag).ToNot(BeNil(), "Flag %s should exist", flagName)
@@ -268,6 +268,27 @@ var _ = Describe("Edit image mirror", func() {
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("At least one mirror registry must be specified"))
+			})
+		})
+
+		Context("Type parameter validation", func() {
+			It("Uses default type value when not specified", func() {
+				options := NewEditImageMirrorOptions()
+				Expect(options.Args().Type).To(Equal("digest"))
+			})
+
+			It("Can set type flag through command", func() {
+				cmd := NewEditImageMirrorCommand()
+				err := cmd.Flag("type").Value.Set("tag")
+				Expect(err).ToNot(HaveOccurred())
+				typeFlag := cmd.Flag("type")
+				Expect(typeFlag.Value.String()).To(Equal("tag"))
+			})
+
+			It("Has correct default value for type flag", func() {
+				cmd := NewEditImageMirrorCommand()
+				typeFlag := cmd.Flag("type")
+				Expect(typeFlag.DefValue).To(Equal("digest"))
 			})
 		})
 	})

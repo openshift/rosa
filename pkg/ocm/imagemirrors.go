@@ -79,10 +79,15 @@ func (c *Client) GetImageMirror(clusterID, id string) (*cmv1.ImageMirror, error)
 }
 
 // UpdateImageMirror updates an existing image mirror
-func (c *Client) UpdateImageMirror(clusterID, id string, mirrors []string) (*cmv1.ImageMirror, error) {
-	imageMirrorPatch, err := cmv1.NewImageMirror().
-		Mirrors(mirrors...).
-		Build()
+func (c *Client) UpdateImageMirror(clusterID, id string, mirrors []string, mirrorType *string) (*cmv1.ImageMirror, error) {
+	imageMirrorBuilder := cmv1.NewImageMirror().
+		Mirrors(mirrors...)
+
+	if mirrorType != nil {
+		imageMirrorBuilder = imageMirrorBuilder.Type(*mirrorType)
+	}
+
+	imageMirrorPatch, err := imageMirrorBuilder.Build()
 	if err != nil {
 		return nil, err
 	}

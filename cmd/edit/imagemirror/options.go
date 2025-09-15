@@ -22,6 +22,7 @@ import (
 
 type EditImageMirrorUserOptions struct {
 	Id      string
+	Type    string
 	Mirrors []string
 }
 
@@ -33,6 +34,7 @@ type EditImageMirrorOptions struct {
 func NewEditImageMirrorUserOptions() *EditImageMirrorUserOptions {
 	return &EditImageMirrorUserOptions{
 		Id:      "",
+		Type:    "digest",
 		Mirrors: []string{},
 	}
 }
