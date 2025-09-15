@@ -63,6 +63,7 @@ type ClusterConfig struct {
 	DefaultIngressPrivate         bool   `yaml:"default_ingress_private,omitempty"`
 	Private                       bool   `yaml:"private,omitempty" json:"private,omitempty"`
 	ProxyEnabled                  bool   `yaml:"proxy_enabled,omitempty" json:"proxy_enabled,omitempty"`
+	ProxyType                     string `yaml:"proxy_type,omitempty" json:"proxy_type,omitempty"`
 	STS                           bool   `yaml:"sts,omitempty" json:"sts,omitempty"`
 	SharedVPC                     bool   `yaml:"shared_vpc,omitempty" json:"shared_vpc,omitempty"`
 	TagEnabled                    bool   `yaml:"tag_enabled,omitempty" json:"tag_enabled,omitempty"`
@@ -123,5 +124,7 @@ type ProxyDetail struct {
 	HTTPProxy        string
 	CABundleFilePath string
 	NoProxy          string
+	Username         string
+	Password         string
 	InstanceID       string
 }

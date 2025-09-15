@@ -262,11 +262,16 @@ func (rh *resourcesHandler) PrepareSubnets(zones []string, multiZone bool) (map[
 
 func (rh *resourcesHandler) PrepareProxy(zone string, sshPemFileName string, sshPemFileRecordDir string,
 	caFile string) (*ProxyDetail, error) {
+	return rh.PrepareProxyWithAuth(zone, sshPemFileName, sshPemFileRecordDir, caFile, "", "")
+}
+
+func (rh *resourcesHandler) PrepareProxyWithAuth(zone string, sshPemFileName string, sshPemFileRecordDir string,
+	caFile string, username string, password string) (*ProxyDetail, error) {
 
 	if rh.vpc == nil {
 		return nil, errors.New("VPC has not been initialized ...")
 	}
-	instance, privateIP, caContent, err := rh.vpc.LaunchProxyInstance(zone, sshPemFileName, sshPemFileRecordDir)
+	instance, privateIP, caContent, err := rh.vpc.LaunchProxyInstanceWithAuth(zone, sshPemFileName, sshPemFileRecordDir, username, password)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +281,8 @@ func (rh *resourcesHandler) PrepareProxy(zone string, sshPemFileName string, ssh
 	}
 	err = rh.registerProxyInstanceID(*instance.InstanceId)
 	return &ProxyDetail{
-		HTTPsProxy:       fmt.Sprintf("https://%s:8080", privateIP),
-		HTTPProxy:        fmt.Sprintf("http://%s:8080", privateIP),
+		HTTPsProxy:       rh.vpc.GetHTTPSProxyURL(privateIP, username, password),
+		HTTPProxy:        rh.vpc.GetProxyURL(privateIP, username, password),
 		CABundleFilePath: caFile,
 		NoProxy:          "quay.io",
 		InstanceID:       *instance.InstanceId,
