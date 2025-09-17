@@ -35,6 +35,7 @@ type Client struct {
 	Cluster              ClusterService
 	ExternalAuthProvider ExternalAuthProviderService
 	IAMServiceAccount    IAMServiceAccountService
+	ImageMirror          ImageMirrorService
 	IDP                  IDPService
 	Ingress              IngressService
 	KubeletConfig        KubeletConfigService
@@ -66,6 +67,7 @@ func NewClient() *Client {
 	client.Cluster = NewClusterService(client)
 	client.ExternalAuthProvider = NewExternalAuthProviderService(client)
 	client.IAMServiceAccount = NewIAMServiceAccountService(client)
+	client.ImageMirror = NewImageMirrorService(client)
 	client.IDP = NewIDPService(client)
 	client.Ingress = NewIngressService(client)
 	client.KubeletConfig = NewKubeletConfigService(client)
