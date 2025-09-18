@@ -42,7 +42,7 @@ spec:
     cd /rosa
     source ./tests/prow_ci.sh
     configure_aws "${AWS_CREDENTIALS}" "${AWS_REGION}"
-    configure_aws_shared_vpc "${AWS_SHAREDVPC_CREDENTIALS}/.awscred_shared_account"
+    configure_aws_shared_vpc "${AWS_SHAREDVPC_CREDENTIALS}"
     rosa login --env ${OCM_LOGIN_ENV} --token ${OCM_TOKEN}
     rosa whoami
 
