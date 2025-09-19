@@ -554,6 +554,23 @@ func run(cmd *cobra.Command, argv []string) {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
 		}
+		// Display AutoNode status
+		if cluster.AutoNode() != nil {
+			str = fmt.Sprintf("%s"+
+				"AutoNode:\n", str)
+			str = fmt.Sprintf("%s"+
+				"  Mode:                     %s\n", str, cluster.AutoNode().Mode())
+			if cluster.AutoNode().Status() != nil && cluster.AutoNode().Status().Message() != "" {
+				str = fmt.Sprintf("%s"+
+					"  Status:\n", str)
+				str = fmt.Sprintf("%s"+
+					"    Message:                %s\n", str, cluster.AutoNode().Status().Message())
+			}
+			if cluster.AWS() != nil && cluster.AWS().AutoNode() != nil && cluster.AWS().AutoNode().RoleArn() != "" {
+				str = fmt.Sprintf("%s"+
+					"  IAM Role ARN:             %s\n", str, cluster.AWS().AutoNode().RoleArn())
+			}
+		}
 		str = fmt.Sprintf("%s"+
 			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
 		if len(cluster.AWS().AdditionalAllowedPrincipals()) > 0 {
