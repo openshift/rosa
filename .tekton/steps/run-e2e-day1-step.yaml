@@ -49,21 +49,14 @@ spec:
     rosa version
 
     # day1: prepare testing cluster
-    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
-      --ginkgo.timeout "100m" \
-      --ginkgo.label-filter "day1"
+    ginkgo --label-filter day1 --v --no-color --timeout 60m ./tests/e2e
     rc1=$?
-
     # cluster setup readiness step
-    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
-      --ginkgo.timeout "60m" \
-      --ginkgo.label-filter "day1-readiness"
+    ginkgo --label-filter day1-readiness --v --no-color --timeout 60m ./tests/e2e
     rc2=$?
 
     # day1-post check
-    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
-      --ginkgo.timeout "60m" \
-      --ginkgo.label-filter "day1-post"
+    ginkgo --label-filter day1-post --v --no-color --timeout 60m ./tests/e2e
     rc3=$?
     if [ $rc1 -ne 0 ] || [ $rc2 -ne 0 ] || [ $rc3 -ne 0 ]; then
       exit 1

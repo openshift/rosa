@@ -47,15 +47,11 @@ spec:
     rosa whoami
 
     # run day2 cases
-    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
-      --ginkgo.timeout "4h" \
-      --ginkgo.label-filter "day2"
+    ginkgo --label-filter day2 --v --no-color --timeout 4h ./tests/e2e
     rc1=$?
 
     # run day2 destructive cases
-    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
-      --ginkgo.timeout "2h" \
-      --ginkgo.label-filter "destructive"
+    ginkgo --label-filter destructive --v --no-color --timeout 2h ./tests/e2e
     rc2=$?
     if [ $rc1 -ne 0 ] || [ $rc2 -ne 0 ]; then
       exit 1
