@@ -54,7 +54,5 @@ spec:
     rosa whoami
 
     # run destroy case to clean up all testing resources
-    ginkgo ./tests/e2e --ginkgo.v --ginkgo.no-color \
-      --ginkgo.timeout "1h" \
-      --ginkgo.label-filter "destroy"
+    ginkgo --label-filter destroy --v --no-color --timeout 1h ./tests/e2e
 
