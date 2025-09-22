@@ -283,9 +283,6 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 		"",
 		"The ID of an AWS On-Demand Capacity Reservation. The 'capacity-reservation-id' must be pre-created "+
 			"in advance, before creating a NodePool.")
-
-	_ = flags.MarkHidden("capacity-reservation-id") // Mark hidden for m1
-
 	output.AddFlag(cmd)
 	interactive.AddFlag(flags)
 	return cmd, options
