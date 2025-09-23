@@ -1208,14 +1208,22 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Billing Account
 	billingAccount := args.billingAccount
-	if isHostedCP && !fedramp.Enabled() {
+	if !fedramp.Enabled() {
+		isClassicBillingCapabilityEnabled, err := r.OCMClient.IsCapabilityEnabled(
+			"capability.cluster.rosa_classic_billing_account")
+		if err != nil {
+			_ = r.Reporter.Errorf("Failed to determine if billing account capability is enabled for user "+
+				"organization: %s", err)
+			os.Exit(1)
+		}
+
 		isHcpBillingTechPreview, err := r.OCMClient.IsTechnologyPreview(ocm.HcpBillingAccount, time.Now())
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
-		if !isHcpBillingTechPreview {
+		if (isHostedCP && !isHcpBillingTechPreview) || (!isHostedCP && isClassicBillingCapabilityEnabled) {
 
 			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
 				r.Reporter.Errorf("Provided billing account number %s is not valid. "+
@@ -1288,7 +1296,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	if !isHostedCP && billingAccount != "" {
+	if fedramp.Enabled() && billingAccount != "" {
 		_ = r.Reporter.Errorf(billingAccountsHcpErrorMsg)
 		os.Exit(1)
 	}
@@ -3689,20 +3697,6 @@ func validateNetworkType(networkType string) error {
 		return fmt.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
 	}
 	return nil
-}
-
-func GetBillingAccountContracts(cloudAccounts []*accountsv1.CloudAccount,
-	billingAccount string) ([]*accountsv1.Contract, bool) {
-	var contracts []*accountsv1.Contract
-	for _, account := range cloudAccounts {
-		if account.CloudAccountID() == billingAccount {
-			contracts = account.Contracts()
-			if ocm.HasValidContracts(account) {
-				return contracts, true
-			}
-		}
-	}
-	return contracts, false
 }
 
 func GenerateContractDisplay(contract *accountsv1.Contract) string {
