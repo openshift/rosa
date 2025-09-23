@@ -107,7 +107,7 @@ func BuildIamServiceAccountCreateCommandWithOptions() (*cobra.Command, *CreateIa
 	flags.StringVar(
 		&options.Path,
 		"path",
-		"/",
+		"",
 		"IAM path for the role.",
 	)
 
