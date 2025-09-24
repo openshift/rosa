@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019 Red Hat, Inc.
+Copyright (c) 2025 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-class RoleBinding {
-	Type String
-	Subscription Subscription
-	SubscriptionID String
-	Account Account
-	AccountID String
-	AccountGroup AccountGroup
-	AccountGroupID String
-	Organization Organization
-	OrganizationID String
-	Role Role
-	RoleID String
-	ConfigManaged Boolean
-	CreatedAt Date
-	UpdatedAt Date
-	ManagedBy String 
+// Manages a specific account group assignment.
+resource AccountGroupAssignment {
+	// Retrieves the details of the account group assignment.
+	method Get {
+		out Body AccountGroupAssignment
+	}
+
+	// Updates the account group assignment.
+	method Update {
+		in out Body AccountGroupAssignment
+	}
+
+	// Deletes the account group assignment.
+	method Delete {
+		// No parameters needed for delete
+	}
 }
