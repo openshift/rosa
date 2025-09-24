@@ -19,17 +19,15 @@ limitations under the License.
 
 package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1
 
-// WifRole represents the values of the 'wif_role' type.
-type WifRole struct {
-	fieldSet_        []bool
-	permissions      []string
-	resourceBindings []*WifResourceBinding
-	roleId           string
-	predefined       bool
+// WifResourceBinding represents the values of the 'wif_resource_binding' type.
+type WifResourceBinding struct {
+	fieldSet_ []bool
+	name      string
+	type_     string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
-func (o *WifRole) Empty() bool {
+func (o *WifResourceBinding) Empty() bool {
 	if o == nil || len(o.fieldSet_) == 0 {
 		return true
 	}
@@ -41,103 +39,65 @@ func (o *WifRole) Empty() bool {
 	return true
 }
 
-// Permissions returns the value of the 'permissions' attribute, or
+// Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
-func (o *WifRole) Permissions() []string {
+func (o *WifResourceBinding) Name() string {
 	if o != nil && len(o.fieldSet_) > 0 && o.fieldSet_[0] {
-		return o.permissions
-	}
-	return nil
-}
-
-// GetPermissions returns the value of the 'permissions' attribute and
-// a flag indicating if the attribute has a value.
-func (o *WifRole) GetPermissions() (value []string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 0 && o.fieldSet_[0]
-	if ok {
-		value = o.permissions
-	}
-	return
-}
-
-// Predefined returns the value of the 'predefined' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-func (o *WifRole) Predefined() bool {
-	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
-		return o.predefined
-	}
-	return false
-}
-
-// GetPredefined returns the value of the 'predefined' attribute and
-// a flag indicating if the attribute has a value.
-func (o *WifRole) GetPredefined() (value bool, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
-	if ok {
-		value = o.predefined
-	}
-	return
-}
-
-// ResourceBindings returns the value of the 'resource_bindings' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-func (o *WifRole) ResourceBindings() []*WifResourceBinding {
-	if o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2] {
-		return o.resourceBindings
-	}
-	return nil
-}
-
-// GetResourceBindings returns the value of the 'resource_bindings' attribute and
-// a flag indicating if the attribute has a value.
-func (o *WifRole) GetResourceBindings() (value []*WifResourceBinding, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2]
-	if ok {
-		value = o.resourceBindings
-	}
-	return
-}
-
-// RoleId returns the value of the 'role_id' attribute, or
-// the zero value of the type if the attribute doesn't have a value.
-func (o *WifRole) RoleId() string {
-	if o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3] {
-		return o.roleId
+		return o.name
 	}
 	return ""
 }
 
-// GetRoleId returns the value of the 'role_id' attribute and
+// GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
-func (o *WifRole) GetRoleId() (value string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3]
+func (o *WifResourceBinding) GetName() (value string, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 0 && o.fieldSet_[0]
 	if ok {
-		value = o.roleId
+		value = o.name
 	}
 	return
 }
 
-// WifRoleListKind is the name of the type used to represent list of objects of
-// type 'wif_role'.
-const WifRoleListKind = "WifRoleList"
+// Type returns the value of the 'type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+func (o *WifResourceBinding) Type() string {
+	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
+		return o.type_
+	}
+	return ""
+}
 
-// WifRoleListLinkKind is the name of the type used to represent links to list
-// of objects of type 'wif_role'.
-const WifRoleListLinkKind = "WifRoleListLink"
+// GetType returns the value of the 'type' attribute and
+// a flag indicating if the attribute has a value.
+func (o *WifResourceBinding) GetType() (value string, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
+	if ok {
+		value = o.type_
+	}
+	return
+}
 
-// WifRoleNilKind is the name of the type used to nil lists of objects of
-// type 'wif_role'.
-const WifRoleListNilKind = "WifRoleListNil"
+// WifResourceBindingListKind is the name of the type used to represent list of objects of
+// type 'wif_resource_binding'.
+const WifResourceBindingListKind = "WifResourceBindingList"
 
-// WifRoleList is a list of values of the 'wif_role' type.
-type WifRoleList struct {
+// WifResourceBindingListLinkKind is the name of the type used to represent links to list
+// of objects of type 'wif_resource_binding'.
+const WifResourceBindingListLinkKind = "WifResourceBindingListLink"
+
+// WifResourceBindingNilKind is the name of the type used to nil lists of objects of
+// type 'wif_resource_binding'.
+const WifResourceBindingListNilKind = "WifResourceBindingListNil"
+
+// WifResourceBindingList is a list of values of the 'wif_resource_binding' type.
+type WifResourceBindingList struct {
 	href  string
 	link  bool
-	items []*WifRole
+	items []*WifResourceBinding
 }
 
 // Len returns the length of the list.
-func (l *WifRoleList) Len() int {
+func (l *WifResourceBindingList) Len() int {
 	if l == nil {
 		return 0
 	}
@@ -145,22 +105,22 @@ func (l *WifRoleList) Len() int {
 }
 
 // Items sets the items of the list.
-func (l *WifRoleList) SetLink(link bool) {
+func (l *WifResourceBindingList) SetLink(link bool) {
 	l.link = link
 }
 
 // Items sets the items of the list.
-func (l *WifRoleList) SetHREF(href string) {
+func (l *WifResourceBindingList) SetHREF(href string) {
 	l.href = href
 }
 
 // Items sets the items of the list.
-func (l *WifRoleList) SetItems(items []*WifRole) {
+func (l *WifResourceBindingList) SetItems(items []*WifResourceBinding) {
 	l.items = items
 }
 
 // Items returns the items of the list.
-func (l *WifRoleList) Items() []*WifRole {
+func (l *WifResourceBindingList) Items() []*WifResourceBinding {
 	if l == nil {
 		return nil
 	}
@@ -168,13 +128,13 @@ func (l *WifRoleList) Items() []*WifRole {
 }
 
 // Empty returns true if the list is empty.
-func (l *WifRoleList) Empty() bool {
+func (l *WifResourceBindingList) Empty() bool {
 	return l == nil || len(l.items) == 0
 }
 
 // Get returns the item of the list with the given index. If there is no item with
 // that index it returns nil.
-func (l *WifRoleList) Get(i int) *WifRole {
+func (l *WifResourceBindingList) Get(i int) *WifResourceBinding {
 	if l == nil || i < 0 || i >= len(l.items) {
 		return nil
 	}
@@ -187,12 +147,12 @@ func (l *WifRoleList) Get(i int) *WifRole {
 //
 // If you don't need to modify the returned slice consider using the Each or Range
 // functions, as they don't need to allocate a new slice.
-func (l *WifRoleList) Slice() []*WifRole {
-	var slice []*WifRole
+func (l *WifResourceBindingList) Slice() []*WifResourceBinding {
+	var slice []*WifResourceBinding
 	if l == nil {
-		slice = make([]*WifRole, 0)
+		slice = make([]*WifResourceBinding, 0)
 	} else {
-		slice = make([]*WifRole, len(l.items))
+		slice = make([]*WifResourceBinding, len(l.items))
 		copy(slice, l.items)
 	}
 	return slice
@@ -201,7 +161,7 @@ func (l *WifRoleList) Slice() []*WifRole {
 // Each runs the given function for each item of the list, in order. If the function
 // returns false the iteration stops, otherwise it continues till all the elements
 // of the list have been processed.
-func (l *WifRoleList) Each(f func(item *WifRole) bool) {
+func (l *WifResourceBindingList) Each(f func(item *WifResourceBinding) bool) {
 	if l == nil {
 		return
 	}
@@ -215,7 +175,7 @@ func (l *WifRoleList) Each(f func(item *WifRole) bool) {
 // Range runs the given function for each index and item of the list, in order. If
 // the function returns false the iteration stops, otherwise it continues till all
 // the elements of the list have been processed.
-func (l *WifRoleList) Range(f func(index int, item *WifRole) bool) {
+func (l *WifResourceBindingList) Range(f func(index int, item *WifResourceBinding) bool) {
 	if l == nil {
 		return
 	}
