@@ -81,12 +81,12 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 			"Resource": "*",
 		}
 		firstAttachPolicy, err = awsClient.CreatePolicy(
-			"rosacli-iamserviceaccount-policy1",
+			fmt.Sprintf("rosacli-iamserviceaccount-policy-%s", helper.GenerateRandomString(3)),
 			statement,
 		)
 		Expect(err).To(BeNil())
 		secondAttachPolicy, err = awsClient.CreatePolicy(
-			"rosacli-iamserviceaccount-policy2",
+			fmt.Sprintf("rosacli-iamserviceaccount-policy2-%s", helper.GenerateRandomString(3)),
 			statement2,
 		)
 		Expect(err).To(BeNil())
