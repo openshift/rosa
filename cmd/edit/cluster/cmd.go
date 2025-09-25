@@ -252,7 +252,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	cluster := r.FetchCluster()
 
-	if cluster.Hypershift().Enabled() && cmd.Flags().Changed("disable-workload-monitoring") {
+	if aws.IsHostedCP(cluster) && cmd.Flags().Changed("disable-workload-monitoring") {
 		r.Reporter.Warnf(arguments.UwmDeprecationMessage)
 	}
 
@@ -824,70 +824,81 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	var billingAccount string
-	if cmd.Flags().Changed("billing-account") {
-		billingAccount = args.billingAccount
-
-		if billingAccount != "" && !aws.IsHostedCP(cluster) {
-			r.Reporter.Errorf("Billing accounts are only supported for Hosted Control Plane clusters")
-			os.Exit(1)
-		}
-		if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-			r.Reporter.Errorf("Provided billing account number %s is not valid. "+
-				"Rerun the command with a valid billing account number", billingAccount)
-			os.Exit(1)
-		}
-	} else {
-		billingAccount = cluster.AWS().BillingAccountID()
+	isClassicBillingCapabilityEnabled, err := r.OCMClient.IsCapabilityEnabled(
+		"capability.cluster.rosa_classic_billing_account")
+	if err != nil {
+		_ = r.Reporter.Errorf("Failed to determine if billing account capability is enabled for user "+
+			"organization: %s", err)
+		os.Exit(1)
 	}
 
-	if interactive.Enabled() && aws.IsHostedCP(cluster) && !fedramp.Enabled() {
-		cloudAccounts, err := r.OCMClient.GetBillingAccounts()
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+	var billingAccount string
+	if aws.IsHostedCP(cluster) || (!aws.IsHostedCP(cluster) && isClassicBillingCapabilityEnabled) {
+		if cmd.Flags().Changed("billing-account") {
+			billingAccount = args.billingAccount
+
+			if billingAccount != "" && fedramp.Enabled() {
+				_ = r.Reporter.Errorf("Billing accounts are not supported for govcloud clusters")
+				os.Exit(1)
+			}
+			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
+				_ = r.Reporter.Errorf("Provided billing account number %s is not valid. "+
+					"Rerun the command with a valid billing account number", billingAccount)
+				os.Exit(1)
+			}
+		} else {
+			billingAccount = cluster.AWS().BillingAccountID()
 		}
 
-		billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
-		if len(billingAccounts) > 0 {
-			billingAccount, err = interactive.GetOption(interactive.Input{
-				Question:       "Update billing account",
-				Help:           cmd.Flags().Lookup("billing-account").Usage,
-				Default:        billingAccount,
-				DefaultMessage: fmt.Sprintf("current = '%s'", cluster.AWS().BillingAccountID()),
-				Required:       true,
-				Options:        billingAccounts,
-			})
-
+		if interactive.Enabled() && !fedramp.Enabled() &&
+			(aws.IsHostedCP(cluster) && isClassicBillingCapabilityEnabled) {
+			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
 			if err != nil {
-				r.Reporter.Errorf("Expected a valid billing account: '%s'", err)
+				_ = r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
 
-			billingAccount = aws.ParseOption(billingAccount)
-		}
+			billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
+			if len(billingAccounts) > 0 {
+				billingAccount, err = interactive.GetOption(interactive.Input{
+					Question:       "Update billing account",
+					Help:           cmd.Flags().Lookup("billing-account").Usage,
+					Default:        billingAccount,
+					DefaultMessage: fmt.Sprintf("current = '%s'", cluster.AWS().BillingAccountID()),
+					Required:       true,
+					Options:        billingAccounts,
+				})
 
-		err = ocm.ValidateBillingAccount(billingAccount)
-		if err != nil {
-			r.Reporter.Errorf("%v", err)
-			os.Exit(1)
-		}
+				if err != nil {
+					_ = r.Reporter.Errorf("Expected a valid billing account: '%s'", err)
+					os.Exit(1)
+				}
 
-		// Get contract info
-		contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
+				billingAccount = aws.ParseOption(billingAccount)
+			}
 
-		if billingAccount != r.Creator.AccountID {
-			r.Reporter.Infof(
-				"The AWS billing account you selected is different from your AWS infrastructure account. " +
-					"The AWS billing account will be charged for subscription usage. " +
-					"The AWS infrastructure account contains the ROSA infrastructure.",
-			)
-		}
+			err = ocm.ValidateBillingAccount(billingAccount)
+			if err != nil {
+				_ = r.Reporter.Errorf("%v", err)
+				os.Exit(1)
+			}
 
-		if isContractEnabled && len(contracts) > 0 {
-			//currently, an AWS account will have only one ROSA HCP active contract at a time
-			contractDisplay := ocm.GenerateContractDisplay(contracts[0])
-			r.Reporter.Infof(contractDisplay)
+			// Get contract info
+			contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
+
+			if billingAccount != r.Creator.AccountID {
+				r.Reporter.Infof(
+					"The AWS billing account you selected is different from your AWS infrastructure account. " +
+						"The AWS billing account will be charged for subscription usage. " +
+						"The AWS infrastructure account contains the ROSA infrastructure.",
+				)
+			}
+
+			if isContractEnabled && len(contracts) > 0 {
+				//currently, an AWS account will have only one ROSA HCP active contract at a time
+				contractDisplay := ocm.GenerateContractDisplay(contracts[0])
+				r.Reporter.Infof(contractDisplay)
+			}
 		}
 	}
 
@@ -913,7 +924,7 @@ func run(cmd *cobra.Command, _ []string) {
 // about how changing cluster visibility may impact them
 func warnUserForOAuthHCPVisibility(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster,
 	privateWarning string) (string, error) {
-	if !cluster.Hypershift().Enabled() {
+	if !aws.IsHostedCP(cluster) {
 		return privateWarning, nil
 	}
 	// if ingress visibility public, warning
