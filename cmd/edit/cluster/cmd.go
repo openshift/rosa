@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/pkg/clusterregistryconfig"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/helper/autonode"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -57,6 +58,10 @@ var args struct {
 
 	// Audit log forwarding
 	auditLogRoleARN string
+
+	// AutoNode configuration
+	autonode        string
+	autoNodeRoleARN string
 
 	// HCP options:
 	billingAccount string
@@ -179,6 +184,20 @@ func init() {
 		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
 	)
 
+	flags.StringVar(
+		&args.autonode,
+		autonode.AutoNodeFlagName,
+		"",
+		"Configure AutoNode for the cluster. Valid values are: enabled",
+	)
+
+	flags.StringVar(
+		&args.autoNodeRoleARN,
+		autonode.AutoNodeIAMRoleArnFlagName,
+		"",
+		"The AWS ARN of the IAM Role that has permissions for AutoNode",
+	)
+
 	flags.StringSliceVar(
 		&args.additionalAllowedPrincipals,
 		"additional-allowed-principals",
@@ -235,6 +254,7 @@ func run(cmd *cobra.Command, _ []string) {
 		for _, flag := range []string{"expiration-time", "expiration", "private",
 			"disable-workload-monitoring", "http-proxy", "https-proxy", "no-proxy",
 			"additional-trust-bundle-file", "additional-allowed-principals", "audit-log-arn",
+			autonode.AutoNodeFlagName, autonode.AutoNodeIAMRoleArnFlagName,
 			"registry-config-allowed-registries", "registry-config-blocked-registries",
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
@@ -643,7 +663,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Audit Log Forwarding
 	auditLogRole, err := setAuditLogForwarding(r, cmd, cluster, args.auditLogRoleARN)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		_ = r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if interactive.Enabled() && aws.IsHostedCP(cluster) {
@@ -651,6 +671,27 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
+		}
+	}
+
+	// AutoNode configuration
+	autoNodeConfig, err := autonode.SetAutoNode(r, cmd, cluster, args.autonode, args.autoNodeRoleARN)
+	if err != nil {
+		_ = r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+	if interactive.Enabled() && aws.IsHostedCP(cluster) {
+		interactiveAutoNodeConfig, err := autonode.InteractivePrompt(r, cmd, cluster)
+		if err != nil {
+			_ = r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		if interactiveAutoNodeConfig != nil {
+			if interactiveAutoNodeConfig.AutoNodeMode != "" {
+				autoNodeConfig = interactiveAutoNodeConfig
+			} else if autoNodeConfig == nil {
+				autoNodeConfig = interactiveAutoNodeConfig
+			}
 		}
 	}
 
@@ -696,7 +737,7 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterRegistryConfigArgs, err = clusterregistryconfig.GetClusterRegistryConfigOptions(
 		cmd.Flags(), clusterRegistryConfigArgs, aws.IsHostedCP(cluster), cluster)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
+		_ = r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 	if clusterRegistryConfigArgs != nil {
@@ -722,6 +763,16 @@ func run(cmd *cobra.Command, _ []string) {
 	if auditLogRole != nil {
 		clusterConfig.AuditLogRoleARN = new(string)
 		*clusterConfig.AuditLogRoleARN = *auditLogRole
+	}
+
+	// Add AutoNode configuration
+	if autoNodeConfig != nil {
+		if autoNodeConfig.AutoNodeMode != "" {
+			clusterConfig.AutoNodeMode = autoNodeConfig.AutoNodeMode
+		}
+		if autoNodeConfig.AutoNodeRoleARN != "" {
+			clusterConfig.AutoNodeRoleARN = autoNodeConfig.AutoNodeRoleARN
+		}
 	}
 
 	// Deletion Protection
