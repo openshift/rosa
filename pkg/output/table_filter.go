@@ -151,10 +151,6 @@ func BuildTableWithSeparators(writer *tabwriter.Writer, separators []string, tab
 	var output string
 
 	for _, row := range tableData {
-		if len(row) == 0 {
-			continue
-		}
-
 		for colIdx, col := range row {
 			output += col
 			// Add separator after column if not the last column

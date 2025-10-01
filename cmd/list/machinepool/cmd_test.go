@@ -22,12 +22,12 @@ const (
 		"nodepool85  No           /0        m5.xlarge                      us-east-1a                 default    4.12.24  No\n"
 
 	singleMachinePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS  TAINTS  AVAILABILITY ZONES                  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
-		"nodepool85  No           0         m5.xlarge                      us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n"
+		"nodepool85  No           0         m5.xlarge                      us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default\n"
 
 	multipleMachinePoolOutput = "ID           AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS      TAINTS       AVAILABILITY ZONES                  SUBNETS  SPOT INSTANCES  DISK SIZE  SG IDS\n" +
 		"nodepool85   No           0         m5.xlarge                               us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n" +
 		"nodepool852  No           0         m5.xlarge      test=label               us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n" +
-		"nodepool853  Yes          1-100     m5.xlarge      test=label  test=taint:  us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default    \n"
+		"nodepool853  Yes          1-100     m5.xlarge      test=label  test=taint:  us-east-1a, us-east-1b, us-east-1c           Yes (max $5)    default\n"
 
 	multipleNodePoolsOutput = "ID           AUTOSCALING  REPLICAS   INSTANCE TYPE  LABELS      TAINTS  AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR\n" +
 		"nodepool85   No           /0         m5.xlarge                          us-east-1a                 default    4.12.24  No\n" +
