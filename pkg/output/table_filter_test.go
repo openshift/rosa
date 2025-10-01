@@ -151,4 +151,38 @@ var _ = Describe("Table Filter", func() {
 			Expect(result[2]).To(Equal([]string{"2", "Bob", "Pending"}))
 		})
 	})
+
+	Describe("FilterColumnsWithConditions", func() {
+		It("Preserves specified columns even if empty", func() {
+			headers := []string{"ID", "NAME", "EMPTY1", "STATUS", "EMPTY2"}
+			tableData := [][]string{
+				{"1", "Alice", "", "Active", ""},
+				{"2", "Bob", "", "Pending", ""},
+			}
+			preserveColumn := map[int]bool{
+				2: true, // Preserve EMPTY1 column even if empty
+			}
+
+			resultHeaders, resultData := FilterColumnsWithConditions(headers, tableData, preserveColumn)
+
+			Expect(resultHeaders).To(Equal([]string{"ID", "NAME", "EMPTY1", "STATUS"}))
+			Expect(len(resultData)).To(Equal(2))
+			Expect(resultData[0]).To(Equal([]string{"1", "Alice", "", "Active"}))
+			Expect(resultData[1]).To(Equal([]string{"2", "Bob", "", "Pending"}))
+		})
+
+		It("Keeps non-empty columns regardless of preserve flag", func() {
+			headers := []string{"ID", "NAME", "STATUS"}
+			tableData := [][]string{
+				{"1", "Alice", "Active"},
+				{"2", "Bob", "Pending"},
+			}
+			preserveColumn := map[int]bool{} // No columns explicitly preserved
+
+			resultHeaders, resultData := FilterColumnsWithConditions(headers, tableData, preserveColumn)
+
+			Expect(resultHeaders).To(Equal([]string{"ID", "NAME", "STATUS"}))
+			Expect(len(resultData)).To(Equal(2))
+		})
+	})
 })

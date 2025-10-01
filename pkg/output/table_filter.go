@@ -15,19 +15,57 @@ func CheckIfColumnIsEmpty(columnIdx int, tableData [][]string) bool {
 	return true
 }
 
-type ColumnFilterFunc func(columnIdx int) bool
+func RemoveEmptyColumns(headers []string, tableData [][]string) [][]string {
+	if len(tableData) == 0 {
+		return [][]string{headers}
+	}
 
-func FilterColumns(headers []string, tableData [][]string, shouldKeepColumn ColumnFilterFunc) ([]string, [][]string) {
 	var newHeaders []string
 	var columnsToKeep []int
 
+	// Keep only non-empty columns
 	for i, header := range headers {
-		if shouldKeepColumn(i) {
+		if !CheckIfColumnIsEmpty(i, tableData) {
 			newHeaders = append(newHeaders, header)
 			columnsToKeep = append(columnsToKeep, i)
 		}
 	}
 
+	// Build filtered table data
+	var newTableData [][]string
+	for _, row := range tableData {
+		var newRow []string
+		for _, col := range columnsToKeep {
+			if col < len(row) {
+				newRow = append(newRow, row[col])
+			} else {
+				newRow = append(newRow, "")
+			}
+		}
+		newTableData = append(newTableData, newRow)
+	}
+
+	// Combine headers and data as before for backward compatibility
+	var result [][]string
+	result = append(result, newHeaders)
+	result = append(result, newTableData...)
+
+	return result
+}
+
+func FilterColumnsWithConditions(headers []string, tableData [][]string, preserveColumn map[int]bool) ([]string, [][]string) {
+	var newHeaders []string
+	var columnsToKeep []int
+
+	// Keep column if it's marked to be preserved OR if it has data
+	for i, header := range headers {
+		if preserveColumn[i] || !CheckIfColumnIsEmpty(i, tableData) {
+			newHeaders = append(newHeaders, header)
+			columnsToKeep = append(columnsToKeep, i)
+		}
+	}
+
+	// Build filtered table data
 	var newTableData [][]string
 	for _, row := range tableData {
 		var newRow []string
@@ -42,31 +80,6 @@ func FilterColumns(headers []string, tableData [][]string, shouldKeepColumn Colu
 	}
 
 	return newHeaders, newTableData
-}
-
-func RemoveEmptyColumns(headers []string, tableData [][]string) [][]string {
-	if len(tableData) == 0 {
-		return [][]string{headers}
-	}
-
-	// Use FilterColumns with a predicate that keeps non-empty columns
-	newHeaders, newTableData := FilterColumns(headers, tableData, func(columnIdx int) bool {
-		return !CheckIfColumnIsEmpty(columnIdx, tableData)
-	})
-
-	// Combine headers and data as before for backward compatibility
-	var result [][]string
-	result = append(result, newHeaders)
-	result = append(result, newTableData...)
-
-	return result
-}
-
-func FilterColumnsWithConditions(headers []string, tableData [][]string, preserveColumn map[int]bool) ([]string, [][]string) {
-	return FilterColumns(headers, tableData, func(columnIdx int) bool {
-		// Keep column if it's marked to be preserved OR if it has data
-		return preserveColumn[columnIdx] || !CheckIfColumnIsEmpty(columnIdx, tableData)
-	})
 }
 
 // RemoveEmptyColumnsWithSeparators removes empty columns and filters the separators list accordingly
