@@ -2117,6 +2117,11 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	if fedramp.Enabled() && isHostedCP {
+		private = true
+		privateIngress = true
+	}
+
 	if privateLink || (private && isHostedCP) {
 		private = true
 		privateLink = true
