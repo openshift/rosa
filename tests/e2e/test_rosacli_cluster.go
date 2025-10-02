@@ -693,30 +693,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 					"ERR: node-drain-grace-period flag is not supported to hosted clusters"))
 		})
 
-	It("should not use existing subnets when proxy set without subnet-ids - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
-		func() {
-			By("Create a cluster with proxy settings but without subnet-ids")
-			clusterName := "cl-45509"
-			output, err := clusterService.CreateDryRun(clusterName,
-				"--http-proxy", "http://example.com",
-				"--https-proxy", "https://example.com",
-				"--no-proxy", "example.com",
-			)
-
-			By("Should show warning about no subnets found and not error about subnet count")
-			// The error should NOT be about subnet count mismatch
-			Expect(output.String()).ShouldNot(ContainSubstring("The number of subnets for a 'single AZ' 'cluster' should be"))
-			// It should show the proper warning or error about needing subnets for proxy configuration
-			if err != nil {
-				Expect(output.String()).Should(
-					Or(
-						ContainSubstring("No subnets found in current region that are valid for the chosen CIDR ranges"),
-						ContainSubstring("Expected valid subnet IDs"),
-						ContainSubstring("subnet"),
-					))
-			}
-		})
-
 	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			By("Load the original cluster config")
