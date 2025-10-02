@@ -153,8 +153,8 @@ var _ = Describe("SubnetsValidator", func() {
 
 			err := validator(answers)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("The number of public subnets for a public hosted " +
-				"cluster should be at least one"))
+			Expect(err.Error()).To(ContainSubstring("Must have at least one public subnet when not using both " +
+				"'private API' and 'private ingress'"))
 		})
 
 	})
