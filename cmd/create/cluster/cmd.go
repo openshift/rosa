@@ -2262,28 +2262,31 @@ func run(cmd *cobra.Command, _ []string) {
 	var subnets []ec2types.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
-		initialSubnets, err := getInitialValidSubnets(awsClient, subnetIDs, r.Reporter)
-		if err != nil {
-			r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
-			os.Exit(1)
+		var initialSubnets []ec2types.Subnet
+		if len(subnetIDs) > 0 || subnetsProvided {
+			initialSubnets, err = getInitialValidSubnets(awsClient, subnetIDs, r.Reporter)
+			if err != nil {
+				_ = r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
+				os.Exit(1)
+			}
 		}
 		if subnetsProvided {
 			useExistingVPC = true
 		}
 		_, machineNetwork, err := net.ParseCIDR(machineCIDR.String())
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse machine CIDR")
+			_ = r.Reporter.Errorf("Unable to parse machine CIDR")
 			os.Exit(1)
 		}
 		_, serviceNetwork, err := net.ParseCIDR(serviceCIDR.String())
 		if err != nil {
-			r.Reporter.Errorf("Unable to parse service CIDR")
+			_ = r.Reporter.Errorf("Unable to parse service CIDR")
 			os.Exit(1)
 		}
 		var filterError error
 		subnets, filterError = filterCidrRangeSubnets(initialSubnets, machineNetwork, serviceNetwork, r)
 		if filterError != nil {
-			r.Reporter.Errorf("%s", filterError)
+			_ = r.Reporter.Errorf("%s", filterError)
 			os.Exit(1)
 		}
 
@@ -2295,7 +2298,7 @@ func run(cmd *cobra.Command, _ []string) {
 		if len(subnets) == 0 {
 			r.Reporter.Warnf("No subnets found in current region that are valid for the chosen CIDR ranges")
 			if isHostedCP {
-				r.Reporter.Errorf(
+				_ = r.Reporter.Errorf(
 					"All Hosted Control Plane clusters need a pre-configured VPC. Please check: %s",
 					createVpcForHcpDoc,
 				)
@@ -2316,7 +2319,7 @@ func run(cmd *cobra.Command, _ []string) {
 			for _, subnetArg := range subnetIDs {
 				// Check if subnet is in the excluded list of public subnets
 				if slices.Contains(excludedPublicSubnets, subnetArg) {
-					r.Reporter.Errorf("Cluster is set as private, cannot use public '%s'",
+					_ = r.Reporter.Errorf("Cluster is set as private, cannot use public '%s'",
 						subnetArg)
 					os.Exit(1)
 				}
@@ -2325,7 +2328,7 @@ func run(cmd *cobra.Command, _ []string) {
 				if !slices.ContainsFunc(subnets, func(subnet ec2types.Subnet) bool {
 					return awssdk.ToString(subnet.SubnetId) == subnetArg
 				}) {
-					r.Reporter.Errorf("Could not find the following subnet provided in region '%s': %s",
+					_ = r.Reporter.Errorf("Could not find the following subnet provided in region '%s': %s",
 						r.AWSClient.GetRegion(), subnetArg)
 					os.Exit(1)
 				}
