@@ -767,7 +767,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	// Capacity reservation ID
 	capacityReservationId := args.CapacityReservationId
 
-	if interactive.Enabled() && !autoscaling {
+	if interactive.Enabled() && !autoscaling && !fedramp.Enabled() {
 		capacityReservationId, err = interactive.GetString(interactive.Input{
 			Question: "Capacity Reservation ID",
 			Help:     cmd.Flags().Lookup("capacity-reservation-id").Usage,
@@ -905,7 +905,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		rootDiskSize,
 	)
 
-	if capacityReservationId != "" {
+	if capacityReservationId != "" && !fedramp.Enabled() && !autoscaling {
 		awsNodepoolBuilder = awsNodepoolBuilder.CapacityReservation(capacityReservation)
 	}
 
