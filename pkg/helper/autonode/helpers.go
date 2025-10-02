@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -134,6 +135,11 @@ func SetAutoNode(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, fla
 
 // InteractivePrompt handles interactive mode for AutoNode configuration
 func InteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) (*AutoNodeConfig, error) {
+	// AutoNode is not supported in govcloud - skip prompting
+	if fedramp.Enabled() {
+		return nil, nil
+	}
+
 	config := &AutoNodeConfig{}
 
 	autoNodeMode, autoNodeExists := ocm.GetAutoNodeMode(cluster)
