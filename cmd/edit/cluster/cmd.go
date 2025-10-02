@@ -673,8 +673,14 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-
 	// AutoNode configuration
+	// Check if AutoNode flags are being used with govcloud
+	if fedramp.Enabled() && (cmd.Flags().Changed(autonode.AutoNodeFlagName) ||
+		cmd.Flags().Changed(autonode.AutoNodeIAMRoleArnFlagName)) {
+		_ = r.Reporter.Errorf("AutoNode is not supported for govcloud clusters")
+		os.Exit(1)
+	}
+
 	autoNodeConfig, err := autonode.SetAutoNode(r, cmd, cluster, args.autonode, args.autoNodeRoleARN)
 	if err != nil {
 		_ = r.Reporter.Errorf("%s", err)
