@@ -111,6 +111,43 @@ var _ = Describe("Validate build command", func() {
 						" --external-auth-providers-enabled --properties \"prop1\" --properties \"prop2\""))
 			})
 		})
+
+		// Tests for OCM-2610 fix: HCP clusters should not include --sts flag
+		When("Hypershift is enabled (HCP cluster)", func() {
+			It("should include --hosted-cp but not --sts", func() {
+				clusterConfig.IsSTS = true
+				clusterConfig.Hypershift.Enabled = true
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(ContainSubstring("--hosted-cp"))
+				Expect(command).NotTo(ContainSubstring("--sts"))
+			})
+
+			It("should include --mode when specified for HCP", func() {
+				clusterConfig.IsSTS = true
+				clusterConfig.Hypershift.Enabled = true
+				clusterConfig.Mode = "auto"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(ContainSubstring("--mode auto"))
+				Expect(command).To(ContainSubstring("--hosted-cp"))
+				Expect(command).NotTo(ContainSubstring("--sts"))
+			})
+		})
+
+		When("Regular STS cluster (non-HCP)", func() {
+			It("should include --sts but not --hosted-cp", func() {
+				clusterConfig.IsSTS = true
+				clusterConfig.Hypershift.Enabled = false
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(ContainSubstring("--sts"))
+				Expect(command).NotTo(ContainSubstring("--hosted-cp"))
+			})
+		})
 	})
 	Context("build tags command", func() {
 		When("tag key or values DO contain a colon", func() {
