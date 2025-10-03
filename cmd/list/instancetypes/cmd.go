@@ -48,6 +48,7 @@ func makeCmd() *cobra.Command {
 		Args: cobra.NoArgs,
 	}
 
+	output.AddHideEmptyColumnsFlag(cmd)
 	return cmd
 }
 
@@ -172,23 +173,34 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		return fmt.Errorf("There are no machine types supported for your account. Contact Red Hat support.")
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\n")
-
+	headers := []string{"ID", "CATEGORY", "CPU_CORES", "MEMORY"}
+	var tableData [][]string
 	for _, machine := range machineTypes.Items {
 		if !machine.Available {
 			continue
 		}
 		availableMachine := machine.MachineType
-		fmt.Fprintf(writer,
-			"%s\t%s\t%d\t%s\n",
-			availableMachine.ID(), availableMachine.Category(), int(availableMachine.CPU().Value()),
-			ByteCountIEC(int(availableMachine.Memory().Value()),
-				availableMachine.Memory().Unit()),
-		)
+		row := []string{
+			availableMachine.ID(),
+			string(availableMachine.Category()),
+			fmt.Sprintf("%d", int(availableMachine.CPU().Value())),
+			ByteCountIEC(int(availableMachine.Memory().Value()), availableMachine.Memory().Unit()),
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		return err
+	}
 
 	return nil
 }
