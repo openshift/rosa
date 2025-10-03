@@ -764,9 +764,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				TrustBundleFile: proxy.CABundleFilePath,
 			}
 			flags = append(flags,
-				"--http-proxy", proxy.HTTPProxy,
-				"--https-proxy", proxy.HTTPsProxy,
-				"--no-proxy", proxy.NoProxy,
+				fmt.Sprintf("--http-proxy '%s'", proxy.HTTPProxy),
+				fmt.Sprintf("--https-proxy '%s'", proxy.HTTPsProxy),
+				fmt.Sprintf("--no-proxy '%s'", proxy.NoProxy),
 				"--additional-trust-bundle-file", proxy.CABundleFilePath,
 			)
 		}
