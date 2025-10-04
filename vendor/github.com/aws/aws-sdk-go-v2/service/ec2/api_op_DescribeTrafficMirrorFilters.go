@@ -36,7 +36,9 @@ type DescribeTrafficMirrorFiltersInput struct {
 	DryRun *bool
 
 	// One or more filters. The possible values are:
+	//
 	//   - description : The Traffic Mirror filter description.
+	//
 	//   - traffic-mirror-filter-id : The ID of the Traffic Mirror filter.
 	Filters []types.Filter
 
@@ -111,6 +113,9 @@ func (c *Client) addOperationDescribeTrafficMirrorFiltersMiddlewares(stack *midd
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -121,6 +126,15 @@ func (c *Client) addOperationDescribeTrafficMirrorFiltersMiddlewares(stack *midd
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeTrafficMirrorFilters(options.Region), middleware.Before); err != nil {
@@ -141,16 +155,50 @@ func (c *Client) addOperationDescribeTrafficMirrorFiltersMiddlewares(stack *midd
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeTrafficMirrorFiltersAPIClient is a client that implements the
-// DescribeTrafficMirrorFilters operation.
-type DescribeTrafficMirrorFiltersAPIClient interface {
-	DescribeTrafficMirrorFilters(context.Context, *DescribeTrafficMirrorFiltersInput, ...func(*Options)) (*DescribeTrafficMirrorFiltersOutput, error)
-}
-
-var _ DescribeTrafficMirrorFiltersAPIClient = (*Client)(nil)
 
 // DescribeTrafficMirrorFiltersPaginatorOptions is the paginator options for
 // DescribeTrafficMirrorFilters
@@ -219,6 +267,9 @@ func (p *DescribeTrafficMirrorFiltersPaginator) NextPage(ctx context.Context, op
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeTrafficMirrorFilters(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -237,6 +288,14 @@ func (p *DescribeTrafficMirrorFiltersPaginator) NextPage(ctx context.Context, op
 
 	return result, nil
 }
+
+// DescribeTrafficMirrorFiltersAPIClient is a client that implements the
+// DescribeTrafficMirrorFilters operation.
+type DescribeTrafficMirrorFiltersAPIClient interface {
+	DescribeTrafficMirrorFilters(context.Context, *DescribeTrafficMirrorFiltersInput, ...func(*Options)) (*DescribeTrafficMirrorFiltersOutput, error)
+}
+
+var _ DescribeTrafficMirrorFiltersAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeTrafficMirrorFilters(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

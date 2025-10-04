@@ -12,14 +12,16 @@ import (
 )
 
 // Lists all of the organizational units (OUs) or accounts that are contained in
-// the specified parent OU or root. This operation, along with ListParents enables
-// you to traverse the tree structure that makes up this root. Always check the
-// NextToken response parameter for a null value when calling a List* operation.
-// These operations can occasionally return an empty set of results even when there
-// are more results available. The NextToken response parameter value is null only
-// when there are no more results to display. This operation can be called only
-// from the organization's management account or by a member account that is a
-// delegated administrator for an Amazon Web Services service.
+// the specified parent OU or root. This operation, along with ListParentsenables you to
+// traverse the tree structure that makes up this root.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// List* operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
 func (c *Client) ListChildren(ctx context.Context, params *ListChildrenInput, optFns ...func(*Options)) (*ListChildrenOutput, error) {
 	if params == nil {
 		params = &ListChildrenInput{}
@@ -43,14 +45,19 @@ type ListChildrenInput struct {
 	ChildType types.ChildType
 
 	// The unique identifier (ID) for the parent root or OU whose children you want to
-	// list. The regex pattern (http://wikipedia.org/wiki/regex) for a parent ID
-	// string requires one of the following:
+	// list.
+	//
+	// The [regex pattern] for a parent ID string requires one of the following:
+	//
 	//   - Root - A string that begins with "r-" followed by from 4 to 32 lowercase
 	//   letters or digits.
+	//
 	//   - Organizational unit (OU) - A string that begins with "ou-" followed by from
 	//   4 to 32 lowercase letters or digits (the ID of the root that the OU is in). This
 	//   string is followed by a second "-" dash and from 8 to 32 additional lowercase
 	//   letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	ParentId *string
@@ -135,6 +142,9 @@ func (c *Client) addOperationListChildrenMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -145,6 +155,15 @@ func (c *Client) addOperationListChildrenMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListChildrenValidationMiddleware(stack); err != nil {
@@ -168,15 +187,50 @@ func (c *Client) addOperationListChildrenMiddlewares(stack *middleware.Stack, op
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListChildrenAPIClient is a client that implements the ListChildren operation.
-type ListChildrenAPIClient interface {
-	ListChildren(context.Context, *ListChildrenInput, ...func(*Options)) (*ListChildrenOutput, error)
-}
-
-var _ ListChildrenAPIClient = (*Client)(nil)
 
 // ListChildrenPaginatorOptions is the paginator options for ListChildren
 type ListChildrenPaginatorOptions struct {
@@ -249,6 +303,9 @@ func (p *ListChildrenPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListChildren(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -267,6 +324,13 @@ func (p *ListChildrenPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 
 	return result, nil
 }
+
+// ListChildrenAPIClient is a client that implements the ListChildren operation.
+type ListChildrenAPIClient interface {
+	ListChildren(context.Context, *ListChildrenInput, ...func(*Options)) (*ListChildrenOutput, error)
+}
+
+var _ ListChildrenAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListChildren(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

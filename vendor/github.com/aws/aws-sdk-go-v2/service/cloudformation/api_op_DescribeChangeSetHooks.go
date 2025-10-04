@@ -36,7 +36,7 @@ type DescribeChangeSetHooksInput struct {
 	// This member is required.
 	ChangeSetName *string
 
-	// If specified, lists only the hooks related to the specified LogicalResourceId .
+	// If specified, lists only the Hooks related to the specified LogicalResourceId .
 	LogicalResourceId *string
 
 	// A string, provided by the DescribeChangeSetHooks response output, that
@@ -58,7 +58,7 @@ type DescribeChangeSetHooksOutput struct {
 	// The change set name.
 	ChangeSetName *string
 
-	// List of hook objects.
+	// List of Hook objects.
 	Hooks []types.ChangeSetHook
 
 	// Pagination token, null or empty if no more results.
@@ -122,6 +122,9 @@ func (c *Client) addOperationDescribeChangeSetHooksMiddlewares(stack *middleware
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -132,6 +135,15 @@ func (c *Client) addOperationDescribeChangeSetHooksMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeChangeSetHooksValidationMiddleware(stack); err != nil {
@@ -153,6 +165,48 @@ func (c *Client) addOperationDescribeChangeSetHooksMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
