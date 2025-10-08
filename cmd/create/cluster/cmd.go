@@ -2267,12 +2267,13 @@ func run(cmd *cobra.Command, _ []string) {
 	var subnets []ec2types.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
-		initialSubnets, err := getInitialValidSubnets(awsClient, subnetIDs, r.Reporter)
-		if err != nil {
-			_ = r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
-			os.Exit(1)
-		}
+		var initialSubnets []ec2types.Subnet
 		if subnetsProvided {
+			initialSubnets, err = getInitialValidSubnets(awsClient, subnetIDs, r.Reporter)
+			if err != nil {
+				_ = r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
+				os.Exit(1)
+			}
 			useExistingVPC = true
 		}
 		_, machineNetwork, err := net.ParseCIDR(machineCIDR.String())
