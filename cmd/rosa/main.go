@@ -23,37 +23,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/attach"
-	"github.com/openshift/rosa/cmd/completion"
-	"github.com/openshift/rosa/cmd/config"
-	"github.com/openshift/rosa/cmd/create"
-	"github.com/openshift/rosa/cmd/describe"
-	"github.com/openshift/rosa/cmd/detach"
-	"github.com/openshift/rosa/cmd/dlt"
-	"github.com/openshift/rosa/cmd/docs"
-	"github.com/openshift/rosa/cmd/download"
-	"github.com/openshift/rosa/cmd/edit"
-	"github.com/openshift/rosa/cmd/grant"
-	"github.com/openshift/rosa/cmd/hibernate"
-	"github.com/openshift/rosa/cmd/initialize"
-	"github.com/openshift/rosa/cmd/install"
-	"github.com/openshift/rosa/cmd/link"
-	"github.com/openshift/rosa/cmd/list"
-	"github.com/openshift/rosa/cmd/login"
-	"github.com/openshift/rosa/cmd/logout"
-	"github.com/openshift/rosa/cmd/logs"
-	"github.com/openshift/rosa/cmd/register"
-	"github.com/openshift/rosa/cmd/resume"
-	"github.com/openshift/rosa/cmd/revoke"
-	"github.com/openshift/rosa/cmd/token"
-	"github.com/openshift/rosa/cmd/uninstall"
-	"github.com/openshift/rosa/cmd/unlink"
-	"github.com/openshift/rosa/cmd/upgrade"
-	"github.com/openshift/rosa/cmd/verify"
-	"github.com/openshift/rosa/cmd/version"
-	"github.com/openshift/rosa/cmd/whoami"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/color"
+	"github.com/openshift/rosa/pkg/commands"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/reporter"
 	versionUtils "github.com/openshift/rosa/pkg/version"
@@ -76,35 +48,7 @@ func init() {
 	arguments.AddDebugFlag(fs)
 
 	// Register the subcommands:
-	root.AddCommand(completion.Cmd)
-	root.AddCommand(create.Cmd)
-	root.AddCommand(describe.Cmd)
-	root.AddCommand(dlt.Cmd)
-	root.AddCommand(docs.Cmd)
-	root.AddCommand(download.Cmd)
-	root.AddCommand(edit.Cmd)
-	root.AddCommand(grant.Cmd)
-	root.AddCommand(list.Cmd)
-	root.AddCommand(initialize.Cmd)
-	root.AddCommand(install.Cmd)
-	root.AddCommand(login.Cmd)
-	root.AddCommand(logout.Cmd)
-	root.AddCommand(logs.Cmd)
-	root.AddCommand(register.Cmd)
-	root.AddCommand(revoke.Cmd)
-	root.AddCommand(uninstall.Cmd)
-	root.AddCommand(upgrade.Cmd)
-	root.AddCommand(verify.Cmd)
-	root.AddCommand(version.NewRosaVersionCommand())
-	root.AddCommand(whoami.Cmd)
-	root.AddCommand(hibernate.GenerateCommand())
-	root.AddCommand(resume.GenerateCommand())
-	root.AddCommand(link.Cmd)
-	root.AddCommand(unlink.Cmd)
-	root.AddCommand(token.Cmd)
-	root.AddCommand(config.Cmd)
-	root.AddCommand(attach.NewRosaAttachCommand())
-	root.AddCommand(detach.NewRosaDetachCommand())
+	commands.RegisterCommands(root)
 }
 
 func main() {
