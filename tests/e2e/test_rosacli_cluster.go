@@ -693,30 +693,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 					"ERR: node-drain-grace-period flag is not supported to hosted clusters"))
 		})
 
-	It("should not use existing subnets when proxy set without subnet-ids - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
-		func() {
-			By("Create a cluster with proxy settings but without subnet-ids")
-			clusterName := "cl-45509"
-			output, err := clusterService.CreateDryRun(clusterName,
-				"--http-proxy", "http://example.com",
-				"--https-proxy", "https://example.com",
-				"--no-proxy", "example.com",
-			)
-
-			By("Should show warning about no subnets found and not error about subnet count")
-			// The error should NOT be about subnet count mismatch
-			Expect(output.String()).ShouldNot(ContainSubstring("The number of subnets for a 'single AZ' 'cluster' should be"))
-			// It should show the proper warning or error about needing subnets for proxy configuration
-			if err != nil {
-				Expect(output.String()).Should(
-					Or(
-						ContainSubstring("No subnets found in current region that are valid for the chosen CIDR ranges"),
-						ContainSubstring("Expected valid subnet IDs"),
-						ContainSubstring("subnet"),
-					))
-			}
-		})
-
 	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			By("Load the original cluster config")
@@ -1208,16 +1184,19 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(stdout.String()).To(ContainSubstring("Unsupported region"))
 
-				By("Check the validation for billing-account for classic sts cluster")
+				By("Check the validation for invalid billing-account for classic sts cluster")
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--region": originalRegion,
 				})
 				rosalCommand.AddFlags("--billing-account", "123456789")
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
+				Expect(err).ToNot(BeNil())
+				Expect(stdout.String()).
+					ToNot(ContainSubstring(
+						"Billing accounts are only supported for"))
 				Expect(stdout.String()).
 					To(ContainSubstring(
-						"Billing accounts are only supported for"))
+						"is not valid"))
 			})
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
@@ -1852,7 +1831,7 @@ var _ = Describe("Create cluster with invalid options will",
 				zone := constants.CommonAWSRegion + "a"
 				clusterName := "rosacli-45509"
 				By("Create rosa cluster which has proxy without subnets set by command ")
-				output, err, _ := clusterService.Create(
+				output, err := clusterService.CreateDryRun(
 					"cl-45509",
 					"--http-proxy", "http://example.com",
 					"--https-proxy", "https://example.com",
@@ -1873,7 +1852,7 @@ var _ = Describe("Create cluster with invalid options will",
 				publicSubnet := subnetMap["public"].ID
 
 				By("Create ccs existing cluster with invalid http_proxy set")
-				output, err, _ = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -1882,10 +1861,10 @@ var _ = Describe("Create cluster with invalid options will",
 					"--http-proxy", "invalid",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("ERR: Invalid http-proxy value 'invalid'"))
+				Expect(output.String()).Should(ContainSubstring("Invalid 'proxy.http_proxy' attribute 'invalid'"))
 
 				By("Create ccs existing cluster with invalid http_proxy not started with http")
-				output, err, _ = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -1895,10 +1874,10 @@ var _ = Describe("Create cluster with invalid options will",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("ERR: Invalid http-proxy value 'nohttp.prefix.com'"))
+					ContainSubstring("Invalid 'proxy.http_proxy' attribute 'nohttp.prefix.com'"))
 
 				By("Create ccs existing cluster with invalid https_proxy set")
-				output, err, _ = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -1917,7 +1896,7 @@ var _ = Describe("Create cluster with invalid options will",
 				tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
 				Expect(err).ToNot(HaveOccurred())
 
-				output, err, _ = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -1930,7 +1909,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("ERR: Failed to parse additional trust bundle"))
 
 				By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
-				output, err, _ = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -1943,7 +1922,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("ERR: open /not/existing: no such file or directory"))
 
 				By("Create wide-proxy cluster with only no_proxy set")
-				output, err, _ = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -1955,7 +1934,7 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(output.String()).Should(
 					ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
 
-				output, err, _ = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -1968,6 +1947,19 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring("ERR: expected a valid user no-proxy value"))
+
+				By("Create a cluster with proxy settings but without subnet-ids")
+				output, err = clusterService.CreateDryRun(clusterName,
+					"--http-proxy", "http://example.com",
+					"--https-proxy", "https://example.com",
+					"--no-proxy", "example.com",
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).ShouldNot(ContainSubstring("The number of subnets for a 'single AZ' 'cluster' should be"))
+				Expect(output.String()).Should(
+					ContainSubstring("cluster_wide_proxy is only supported if subnetIDs exist"),
+				)
 			})
 	})
 
