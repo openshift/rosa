@@ -4013,7 +4013,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	if spec.IsSTS {
-		command += " --sts"
+		// HCP clusters are STS by default, so we only add --sts for non-HCP STS clusters
+		if !spec.Hypershift.Enabled {
+			command += " --sts"
+		}
 		if spec.Mode != "" {
 			command += fmt.Sprintf(" --mode %s", spec.Mode)
 		}
