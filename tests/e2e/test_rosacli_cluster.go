@@ -555,6 +555,77 @@ var _ = Describe("Edit cluster",
 				Expect(err).ToNot(HaveOccurred())
 				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
 			})
+		It("Changing billing account for the cluster - [id:75921]",
+			labels.High, labels.Runtime.Day2,
+			func() {
+				By("Check the help message of 'rosa edit cluster -h'")
+				helpOutput, err := clusterService.EditCluster("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--billing-account"))
+
+				By("Change the billing account for the cluster")
+				output, err := clusterService.EditCluster(clusterID, "--billing-account", constants.ChangedBillingAccount)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("Updated cluster"))
+
+				By("Check if billing account is changed")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(CD.AWSBillingAccount).To(Equal(constants.ChangedBillingAccount))
+
+				By("Create another machinepool without security groups and describe it")
+				mpName := "mp-75921"
+				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--replicas", "3",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer func() {
+					By("Remove the machine pool")
+					_, _ = rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+
+					By("Change the billing account back")
+					output, err := clusterService.EditCluster(clusterID, "--billing-account", constants.BillingAccount)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring("Updated cluster"))
+				}()
+			})
+
+		It("Changing invalid billing account - [id:75922]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Change the billing account with invalid value")
+				output, err := clusterService.EditCluster(clusterID, "--billing-account", "qweD3")
+				Expect(err).ToNot(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"not valid. Rerun the command with a valid billing account number"))
+
+				output, err = clusterService.EditCluster(clusterID, "--billing-account", "123")
+				Expect(err).ToNot(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"not valid. Rerun the command with a valid billing account number"))
+
+				By("Change the billing account with an empty string")
+				output, err = clusterService.EditCluster(clusterID, "--billing-account", " ")
+				Expect(err).ToNot(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"not valid. Rerun the command with a valid billing account number"))
+
+				By("Check the billing account is NOT changed")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(CD.AWSBillingAccount).To(Equal(constants.BillingAccount))
+			})
 	})
 var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func() {
 	defer GinkgoRecover()
