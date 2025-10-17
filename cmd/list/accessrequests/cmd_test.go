@@ -2,7 +2,6 @@ package accessrequests
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -126,7 +125,6 @@ var _ = Describe("rosa attach policy", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			stdOut, _ := t.StdOutReader.Read()
-			fmt.Println(stdOut)
 			Expect(stdOut).To(Equal(accessRequestsOutput))
 		})
 
