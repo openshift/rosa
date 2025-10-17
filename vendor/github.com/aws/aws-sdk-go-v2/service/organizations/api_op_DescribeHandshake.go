@@ -12,11 +12,13 @@ import (
 )
 
 // Retrieves information about a previously requested handshake. The handshake ID
-// comes from the response to the original InviteAccountToOrganization operation
-// that generated the handshake. You can access handshakes that are ACCEPTED ,
-// DECLINED , or CANCELED for only 30 days after they change to that state.
-// They're then deleted and no longer accessible. This operation can be called from
-// any account in the organization.
+// comes from the response to the original InviteAccountToOrganizationoperation that generated the handshake.
+//
+// You can access handshakes that are ACCEPTED , DECLINED , or CANCELED for only
+// 30 days after they change to that state. They're then deleted and no longer
+// accessible.
+//
+// This operation can be called from any account in the organization.
 func (c *Client) DescribeHandshake(ctx context.Context, params *DescribeHandshakeInput, optFns ...func(*Options)) (*DescribeHandshakeOutput, error) {
 	if params == nil {
 		params = &DescribeHandshakeInput{}
@@ -35,10 +37,12 @@ func (c *Client) DescribeHandshake(ctx context.Context, params *DescribeHandshak
 type DescribeHandshakeInput struct {
 
 	// The unique identifier (ID) of the handshake that you want information about.
-	// You can get the ID from the original call to InviteAccountToOrganization , or
-	// from a call to ListHandshakesForAccount or ListHandshakesForOrganization . The
-	// regex pattern (http://wikipedia.org/wiki/regex) for handshake ID string requires
-	// "h-" followed by from 8 to 32 lowercase letters or digits.
+	// You can get the ID from the original call to InviteAccountToOrganization, or from a call to ListHandshakesForAccount or ListHandshakesForOrganization.
+	//
+	// The [regex pattern] for handshake ID string requires "h-" followed by from 8 to 32 lowercase
+	// letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	HandshakeId *string
@@ -100,6 +104,9 @@ func (c *Client) addOperationDescribeHandshakeMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -110,6 +117,15 @@ func (c *Client) addOperationDescribeHandshakeMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeHandshakeValidationMiddleware(stack); err != nil {
@@ -131,6 +147,48 @@ func (c *Client) addOperationDescribeHandshakeMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

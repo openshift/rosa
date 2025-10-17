@@ -30,16 +30,22 @@ func (c *Client) ListTypeVersions(ctx context.Context, params *ListTypeVersionsI
 type ListTypeVersionsInput struct {
 
 	// The Amazon Resource Name (ARN) of the extension for which you want version
-	// summary information. Conditional: You must specify either TypeName and Type , or
-	// Arn .
+	// summary information.
+	//
+	// Conditional: You must specify either TypeName and Type , or Arn .
 	Arn *string
 
 	// The deprecation status of the extension versions that you want to get summary
-	// information about. Valid values include:
+	// information about.
+	//
+	// Valid values include:
+	//
 	//   - LIVE : The extension version is registered and can be used in CloudFormation
 	//   operations, dependent on its provisioning behavior and visibility scope.
+	//
 	//   - DEPRECATED : The extension version has been deregistered and can no longer
 	//   be used in CloudFormation operations.
+	//
 	// The default is LIVE .
 	DeprecatedStatus types.DeprecatedStatus
 
@@ -56,15 +62,18 @@ type ListTypeVersionsInput struct {
 	// previous response object's NextToken parameter is set to null .
 	NextToken *string
 
-	// The publisher ID of the extension publisher. Extensions published by Amazon
-	// aren't assigned a publisher ID.
+	// The publisher ID of the extension publisher.
+	//
+	// Extensions published by Amazon aren't assigned a publisher ID.
 	PublisherId *string
 
-	// The kind of the extension. Conditional: You must specify either TypeName and
-	// Type , or Arn .
+	// The kind of the extension.
+	//
+	// Conditional: You must specify either TypeName and Type , or Arn .
 	Type types.RegistryType
 
 	// The name of the extension for which you want version summary information.
+	//
 	// Conditional: You must specify either TypeName and Type , or Arn .
 	TypeName *string
 
@@ -132,6 +141,9 @@ func (c *Client) addOperationListTypeVersionsMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -142,6 +154,15 @@ func (c *Client) addOperationListTypeVersionsMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTypeVersions(options.Region), middleware.Before); err != nil {
@@ -162,16 +183,50 @@ func (c *Client) addOperationListTypeVersionsMiddlewares(stack *middleware.Stack
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListTypeVersionsAPIClient is a client that implements the ListTypeVersions
-// operation.
-type ListTypeVersionsAPIClient interface {
-	ListTypeVersions(context.Context, *ListTypeVersionsInput, ...func(*Options)) (*ListTypeVersionsOutput, error)
-}
-
-var _ ListTypeVersionsAPIClient = (*Client)(nil)
 
 // ListTypeVersionsPaginatorOptions is the paginator options for ListTypeVersions
 type ListTypeVersionsPaginatorOptions struct {
@@ -239,6 +294,9 @@ func (p *ListTypeVersionsPaginator) NextPage(ctx context.Context, optFns ...func
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListTypeVersions(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -257,6 +315,14 @@ func (p *ListTypeVersionsPaginator) NextPage(ctx context.Context, optFns ...func
 
 	return result, nil
 }
+
+// ListTypeVersionsAPIClient is a client that implements the ListTypeVersions
+// operation.
+type ListTypeVersionsAPIClient interface {
+	ListTypeVersions(context.Context, *ListTypeVersionsInput, ...func(*Options)) (*ListTypeVersionsOutput, error)
+}
+
+var _ ListTypeVersionsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListTypeVersions(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

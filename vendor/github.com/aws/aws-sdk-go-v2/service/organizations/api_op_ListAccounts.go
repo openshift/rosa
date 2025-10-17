@@ -12,14 +12,15 @@ import (
 )
 
 // Lists all the accounts in the organization. To request only the accounts in a
-// specified root or organizational unit (OU), use the ListAccountsForParent
-// operation instead. Always check the NextToken response parameter for a null
-// value when calling a List* operation. These operations can occasionally return
-// an empty set of results even when there are more results available. The
-// NextToken response parameter value is null only when there are no more results
-// to display. This operation can be called only from the organization's management
-// account or by a member account that is a delegated administrator for an Amazon
-// Web Services service.
+// specified root or organizational unit (OU), use the ListAccountsForParentoperation instead.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// List* operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
 func (c *Client) ListAccounts(ctx context.Context, params *ListAccountsInput, optFns ...func(*Options)) (*ListAccountsOutput, error) {
 	if params == nil {
 		params = &ListAccountsInput{}
@@ -60,6 +61,12 @@ type ListAccountsInput struct {
 type ListAccountsOutput struct {
 
 	// A list of objects in the organization.
+	//
+	// The Status parameter in the API response will be retired on September 9, 2026.
+	// Although both the account State and account Status parameters are currently
+	// available in the Organizations APIs ( DescribeAccount , ListAccounts ,
+	// ListAccountsForParent ), we recommend that you update your scripts or other code
+	// to use the State parameter instead of Status before September 9, 2026.
 	Accounts []types.Account
 
 	// If present, indicates that more output is available than is included in the
@@ -117,6 +124,9 @@ func (c *Client) addOperationListAccountsMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -127,6 +137,15 @@ func (c *Client) addOperationListAccountsMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListAccounts(options.Region), middleware.Before); err != nil {
@@ -147,15 +166,50 @@ func (c *Client) addOperationListAccountsMiddlewares(stack *middleware.Stack, op
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListAccountsAPIClient is a client that implements the ListAccounts operation.
-type ListAccountsAPIClient interface {
-	ListAccounts(context.Context, *ListAccountsInput, ...func(*Options)) (*ListAccountsOutput, error)
-}
-
-var _ ListAccountsAPIClient = (*Client)(nil)
 
 // ListAccountsPaginatorOptions is the paginator options for ListAccounts
 type ListAccountsPaginatorOptions struct {
@@ -228,6 +282,9 @@ func (p *ListAccountsPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListAccounts(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -246,6 +303,13 @@ func (p *ListAccountsPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 
 	return result, nil
 }
+
+// ListAccountsAPIClient is a client that implements the ListAccounts operation.
+type ListAccountsAPIClient interface {
+	ListAccounts(context.Context, *ListAccountsInput, ...func(*Options)) (*ListAccountsOutput, error)
+}
+
+var _ ListAccountsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListAccounts(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
