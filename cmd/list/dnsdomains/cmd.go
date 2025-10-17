@@ -70,14 +70,24 @@ func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
-	r.Reporter.Debugf("Loading dns domains for current org id")
+	// Default: show user-defined domains from current org
 	search := "user_defined='true'"
-	if args.all {
-		search = ""
+
+	if !args.all {
+		organizationID, _, err := r.OCMClient.GetCurrentOrganization()
+		if err != nil {
+			_ = r.Reporter.Errorf("Failed to get current organization: %v", err)
+			os.Exit(1)
+		}
+		r.Reporter.Debugf("Loading dns domains for organization %s", organizationID)
+		search = fmt.Sprintf("user_defined='true' and organization.id='%s'", organizationID)
+	} else {
+		r.Reporter.Debugf("Loading dns domains across all organizations")
+		search = "user_defined='true'"
 	}
 	dnsDomains, err := r.OCMClient.ListDNSDomains(search)
 	if err != nil {
-		r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
+		_ = r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
 		os.Exit(1)
 	}
 
@@ -88,33 +98,60 @@ func run(_ *cobra.Command, _ []string) {
 	if output.HasFlag() {
 		err = output.Print(dnsDomains)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
+			_ = r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
 	}
 
 	if len(dnsDomains) == 0 {
-		r.Reporter.Infof("There are no DNS Domains for your organization")
+		if args.all {
+			r.Reporter.Infof("There are no DNS Domains available")
+		} else {
+			r.Reporter.Infof("There are no DNS Domains for your organization")
+		}
 		os.Exit(0)
 	}
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 
-	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\tARCHITECTURE\n")
-	for _, dnsdomain := range dnsDomains {
-		userDefined := "No"
-		if dnsdomain.UserDefined() {
-			userDefined = "Yes"
+	// Include organization column when --all is used to differentiate entries
+	if args.all {
+		fmt.Fprintf(writer, "ID\tORGANIZATION\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\tARCHITECTURE\n")
+		for _, dnsdomain := range dnsDomains {
+			userDefined := "No"
+			if dnsdomain.UserDefined() {
+				userDefined = "Yes"
+			}
+			orgID := ""
+			if dnsdomain.Organization() != nil {
+				orgID = dnsdomain.Organization().ID()
+			}
+			fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				dnsdomain.ID(),
+				orgID,
+				dnsdomain.Cluster().ID(),
+				dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
+				userDefined,
+				dnsdomain.ClusterArch(),
+			)
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
-			dnsdomain.ID(),
-			dnsdomain.Cluster().ID(),
-			dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
-			userDefined,
-			dnsdomain.ClusterArch(),
-		)
+	} else {
+		fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\tARCHITECTURE\n")
+		for _, dnsdomain := range dnsDomains {
+			userDefined := "No"
+			if dnsdomain.UserDefined() {
+				userDefined = "Yes"
+			}
+			fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
+				dnsdomain.ID(),
+				dnsdomain.Cluster().ID(),
+				dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
+				userDefined,
+				dnsdomain.ClusterArch(),
+			)
+		}
 	}
 	writer.Flush()
 }
