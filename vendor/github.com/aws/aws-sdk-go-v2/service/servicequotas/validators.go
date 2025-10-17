@@ -10,6 +10,26 @@ import (
 	"github.com/aws/smithy-go/middleware"
 )
 
+type validateOpCreateSupportCase struct {
+}
+
+func (*validateOpCreateSupportCase) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpCreateSupportCase) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*CreateSupportCaseInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpCreateSupportCaseInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDeleteServiceQuotaIncreaseRequestFromTemplate struct {
 }
 
@@ -230,6 +250,26 @@ func (m *validateOpRequestServiceQuotaIncrease) HandleInitialize(ctx context.Con
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpStartAutoManagement struct {
+}
+
+func (*validateOpStartAutoManagement) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpStartAutoManagement) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*StartAutoManagementInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpStartAutoManagementInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpTagResource struct {
 }
 
@@ -268,6 +308,10 @@ func (m *validateOpUntagResource) HandleInitialize(ctx context.Context, in middl
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
+}
+
+func addOpCreateSupportCaseValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpCreateSupportCase{}, middleware.After)
 }
 
 func addOpDeleteServiceQuotaIncreaseRequestFromTemplateValidationMiddleware(stack *middleware.Stack) error {
@@ -314,6 +358,10 @@ func addOpRequestServiceQuotaIncreaseValidationMiddleware(stack *middleware.Stac
 	return stack.Initialize.Add(&validateOpRequestServiceQuotaIncrease{}, middleware.After)
 }
 
+func addOpStartAutoManagementValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpStartAutoManagement{}, middleware.After)
+}
+
 func addOpTagResourceValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpTagResource{}, middleware.After)
 }
@@ -349,6 +397,21 @@ func validateTag(v *types.Tag) error {
 	}
 	if v.Value == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Value"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpCreateSupportCaseInput(v *CreateSupportCaseInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "CreateSupportCaseInput"}
+	if v.RequestId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("RequestId"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -550,6 +613,24 @@ func validateOpRequestServiceQuotaIncreaseInput(v *RequestServiceQuotaIncreaseIn
 	}
 	if v.DesiredValue == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("DesiredValue"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpStartAutoManagementInput(v *StartAutoManagementInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "StartAutoManagementInput"}
+	if len(v.OptInLevel) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("OptInLevel"))
+	}
+	if len(v.OptInType) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("OptInType"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
