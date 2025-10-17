@@ -32,6 +32,7 @@ profiles:
     additional_sg_number: 3
     registries_config: true
     allowed_registries: true
+    billing_account: "487962084830"
   account-role:
     customized_prefix: true
     path: ""

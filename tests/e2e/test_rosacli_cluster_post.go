@@ -1041,6 +1041,26 @@ var _ = Describe("Post-Check testing for cluster creation",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(clusterDescription.AdditionalPrincipals).To(ContainSubstring(fakeAP))
 			})
+		It("to verify billing account settings- [id:73141]",
+			labels.Critical, labels.Runtime.Day1Post,
+			func() {
+				profile := handler.LoadProfileYamlFileByENV()
+
+				By("Retrieve oidc config from cluster config")
+				clusterID = config.GetClusterID()
+
+				By("Describe cluster")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterDescription, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).ToNot(HaveOccurred())
+				if profile.ClusterConfig.BillingAccount != "" {
+					Expect(clusterDescription.AWSBillingAccount).To(Equal(profile.ClusterConfig.BillingAccount))
+				} else {
+					// If --billing-account is not set when creating cluster, it will use the default one
+					Expect(clusterDescription.AWSBillingAccount).To(Equal(constants.BillingAccount))
+				}
+			})
 	})
 
 var _ = Describe("Post-Check testing for cluster clusters with the --disable-scp-checks flag",

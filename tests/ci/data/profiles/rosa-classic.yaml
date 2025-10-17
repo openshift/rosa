@@ -31,6 +31,7 @@ profiles:
     name_length: 54
     domain_prefix_enabled: true
     additional_sg_number: 3
+    billing_account: "487962084830"
   account-role:
     path: "/test/"
     permission_boundary: "arn:aws:iam::aws:policy/AdministratorAccess"
