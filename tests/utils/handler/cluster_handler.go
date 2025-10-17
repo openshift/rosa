@@ -741,7 +741,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				log.Logger.Infof("Proxy auth is enabled. Going to generate the user and password and record in %s",
 					config.Test.ProxyAuthFile)
 				username := "proxyuser"
-				_, password := resourcesHandler.PrepareAdminUser()
+
+				// Remove all special characters, keep only alphanumeric characters
+				password := helper.GenerateRandomString(10)
 				_, err = helper.CreateFileWithContent(config.Test.ProxyAuthFile, fmt.Sprintf("%s:%s", username, password))
 				if err != nil {
 					return flags, err
