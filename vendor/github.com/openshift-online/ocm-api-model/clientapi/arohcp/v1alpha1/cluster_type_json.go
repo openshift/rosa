@@ -25,7 +25,6 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	v1 "github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-api-model/clientapi/helpers"
 )
 
@@ -94,7 +93,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectField("aws_infrastructure_access_role_grants")
 		stream.WriteObjectStart()
 		stream.WriteObjectField("items")
-		v1.WriteAWSInfrastructureAccessRoleGrantList(object.awsInfrastructureAccessRoleGrants.Items(), stream)
+		WriteAWSInfrastructureAccessRoleGrantList(object.awsInfrastructureAccessRoleGrants.Items(), stream)
 		stream.WriteObjectEnd()
 		count++
 	}
@@ -169,7 +168,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectField("addons")
 		stream.WriteObjectStart()
 		stream.WriteObjectField("items")
-		v1.WriteAddOnInstallationList(object.addons.Items(), stream)
+		WriteAddOnInstallationList(object.addons.Items(), stream)
 		stream.WriteObjectEnd()
 		count++
 	}
@@ -224,7 +223,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("cloud_provider")
-		v1.WriteCloudProvider(object.cloudProvider, stream)
+		WriteCloudProvider(object.cloudProvider, stream)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 20 && object.fieldSet_[20] && object.console != nil
@@ -323,7 +322,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("flavour")
-		v1.WriteFlavour(object.flavour, stream)
+		WriteFlavour(object.flavour, stream)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 31 && object.fieldSet_[31] && object.groups != nil
@@ -334,7 +333,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectField("groups")
 		stream.WriteObjectStart()
 		stream.WriteObjectField("items")
-		v1.WriteGroupList(object.groups.Items(), stream)
+		WriteGroupList(object.groups.Items(), stream)
 		stream.WriteObjectEnd()
 		count++
 	}
@@ -373,7 +372,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectField("identity_providers")
 		stream.WriteObjectStart()
 		stream.WriteObjectField("items")
-		v1.WriteIdentityProviderList(object.identityProviders.Items(), stream)
+		WriteIdentityProviderList(object.identityProviders.Items(), stream)
 		stream.WriteObjectEnd()
 		count++
 	}
@@ -415,7 +414,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectField("ingresses")
 		stream.WriteObjectStart()
 		stream.WriteObjectField("items")
-		v1.WriteIngressList(object.ingresses.Items(), stream)
+		WriteIngressList(object.ingresses.Items(), stream)
 		stream.WriteObjectEnd()
 		count++
 	}
@@ -445,7 +444,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectField("machine_pools")
 		stream.WriteObjectStart()
 		stream.WriteObjectField("items")
-		v1.WriteMachinePoolList(object.machinePools.Items(), stream)
+		WriteMachinePoolList(object.machinePools.Items(), stream)
 		stream.WriteObjectEnd()
 		count++
 	}
@@ -548,7 +547,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("product")
-		v1.WriteProduct(object.product, stream)
+		WriteProduct(object.product, stream)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 54 && object.fieldSet_[54] && object.properties != nil
@@ -604,7 +603,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("region")
-		v1.WriteCloudRegion(object.region, stream)
+		WriteCloudRegion(object.region, stream)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 58 && object.fieldSet_[58] && object.registryConfig != nil
@@ -649,7 +648,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 			stream.WriteMore()
 		}
 		stream.WriteObjectField("subscription")
-		v1.WriteSubscription(object.subscription, stream)
+		WriteSubscription(object.subscription, stream)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 63 && object.fieldSet_[63] && object.version != nil
@@ -706,7 +705,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.aws = value
 			object.fieldSet_[4] = true
 		case "aws_infrastructure_access_role_grants":
-			value := &v1.AWSInfrastructureAccessRoleGrantList{}
+			value := &AWSInfrastructureAccessRoleGrantList{}
 			for {
 				field := iterator.ReadObject()
 				if field == "" {
@@ -715,11 +714,11 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				switch field {
 				case "kind":
 					text := iterator.ReadString()
-					value.SetLink(text == v1.AWSInfrastructureAccessRoleGrantListLinkKind)
+					value.SetLink(text == AWSInfrastructureAccessRoleGrantListLinkKind)
 				case "href":
 					value.SetHREF(iterator.ReadString())
 				case "items":
-					value.SetItems(v1.ReadAWSInfrastructureAccessRoleGrantList(iterator))
+					value.SetItems(ReadAWSInfrastructureAccessRoleGrantList(iterator))
 				default:
 					iterator.ReadAny()
 				}
@@ -755,7 +754,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.additionalTrustBundle = value
 			object.fieldSet_[12] = true
 		case "addons":
-			value := &v1.AddOnInstallationList{}
+			value := &AddOnInstallationList{}
 			for {
 				field := iterator.ReadObject()
 				if field == "" {
@@ -764,11 +763,11 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				switch field {
 				case "kind":
 					text := iterator.ReadString()
-					value.SetLink(text == v1.AddOnInstallationListLinkKind)
+					value.SetLink(text == AddOnInstallationListLinkKind)
 				case "href":
 					value.SetHREF(iterator.ReadString())
 				case "items":
-					value.SetItems(v1.ReadAddOnInstallationList(iterator))
+					value.SetItems(ReadAddOnInstallationList(iterator))
 				default:
 					iterator.ReadAny()
 				}
@@ -797,7 +796,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.byoOidc = value
 			object.fieldSet_[18] = true
 		case "cloud_provider":
-			value := v1.ReadCloudProvider(iterator)
+			value := ReadCloudProvider(iterator)
 			object.cloudProvider = value
 			object.fieldSet_[19] = true
 		case "console":
@@ -849,11 +848,11 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.externalConfiguration = value
 			object.fieldSet_[29] = true
 		case "flavour":
-			value := v1.ReadFlavour(iterator)
+			value := ReadFlavour(iterator)
 			object.flavour = value
 			object.fieldSet_[30] = true
 		case "groups":
-			value := &v1.GroupList{}
+			value := &GroupList{}
 			for {
 				field := iterator.ReadObject()
 				if field == "" {
@@ -862,11 +861,11 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				switch field {
 				case "kind":
 					text := iterator.ReadString()
-					value.SetLink(text == v1.GroupListLinkKind)
+					value.SetLink(text == GroupListLinkKind)
 				case "href":
 					value.SetHREF(iterator.ReadString())
 				case "items":
-					value.SetItems(v1.ReadGroupList(iterator))
+					value.SetItems(ReadGroupList(iterator))
 				default:
 					iterator.ReadAny()
 				}
@@ -887,7 +886,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.hypershift = value
 			object.fieldSet_[34] = true
 		case "identity_providers":
-			value := &v1.IdentityProviderList{}
+			value := &IdentityProviderList{}
 			for {
 				field := iterator.ReadObject()
 				if field == "" {
@@ -896,11 +895,11 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				switch field {
 				case "kind":
 					text := iterator.ReadString()
-					value.SetLink(text == v1.IdentityProviderListLinkKind)
+					value.SetLink(text == IdentityProviderListLinkKind)
 				case "href":
 					value.SetHREF(iterator.ReadString())
 				case "items":
-					value.SetItems(v1.ReadIdentityProviderList(iterator))
+					value.SetItems(ReadIdentityProviderList(iterator))
 				default:
 					iterator.ReadAny()
 				}
@@ -937,7 +936,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.infraID = value
 			object.fieldSet_[38] = true
 		case "ingresses":
-			value := &v1.IngressList{}
+			value := &IngressList{}
 			for {
 				field := iterator.ReadObject()
 				if field == "" {
@@ -946,11 +945,11 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				switch field {
 				case "kind":
 					text := iterator.ReadString()
-					value.SetLink(text == v1.IngressListLinkKind)
+					value.SetLink(text == IngressListLinkKind)
 				case "href":
 					value.SetHREF(iterator.ReadString())
 				case "items":
-					value.SetItems(v1.ReadIngressList(iterator))
+					value.SetItems(ReadIngressList(iterator))
 				default:
 					iterator.ReadAny()
 				}
@@ -966,7 +965,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.loadBalancerQuota = value
 			object.fieldSet_[41] = true
 		case "machine_pools":
-			value := &v1.MachinePoolList{}
+			value := &MachinePoolList{}
 			for {
 				field := iterator.ReadObject()
 				if field == "" {
@@ -975,11 +974,11 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				switch field {
 				case "kind":
 					text := iterator.ReadString()
-					value.SetLink(text == v1.MachinePoolListLinkKind)
+					value.SetLink(text == MachinePoolListLinkKind)
 				case "href":
 					value.SetHREF(iterator.ReadString())
 				case "items":
-					value.SetItems(v1.ReadMachinePoolList(iterator))
+					value.SetItems(ReadMachinePoolList(iterator))
 				default:
 					iterator.ReadAny()
 				}
@@ -1044,7 +1043,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.openshiftVersion = value
 			object.fieldSet_[52] = true
 		case "product":
-			value := v1.ReadProduct(iterator)
+			value := ReadProduct(iterator)
 			object.product = value
 			object.fieldSet_[53] = true
 		case "properties":
@@ -1068,7 +1067,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.proxy = value
 			object.fieldSet_[56] = true
 		case "region":
-			value := v1.ReadCloudRegion(iterator)
+			value := ReadCloudRegion(iterator)
 			object.region = value
 			object.fieldSet_[57] = true
 		case "registry_config":
@@ -1089,7 +1088,7 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			object.storageQuota = value
 			object.fieldSet_[61] = true
 		case "subscription":
-			value := v1.ReadSubscription(iterator)
+			value := ReadSubscription(iterator)
 			object.subscription = value
 			object.fieldSet_[62] = true
 		case "version":
