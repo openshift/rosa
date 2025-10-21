@@ -2267,18 +2267,14 @@ func run(cmd *cobra.Command, _ []string) {
 	var subnets []ec2types.Subnet
 	mapSubnetIDToSubnet := make(map[string]aws.Subnet)
 	if useExistingVPC || subnetsProvided {
-		var initialSubnets []ec2types.Subnet
-		// When subnets are provided, use them; otherwise fetch all subnets for selection
-		idsToFetch := subnetIDs
-		if !subnetsProvided {
-			idsToFetch = []string{}
-		}
-		initialSubnets, err = getInitialValidSubnets(awsClient, idsToFetch, r.Reporter)
+		initialSubnets, err := getInitialValidSubnets(awsClient, subnetIDs, r.Reporter)
 		if err != nil {
 			_ = r.Reporter.Errorf("Failed to get the list of subnets: %s", err)
 			os.Exit(1)
 		}
-		useExistingVPC = true
+		if subnetsProvided {
+			useExistingVPC = true
+		}
 		_, machineNetwork, err := net.ParseCIDR(machineCIDR.String())
 		if err != nil {
 			_ = r.Reporter.Errorf("Unable to parse machine CIDR")

@@ -573,6 +573,187 @@ var _ = Describe("getInitialValidSubnets()", func() {
 	})
 })
 
+var _ = Describe("getInitialValidSubnets() with empty IDs (fetch all subnets)", func() {
+	var (
+		r          *rosa.Runtime
+		mockClient *mock.MockClient
+
+		emptyIds   = []string{}
+		allSubnets = []ec2types.Subnet{
+			{
+				SubnetId:         aws.String("subnet-all-1"),
+				AvailabilityZone: aws.String("us-east-1a"),
+			},
+			{
+				SubnetId:         aws.String("subnet-all-2"),
+				AvailabilityZone: aws.String("us-east-1b"),
+			},
+			{
+				SubnetId:         aws.String("subnet-all-3"),
+				AvailabilityZone: aws.String("us-east-1c"),
+				Tags: []ec2types.Tag{
+					{
+						Key:   aws.String(tags.RedHatManaged),
+						Value: aws.String("true"),
+					},
+				},
+			},
+			{
+				SubnetId:         aws.String("subnet-all-4"),
+				AvailabilityZone: aws.String("us-west-2-lax-1a"), // Local zone
+			},
+		}
+	)
+
+	BeforeEach(func() {
+		r = rosa.NewRuntime()
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient = mock.NewMockClient(mockCtrl)
+
+		mockClient.EXPECT().ListSubnets(emptyIds).Return(allSubnets, nil)
+		mockClient.EXPECT().GetAvailabilityZoneType("us-east-1a").Return("availability-zone", nil)
+		mockClient.EXPECT().GetAvailabilityZoneType("us-east-1b").Return("availability-zone", nil)
+		mockClient.EXPECT().GetAvailabilityZoneType("us-west-2-lax-1a").Return(mock.LocalZone, nil)
+	})
+
+	It("OK: fetches all subnets when no IDs provided (HCP interactive mode scenario)", func() {
+		validSubnets, err := getInitialValidSubnets(mockClient, emptyIds, r.Reporter)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(validSubnets)).To(Equal(2))
+		Expect(*validSubnets[0].SubnetId).To(Equal("subnet-all-1"))
+		Expect(*validSubnets[1].SubnetId).To(Equal("subnet-all-2"))
+	})
+})
+
+var _ = Describe("getInitialValidSubnets() comprehensive scenario tests", func() {
+	var (
+		r          *rosa.Runtime
+		mockClient *mock.MockClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		r = rosa.NewRuntime()
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockClient = mock.NewMockClient(mockCtrl)
+	})
+
+	Context("Scenario 1: HCP cluster without subnets (OCM-19584 bug scenario)", func() {
+		It("should fetch all subnets when useExistingVPC=true and subnetsProvided=false", func() {
+			emptyIds := []string{}
+			availableSubnets := []ec2types.Subnet{
+				{SubnetId: aws.String("subnet-hcp-1"), AvailabilityZone: aws.String("us-east-1a")},
+				{SubnetId: aws.String("subnet-hcp-2"), AvailabilityZone: aws.String("us-east-1b")},
+			}
+
+			mockClient.EXPECT().ListSubnets(emptyIds).Return(availableSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-east-1a").Return("availability-zone", nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-east-1b").Return("availability-zone", nil)
+
+			validSubnets, err := getInitialValidSubnets(mockClient, emptyIds, r.Reporter)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(validSubnets)).To(Equal(2))
+		})
+	})
+
+	Context("Scenario 2: Proxy-enabled cluster without subnets", func() {
+		It("should fetch all subnets when proxy is configured without subnet IDs", func() {
+			emptyIds := []string{}
+			proxySubnets := []ec2types.Subnet{
+				{SubnetId: aws.String("subnet-proxy-1"), AvailabilityZone: aws.String("us-west-2a")},
+				{SubnetId: aws.String("subnet-proxy-2"), AvailabilityZone: aws.String("us-west-2b")},
+			}
+
+			mockClient.EXPECT().ListSubnets(emptyIds).Return(proxySubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-west-2a").Return("availability-zone", nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-west-2b").Return("availability-zone", nil)
+
+			validSubnets, err := getInitialValidSubnets(mockClient, emptyIds, r.Reporter)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(validSubnets)).To(Equal(2))
+		})
+	})
+
+	Context("Scenario 3: PrivateLink cluster without subnets", func() {
+		It("should fetch all subnets for PrivateLink clusters", func() {
+			emptyIds := []string{}
+			privateLinkSubnets := []ec2types.Subnet{
+				{SubnetId: aws.String("subnet-private-1"), AvailabilityZone: aws.String("eu-west-1a")},
+				{SubnetId: aws.String("subnet-private-2"), AvailabilityZone: aws.String("eu-west-1b")},
+			}
+
+			mockClient.EXPECT().ListSubnets(emptyIds).Return(privateLinkSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("eu-west-1a").Return("availability-zone", nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("eu-west-1b").Return("availability-zone", nil)
+
+			validSubnets, err := getInitialValidSubnets(mockClient, emptyIds, r.Reporter)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(validSubnets)).To(Equal(2))
+		})
+	})
+
+	Context("Scenario 4: Cluster with specific subnet IDs provided", func() {
+		It("should fetch only the specified subnets", func() {
+			specificIds := []string{"subnet-specific-1", "subnet-specific-2"}
+			specificSubnets := []ec2types.Subnet{
+				{SubnetId: aws.String("subnet-specific-1"), AvailabilityZone: aws.String("ap-south-1a")},
+				{SubnetId: aws.String("subnet-specific-2"), AvailabilityZone: aws.String("ap-south-1b")},
+			}
+
+			mockClient.EXPECT().ListSubnets(specificIds).Return(specificSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("ap-south-1a").Return("availability-zone", nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("ap-south-1b").Return("availability-zone", nil)
+
+			validSubnets, err := getInitialValidSubnets(mockClient, specificIds, r.Reporter)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(validSubnets)).To(Equal(2))
+			Expect(*validSubnets[0].SubnetId).To(Equal("subnet-specific-1"))
+			Expect(*validSubnets[1].SubnetId).To(Equal("subnet-specific-2"))
+		})
+	})
+
+	Context("Scenario 5: Mixed scenarios with filtering", func() {
+		It("should correctly filter RedHat managed subnets in all scenarios", func() {
+			emptyIds := []string{}
+			mixedSubnets := []ec2types.Subnet{
+				{SubnetId: aws.String("subnet-valid-1"), AvailabilityZone: aws.String("us-east-1a")},
+				{
+					SubnetId:         aws.String("subnet-rhmanaged"),
+					AvailabilityZone: aws.String("us-east-1b"),
+					Tags:             []ec2types.Tag{{Key: aws.String(tags.RedHatManaged), Value: aws.String("true")}},
+				},
+			}
+
+			mockClient.EXPECT().ListSubnets(emptyIds).Return(mixedSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-east-1a").Return("availability-zone", nil)
+
+			validSubnets, err := getInitialValidSubnets(mockClient, emptyIds, r.Reporter)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(validSubnets)).To(Equal(1))
+			Expect(*validSubnets[0].SubnetId).To(Equal("subnet-valid-1"))
+		})
+
+		It("should correctly filter local and wavelength zones", func() {
+			emptyIds := []string{}
+			zoneSubnets := []ec2types.Subnet{
+				{SubnetId: aws.String("subnet-regular"), AvailabilityZone: aws.String("us-east-1a")},
+				{SubnetId: aws.String("subnet-local"), AvailabilityZone: aws.String("us-east-1-nyc-1a")},
+				{SubnetId: aws.String("subnet-wavelength"), AvailabilityZone: aws.String("us-east-1-wl1-bos-wlz-1")},
+			}
+
+			mockClient.EXPECT().ListSubnets(emptyIds).Return(zoneSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-east-1a").Return("availability-zone", nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-east-1-nyc-1a").Return(mock.LocalZone, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType("us-east-1-wl1-bos-wlz-1").Return(mock.WavelengthZone, nil)
+
+			validSubnets, err := getInitialValidSubnets(mockClient, emptyIds, r.Reporter)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(validSubnets)).To(Equal(1))
+			Expect(*validSubnets[0].SubnetId).To(Equal("subnet-regular"))
+		})
+	})
+})
+
 var _ = Describe("clusterHasLongNameWithoutDomainPrefix()", func() {
 	DescribeTable("clusterHasLongNameWithoutDomainPrefix test cases", func(clusterName, domainPrefix string,
 		expected bool) {
