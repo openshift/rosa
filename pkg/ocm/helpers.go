@@ -139,12 +139,25 @@ func ValidateHTTPProxy(val interface{}) error {
 		if httpProxy == "" {
 			return nil
 		}
-		url, err := url.ParseRequestURI(httpProxy)
+		parsedURL, err := url.ParseRequestURI(httpProxy)
 		if err != nil {
-			return fmt.Errorf("Invalid http-proxy value '%s'", httpProxy)
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "invalid port") && strings.Contains(httpProxy, "@") {
+				return fmt.Errorf("Invalid http-proxy value '%s': password contains special characters that must be URL-encoded (e.g., '/' as '%%2F', '#' as '%%23')",
+					httpProxy)
+			}
+			if !strings.Contains(httpProxy, "://") {
+				return fmt.Errorf("Invalid http-proxy value '%s': missing protocol scheme. URL must start with 'http://'",
+					httpProxy)
+			}
+			// Show the actual parsing error for other cases
+			return fmt.Errorf("Invalid http-proxy value '%s': %s", httpProxy, err)
 		}
-		if url.Scheme != "http" {
-			return errors.Errorf("%s", "Expected http-proxy to have an http:// scheme")
+		if parsedURL.Scheme != "http" {
+			if parsedURL.Scheme == "https" {
+				return errors.Errorf("Invalid http-proxy value '%s': use --https-proxy for HTTPS proxies", httpProxy)
+			}
+			return errors.Errorf("Expected http-proxy to have an http:// scheme")
 		}
 		return nil
 	}

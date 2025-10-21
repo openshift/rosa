@@ -695,3 +695,43 @@ var _ = Describe("GetAutoNodeRoleArn", func() {
 		Expect(exists).To(BeTrue())
 	})
 })
+
+var _ = Describe("ValidateHTTPProxy", func() {
+	It("accepts valid proxy URL with authentication", func() {
+		err := ValidateHTTPProxy("http://user:pass@proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("accepts valid proxy URL without authentication", func() {
+		err := ValidateHTTPProxy("http://proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("accepts empty string", func() {
+		err := ValidateHTTPProxy("")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects password with forward slash and provides helpful error", func() {
+		err := ValidateHTTPProxy("http://proxyuser:QvoZjyy/trkCiY5@10.0.0.161:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("must be URL-encoded"))
+	})
+
+	It("accepts password with URL-encoded forward slash", func() {
+		err := ValidateHTTPProxy("http://proxyuser:QvoZjyy%2FtrkCiY5@10.0.0.161:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects HTTPS scheme and suggests using --https-proxy", func() {
+		err := ValidateHTTPProxy("https://proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("use --https-proxy"))
+	})
+
+	It("rejects missing protocol scheme", func() {
+		err := ValidateHTTPProxy("proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("http:// scheme"))
+	})
+})
