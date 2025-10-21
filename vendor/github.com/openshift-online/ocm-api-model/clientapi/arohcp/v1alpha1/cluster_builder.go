@@ -21,8 +21,6 @@ package v1alpha1 // github.com/openshift-online/ocm-api-model/clientapi/arohcp/v
 
 import (
 	time "time"
-
-	v1 "github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1"
 )
 
 // Definition of an _OpenShift_ cluster.
@@ -70,20 +68,20 @@ type ClusterBuilder struct {
 	href                              string
 	api                               *ClusterAPIBuilder
 	aws                               *AWSBuilder
-	awsInfrastructureAccessRoleGrants *v1.AWSInfrastructureAccessRoleGrantListBuilder
+	awsInfrastructureAccessRoleGrants *AWSInfrastructureAccessRoleGrantListBuilder
 	ccs                               *CCSBuilder
 	dns                               *DNSBuilder
 	gcp                               *GCPBuilder
 	gcpEncryptionKey                  *GCPEncryptionKeyBuilder
 	gcpNetwork                        *GCPNetworkBuilder
 	additionalTrustBundle             string
-	addons                            *v1.AddOnInstallationListBuilder
+	addons                            *AddOnInstallationListBuilder
 	autoNode                          *ClusterAutoNodeBuilder
 	autoscaler                        *ClusterAutoscalerBuilder
 	azure                             *AzureBuilder
 	billingModel                      BillingModel
 	byoOidc                           *ByoOidcBuilder
-	cloudProvider                     *v1.CloudProviderBuilder
+	cloudProvider                     *CloudProviderBuilder
 	console                           *ClusterConsoleBuilder
 	creationTimestamp                 time.Time
 	deleteProtection                  *DeleteProtectionBuilder
@@ -92,19 +90,19 @@ type ClusterBuilder struct {
 	externalID                        string
 	externalAuthConfig                *ExternalAuthConfigBuilder
 	externalConfiguration             *ExternalConfigurationBuilder
-	flavour                           *v1.FlavourBuilder
-	groups                            *v1.GroupListBuilder
+	flavour                           *FlavourBuilder
+	groups                            *GroupListBuilder
 	healthState                       ClusterHealthState
 	htpasswd                          *HTPasswdIdentityProviderBuilder
 	hypershift                        *HypershiftBuilder
-	identityProviders                 *v1.IdentityProviderListBuilder
+	identityProviders                 *IdentityProviderListBuilder
 	imageRegistry                     *ClusterImageRegistryBuilder
 	inflightChecks                    *InflightCheckListBuilder
 	infraID                           string
-	ingresses                         *v1.IngressListBuilder
+	ingresses                         *IngressListBuilder
 	kubeletConfig                     *KubeletConfigBuilder
 	loadBalancerQuota                 int
-	machinePools                      *v1.MachinePoolListBuilder
+	machinePools                      *MachinePoolListBuilder
 	managedService                    *ManagedServiceBuilder
 	name                              string
 	network                           *NetworkBuilder
@@ -112,16 +110,16 @@ type ClusterBuilder struct {
 	nodePools                         *NodePoolListBuilder
 	nodes                             *ClusterNodesBuilder
 	openshiftVersion                  string
-	product                           *v1.ProductBuilder
+	product                           *ProductBuilder
 	properties                        map[string]string
 	provisionShard                    *ProvisionShardBuilder
 	proxy                             *ProxyBuilder
-	region                            *v1.CloudRegionBuilder
+	region                            *CloudRegionBuilder
 	registryConfig                    *ClusterRegistryConfigBuilder
 	state                             ClusterState
 	status                            *ClusterStatusBuilder
 	storageQuota                      *ValueBuilder
-	subscription                      *v1.SubscriptionBuilder
+	subscription                      *SubscriptionBuilder
 	version                           *VersionBuilder
 	fips                              bool
 	disableUserWorkloadMonitoring     bool
@@ -215,7 +213,7 @@ func (b *ClusterBuilder) AWS(value *AWSBuilder) *ClusterBuilder {
 }
 
 // AWSInfrastructureAccessRoleGrants sets the value of the 'AWS_infrastructure_access_role_grants' attribute to the given values.
-func (b *ClusterBuilder) AWSInfrastructureAccessRoleGrants(value *v1.AWSInfrastructureAccessRoleGrantListBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) AWSInfrastructureAccessRoleGrants(value *AWSInfrastructureAccessRoleGrantListBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -323,7 +321,7 @@ func (b *ClusterBuilder) AdditionalTrustBundle(value string) *ClusterBuilder {
 }
 
 // Addons sets the value of the 'addons' attribute to the given values.
-func (b *ClusterBuilder) Addons(value *v1.AddOnInstallationListBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Addons(value *AddOnInstallationListBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -411,7 +409,7 @@ func (b *ClusterBuilder) ByoOidc(value *ByoOidcBuilder) *ClusterBuilder {
 // CloudProvider sets the value of the 'cloud_provider' attribute to the given value.
 //
 // Cloud provider.
-func (b *ClusterBuilder) CloudProvider(value *v1.CloudProviderBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) CloudProvider(value *CloudProviderBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -552,7 +550,7 @@ func (b *ClusterBuilder) ExternalConfiguration(value *ExternalConfigurationBuild
 //
 // Set of predefined properties of a cluster. For example, a _huge_ flavour can be a cluster
 // with 10 infra nodes and 1000 compute nodes.
-func (b *ClusterBuilder) Flavour(value *v1.FlavourBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Flavour(value *FlavourBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -566,7 +564,7 @@ func (b *ClusterBuilder) Flavour(value *v1.FlavourBuilder) *ClusterBuilder {
 }
 
 // Groups sets the value of the 'groups' attribute to the given values.
-func (b *ClusterBuilder) Groups(value *v1.GroupListBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Groups(value *GroupListBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -620,7 +618,7 @@ func (b *ClusterBuilder) Hypershift(value *HypershiftBuilder) *ClusterBuilder {
 }
 
 // IdentityProviders sets the value of the 'identity_providers' attribute to the given values.
-func (b *ClusterBuilder) IdentityProviders(value *v1.IdentityProviderListBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) IdentityProviders(value *IdentityProviderListBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -666,7 +664,7 @@ func (b *ClusterBuilder) InfraID(value string) *ClusterBuilder {
 }
 
 // Ingresses sets the value of the 'ingresses' attribute to the given values.
-func (b *ClusterBuilder) Ingresses(value *v1.IngressListBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Ingresses(value *IngressListBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -703,7 +701,7 @@ func (b *ClusterBuilder) LoadBalancerQuota(value int) *ClusterBuilder {
 }
 
 // MachinePools sets the value of the 'machine_pools' attribute to the given values.
-func (b *ClusterBuilder) MachinePools(value *v1.MachinePoolListBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) MachinePools(value *MachinePoolListBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -856,7 +854,7 @@ func (b *ClusterBuilder) OpenshiftVersion(value string) *ClusterBuilder {
 // Product sets the value of the 'product' attribute to the given value.
 //
 // Representation of an product that can be selected as a cluster type.
-func (b *ClusterBuilder) Product(value *v1.ProductBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Product(value *ProductBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -918,7 +916,7 @@ func (b *ClusterBuilder) Proxy(value *ProxyBuilder) *ClusterBuilder {
 // Region sets the value of the 'region' attribute to the given value.
 //
 // Description of a region of a cloud provider.
-func (b *ClusterBuilder) Region(value *v1.CloudRegionBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Region(value *CloudRegionBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -1027,7 +1025,7 @@ func (b *ClusterBuilder) StorageQuota(value *ValueBuilder) *ClusterBuilder {
 // Subscription sets the value of the 'subscription' attribute to the given value.
 //
 // Definition of a subscription.
-func (b *ClusterBuilder) Subscription(value *v1.SubscriptionBuilder) *ClusterBuilder {
+func (b *ClusterBuilder) Subscription(value *SubscriptionBuilder) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 64)
 	}
@@ -1078,7 +1076,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.aws = nil
 	}
 	if object.awsInfrastructureAccessRoleGrants != nil {
-		b.awsInfrastructureAccessRoleGrants = v1.NewAWSInfrastructureAccessRoleGrantList().Copy(object.awsInfrastructureAccessRoleGrants)
+		b.awsInfrastructureAccessRoleGrants = NewAWSInfrastructureAccessRoleGrantList().Copy(object.awsInfrastructureAccessRoleGrants)
 	} else {
 		b.awsInfrastructureAccessRoleGrants = nil
 	}
@@ -1110,7 +1108,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	}
 	b.additionalTrustBundle = object.additionalTrustBundle
 	if object.addons != nil {
-		b.addons = v1.NewAddOnInstallationList().Copy(object.addons)
+		b.addons = NewAddOnInstallationList().Copy(object.addons)
 	} else {
 		b.addons = nil
 	}
@@ -1136,7 +1134,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.byoOidc = nil
 	}
 	if object.cloudProvider != nil {
-		b.cloudProvider = v1.NewCloudProvider().Copy(object.cloudProvider)
+		b.cloudProvider = NewCloudProvider().Copy(object.cloudProvider)
 	} else {
 		b.cloudProvider = nil
 	}
@@ -1167,12 +1165,12 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.externalConfiguration = nil
 	}
 	if object.flavour != nil {
-		b.flavour = v1.NewFlavour().Copy(object.flavour)
+		b.flavour = NewFlavour().Copy(object.flavour)
 	} else {
 		b.flavour = nil
 	}
 	if object.groups != nil {
-		b.groups = v1.NewGroupList().Copy(object.groups)
+		b.groups = NewGroupList().Copy(object.groups)
 	} else {
 		b.groups = nil
 	}
@@ -1188,7 +1186,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.hypershift = nil
 	}
 	if object.identityProviders != nil {
-		b.identityProviders = v1.NewIdentityProviderList().Copy(object.identityProviders)
+		b.identityProviders = NewIdentityProviderList().Copy(object.identityProviders)
 	} else {
 		b.identityProviders = nil
 	}
@@ -1204,7 +1202,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	}
 	b.infraID = object.infraID
 	if object.ingresses != nil {
-		b.ingresses = v1.NewIngressList().Copy(object.ingresses)
+		b.ingresses = NewIngressList().Copy(object.ingresses)
 	} else {
 		b.ingresses = nil
 	}
@@ -1215,7 +1213,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	}
 	b.loadBalancerQuota = object.loadBalancerQuota
 	if object.machinePools != nil {
-		b.machinePools = v1.NewMachinePoolList().Copy(object.machinePools)
+		b.machinePools = NewMachinePoolList().Copy(object.machinePools)
 	} else {
 		b.machinePools = nil
 	}
@@ -1250,7 +1248,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	}
 	b.openshiftVersion = object.openshiftVersion
 	if object.product != nil {
-		b.product = v1.NewProduct().Copy(object.product)
+		b.product = NewProduct().Copy(object.product)
 	} else {
 		b.product = nil
 	}
@@ -1273,7 +1271,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.proxy = nil
 	}
 	if object.region != nil {
-		b.region = v1.NewCloudRegion().Copy(object.region)
+		b.region = NewCloudRegion().Copy(object.region)
 	} else {
 		b.region = nil
 	}
@@ -1294,7 +1292,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 		b.storageQuota = nil
 	}
 	if object.subscription != nil {
-		b.subscription = v1.NewSubscription().Copy(object.subscription)
+		b.subscription = NewSubscription().Copy(object.subscription)
 	} else {
 		b.subscription = nil
 	}

@@ -70,6 +70,12 @@ var pathTreeData = `{
         "notify_details": null,
         "organizations": {
           "-": {
+            "account_group_assignments": {
+              "-": null
+            },
+            "account_groups": {
+              "-": null
+            },
             "labels": {
               "-": null
             },

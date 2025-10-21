@@ -21,8 +21,6 @@ package v1alpha1 // github.com/openshift-online/ocm-api-model/clientapi/arohcp/v
 
 import (
 	time "time"
-
-	v1 "github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1"
 )
 
 // ClusterKind is the name of the type used to represent objects
@@ -84,20 +82,20 @@ type Cluster struct {
 	href                              string
 	api                               *ClusterAPI
 	aws                               *AWS
-	awsInfrastructureAccessRoleGrants *v1.AWSInfrastructureAccessRoleGrantList
+	awsInfrastructureAccessRoleGrants *AWSInfrastructureAccessRoleGrantList
 	ccs                               *CCS
 	dns                               *DNS
 	gcp                               *GCP
 	gcpEncryptionKey                  *GCPEncryptionKey
 	gcpNetwork                        *GCPNetwork
 	additionalTrustBundle             string
-	addons                            *v1.AddOnInstallationList
+	addons                            *AddOnInstallationList
 	autoNode                          *ClusterAutoNode
 	autoscaler                        *ClusterAutoscaler
 	azure                             *Azure
 	billingModel                      BillingModel
 	byoOidc                           *ByoOidc
-	cloudProvider                     *v1.CloudProvider
+	cloudProvider                     *CloudProvider
 	console                           *ClusterConsole
 	creationTimestamp                 time.Time
 	deleteProtection                  *DeleteProtection
@@ -106,19 +104,19 @@ type Cluster struct {
 	externalID                        string
 	externalAuthConfig                *ExternalAuthConfig
 	externalConfiguration             *ExternalConfiguration
-	flavour                           *v1.Flavour
-	groups                            *v1.GroupList
+	flavour                           *Flavour
+	groups                            *GroupList
 	healthState                       ClusterHealthState
 	htpasswd                          *HTPasswdIdentityProvider
 	hypershift                        *Hypershift
-	identityProviders                 *v1.IdentityProviderList
+	identityProviders                 *IdentityProviderList
 	imageRegistry                     *ClusterImageRegistry
 	inflightChecks                    *InflightCheckList
 	infraID                           string
-	ingresses                         *v1.IngressList
+	ingresses                         *IngressList
 	kubeletConfig                     *KubeletConfig
 	loadBalancerQuota                 int
-	machinePools                      *v1.MachinePoolList
+	machinePools                      *MachinePoolList
 	managedService                    *ManagedService
 	name                              string
 	network                           *Network
@@ -126,16 +124,16 @@ type Cluster struct {
 	nodePools                         *NodePoolList
 	nodes                             *ClusterNodes
 	openshiftVersion                  string
-	product                           *v1.Product
+	product                           *Product
 	properties                        map[string]string
 	provisionShard                    *ProvisionShard
 	proxy                             *Proxy
-	region                            *v1.CloudRegion
+	region                            *CloudRegion
 	registryConfig                    *ClusterRegistryConfig
 	state                             ClusterState
 	status                            *ClusterStatus
 	storageQuota                      *Value
-	subscription                      *v1.Subscription
+	subscription                      *Subscription
 	version                           *Version
 	fips                              bool
 	disableUserWorkloadMonitoring     bool
@@ -262,7 +260,7 @@ func (o *Cluster) GetAWS() (value *AWS, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // List of AWS infrastructure access role grants on this cluster.
-func (o *Cluster) AWSInfrastructureAccessRoleGrants() *v1.AWSInfrastructureAccessRoleGrantList {
+func (o *Cluster) AWSInfrastructureAccessRoleGrants() *AWSInfrastructureAccessRoleGrantList {
 	if o != nil && len(o.fieldSet_) > 5 && o.fieldSet_[5] {
 		return o.awsInfrastructureAccessRoleGrants
 	}
@@ -273,7 +271,7 @@ func (o *Cluster) AWSInfrastructureAccessRoleGrants() *v1.AWSInfrastructureAcces
 // a flag indicating if the attribute has a value.
 //
 // List of AWS infrastructure access role grants on this cluster.
-func (o *Cluster) GetAWSInfrastructureAccessRoleGrants() (value *v1.AWSInfrastructureAccessRoleGrantList, ok bool) {
+func (o *Cluster) GetAWSInfrastructureAccessRoleGrants() (value *AWSInfrastructureAccessRoleGrantList, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 5 && o.fieldSet_[5]
 	if ok {
 		value = o.awsInfrastructureAccessRoleGrants
@@ -446,7 +444,7 @@ func (o *Cluster) GetAdditionalTrustBundle() (value string, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // List of add-ons on this cluster.
-func (o *Cluster) Addons() *v1.AddOnInstallationList {
+func (o *Cluster) Addons() *AddOnInstallationList {
 	if o != nil && len(o.fieldSet_) > 13 && o.fieldSet_[13] {
 		return o.addons
 	}
@@ -457,7 +455,7 @@ func (o *Cluster) Addons() *v1.AddOnInstallationList {
 // a flag indicating if the attribute has a value.
 //
 // List of add-ons on this cluster.
-func (o *Cluster) GetAddons() (value *v1.AddOnInstallationList, ok bool) {
+func (o *Cluster) GetAddons() (value *AddOnInstallationList, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 13 && o.fieldSet_[13]
 	if ok {
 		value = o.addons
@@ -586,7 +584,7 @@ func (o *Cluster) GetByoOidc() (value *ByoOidc, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the cloud provider where the cluster is installed.
-func (o *Cluster) CloudProvider() *v1.CloudProvider {
+func (o *Cluster) CloudProvider() *CloudProvider {
 	if o != nil && len(o.fieldSet_) > 19 && o.fieldSet_[19] {
 		return o.cloudProvider
 	}
@@ -597,7 +595,7 @@ func (o *Cluster) CloudProvider() *v1.CloudProvider {
 // a flag indicating if the attribute has a value.
 //
 // Link to the cloud provider where the cluster is installed.
-func (o *Cluster) GetCloudProvider() (value *v1.CloudProvider, ok bool) {
+func (o *Cluster) GetCloudProvider() (value *CloudProvider, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 19 && o.fieldSet_[19]
 	if ok {
 		value = o.cloudProvider
@@ -863,7 +861,7 @@ func (o *Cluster) GetExternalConfiguration() (value *ExternalConfiguration, ok b
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the _flavour_ that was used to create the cluster.
-func (o *Cluster) Flavour() *v1.Flavour {
+func (o *Cluster) Flavour() *Flavour {
 	if o != nil && len(o.fieldSet_) > 30 && o.fieldSet_[30] {
 		return o.flavour
 	}
@@ -874,7 +872,7 @@ func (o *Cluster) Flavour() *v1.Flavour {
 // a flag indicating if the attribute has a value.
 //
 // Link to the _flavour_ that was used to create the cluster.
-func (o *Cluster) GetFlavour() (value *v1.Flavour, ok bool) {
+func (o *Cluster) GetFlavour() (value *Flavour, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 30 && o.fieldSet_[30]
 	if ok {
 		value = o.flavour
@@ -886,7 +884,7 @@ func (o *Cluster) GetFlavour() (value *v1.Flavour, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the collection of groups of user of the cluster.
-func (o *Cluster) Groups() *v1.GroupList {
+func (o *Cluster) Groups() *GroupList {
 	if o != nil && len(o.fieldSet_) > 31 && o.fieldSet_[31] {
 		return o.groups
 	}
@@ -897,7 +895,7 @@ func (o *Cluster) Groups() *v1.GroupList {
 // a flag indicating if the attribute has a value.
 //
 // Link to the collection of groups of user of the cluster.
-func (o *Cluster) GetGroups() (value *v1.GroupList, ok bool) {
+func (o *Cluster) GetGroups() (value *GroupList, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 31 && o.fieldSet_[31]
 	if ok {
 		value = o.groups
@@ -978,7 +976,7 @@ func (o *Cluster) GetHypershift() (value *Hypershift, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the collection of identity providers of the cluster.
-func (o *Cluster) IdentityProviders() *v1.IdentityProviderList {
+func (o *Cluster) IdentityProviders() *IdentityProviderList {
 	if o != nil && len(o.fieldSet_) > 35 && o.fieldSet_[35] {
 		return o.identityProviders
 	}
@@ -989,7 +987,7 @@ func (o *Cluster) IdentityProviders() *v1.IdentityProviderList {
 // a flag indicating if the attribute has a value.
 //
 // Link to the collection of identity providers of the cluster.
-func (o *Cluster) GetIdentityProviders() (value *v1.IdentityProviderList, ok bool) {
+func (o *Cluster) GetIdentityProviders() (value *IdentityProviderList, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 35 && o.fieldSet_[35]
 	if ok {
 		value = o.identityProviders
@@ -1074,7 +1072,7 @@ func (o *Cluster) GetInfraID() (value string, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // List of ingresses on this cluster.
-func (o *Cluster) Ingresses() *v1.IngressList {
+func (o *Cluster) Ingresses() *IngressList {
 	if o != nil && len(o.fieldSet_) > 39 && o.fieldSet_[39] {
 		return o.ingresses
 	}
@@ -1085,7 +1083,7 @@ func (o *Cluster) Ingresses() *v1.IngressList {
 // a flag indicating if the attribute has a value.
 //
 // List of ingresses on this cluster.
-func (o *Cluster) GetIngresses() (value *v1.IngressList, ok bool) {
+func (o *Cluster) GetIngresses() (value *IngressList, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 39 && o.fieldSet_[39]
 	if ok {
 		value = o.ingresses
@@ -1143,7 +1141,7 @@ func (o *Cluster) GetLoadBalancerQuota() (value int, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // List of machine pools on this cluster.
-func (o *Cluster) MachinePools() *v1.MachinePoolList {
+func (o *Cluster) MachinePools() *MachinePoolList {
 	if o != nil && len(o.fieldSet_) > 42 && o.fieldSet_[42] {
 		return o.machinePools
 	}
@@ -1154,7 +1152,7 @@ func (o *Cluster) MachinePools() *v1.MachinePoolList {
 // a flag indicating if the attribute has a value.
 //
 // List of machine pools on this cluster.
-func (o *Cluster) GetMachinePools() (value *v1.MachinePoolList, ok bool) {
+func (o *Cluster) GetMachinePools() (value *MachinePoolList, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 42 && o.fieldSet_[42]
 	if ok {
 		value = o.machinePools
@@ -1422,7 +1420,7 @@ func (o *Cluster) GetOpenshiftVersion() (value string, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the product type of this cluster.
-func (o *Cluster) Product() *v1.Product {
+func (o *Cluster) Product() *Product {
 	if o != nil && len(o.fieldSet_) > 53 && o.fieldSet_[53] {
 		return o.product
 	}
@@ -1433,7 +1431,7 @@ func (o *Cluster) Product() *v1.Product {
 // a flag indicating if the attribute has a value.
 //
 // Link to the product type of this cluster.
-func (o *Cluster) GetProduct() (value *v1.Product, ok bool) {
+func (o *Cluster) GetProduct() (value *Product, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 53 && o.fieldSet_[53]
 	if ok {
 		value = o.product
@@ -1514,7 +1512,7 @@ func (o *Cluster) GetProxy() (value *Proxy, ok bool) {
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Link to the cloud provider region where the cluster is installed.
-func (o *Cluster) Region() *v1.CloudRegion {
+func (o *Cluster) Region() *CloudRegion {
 	if o != nil && len(o.fieldSet_) > 57 && o.fieldSet_[57] {
 		return o.region
 	}
@@ -1525,7 +1523,7 @@ func (o *Cluster) Region() *v1.CloudRegion {
 // a flag indicating if the attribute has a value.
 //
 // Link to the cloud provider region where the cluster is installed.
-func (o *Cluster) GetRegion() (value *v1.CloudRegion, ok bool) {
+func (o *Cluster) GetRegion() (value *CloudRegion, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 57 && o.fieldSet_[57]
 	if ok {
 		value = o.region
@@ -1630,7 +1628,7 @@ func (o *Cluster) GetStorageQuota() (value *Value, ok bool) {
 //
 // Link to the subscription that comes from the account management service when the cluster
 // is registered.
-func (o *Cluster) Subscription() *v1.Subscription {
+func (o *Cluster) Subscription() *Subscription {
 	if o != nil && len(o.fieldSet_) > 62 && o.fieldSet_[62] {
 		return o.subscription
 	}
@@ -1642,7 +1640,7 @@ func (o *Cluster) Subscription() *v1.Subscription {
 //
 // Link to the subscription that comes from the account management service when the cluster
 // is registered.
-func (o *Cluster) GetSubscription() (value *v1.Subscription, ok bool) {
+func (o *Cluster) GetSubscription() (value *Subscription, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 62 && o.fieldSet_[62]
 	if ok {
 		value = o.subscription
