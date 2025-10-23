@@ -71,7 +71,12 @@ func run(_ *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	r.Reporter.Debugf("Loading dns domains for current org id")
-	search := "user_defined='true'"
+	orgID, _, err := r.OCMClient.GetCurrentOrganization()
+	if err != nil {
+		_ = r.Reporter.Errorf("Failed to get current organization: %s", err)
+		os.Exit(1)
+	}
+	search := fmt.Sprintf("user_defined='true' AND organization.id='%s'", orgID)
 	if args.all {
 		search = ""
 	}
