@@ -40,7 +40,8 @@ var Cmd = &cobra.Command{
 	Use:     "versions",
 	Aliases: []string{"version"},
 	Short:   "List available versions",
-	Long:    "List versions of OpenShift that are available for creating clusters.",
+	Long: "List versions of OpenShift that are available for creating clusters.\n\nNOTE: Available upgrades " +
+		"shown in this command are deprecated.",
 	Example: `  # List all OpenShift versions
   rosa list versions`,
 	Run:  run,
@@ -136,4 +137,7 @@ func run(_ *cobra.Command, _ []string) {
 		)
 	}
 	writer.Flush()
+
+	r.Reporter.Warnf("DEPRECATED: Available upgrades in 'rosa list versions' are deprecated. " +
+		"To list available upgrades for a specific cluster, please use 'rosa list upgrades --cluster <cluster_id>'")
 }
