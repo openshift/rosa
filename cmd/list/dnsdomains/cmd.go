@@ -71,13 +71,18 @@ func run(_ *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	r.Reporter.Debugf("Loading dns domains for current org id")
-	search := "user_defined='true'"
+	orgID, _, err := r.OCMClient.GetCurrentOrganization()
+	if err != nil {
+		_ = r.Reporter.Errorf("Failed to get current organization: %s", err)
+		os.Exit(1)
+	}
+	search := fmt.Sprintf("user_defined='true' AND organization.id='%s'", orgID)
 	if args.all {
 		search = ""
 	}
 	dnsDomains, err := r.OCMClient.ListDNSDomains(search)
 	if err != nil {
-		r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
+		_ = r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
 		os.Exit(1)
 	}
 
@@ -88,7 +93,7 @@ func run(_ *cobra.Command, _ []string) {
 	if output.HasFlag() {
 		err = output.Print(dnsDomains)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
+			_ = r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
