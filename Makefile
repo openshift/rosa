@@ -123,6 +123,10 @@ e2e_test: install
         --focus-file tests/e2e/.* \
 		$(NULL)
 
+.PHONY: generate-docs
+generate-docs:
+	go run ./tools/gendocs
+
 # verifies changes to .goreleaser.yaml
 .PHONY: check-release-config
 check-release-config:

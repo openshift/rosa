@@ -18,4 +18,5 @@ ignore:
   - "assets"
   - "hack"
   - "templates"
+  - "tools"
   - "vendor"
