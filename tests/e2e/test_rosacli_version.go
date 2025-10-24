@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"fmt"
+
 	"github.com/Masterminds/semver"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -60,6 +62,12 @@ var _ = Describe("Get CLI version",
 			func() {
 				By("Init the client")
 				rosaClient = rosacli.NewClient()
+
+				By("Print whoami")
+				buf, err := rosaClient.Runner.Cmd("whoami").Run()
+				Expect(err).ToNot(HaveOccurred())
+				stdout := rosaClient.Parser.TextData.Input(buf).Parse().Tip()
+				fmt.Printf("[Debug] Whoami: %s\n", stdout)
 
 				By("list the versions with --hosted-cp")
 				versionService := rosaClient.Version
