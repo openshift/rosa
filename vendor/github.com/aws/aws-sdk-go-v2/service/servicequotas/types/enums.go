@@ -12,8 +12,9 @@ const (
 )
 
 // Values returns all known values for AppliedLevelEnum. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AppliedLevelEnum) Values() []AppliedLevelEnum {
 	return []AppliedLevelEnum{
 		"ACCOUNT",
@@ -33,14 +34,70 @@ const (
 )
 
 // Values returns all known values for ErrorCode. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ErrorCode) Values() []ErrorCode {
 	return []ErrorCode{
 		"DEPENDENCY_ACCESS_DENIED_ERROR",
 		"DEPENDENCY_THROTTLING_ERROR",
 		"DEPENDENCY_SERVICE_ERROR",
 		"SERVICE_QUOTA_NOT_AVAILABLE_ERROR",
+	}
+}
+
+type OptInLevel string
+
+// Enum values for OptInLevel
+const (
+	OptInLevelAccount OptInLevel = "ACCOUNT"
+)
+
+// Values returns all known values for OptInLevel. Note that this can be expanded
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (OptInLevel) Values() []OptInLevel {
+	return []OptInLevel{
+		"ACCOUNT",
+	}
+}
+
+type OptInStatus string
+
+// Enum values for OptInStatus
+const (
+	OptInStatusEnabled  OptInStatus = "ENABLED"
+	OptInStatusDisabled OptInStatus = "DISABLED"
+)
+
+// Values returns all known values for OptInStatus. Note that this can be expanded
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (OptInStatus) Values() []OptInStatus {
+	return []OptInStatus{
+		"ENABLED",
+		"DISABLED",
+	}
+}
+
+type OptInType string
+
+// Enum values for OptInType
+const (
+	OptInTypeNotifyOnly      OptInType = "NotifyOnly"
+	OptInTypeNotifyAndAdjust OptInType = "NotifyAndAdjust"
+)
+
+// Values returns all known values for OptInType. Note that this can be expanded
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (OptInType) Values() []OptInType {
+	return []OptInType{
+		"NotifyOnly",
+		"NotifyAndAdjust",
 	}
 }
 
@@ -58,8 +115,9 @@ const (
 )
 
 // Values returns all known values for PeriodUnit. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PeriodUnit) Values() []PeriodUnit {
 	return []PeriodUnit{
 		"MICROSECOND",
@@ -81,8 +139,9 @@ const (
 )
 
 // Values returns all known values for QuotaContextScope. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (QuotaContextScope) Values() []QuotaContextScope {
 	return []QuotaContextScope{
 		"RESOURCE",
@@ -104,8 +163,9 @@ const (
 )
 
 // Values returns all known values for RequestStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RequestStatus) Values() []RequestStatus {
 	return []RequestStatus{
 		"PENDING",
@@ -128,8 +188,9 @@ const (
 
 // Values returns all known values for ServiceQuotaTemplateAssociationStatus. Note
 // that this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ServiceQuotaTemplateAssociationStatus) Values() []ServiceQuotaTemplateAssociationStatus {
 	return []ServiceQuotaTemplateAssociationStatus{
 		"ASSOCIATED",
