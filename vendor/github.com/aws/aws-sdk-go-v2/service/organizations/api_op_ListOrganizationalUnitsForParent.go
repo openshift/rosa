@@ -12,13 +12,14 @@ import (
 )
 
 // Lists the organizational units (OUs) in a parent organizational unit or root.
+//
 // Always check the NextToken response parameter for a null value when calling a
 // List* operation. These operations can occasionally return an empty set of
 // results even when there are more results available. The NextToken response
-// parameter value is null only when there are no more results to display. This
-// operation can be called only from the organization's management account or by a
-// member account that is a delegated administrator for an Amazon Web Services
-// service.
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
 func (c *Client) ListOrganizationalUnitsForParent(ctx context.Context, params *ListOrganizationalUnitsForParentInput, optFns ...func(*Options)) (*ListOrganizationalUnitsForParentOutput, error) {
 	if params == nil {
 		params = &ListOrganizationalUnitsForParentInput{}
@@ -37,14 +38,18 @@ func (c *Client) ListOrganizationalUnitsForParent(ctx context.Context, params *L
 type ListOrganizationalUnitsForParentInput struct {
 
 	// The unique identifier (ID) of the root or OU whose child OUs you want to list.
-	// The regex pattern (http://wikipedia.org/wiki/regex) for a parent ID string
-	// requires one of the following:
+	//
+	// The [regex pattern] for a parent ID string requires one of the following:
+	//
 	//   - Root - A string that begins with "r-" followed by from 4 to 32 lowercase
 	//   letters or digits.
+	//
 	//   - Organizational unit (OU) - A string that begins with "ou-" followed by from
 	//   4 to 32 lowercase letters or digits (the ID of the root that the OU is in). This
 	//   string is followed by a second "-" dash and from 8 to 32 additional lowercase
 	//   letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	ParentId *string
@@ -129,6 +134,9 @@ func (c *Client) addOperationListOrganizationalUnitsForParentMiddlewares(stack *
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -139,6 +147,15 @@ func (c *Client) addOperationListOrganizationalUnitsForParentMiddlewares(stack *
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListOrganizationalUnitsForParentValidationMiddleware(stack); err != nil {
@@ -162,16 +179,50 @@ func (c *Client) addOperationListOrganizationalUnitsForParentMiddlewares(stack *
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListOrganizationalUnitsForParentAPIClient is a client that implements the
-// ListOrganizationalUnitsForParent operation.
-type ListOrganizationalUnitsForParentAPIClient interface {
-	ListOrganizationalUnitsForParent(context.Context, *ListOrganizationalUnitsForParentInput, ...func(*Options)) (*ListOrganizationalUnitsForParentOutput, error)
-}
-
-var _ ListOrganizationalUnitsForParentAPIClient = (*Client)(nil)
 
 // ListOrganizationalUnitsForParentPaginatorOptions is the paginator options for
 // ListOrganizationalUnitsForParent
@@ -247,6 +298,9 @@ func (p *ListOrganizationalUnitsForParentPaginator) NextPage(ctx context.Context
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListOrganizationalUnitsForParent(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -265,6 +319,14 @@ func (p *ListOrganizationalUnitsForParentPaginator) NextPage(ctx context.Context
 
 	return result, nil
 }
+
+// ListOrganizationalUnitsForParentAPIClient is a client that implements the
+// ListOrganizationalUnitsForParent operation.
+type ListOrganizationalUnitsForParentAPIClient interface {
+	ListOrganizationalUnitsForParent(context.Context, *ListOrganizationalUnitsForParentInput, ...func(*Options)) (*ListOrganizationalUnitsForParentOutput, error)
+}
+
+var _ ListOrganizationalUnitsForParentAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListOrganizationalUnitsForParent(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
