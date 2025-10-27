@@ -268,6 +268,13 @@ var _ = Describe("Edit cluster",
 		It("can disable workload monitoring on/off - [id:45159]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
+				// Skip UWM tests for HCP clusters as it's deprecated
+				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if isHostedCP {
+					Skip("User Workload Monitoring is deprecated for HCP clusters")
+				}
+
 				By("Load the original cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -319,6 +326,32 @@ var _ = Describe("Edit cluster",
 				clusterDetail, err = clusterService.ReflectClusterDescription(output)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(clusterDetail.UserWorkloadMonitoring).To(Equal(expectedUWMValue))
+			})
+
+		It("blocks workload monitoring configuration for HCP clusters - [id:UWM-HCP-001]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				// Only run this test for HCP clusters
+				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !isHostedCP {
+					Skip("This test is only for HCP clusters to verify UWM is blocked")
+				}
+
+				By("Attempt to edit cluster with UWM flag and expect error")
+				_, err = clusterService.EditCluster(clusterID,
+					"--disable-workload-monitoring",
+					"--dry-run")
+				// Command should error for HCP clusters
+				Expect(err).To(HaveOccurred())
+				// Check that error mentions it's not supported
+				Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+
+				By("Check that UWM is NOT shown in cluster description")
+				output, err2 := clusterService.DescribeCluster(clusterID)
+				Expect(err2).ToNot(HaveOccurred())
+				// For HCP clusters, UWM should not appear at all
+				Expect(output.String()).ToNot(ContainSubstring("User Workload Monitoring"))
 			})
 
 		It("can edit privacy and workload monitoring via rosa-cli - [id:60275]",
@@ -631,6 +664,40 @@ var _ = Describe("Edit cluster",
 				}
 			})
 	})
+
+// Describe block for CLI help text validation that doesn't require a cluster
+var _ = Describe("Edit cluster help text validation", labels.Feature.Cluster, func() {
+	defer GinkgoRecover()
+
+	var (
+		rosaClient     *rosacli.Client
+		clusterService rosacli.ClusterService
+	)
+
+	BeforeEach(func() {
+		By("Init the client")
+		rosaClient = rosacli.NewClient()
+		clusterService = rosaClient.Cluster
+	})
+
+	// Test that UWM example was removed from help text
+	It("does not show UWM example in edit cluster help text - [id:UWM-HELP-001]",
+		labels.Low, labels.Runtime.Day1,
+		func() {
+			By("Check edit cluster help text for UWM example")
+			helpOutput, err := clusterService.EditCluster("", "-h")
+			Expect(err).ToNot(HaveOccurred())
+
+			// The help text should NOT contain the UWM example
+			Expect(helpOutput.String()).ToNot(ContainSubstring("enable User Workload Monitoring"))
+			Expect(helpOutput.String()).ToNot(ContainSubstring("--disable-workload-monitoring=false"))
+
+			// But should still contain the private cluster example
+			Expect(helpOutput.String()).To(ContainSubstring("Edit a cluster named"))
+			Expect(helpOutput.String()).To(ContainSubstring("--private"))
+		})
+})
+
 var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func() {
 	defer GinkgoRecover()
 

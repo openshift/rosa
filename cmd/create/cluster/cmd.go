@@ -700,10 +700,9 @@ func initFlags(cmd *cobra.Command) {
 		&args.disableWorkloadMonitoring,
 		"disable-workload-monitoring",
 		false,
-		"[DEPRECATED FOR ROSA HCP] Enables you to monitor your own projects in isolation from Red Hat Site "+
-			"Reliability Engineer (SRE) platform metrics. \n\n"+
-			"User workload monitoring is deprecated for Hosted Control Plane clusters, and will be removed in a future "+
-			"version.",
+		"Enables you to monitor your own projects in isolation from Red Hat Site "+
+			"Reliability Engineer (SRE) platform metrics. "+
+			"Not supported for Hosted Control Plane clusters.",
 	)
 
 	flags.BoolVarP(
@@ -981,7 +980,8 @@ func run(cmd *cobra.Command, _ []string) {
 	isHostedCP := args.hostedClusterEnabled
 	if isHostedCP {
 		if cmd.Flags().Changed("disable-workload-monitoring") {
-			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
+			r.Reporter.Errorf(arguments.UwmNotSupportedMessage)
+			os.Exit(1)
 		}
 		validateHcpFlags(cmd, r.Reporter)
 	}
@@ -1111,9 +1111,6 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
 			os.Exit(1)
-		}
-		if isHostedCP {
-			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
 		}
 	}
 
@@ -2998,7 +2995,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	disableWorkloadMonitoring := args.disableWorkloadMonitoring
-	if interactive.Enabled() {
+	if interactive.Enabled() && !isHostedCP {
 		disableWorkloadMonitoring, err = interactive.GetBool(interactive.Input{
 			Question: "Disable Workload monitoring",
 			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
@@ -3007,9 +3004,6 @@ func run(cmd *cobra.Command, _ []string) {
 		if err != nil {
 			_ = r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
 			os.Exit(1)
-		}
-		if isHostedCP {
-			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
 		}
 	}
 
@@ -3408,7 +3402,6 @@ func run(cmd *cobra.Command, _ []string) {
 		Mode:                         mode,
 		Tags:                         tagsList,
 		KMSKeyArn:                    kmsKeyARN,
-		DisableWorkloadMonitoring:    &disableWorkloadMonitoring,
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
@@ -3428,6 +3421,10 @@ func run(cmd *cobra.Command, _ []string) {
 		AdditionalAllowedPrincipals:            additionalAllowedPrincipals,
 		MasterMachineType:                      args.masterMachineType,
 		InfraMachineType:                       args.infraMachineType,
+	}
+
+	if !isHostedCP {
+		clusterConfig.DisableWorkloadMonitoring = &disableWorkloadMonitoring
 	}
 
 	if httpTokens != "" {
