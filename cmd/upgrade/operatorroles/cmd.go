@@ -89,11 +89,7 @@ func run(cmd *cobra.Command, _ []string) {
 	*/
 	if args.upgradeVersion != "" {
 		version := args.upgradeVersion
-		availableUpgrades, err := r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
-		if err != nil {
-			r.Reporter.Errorf("Failed to find available upgrades: %v", err)
-			os.Exit(1)
-		}
+		availableUpgrades := ocm.GetAvailableUpgradesByCluster(cluster)
 		if len(availableUpgrades) == 0 {
 			r.Reporter.Warnf("There are no available upgrades")
 			os.Exit(0)
