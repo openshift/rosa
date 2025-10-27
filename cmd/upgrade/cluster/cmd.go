@@ -464,14 +464,9 @@ func buildVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster,
 	version string, isAutomaticUpgrade bool) ([]string, string, error) {
 	var availableUpgrades []string
 	var err error
-	if ocm.IsHyperShiftCluster(cluster) {
-		availableUpgrades = ocm.GetAvailableUpgradesByCluster(cluster)
-	} else {
-		availableUpgrades, err = r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
-		if err != nil {
-			return availableUpgrades, version, fmt.Errorf("Failed to find available upgrades: %v", err)
-		}
-	}
+
+	availableUpgrades = ocm.GetAvailableUpgradesByCluster(cluster)
+
 	if len(availableUpgrades) == 0 {
 		return availableUpgrades, version, nil
 	}

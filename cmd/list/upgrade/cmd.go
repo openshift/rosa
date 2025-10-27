@@ -113,14 +113,7 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 	} else {
 		// Control plane or cluster updates
 		r.Reporter.Debugf("Loading available upgrades for cluster '%s'", clusterKey)
-		if isHypershift {
-			availableUpgrades = ocm.GetAvailableUpgradesByCluster(cluster)
-		} else {
-			availableUpgrades, err = r.OCMClient.GetAvailableUpgrades(ocm.GetVersionID(cluster))
-			if err != nil {
-				return fmt.Errorf("Failed to get available upgrades for cluster '%s': %v", clusterKey, err)
-			}
-		}
+		availableUpgrades = ocm.GetAvailableUpgradesByCluster(cluster)
 
 		if len(availableUpgrades) == 0 {
 			r.Reporter.Infof("There are no available upgrades for cluster '%s'", clusterKey)
