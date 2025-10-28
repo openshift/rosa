@@ -75,6 +75,8 @@ type OCMResourceService interface {
 
 	CreateDNSDomain(flags ...string) (bytes.Buffer, error)
 	DeleteDNSDomain(domainID string, flags ...string) (bytes.Buffer, error)
+	ListDNSDomain(flags ...string) (bytes.Buffer, error)
+	ReflectDNSDomainList(result bytes.Buffer) (dnsDomainlist DNSDomainList, err error)
 
 	Token(flags ...string) (bytes.Buffer, error)
 
@@ -185,6 +187,18 @@ type OIDCConfig struct {
 }
 type OIDCConfigList struct {
 	OIDCConfigList []OIDCConfig `json:"OIDCConfigList,omitempty"`
+}
+
+type DNSDomain struct {
+	ID           string `json:"ID,omitempty"`
+	ClusterID    string `json:"CLUSTER ID,omitempty"`
+	ReservedTime string `json:"RESERVED TIME,omitempty"`
+	UserDefined  string `json:"USER DEFINED,omitempty"`
+	Architecture string `json:"ARCHITECTURE,omitempty"`
+}
+
+type DNSDomainList struct {
+	DNSDomainList []*DNSDomain `json:"DNSDomainList,omitempty"`
 }
 
 // Pasrse the result of 'rosa list instance-types' to InstanceTypes struct
@@ -703,6 +717,37 @@ func (ors *ocmResourceService) DeleteDNSDomain(domainID string, flags ...string)
 	deleteDNSDomain := ors.client.Runner
 	deleteDNSDomain = deleteDNSDomain.Cmd("delete", "dns-domain", domainID).CmdFlags(flags...)
 	return deleteDNSDomain.Run()
+}
+
+// run `rosa list dns-domain`
+func (ors *ocmResourceService) ListDNSDomain(flags ...string) (bytes.Buffer, error) {
+	listDNSDomain := ors.client.Runner
+	listDNSDomain = listDNSDomain.Cmd("list", "dns-domain").CmdFlags(flags...)
+	return listDNSDomain.Run()
+}
+
+func (ors *ocmResourceService) ReflectDNSDomainList(result bytes.Buffer) (dnsDomainlist DNSDomainList, err error) {
+	dnsDomainlist = DNSDomainList{}
+	theMap := ors.client.Parser.TableData.Input(result).Parse().Output()
+	for _, dnsDomainItem := range theMap {
+		dnsDomain := &DNSDomain{}
+		err = MapStructure(dnsDomainItem, dnsDomain)
+		if err != nil {
+			return
+		}
+		dnsDomainlist.DNSDomainList = append(dnsDomainlist.DNSDomainList, dnsDomain)
+	}
+	return dnsDomainlist, err
+}
+
+// Get specified DNS domain by ID
+func (dnsDomainlist DNSDomainList) GetDNSDomain(id string) (dnsDomain DNSDomain) {
+	for _, dnsDomainItem := range dnsDomainlist.DNSDomainList {
+		if dnsDomainItem.ID == id {
+			return *dnsDomainItem
+		}
+	}
+	return
 }
 
 func (ors *ocmResourceService) CleanResources(clusterID string) (errors []error) {
