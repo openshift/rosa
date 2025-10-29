@@ -14,6 +14,7 @@ type UpgradeService interface {
 	ResourcesCleaner
 
 	ListUpgrades(flags ...string) (bytes.Buffer, error)
+	ReflectUpgradeVersionList(result bytes.Buffer) (upgradeVersionList UpgradeVersionList, err error)
 	DescribeUpgrade(clusterID string, flags ...string) (bytes.Buffer, error)
 	DescribeUpgradeAndReflect(clusterID string) (*UpgradeDescription, error)
 	DeleteUpgrade(flags ...string) (bytes.Buffer, error)
@@ -47,6 +48,15 @@ type UpgradeDescription struct {
 	EnableMinorVersionUpgrades string `yaml:"Enable minor version upgrades,omitempty"`
 }
 
+// Struct of `rosa list upgrade`
+type UpgradeVersion struct {
+	Version string `json:"VERSION,omitempty"`
+	Notes   string `json:"NOTES,omitempty"`
+}
+type UpgradeVersionList struct {
+	UpgradeVersions []UpgradeVersion `json:"UpgradeVersions,omitempty"`
+}
+
 func (u *upgradeService) ListUpgrades(flags ...string) (bytes.Buffer, error) {
 	describe := u.client.Runner.
 		Cmd("list", "upgrade").
@@ -54,6 +64,19 @@ func (u *upgradeService) ListUpgrades(flags ...string) (bytes.Buffer, error) {
 	return describe.Run()
 }
 
+func (u *upgradeService) ReflectUpgradeVersionList(result bytes.Buffer) (upgradeVersionList UpgradeVersionList, err error) {
+	upgradeVersionList = UpgradeVersionList{}
+	theMap := u.client.Parser.TableData.Input(result).Parse().Output()
+	for _, upgradeVersionItem := range theMap {
+		upgradeVersion := &UpgradeVersion{}
+		err = MapStructure(upgradeVersionItem, upgradeVersion)
+		if err != nil {
+			return
+		}
+		upgradeVersionList.UpgradeVersions = append(upgradeVersionList.UpgradeVersions, *upgradeVersion)
+	}
+	return upgradeVersionList, err
+}
 func (u *upgradeService) DescribeUpgrade(clusterID string, flags ...string) (bytes.Buffer, error) {
 	combflags := append([]string{"-c", clusterID}, flags...)
 	describe := u.client.Runner.
