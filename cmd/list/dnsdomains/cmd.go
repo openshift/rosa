@@ -17,7 +17,6 @@ limitations under the License.
 package dnsdomains
 
 import (
-	"fmt"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -64,6 +63,7 @@ func init() {
 	)
 
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(_ *cobra.Command, _ []string) {
@@ -104,24 +104,36 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-
-	fmt.Fprintf(writer, "ID\tCLUSTER ID\tRESERVED TIME\tUSER DEFINED\tARCHITECTURE\n")
+	headers := []string{"ID", "CLUSTER ID", "RESERVED TIME", "USER DEFINED", "ARCHITECTURE"}
+	var tableData [][]string
 	for _, dnsdomain := range dnsDomains {
 		userDefined := "No"
 		if dnsdomain.UserDefined() {
 			userDefined = "Yes"
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
+		row := []string{
 			dnsdomain.ID(),
 			dnsdomain.Cluster().ID(),
 			dnsdomain.ReservedAtTimestamp().Format(time.RFC3339),
 			userDefined,
-			dnsdomain.ClusterArch(),
-		)
+			string(dnsdomain.ClusterArch()),
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	output.BuildTable(writer, "\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		_ = r.Reporter.Errorf("Failed to flush output: %v", err)
+		os.Exit(1)
+	}
 }
 
 func filterByClusterArch(domains []*v1.DNSDomain, arch v1.ClusterArchitecture) []*v1.DNSDomain {

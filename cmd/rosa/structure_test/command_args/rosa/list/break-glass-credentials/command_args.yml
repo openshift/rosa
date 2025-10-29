@@ -1,4 +1,5 @@
 - name: cluster
+- name: hide-empty-columns
 - name: output
 - name: profile
 - name: region
