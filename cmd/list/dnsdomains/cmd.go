@@ -82,7 +82,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 	dnsDomains, err := r.OCMClient.ListDNSDomains(search)
 	if err != nil {
-		r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
+		_ = r.Reporter.Errorf("Failed to list DNS Domains: %v", err)
 		os.Exit(1)
 	}
 
@@ -93,7 +93,7 @@ func run(_ *cobra.Command, _ []string) {
 	if output.HasFlag() {
 		err = output.Print(dnsDomains)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
+			_ = r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
