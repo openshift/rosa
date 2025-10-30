@@ -1364,9 +1364,9 @@ var _ = Describe("Edit nodepool",
 					{
 						"max surge":       "0",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf("The value of only one attribute, " + //nolint
+						"errMsg": "The value of only one attribute, " +
 							eitherMsg +
-							zeroMsg),
+							zeroMsg,
 					},
 					{
 						"max surge":       "0%",
