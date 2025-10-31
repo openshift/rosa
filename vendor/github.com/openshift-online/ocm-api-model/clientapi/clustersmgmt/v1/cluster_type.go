@@ -679,6 +679,7 @@ func (o *Cluster) GetDeleteProtection() (value *DeleteProtection, ok bool) {
 //
 // Indicates whether the User workload monitoring is enabled or not
 // It is enabled by default
+// This field is deprecated for ROSA Hosted Control Plane clusters and will be removed
 func (o *Cluster) DisableUserWorkloadMonitoring() bool {
 	if o != nil && len(o.fieldSet_) > 23 && o.fieldSet_[23] {
 		return o.disableUserWorkloadMonitoring
@@ -691,6 +692,7 @@ func (o *Cluster) DisableUserWorkloadMonitoring() bool {
 //
 // Indicates whether the User workload monitoring is enabled or not
 // It is enabled by default
+// This field is deprecated for ROSA Hosted Control Plane clusters and will be removed
 func (o *Cluster) GetDisableUserWorkloadMonitoring() (value bool, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 23 && o.fieldSet_[23]
 	if ok {
