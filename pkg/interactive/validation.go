@@ -89,6 +89,9 @@ func IsURLHttps(val interface{}) error {
 	if err != nil {
 		return err
 	}
+	if parsedUri == nil {
+		return nil
+	}
 	if parsedUri.Scheme != helper.ProtocolHttps {
 		return fmt.Errorf("expect URL '%s' to use an 'https://' scheme", val.(string))
 	}
@@ -106,8 +109,20 @@ func _isUrl(val interface{}) (*url.URL, error) {
 	if s == "" {
 		return nil, nil
 	}
-	parsedUri, err := url.ParseRequestURI(fmt.Sprintf("%v", val))
-	return parsedUri, err
+
+	if credValidation := helper.ValidateURLCredentials(s); credValidation.HasInvalid {
+		return nil, fmt.Errorf("invalid URL: %s contains invalid character '%c'",
+			credValidation.Field, credValidation.InvalidChar)
+	}
+
+	parsedUri, err := url.Parse(fmt.Sprintf("%v", val))
+	if err != nil {
+		return nil, err
+	}
+	if parsedUri.Scheme == "" || parsedUri.Host == "" {
+		return nil, fmt.Errorf("url must have a scheme and host")
+	}
+	return parsedUri, nil
 }
 
 // IsCert validates whether the given filepath is a valid cert file
