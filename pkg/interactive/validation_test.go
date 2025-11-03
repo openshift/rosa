@@ -131,7 +131,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 			err := validator(answers)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("The number of subnets for a public hosted " +
+			Expect(err.Error()).To(ContainSubstring("the number of subnets for a public hosted " +
 				"cluster should be at least two"))
 		})
 
@@ -153,7 +153,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 			err := validator(answers)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Must have at least one public subnet when not using both " +
+			Expect(err.Error()).To(ContainSubstring("must have at least one public subnet when not using both " +
 				"'private API' and 'private ingress'"))
 		})
 
@@ -169,7 +169,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 			err := validator(answers)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("The number of subnets for a 'multi-AZ'"+
+			Expect(err.Error()).To(ContainSubstring("the number of subnets for a 'multi-AZ'"+
 				" 'private link cluster' should be '3', instead received: '%d'", len(answers)))
 		})
 

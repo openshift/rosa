@@ -395,7 +395,7 @@ var _ = Describe("ValidateSubnetsCount", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(
 					err.Error(),
-				).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'private link cluster' should be"+
+				).To(Equal(fmt.Sprintf("the number of subnets for a 'multi-AZ' 'private link cluster' should be"+
 					" '%d', instead received: '%d'", privateLinkMultiAZSubnetsCount, privateLinkMultiAZSubnetsCount+1)))
 			})
 
@@ -411,7 +411,7 @@ var _ = Describe("ValidateSubnetsCount", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(
 					err.Error(),
-				).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'private link cluster' should be"+
+				).To(Equal(fmt.Sprintf("the number of subnets for a 'single AZ' 'private link cluster' should be"+
 					" '%d', instead received: '%d'", privateLinkSingleAZSubnetsCount, privateLinkSingleAZSubnetsCount+1)))
 			})
 
@@ -427,7 +427,7 @@ var _ = Describe("ValidateSubnetsCount", func() {
 			It("should return an error if subnetsInputCount is not equal to BYOVPCMultiAZSubnetsCount", func() {
 				err := ValidateSubnetsCount(true, false, BYOVPCMultiAZSubnetsCount+1)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'multi-AZ' 'cluster' should be"+
+				Expect(err.Error()).To(Equal(fmt.Sprintf("the number of subnets for a 'multi-AZ' 'cluster' should be"+
 					" '%d', instead received: '%d'", BYOVPCMultiAZSubnetsCount, BYOVPCMultiAZSubnetsCount+1)))
 			})
 
@@ -441,7 +441,7 @@ var _ = Describe("ValidateSubnetsCount", func() {
 			It("should return an error if subnetsInputCount is not equal to BYOVPCSingleAZSubnetsCount", func() {
 				err := ValidateSubnetsCount(false, false, BYOVPCSingleAZSubnetsCount+1)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("The number of subnets for a 'single AZ' 'cluster' should"+
+				Expect(err.Error()).To(Equal(fmt.Sprintf("the number of subnets for a 'single AZ' 'cluster' should"+
 					" be '%d', instead received: '%d'", BYOVPCSingleAZSubnetsCount, BYOVPCSingleAZSubnetsCount+1)))
 			})
 
@@ -476,7 +476,7 @@ var _ = Describe("ValidateHostedClusterSubnets for Private Cluster", func() {
 		mockClient.EXPECT().FilterVPCsPrivateSubnets(gomock.Any()).Return([]ec2types.Subnet{}, nil)
 		_, err := ValidateHostedClusterSubnets(mockClient, true, ids, true)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("The number of public subnets for a private hosted cluster should be zero"))
+		Expect(err.Error()).To(Equal("the number of public subnets for a private hosted cluster should be zero"))
 	})
 })
 
@@ -587,7 +587,7 @@ var _ = Describe("ValidateClaimValidationRules()", func() {
 		Entry("should error when a non string arg is given", 5, true, "can only validate string types, got int"),
 		Entry("should not error when an empty claim validation rule is given", "", false, ""),
 		Entry("shoud error when claim validation rule is not a valid value", "9hjh9", true,
-			"invalid identifier '9hjh9' for 'claim validation rule. 'Should be in a <claim>:<required_value> format."),
+			"invalid identifier '9hjh9' for 'claim validation rule'. Should be in a <claim>:<required_value> format"),
 		Entry("should not error when claim validation rule with single pair is valid", "abc:efg", false, ""),
 		Entry("should not error when claim validation rule with multiple pairs is valid", "abc:efg,lala:wuwu", false, ""))
 })
@@ -732,5 +732,177 @@ var _ = Describe("GetWinLi", func() {
 		Expect(lowercaseWinLiList.Items).To(HaveLen(1))
 		Expect(lowercaseWinLiList.Items[0].MachineType).ToNot(BeNil())
 		Expect(lowercaseWinLiList.Items[0].MachineType).To(Equal(winLiMachineType))
+	})
+})
+
+var _ = Describe("ValidateHTTPProxy", func() {
+	It("accepts empty string", func() {
+		err := ValidateHTTPProxy("")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("accepts valid http proxy without authentication", func() {
+		err := ValidateHTTPProxy("http://proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("accepts valid http proxy with basic authentication", func() {
+		err := ValidateHTTPProxy("http://user:password@proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects http proxy with unencoded forward slash in password and provides helpful error", func() {
+		err := ValidateHTTPProxy("http://proxyuser:QvoZjyy/trkCiY5@10.0.0.161:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: password contains invalid character '/'"))
+	})
+
+	It("accepts http proxy with percent-encoded forward slash in password", func() {
+		err := ValidateHTTPProxy("http://proxyuser:QvoZjyy%2FtrkCiY5@10.0.0.161:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects http proxy with unencoded @ in password and provides helpful error", func() {
+		err := ValidateHTTPProxy("http://user:pass@word@proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: password contains invalid character '@'"))
+	})
+
+	It("accepts http proxy with percent-encoded @ in password", func() {
+		err := ValidateHTTPProxy("http://user:pass%40word@proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects http proxy with unencoded special characters in password", func() {
+		err := ValidateHTTPProxy("http://user:pass#word@proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: password contains invalid character '#'"))
+	})
+
+	It("accepts http proxy with percent-encoded colon in password", func() {
+		err := ValidateHTTPProxy("http://user:pass%3Aword@proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects proxy with https scheme", func() {
+		err := ValidateHTTPProxy("https://proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("expected 'http-proxy' to have an 'http://' scheme"))
+	})
+
+	It("rejects proxy without scheme", func() {
+		err := ValidateHTTPProxy("proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("URL is missing scheme"))
+	})
+
+	It("rejects proxy without host", func() {
+		err := ValidateHTTPProxy("http://")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: host is missing"))
+	})
+
+	It("rejects proxy URL with spaces", func() {
+		err := ValidateHTTPProxy("http://proxy.example.com :8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: URL cannot contain spaces"))
+	})
+
+	It("rejects proxy with invalid IP and port", func() {
+		err := ValidateHTTPProxy("http://10/.0.0.161:9999999")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: proxy URL should not contain a path '/.0.0.161:9999999'"))
+	})
+
+	It("rejects proxy URL with path", func() {
+		err := ValidateHTTPProxy("http://proxy.example.com:8080/path")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: proxy URL should not contain a path '/path'"))
+	})
+})
+
+var _ = Describe("ValidateHTTPSProxy", func() {
+	It("accepts valid https proxy without authentication", func() {
+		err := ValidateHTTPSProxy("https://proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("accepts empty proxy", func() {
+		err := ValidateHTTPSProxy("")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("accepts valid https proxy with basic authentication", func() {
+		err := ValidateHTTPSProxy("https://user:password@proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects https proxy with unencoded forward slash in password and provides helpful error", func() {
+		err := ValidateHTTPSProxy("https://proxyuser:QvoZjyy/trkCiY5@10.0.0.161:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid https-proxy value: password contains invalid character '/'"))
+	})
+
+	It("accepts https proxy with percent-encoded forward slash in password", func() {
+		err := ValidateHTTPSProxy("https://proxyuser:QvoZjyy%2FtrkCiY5@10.0.0.161:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects https proxy with unencoded @ in password and provides helpful error", func() {
+		err := ValidateHTTPSProxy("https://user:pass@word@proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid https-proxy value: password contains invalid character '@'"))
+	})
+
+	It("accepts https proxy with percent-encoded @ in password", func() {
+		err := ValidateHTTPSProxy("https://user:pass%40word@proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects https proxy with unencoded special characters in password", func() {
+		err := ValidateHTTPSProxy("https://user:pass#word@proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid https-proxy value: password contains invalid character '#'"))
+	})
+
+	It("accepts https proxy with percent-encoded colon in password", func() {
+		err := ValidateHTTPSProxy("https://user:pass%3Aword@proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects proxy with http scheme", func() {
+		err := ValidateHTTPSProxy("http://proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("expected 'https-proxy' to have an 'https://' scheme"))
+	})
+
+	It("rejects proxy without scheme", func() {
+		err := ValidateHTTPSProxy("proxy.example.com:8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("URL is missing scheme"))
+	})
+
+	It("rejects proxy without host", func() {
+		err := ValidateHTTPSProxy("https://")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid https-proxy value: host is missing"))
+	})
+
+	It("rejects proxy URL with spaces", func() {
+		err := ValidateHTTPSProxy("https://proxy.example.com :8080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid https-proxy value: URL cannot contain spaces"))
+	})
+
+	It("rejects proxy with invalid IP and port", func() {
+		err := ValidateHTTPSProxy("https://10/.0.0.161:9999999")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid https-proxy value: proxy URL should not contain a path '/.0.0.161:9999999'"))
+	})
+
+	It("rejects proxy URL with path", func() {
+		err := ValidateHTTPSProxy("https://proxy.example.com:8080/path")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid https-proxy value: proxy URL should not contain a path '/path'"))
 	})
 })
