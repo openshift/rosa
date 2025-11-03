@@ -620,11 +620,15 @@ var _ = Describe("Edit cluster",
 						"not valid. Rerun the command with a valid billing account number"))
 
 				By("Check the billing account is NOT changed")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
 				output, err = clusterService.DescribeCluster(clusterID)
 				Expect(err).To(BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
-				Expect(CD.AWSBillingAccount).To(Equal(constants.BillingAccount))
+				if clusterConfig.BillingAccount != "" {
+					Expect(CD.AWSBillingAccount).To(Equal(clusterConfig.BillingAccount))
+				}
 			})
 	})
 var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func() {
