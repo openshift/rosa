@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/cmd/mcp"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/color"
 	"github.com/openshift/rosa/pkg/commands"
@@ -49,6 +50,9 @@ func init() {
 
 	// Register the subcommands:
 	commands.RegisterCommands(root)
+	// Register mcp command separately to avoid circular dependency
+	// (mcp serve needs to import commands, but commands imports mcp)
+	root.AddCommand(mcp.Cmd)
 }
 
 func main() {
