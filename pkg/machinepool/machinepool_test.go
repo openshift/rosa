@@ -108,9 +108,13 @@ var _ = Describe("Machinepool and nodepool", func() {
 			asBuilder := cmv1.NewNodePoolAutoscaling().MaxReplica(4).MinReplica(2)
 			Expect(builder).To(Equal(asBuilder))
 		})
-		It("Test edit nodepool min-replicas < 1 when autoscaling is set", func() {
+		It("Test edit nodepool min-replicas = 0 when autoscaling is set - should succeed", func() {
 			err := validateNodePoolEdit(testCommand, true, 0, 0, 1)
-			Expect(err.Error()).To(Equal("min-replicas must be greater than zero"))
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("Test edit nodepool min-replicas < 0 when autoscaling is set - should fail", func() {
+			err := validateNodePoolEdit(testCommand, true, 0, -1, 1)
+			Expect(err.Error()).To(Equal("min-replicas must be a non-negative number when autoscaling is set"))
 		})
 		It("Test edit nodepool !autoscaling and replicas < 0 for nodepools", func() {
 			err := validateNodePoolEdit(testCommand, false, -1, 0, 0)

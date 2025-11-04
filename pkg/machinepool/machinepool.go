@@ -2109,8 +2109,8 @@ func validateNodePoolEdit(cmd *cobra.Command, autoscaling bool, replicas int, mi
 		return fmt.Errorf("the number of machine pool replicas needs to be a non-negative integer")
 	}
 
-	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1 {
-		return fmt.Errorf("min-replicas must be greater than zero")
+	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 0 {
+		return fmt.Errorf("min-replicas must be a non-negative number when autoscaling is set")
 	}
 
 	if autoscaling && cmd.Flags().Changed("max-replicas") && maxReplicas < 1 {
