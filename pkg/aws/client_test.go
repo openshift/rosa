@@ -522,7 +522,7 @@ var _ = Describe("Client", func() {
 		It("Does not wrap other errors and returns false", func() {
 			fakeError := "Fake AWS creds failure"
 
-			err := fmt.Errorf(fakeError)
+			err := fmt.Errorf("%s", fakeError)
 			mockSTSApi.EXPECT().GetCallerIdentity(gomock.Any(), &sts.GetCallerIdentityInput{}).Return(nil, err)
 
 			valid, err := client.ValidateCredentials()

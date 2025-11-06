@@ -66,7 +66,7 @@ var Cmd = &cobra.Command{
 		}
 
 		if len(cmd.Flags().Args()) != 1 {
-			return fmt.Errorf("Expected exactly one command line parameter containing the id of the add-on")
+			return fmt.Errorf("expected exactly one command line parameter containing the id of the add-on")
 		}
 		return nil
 	},

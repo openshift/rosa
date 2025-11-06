@@ -573,7 +573,7 @@ func upgradeAccountRolePoliciesFromCluster(
 		if isVersionChosen {
 			promptString = fmt.Sprintf("Upgrade the '%s' role policy to version '%s' ?", roleName, policyVersion)
 		}
-		if !confirm.Prompt(true, promptString) {
+		if !confirm.Prompt(true, "%s", promptString) {
 			if args.isInvokedFromClusterUpgrade {
 				return reporter.Errorf("Account roles need to be upgraded to proceed")
 			}

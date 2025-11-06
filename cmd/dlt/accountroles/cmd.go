@@ -235,7 +235,7 @@ func deleteAccountRoles(r *rosa.Runtime, cmd *cobra.Command, env string, prefix 
 		r.OCMClient.LogEvent("ROSADeleteAccountRoleModeManual", nil)
 		policyMap, arbitraryPolicyMap, err := r.AWSClient.GetAccountRolePolicies(finalRoleList, prefix)
 		if err != nil {
-			return fmt.Errorf("There was an error getting the policy: %v", err)
+			return fmt.Errorf("there was an error getting the policy: %v", err)
 		}
 
 		// Get HCP shared vpc policy details if the user is deleting roles related to HCP shared vpc
@@ -269,7 +269,7 @@ func getRoleListForDeletion(r *rosa.Runtime, env string, prefix string, clusters
 	finalRoleList := []string{}
 	roles, err := r.AWSClient.GetAccountRoleForCurrentEnvWithPrefix(env, prefix, accountRolesMap)
 	if err != nil {
-		return finalRoleList, false, fmt.Errorf("Error getting role: %s", err)
+		return finalRoleList, false, fmt.Errorf("error getting role: %s", err)
 	}
 	if len(roles) == 0 {
 		return finalRoleList, false, nil
@@ -281,7 +281,7 @@ func getRoleListForDeletion(r *rosa.Runtime, env string, prefix string, clusters
 		}
 		clusterID := checkIfRoleAssociated(clusters, role)
 		if clusterID != "" {
-			return finalRoleList, false, fmt.Errorf("Role %s is associated with the cluster %s", role.RoleName, clusterID)
+			return finalRoleList, false, fmt.Errorf("role %s is associated with the cluster %s", role.RoleName, clusterID)
 		}
 		finalRoleList = append(finalRoleList, role.RoleName)
 	}
@@ -292,18 +292,18 @@ func getRoleListForDeletion(r *rosa.Runtime, env string, prefix string, clusters
 	for _, role := range finalRoleList {
 		instanceProfiles, err := r.AWSClient.GetInstanceProfilesForRole(role)
 		if err != nil {
-			return finalRoleList, false, fmt.Errorf("Error checking for instance roles: %s", err)
+			return finalRoleList, false, fmt.Errorf("error checking for instance roles: %s", err)
 		}
 		if len(instanceProfiles) > 0 {
 			return finalRoleList, false, fmt.Errorf(
-				"Instance Profiles are attached to the role. Please make sure it is deleted: %s",
+				"instance Profiles are attached to the role. Please make sure it is deleted: %s",
 				strings.Join(instanceProfiles, ","))
 		}
 	}
 
 	managedPolicies, err := r.AWSClient.HasManagedPolicies(roles[0].RoleARN)
 	if err != nil {
-		return finalRoleList, false, fmt.Errorf("Failed to determine if cluster has managed policies: %v", err)
+		return finalRoleList, false, fmt.Errorf("failed to determine if cluster has managed policies: %v", err)
 	}
 
 	return finalRoleList, managedPolicies, nil
@@ -377,9 +377,10 @@ func buildCommand(roleNames []string, policyMap map[string][]aws.PolicyDetail,
 			hasRhManagedTag := false
 			hasHcpSharedVpcTag := false
 			for _, tag := range hcpSharedVpcPolicy.Policy.Tags {
-				if *tag.Key == tags.RedHatManaged {
+				switch *tag.Key {
+				case tags.RedHatManaged:
 					hasRhManagedTag = true
-				} else if *tag.Key == tags.HcpSharedVpc {
+				case tags.HcpSharedVpc:
 					hasHcpSharedVpcTag = true
 				}
 			}

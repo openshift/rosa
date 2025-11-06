@@ -22,7 +22,6 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/features"
-	"github.com/openshift/rosa/pkg/helper/machinepools"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -90,29 +89,29 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
-		return fmt.Errorf("Setting the `multi-availability-zone` flag is only allowed for multi-AZ clusters")
+		return fmt.Errorf("setting the `multi-availability-zone` flag is only allowed for multi-AZ clusters")
 	}
 	isAvailabilityZoneSet := cmd.Flags().Changed("availability-zone")
 	if isAvailabilityZoneSet && !cluster.MultiAZ() {
-		return fmt.Errorf("Setting the `availability-zone` flag is only allowed for multi-AZ clusters")
+		return fmt.Errorf("setting the `availability-zone` flag is only allowed for multi-AZ clusters")
 	}
 
 	// Validate flags that are only allowed for BYOVPC cluster
 	isSubnetSet := cmd.Flags().Changed("subnet")
 	isByoVpc := helper.IsBYOVPC(cluster)
 	if !isByoVpc && isSubnetSet {
-		return fmt.Errorf("Setting the `subnet` flag is only allowed for BYO VPC clusters")
+		return fmt.Errorf("setting the `subnet` flag is only allowed for BYO VPC clusters")
 	}
 
 	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
 	isVersionCompatibleComputeSgIds, err := versions.IsGreaterThanOrEqual(
 		cluster.Version().RawID(), ocm.MinVersionForAdditionalComputeSecurityGroupIdsDay2)
 	if err != nil {
-		return fmt.Errorf("There was a problem checking version compatibility: %v", err)
+		return fmt.Errorf("there was a problem checking version compatibility: %v", err)
 	}
 	if isSecurityGroupIdsSet {
 		if !isByoVpc {
-			return fmt.Errorf("Setting the `%s` flag is only allowed for BYOVPC clusters",
+			return fmt.Errorf("setting the `%s` flag is only allowed for BYOVPC clusters",
 				securitygroups.MachinePoolSecurityGroupFlag)
 		}
 		if !isVersionCompatibleComputeSgIds {
@@ -122,23 +121,23 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 			if err != nil {
 				return fmt.Errorf(versions.MajorMinorPatchFormattedErrorOutput, err)
 			}
-			return fmt.Errorf("Parameter '%s' is not supported prior to version '%s'",
+			return fmt.Errorf("parameter '%s' is not supported prior to version '%s'",
 				securitygroups.MachinePoolSecurityGroupFlag, formattedVersion)
 		}
 	}
 
 	if isSubnetSet && isAvailabilityZoneSet {
-		return fmt.Errorf("Setting both `subnet` and `availability-zone` flag is not supported." +
+		return fmt.Errorf("setting both `subnet` and `availability-zone` flag is not supported." +
 			" Please select `subnet` or `availability-zone` to create a single availability zone machine pool")
 	}
 
 	// Validate `subnet` or `availability-zone` flags are set for a single AZ machine pool
 	if isAvailabilityZoneSet && isMultiAvailabilityZoneSet && args.MultiAvailabilityZone {
-		return fmt.Errorf("Setting the `availability-zone` flag is only supported for creating a single AZ " +
+		return fmt.Errorf("setting the `availability-zone` flag is only supported for creating a single AZ " +
 			"machine pool in a multi-AZ cluster")
 	}
 	if isSubnetSet && isMultiAvailabilityZoneSet && args.MultiAvailabilityZone {
-		return fmt.Errorf("Setting the `subnet` flag is only supported for creating a single AZ machine pool")
+		return fmt.Errorf("setting the `subnet` flag is only supported for creating a single AZ machine pool")
 	}
 
 	rosa.HostedClusterOnlyFlag(r, cmd, "version")
@@ -163,12 +162,12 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid name for the machine pool: %s", err)
+			return fmt.Errorf("expected a valid name for the machine pool: %s", err)
 		}
 	}
 	name = strings.Trim(name, " \t")
 	if !machinePoolKeyRE.MatchString(name) {
-		return fmt.Errorf("Expected a valid name for the machine pool")
+		return fmt.Errorf("expected a valid name for the machine pool")
 	}
 
 	// Allow the user to select subnet for a single AZ BYOVPC cluster
@@ -198,7 +197,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 				Required: false,
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid value for create multi-AZ machine pool")
+				return fmt.Errorf("expected a valid value for create multi-AZ machine pool")
 			}
 		} else {
 			multiAZMachinePool = args.MultiAvailabilityZone
@@ -225,14 +224,14 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 						Required: true,
 					})
 					if err != nil {
-						return fmt.Errorf("Expected a valid AWS availability zone: %s", err)
+						return fmt.Errorf("expected a valid AWS availability zone: %s", err)
 					}
 				} else if isAvailabilityZoneSet {
 					availabilityZone = args.AvailabilityZone
 				}
 
 				if !helper.Contains(cluster.Nodes().AvailabilityZones(), availabilityZone) {
-					return fmt.Errorf("Availability zone '%s' doesn't belong to the cluster's availability zones",
+					return fmt.Errorf("availability zone '%s' doesn't belong to the cluster's availability zones",
 						availabilityZone)
 				}
 			}
@@ -264,7 +263,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 	// Machine pool instance type:
 	instanceType := args.InstanceType
 	if instanceType == "" && !interactive.Enabled() {
-		return fmt.Errorf("You must supply a valid instance type")
+		return fmt.Errorf("you must supply a valid instance type")
 	}
 
 	var spin *spinner.Spinner
@@ -291,7 +290,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		cluster.AWS().STS().ExternalID(),
 	)
 	if err != nil {
-		return fmt.Errorf(fmt.Sprintf("%s", err))
+		return fmt.Errorf("%s", err.Error())
 	}
 
 	if spin != nil {
@@ -310,13 +309,13 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 			Required: true,
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid instance type: %s", err)
+			return fmt.Errorf("expected a valid instance type: %s", err)
 		}
 	}
 
 	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
 	if err != nil {
-		return fmt.Errorf("Expected a valid instance type: %s", err)
+		return fmt.Errorf("expected a valid instance type: %s", err)
 	}
 
 	existingLabels := make(map[string]string, 0)
@@ -332,7 +331,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 	useSpotInstances := args.UseSpotInstances
 	spotMaxPrice := args.SpotMaxPrice
 	if isSpotMaxPriceSet && isSpotSet && !useSpotInstances {
-		return fmt.Errorf("Can't set max price when not using spot instances")
+		return fmt.Errorf("can't set max price when not using spot instances")
 	}
 
 	// Validate spot instance are supported
@@ -344,7 +343,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		}
 	}
 	if isLocalZone && useSpotInstances {
-		return fmt.Errorf("Spot instances are not supported for local zones")
+		return fmt.Errorf("spot instances are not supported for local zones")
 	}
 
 	if !isSpotSet && !isSpotMaxPriceSet && !isLocalZone && interactive.Enabled() {
@@ -355,7 +354,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 			Required: false,
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid value for use spot instances: %s", err)
+			return fmt.Errorf("expected a valid value for use spot instances: %s", err)
 		}
 	}
 
@@ -370,7 +369,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid value for spot max price: %s", err)
+			return fmt.Errorf("expected a valid value for spot max price: %s", err)
 		}
 	}
 
@@ -385,7 +384,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		maxPrice = &price
 	}
 
-	awsTags := machinepools.GetAwsTags(cmd, r, args.Tags)
+	awsTags := mpHelpers.GetAwsTags(cmd, r, args.Tags)
 
 	mpBuilder := cmv1.NewMachinePool().
 		ID(name).
@@ -455,14 +454,14 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid machine pool root disk size value: %v", err)
+				return fmt.Errorf("expected a valid machine pool root disk size value: %v", err)
 			}
 		}
 
 		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
 		rootDiskSize, err := ocm.ParseDiskSizeToGigibyte(rootDiskSizeStr)
 		if err != nil {
-			return fmt.Errorf("Expected a valid machine pool root disk size value '%s': %v", rootDiskSizeStr, err)
+			return fmt.Errorf("expected a valid machine pool root disk size value '%s': %v", rootDiskSizeStr, err)
 		}
 
 		err = diskValidator.ValidateMachinePoolRootDiskSize(cluster.Version().RawID(), rootDiskSize)
@@ -479,17 +478,17 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 
 	machinePool, err := mpBuilder.Build()
 	if err != nil {
-		return fmt.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to create machine pool for cluster '%s': %v", clusterKey, err)
 	}
 
 	createdMachinePool, err := r.OCMClient.CreateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
-		return fmt.Errorf("Failed to add machine pool to cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to add machine pool to cluster '%s': %v", clusterKey, err)
 	}
 
 	if output.HasFlag() {
 		if err = output.Print(createdMachinePool); err != nil {
-			return fmt.Errorf("Unable to print machine pool: %v", err)
+			return fmt.Errorf("unable to print machine pool: %v", err)
 		}
 	} else {
 		r.Reporter.Infof("Machine pool '%s' created successfully on cluster '%s'", name, clusterKey)
@@ -507,13 +506,13 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	var err error
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet {
-		return fmt.Errorf("Setting `multi-availability-zone` flag is not supported for HCP clusters.")
+		return fmt.Errorf("setting `multi-availability-zone` flag is not supported for HCP clusters")
 	}
 
 	isAvailabilityZoneSet := cmd.Flags().Changed("availability-zone")
 	isSubnetSet := cmd.Flags().Changed("subnet")
 	if isSubnetSet && isAvailabilityZoneSet {
-		return fmt.Errorf("Setting both `subnet` and `availability-zone` flag is not supported." +
+		return fmt.Errorf("setting both `subnet` and `availability-zone` flag is not supported." +
 			" Please select `subnet` or `availability-zone` to create a single availability zone machine pool")
 	}
 
@@ -533,12 +532,12 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid name for the machine pool: %s", err)
+			return fmt.Errorf("expected a valid name for the machine pool: %s", err)
 		}
 	}
 	name = strings.Trim(name, " \t")
 	if !machinePoolKeyRE.MatchString(name) {
-		return fmt.Errorf("Expected a valid name for the machine pool")
+		return fmt.Errorf("expected a valid name for the machine pool")
 	}
 
 	// OpenShift version:
@@ -576,14 +575,14 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 				Required: true,
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid OpenShift version: %s", err)
+				return fmt.Errorf("expected a valid OpenShift version: %s", err)
 			}
 		}
 		// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
 		// so we pass the relative parameter as false
 		version, err = r.OCMClient.ValidateVersion(version, filteredVersionList, channelGroup, true, false)
 		if err != nil {
-			return fmt.Errorf("Expected a valid OpenShift version: %s", err)
+			return fmt.Errorf("expected a valid OpenShift version: %s", err)
 		}
 	}
 
@@ -613,10 +612,10 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	}
 
 	existingLabels := make(map[string]string, 0)
-	labelMap := machinepools.GetLabelMap(cmd, r, existingLabels, args.Labels)
+	labelMap := mpHelpers.GetLabelMap(cmd, r, existingLabels, args.Labels)
 
 	existingTaints := make([]*cmv1.Taint, 0)
-	taintBuilders := machinepools.GetTaints(cmd, r, existingTaints, args.Taints)
+	taintBuilders := mpHelpers.GetTaints(cmd, r, existingTaints, args.Taints)
 
 	isSecurityGroupIdsSet := cmd.Flags().Changed(securitygroups.MachinePoolSecurityGroupFlag)
 	securityGroupIds := args.SecurityGroupIds
@@ -635,7 +634,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		securityGroupIds[i] = strings.TrimSpace(sg)
 	}
 
-	awsTags := machinepools.GetAwsTags(cmd, r, args.Tags)
+	awsTags := mpHelpers.GetAwsTags(cmd, r, args.Tags)
 
 	npBuilder := cmv1.NewNodePool()
 	npBuilder.ID(name).Labels(labelMap).
@@ -658,7 +657,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	// NodePools don't support MultiAZ yet, so the availabilityZonesFilters is calculated from the cluster
 	instanceType := args.InstanceType
 	if instanceType == "" && !interactive.Enabled() {
-		return fmt.Errorf("You must supply a valid instance type")
+		return fmt.Errorf("you must supply a valid instance type")
 	}
 
 	var spin *spinner.Spinner
@@ -677,7 +676,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	if subnet != "" {
 		availabilityZone, err := r.AWSClient.GetSubnetAvailabilityZone(subnet)
 		if err != nil {
-			return fmt.Errorf(fmt.Sprintf("%s", err))
+			return fmt.Errorf("%s", err)
 		}
 		availabilityZonesFilter = []string{availabilityZone}
 	}
@@ -685,7 +684,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
 		availabilityZonesFilter, cluster.AWS().STS().RoleARN(), r.AWSClient, cluster.AWS().STS().ExternalID())
 	if err != nil {
-		return fmt.Errorf(fmt.Sprintf("%s", err))
+		return fmt.Errorf("%s", err)
 	}
 
 	if spin != nil {
@@ -704,13 +703,13 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			Required: true,
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid instance type: %s", err)
+			return fmt.Errorf("expected a valid instance type: %s", err)
 		}
 	}
 
 	err = instanceTypeList.ValidateMachineType(instanceType, cluster.MultiAZ())
 	if err != nil {
-		return fmt.Errorf("Expected a valid instance type: %s", err)
+		return fmt.Errorf("expected a valid instance type: %s", err)
 	}
 
 	autorepair := args.Autorepair
@@ -722,7 +721,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			Required: false,
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid value for autorepair: %s", err)
+			return fmt.Errorf("expected a valid value for autorepair: %s", err)
 		}
 	}
 
@@ -755,7 +754,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 				Required: false,
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid value for tuning configs: %s", err)
+				return fmt.Errorf("expected a valid value for tuning configs: %s", err)
 			}
 		}
 	}
@@ -775,7 +774,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			Required: false,
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid value for Capacity Reservation ID: %s", err)
+			return fmt.Errorf("expected a valid value for Capacity Reservation ID: %s", err)
 		}
 	}
 
@@ -813,14 +812,14 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 					},
 				})
 				if err != nil {
-					return fmt.Errorf("Expected a valid value for kubelet config: %s", err)
+					return fmt.Errorf("expected a valid value for kubelet config: %s", err)
 				}
 			}
 		}
 
 		err = ValidateKubeletConfig(inputKubeletConfigs)
 		if err != nil {
-			return fmt.Errorf(err.Error())
+			return fmt.Errorf("%s", err.Error())
 		}
 
 		if len(inputKubeletConfigs) != 0 {
@@ -841,12 +840,12 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			Default:  httpTokens,
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid http tokens value : %v", err)
+			return fmt.Errorf("expected a valid http tokens value : %v", err)
 		}
 	}
 
 	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
-		return fmt.Errorf("Expected a valid http tokens value : %v", err)
+		return fmt.Errorf("expected a valid http tokens value : %v", err)
 	}
 
 	var rootDiskSize *int
@@ -877,14 +876,14 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid node pool root disk size value: %v", err)
+				return fmt.Errorf("expected a valid node pool root disk size value: %v", err)
 			}
 		}
 
 		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
 		parsedRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(rootDiskSizeStr)
 		if err != nil {
-			return fmt.Errorf("Expected a valid node pool root disk size value '%s': %v", rootDiskSizeStr, err)
+			return fmt.Errorf("expected a valid node pool root disk size value '%s': %v", rootDiskSizeStr, err)
 		}
 
 		err = diskValidator.ValidateNodePoolRootDiskSize(parsedRootDiskSize)
@@ -919,17 +918,17 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			Default:  nodeDrainGracePeriod,
 			Required: false,
 			Validators: []interactive.Validator{
-				machinepools.ValidateNodeDrainGracePeriod,
+				mpHelpers.ValidateNodeDrainGracePeriod,
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("Expected a valid value for Node drain grace period: %s", err)
+			return fmt.Errorf("expected a valid value for Node drain grace period: %s", err)
 		}
 	}
 	if nodeDrainGracePeriod != "" {
-		nodeDrainBuilder, err := machinepools.CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod)
+		nodeDrainBuilder, err := mpHelpers.CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod)
 		if err != nil {
-			return fmt.Errorf(err.Error())
+			return fmt.Errorf("%s", err.Error())
 		}
 		npBuilder.NodeDrainGracePeriod(nodeDrainBuilder)
 	}
@@ -945,11 +944,11 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 				Default:  maxSurge,
 				Required: false,
 				Validators: []interactive.Validator{
-					machinepools.ValidateUpgradeMaxSurgeUnavailable,
+					mpHelpers.ValidateUpgradeMaxSurgeUnavailable,
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid value for max surge: %s", err)
+				return fmt.Errorf("expected a valid value for max surge: %s", err)
 			}
 		}
 
@@ -961,11 +960,11 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 				Default:  maxUnavailable,
 				Required: false,
 				Validators: []interactive.Validator{
-					machinepools.ValidateUpgradeMaxSurgeUnavailable,
+					mpHelpers.ValidateUpgradeMaxSurgeUnavailable,
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid value for max unavailable: %s", err)
+				return fmt.Errorf("expected a valid value for max unavailable: %s", err)
 			}
 		}
 		if maxSurge != "" || maxUnavailable != "" {
@@ -1032,17 +1031,17 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 
 	nodePool, err := npBuilder.Build()
 	if err != nil {
-		return fmt.Errorf("Failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
 	createdNodePool, err := r.OCMClient.CreateNodePool(cluster.ID(), nodePool)
 	if err != nil {
-		return fmt.Errorf("Failed to add machine pool to hosted cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to add machine pool to hosted cluster '%s': %v", clusterKey, err)
 	}
 
 	if output.HasFlag() {
 		if err = output.Print(createdNodePool); err != nil {
-			return fmt.Errorf("Unable to print machine pool: %v", err)
+			return fmt.Errorf("unable to print machine pool: %v", err)
 		}
 	} else {
 		r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'", createdNodePool.ID(), clusterKey)
@@ -1055,7 +1054,8 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 }
 
 // ListMachinePools lists all machinepools (or, nodepools if hypershift) in a cluster
-func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster, args ListMachinePoolArgs) error {
+func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, cluster *cmv1.Cluster,
+	args ListMachinePoolArgs) error {
 	// Load any existing machine pools for this cluster
 	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
 	isHypershift := cluster.Hypershift().Enabled()
@@ -1165,7 +1165,7 @@ func (m *machinePool) DeleteMachinePool(r *rosa.Runtime, machinePoolId string, c
 	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
 	machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
 	if err != nil {
-		return fmt.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to get machine pools for cluster '%s': %v", clusterKey, err)
 	}
 
 	var machinePool *cmv1.MachinePool
@@ -1175,14 +1175,14 @@ func (m *machinePool) DeleteMachinePool(r *rosa.Runtime, machinePoolId string, c
 		}
 	}
 	if machinePool == nil {
-		return fmt.Errorf("Failed to get machine pool '%s' for cluster '%s'", machinePoolId, clusterKey)
+		return fmt.Errorf("failed to get machine pool '%s' for cluster '%s'", machinePoolId, clusterKey)
 	}
 
 	if confirm.Confirm("delete machine pool '%s' on cluster '%s'", machinePoolId, clusterKey) {
 		r.Reporter.Debugf("Deleting machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
 		err = r.OCMClient.DeleteMachinePool(cluster.ID(), machinePool.ID())
 		if err != nil {
-			return fmt.Errorf("Failed to delete machine pool '%s' on cluster '%s': %s",
+			return fmt.Errorf("failed to delete machine pool '%s' on cluster '%s': %s",
 				machinePool.ID(), clusterKey, err)
 		}
 		r.Reporter.Infof("Successfully deleted machine pool '%s' from cluster '%s'", machinePoolId, clusterKey)
@@ -1197,11 +1197,11 @@ func deleteNodePool(r *rosa.Runtime, nodePoolID string, clusterKey string, clust
 	r.Reporter.Debugf("Loading machine pools for hosted cluster '%s'", clusterKey)
 	nodePool, exists, err := r.OCMClient.GetNodePool(cluster.ID(), nodePoolID)
 	if err != nil {
-		return fmt.Errorf("Failed to get machine pools for hosted cluster '%s': %v", clusterKey,
+		return fmt.Errorf("failed to get machine pools for hosted cluster '%s': %v", clusterKey,
 			err)
 	}
 	if !exists {
-		return fmt.Errorf("Machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID,
+		return fmt.Errorf("machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID,
 			clusterKey)
 	}
 
@@ -1209,7 +1209,7 @@ func deleteNodePool(r *rosa.Runtime, nodePoolID string, clusterKey string, clust
 		r.Reporter.Debugf("Deleting machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
 		err = r.OCMClient.DeleteNodePool(cluster.ID(), nodePool.ID())
 		if err != nil {
-			return fmt.Errorf("Failed to delete machine pool '%s' on hosted cluster '%s': %s",
+			return fmt.Errorf("failed to delete machine pool '%s' on hosted cluster '%s': %s",
 				nodePool.ID(), clusterKey, err)
 		}
 		r.Reporter.Infof("Successfully deleted machine pool '%s' from hosted cluster '%s'", nodePoolID,
@@ -1271,23 +1271,43 @@ func getMachinePoolsString(
 
 	allColumnDefinitions := []columnDefinition{
 		{"ID", true, func(mp *cmv1.MachinePool) string { return mp.ID() }},
-		{"AUTOSCALING", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolAutoscaling(mp.Autoscaling()) }},
+		{"AUTOSCALING", true, func(mp *cmv1.MachinePool) string {
+			return ocmOutput.PrintMachinePoolAutoscaling(mp.Autoscaling())
+		}},
 		{"REPLICAS", true, func(mp *cmv1.MachinePool) string {
 			return ocmOutput.PrintMachinePoolReplicas(mp.Autoscaling(), mp.Replicas())
 		}},
-		{"INSTANCE TYPE", true, func(mp *cmv1.MachinePool) string { return mp.InstanceType() }},
-		{"LABELS", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintLabels(mp.Labels()) }},
-		{"TAINTS", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintTaints(mp.Taints()) }},
-		{"AVAILABILITY ZONES", true, func(mp *cmv1.MachinePool) string { return output.PrintStringSlice(mp.AvailabilityZones()) }},
-		{"SUBNETS", true, func(mp *cmv1.MachinePool) string { return output.PrintStringSlice(mp.Subnets()) }},
-		{"SPOT INSTANCES", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolSpot(mp) }},
-		{"DISK SIZE", true, func(mp *cmv1.MachinePool) string { return ocmOutput.PrintMachinePoolDiskSize(mp) }},
+		{"INSTANCE TYPE", true, func(mp *cmv1.MachinePool) string {
+			return mp.InstanceType()
+		}},
+		{"LABELS", true, func(mp *cmv1.MachinePool) string {
+			return ocmOutput.PrintLabels(mp.Labels())
+		}},
+		{"TAINTS", true, func(mp *cmv1.MachinePool) string {
+			return ocmOutput.PrintTaints(mp.Taints())
+		}},
+		{"AVAILABILITY ZONES", true, func(mp *cmv1.MachinePool) string {
+			return output.PrintStringSlice(mp.AvailabilityZones())
+		}},
+		{"SUBNETS", true, func(mp *cmv1.MachinePool) string {
+			return output.PrintStringSlice(mp.Subnets())
+		}},
+		{"SPOT INSTANCES", true, func(mp *cmv1.MachinePool) string {
+			return ocmOutput.PrintMachinePoolSpot(mp)
+		}},
+		{"DISK SIZE", true, func(mp *cmv1.MachinePool) string {
+			return ocmOutput.PrintMachinePoolDiskSize(mp)
+		}},
 		{"SG IDS", true, func(mp *cmv1.MachinePool) string {
 			return output.PrintStringSlice(mp.AWS().AdditionalSecurityGroupIds())
 		}},
-		{"AZ TYPE", args.ShowAZType || args.ShowAll, func(mp *cmv1.MachinePool) string { return getZoneType(mp) }},
-		{"WIN-LI ENABLED", args.ShowWindowsLI || args.ShowAll, func(mp *cmv1.MachinePool) string { return isWinLIEnabled(mp.Labels()) }},
-		{"DEDICATED HOST", args.ShowDedicated || args.ShowAll, func(mp *cmv1.MachinePool) string { return isDedicatedHost(mp, runtime) }},
+		{"AZ TYPE", args.ShowAZType || args.ShowAll, func(mp *cmv1.MachinePool) string {
+			return getZoneType(mp)
+		}},
+		{"WIN-LI ENABLED", args.ShowWindowsLI || args.ShowAll,
+			func(mp *cmv1.MachinePool) string { return isWinLIEnabled(mp.Labels()) }},
+		{"DEDICATED HOST", args.ShowDedicated || args.ShowAll,
+			func(mp *cmv1.MachinePool) string { return isDedicatedHost(mp, runtime) }},
 	}
 
 	var visibleColumnHeaders []string
@@ -1369,16 +1389,16 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, clusterKey string,
 	cluster *cmv1.Cluster, r *rosa.Runtime) error {
 	if cluster.State() != cmv1.ClusterStateReady {
-		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 	}
 
 	if !MachinePoolKeyRE.MatchString(machinePoolId) {
-		return fmt.Errorf("Expected a valid identifier for the machine pool")
+		return fmt.Errorf("expected a valid identifier for the machine pool")
 	}
 	if cluster.Hypershift().Enabled() {
 		clusterAutoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
 		if err != nil {
-			return errors.UserErrorf("Failed to fetch cluster autoscaler for cluster '%s'", cluster.ID())
+			return errors.UserErrorf("failed to fetch cluster autoscaler for cluster '%s'", cluster.ID())
 		}
 		return editNodePool(cmd, machinePoolId, clusterKey, cluster, clusterAutoscaler, r)
 	}
@@ -1411,36 +1431,36 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 
 	replicas, err = cmd.Flags().GetInt("replicas")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted replicas: %s", err)
+		err = fmt.Errorf("failed to get inputted replicas: %s", err)
 		return
 	}
 	minReplicas, err = cmd.Flags().GetInt("min-replicas")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted min replicas: %s", err)
+		err = fmt.Errorf("failed to get inputted min replicas: %s", err)
 		return
 	}
 	maxReplicas, err = cmd.Flags().GetInt("max-replicas")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted max replicas: %s", err)
+		err = fmt.Errorf("failed to get inputted max replicas: %s", err)
 		return
 	}
 	autoscaling, err = cmd.Flags().GetBool("enable-autoscaling")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted autoscaling: %s", err)
+		err = fmt.Errorf("failed to get inputted autoscaling: %s", err)
 		return
 	}
 	replicasRequired := existingAutoscaling == nil
 
 	// if the user set min/max replicas and hasn't enabled autoscaling, or existing is disabled
 	if (isMinReplicasSet || isMaxReplicasSet) && !autoscaling && existingAutoscaling == nil {
-		err = fmt.Errorf("Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
+		err = fmt.Errorf("autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
 			machinePoolID)
 		return
 	}
 
 	// if the user set replicas but enabled autoscaling or hasn't disabled existing autoscaling
 	if isReplicasSet && existingAutoscaling != nil && (!isAutoscalingSet || autoscaling) {
-		err = fmt.Errorf("Autoscaling enabled on machine pool '%s'. can't set replicas",
+		err = fmt.Errorf("autoscaling enabled on machine pool '%s'. can't set replicas",
 			machinePoolID)
 		return
 	}
@@ -1455,7 +1475,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				Required: false,
 			})
 			if err != nil {
-				err = fmt.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+				err = fmt.Errorf("expected a valid value for enable-autoscaling: %s", err)
 				return
 			}
 		}
@@ -1491,7 +1511,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				},
 			})
 			if err != nil {
-				err = fmt.Errorf("Expected a valid number of min replicas: %s", err)
+				err = fmt.Errorf("expected a valid number of min replicas: %s", err)
 				return
 			}
 			replicaSizeValidation.MinReplicas = minReplicas
@@ -1510,7 +1530,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				},
 			})
 			if err != nil {
-				err = fmt.Errorf("Expected a valid number of max replicas: %s", err)
+				err = fmt.Errorf("expected a valid number of max replicas: %s", err)
 				return
 			}
 		}
@@ -1529,7 +1549,7 @@ func getMachinePoolReplicas(cmd *cobra.Command,
 				},
 			})
 			if err != nil {
-				err = fmt.Errorf("Expected a valid number of replicas: %s", err)
+				err = fmt.Errorf("expected a valid number of replicas: %s", err)
 				return
 			}
 		}
@@ -1551,11 +1571,10 @@ func editMachinePoolAutoscaling(machinePool *cmv1.MachinePool,
 	asBuilder := cmv1.NewMachinePoolAutoscaling()
 	changed := false
 
-	if machinePool.Autoscaling().MinReplicas() != minReplicas && minReplicas >= 0 {
-		changed = true
-	}
-	if machinePool.Autoscaling().MaxReplicas() != maxReplicas && maxReplicas >= 0 {
-		changed = true
+	changed = machinePool.Autoscaling().MinReplicas() != minReplicas && minReplicas >= 0
+
+	if !changed {
+		changed = machinePool.Autoscaling().MaxReplicas() != maxReplicas && maxReplicas >= 0
 	}
 
 	if changed {
@@ -1579,6 +1598,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 	isTaintsSet := cmd.Flags().Changed("taints")
 
 	// if no value set enter interactive mode
+	//nolint:staticcheck
 	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet) {
 		interactive.Enable()
 	}
@@ -1587,7 +1607,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 	r.Reporter.Debugf("Loading machine pools for cluster '%s'", clusterKey)
 	machinePools, err := r.OCMClient.GetMachinePools(cluster.ID())
 	if err != nil {
-		return fmt.Errorf("Failed to get machine pools for cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to get machine pools for cluster '%s': %v", clusterKey, err)
 	}
 
 	var machinePool *cmv1.MachinePool
@@ -1597,7 +1617,7 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 		}
 	}
 	if machinePool == nil {
-		return fmt.Errorf("Failed to get machine pool '%s' for cluster '%s'", machinePoolId, clusterKey)
+		return fmt.Errorf("failed to get machine pool '%s' for cluster '%s'", machinePoolId, clusterKey)
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas, err :=
@@ -1605,13 +1625,13 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 			!isLabelsSet && !isTaintsSet, isMultiAZMachinePool(machinePool), cluster.OpenshiftVersion())
 
 	if err != nil {
-		return fmt.Errorf("Failed to get autoscaling or replicas: '%s'", err)
+		return fmt.Errorf("failed to get autoscaling or replicas: '%s'", err)
 	}
 
 	if cluster.MultiAZ() && isMultiAZMachinePool(machinePool) &&
 		(!autoscaling && replicas%3 != 0 ||
 			(autoscaling && (minReplicas%3 != 0 || maxReplicas%3 != 0))) {
-		return fmt.Errorf("Multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
+		return fmt.Errorf("multi AZ clusters require that the number of MachinePool replicas be a multiple of 3")
 	}
 
 	labels := cmd.Flags().Lookup("labels").Value.String()
@@ -1643,13 +1663,13 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 
 	machinePool, err = mpBuilder.Build()
 	if err != nil {
-		return fmt.Errorf("Failed to create machine pool for cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to create machine pool for cluster '%s': %v", clusterKey, err)
 	}
 
 	r.Reporter.Debugf("Updating machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
 	_, err = r.OCMClient.UpdateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
-		return fmt.Errorf("Failed to update machine pool '%s' on cluster '%s': %s",
+		return fmt.Errorf("failed to update machine pool '%s' on cluster '%s': %s",
 			machinePool.ID(), clusterKey, err)
 	}
 	r.Reporter.Infof("Updated machine pool '%s' on cluster '%s'", machinePool.ID(), clusterKey)
@@ -1688,16 +1708,16 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	r.Reporter.Debugf("Loading machine pool for hosted cluster '%s'", clusterKey)
 	nodePool, exists, err := r.OCMClient.GetNodePool(cluster.ID(), nodePoolID)
 	if err != nil {
-		return fmt.Errorf("Failed to get machine pools for hosted cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to get machine pools for hosted cluster '%s': %v", clusterKey, err)
 	}
 	if !exists {
-		return fmt.Errorf("Machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID, clusterKey)
+		return fmt.Errorf("machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID, clusterKey)
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas, err := getNodePoolReplicas(cmd, nodePoolID,
 		nodePool.Replicas(), nodePool.Autoscaling(), isAnyAdditionalParameterSet, cluster.OpenshiftVersion())
 	if err != nil {
-		return fmt.Errorf("Failed to get autoscaling or replicas: '%s'", err)
+		return fmt.Errorf("failed to get autoscaling or replicas: '%s'", err)
 	}
 
 	err = validateNodePoolEdit(cmd, autoscaling, replicas, minReplicas, maxReplicas)
@@ -1729,7 +1749,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	if isAutorepairSet || interactive.Enabled() {
 		autorepair, err := strconv.ParseBool(cmd.Flags().Lookup("autorepair").Value.String())
 		if err != nil {
-			return fmt.Errorf("Failed to parse autorepair flag: %s", err)
+			return fmt.Errorf("failed to parse autorepair flag: %s", err)
 		}
 		if interactive.Enabled() {
 			autorepair, err = interactive.GetBool(interactive.Input{
@@ -1739,7 +1759,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 				Required: false,
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid value for autorepair: %s", err)
+				return fmt.Errorf("expected a valid value for autorepair: %s", err)
 			}
 		}
 
@@ -1780,7 +1800,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 					Required: false,
 				})
 				if err != nil {
-					return fmt.Errorf("Expected a valid value for tuning configs: %s", err)
+					return fmt.Errorf("expected a valid value for tuning configs: %s", err)
 				}
 			}
 		}
@@ -1825,13 +1845,13 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 					},
 				})
 				if err != nil {
-					return fmt.Errorf("Expected a valid value for kubelet config: %s", err)
+					return fmt.Errorf("expected a valid value for kubelet config: %s", err)
 				}
 			}
 		}
 		err = ValidateKubeletConfig(inputKubeletConfig)
 		if err != nil {
-			r.Reporter.Errorf(err.Error())
+			r.Reporter.Errorf("%s", err.Error())
 			os.Exit(1)
 		}
 		npBuilder.KubeletConfigs(inputKubeletConfig...)
@@ -1856,14 +1876,14 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("Expected a valid value for Node drain grace period: %s", err)
+				return fmt.Errorf("expected a valid value for Node drain grace period: %s", err)
 			}
 		}
 
 		if nodeDrainGracePeriod != "" {
 			nodeDrainBuilder, err := mpHelpers.CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod)
 			if err != nil {
-				return fmt.Errorf(err.Error())
+				return fmt.Errorf("%s", err.Error())
 			}
 			npBuilder.NodeDrainGracePeriod(nodeDrainBuilder)
 		}
@@ -1969,7 +1989,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 
 	update, err := npBuilder.Build()
 	if err != nil {
-		return fmt.Errorf("Failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
 	if isKubeletConfigSet && !promptForNodePoolNodeRecreate(
@@ -1980,7 +2000,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	r.Reporter.Debugf("Updating machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
 	_, err = r.OCMClient.UpdateNodePool(cluster.ID(), update)
 	if err != nil {
-		return fmt.Errorf("Failed to update machine pool '%s' on hosted cluster '%s': %s",
+		return fmt.Errorf("failed to update machine pool '%s' on hosted cluster '%s': %s",
 			nodePool.ID(), clusterKey, err)
 	}
 	r.Reporter.Infof("Updated machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
@@ -1989,20 +2009,20 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 
 func validateNodePoolEdit(cmd *cobra.Command, autoscaling bool, replicas int, minReplicas int, maxReplicas int) error {
 	if !autoscaling && replicas < 0 {
-		return fmt.Errorf("The number of machine pool replicas needs to be a non-negative integer")
+		return fmt.Errorf("the number of machine pool replicas needs to be a non-negative integer")
 	}
 
 	if autoscaling && cmd.Flags().Changed("min-replicas") && minReplicas < 1 {
-		return fmt.Errorf("min-replicas must be greater than zero.")
+		return fmt.Errorf("min-replicas must be greater than zero")
 	}
 
 	if autoscaling && cmd.Flags().Changed("max-replicas") && maxReplicas < 1 {
-		return fmt.Errorf("max-replicas must be greater than zero.")
+		return fmt.Errorf("max-replicas must be greater than zero")
 	}
 
 	if autoscaling && cmd.Flags().Changed("max-replicas") && cmd.Flags().Changed(
 		"min-replicas") && minReplicas > maxReplicas {
-		return fmt.Errorf("The number of machine pool min-replicas needs to be less than the number of " +
+		return fmt.Errorf("the number of machine pool min-replicas needs to be less than the number of " +
 			"machine pool max-replicas")
 	}
 	return nil
@@ -2042,36 +2062,36 @@ func getNodePoolReplicas(cmd *cobra.Command,
 
 	replicas, err = cmd.Flags().GetInt("replicas")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted replicas: %s", err)
+		err = fmt.Errorf("failed to get inputted replicas: %s", err)
 		return
 	}
 	minReplicas, err = cmd.Flags().GetInt("min-replicas")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted min replicas: %s", err)
+		err = fmt.Errorf("failed to get inputted min replicas: %s", err)
 		return
 	}
 	maxReplicas, err = cmd.Flags().GetInt("max-replicas")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted max replicas: %s", err)
+		err = fmt.Errorf("failed to get inputted max replicas: %s", err)
 		return
 	}
 	autoscaling, err = cmd.Flags().GetBool("enable-autoscaling")
 	if err != nil {
-		err = fmt.Errorf("Failed to get inputted autoscaling: %s", err)
+		err = fmt.Errorf("failed to get inputted autoscaling: %s", err)
 		return
 	}
 	replicasRequired := existingAutoscaling == nil
 
 	// if the user set min/max replicas and hasn't enabled autoscaling, or existing is disabled
 	if (isMinReplicasSet || isMaxReplicasSet) && !autoscaling && existingAutoscaling == nil {
-		err = fmt.Errorf("Autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
+		err = fmt.Errorf("autoscaling is not enabled on machine pool '%s'. can't set min or max replicas",
 			nodePoolID)
 		return
 	}
 
 	// if the user set replicas but enabled autoscaling or hasn't disabled existing autoscaling
 	if isReplicasSet && existingAutoscaling != nil && (!isAutoscalingSet || autoscaling) {
-		err = fmt.Errorf("Autoscaling enabled on machine pool '%s'. can't set replicas",
+		err = fmt.Errorf("autoscaling enabled on machine pool '%s'. can't set replicas",
 			nodePoolID)
 		return
 	}
@@ -2086,7 +2106,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 				Required: false,
 			})
 			if err != nil {
-				err = fmt.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+				err = fmt.Errorf("expected a valid value for enable-autoscaling: %s", err)
 				return
 			}
 		}
@@ -2113,7 +2133,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 				},
 			})
 			if err != nil {
-				err = fmt.Errorf("Expected a valid number of min replicas: %s", err)
+				err = fmt.Errorf("expected a valid number of min replicas: %s", err)
 				return
 			}
 			replicaSizeValidation.MinReplicas = minReplicas
@@ -2131,7 +2151,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 				},
 			})
 			if err != nil {
-				err = fmt.Errorf("Expected a valid number of max replicas: %s", err)
+				err = fmt.Errorf("expected a valid number of max replicas: %s", err)
 				return
 			}
 		}
@@ -2153,7 +2173,7 @@ func getNodePoolReplicas(cmd *cobra.Command,
 			},
 		})
 		if err != nil {
-			err = fmt.Errorf("Expected a valid number of replicas: %s", err)
+			err = fmt.Errorf("expected a valid number of replicas: %s", err)
 			return
 		}
 	}
@@ -2207,7 +2227,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 		})
 		if err != nil {
 			return minReplicas, maxReplicas, replicas, autoscaling,
-				fmt.Errorf("Expected a valid value for enable-autoscaling: %s", err)
+				fmt.Errorf("expected a valid value for enable-autoscaling: %s", err)
 		}
 	}
 
@@ -2215,7 +2235,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 		// if the user set replicas and enabled autoscaling
 		if isReplicasSet {
 			return minReplicas, maxReplicas, replicas, autoscaling,
-				fmt.Errorf("Replicas can't be set when autoscaling is enabled")
+				fmt.Errorf("replicas can't be set when autoscaling is enabled")
 		}
 
 		// Min replicas
@@ -2231,7 +2251,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 			})
 			if err != nil {
 				return minReplicas, maxReplicas, replicas, autoscaling,
-					fmt.Errorf("Expected a valid number of min replicas: %s", err)
+					fmt.Errorf("expected a valid number of min replicas: %s", err)
 			}
 		}
 		err = replicaSizeValidation.MinReplicaValidator()(minReplicas)
@@ -2253,7 +2273,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 			})
 			if err != nil {
 				return minReplicas, maxReplicas, replicas, autoscaling,
-					fmt.Errorf("Expected a valid number of max replicas: %s", err)
+					fmt.Errorf("expected a valid number of max replicas: %s", err)
 			}
 		}
 		err = replicaSizeValidation.MaxReplicaValidator()(maxReplicas)
@@ -2264,7 +2284,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 		// if the user set min/max replicas and hasn't enabled autoscaling
 		if isMinReplicasSet || isMaxReplicasSet {
 			return minReplicas, maxReplicas, replicas, autoscaling,
-				fmt.Errorf("Autoscaling must be enabled in order to set min and max replicas")
+				fmt.Errorf("autoscaling must be enabled in order to set min and max replicas")
 		}
 
 		// Replicas
@@ -2279,7 +2299,7 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 				},
 			})
 			if err != nil {
-				return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("Expected a valid number of replicas: %s", err)
+				return minReplicas, maxReplicas, replicas, autoscaling, fmt.Errorf("expected a valid number of replicas: %s", err)
 			}
 		}
 		err = replicaSizeValidation.MinReplicaValidator()(replicas)

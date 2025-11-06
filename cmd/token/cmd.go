@@ -100,12 +100,12 @@ func CreateToken(r *rosa.Runtime) error {
 	}
 
 	if count > 1 {
-		return fmt.Errorf("Options '--payload', '--header', '--signature', and '--generate' are mutually exclusive")
+		return fmt.Errorf("options '--payload', '--header', '--signature', and '--generate' are mutually exclusive")
 	}
 
 	accessToken, refreshToken, err = getAccessTokens(r, args.generate)
 	if err != nil {
-		return fmt.Errorf("Can't get token: %v", err)
+		return fmt.Errorf("can't get token: %v", err)
 	}
 
 	// Select the token according to the options:
@@ -118,20 +118,20 @@ func CreateToken(r *rosa.Runtime) error {
 	parser := new(jwt.Parser)
 	_, parts, err := parser.ParseUnverified(selectedToken, jwt.MapClaims{})
 	if err != nil {
-		return fmt.Errorf("Can't parse token: %v", err)
+		return fmt.Errorf("can't parse token: %v", err)
 	}
 	encoding := base64.RawURLEncoding
 	header, err := encoding.DecodeString(parts[0])
 	if err != nil {
-		return fmt.Errorf("Can't decode header: %v", err)
+		return fmt.Errorf("can't decode header: %v", err)
 	}
 	payload, err := encoding.DecodeString(parts[1])
 	if err != nil {
-		return fmt.Errorf("Can't decode payload: %v", err)
+		return fmt.Errorf("can't decode payload: %v", err)
 	}
 	signature, err := encoding.DecodeString(parts[2])
 	if err != nil {
-		return fmt.Errorf("Can't decode signature: %v", err)
+		return fmt.Errorf("can't decode signature: %v", err)
 	}
 
 	// Print the data:
@@ -148,14 +148,14 @@ func CreateToken(r *rosa.Runtime) error {
 	// Load the configuration file:
 	cfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("Can't load config file: %v", err)
+		return fmt.Errorf("can't load config file: %v", err)
 	}
 
 	// Save the configuration:
 	cfg.AccessToken = accessToken
 	cfg.RefreshToken = refreshToken
 	if err = config.Save(cfg); err != nil {
-		return fmt.Errorf("Can't save config file: %v", err)
+		return fmt.Errorf("can't save config file: %v", err)
 	}
 	return nil
 }
@@ -167,13 +167,13 @@ func getAccessTokens(r *rosa.Runtime, generate bool) (string, string, error) {
 		// Get new tokens:
 		accessToken, refreshToken, err = r.OCMClient.GetConnectionTokens(15 * time.Minute)
 		if err != nil {
-			return "", "", fmt.Errorf("Can't get new tokens: %v", err)
+			return "", "", fmt.Errorf("can't get new tokens: %v", err)
 		}
 	} else {
 		// Get the tokens:
 		accessToken, refreshToken, err = r.OCMClient.GetConnectionTokens()
 		if err != nil {
-			return "", "", fmt.Errorf("Can't get token: %v", err)
+			return "", "", fmt.Errorf("can't get token: %v", err)
 		}
 	}
 	return accessToken, refreshToken, nil

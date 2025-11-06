@@ -62,7 +62,7 @@ func ValidateLabels(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 // Validate the cluster's state is ready
 func ValidateClusterState(cluster *cmv1.Cluster, clusterKey string) error {
 	if cluster.State() != cmv1.ClusterStateReady {
-		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 	}
 	return nil
 }
@@ -89,7 +89,7 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 			Required: false,
 		})
 		if err != nil {
-			return "", fmt.Errorf(questionError)
+			return "", fmt.Errorf("%s", questionError)
 		}
 	} else {
 		subnet = args.Subnet
@@ -109,7 +109,7 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 			Required: true,
 		})
 		if err != nil {
-			return "", fmt.Errorf("Expected a valid AWS subnet: %s", err)
+			return "", fmt.Errorf("expected a valid AWS subnet: %s", err)
 		}
 		subnet = aws.ParseOption(subnetOption)
 	}
@@ -136,12 +136,12 @@ func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) 
 
 func getSecurityGroupsOption(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster) ([]string, error) {
 	if len(cluster.AWS().SubnetIDs()) == 0 {
-		return []string{}, fmt.Errorf("Expected cluster's subnets to contain subnets IDs, but got an empty list")
+		return []string{}, fmt.Errorf("expected cluster's subnets to contain subnets IDs, but got an empty list")
 	}
 
 	availableSubnets, err := r.AWSClient.GetVPCSubnets(cluster.AWS().SubnetIDs()[0])
 	if err != nil {
-		return []string{}, fmt.Errorf("Failed to retrieve available subnets: %v", err)
+		return []string{}, fmt.Errorf("failed to retrieve available subnets: %v", err)
 	}
 	firstSubnet := availableSubnets[0]
 	vpcId, err := getVpcIdFromSubnet(firstSubnet)
@@ -188,7 +188,7 @@ func createAwsNodePoolBuilder(
 func getVpcIdFromSubnet(subnet ec2types.Subnet) (string, error) {
 	vpcId := awssdk.ToString(subnet.VpcId)
 	if vpcId == "" {
-		return "", fmt.Errorf("Unexpected situation a VPC ID should have been selected based on chosen subnets")
+		return "", fmt.Errorf("unexpected situation a VPC ID should have been selected based on chosen subnets")
 	}
 
 	return vpcId, nil
@@ -230,7 +230,7 @@ func (r *ReplicaSizeValidation) MaxReplicaValidator() interactive.Validator {
 			return fmt.Errorf("max-replicas must be greater or equal to min-replicas")
 		}
 		if r.MultiAz && maxReplicas%3 != 0 {
-			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+			return fmt.Errorf("multi AZ clusters require that the replicas be a multiple of 3")
 		}
 		return validateClusterVersionWithMaxNodesLimit(
 			r.ClusterVersion, maxReplicas, r.IsHostedCp)
@@ -251,10 +251,10 @@ func (r *ReplicaSizeValidation) MinReplicaValidator() interactive.Validator {
 				" enabled")
 		}
 		if !r.Autoscaling && minReplicas < 0 {
-			return fmt.Errorf("Replicas must be a non-negative integer")
+			return fmt.Errorf("replicas must be a non-negative integer")
 		}
 		if r.MultiAz && minReplicas%3 != 0 {
-			return fmt.Errorf("Multi AZ clusters require that the replicas be a multiple of 3")
+			return fmt.Errorf("multi AZ clusters require that the replicas be a multiple of 3")
 		}
 		return validateClusterVersionWithMaxNodesLimit(
 			r.ClusterVersion, minReplicas, r.IsHostedCp)
@@ -268,11 +268,11 @@ func spotMaxPriceValidator(val interface{}) error {
 	}
 	price, err := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)
 	if err != nil {
-		return fmt.Errorf("Expected a numeric value for spot max price")
+		return fmt.Errorf("expected a numeric value for spot max price")
 	}
 
 	if price <= 0 {
-		return fmt.Errorf("Spot max price must be positive")
+		return fmt.Errorf("spot max price must be positive")
 	}
 	return nil
 }
@@ -311,7 +311,7 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 			Required: true,
 		})
 		if err != nil {
-			return "", fmt.Errorf("Expected a valid AWS availability zone: %s", err)
+			return "", fmt.Errorf("expected a valid AWS availability zone: %s", err)
 		}
 	} else if isAvailabilityZoneSet {
 		availabilityZone = args.AvailabilityZone
@@ -330,7 +330,7 @@ func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvaila
 		return subnet, nil
 	}
 
-	return "", fmt.Errorf("Failed to find a private subnet for '%s' availability zone", availabilityZone)
+	return "", fmt.Errorf("failed to find a private subnet for '%s' availability zone", availabilityZone)
 }
 
 // temporary fn until calculated default values can be retrieved from single source of truth

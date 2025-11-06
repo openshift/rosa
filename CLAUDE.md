@@ -114,7 +114,7 @@ Example: `OCM-6141 | feat: Allow longer cluster names up to 54 chars`
 5. Use similar architecture to the create machinepool command, with the user options files and separate logic in `pkg/`. Do not always make a new service, `machine pool service` is a special case
 
 ### Dependencies and Modules
-- Go 1.23.1 minimum version
+- Go 1.24.0 minimum version
 - Major dependencies: AWS SDK v2, Cobra, Ginkgo v2, OCM SDK
 - Use `go mod tidy` and `go mod vendor` as part of verification
 - Mock generation using `go.uber.org/mock/gomock`. 

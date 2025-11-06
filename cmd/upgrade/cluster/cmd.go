@@ -177,21 +177,21 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	isHypershift := cluster.Hypershift().Enabled()
 
 	if currentUpgradeScheduling.Schedule == "" && currentUpgradeScheduling.AllowMinorVersionUpdates {
-		return fmt.Errorf("The '--allow-minor-version-upgrades' option needs to be used with --schedule")
+		return fmt.Errorf("the '--allow-minor-version-upgrades' option needs to be used with --schedule")
 	}
 
 	if currentUpgradeScheduling.Schedule != "" && !isHypershift {
-		return fmt.Errorf("The '--schedule' option is only supported for Hosted Control Planes")
+		return fmt.Errorf("the '--schedule' option is only supported for Hosted Control Planes")
 	}
 
 	if (currentUpgradeScheduling.ScheduleDate != "" || currentUpgradeScheduling.ScheduleTime != "") &&
 		currentUpgradeScheduling.Schedule != "" {
-		return fmt.Errorf("The '--schedule-date' and '--schedule-time' options are mutually exclusive with" +
+		return fmt.Errorf("the '--schedule-date' and '--schedule-time' options are mutually exclusive with" +
 			" '--schedule'")
 	}
 
 	if currentUpgradeScheduling.Schedule != "" && args.version != "" {
-		return fmt.Errorf("The '--schedule' option is mutually exclusive with '--version'")
+		return fmt.Errorf("the '--schedule' option is mutually exclusive with '--version'")
 	}
 
 	if args.dryRun {
@@ -200,7 +200,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	// Check cluster preconditions
 	if cluster.State() != cmv1.ClusterStateReady {
-		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 	}
 	if isHypershift {
 		scheduledUpgrade, err := checkExistingScheduledUpgradeHypershift(r, cluster, clusterKey)
@@ -250,7 +250,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 	_, isSTS := cluster.AWS().STS().GetRoleARN()
 	if !isSTS && mode != "" {
-		return fmt.Errorf("The 'mode' option is only supported for STS clusters")
+		return fmt.Errorf("the 'mode' option is only supported for STS clusters")
 	}
 	if isSTS && mode == "" {
 		mode, err = interactive.GetOptionMode(cmd, mode, "IAM Roles/Policies upgrade mode")
@@ -275,7 +275,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 				Required: true,
 			})
 			if err != nil {
-				return fmt.Errorf("Expected an upgrade type: %s", err)
+				return fmt.Errorf("expected an upgrade type: %s", err)
 			}
 
 			if currentUpgradeScheduling.AutomaticUpgrades {
@@ -286,7 +286,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 					Required: false,
 				})
 				if err != nil {
-					return fmt.Errorf("Expected a choice on the versions to target: %s", err)
+					return fmt.Errorf("expected a choice on the versions to target: %s", err)
 				}
 			}
 		}
@@ -353,7 +353,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	if !currentUpgradeScheduling.AutomaticUpgrades {
 		version, err = ocm.CheckAndParseVersion(availableUpgrades, version, cluster)
 		if err != nil {
-			return fmt.Errorf("Error parsing version to upgrade to")
+			return fmt.Errorf("error parsing version to upgrade to")
 		}
 
 		if r.Reporter.IsTerminal() && !args.dryRun && !confirm.Confirm("upgrade cluster to version '%s'", version) {
@@ -374,7 +374,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			currentUpgradeScheduling.ScheduleTime)
 	}
 	if err != nil {
-		return fmt.Errorf("Failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to schedule upgrade for cluster '%s': %v", clusterKey, err)
 	}
 
 	if args.dryRun {
@@ -388,7 +388,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	// Update cluster with grace period configuration
 	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterSpec)
 	if err != nil {
-		return fmt.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to update cluster '%s': %v", clusterKey, err)
 	}
 
 	r.Reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
@@ -482,7 +482,7 @@ func buildVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster,
 			Required: true,
 		})
 		if err != nil {
-			return availableUpgrades, version, fmt.Errorf("Expected a valid version to upgrade to: %s", err)
+			return availableUpgrades, version, fmt.Errorf("expected a valid version to upgrade to: %s", err)
 		}
 	}
 	return availableUpgrades, version, nil
@@ -492,7 +492,7 @@ func checkExistingScheduledUpgrade(r *rosa.Runtime, cluster *cmv1.Cluster,
 	clusterKey string) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error) {
 	scheduledUpgrade, upgradeState, err := r.OCMClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
+		return nil, nil, fmt.Errorf("failed to get scheduled upgrades for cluster '%s': %v", clusterKey, err)
 	}
 
 	return scheduledUpgrade, upgradeState, nil
@@ -502,7 +502,7 @@ func checkExistingScheduledUpgradeHypershift(r *rosa.Runtime, cluster *cmv1.Clus
 	clusterKey string) (*cmv1.ControlPlaneUpgradePolicy, error) {
 	scheduledUpgrade, err := r.OCMClient.GetControlPlaneScheduledUpgrade(cluster.ID())
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get scheduled control plane upgrades for cluster '%s': %v", clusterKey, err)
+		return nil, fmt.Errorf("failed to get scheduled control plane upgrades for cluster '%s': %v", clusterKey, err)
 	}
 	return scheduledUpgrade, nil
 }
@@ -525,12 +525,12 @@ func checkRolesManagedPolicies(r *rosa.Runtime, cluster *cmv1.Cluster, mode stri
 
 	credRequests, err := ocmClient.GetCredRequests(cluster.Hypershift().Enabled())
 	if err != nil {
-		return fmt.Errorf("Error getting operator credential request from OCM %v", err)
+		return fmt.Errorf("error getting operator credential request from OCM %v", err)
 	}
 
 	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 	if err != nil {
-		return fmt.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
+		return fmt.Errorf("expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 	}
 
 	err = rolesHelper.ValidateAccountAndOperatorRolesManagedPolicies(r, cluster, credRequests, unifiedPath,

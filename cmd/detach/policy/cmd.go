@@ -104,13 +104,13 @@ func DetachPolicyRunner(userOptions *RosaDetachPolicyOptions) rosa.CommandRunner
 		if interactive.Enabled() {
 			mode, err = interactive.GetOptionMode(cmd, mode, "Detach policy mode")
 			if err != nil {
-				return fmt.Errorf("Expected a valid detach policy mode: %s", err)
+				return fmt.Errorf("expected a valid detach policy mode: %s", err)
 			}
 		}
 
 		orgID, _, err := r.OCMClient.GetCurrentOrganization()
 		if err != nil {
-			return fmt.Errorf("Failed to get current organization: %s", err)
+			return fmt.Errorf("failed to get current organization: %s", err)
 		}
 		switch mode {
 		case interactive.ModeAuto:
@@ -134,7 +134,7 @@ func DetachPolicyRunner(userOptions *RosaDetachPolicyOptions) rosa.CommandRunner
 				fmt.Print(output)
 			}
 		default:
-			return fmt.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
+			return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 		}
 		return nil
 	}
