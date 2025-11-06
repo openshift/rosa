@@ -13,34 +13,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 version: "2"
 run:
-  go: "1.23.1"
+  go: "1.24"
   issues-exit-code: 1
   modules-download-mode: readonly
-issues:
-  new: true
-  exclude-dirs:
-    - assets
-    - docs
-    - templates
-    - vendor
-  max-same-issues: 0
-formatters:
-  disable-all: true
+  allow-parallel-runners: true
+linters:
+  default: none
   enable:
-    - gas
     - goconst
-    - gofmt
     - govet
     - ineffassign
     - lll
-    - megacheck
     - misspell
     - staticcheck
     - unconvert
     - unused
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - '(.+)_test\.go'
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  whole-files: true
+  new: true
+formatters:
+  enable:
+    - gci
+    - gofmt
   settings:
     gci:
       sections:
@@ -52,8 +59,3 @@ formatters:
         - prefix(gitlab)
         - prefix(github.com/openshift/rosa)
       custom-order: true
-  exclusions:
-    - path: '(.+)_test\.go'
-      linters:
-        - funlen
-        - goconst
