@@ -38,7 +38,7 @@ test:
 
 .PHONY: coverage
 coverage:
-	go test -coverprofile=cover.out -covermode=atomic -p 4 $(shell go list ./... | grep -v /tests/)
+	go test -coverprofile=cover.out -covermode=atomic -p 2 $(shell go list ./... | grep -v /tests/)
 
 .PHONY: install
 install:
