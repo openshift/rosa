@@ -17,6 +17,7 @@
 .envrc
 .env
 cover.out
+coverage/
 /temp
 dist/
 # for VS Code debug sessions

@@ -38,7 +38,12 @@ test:
 
 .PHONY: coverage
 coverage:
-	go test -coverprofile=cover.out -covermode=atomic -p 2 $(shell go list ./... | grep -v /tests/)
+	@rm -rf coverage
+	@mkdir -p coverage
+	@go list ./... | grep -v /tests/ | xargs -P 4 -I {} sh -c 'PKG={}; go test -coverprofile=coverage/$$(echo $$PKG | tr / -).out -covermode=atomic $$PKG'
+	@echo "mode: atomic" > cover.out
+	@find coverage -name '*.out' -exec grep -h -v "^mode:" {} \; >> cover.out
+	@rm -rf coverage
 
 .PHONY: install
 install:
@@ -74,6 +79,7 @@ verify: fmt
 clean:
 	rm -rf \
 		./cover.out \
+		./coverage \
 		rosa \
 		rosa-darwin-amd64 \
 		rosa-darwin-arm64 \
