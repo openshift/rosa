@@ -5,7 +5,9 @@ import (
 	"strconv"
 	"strings"
 
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
@@ -402,7 +404,7 @@ var _ = Describe("Create machinepool",
 				Expect(err).ToNot(HaveOccurred(), out.String())
 
 				for _, tag := range tags {
-					Expect(description.Tags).Should(ContainSubstring(strings.Replace(tag, ":", "=", -1)))
+					Expect(description.Tags).Should(ContainSubstring(strings.ReplaceAll(tag, ":", "=")))
 				}
 
 				By("Create with invalid tags")
@@ -1111,8 +1113,9 @@ var _ = Describe("Edit machinepool",
 			clusterID          string
 			rosaClient         *rosacli.Client
 			machinePoolService rosacli.MachinePoolService
+			clusterConfig      *config.ClusterConfig
 
-			verifyClusterComputeNodesMatched func(clusterID string) = func(clusterID string) {
+			verifyClusterComputeNodesMatched = func(clusterID string) {
 				By("List the machinepools and calculate")
 				mpList, err := rosaClient.MachinePool.ListAndReflectMachinePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -1121,7 +1124,7 @@ var _ = Describe("Edit machinepool",
 				var minReplicas int
 				var maxReplicas int
 				for _, mp := range mpList.MachinePools {
-					if mp.AutoScaling == "true" {
+					if mp.AutoScaling == constants.TrueString {
 						autoscaling = true
 						min, max := strings.Split(mp.Replicas, "-")[0], strings.Split(mp.Replicas, "-")[1]
 						minNum, err := strconv.Atoi(min)
@@ -1174,6 +1177,10 @@ var _ = Describe("Edit machinepool",
 			if isHostedCP {
 				SkipNotClassic()
 			}
+
+			By("Parse the cluster config")
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
 
 		})
 
@@ -1423,7 +1430,8 @@ var _ = Describe("Edit machinepool",
 				Expect(mpDescription.Replicas).To(Equal("3-12"))
 			})
 
-		It("will validate labels and taints for default worker pool - [id:57105]", labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
+		It("will validate labels and taints for default worker pool - [id:57105]",
+			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
 			func() {
 				By("Record original labels and define the recovery steps")
 				mpDescription, err := machinePoolService.
@@ -1489,6 +1497,57 @@ var _ = Describe("Edit machinepool",
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring("At least one machine pool able to run OCP workload is required"))
+			})
+		It("will validate replicas on multi-az classic cluster - [id:44776]",
+			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
+			func() {
+				if !clusterConfig.MultiAZ {
+					Skip("It is only for multi-az clusters")
+				}
+
+				By("Create an additional machinepool for following testing")
+				mpName := "np-44776"
+				_, err := machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--replicas", "0",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+				By("Edit with negative replicas number")
+				_, err = machinePoolService.EditMachinePool(clusterID, mpName, "--replicas", "-9")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("Replicas must be a non-negative number"))
+
+				By("Edit with replicas and enable-autoscaling at the same time")
+				_, err = machinePoolService.EditMachinePool(
+					clusterID, mpName, "--replicas", "3",
+					"--enable-autoscaling")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("Autoscaling enabled on machine pool"))
+				Expect(err.Error()).Should(ContainSubstring("can't set replicas"))
+
+				By("Edit with min-replicas large than max-replicas")
+				_, err = machinePoolService.EditMachinePool(
+					clusterID, mpName, "--min-replicas", "9",
+					"--max-replicas", "3", "--enable-autoscaling",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("Min replicas must be less than max replicas"))
+
+				By("Edit with min-replicas not multiple 3 for multi-az")
+				_, err = machinePoolService.EditMachinePool(
+					clusterID, mpName, "--min-replicas", "4",
+					"--max-replicas", "9", "--enable-autoscaling",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("require that the number of MachinePool replicas be a multiple of 3"))
+
+				By("Edit with max-replicas not multiple 3 for multi-az")
+				_, err = machinePoolService.EditMachinePool(
+					clusterID, mpName, "--min-replicas", "3",
+					"--max-replicas", "7", "--enable-autoscaling")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("require that the number of MachinePool replicas be a multiple of 3"))
 			})
 	})
 
