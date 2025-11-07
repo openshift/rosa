@@ -275,7 +275,7 @@ github.com/gogo/protobuf/proto
 # github.com/golang-jwt/jwt/v4 v4.5.2
 ## explicit; go 1.16
 github.com/golang-jwt/jwt/v4
-# github.com/golang/glog v1.2.0 => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
+# github.com/golang/glog v1.2.5 => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
 ## explicit
 github.com/golang/glog
 # github.com/golang/protobuf v1.5.4
