@@ -94,8 +94,11 @@ func assertCommand(command *cobra.Command) {
 		BeNil(), "command.Args function is not set on command '%s'", command.CommandPath())
 
 	if len(command.Commands()) == 0 {
-		Expect(command.Run).NotTo(
-			BeNil(), "The run function is not defined on command '%s'", command.CommandPath())
+		// Commands should have either Run or RunE defined
+		hasRun := command.Run != nil
+		hasRunE := command.RunE != nil
+		Expect(hasRun || hasRunE).To(
+			BeTrue(), "Neither Run nor RunE function is defined on command '%s'", command.CommandPath())
 	} else {
 		for _, c := range command.Commands() {
 			assertCommand(c)

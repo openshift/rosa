@@ -69,6 +69,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(login.Cmd)
 	root.AddCommand(logout.Cmd)
 	root.AddCommand(logs.Cmd)
+	// Note: mcp command is registered separately in cmd/rosa/main.go to avoid circular dependency
 	root.AddCommand(register.Cmd)
 	root.AddCommand(revoke.Cmd)
 	root.AddCommand(uninstall.Cmd)

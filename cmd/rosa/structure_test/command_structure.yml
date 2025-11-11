@@ -177,3 +177,7 @@ children:
     - name: rosa-client
 - name: version
 - name: whoami
+- name: mcp
+  children:
+    - name: serve
+    - name: chat
