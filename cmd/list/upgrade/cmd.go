@@ -61,6 +61,7 @@ func init() {
 
 	confirm.AddFlag(flags)
 	output.AddFlag(Cmd)
+	output.AddHideEmptyColumnsFlag(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
@@ -148,9 +149,8 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 		}
 	}
 
-	// Create the writer that will be used to print the tabulated results:
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "VERSION\tNOTES\n")
+	headers := []string{"VERSION", "NOTES"}
+	var tableData [][]string
 	for i, availableUpgrade := range availableUpgrades {
 		notes := make([]string, 0)
 		if i == 0 || availableUpgrade == latestRev {
@@ -174,9 +174,26 @@ func runWithRuntime(r *rosa.Runtime, _ *cobra.Command) error {
 				}
 			}
 		}
-		fmt.Fprintf(writer, "%s\t%s\n", availableUpgrade, strings.Join(notes, " - "))
+
+		row := []string{
+			availableUpgrade,
+			strings.Join(notes, " - "),
+		}
+		tableData = append(tableData, row)
 	}
-	writer.Flush()
+
+	if output.ShouldHideEmptyColumns() {
+		tableData = output.RemoveEmptyColumns(headers, tableData)
+	} else {
+		tableData = append([][]string{headers}, tableData...)
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	output.BuildTable(writer, "\t", tableData)
+
+	if err := writer.Flush(); err != nil {
+		return err
+	}
 	return nil
 }
 

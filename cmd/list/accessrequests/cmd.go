@@ -2,7 +2,6 @@ package accessrequests
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -38,6 +37,7 @@ func NewListAccessRequestsCommand() *cobra.Command {
 	}
 
 	output.AddFlag(cmd)
+	output.AddHideEmptyColumnsFlag(cmd)
 	ocm.AddOptionalClusterFlag(cmd)
 	return cmd
 }
@@ -67,12 +67,34 @@ func ListAccessRequestsRunner() rosa.CommandRunner {
 				}
 				return nil
 			}
+
+			headers := []string{"STATE", "ID", "CLUSTER ID", "UPDATED AT"}
+
+			var tableData [][]string
+			for _, accessRequest := range accessRequests {
+				row := []string{
+					string(accessRequest.Status().State()),
+					accessRequest.ID(),
+					accessRequest.ClusterId(),
+					accessRequest.UpdatedAt().UTC().Format(time.UnixDate),
+				}
+				tableData = append(tableData, row)
+			}
+
+			if output.ShouldHideEmptyColumns() {
+				tableData = output.RemoveEmptyColumns(headers, tableData)
+			} else {
+				tableData = append([][]string{headers}, tableData...)
+			}
+
 			writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			output, hasPending, pendingId := getAccessRequestsOutput(clusterId, accessRequests)
-			fmt.Fprint(writer, output)
+			output.BuildTable(writer, "\t", tableData)
 			if err := writer.Flush(); err != nil {
 				return err
 			}
+
+			hasPending, pendingId := checkForPendingRequests(clusterId, accessRequests)
+
 			if hasPending {
 				r.Reporter.Infof("Run the following command to approve or deny the Access Request:\n\n"+
 					"   rosa create decision --access-request %s --decision Approved\n"+
@@ -84,23 +106,22 @@ func ListAccessRequestsRunner() rosa.CommandRunner {
 	}
 }
 
-func getAccessRequestsOutput(clusterId string, accessRequests []*v1.AccessRequest) (string, bool, string) {
-	output := "STATE\tID\tCLUSTER ID\tUPDATED AT\n"
+func checkForPendingRequests(clusterId string, accessRequests []*v1.AccessRequest) (bool, string) {
 	hasPending := false
 	id := "<ID>"
 	for _, accessRequest := range accessRequests {
-		if accessRequest.Status().State() == v1.AccessRequestStatePending {
+		if accessRequest.Status().State() == v1.AccessRequestStatePending ||
+			accessRequest.Status().State() == v1.AccessRequestStateApproved {
 			hasPending = true
 			if clusterId != "" {
 				id = accessRequest.ID()
 			}
+			// Once we find the first pending/approved request for the cluster, we can break
+			// since we only need one ID for the suggestion message
+			if clusterId != "" && hasPending {
+				break
+			}
 		}
-		output += fmt.Sprintf("%s\t%s\t%s\t%s\n",
-			accessRequest.Status().State(),
-			accessRequest.ID(),
-			accessRequest.ClusterId(),
-			accessRequest.UpdatedAt().Format(time.UnixDate))
 	}
-
-	return output, hasPending, id
+	return hasPending, id
 }
