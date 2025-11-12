@@ -188,7 +188,7 @@ var _ = Describe("GetVersionList", func() {
 		_, vs, err := GetVersionList(testRuntime.RosaRuntime, "stable",
 			true, true, true, false)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Could not find versions for the provided channel-group"))
+		Expect(err.Error()).To(ContainSubstring("could not find versions for the provided channel-group"))
 		Expect(len(vs)).To(Equal(0))
 	})
 

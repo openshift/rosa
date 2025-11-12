@@ -34,7 +34,7 @@ var _ = Describe("Machine pool helper", func() {
 			_, err := getSecurityGroupsOption(r, cmd, cluster)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected cluster's subnets to contain subnets IDs, but got an empty list"))
+				"expected cluster's subnets to contain subnets IDs, but got an empty list"))
 		})
 
 		It("Should return an error is subnet is missing the VPC ID", func() {
@@ -43,7 +43,7 @@ var _ = Describe("Machine pool helper", func() {
 			_, err := getVpcIdFromSubnet(subnet)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Unexpected situation a VPC ID should have been selected based on chosen subnets"))
+				"unexpected situation a VPC ID should have been selected based on chosen subnets"))
 		})
 
 		It("Should return VPC ID from the subnet object", func() {
@@ -393,7 +393,7 @@ var _ = Describe("getSecurityGroupsOption", func() {
 			})
 			_, err := getSecurityGroupsOption(runtime, cmd, clusterWithNoSubnets)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Expected cluster's subnets to contain subnets IDs, but got an empty list"))
+			Expect(err.Error()).To(Equal("expected cluster's subnets to contain subnets IDs, but got an empty list"))
 		})
 	})
 
@@ -402,7 +402,7 @@ var _ = Describe("getSecurityGroupsOption", func() {
 			mockAWS.EXPECT().GetVPCSubnets(gomock.Any()).Return(nil, fmt.Errorf("failed to retrieve subnets"))
 			_, err := getSecurityGroupsOption(runtime, cmd, cluster)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to retrieve available subnets: failed to retrieve subnets"))
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve available subnets: failed to retrieve subnets"))
 		})
 
 		It("should return an error VPC ID is empty", func() {
@@ -410,7 +410,7 @@ var _ = Describe("getSecurityGroupsOption", func() {
 				Subnet{{SubnetId: awssdk.String("subnet-123")}}, nil)
 			_, err := getSecurityGroupsOption(runtime, cmd, cluster)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError("Unexpected situation a VPC ID should have been selected based on chosen subnets"))
+			Expect(err).To(MatchError("unexpected situation a VPC ID should have been selected based on chosen subnets"))
 		})
 	})
 })
@@ -551,7 +551,7 @@ var _ = Describe("getVpcIdFromSubnet Function", func() {
 
 		_, err := getVpcIdFromSubnet(subnet)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Unexpected situation a VPC ID should have been selected based on chosen subnets"))
+		Expect(err.Error()).To(Equal("unexpected situation a VPC ID should have been selected based on chosen subnets"))
 	})
 })
 

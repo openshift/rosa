@@ -110,20 +110,20 @@ var _ = Describe("Machinepool and nodepool", func() {
 		})
 		It("Test edit nodepool min-replicas < 1 when autoscaling is set", func() {
 			err := validateNodePoolEdit(testCommand, true, 0, 0, 1)
-			Expect(err.Error()).To(Equal("min-replicas must be greater than zero."))
+			Expect(err.Error()).To(Equal("min-replicas must be greater than zero"))
 		})
 		It("Test edit nodepool !autoscaling and replicas < 0 for nodepools", func() {
 			err := validateNodePoolEdit(testCommand, false, -1, 0, 0)
-			Expect(err.Error()).To(Equal("The number of machine pool replicas needs to be a non-negative integer"))
+			Expect(err.Error()).To(Equal("the number of machine pool replicas needs to be a non-negative integer"))
 		})
 		It("Test edit nodepool autoscaling and minReplicas > maxReplicas", func() {
 			err := validateNodePoolEdit(testCommand, true, 0, 5, 1)
-			Expect(err.Error()).To(Equal("The number of machine pool min-replicas needs to be less " +
+			Expect(err.Error()).To(Equal("the number of machine pool min-replicas needs to be less " +
 				"than the number of machine pool max-replicas"))
 		})
 		It("Test edit nodepool autoscaling and maxReplicas < 1", func() {
 			err := validateNodePoolEdit(testCommand, true, 0, 1, 0)
-			Expect(err.Error()).To(Equal("max-replicas must be greater than zero."))
+			Expect(err.Error()).To(Equal("max-replicas must be greater than zero"))
 		})
 
 		Context("Prompt For NodePoolNodeRecreate", func() {
@@ -904,7 +904,7 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("multi-availability-zone", "true")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Setting the `multi-availability-zone` flag is only allowed for multi-AZ clusters"))
+			Expect(err.Error()).To(Equal("setting the `multi-availability-zone` flag is only allowed for multi-AZ clusters"))
 		})
 
 		It("should error when 'availability-zone' flag is set for non-multi-AZ clusters", func() {
@@ -913,7 +913,7 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("availability-zone", "az")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Setting the `availability-zone` flag is only allowed for multi-AZ clusters"))
+			Expect(err.Error()).To(Equal("setting the `availability-zone` flag is only allowed for multi-AZ clusters"))
 		})
 
 		It("should error when 'subnet' flag is set for non-BYOVPC clusters", func() {
@@ -922,7 +922,7 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("subnet", "test-subnet")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Setting the `subnet` flag is only allowed for BYO VPC clusters"))
+			Expect(err.Error()).To(Equal("setting the `subnet` flag is only allowed for BYO VPC clusters"))
 		})
 
 		It("should error when the security group IDs flag is set for non-BYOVPC clusters", func() {
@@ -940,7 +940,7 @@ var _ = Describe("MachinePools", func() {
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprintf(
-				"Setting the `%s` flag is only allowed for BYOVPC clusters",
+				"setting the `%s` flag is only allowed for BYOVPC clusters",
 				securitygroups.MachinePoolSecurityGroupFlag)))
 		})
 
@@ -957,7 +957,7 @@ var _ = Describe("MachinePools", func() {
 
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("There was a problem checking version compatibility:"))
+			Expect(err.Error()).To(ContainSubstring("there was a problem checking version compatibility:"))
 		})
 
 		It("should error when setting flag that is only allowed for BYOVPC clusters", func() {
@@ -977,7 +977,7 @@ var _ = Describe("MachinePools", func() {
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
-				"Setting the `%s` flag is only allowed for BYOVPC clusters",
+				"setting the `%s` flag is only allowed for BYOVPC clusters",
 				securitygroups.MachinePoolSecurityGroupFlag)))
 		})
 
@@ -1003,7 +1003,7 @@ var _ = Describe("MachinePools", func() {
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
-				"Parameter '%s' is not supported prior to version ", securitygroups.MachinePoolSecurityGroupFlag)))
+				"parameter '%s' is not supported prior to version ", securitygroups.MachinePoolSecurityGroupFlag)))
 		})
 
 		It("should error when both 'subnet' and 'availability-zone' flags are set", func() {
@@ -1019,7 +1019,7 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("availability-zone", "az")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Setting both `subnet` and `availability-zone`" +
+			Expect(err.Error()).To(Equal("setting both `subnet` and `availability-zone`" +
 				" flag is not supported. Please select `subnet` or `availability-zone` " +
 				"to create a single availability zone machine pool"))
 		})
@@ -1039,7 +1039,7 @@ var _ = Describe("MachinePools", func() {
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Setting the `availability-zone` flag is only supported for creating a" +
+				"setting the `availability-zone` flag is only supported for creating a" +
 					" single AZ machine pool in a multi-AZ cluster"))
 		})
 
@@ -1054,7 +1054,7 @@ var _ = Describe("MachinePools", func() {
 			cmd.Flags().Set("multi-availability-zone", "true")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Expected a valid name for the machine pool"))
+			Expect(err.Error()).To(Equal("expected a valid name for the machine pool"))
 		})
 
 		It("should error when autoscaling and replicas are enabled", func() {
@@ -1073,7 +1073,7 @@ var _ = Describe("MachinePools", func() {
 			args.Replicas = 3
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Replicas can't be set when autoscaling is enabled"))
+			Expect(err.Error()).To(Equal("replicas can't be set when autoscaling is enabled"))
 		})
 
 		It("should error when not supplying an instance type", func() {
@@ -1095,7 +1095,7 @@ var _ = Describe("MachinePools", func() {
 			args.MaxReplicas = 3
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("You must supply a valid instance type"))
+			Expect(err.Error()).To(Equal("you must supply a valid instance type"))
 		})
 
 		It("should error when not supplying min and max replicas but not autoscaling", func() {
@@ -1114,7 +1114,7 @@ var _ = Describe("MachinePools", func() {
 			args.MaxReplicas = 3
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Autoscaling must be enabled in order to set min and max replicas"))
+			Expect(err.Error()).To(Equal("autoscaling must be enabled in order to set min and max replicas"))
 		})
 
 		It("Should error when can't set max price when not using spot instances", func() {
@@ -1146,7 +1146,7 @@ var _ = Describe("MachinePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Can't set max price when not using spot instances"))
+			Expect(err.Error()).To(Equal("can't set max price when not using spot instances"))
 		})
 		It("Should error when instances are set for local zones", func() {
 			machinePool := &machinePool{}
@@ -1176,7 +1176,7 @@ var _ = Describe("MachinePools", func() {
 			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(true, nil)
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Spot instances are not supported for local zones"))
+			Expect(err.Error()).To(Equal("spot instances are not supported for local zones"))
 		})
 		It("should error when parsing invalid root disk size", func() {
 			machinePool := &machinePool{}
@@ -1208,7 +1208,7 @@ var _ = Describe("MachinePools", func() {
 			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid machine pool root disk size value"))
+			Expect(err.Error()).To(ContainSubstring("expected a valid machine pool root disk size value"))
 		})
 		It("should fail when there is an invalid root disk size set", func() {
 			machinePool := &machinePool{}
@@ -1240,6 +1240,7 @@ var _ = Describe("MachinePools", func() {
 			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
+			//nolint:staticcheck
 			Expect(err.Error()).To(ContainSubstring("Invalid root disk size"))
 		})
 		It("Fails to add a machine pool to cluster", func() {
@@ -1272,7 +1273,7 @@ var _ = Describe("MachinePools", func() {
 			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to add machine pool to cluster"))
+			Expect(err.Error()).To(ContainSubstring("failed to add machine pool to cluster"))
 		})
 		It("Successfully create a machine pool", func() {
 			machinePool := &machinePool{}
@@ -1357,7 +1358,7 @@ var _ = Describe("NodePools", func() {
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Setting both `subnet` and " +
+			Expect(err.Error()).To(Equal("setting both `subnet` and " +
 				"`availability-zone` flag is not supported. Please select `subnet` " +
 				"or `availability-zone` to create a single availability zone machine pool"))
 		})
@@ -1375,7 +1376,7 @@ var _ = Describe("NodePools", func() {
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 
-			Expect(err.Error()).To(Equal("Expected a valid name for the machine pool"))
+			Expect(err.Error()).To(Equal("expected a valid name for the machine pool"))
 		})
 		It("should fail version validation", func() {
 			machinePool := &machinePool{}
@@ -1398,7 +1399,7 @@ var _ = Describe("NodePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid OpenShift version"))
+			Expect(err.Error()).To(ContainSubstring("expected a valid OpenShift version"))
 		})
 		It("should fail when not providing a valid instance type", func() {
 			machinePool := &machinePool{}
@@ -1437,7 +1438,7 @@ var _ = Describe("NodePools", func() {
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("You must supply a valid instance type"))
+			Expect(err.Error()).To(Equal("you must supply a valid instance type"))
 		})
 		It("fails to add the node pool to the hosted cluster", func() {
 			machinePool := &machinePool{}
@@ -1507,7 +1508,7 @@ var _ = Describe("NodePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList([]*cmv1.KubeletConfig{})))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to add machine pool to hosted cluster"))
+			Expect(err.Error()).To(ContainSubstring("failed to add machine pool to hosted cluster"))
 		})
 		It("Successfully creates a node pool with capacity-reservation-id", func() {
 			machinePool := &machinePool{}
@@ -1734,7 +1735,7 @@ var _ = Describe("NodePools", func() {
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 
-			Expect(err.Error()).To(ContainSubstring("Expected a valid node pool root disk size value"))
+			Expect(err.Error()).To(ContainSubstring("expected a valid node pool root disk size value"))
 		})
 	})
 })
@@ -1761,7 +1762,7 @@ var _ = Describe("ManageReplicas", func() {
 			cmd.Flags().Set("replicas", "1")
 			_, _, _, autoscaling, err := manageReplicas(cmd, args, replicaSizeValidation)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
+			Expect(err.Error()).To(ContainSubstring("replicas can't be set when autoscaling is enabled"))
 			Expect(autoscaling).To(BeTrue())
 		})
 		It("should pass successfully", func() {
@@ -1788,7 +1789,7 @@ var _ = Describe("ManageReplicas", func() {
 			args.MaxReplicas = 3
 			_, _, _, autoscaling, err := manageReplicas(cmd, args, replicaSizeValidation)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
+			Expect(err.Error()).To(ContainSubstring("autoscaling must be enabled in order to set min and max replicas"))
 			Expect(autoscaling).To(BeFalse())
 		})
 		It("should pass successfully", func() {

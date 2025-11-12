@@ -363,7 +363,7 @@ var _ = Describe("getMachinePoolRootDisk()", func() {
 		machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd,
 			version, isHostedCP, defaultMachinePoolRootDiskSize)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Expected a valid machine pool root disk size value" +
+		Expect(err.Error()).To(Equal("expected a valid machine pool root disk size value" +
 			" '200000000000000000000TiB': invalid disk size: '200000000000000000000Ti'. " +
 			"maximum size exceeded"))
 		Expect(machinePoolRootDisk).To(BeNil())
@@ -375,7 +375,7 @@ var _ = Describe("getMachinePoolRootDisk()", func() {
 		machinePoolRootDisk, err := getMachinePoolRootDisk(r, cmd,
 			version, true, defaultMachinePoolRootDiskSize)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Expected a valid machine pool root disk size value" +
+		Expect(err.Error()).To(Equal("expected a valid machine pool root disk size value" +
 			" '200000000000000000000TiB': invalid disk size: '200000000000000000000Ti'. " +
 			"maximum size exceeded"))
 		Expect(machinePoolRootDisk).To(BeNil())
@@ -397,7 +397,7 @@ var _ = Describe("Validations", func() {
 		Entry("no network type passed", "", nil),
 		Entry("valid network type passed", "OpenShiftSDN", nil),
 		Entry("invalid network type passed", "wrong",
-			fmt.Errorf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes)),
+			fmt.Errorf("expected a valid network type. Valid values: %v", ocm.NetworkTypes)),
 	)
 })
 
@@ -434,7 +434,7 @@ var _ = Describe("Filtering", func() {
 			mustParseCIDR("192.0.2.0/24"), /* machineNetwork */
 			mustParseCIDR("142.0.0.0/16"), /* serviceNetwork */
 			nil,                           /* expected */
-			"Unable to parse subnet CIDR: invalid CIDR address: wrong", /* expectedError */
+			"unable to parse subnet CIDR: invalid CIDR address: wrong", /* expectedError */
 		),
 		Entry(
 			"input subnets filtered",
@@ -464,7 +464,8 @@ var _ = Describe("hostPrefixValidator()", func() {
 	It("KO: short format", func() {
 		err := hostPrefixValidator("123456")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Invalid Network Host Prefix /123456: Subnet length should be between 23 and 26"))
+		Expect(err.Error()).To(Equal("invalid Network Host Prefix /123456: " +
+			"Subnet length should be between 23 and 26"))
 	})
 })
 

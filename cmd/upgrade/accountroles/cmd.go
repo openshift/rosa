@@ -287,7 +287,7 @@ func upgradeAccountRolePolicies(reporter reporter.Logger, awsClient aws.Client, 
 		if isVersionChosen {
 			promptString = fmt.Sprintf("Upgrade the '%s' role policy to version '%s' ?", roleName, policyVersion)
 		}
-		if !confirm.Prompt(true, promptString) {
+		if !confirm.Prompt(true, "%s", promptString) {
 			continue
 		}
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
@@ -380,6 +380,6 @@ func getAccountPolicyPath(awsClient aws.Client, prefix string) (string, error) {
 			return awsClient.GetRoleARNPath(prefix)
 		}
 	}
-	return "", fmt.Errorf("Could not find account policies that are attached to account roles." +
+	return "", fmt.Errorf("could not find account policies that are attached to account roles." +
 		"We need at least one in order to detect account policies path")
 }

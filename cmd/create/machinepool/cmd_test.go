@@ -85,7 +85,7 @@ var _ = Describe("Validation functions", func() {
 				c.Hypershift(cmv1.NewHypershift().Enabled(false))
 			})
 			err := machinepool.ValidateClusterState(mockClassicClusterInstalling, "test-cluster")
-			Expect(err).To(MatchError("Cluster 'test-cluster' is not yet ready"))
+			Expect(err).To(MatchError("cluster 'test-cluster' is not yet ready"))
 		})
 	})
 

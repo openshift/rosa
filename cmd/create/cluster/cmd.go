@@ -60,7 +60,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/consts"
 	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
-	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -911,7 +910,7 @@ func initFlags(cmd *cobra.Command) {
 
 	flags.StringSliceVar(
 		&args.additionalComputeSecurityGroupIds,
-		securitygroups.ComputeSecurityGroupFlag,
+		interactiveSgs.ComputeSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the default worker machine pool. "+
 			listInputMessage,
@@ -919,7 +918,7 @@ func initFlags(cmd *cobra.Command) {
 
 	flags.StringSliceVar(
 		&args.additionalInfraSecurityGroupIds,
-		securitygroups.InfraSecurityGroupFlag,
+		interactiveSgs.InfraSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the infra worker nodes. "+
 			listInputMessage,
@@ -927,7 +926,7 @@ func initFlags(cmd *cobra.Command) {
 
 	flags.StringSliceVar(
 		&args.additionalControlPlaneSecurityGroupIds,
-		securitygroups.ControlPlaneSecurityGroupFlag,
+		interactiveSgs.ControlPlaneSecurityGroupFlag,
 		nil,
 		"The additional Security Group IDs to be added to the control plane nodes. "+
 			listInputMessage,
@@ -2829,18 +2828,18 @@ func run(cmd *cobra.Command, _ []string) {
 
 	additionalComputeSecurityGroupIds := args.additionalComputeSecurityGroupIds
 	getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-		securitygroups.ComputeKind, useExistingVPC, subnets,
+		interactiveSgs.ComputeKind, useExistingVPC, subnets,
 		subnetIDs, &additionalComputeSecurityGroupIds)
 
 	additionalInfraSecurityGroupIds := args.additionalInfraSecurityGroupIds
 	additionalControlPlaneSecurityGroupIds := args.additionalControlPlaneSecurityGroupIds
 	if !isHostedCP {
 		getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-			securitygroups.InfraKind, useExistingVPC, subnets,
+			interactiveSgs.InfraKind, useExistingVPC, subnets,
 			subnetIDs, &additionalInfraSecurityGroupIds)
 
 		getSecurityGroups(r, cmd, isVersionCompatibleComputeSgIds,
-			securitygroups.ControlPlaneKind, useExistingVPC, subnets,
+			interactiveSgs.ControlPlaneKind, useExistingVPC, subnets,
 			subnetIDs, &additionalControlPlaneSecurityGroupIds)
 	}
 
@@ -2952,6 +2951,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	//nolint:staticcheck
 	if interactive.Enabled() && !(fips || etcdEncryptionKmsARN != "") {
 		etcdEncryption, err = interactive.GetBool(interactive.Input{
 			Question: "Encrypt etcd data",
@@ -3667,14 +3667,14 @@ func clusterConfigFor(
 		var err error
 		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetLocalAWSAccessKeys()
 		if err != nil {
-			return clusterConfig, fmt.Errorf("Failed to get local AWS credentials: %w", err)
+			return clusterConfig, fmt.Errorf("failed to get local AWS credentials: %w", err)
 		}
 	} else if clusterConfig.RoleARN == "" {
 		// Create the access key for the AWS user:
 		var err error
 		clusterConfig.AWSAccessKey, err = awsCredentialsGetter.GetAWSAccessKeys()
 		if err != nil {
-			return clusterConfig, fmt.Errorf("Failed to get access keys for user '%s': %w",
+			return clusterConfig, fmt.Errorf("failed to get access keys for user '%s': %w",
 				aws.AdminUserName, err)
 		}
 	}
@@ -3683,6 +3683,7 @@ func clusterConfigFor(
 
 func provideBillingAccount(billingAccounts []string, accountID string, r *rosa.Runtime) (string, error) {
 	if !helper.ContainsPrefix(billingAccounts, accountID) {
+		//nolint:staticcheck
 		return "", fmt.Errorf("A billing account is required for Hosted Control Plane clusters. %s",
 			listBillingAccountMessage)
 	}
@@ -3703,7 +3704,7 @@ func validateNetworkType(networkType string) error {
 		return nil
 	}
 	if !helper.Contains(ocm.NetworkTypes, networkType) {
-		return fmt.Errorf(fmt.Sprintf("Expected a valid network type. Valid values: %v", ocm.NetworkTypes))
+		return fmt.Errorf("expected a valid network type. Valid values: %v", ocm.NetworkTypes)
 	}
 	return nil
 }
@@ -3845,7 +3846,7 @@ func filterCidrRangeSubnets(
 		skip := false
 		subnetIP, subnetNetwork, err := net.ParseCIDR(*subnet.CidrBlock)
 		if err != nil {
-			return nil, fmt.Errorf("Unable to parse subnet CIDR: %w", err)
+			return nil, fmt.Errorf("unable to parse subnet CIDR: %w", err)
 		}
 
 		if !isValidCidrRange(subnetIP, subnetNetwork, machineNetwork, serviceNetwork) {
@@ -3890,7 +3891,7 @@ func hostPrefixValidator(val interface{}) error {
 	}
 	if hostPrefix < HostPrefixMin || hostPrefix > HostPrefixMax {
 		return fmt.Errorf(
-			"Invalid Network Host Prefix /%d: Subnet length should be between %d and %d",
+			"invalid Network Host Prefix /%d: Subnet length should be between %d and %d",
 			hostPrefix, HostPrefixMin, HostPrefixMax)
 	}
 	return nil
@@ -3920,7 +3921,7 @@ func evaluateDuration(duration time.Duration) time.Time {
 func validateExpiration() (expiration time.Time, err error) {
 	// Validate options
 	if len(args.expirationTime) > 0 && args.expirationDuration != 0 {
-		err = errors.New("At most one of 'expiration-time' or 'expiration' may be specified")
+		err = errors.New("at most one of 'expiration-time' or 'expiration' may be specified")
 		return
 	}
 
@@ -3928,7 +3929,7 @@ func validateExpiration() (expiration time.Time, err error) {
 	if len(args.expirationTime) > 0 {
 		t, err := parseRFC3339(args.expirationTime)
 		if err != nil {
-			err = fmt.Errorf("Failed to parse expiration-time: %s", err)
+			err = fmt.Errorf("failed to parse expiration-time: %s", err)
 			return expiration, err
 		}
 
@@ -3957,7 +3958,7 @@ func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilit
 			},
 		})
 		if err != nil {
-			return availabilityZones, fmt.Errorf("Expected valid availability zones: %s", err)
+			return availabilityZones, fmt.Errorf("expected valid availability zones: %s", err)
 		}
 	} else {
 		var availabilityZone string
@@ -3968,7 +3969,7 @@ func selectAvailabilityZonesInteractively(cmd *cobra.Command, optionsAvailabilit
 			Options:  optionsAvailabilityZones,
 		})
 		if err != nil {
-			return availabilityZones, fmt.Errorf("Expected valid availability zone: %s", err)
+			return availabilityZones, fmt.Errorf("expected valid availability zone: %s", err)
 		}
 		availabilityZones = append(availabilityZones, availabilityZone)
 	}
@@ -3984,11 +3985,11 @@ func validateAvailabilityZones(multiAZ bool, availabilityZones []string, awsClie
 
 	regionAvailabilityZones, err := awsClient.DescribeAvailabilityZones()
 	if err != nil {
-		return fmt.Errorf("Failed to get the list of the availability zone: %s", err)
+		return fmt.Errorf("failed to get the list of the availability zone: %s", err)
 	}
 	for _, az := range availabilityZones {
 		if !helper.Contains(regionAvailabilityZones, az) {
-			return fmt.Errorf("Expected a valid availability zone, "+
+			return fmt.Errorf("expected a valid availability zone, "+
 				"'%s' doesn't belong to region '%s' availability zones", az, awsClient.GetRegion())
 		}
 	}
@@ -4226,19 +4227,19 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 	if len(spec.AdditionalComputeSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",
-			securitygroups.ComputeSecurityGroupFlag,
+			interactiveSgs.ComputeSecurityGroupFlag,
 			strings.Join(spec.AdditionalComputeSecurityGroupIds, ","))
 	}
 
 	if len(spec.AdditionalInfraSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",
-			securitygroups.InfraSecurityGroupFlag,
+			interactiveSgs.InfraSecurityGroupFlag,
 			strings.Join(spec.AdditionalInfraSecurityGroupIds, ","))
 	}
 
 	if len(spec.AdditionalControlPlaneSecurityGroupIds) > 0 {
 		command += fmt.Sprintf(" --%s %s",
-			securitygroups.ControlPlaneSecurityGroupFlag,
+			interactiveSgs.ControlPlaneSecurityGroupFlag,
 			strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
 	}
 
@@ -4374,11 +4375,11 @@ func outputClusterAdminDetails(r *rosa.Runtime, isClusterAdmin bool, createAdmin
 func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleComputeSgIds bool,
 	kind string, useExistingVpc bool, currentSubnets []ec2types.Subnet, subnetIds []string,
 	additionalSgIds *[]string) {
-	hasChangedSgIdsFlag := cmd.Flags().Changed(securitygroups.SgKindFlagMap[kind])
+	hasChangedSgIdsFlag := cmd.Flags().Changed(interactiveSgs.SgKindFlagMap[kind])
 	if hasChangedSgIdsFlag {
 		if !useExistingVpc {
 			r.Reporter.Errorf("Setting the `%s` flag is only allowed for BYO VPC clusters",
-				securitygroups.SgKindFlagMap[kind])
+				interactiveSgs.SgKindFlagMap[kind])
 			os.Exit(1)
 		}
 		if !isVersionCompatibleComputeSgIds {
@@ -4390,7 +4391,7 @@ func getSecurityGroups(r *rosa.Runtime, cmd *cobra.Command, isVersionCompatibleC
 				os.Exit(1)
 			}
 			r.Reporter.Errorf("Parameter '%s' is not supported prior to version '%s'",
-				securitygroups.SgKindFlagMap[kind], formattedVersion)
+				interactiveSgs.SgKindFlagMap[kind], formattedVersion)
 			os.Exit(1)
 		}
 	} else if interactive.Enabled() && isVersionCompatibleComputeSgIds && useExistingVpc {
@@ -4419,7 +4420,7 @@ func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 		isVersionCompatibleMachinePoolRootDisk, err = versions.IsGreaterThanOrEqual(
 			version, ocm.MinVersionForMachinePoolRootDisk)
 		if err != nil {
-			return nil, fmt.Errorf("There was a problem checking version compatibility: %v", err)
+			return nil, fmt.Errorf("there was a problem checking version compatibility: %v", err)
 		}
 		if !isVersionCompatibleMachinePoolRootDisk && cmd.Flags().Changed(workerDiskSizeFlag) {
 			formattedVersion, err := versions.FormatMajorMinorPatch(ocm.MinVersionForMachinePoolRootDisk)
@@ -4428,7 +4429,7 @@ func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 				os.Exit(1)
 			}
 			return nil, fmt.Errorf(
-				"Updating Worker disk size is not supported for versions prior to '%s'",
+				"updating Worker disk size is not supported for versions prior to '%s'",
 				formattedVersion,
 			)
 		}
@@ -4470,14 +4471,14 @@ func getMachinePoolRootDisk(r *rosa.Runtime, cmd *cobra.Command, version string,
 				})
 			}
 			if err != nil {
-				return nil, fmt.Errorf("Expected a valid machine pool root disk size value: %v", err)
+				return nil, fmt.Errorf("expected a valid machine pool root disk size value: %v", err)
 			}
 		}
 
 		// Parse the value given by either CLI or interactive mode and return it in GigiBytes
 		machinePoolRootDiskSize, err := ocm.ParseDiskSizeToGigibyte(machinePoolRootDiskSizeStr)
 		if err != nil {
-			return nil, fmt.Errorf("Expected a valid machine pool root disk size value '%s': %v",
+			return nil, fmt.Errorf("expected a valid machine pool root disk size value '%s': %v",
 				machinePoolRootDiskSizeStr, err)
 
 		}
