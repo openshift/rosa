@@ -83,7 +83,7 @@ examples:
 
 .PHONY: test tests
 test tests: ginkgo-install
-ifndef JUNITFILE
+ifndef ARTIFACT_DIR
 	$(GINKGO) run -r $(ginkgo_flags)
 else
 	$(GINKGO) run -r $(ginkgo_flags) --junit-report=junit_golang_tests_junit.xml --output-dir=${ARTIFACT_DIR}

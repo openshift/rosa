@@ -17,12 +17,14 @@ limitations under the License.
 package testing
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -30,6 +32,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
@@ -327,6 +330,72 @@ func LocalhostCertificate() tls.Certificate {
 		}
 	}
 	return *localhostCertificate
+}
+
+// RespondWithOcmObjectMarshal responds with the given status code and the JSON representation
+// of the given OCM SDK object using the provided marshal function.
+//
+// Example usage:
+//
+//	server.AppendHandlers(RespondWithOcmObjectMarshal(200, cluster, MarshalCluster))
+//	server.AppendHandlers(RespondWithOcmObjectMarshal(201, nodePool, MarshalNodePool))
+func RespondWithOcmObjectMarshal(status int, object any, marshalFunc any) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Validate inputs before setting any headers
+		if object == nil {
+			http.Error(w, "nil object provided", http.StatusInternalServerError)
+			return
+		}
+
+		// Use reflection to call the marshal function
+		marshalValue := reflect.ValueOf(marshalFunc)
+		if !marshalValue.IsValid() || marshalValue.Kind() != reflect.Func {
+			http.Error(w, "invalid marshal function provided", http.StatusInternalServerError)
+			return
+		}
+
+		// Verify the marshal function signature: func(object, io.Writer) error
+		marshalType := marshalValue.Type()
+		if marshalType.NumIn() != 2 || marshalType.NumOut() != 1 {
+			http.Error(w, "marshal function must have signature func(object, io.Writer) error", http.StatusInternalServerError)
+			return
+		}
+
+		// Check if object value is valid
+		objectValue := reflect.ValueOf(object)
+		if !objectValue.IsValid() || (objectValue.Kind() == reflect.Ptr && objectValue.IsNil()) {
+			http.Error(w, "invalid or nil object provided", http.StatusInternalServerError)
+			return
+		}
+
+		// Create a buffer to capture the JSON output
+		var buf bytes.Buffer
+		writerValue := reflect.ValueOf(&buf)
+
+		// Call the marshal function
+		results := marshalValue.Call([]reflect.Value{objectValue, writerValue})
+		if len(results) != 1 {
+			http.Error(w, "marshal function returned unexpected number of values", http.StatusInternalServerError)
+			return
+		}
+
+		// Check for error
+		if !results[0].IsNil() {
+			err := results[0].Interface().(error)
+			http.Error(w, fmt.Sprintf("failed to marshal object: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		// All validations passed, now set headers and write response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+
+		_, err := w.Write(buf.Bytes())
+		if err != nil {
+			// Log the error but don't try to write another response as headers are already sent
+			fmt.Printf("Failed to write response: %v\n", err)
+		}
+	}
 }
 
 // localhostCertificate contains the TLS certificate returned by the LocalhostCertificate function.
