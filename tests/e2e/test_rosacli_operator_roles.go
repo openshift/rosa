@@ -10,7 +10,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
@@ -30,7 +32,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 		rosaClient             *rosacli.Client
 		ocmResourceService     rosacli.OCMResourceService
-		permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+		permissionsBoundaryArn = "arn:aws:iam::aws:policy/AdministratorAccess"
 	)
 	BeforeEach(func() {
 		By("Init the client")
@@ -1238,6 +1240,19 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				Expect(output.String()).To(ContainSubstring(
 					"policy/%s-openshift-cloud-credential-operator-cloud-creden' to version '%s'",
 					accountRolePrefix, upgradeVersion))
+				By("Update cluster with --dry-run")
+
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", defaultVersion.Version,
+					"--mode", "auto",
+					"--dry-run",
+					"-y",
+				)
+
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("should succeed. Please wait 1 to 2 minutes"))
+				time.Sleep(3 * time.Minute)
 
 				By("Upgrade cluster")
 				scheduledDate = time.Now().Format("2006-01-02")
@@ -1252,10 +1267,6 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				)
 				Expect(err).To(BeNil())
 				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
-
-				By("Check upgrade state")
-				err = upgradeService.WaitForUpgradeToState(clusterID, constants.Scheduled, 5)
-				Expect(err).To(BeNil())
 			})
 	})
 

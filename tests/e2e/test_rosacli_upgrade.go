@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
@@ -94,7 +96,7 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).To(BeNil())
 			IsSTS, err := clusterService.IsSTSCluster(clusterID)
 			Expect(err).To(BeNil())
-			if !(isHostedCP || IsSTS) {
+			if !isHostedCP && !IsSTS {
 				Skip("Skip this case as it doesn't supports on not-sts clusters")
 			}
 			By("Check the cluster version and compare with the profile to decide if skip this case")
@@ -281,6 +283,19 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(len(policy.Tags)).To(Equal(0))
 				}
 			}
+			By("Update cluster with --dry-run")
+			output, err = upgradeService.Upgrade(
+				"-c", clusterID,
+				"--version", upgradingVersion,
+				"--mode", "auto",
+				"--dry-run",
+				"-y",
+			)
+
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("should succeed. Please wait 1 to 2 minutes"))
+			time.Sleep(3 * time.Minute)
+
 			By("Update cluster")
 			// TODO: Wait the upgrade ready. As upgrade profile can only be used for upgrade cluster one time,
 			// so both this case and another test case for upgrading cluster
@@ -317,7 +332,8 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).To(BeNil())
 			upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 			Expect(err).To(BeNil())
-			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0), "Expected at least one upgrade version to be available")
+			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
+				"Expected at least one upgrade version to be available")
 			upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 			if upgradingVersion == "" {
@@ -350,12 +366,25 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(err).To(BeNil())
 				upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 				Expect(err).To(BeNil())
-				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0), "Expected at least one upgrade version to be available")
+				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
+					"Expected at least one upgrade version to be available")
 				upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 				if upgradingVersion == "" {
 					Skip("Skip this case as no available upgrade version.")
 				}
+
+				By("Update cluster with --dry-run")
+				output, err = upgradeService.Upgrade(
+					"-c", clusterID,
+					"--version", upgradingVersion,
+					"--mode", "auto",
+					"--dry-run",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("should succeed. Please wait 1 to 2 minutes"))
+				time.Sleep(3 * time.Minute)
 
 				By("Upgrade cluster")
 				scheduledDate := time.Now().Format("2006-01-02")
@@ -702,12 +731,24 @@ var _ = Describe("Describe/List rosa upgrade",
 					Expect(err).To(BeNil())
 					upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 					Expect(err).To(BeNil())
-					Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0), "Expected at least one upgrade version to be available")
+					Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
+						"Expected at least one upgrade version to be available")
 					upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 					By("Upgrade cluster")
 					if clusterConfig.Sts {
-						Expect(err).ToNot(HaveOccurred())
+
+						By("Update cluster with --dry-run")
+						output, err = upgradeService.Upgrade(
+							"-c", clusterID,
+							"--version", upgradingVersion,
+							"--mode", "auto",
+							"--dry-run",
+							"-y",
+						)
+						Expect(err).To(BeNil())
+						Expect(output.String()).To(ContainSubstring("should succeed. Please wait 1 to 2 minutes"))
+						time.Sleep(3 * time.Minute)
 
 						output, errSTSUpgrade := upgradeService.Upgrade(
 							"-c", clusterID,
@@ -763,7 +804,8 @@ var _ = Describe("Describe/List rosa upgrade",
 				Expect(err).To(BeNil())
 				upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 				Expect(err).To(BeNil())
-				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0), "Expected at least one upgrade version to be available")
+				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
+					"Expected at least one upgrade version to be available")
 				upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 				By("Check the help message of 'rosa describe upgrade -h'")
@@ -1150,7 +1192,8 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 			Expect(err).To(BeNil())
 			upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 			Expect(err).To(BeNil())
-			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0), "Expected at least one upgrade version to be available")
+			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
+				"Expected at least one upgrade version to be available")
 			upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 			if profile.ClusterConfig.STS {
