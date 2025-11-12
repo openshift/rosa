@@ -11,7 +11,9 @@ import (
 	"k8s.io/utils/strings/slices"
 
 	"github.com/Masterminds/semver"
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
@@ -20,7 +22,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
-	. "github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 var _ = Describe("Edit nodepool",
@@ -40,6 +42,7 @@ var _ = Describe("Edit nodepool",
 
 		const (
 			defaultNodePoolReplicas = "2"
+			instanceType            = "m5.2xlarge"
 		)
 
 		BeforeEach(func() {
@@ -77,7 +80,6 @@ var _ = Describe("Edit nodepool",
 				nodePoolName := helper.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
 				taints := "t1=v1:NoSchedule,l2=:NoSchedule"
-				instanceType := "m5.2xlarge"
 
 				By("Retrieve cluster initial information")
 				cluster, err := clusterService.DescribeClusterAndReflect(clusterID)
@@ -546,7 +548,7 @@ var _ = Describe("Edit nodepool",
 			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				testVersionFailFunc := func(flags ...string) {
-					Logger.Infof("Creating nodepool with flags %v", flags)
+					log.Logger.Infof("Creating nodepool with flags %v", flags)
 					output, err := machinePoolService.CreateMachinePool(
 						clusterID,
 						helper.GenerateRandomName("np-61139", 2),
@@ -555,7 +557,7 @@ var _ = Describe("Edit nodepool",
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 					Expect(textData).
 						Should(ContainSubstring(
-							`ERR: Expected a valid OpenShift version: A valid version number must be specified`))
+							`ERR: expected a valid OpenShift version: A valid version number must be specified`))
 					textData = rosaClient.Parser.TextData.Input(output).Parse().Output()
 					Expect(textData).Should(ContainSubstring(`Valid versions:`))
 				}
@@ -655,7 +657,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 
 				clusterSemVer := semver.MustParse(clusterVersion)
-				var lVersion string = clusterVersion
+				lVersion := clusterVersion
 				var upgradeVersion string
 				for {
 					lowerVersion, err := versionList.FindNearestBackwardOptionalVersion(lVersion, 1, false)
@@ -674,15 +676,15 @@ var _ = Describe("Edit nodepool",
 						}
 						break
 					}
-					Logger.Debugf("The lower version %s has no available upgrades continue to find next one\n", lVersion)
+					log.Logger.Debugf("The lower version %s has no available upgrades continue to find next one\n", lVersion)
 				}
 				if upgradeVersion == "" {
-					Logger.Warn("Cannot find a version with available upgrades")
+					log.Logger.Warn("Cannot find a version with available upgrades")
 					return
 				}
 
-				Logger.Infof("Using previous version %s", lVersion)
-				Logger.Infof("Final upgrade version should be %s", upgradeVersion)
+				log.Logger.Infof("Using previous version %s", lVersion)
+				log.Logger.Infof("Final upgrade version should be %s", upgradeVersion)
 
 				By("Prepare a node pool with optional-1 version with manual upgrade")
 				nodePoolManualName := helper.GenerateRandomName("np-67414", 2)
@@ -917,7 +919,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"Machine pool '%s' does not exist for hosted cluster '%s'",
+						"machine pool '%s' does not exist for hosted cluster '%s'",
 						nonExistingMachinepoolName,
 						clusterID))
 
@@ -935,14 +937,14 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"ERR: Failed to get autoscaling or replicas: 'Replicas must be a non-negative number'"))
+						"ERR: failed to get autoscaling or replicas: 'Replicas must be a non-negative number'"))
 
 				By("Try to edit the machinepool with --min-replicas flag when autoscaling is disabled for the machinepool.")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "2")
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. "+
+						"failed to get autoscaling or replicas: 'autoscaling is not enabled on machine pool '%s'. "+
 							"can't set min or max replicas'",
 						machinepoolName))
 
@@ -951,7 +953,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"Failed to get autoscaling or replicas: 'Autoscaling is not enabled on machine pool '%s'. "+
+						"failed to get autoscaling or replicas: 'autoscaling is not enabled on machine pool '%s'. "+
 							"can't set min or max replicas'",
 						machinepoolName))
 
@@ -974,7 +976,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"ERR: Failed to get autoscaling or replicas: " +
+						"ERR: failed to get autoscaling or replicas: " +
 							"'Min replicas must be a non-negative number when autoscaling is set'"))
 
 				By("Try to edit machinepool with --replicas flag when the autoscaling is enabled for the machinepool.")
@@ -982,7 +984,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"Failed to get autoscaling or replicas: 'Autoscaling enabled on machine pool '%s'. can't set replicas'",
+						"failed to get autoscaling or replicas: 'autoscaling enabled on machine pool '%s'. can't set replicas'",
 						machinepoolName))
 			})
 
@@ -1193,7 +1195,7 @@ var _ = Describe("Edit nodepool",
 				for _, flags := range reqBody {
 					By("Create nodepool with max-surge/max-unavailable set with different values")
 					machinePoolName := fmt.Sprintf("c-74387-%s", flags["id"])
-					Logger.Infof("Create machine pool with name %s", machinePoolName)
+					log.Logger.Infof("Create machine pool with name %s", machinePoolName)
 					output, err = machinePoolService.CreateMachinePool(
 						clusterID,
 						machinePoolName,
@@ -1364,9 +1366,9 @@ var _ = Describe("Edit nodepool",
 					{
 						"max surge":       "0",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf("The value of only one attribute, " + //nolint
-							eitherMsg +
-							zeroMsg),
+						"errMsg": fmt.Sprintf("The value of only one attribute, %s", //nolint
+							eitherMsg+
+								zeroMsg),
 					},
 					{
 						"max surge":       "0%",
@@ -1713,7 +1715,7 @@ var _ = Describe("Edit nodepool",
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(
 						ContainSubstring(
-							"ERR: Expected a valid http tokens value : ec2-metadata-http-tokens " +
+							"ERR: expected a valid http tokens value : ec2-metadata-http-tokens " +
 								"value should be one of 'required', 'optional'"))
 			})
 

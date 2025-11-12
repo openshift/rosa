@@ -16,8 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
+	. "github.com/onsi/gomega"    //nolint:staticcheck
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
@@ -882,8 +882,8 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 
 		})
 
-	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
-		func() {
+	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2,
+		labels.FedRAMP, func() {
 			By("edit non-hcp with registry config")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
@@ -1038,7 +1038,7 @@ var _ = Describe("Additional security groups validation",
 					index = strings.Index(additionalSecurityGroupFlag, "a")
 					flagName = additionalSecurityGroupFlag[index:]
 					Expect(output.String()).To(ContainSubstring(
-						"Setting the `%s` flag is only allowed for BYO VPC clusters",
+						"setting the `%s` flag is only allowed for BYO VPC clusters",
 						flagName))
 				}
 
@@ -1058,7 +1058,7 @@ var _ = Describe("Additional security groups validation",
 					index = strings.Index(additionalSecurityGroupFlag, "a")
 					flagName = additionalSecurityGroupFlag[index:]
 					Expect(output.String()).To(ContainSubstring(
-						"Parameter '%s' is not supported prior to version '4.14.0'",
+						"parameter '%s' is not supported prior to version '4.14.0'",
 						flagName))
 				}
 
@@ -1221,7 +1221,7 @@ var _ = Describe("Classic cluster creation validation",
 							"2":  "Multi AZ cluster requires at least 3 compute nodes",
 							"0":  "Multi AZ cluster requires at least 3 compute nodes",
 							"-3": "must be non-negative",
-							"5":  "Multi AZ clusters require that the number of compute nodes be a multiple of 3",
+							"5":  "multi AZ clusters require that the replicas be a multiple of 3",
 						}
 						for k, v := range invalidReplicasErrorMapMultiAZ {
 							rosalCommand.ReplaceFlagValue(map[string]string{
@@ -1448,7 +1448,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
 				Expect(stdout).
-					To(ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
+					To(ContainSubstring("expected a valid machine pool root disk size value '%sGiB': "+
 						"invalid disk size: '%sGi'. maximum size exceeded",
 						veryBigData,
 						veryBigData))
@@ -1462,7 +1462,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(stdout).
 					To(
 						ContainSubstring(
-							"Expected a valid machine pool root disk size value '-1GiB': " +
+							"expected a valid machine pool root disk size value '-1GiB': " +
 								"invalid disk size: '-1Gi'. positive size required"))
 
 				By("Try a worker disk size that's a string")
@@ -1475,7 +1475,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(stdout).
 					To(
 						ContainSubstring(
-							"Expected a valid machine pool root disk size value '%s': invalid disk size "+
+							"expected a valid machine pool root disk size value '%s': invalid disk size "+
 								"format: '%s'. accepted units are Giga or Tera in the form of "+
 								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
 							invalidStr,
@@ -1494,7 +1494,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
 					To(ContainSubstring(
-						"Expected a valid availability zone, 'us-east-2e' doesn't belong to region 'us-east-2' availability zones"))
+						"expected a valid availability zone, 'us-east-2e' doesn't belong to region 'us-east-2' availability zones"))
 
 				By("Create cluster with zones not match region")
 				out, err = clusterService.CreateDryRun(
@@ -1503,7 +1503,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
 					To(ContainSubstring(
-						"Expected a valid availability zone, 'us-west-2b' doesn't belong to region 'us-east-2' availability zones"))
+						"expected a valid availability zone, 'us-west-2b' doesn't belong to region 'us-east-2' availability zones"))
 
 				By("Create cluster with dup zones set")
 				out, err = clusterService.CreateDryRun(
@@ -1639,7 +1639,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(errorOutput.String()).
 					To(
-						ContainSubstring("Expected a valid OpenShift version: A valid version number must be specified"))
+						ContainSubstring("expected a valid OpenShift version: A valid version number must be specified"))
 			})
 
 		It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
@@ -2406,7 +2406,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(output.String()).
 					To(
 						ContainSubstring(
-							"ERR: Expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
+							"ERR: expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
 
 				By("Create HCP cluster with invalid --no-cni value")
 				rosalCommand.DeleteFlag("--network-type", true)
@@ -2498,7 +2498,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
 				Expect(stdout).
-					To(ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
+					To(ContainSubstring("expected a valid machine pool root disk size value '%sGiB': "+
 						"invalid disk size: '%sGi'. maximum size exceeded",
 						veryBigData,
 						veryBigData))
@@ -2512,7 +2512,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(stdout).
 					To(
 						ContainSubstring(
-							"Expected a valid machine pool root disk size value '-1GiB': " +
+							"expected a valid machine pool root disk size value '-1GiB': " +
 								"invalid disk size: '-1Gi'. positive size required"))
 
 				By("Try a worker disk size that's a string")
@@ -2525,7 +2525,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(stdout).
 					To(
 						ContainSubstring(
-							"Expected a valid machine pool root disk size value '%s': invalid disk size "+
+							"expected a valid machine pool root disk size value '%s': invalid disk size "+
 								"format: '%s'. accepted units are Giga or Tera in the form of "+
 								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
 							invalidStr,
@@ -2613,7 +2613,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(errorOutput.String()).
 					To(
 						ContainSubstring(
-							"ERR: Expected a valid http tokens value : " +
+							"ERR: expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 
 				By("Create HCP cluster  with invalid httpTokens")
@@ -2630,7 +2630,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(out.String()).
 					To(
 						ContainSubstring(
-							"ERR: Expected a valid http tokens value : " +
+							"ERR: expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 			})
 

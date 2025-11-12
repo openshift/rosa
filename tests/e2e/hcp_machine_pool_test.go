@@ -424,7 +424,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", zeroMinReplica),
 				"-y",
 			)
-			expectErrMsg := "ERR: min-replicas must be greater than zero."
+			expectErrMsg := "ERR: min-replicas must be greater than zero"
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
@@ -475,7 +475,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("with negative replicas number")
 			_, err := machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "-9")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Replicas must be a non-negative integer"))
+			Expect(err.Error()).Should(ContainSubstring("replicas must be a non-negative integer"))
 
 			By("with replicas > the maximum")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "501")
@@ -487,7 +487,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("with invalid name")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything%^#@", "--replicas", "2")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Expected a valid name for the machine pool"))
+			Expect(err.Error()).Should(ContainSubstring("expected a valid name for the machine pool"))
 
 			By("with replicas and enable-autoscaling at the same time")
 			_, err = machinePoolService.CreateMachinePool(
@@ -498,7 +498,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", "3",
 				"--max-replicas", "3")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
+			Expect(err.Error()).Should(ContainSubstring("replicas can't be set when autoscaling is enabled"))
 
 			By("with min-replicas larger than max-replicas")
 			_, err = machinePoolService.CreateMachinePool(
@@ -519,7 +519,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", "3",
 				"--max-replicas", "3")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
+			Expect(err.Error()).Should(ContainSubstring("autoscaling must be enabled in order to set min and max replicas"))
 
 			By("with max-replicas > the maximum")
 			_, err = machinePoolService.CreateMachinePool(
@@ -589,14 +589,14 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("with unsupported version")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--version", "4.12.1")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Expected a valid OpenShift version"))
+			Expect(err.Error()).Should(ContainSubstring("expected a valid OpenShift version"))
 
 			By("with unsupported flag")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--multi-availability-zone")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).
 				Should(
-					ContainSubstring("Setting `multi-availability-zone` flag is not supported for HCP clusters"))
+					ContainSubstring("setting `multi-availability-zone` flag is not supported for HCP clusters"))
 		})
 
 		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
@@ -608,7 +608,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("with non existing machinepool id")
 			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Machine pool 'anything' does not exist"))
+			Expect(err.Error()).Should(ContainSubstring("machine pool 'anything' does not exist"))
 
 			By("with invalid machinepool id")
 			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything%^")
@@ -627,7 +627,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				Expect(err.Error()).
 					Should(
 						ContainSubstring(
-							fmt.Sprintf("Failed to delete machine pool '%s' on hosted cluster", constants.DefaultHostedWorkerPool)))
+							fmt.Sprintf("failed to delete machine pool '%s' on hosted cluster", constants.DefaultHostedWorkerPool)))
 				Expect(err.Error()).
 					Should(
 						ContainSubstring("The last node pool can not be deleted from a cluster"))

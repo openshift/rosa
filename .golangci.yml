@@ -44,6 +44,7 @@ issues:
   max-same-issues: 0
   whole-files: true
   new: true
+  new-from-rev: 3ab0817ee3c8e06c78a43cc30cf34de40db8b191
 formatters:
   enable:
     - gci

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/go-version"
 	ver "github.com/hashicorp/go-version"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
@@ -14,7 +13,7 @@ import (
 
 const (
 	MinorVersionsSupported              = 2
-	MajorMinorPatchFormattedErrorOutput = "An error occurred formatting the version for output: %v"
+	MajorMinorPatchFormattedErrorOutput = "an error occurred formatting the version for output: %v"
 )
 
 func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool, filterHostedCP bool,
@@ -27,18 +26,18 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 	// Product can be empty. In this case, no filter will be applied
 	vs, err = r.OCMClient.GetVersionsWithProduct(product, channelGroup, defaultFirst)
 	if err != nil {
-		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		err = fmt.Errorf("failed to retrieve versions: %s", err)
 		return
 	}
 
 	defaultVersion, versionList, err = computeVersionListAndDefault(vs, isHostedCP, isSTS, filterHostedCP)
 	if err != nil {
-		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		err = fmt.Errorf("failed to retrieve versions: %s", err)
 		return
 	}
 
 	if len(versionList) == 0 {
-		err = fmt.Errorf("Could not find versions for the provided channel-group: '%s'", channelGroup)
+		err = fmt.Errorf("could not find versions for the provided channel-group: '%s'", channelGroup)
 		return
 	}
 
@@ -142,15 +141,15 @@ func GetMinimalHostedMachinePoolVersion(controlPlaneVersion string) (string, err
 }
 
 func IsGreaterThanOrEqual(version1, version2 string) (bool, error) {
-	v1, err := version.NewVersion(strings.TrimPrefix(version1, ocm.VersionPrefix))
+	v1Ver, err := ver.NewVersion(strings.TrimPrefix(version1, ocm.VersionPrefix))
 	if err != nil {
 		return false, err
 	}
-	v2, err := version.NewVersion(strings.TrimPrefix(version2, ocm.VersionPrefix))
+	v2Ver, err := ver.NewVersion(strings.TrimPrefix(version2, ocm.VersionPrefix))
 	if err != nil {
 		return false, err
 	}
-	return v1.GreaterThanOrEqual(v2), nil
+	return v1Ver.GreaterThanOrEqual(v2Ver), nil
 }
 
 func FormatMajorMinorPatch(version string) (string, error) {

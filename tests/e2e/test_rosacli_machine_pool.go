@@ -361,7 +361,7 @@ var _ = Describe("Create machinepool",
 					"--replicas", "3")
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Spot max price must be positive"))
+				Expect(textData).To(ContainSubstring("spot max price must be positive"))
 
 				By("Create a machinepool without spot instances, but with spot price")
 				machinePoolName = "nospotmp"
@@ -375,7 +375,7 @@ var _ = Describe("Create machinepool",
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).
 					Should(ContainSubstring(
-						"Can't set max price when not using spot instances"))
+						"can't set max price when not using spot instances"))
 			})
 
 		It("can create machinepool with tags - [id:73469]",
@@ -780,7 +780,7 @@ var _ = Describe("Create machinepool",
 						"-y",
 					)
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Expected a valid name for the machine pool"))
+					Expect(output.String()).Should(ContainSubstring("expected a valid name for the machine pool"))
 
 					By("Create with invalid replicas will fail")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
@@ -788,7 +788,7 @@ var _ = Describe("Create machinepool",
 						"-y",
 					)
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Replicas must be a non-negative integer"))
+					Expect(output.String()).Should(ContainSubstring("replicas must be a non-negative integer"))
 
 					By("Create with invalid labels will fail")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
@@ -843,12 +843,12 @@ var _ = Describe("Create machinepool",
 						clusterID, mpName,
 						"--replicas", "-1")
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Replicas must be a non-negative integer"))
+					Expect(output.String()).Should(ContainSubstring("replicas must be a non-negative integer"))
 
 					By("Create machine pool with invalid name")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, "%^#@")
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Expected a valid name for the machine pool"))
+					Expect(output.String()).Should(ContainSubstring("expected a valid name for the machine pool"))
 
 					By("Create machine pool with invalid instance type")
 					fakeInstanceType := "fakeType"
@@ -868,7 +868,7 @@ var _ = Describe("Create machinepool",
 						"--enable-autoscaling",
 						"--replicas", "0")
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Replicas can't be set when autoscaling is enabled"))
+					Expect(output.String()).Should(ContainSubstring("replicas can't be set when autoscaling is enabled"))
 
 					By("Set min-replicas larger than max-replicas")
 					output, err = rosaClient.MachinePool.CreateMachinePool(
@@ -886,7 +886,7 @@ var _ = Describe("Create machinepool",
 						"--max-replicas", "3")
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
-						ContainSubstring("Autoscaling must be enabled in order to set min and max replicas"))
+						ContainSubstring("autoscaling must be enabled in order to set min and max replicas"))
 
 					By("set min-replicas and max-replicas not multiple 3 for multi-az")
 					output, err = rosaClient.MachinePool.CreateMachinePool(
@@ -896,7 +896,7 @@ var _ = Describe("Create machinepool",
 						"--enable-autoscaling")
 					if clusterConfig.MultiAZ {
 						Expect(err).To(HaveOccurred())
-						Expect(output.String()).Should(ContainSubstring("Multi AZ clusters require that the replicas be a multiple of 3"))
+						Expect(output.String()).Should(ContainSubstring("multi AZ clusters require that the replicas be a multiple of 3"))
 					} else {
 						Expect(err).ToNot(HaveOccurred())
 					}
@@ -920,7 +920,7 @@ var _ = Describe("Create machinepool",
 					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, fakeMachinePool)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
-						ContainSubstring("Failed to get machine pool '%s' for cluster '%s'", fakeMachinePool, clusterID))
+						ContainSubstring("failed to get machine pool '%s' for cluster '%s'", fakeMachinePool, clusterID))
 
 					By("Delete machine pool with invalid id")
 					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, "%^#@")
