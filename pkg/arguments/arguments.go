@@ -122,7 +122,7 @@ func ParseUnknownFlags(cmd *cobra.Command, argv []string) error {
 func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) error {
 	flags := cmd.Flags()
 
-	var validArgs []string = []string{}
+	var validArgs = []string{}
 	var upcomingValue bool
 	unknownFlags := ""
 
@@ -176,7 +176,7 @@ func ParseKnownFlags(cmd *cobra.Command, argv []string, failOnUnknown bool) erro
 	}
 
 	if failOnUnknown && unknownFlags != "" {
-		return fmt.Errorf("Unknown flags passed: %s", unknownFlags[:len(unknownFlags)-2])
+		return fmt.Errorf("unknown flags passed: %s", unknownFlags[:len(unknownFlags)-2])
 	}
 
 	err := flags.Parse(validArgs)
@@ -226,7 +226,7 @@ func PreprocessUnknownFlagsWithId(cmd *cobra.Command, argv []string) error {
 		// Upcoming value from a space-separated value
 		case upcomingValue:
 			if strings.HasPrefix(arg, "-") {
-				return fmt.Errorf("No value given for flag '%s'", argv[i-1])
+				return fmt.Errorf("no value given for flag '%s'", argv[i-1])
 			}
 			validArgs = append(validArgs, arg)
 			upcomingValue = false
@@ -286,7 +286,7 @@ func PreprocessUnknownFlagsWithId(cmd *cobra.Command, argv []string) error {
 
 func AddStringFlag(cmd *cobra.Command, flagName string) {
 	flags := cmd.Flags()
-	var pStrVal *string = new(string)
+	var pStrVal = new(string)
 	flags.StringVar(pStrVal, flagName, "", "")
 }
 

@@ -16,8 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
@@ -31,10 +31,10 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-var _ = Describe("Edit cluster",
+var _ = ginkgo.Describe("Edit cluster",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			clusterID      string
@@ -43,42 +43,42 @@ var _ = Describe("Edit cluster",
 			profile        *handler.Profile
 		)
 
-		BeforeEach(func() {
-			By("Get the cluster")
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Get the cluster")
 			clusterID = config.GetClusterID()
-			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+			gomega.Expect(clusterID).ToNot(gomega.Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 
-			By("Load the profile")
+			ginkgo.By("Load the profile")
 			profile = handler.LoadProfileYamlFileByENV()
 		})
 
-		AfterEach(func() {
-			By("Clean the cluster")
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Clean the cluster")
 			rosaClient.CleanResources(clusterID)
 		})
-		It("can edit cluster channel group - [id:81399]",
+		ginkgo.It("can edit cluster channel group - [id:81399]",
 			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
-				By("Check help message contains channel-group flag")
+				ginkgo.By("Check help message contains channel-group flag")
 				output, err := clusterService.EditCluster("", "-h")
-				Expect(err).To(BeNil())
-				Expect(output.String()).To(ContainSubstring("--channel-group"))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("--channel-group"))
 
-				By("Get original version and channel group")
+				ginkgo.By("Get original version and channel group")
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				originalVersion := CD.OpenshiftVersion
 				originalChannelGroup := CD.ChannelGroup
 
-				By("Check if there is version in updating channel group")
+				ginkgo.By("Check if there is version in updating channel group")
 				var upgradingChannelGroup string
 				existingAvailabelVersion := false
 				if originalChannelGroup == STABLE_CHANNEL {
@@ -88,9 +88,9 @@ var _ = Describe("Edit cluster",
 				}
 				versionService := rosaClient.Version
 				hostedCP, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				versionList, err := versionService.ListAndReflectJsonVersions(upgradingChannelGroup, hostedCP)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				for _, version := range versionList {
 					if version.RAWID == originalVersion {
 						existingAvailabelVersion = true
@@ -99,185 +99,186 @@ var _ = Describe("Edit cluster",
 					continue
 				}
 
-				By("Edit cluster with channel group")
+				ginkgo.By("Edit cluster with channel group")
 				out, err := clusterService.EditCluster(
 					clusterID,
 					"--channel-group", upgradingChannelGroup,
 					"-y",
 				)
 				defer func() {
-					By("Recover the original channel group")
+					ginkgo.By("Recover the original channel group")
 					_, err = clusterService.EditCluster(
 						clusterID,
 						"--channel-group", originalChannelGroup,
 						"-y",
 					)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}()
 
 				if existingAvailabelVersion {
-					Expect(err).To(BeNil())
-					Expect(out.String()).To(ContainSubstring("Updated cluster"))
+					gomega.Expect(err).To(gomega.BeNil())
+					gomega.Expect(out.String()).To(gomega.ContainSubstring("Updated cluster"))
 				} else {
-					Expect(err).ToNot(BeNil())
-					Expect(out.String()).To(ContainSubstring("is not available for the desired channel group"))
+					gomega.Expect(err).ToNot(gomega.BeNil())
+					gomega.Expect(out.String()).To(gomega.ContainSubstring("is not available for the desired channel group"))
 				}
 
-				By("Edit cluster with the channel group which has no available version")
+				ginkgo.By("Edit cluster with the channel group which has no available version")
 				out, err = clusterService.EditCluster(
 					clusterID,
 					"--channel-group", "fakecg",
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(out.String()).To(ContainSubstring("is not available for the desired channel group"))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("is not available for the desired channel group"))
 			})
-		It("can check the description of the cluster - [id:34102]",
+		ginkgo.It("can check the description of the cluster - [id:34102]",
 			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
-				By("Describe cluster in text format")
+				ginkgo.By("Describe cluster in text format")
 				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Describe cluster in json format")
+				ginkgo.By("Describe cluster in json format")
 				rosaClient.Runner.JsonFormat()
 				jsonOutput, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				rosaClient.Runner.UnsetFormat()
 				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
 
-				By("Get OCM Environment")
+				ginkgo.By("Get OCM Environment")
 				rosaClient.Runner.JsonFormat()
 				userInfo, err := rosaClient.OCMResource.UserInfo()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				rosaClient.Runner.UnsetFormat()
 				ocmApi := userInfo.OCMApi
 
-				By("Compare the text result with the json result")
-				Expect(CD.ID).To(Equal(jsonData.DigString("id")))
-				Expect(CD.ExternalID).To(Equal(jsonData.DigString("external_id")))
-				Expect(CD.ChannelGroup).To(Equal(jsonData.DigString("version", "channel_group")))
-				Expect(CD.DNS).To(Equal(jsonData.DigString("domain_prefix") + "." + jsonData.DigString("dns", "base_domain")))
-				Expect(CD.AWSAccount).NotTo(BeEmpty())
-				Expect(CD.APIURL).To(Equal(jsonData.DigString("api", "url")))
-				Expect(CD.ConsoleURL).To(Equal(jsonData.DigString("console", "url")))
-				Expect(CD.Region).To(Equal(jsonData.DigString("region", "id")))
+				ginkgo.By("Compare the text result with the json result")
+				gomega.Expect(CD.ID).To(gomega.Equal(jsonData.DigString("id")))
+				gomega.Expect(CD.ExternalID).To(gomega.Equal(jsonData.DigString("external_id")))
+				gomega.Expect(CD.ChannelGroup).To(gomega.Equal(jsonData.DigString("version", "channel_group")))
+				gomega.Expect(CD.DNS).To(gomega.Equal(
+					jsonData.DigString("domain_prefix") + "." + jsonData.DigString("dns", "base_domain")))
+				gomega.Expect(CD.AWSAccount).NotTo(gomega.BeEmpty())
+				gomega.Expect(CD.APIURL).To(gomega.Equal(jsonData.DigString("api", "url")))
+				gomega.Expect(CD.ConsoleURL).To(gomega.Equal(jsonData.DigString("console", "url")))
+				gomega.Expect(CD.Region).To(gomega.Equal(jsonData.DigString("region", "id")))
 
-				Expect(CD.State).To(Equal(jsonData.DigString("status", "state")))
-				Expect(CD.Created).NotTo(BeEmpty())
+				gomega.Expect(CD.State).To(gomega.Equal(jsonData.DigString("status", "state")))
+				gomega.Expect(CD.Created).NotTo(gomega.BeEmpty())
 
-				By("Get details page console url")
+				ginkgo.By("Get details page console url")
 				consoleURL := helper.GetConsoleUrlBasedOnEnv(ocmApi)
 				subscriptionID := jsonData.DigString("subscription", "id")
 				if consoleURL != "" {
-					Expect(CD.DetailsPage).To(Equal(consoleURL + subscriptionID))
+					gomega.Expect(CD.DetailsPage).To(gomega.Equal(consoleURL + subscriptionID))
 				}
 
 				if jsonData.DigBool("aws", "private_link") {
-					Expect(CD.Private).To(Equal("Yes"))
+					gomega.Expect(CD.Private).To(gomega.Equal("Yes"))
 				} else {
-					Expect(CD.Private).To(Equal("No"))
+					gomega.Expect(CD.Private).To(gomega.Equal("No"))
 				}
 
 				if jsonData.DigBool("hypershift", "enabled") {
 					//todo
 				} else {
 					if jsonData.DigBool("multi_az") {
-						Expect(CD.MultiAZ).To(Equal(jsonData.DigBool("multi_az")))
+						gomega.Expect(CD.MultiAZ).To(gomega.Equal(jsonData.DigBool("multi_az")))
 					} else {
-						Expect(CD.Nodes[0]["Control plane"]).To(Equal(int(jsonData.DigFloat("nodes", "master"))))
-						Expect(CD.Nodes[1]["Infra"]).To(Equal(int(jsonData.DigFloat("nodes", "infra"))))
-						Expect(CD.Nodes[2]["Compute"]).To(Equal(int(jsonData.DigFloat("nodes", "compute"))))
+						gomega.Expect(CD.Nodes[0]["Control plane"]).To(gomega.Equal(int(jsonData.DigFloat("nodes", "master"))))
+						gomega.Expect(CD.Nodes[1]["Infra"]).To(gomega.Equal(int(jsonData.DigFloat("nodes", "infra"))))
+						gomega.Expect(CD.Nodes[2]["Compute"]).To(gomega.Equal(int(jsonData.DigFloat("nodes", "compute"))))
 					}
 				}
 
-				Expect(CD.Network[1]["Service CIDR"]).To(Equal(jsonData.DigString("network", "service_cidr")))
-				Expect(CD.Network[2]["Machine CIDR"]).To(Equal(jsonData.DigString("network", "machine_cidr")))
-				Expect(CD.Network[3]["Pod CIDR"]).To(Equal(jsonData.DigString("network", "pod_cidr")))
-				Expect(CD.Network[4]["Host Prefix"]).
-					Should(ContainSubstring(strconv.FormatFloat(jsonData.DigFloat("network", "host_prefix"), 'f', -1, 64)))
-				Expect(CD.InfraID).To(Equal(jsonData.DigString("infra_id")))
+				gomega.Expect(CD.Network[1]["Service CIDR"]).To(gomega.Equal(jsonData.DigString("network", "service_cidr")))
+				gomega.Expect(CD.Network[2]["Machine CIDR"]).To(gomega.Equal(jsonData.DigString("network", "machine_cidr")))
+				gomega.Expect(CD.Network[3]["Pod CIDR"]).To(gomega.Equal(jsonData.DigString("network", "pod_cidr")))
+				gomega.Expect(CD.Network[4]["Host Prefix"]).
+					Should(gomega.ContainSubstring(strconv.FormatFloat(jsonData.DigFloat("network", "host_prefix"), 'f', -1, 64)))
+				gomega.Expect(CD.InfraID).To(gomega.Equal(jsonData.DigString("infra_id")))
 			})
 
-		It("can restrict master API endpoint to direct, private connectivity or not - [id:38850]",
+		ginkgo.It("can restrict master API endpoint to direct, private connectivity or not - [id:38850]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
-				By("Check the cluster is not private cluster")
+				ginkgo.By("Check the cluster is not private cluster")
 				private, err := clusterService.IsPrivateCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				if private {
 					SkipTestOnFeature("private")
 				}
 				isSTS, err := clusterService.IsSTSCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).To(BeNil())
-				By("Edit cluster to private to true")
+				gomega.Expect(err).To(gomega.BeNil())
+				ginkgo.By("Edit cluster to private to true")
 				out, err := clusterService.EditCluster(
 					clusterID,
 					"--private",
 					"-y",
 				)
 				if !isSTS || isHostedCP {
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 					textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-					Expect(textData).
-						Should(ContainSubstring(
+					gomega.Expect(textData).
+						Should(gomega.ContainSubstring(
 							"You are choosing to make your cluster API private. You will not be able to access your cluster"))
-					Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+					gomega.Expect(textData).Should(gomega.ContainSubstring("Updated cluster '%s'", clusterID))
 				} else {
-					Expect(err).ToNot(BeNil())
-					Expect(rosaClient.Parser.TextData.Input(out).Parse().Tip()).
-						Should(ContainSubstring(
+					gomega.Expect(err).ToNot(gomega.BeNil())
+					gomega.Expect(rosaClient.Parser.TextData.Input(out).Parse().Tip()).
+						Should(gomega.ContainSubstring(
 							"Failed to update cluster"))
 				}
 				defer func() {
-					By("Edit cluster to private back to false")
+					ginkgo.By("Edit cluster to private back to false")
 					out, err = clusterService.EditCluster(
 						clusterID,
 						"--private=false",
 						"-y",
 					)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 					textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-					Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+					gomega.Expect(textData).Should(gomega.ContainSubstring("Updated cluster '%s'", clusterID))
 
-					By("Describe cluster to check Private is true")
+					ginkgo.By("Describe cluster to check Private is true")
 					output, err := clusterService.DescribeCluster(clusterID)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 					CD, err := clusterService.ReflectClusterDescription(output)
-					Expect(err).To(BeNil())
-					Expect(CD.Private).To(Equal("No"))
+					gomega.Expect(err).To(gomega.BeNil())
+					gomega.Expect(CD.Private).To(gomega.Equal("No"))
 				}()
 
-				By("Describe cluster to check Private is true")
+				ginkgo.By("Describe cluster to check Private is true")
 				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				if !isSTS || isHostedCP {
-					Expect(CD.Private).To(Equal("Yes"))
+					gomega.Expect(CD.Private).To(gomega.Equal("Yes"))
 				} else {
-					Expect(CD.Private).To(Equal("No"))
+					gomega.Expect(CD.Private).To(gomega.Equal("No"))
 				}
 			})
 
 		// OCM-5231 caused the description parser issue
-		It("can disable workload monitoring on/off - [id:45159]",
+		ginkgo.It("can disable workload monitoring on/off - [id:45159]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
-				By("Load the original cluster config")
+				ginkgo.By("Load the original cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-				By("Check the cluster UWM is in expected status")
+				ginkgo.By("Check the cluster UWM is in expected status")
 				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				clusterDetail, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				// nolint
 				expectedUWMValue := "Enabled"
 				recoverUWMStatus := false
@@ -285,64 +286,64 @@ var _ = Describe("Edit cluster",
 					expectedUWMValue = "Disabled"
 					recoverUWMStatus = true
 				}
-				Expect(clusterDetail.UserWorkloadMonitoring).To(Equal(expectedUWMValue))
+				gomega.Expect(clusterDetail.UserWorkloadMonitoring).To(gomega.Equal(expectedUWMValue))
 				defer clusterService.EditCluster(clusterID,
 					fmt.Sprintf("--disable-workload-monitoring=%v", recoverUWMStatus),
 					"-y")
 
-				By("Disable the UWM")
+				ginkgo.By("Disable the UWM")
 				expectedUWMValue = "Disabled"
 				_, err = clusterService.EditCluster(clusterID,
 					"--disable-workload-monitoring",
 					"-y")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-				By("Check the disable result for cluster description")
+				ginkgo.By("Check the disable result for cluster description")
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				clusterDetail, err = clusterService.ReflectClusterDescription(output)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(clusterDetail.UserWorkloadMonitoring).To(Equal(expectedUWMValue))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(clusterDetail.UserWorkloadMonitoring).To(gomega.Equal(expectedUWMValue))
 
-				By("Enable the UWM again")
+				ginkgo.By("Enable the UWM again")
 				expectedUWMValue = "Enabled"
 				_, err = clusterService.EditCluster(clusterID,
 					"--disable-workload-monitoring=false",
 					"-y")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-				By("Check the disable result for cluster description")
+				ginkgo.By("Check the disable result for cluster description")
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				clusterDetail, err = clusterService.ReflectClusterDescription(output)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(clusterDetail.UserWorkloadMonitoring).To(Equal(expectedUWMValue))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(clusterDetail.UserWorkloadMonitoring).To(gomega.Equal(expectedUWMValue))
 			})
 
-		It("can edit privacy and workload monitoring via rosa-cli - [id:60275]",
+		ginkgo.It("can edit privacy and workload monitoring via rosa-cli - [id:60275]",
 			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
-				By("Check the cluster is private cluster")
+				ginkgo.By("Check the cluster is private cluster")
 				private, err := clusterService.IsPrivateCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				if !private {
 					SkipTestOnFeature("private")
 				}
 				isSTS, err := clusterService.IsSTSCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Run command to check help message of edit cluster")
+				ginkgo.By("Run command to check help message of edit cluster")
 				out, editErr := clusterService.EditCluster(clusterID, "-h")
-				Expect(editErr).ToNot(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("rosa edit cluster [flags]"))
-				Expect(out.String()).Should(ContainSubstring("rosa edit cluster -c mycluster --private"))
-				Expect(out.String()).Should(ContainSubstring("rosa edit cluster -c mycluster --interactive"))
+				gomega.Expect(editErr).ToNot(gomega.HaveOccurred())
+				gomega.Expect(out.String()).Should(gomega.ContainSubstring("rosa edit cluster [flags]"))
+				gomega.Expect(out.String()).Should(gomega.ContainSubstring("rosa edit cluster -c mycluster --private"))
+				gomega.Expect(out.String()).Should(gomega.ContainSubstring("rosa edit cluster -c mycluster --interactive"))
 
-				By("Edit the cluster with '--private=false' flag")
+				ginkgo.By("Edit the cluster with '--private=false' flag")
 				out, editErr = clusterService.EditCluster(
 					clusterID,
 					"--private=false",
@@ -350,146 +351,148 @@ var _ = Describe("Edit cluster",
 				)
 
 				defer func() {
-					By("Edit cluster to private back to false")
+					ginkgo.By("Edit cluster to private back to false")
 					out, err := clusterService.EditCluster(
 						clusterID,
 						"--private",
 						"-y",
 					)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 					textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-					Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+					gomega.Expect(textData).Should(gomega.ContainSubstring("Updated cluster '%s'", clusterID))
 
-					By("Describe cluster to check Private is true")
+					ginkgo.By("Describe cluster to check Private is true")
 					output, err := clusterService.DescribeCluster(clusterID)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 					CD, err := clusterService.ReflectClusterDescription(output)
-					Expect(err).To(BeNil())
-					Expect(CD.Private).To(Equal("Yes"))
+					gomega.Expect(err).To(gomega.BeNil())
+					gomega.Expect(CD.Private).To(gomega.Equal("Yes"))
 				}()
 
 				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
 
 				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				if isSTS && !isHostedCP {
-					Expect(editErr).ToNot(BeNil())
-					Expect(textData).Should(ContainSubstring("Failed to update cluster"))
+					gomega.Expect(editErr).ToNot(gomega.BeNil())
+					gomega.Expect(textData).Should(gomega.ContainSubstring("Failed to update cluster"))
 
-					Expect(CD.Private).To(Equal("Yes"))
+					gomega.Expect(CD.Private).To(gomega.Equal("Yes"))
 				} else {
-					Expect(editErr).To(BeNil())
-					Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+					gomega.Expect(editErr).To(gomega.BeNil())
+					gomega.Expect(textData).Should(gomega.ContainSubstring("Updated cluster '%s'", clusterID))
 
-					Expect(CD.Private).To(Equal("No"))
+					gomega.Expect(CD.Private).To(gomega.Equal("No"))
 				}
 
-				By("Edit the cluster with '--private' flag")
+				ginkgo.By("Edit the cluster with '--private' flag")
 				out, editErr = clusterService.EditCluster(
 					clusterID,
 					"--private",
 					"-y",
 				)
-				Expect(editErr).To(BeNil())
+				gomega.Expect(editErr).To(gomega.BeNil())
 				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("You are choosing to make your cluster API private. " +
+				gomega.Expect(textData).Should(gomega.ContainSubstring("You are choosing to make your cluster API private. " +
 					"You will not be able to access your cluster until you edit network settings in your cloud provider. " +
 					"To also change the privacy setting of the application router endpoints, use the 'rosa edit ingress' command."))
-				Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
+				gomega.Expect(textData).Should(gomega.ContainSubstring("Updated cluster '%s'", clusterID))
 
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err = clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
-				Expect(CD.Private).To(Equal("Yes"))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(CD.Private).To(gomega.Equal("Yes"))
 			})
 
 		// Excluded until bug on OCP-73161 is resolved
-		It("can verify delete protection on a rosa cluster - [id:73161]",
+		ginkgo.It("can verify delete protection on a rosa cluster - [id:73161]",
 			labels.High, labels.Runtime.Day2, labels.Exclude,
 			func() {
-				By("Get original delete protection value")
+				ginkgo.By("Get original delete protection value")
 				output, err := clusterService.DescribeClusterAndReflect(clusterID)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				originalDeleteProtection := output.EnableDeleteProtection
 
-				By("Enable delete protection on the cluster")
+				ginkgo.By("Enable delete protection on the cluster")
 				deleteProtection := constants.DeleteProtectionEnabled
 				_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=true", "-y")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				defer clusterService.EditCluster(clusterID,
 					fmt.Sprintf("--enable-delete-protection=%s", originalDeleteProtection), "-y")
 
-				By("Check the enable result from cluster description")
+				ginkgo.By("Check the enable result from cluster description")
 				output, err = clusterService.DescribeClusterAndReflect(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.EnableDeleteProtection).To(Equal(deleteProtection))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(output.EnableDeleteProtection).To(gomega.Equal(deleteProtection))
 
-				By("Attempt to delete cluster with delete protection enabled")
+				ginkgo.By("Attempt to delete cluster with delete protection enabled")
 				out, err := clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(
+				gomega.Expect(textData).Should(gomega.ContainSubstring(
 					`Delete-protection has been activated on this cluster and 
 				it cannot be deleted until delete-protection is disabled`))
 
-				By("Disable delete protection on the cluster")
+				ginkgo.By("Disable delete protection on the cluster")
 				deleteProtection = constants.DeleteProtectionDisabled
 				_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=false", "-y")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-				By("Check the disable result from cluster description")
+				ginkgo.By("Check the disable result from cluster description")
 				output, err = clusterService.DescribeClusterAndReflect(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.EnableDeleteProtection).To(Equal(deleteProtection))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(output.EnableDeleteProtection).To(gomega.Equal(deleteProtection))
 			})
 
 		// Excluded until bug on OCP-74656 is resolved
-		It("can verify delete protection on a rosa cluster negative - [id:74656]",
+		ginkgo.It("can verify delete protection on a rosa cluster negative - [id:74656]",
 			labels.Medium, labels.Runtime.Day2, labels.Exclude,
 			func() {
-				By("Enable delete protection with invalid values")
+				ginkgo.By("Enable delete protection with invalid values")
 				resp, err := clusterService.EditCluster(clusterID,
 					"--enable-delete-protection=aaa",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "aaa" for "--enable-delete-protection"`))
+				gomega.Expect(textData).Should(
+					gomega.ContainSubstring(`Error: invalid argument "aaa" for "--enable-delete-protection"`))
 
 				resp, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=", "-y")
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
+				gomega.Expect(textData).Should(
+					gomega.ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
 			})
 
-		It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2, labels.FedRAMP,
+		ginkgo.It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
-				By("Load the original cluster config")
+				ginkgo.By("Load the original cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				var verifyProxy = func(httpProxy string, httpsProxy string, noProxy string, caFile string) {
 					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
-					Expect(err).ToNot(HaveOccurred())
+					gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 					clusterHTTPProxy, clusterHTTPSProxy, clusterNoProxy := clusterService.DetectProxy(clusterDescription)
-					Expect(httpProxy).To(Equal(clusterHTTPProxy), "http proxy not match")
-					Expect(httpsProxy).To(Equal(clusterHTTPSProxy), "https proxy not match")
-					Expect(noProxy).To(Equal(clusterNoProxy), "no proxy not match")
+					gomega.Expect(httpProxy).To(gomega.Equal(clusterHTTPProxy), "http proxy not match")
+					gomega.Expect(httpsProxy).To(gomega.Equal(clusterHTTPSProxy), "https proxy not match")
+					gomega.Expect(noProxy).To(gomega.Equal(clusterNoProxy), "no proxy not match")
 					if caFile == "" {
-						Expect(clusterDescription.AdditionalTrustBundle).To(BeEmpty())
+						gomega.Expect(clusterDescription.AdditionalTrustBundle).To(gomega.BeEmpty())
 					} else {
-						Expect(clusterDescription.AdditionalTrustBundle).To(Equal("REDACTED"))
+						gomega.Expect(clusterDescription.AdditionalTrustBundle).To(gomega.Equal("REDACTED"))
 					}
 				}
 
-				By("Check if cluster is BYOVPC")
+				ginkgo.By("Check if cluster is BYOVPC")
 				if !profile.ClusterConfig.ProxyEnabled {
-					Skip("This feature only work for BYO VPC")
+					ginkgo.Skip("This feature only work for BYO VPC")
 				}
 				originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile := "", "", "", ""
 				if clusterConfig.Proxy.Enabled {
@@ -502,7 +505,7 @@ var _ = Describe("Edit cluster",
 						clusterConfig.Proxy.TrustBundleFile
 				}
 
-				By("Edit cluster with https_proxy, http_proxy, no_proxy and trust-bundle-file")
+				ginkgo.By("Edit cluster with https_proxy, http_proxy, no_proxy and trust-bundle-file")
 				updateHttpProxy := "http://example.com"
 				updateHttpsProxy := "https://example.com"
 				updatedNoProxy := "example.com"
@@ -513,17 +516,17 @@ var _ = Describe("Edit cluster",
 					"--no-proxy", updatedNoProxy,
 					"--additional-trust-bundle-file", updatedCA,
 				)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				defer clusterService.EditCluster(clusterID,
 					"--http-proxy", originalHttpProxy,
 					"--https-proxy", originalHTTPSProxy,
 					"--no-proxy", originalNoProxy,
 					"--additional-trust-bundle-file", originalCAFile,
 				)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
 
-				By("Edit cluster for removing cluster-wide proxy")
+				ginkgo.By("Edit cluster for removing cluster-wide proxy")
 				updateHttpProxy = ""
 				updateHttpsProxy = ""
 				updatedNoProxy = ""
@@ -534,105 +537,105 @@ var _ = Describe("Edit cluster",
 					"--no-proxy", updatedNoProxy,
 					"--additional-trust-bundle-file", updatedCA,
 				)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
 
-				By("Edit cluster with https_proxy and no_proxy with different valid value")
+				ginkgo.By("Edit cluster with https_proxy and no_proxy with different valid value")
 				updateHttpsProxy = "https://test-46308.com"
 				updatedNoProxy = "rosacli-46308.com"
 				_, err = clusterService.EditCluster(clusterID,
 					"--https-proxy", updateHttpsProxy,
 					"--no-proxy", updatedNoProxy,
 				)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
 
-				By("Edit cluster with only http_proxy")
+				ginkgo.By("Edit cluster with only http_proxy")
 				updateHttpProxy = "http://test-46308.com"
 				_, err = clusterService.EditCluster(clusterID,
 					"--http-proxy", updateHttpProxy,
 				)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
 			})
-		It("Changing billing account for the cluster - [id:75921]",
+		ginkgo.It("Changing billing account for the cluster - [id:75921]",
 			labels.High, labels.Runtime.Day2,
 			func() {
-				By("Check the help message of 'rosa edit cluster -h'")
+				ginkgo.By("Check the help message of 'rosa edit cluster -h'")
 				helpOutput, err := clusterService.EditCluster("", "-h")
-				Expect(err).To(BeNil())
-				Expect(helpOutput.String()).To(ContainSubstring("--billing-account"))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(helpOutput.String()).To(gomega.ContainSubstring("--billing-account"))
 
-				By("Change the billing account for the cluster")
+				ginkgo.By("Change the billing account for the cluster")
 				output, err := clusterService.EditCluster(clusterID, "--billing-account", constants.ChangedBillingAccount)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("Updated cluster"))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(gomega.ContainSubstring("Updated cluster"))
 
-				By("Check if billing account is changed")
+				ginkgo.By("Check if billing account is changed")
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(CD.AWSBillingAccount).To(Equal(constants.ChangedBillingAccount))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(CD.AWSBillingAccount).To(gomega.Equal(constants.ChangedBillingAccount))
 
-				By("Create another machinepool without security groups and describe it")
+				ginkgo.By("Create another machinepool without security groups and describe it")
 				mpName := "mp-75921"
 				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 					"--replicas", "3",
 					"-y",
 				)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				defer func() {
-					By("Remove the machine pool")
+					ginkgo.By("Remove the machine pool")
 					_, _ = rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-					By("Change the billing account back")
+					ginkgo.By("Change the billing account back")
 					output, err := clusterService.EditCluster(clusterID, "--billing-account", constants.BillingAccount)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Updated cluster"))
+					gomega.Expect(err).ToNot(gomega.HaveOccurred())
+					gomega.Expect(output.String()).Should(gomega.ContainSubstring("Updated cluster"))
 				}()
 			})
 
-		It("Changing invalid billing account - [id:75922]",
+		ginkgo.It("Changing invalid billing account - [id:75922]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
-				By("Change the billing account with invalid value")
+				ginkgo.By("Change the billing account with invalid value")
 				output, err := clusterService.EditCluster(clusterID, "--billing-account", "qweD3")
-				Expect(err).ToNot(BeNil())
+				gomega.Expect(err).ToNot(gomega.BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
+				gomega.Expect(textData).
+					Should(gomega.ContainSubstring(
 						"not valid. Rerun the command with a valid billing account number"))
 
 				output, err = clusterService.EditCluster(clusterID, "--billing-account", "123")
-				Expect(err).ToNot(BeNil())
+				gomega.Expect(err).ToNot(gomega.BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
+				gomega.Expect(textData).
+					Should(gomega.ContainSubstring(
 						"not valid. Rerun the command with a valid billing account number"))
 
-				By("Change the billing account with an empty string")
+				ginkgo.By("Change the billing account with an empty string")
 				output, err = clusterService.EditCluster(clusterID, "--billing-account", " ")
-				Expect(err).ToNot(BeNil())
+				gomega.Expect(err).ToNot(gomega.BeNil())
 				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
+				gomega.Expect(textData).
+					Should(gomega.ContainSubstring(
 						"not valid. Rerun the command with a valid billing account number"))
 
-				By("Check the billing account is NOT changed")
+				ginkgo.By("Check the billing account is NOT changed")
 				clusterConfig, err := config.ParseClusterProfile()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				if clusterConfig.BillingAccount != "" {
-					Expect(CD.AWSBillingAccount).To(Equal(clusterConfig.BillingAccount))
+					gomega.Expect(CD.AWSBillingAccount).To(gomega.Equal(clusterConfig.BillingAccount))
 				}
 			})
 	})
-var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func() {
-	defer GinkgoRecover()
+var _ = ginkgo.Describe("Edit cluster validation should", labels.Feature.Cluster, func() {
+	defer ginkgo.GinkgoRecover()
 
 	var (
 		clusterID      string
@@ -641,81 +644,81 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		upgradeService rosacli.UpgradeService
 	)
 
-	BeforeEach(func() {
-		By("Get the cluster")
+	ginkgo.BeforeEach(func() {
+		ginkgo.By("Get the cluster")
 		clusterID = config.GetClusterID()
-		Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+		gomega.Expect(clusterID).ToNot(gomega.Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 
-		By("Init the client")
+		ginkgo.By("Init the client")
 		rosaClient = rosacli.NewClient()
 		clusterService = rosaClient.Cluster
 		upgradeService = rosaClient.Upgrade
 	})
 
-	AfterEach(func() {
-		By("Clean the cluster")
+	ginkgo.AfterEach(func() {
+		ginkgo.By("Clean the cluster")
 		rosaClient.CleanResources(clusterID)
 	})
-	It("can validate for deletion of upgrade policy of rosa cluster - [id:38787]",
+	ginkgo.It("can validate for deletion of upgrade policy of rosa cluster - [id:38787]",
 		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
-			By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
+			ginkgo.By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
 			output, err := upgradeService.DeleteUpgrade()
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring(`required flag(s) "cluster" not set`))
+			gomega.Expect(textData).Should(gomega.ContainSubstring(`required flag(s) "cluster" not set`))
 
-			By("Delete an non-existent upgrade when cluster has no scheduled policy")
+			ginkgo.By("Delete an non-existent upgrade when cluster has no scheduled policy")
 			output, err = upgradeService.DeleteUpgrade("-c", clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring(`There are no scheduled upgrades on cluster '%s'`, clusterID))
+			gomega.Expect(textData).Should(gomega.ContainSubstring(`There are no scheduled upgrades on cluster '%s'`, clusterID))
 
-			By("Delete with unknown flag --interactive")
+			ginkgo.By("Delete with unknown flag --interactive")
 			output, err = upgradeService.DeleteUpgrade("-c", clusterID, "--interactive")
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("Error: unknown flag: --interactive"))
+			gomega.Expect(textData).Should(gomega.ContainSubstring("Error: unknown flag: --interactive"))
 		})
 
-	It("can validate create/delete upgrade policies for HCP clusters - [id:73814]",
+	ginkgo.It("can validate create/delete upgrade policies for HCP clusters - [id:73814]",
 		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			defer func() {
 				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			}()
 
-			By("Skip testing if the cluster is not a HCP cluster")
+			ginkgo.By("Skip testing if the cluster is not a HCP cluster")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			if !hostedCluster {
 				SkipNotHosted()
 			}
 
-			By("Upgrade cluster with invalid cluster id")
+			ginkgo.By("Upgrade cluster with invalid cluster id")
 			invalidClusterID := helper.GenerateRandomString(30)
 			output, err := upgradeService.Upgrade("-c", invalidClusterID)
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
+			gomega.Expect(textData).
+				To(gomega.ContainSubstring(
 					"ERR: Failed to get cluster '%s': There is no cluster with identifier or name '%s'",
 					invalidClusterID,
 					invalidClusterID))
 
-			By("Upgrade cluster with incorrect format of the date and time")
+			ginkgo.By("Upgrade cluster with incorrect format of the date and time")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule-date=\"2024-06\"",
 				"--schedule-time=\"09:00:12\"",
 				"-y")
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("ERR: schedule date should use the format 'yyyy-mm-dd'"))
+			gomega.Expect(textData).To(gomega.ContainSubstring("ERR: schedule date should use the format 'yyyy-mm-dd'"))
 
-			By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
+			ginkgo.By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
@@ -723,73 +726,73 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				"--schedule-time=\"09:00\"",
 				"--schedule=\"5 5 * * *\"",
 				"-y")
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
+			gomega.Expect(textData).
+				To(gomega.ContainSubstring(
 					"ERR: The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
-			By("Upgrade cluster using --schedule and --version flags at the same time")
+			ginkgo.By("Upgrade cluster using --schedule and --version flags at the same time")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule=\"5 5 * * *\"",
 				"--version=4.15.10",
 				"-y")
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
+			gomega.Expect(textData).
+				To(gomega.ContainSubstring(
 					"ERR: The '--schedule' option is mutually exclusive with '--version'"))
 
-			By("Upgrade cluster with value not match the cron epression")
+			ginkgo.By("Upgrade cluster with value not match the cron epression")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule=\"5 5\"",
 				"-y")
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
+			gomega.Expect(textData).
+				To(gomega.ContainSubstring(
 					"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
 
-			By("Upgrade cluster with node_drain_grace_period")
+			ginkgo.By("Upgrade cluster with node_drain_grace_period")
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule", "20 20 * * *",
 				"--node-drain-grace-period", "60",
 				"-y")
-			Expect(err).To(HaveOccurred())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
+			gomega.Expect(textData).
+				To(gomega.ContainSubstring(
 					"ERR: node-drain-grace-period flag is not supported to hosted clusters"))
 		})
 
-	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+	ginkgo.It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
-			By("Load the original cluster config")
+			ginkgo.By("Load the original cluster config")
 			clusterConfig, err := config.ParseClusterProfile()
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-			By("Load the profile")
+			ginkgo.By("Load the profile")
 			profile := handler.LoadProfileYamlFileByENV()
 
-			By("Skip if the cluster is no proxy setting")
+			ginkgo.By("Skip if the cluster is no proxy setting")
 			if !profile.ClusterConfig.ProxyEnabled {
-				Skip("This feature only work for the cluster with proxy setting")
+				ginkgo.Skip("This feature only work for the cluster with proxy setting")
 			}
 
-			By("Edit cluster with invalid http_proxy set")
+			ginkgo.By("Edit cluster with invalid http_proxy set")
 			if !profile.ClusterConfig.BYOVPC {
 				output, err := clusterService.EditCluster(clusterID,
 					"--http-proxy", "http://test-proxy.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Cluster-wide proxy is not supported on clusters using the default VPC"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("ERR: Cluster-wide proxy is not supported on clusters using the default VPC"))
 				return
 			}
 			originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile := "", "", "", ""
@@ -804,7 +807,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			}
 			fmt.Println(originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile)
 
-			By("Edit cluster with invalid http_proxy not started with http")
+			ginkgo.By("Edit cluster with invalid http_proxy not started with http")
 			invalidHTTPProxy := map[string]string{
 				"invalidvalue":           "ERR: Invalid http-proxy value 'invalidvalue'",
 				"https://test-proxy.com": "ERR: Expected http-proxy to have an http:// scheme",
@@ -813,110 +816,112 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				output, err := clusterService.EditCluster(clusterID,
 					"--http-proxy", illegalHttpProxy,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring(errMessage))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(gomega.ContainSubstring(errMessage))
 			}
 
-			By("Edit cluster with invalid https_proxy set")
+			ginkgo.By("Edit cluster with invalid https_proxy set")
 			output, err := clusterService.EditCluster(clusterID,
 				"--https-proxy", "invalid",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring(`ERR: parse "invalid": invalid URI for request`))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(gomega.ContainSubstring(`ERR: parse "invalid": invalid URI for request`))
 
-			By("Edit cluster with invalid no_proxy ")
+			ginkgo.By("Edit cluster with invalid no_proxy ")
 			output, err = clusterService.EditCluster(clusterID,
 				"--no-proxy", "*",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring(`ERR: expected a valid user no-proxy value`))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(gomega.ContainSubstring(`ERR: expected a valid user no-proxy value`))
 
-			By("Edit cluster with invalid additional_trust_bundle set")
+			ginkgo.By("Edit cluster with invalid additional_trust_bundle set")
 			tempDir, err := os.MkdirTemp("", "*")
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			defer os.RemoveAll(tempDir)
 			tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-46310"), "invalid CA")
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			output, err = clusterService.EditCluster(clusterID,
 				"--additional-trust-bundle-file", tempFile,
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring(`ERR: Failed to parse additional trust bundle`))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(gomega.ContainSubstring(`ERR: Failed to parse additional trust bundle`))
 
-			By("Edit wide-proxy cluster with invalid additional_trust_bundle set path")
+			ginkgo.By("Edit wide-proxy cluster with invalid additional_trust_bundle set path")
 			output, err = clusterService.EditCluster(clusterID,
 				"--additional-trust-bundle-file", "/not/existing",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring(`ERR: open /not/existing: no such file or directory`))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(gomega.ContainSubstring(`ERR: open /not/existing: no such file or directory`))
 
-			By("Edit cluster which is set no-proxy but others empty")
+			ginkgo.By("Edit cluster which is set no-proxy but others empty")
 			output, err = clusterService.EditCluster(clusterID,
 				"--http-proxy", "",
 				"--https-proxy", "",
 				"--no-proxy", "example.com",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Failed to update cluster"))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(
+				gomega.ContainSubstring("ERR: Failed to update cluster"))
 
-			By("Set all http settings to empty")
+			ginkgo.By("Set all http settings to empty")
 			output, err = clusterService.EditCluster(clusterID,
 				"--http-proxy", "",
 				"--https-proxy", "",
 				"--no-proxy", "",
 			)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			defer clusterService.EditCluster(clusterID,
 				"--http-proxy", originalHttpProxy,
 				"--https-proxy", originalHTTPSProxy,
 				"--no-proxy", originalNoProxy,
 			)
-			By("Edit cluster which is not set http-proxy and http-proxy  with the command")
+			ginkgo.By("Edit cluster which is not set http-proxy and http-proxy  with the command")
 			output, err = clusterService.EditCluster(clusterID,
 				"--no-proxy", "example.com",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(
+				gomega.ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
 
 		})
 
-	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+	ginkgo.It("can validate cluster registry config patching well - [id:77149]",
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
-			By("edit non-hcp with registry config")
+			ginkgo.By("edit non-hcp with registry config")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			if !hostedCluster {
 				output, err := clusterService.EditCluster(clusterID,
 					"--registry-config-blocked-registries", "test.blocked.com")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Setting the registry config is only supported for hosted clusters"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("ERR: Setting the registry config is only supported for hosted clusters"))
 				return
 			}
 
-			By("patch hcp with --registry-config-blocked-registries and --registry-config-allowed-registries at same time")
+			ginkgo.By("patch hcp with --registry-config-blocked-registries and " +
+				"--registry-config-allowed-registries at same time")
 			output, err := clusterService.EditCluster(clusterID,
 				"--registry-config-blocked-registries", "test.blocked.com",
 				"--registry-config-allowed-registries", "test.com")
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Allowed registries and blocked registries are mutually exclusive fields"))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(
+				gomega.ContainSubstring("ERR: Allowed registries and blocked registries are mutually exclusive fields"))
 
-			By("patch hcp with invalid value for --registry-config-allowed-registries-for-import flag")
+			ginkgo.By("patch hcp with invalid value for --registry-config-allowed-registries-for-import flag")
 			output, err = clusterService.EditCluster(clusterID,
 				"--registry-config-allowed-registries-for-import", "test.com:stringType")
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Expected valid allowed registries for import values"))
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(output.String()).Should(
+				gomega.ContainSubstring("ERR: Expected valid allowed registries for import values"))
 
 		})
 })
-var _ = Describe("Additional security groups validation",
+var _ = ginkgo.Describe("Additional security groups validation",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -925,7 +930,7 @@ var _ = Describe("Additional security groups validation",
 			clusterHandler handler.ClusterHandler
 		)
 
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			var err error
 
 			// Init the client
@@ -941,13 +946,13 @@ var _ = Describe("Additional security groups validation",
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			clusterHandler.Destroy()
 		})
-		It("Create rosa cluster with additional security groups will validate well via rosacli - [id:68971]",
+		ginkgo.It("Create rosa cluster with additional security groups will validate well via rosacli - [id:68971]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				var (
@@ -970,33 +975,33 @@ var _ = Describe("Additional security groups validation",
 					}
 				)
 
-				By("Get cluster upgrade version")
+				ginkgo.By("Get cluster upgrade version")
 				versionService := rosaClient.Version
 				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, false)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				defaultVersion := versionList.DefaultVersion()
-				Expect(defaultVersion).ToNot(BeNil())
+				gomega.Expect(defaultVersion).ToNot(gomega.BeNil())
 				ocpVersion = defaultVersion.Version
 
 				pickedVersions, err := versionList.FilterVersionsSameMajorAndEqualOrLowerThanMinor(4, 13, false)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				if len(pickedVersions.OpenShiftVersions) <= 0 {
-					Skip("There is no version bellow 4.14.0, skip this case")
+					ginkgo.Skip("There is no version bellow 4.14.0, skip this case")
 				}
 				ocpVersionBelow4_14 = pickedVersions.OpenShiftVersions[0].Version
 
-				By("Prepare a vpc for the testing")
+				ginkgo.By("Prepare a vpc for the testing")
 				resourcesHandler := clusterHandler.GetResourcesHandler()
 				_, err = resourcesHandler.PrepareVPC(caseNumber, "", true, false)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, false)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				//Check all subnets are created successfully and are in available state. If not, wait for them to be available
 				subnetIDs := append(subnetMap["private"], subnetMap["public"]...)
 
 				awsClient, err := aws_client.CreateAWSClient("", resourcesHandler.GetVPC().Region)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				err = wait.PollUntilContextTimeout(
 					context.Background(),
 					30*time.Second,
@@ -1020,13 +1025,13 @@ var _ = Describe("Additional security groups validation",
 					})
 				helper.AssertWaitPollNoErr(err, "subnets are not available after 300s")
 
-				By("Prepare additional security group ids for testing")
+				ginkgo.By("Prepare additional security group ids for testing")
 				sgIDs, err := resourcesHandler.PrepareAdditionalSecurityGroups(SGIdsMoreThanTen, caseNumber)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				subnetsFlagValue := strings.Join(append(subnetMap["private"], subnetMap["public"]...), ",")
 				rosaclient := rosacli.NewClient()
 
-				By("Try creating cluster with additional security groups but no subnet-ids")
+				ginkgo.By("Try creating cluster with additional security groups but no subnet-ids")
 				for additionalSecurityGroupFlag := range securityGroups {
 					output, err, _ := rosaclient.Cluster.Create(
 						clusterName,
@@ -1034,15 +1039,15 @@ var _ = Describe("Additional security groups validation",
 						"--replicas", "3",
 						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
 					)
-					Expect(err).To(HaveOccurred())
+					gomega.Expect(err).To(gomega.HaveOccurred())
 					index = strings.Index(additionalSecurityGroupFlag, "a")
 					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
+					gomega.Expect(output.String()).To(gomega.ContainSubstring(
 						"Setting the `%s` flag is only allowed for BYO VPC clusters",
 						flagName))
 				}
 
-				By("Try creating cluster with additional security groups and ocp version lower than 4.14")
+				ginkgo.By("Try creating cluster with additional security groups and ocp version lower than 4.14")
 				for additionalSecurityGroupFlag := range securityGroups {
 					output, err, _ := rosaclient.Cluster.Create(
 						clusterName,
@@ -1054,15 +1059,15 @@ var _ = Describe("Additional security groups validation",
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
 						"-y",
 					)
-					Expect(err).To(HaveOccurred())
+					gomega.Expect(err).To(gomega.HaveOccurred())
 					index = strings.Index(additionalSecurityGroupFlag, "a")
 					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
+					gomega.Expect(output.String()).To(gomega.ContainSubstring(
 						"Parameter '%s' is not supported prior to version '4.14.0'",
 						flagName))
 				}
 
-				By("Try creating cluster with invalid additional security groups")
+				ginkgo.By("Try creating cluster with invalid additional security groups")
 				for additionalSecurityGroupFlag, value := range invalidSecurityGroups {
 					output, err, _ := rosaclient.Cluster.Create(
 						clusterName,
@@ -1073,11 +1078,12 @@ var _ = Describe("Additional security groups validation",
 						"--version", ocpVersion,
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).To(ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
+					gomega.Expect(err).To(gomega.HaveOccurred())
+					gomega.Expect(output.String()).To(
+						gomega.ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
 				}
 
-				By("Try creating cluster with additional security groups with invalid and more than 10 SG ids")
+				ginkgo.By("Try creating cluster with additional security groups with invalid and more than 10 SG ids")
 				for additionalSecurityGroupFlag := range securityGroups {
 
 					output, err, _ := rosaclient.Cluster.Create(
@@ -1089,18 +1095,18 @@ var _ = Describe("Additional security groups validation",
 						"--version", ocpVersion,
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).To(ContainSubstring(
+					gomega.Expect(err).To(gomega.HaveOccurred())
+					gomega.Expect(output.String()).To(gomega.ContainSubstring(
 						"limit for Additional Security Groups is '10', but '11' have been supplied"),
 					)
 				}
 			})
 	})
 
-var _ = Describe("Classic cluster creation validation",
+var _ = ginkgo.Describe("Classic cluster creation validation",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -1110,7 +1116,7 @@ var _ = Describe("Classic cluster creation validation",
 			clusterHandler handler.ClusterHandler
 		)
 
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			var err error
 
 			// Init the client
@@ -1126,23 +1132,23 @@ var _ = Describe("Classic cluster creation validation",
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			clusterHandler.Destroy()
 		})
 
-		It("to check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]",
+		ginkgo.It("to check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				By("Prepare creation command")
+				ginkgo.By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
 				profile.NamePrefix = helper.GenerateRandomName("ci38770", 2)
 
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				// nolint
 				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
@@ -1179,29 +1185,29 @@ var _ = Describe("Classic cluster creation validation",
 					"test-cluster-",
 				}
 				for _, cn := range invalidClusterNames {
-					By("Check the validation for cluster-name " + cn)
+					ginkgo.By("Check the validation for cluster-name " + cn)
 					rosalCommand.ReplaceFlagValue(map[string]string{
 						"--cluster-name": cn,
 					})
 					stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-					Expect(err).NotTo(BeNil())
-					Expect(stdout.String()).
-						To(ContainSubstring(
+					gomega.Expect(err).NotTo(gomega.BeNil())
+					gomega.Expect(stdout.String()).
+						To(gomega.ContainSubstring(
 							"Cluster name must consist of no more than 54 lowercase alphanumeric characters or '-', " +
 								"start with a letter, and end with an alphanumeric character"))
 				}
 
-				By("Check the validation for compute-machine-type")
+				ginkgo.By("Check the validation for compute-machine-type")
 				invalidMachineType := "not-exist-machine-type"
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--compute-machine-type": invalidMachineType,
 					"--cluster-name":         originalClusterName,
 				})
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("is not supported for cloud provider"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(gomega.ContainSubstring("is not supported for cloud provider"))
 
-				By("Check the validation for replicas")
+				ginkgo.By("Check the validation for replicas")
 				invalidReplicasTypeErrorMap := map[string]string{
 					"4.5":  "invalid argument \"4.5\" for \"--replicas\" flag",
 					"five": "invalid argument \"five\" for \"--replicas\" flag",
@@ -1212,8 +1218,8 @@ var _ = Describe("Classic cluster creation validation",
 						"--replicas":             k,
 					})
 					stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-					Expect(err).NotTo(BeNil())
-					Expect(stdout.String()).To(ContainSubstring(v))
+					gomega.Expect(err).NotTo(gomega.BeNil())
+					gomega.Expect(stdout.String()).To(gomega.ContainSubstring(v))
 				}
 				if rosalCommand.CheckFlagExist("--multi-az") {
 					if !profile.ClusterConfig.AutoscalerEnabled {
@@ -1228,8 +1234,8 @@ var _ = Describe("Classic cluster creation validation",
 								"--replicas": k,
 							})
 							stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-							Expect(err).NotTo(BeNil())
-							Expect(stdout.String()).To(ContainSubstring(v))
+							gomega.Expect(err).NotTo(gomega.BeNil())
+							gomega.Expect(stdout.String()).To(gomega.ContainSubstring(v))
 						}
 					}
 				} else {
@@ -1244,45 +1250,45 @@ var _ = Describe("Classic cluster creation validation",
 								"--replicas": k,
 							})
 							stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-							Expect(err).NotTo(BeNil())
-							Expect(stdout.String()).To(ContainSubstring(v))
+							gomega.Expect(err).NotTo(gomega.BeNil())
+							gomega.Expect(stdout.String()).To(gomega.ContainSubstring(v))
 						}
 					}
 				}
-				By("Check the validation for region")
+				ginkgo.By("Check the validation for region")
 				invalidRegion := "not-exist-region"
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--region":   invalidRegion,
 					"--replicas": originalReplicas,
 				})
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("Unsupported region"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(gomega.ContainSubstring("Unsupported region"))
 
-				By("Check the validation for invalid billing-account for classic sts cluster")
+				ginkgo.By("Check the validation for invalid billing-account for classic sts cluster")
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--region": originalRegion,
 				})
 				rosalCommand.AddFlags("--billing-account", "123456789")
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(BeNil())
-				Expect(stdout.String()).
-					ToNot(ContainSubstring(
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(stdout.String()).
+					ToNot(gomega.ContainSubstring(
 						"Billing accounts are only supported for"))
-				Expect(stdout.String()).
-					To(ContainSubstring(
+				gomega.Expect(stdout.String()).
+					To(gomega.ContainSubstring(
 						"is not valid"))
 			})
 
-		It("can allow sts cluster installation with compatible policies - [id:45161]",
+		ginkgo.It("can allow sts cluster installation with compatible policies - [id:45161]",
 			labels.High, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Prepare creation command")
+				ginkgo.By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
 				profile.NamePrefix = helper.GenerateRandomName("ci45161", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
 				rosalCommand = config.GenerateCommand(command)
@@ -1294,15 +1300,15 @@ var _ = Describe("Classic cluster creation validation",
 				clusterName := "cluster-45161"
 				operatorPrefix := "cluster-45161-asdf"
 
-				By("Create cluster with one Y-1 version")
+				ginkgo.By("Create cluster with one Y-1 version")
 				ocmResourceService := rosaClient.OCMResource
 				versionService := rosaClient.Version
 				accountRoleList, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				installerRole := rosalCommand.GetFlagValue("--role-arn", true)
 				ar := accountRoleList.AccountRole(installerRole)
-				Expect(ar).ToNot(BeNil())
+				gomega.Expect(ar).ToNot(gomega.BeNil())
 
 				cg := rosalCommand.GetFlagValue("--channel-group", true)
 				if cg == "" {
@@ -1310,13 +1316,13 @@ var _ = Describe("Classic cluster creation validation",
 				}
 
 				versionList, err := versionService.ListAndReflectVersions(cg, rosalCommand.CheckFlagExist("--hosted-cp"))
-				Expect(err).To(BeNil())
-				Expect(versionList).ToNot(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(versionList).ToNot(gomega.BeNil())
 				foundVersion, err := versionList.FindNearestBackwardMinorVersion(ar.OpenshiftVersion, 1, false)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				var clusterVersion string
 				if foundVersion == nil {
-					Skip("No cluster version < y-1 found for compatibility testing")
+					ginkgo.Skip("No cluster version < y-1 found for compatibility testing")
 				}
 				clusterVersion = foundVersion.Version
 
@@ -1330,15 +1336,15 @@ var _ = Describe("Classic cluster creation validation",
 
 				if rosalCommand.GetFlagValue("--https-proxy", true) != "" {
 					err = rosalCommand.DeleteFlag("--https-proxy", true)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 				if rosalCommand.GetFlagValue("--no-proxy", true) != "" {
 					err = rosalCommand.DeleteFlag("--no-proxy", true)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 				if rosalCommand.GetFlagValue("--http-proxy", true) != "" {
 					err = rosalCommand.DeleteFlag("--http-proxy", true)
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 				if rosalCommand.CheckFlagExist("--base-domain") {
 					rosalCommand.DeleteFlag("--base-domain", true)
@@ -1347,72 +1353,73 @@ var _ = Describe("Classic cluster creation validation",
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run")
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Creating cluster '%s' should succeed", clusterName)))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(
+					gomega.ContainSubstring(fmt.Sprintf("Creating cluster '%s' should succeed", clusterName)))
 			})
 
-		It("to validate to create the sts cluster with invalid tag - [id:56440]",
+		ginkgo.It("to validate to create the sts cluster with invalid tag - [id:56440]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-56440"
 
-				By("Create cluster with invalid tag key")
+				ginkgo.By("Create cluster with invalid tag key")
 				out, err := clusterService.CreateDryRun(
 					clusterName, "--tags=~~~:cluster",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"expected a valid user tag key '~~~' matching ^[\\pL\\pZ\\pN_.:/=+\\-@]{1,128}$"))
 
-				By("Create cluster with invalid tag value")
+				ginkgo.By("Create cluster with invalid tag value")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--tags=name:****",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"expected a valid user tag value '****' matching ^[\\pL\\pZ\\pN_.:/=+\\-@]{0,256}$"))
 
-				By("Create cluster with duplicate tag key")
+				ginkgo.By("Create cluster with duplicate tag key")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--tags=name:test1,op:clound,name:test2",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"invalid tags, user tag keys must be unique, duplicate key 'name' found"))
 
-				By("Create cluster with invalid tag format")
+				ginkgo.By("Create cluster with invalid tag format")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--tags=test1,test2,test4",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"invalid tag format for tag '[test1]'. Expected tag format: 'key value'"))
 
-				By("Create cluster with empty tag value")
+				ginkgo.By("Create cluster with empty tag value")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--tags", "foo:",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"invalid tag format, tag key or tag value can not be empty"))
 
-				By("Create cluster with invalid tag format")
+				ginkgo.By("Create cluster with invalid tag format")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--tags=name:gender:age",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"invalid tag format for tag '[name gender age]'. Expected tag format: 'key value'"))
 
 			})
 
-		It("Create cluster with invalid volume size [id:66372]",
+		ginkgo.It("Create cluster with invalid volume size [id:66372]",
 			labels.Medium,
 			labels.Runtime.Day1Negative,
 			func() {
@@ -1422,59 +1429,59 @@ var _ = Describe("Classic cluster creation validation",
 				clusterName := helper.GenerateRandomName("ocp-66372", 2)
 				client := rosacli.NewClient()
 
-				By("Try a worker disk size that's too small")
+				ginkgo.By("Try a worker disk size that's too small")
 				out, err := clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", minSize-1),
 				)
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout := client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
+				gomega.Expect(stdout).
+					To(gomega.ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
 
-				By("Try a worker disk size that's a little bigger")
+				ginkgo.By("Try a worker disk size that's a little bigger")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", maxSize+1),
 				)
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
+				gomega.Expect(stdout).
+					To(gomega.ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
 
-				By("Try a worker disk size that's very big")
+				ginkgo.By("Try a worker disk size that's very big")
 				veryBigData := "34567865467898765789"
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", fmt.Sprintf("%sGiB", veryBigData),
 				)
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
+				gomega.Expect(stdout).
+					To(gomega.ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
 						"invalid disk size: '%sGi'. maximum size exceeded",
 						veryBigData,
 						veryBigData))
 
-				By("Try a worker disk size that's negative")
+				ginkgo.By("Try a worker disk size that's negative")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", "-1GiB",
 				)
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
+				gomega.Expect(stdout).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"Expected a valid machine pool root disk size value '-1GiB': " +
 								"invalid disk size: '-1Gi'. positive size required"))
 
-				By("Try a worker disk size that's a string")
+				ginkgo.By("Try a worker disk size that's a string")
 				invalidStr := "invalid"
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", invalidStr,
 				)
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
+				gomega.Expect(stdout).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"Expected a valid machine pool root disk size value '%s': invalid disk size "+
 								"format: '%s'. accepted units are Giga or Tera in the form of "+
 								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
@@ -1482,54 +1489,54 @@ var _ = Describe("Classic cluster creation validation",
 							invalidStr))
 			})
 
-		It("to validate to create cluster with availability zones - [id:52692]",
+		ginkgo.It("to validate to create cluster with availability zones - [id:52692]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-52692"
 
-				By("Create cluster with the zone not available in the region")
+				ginkgo.By("Create cluster with the zone not available in the region")
 				out, err := clusterService.CreateDryRun(
 					clusterName, "--availability-zones", "us-east-2e", "--region", "us-east-2",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"Expected a valid availability zone, 'us-east-2e' doesn't belong to region 'us-east-2' availability zones"))
 
-				By("Create cluster with zones not match region")
+				ginkgo.By("Create cluster with zones not match region")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--availability-zones", "us-west-2b", "--region", "us-east-2",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"Expected a valid availability zone, 'us-west-2b' doesn't belong to region 'us-east-2' availability zones"))
 
-				By("Create cluster with dup zones set")
+				ginkgo.By("Create cluster with dup zones set")
 				out, err = clusterService.CreateDryRun(
 					clusterName,
 					"--availability-zones", "us-west-2b,us-west-2b,us-west-2b",
 					"--region", "us-west-2",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"Found duplicate Availability Zone: us-west-2b"))
 
-				By("Create cluster with both zone and subnet set")
+				ginkgo.By("Create cluster with both zone and subnet set")
 				out, err = clusterService.CreateDryRun(
 					clusterName,
 					"--availability-zones", "us-west-2b",
 					"--subnet-ids", "subnet-039f2a2a2d2d83e7f",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
+					To(gomega.ContainSubstring(
 						"Setting availability zones is not supported for BYO VPC. " +
 							"ROSA autodetects availability zones from subnet IDs provided"))
 			})
 
-		It("Validate --worker-mp-labels option for ROSA cluster creation - [id:71329]",
+		ginkgo.It("Validate --worker-mp-labels option for ROSA cluster creation - [id:71329]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				var (
@@ -1549,139 +1556,140 @@ var _ = Describe("Classic cluster creation validation",
 					}
 				)
 
-				By("Prepare creation command")
+				ginkgo.By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
 				profile.NamePrefix = helper.GenerateRandomName("ci71329", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
 				rosalCommand = config.GenerateCommand(command)
 
-				By("Create ROSA cluster with the --worker-mp-labels flag and invalid key")
+				ginkgo.By("Create ROSA cluster with the --worker-mp-labels flag and invalid key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", invalidKey, "-y")
 				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				index := strings.Index(invalidKey, "=")
 				key := invalidKey[:index]
-				Expect(output.String()).
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"Invalid label key '%s': name part must consist of alphanumeric characters, '-', '_' "+
 								"or '.', and must start and end with an alphanumeric character",
 							key))
 
-				By("Create ROSA cluster with the --worker-mp-labels flag and empty key")
+				ginkgo.By("Create ROSA cluster with the --worker-mp-labels flag and empty key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", emptyKey, "-y")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"Invalid label key '': name part must be non-empty; name part must consist of alphanumeric " +
 								"characters, '-', '_' or '.', and must start and end with an alphanumeric character"))
 
-				By("Create ROSA cluster with the --worker-mp-labels flag without any value")
+				ginkgo.By("Create ROSA cluster with the --worker-mp-labels flag without any value")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", emptyWorkerMpLabel, "-y")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Expected key=value format for labels"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("Expected key=value format for labels"))
 
-				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label key")
+				ginkgo.By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", longKey, "-y")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				index = strings.Index(longKey, "=")
 				longLabelKey := longKey[:index]
-				Expect(output.String()).
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"Invalid label key '%s': name part must be no more than 63 characters", longLabelKey))
 
-				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label value")
+				ginkgo.By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label value")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", longValue, "-y")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				index = strings.Index(longValue, "=")
 				longLabelValue := longValue[index+1:]
 				key = longValue[:index]
-				Expect(output.String()).
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring("Invalid label value '%s': at key: '%s': must be no more than 63 characters",
+						gomega.ContainSubstring("Invalid label value '%s': at key: '%s': must be no more than 63 characters",
 							longLabelValue,
 							key))
 
-				By("Create ROSA cluster with the --worker-mp-labels flag and duplicated key")
+				ginkgo.By("Create ROSA cluster with the --worker-mp-labels flag and duplicated key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", duplicateKey, "-y")
 				index = strings.Index(duplicateKey, "=")
 				key = duplicateKey[:index]
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Duplicated label key '%s' used", key))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("Duplicated label key '%s' used", key))
 			})
 
-		It("to validate to create the cluster with version not in the channel group - [id:74399]",
+		ginkgo.It("to validate to create the cluster with version not in the channel group - [id:74399]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-74399"
 
-				By("Create cluster with version not in channel group")
+				ginkgo.By("Create cluster with version not in channel group")
 				errorOutput, err := clusterService.CreateDryRun(
 					clusterName, "--version=4.15.100",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(errorOutput.String()).
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(errorOutput.String()).
 					To(
-						ContainSubstring("Expected a valid OpenShift version: A valid version number must be specified"))
+						gomega.ContainSubstring("Expected a valid OpenShift version: A valid version number must be specified"))
 			})
 
-		It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
+		ginkgo.It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-74436"
 
-				By("Create cluster with fips flag but '--etcd-encryption=false")
+				ginkgo.By("Create cluster with fips flag but '--etcd-encryption=false")
 				errorOutput, err := clusterService.CreateDryRun(
 					clusterName, "--fips", "--etcd-encryption=false",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(errorOutput.String()).To(
+					gomega.ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
 			})
-		It("validate use-local-credentials won't work with sts - [id:76481]",
+		ginkgo.It("validate use-local-credentials won't work with sts - [id:76481]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := helper.GenerateRandomName("c76481", 3)
-				By("Create account-roles for testing")
+				ginkgo.By("Create account-roles for testing")
 				ocmResourceService := rosaClient.OCMResource
 				accrolePrefix := helper.GenerateRandomName("ar76481", 3)
 				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 					"--prefix", accrolePrefix,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				defer func() {
-					By("Delete the account-roles")
+					ginkgo.By("Delete the account-roles")
 					output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
 						"--prefix", accrolePrefix,
 						"-y")
 
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("Successfully deleted"))
+					gomega.Expect(textData).To(gomega.ContainSubstring("Successfully deleted"))
 				}()
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Created role"))
+				gomega.Expect(textData).To(gomega.ContainSubstring("Created role"))
 
 				arl, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				ar := arl.DigAccountRoles(accrolePrefix, false)
-				By("Create cluster with use-local-credentials flag but with sts")
+				ginkgo.By("Create cluster with use-local-credentials flag but with sts")
 				out, err := clusterService.CreateDryRun(
 					clusterName, "--sts",
 					"--mode", "auto",
@@ -1692,69 +1700,69 @@ var _ = Describe("Classic cluster creation validation",
 					"-y", "--dry-run",
 					"--use-local-credentials",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("Local credentials are not supported for STS clusters"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("Local credentials are not supported for STS clusters"))
 			})
 	})
 
-var _ = Describe("Create cluster with invalid options will",
+var _ = ginkgo.Describe("Create cluster with invalid options will",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
 		)
 
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			// Init the client
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 		})
 
-		It("to validate subnet well when create cluster - [id:37177]", labels.Medium, labels.Runtime.Day1Negative,
+		ginkgo.It("to validate subnet well when create cluster - [id:37177]", labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				By("Setup vpc with list azs")
+				ginkgo.By("Setup vpc with list azs")
 				testingTegion := "us-east-2"
-				By("Prepare subnets for the coming testing")
+				ginkgo.By("Prepare subnets for the coming testing")
 				vpc, err := vpc_client.PrepareVPC("rosacli-37177", testingTegion, "", true, "")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				defer vpc.DeleteVPCChain(true)
 
 				azs, err := vpc.AWSClient.ListAvaliableZonesForRegion(testingTegion, "availability-zone")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(azs).ToNot(BeEmpty())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(azs).ToNot(gomega.BeEmpty())
 
 				subnetMap, err := vpc.PreparePairSubnetByZone(azs[0])
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-				By("Create cluster with non-existed subnets on AWS")
+				ginkgo.By("Create cluster with non-existed subnets on AWS")
 				clusterName := "cluster-37177"
 
 				output, err, _ := clusterService.Create(clusterName,
 					"--subnet-ids", "subnet-nonexisting",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("he subnet ID 'subnet-nonexisting' does not exist"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("he subnet ID 'subnet-nonexisting' does not exist"))
 
-				By("Create multi_az cluster with subnet which only support 1 zone")
+				ginkgo.By("Create multi_az cluster with subnet which only support 1 zone")
 				output, err, _ = clusterService.Create(clusterName,
 					"--subnet-ids", subnetMap["private"].ID,
 					"--multi-az",
 					"--region", testingTegion,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("The number of subnets for a 'multi-AZ' 'cluster' should be '6'," +
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("The number of subnets for a 'multi-AZ' 'cluster' should be '6'," +
 						" instead received: '1'"))
 
 				// Can only test when az number is bigger than 2
 				if len(azs) > 2 {
-					By("Create single_az cluster with multiple zones set")
+					ginkgo.By("Create single_az cluster with multiple zones set")
 					subnetMap2, err := vpc.PreparePairSubnetByZone(azs[1])
-					Expect(err).ToNot(HaveOccurred())
+					gomega.Expect(err).ToNot(gomega.HaveOccurred())
 					output, err, _ = clusterService.Create(clusterName,
 						"--subnet-ids", strings.Join(
 							[]string{
@@ -1763,19 +1771,19 @@ var _ = Describe("Create cluster with invalid options will",
 							","),
 						"--region", testingTegion,
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring("Only a single availability zone can be provided" +
+					gomega.Expect(err).To(gomega.HaveOccurred())
+					gomega.Expect(output.String()).Should(
+						gomega.ContainSubstring("Only a single availability zone can be provided" +
 							" to a single-availability-zone cluster, instead received 2"))
 				}
 
-				By("Create multi_az cluster with 5 subnet set")
+				ginkgo.By("Create multi_az cluster with 5 subnet set")
 				// This test is only available for multi-az with at least 3 zones
 				if len(azs) >= 3 {
 					fitZoneSubnets := []string{}
 					for _, az := range azs[0:3] {
 						subnetMap, err := vpc.PreparePairSubnetByZone(az)
-						Expect(err).ToNot(HaveOccurred())
+						gomega.Expect(err).ToNot(gomega.HaveOccurred())
 						fitZoneSubnets = append(fitZoneSubnets,
 							subnetMap["private"].ID,
 							subnetMap["public"].ID)
@@ -1788,13 +1796,13 @@ var _ = Describe("Create cluster with invalid options will",
 						"--region", testingTegion,
 						"--multi-az",
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring("The number of subnets for a 'multi-AZ' 'cluster' should be '6', instead received: '%d'",
+					gomega.Expect(err).To(gomega.HaveOccurred())
+					gomega.Expect(output.String()).Should(
+						gomega.ContainSubstring("The number of subnets for a 'multi-AZ' 'cluster' should be '6', instead received: '%d'",
 							len(fiveSubnetsList)))
 				}
 
-				By("Create with subnets in same zone")
+				ginkgo.By("Create with subnets in same zone")
 				// pick the first az for testing
 				additionalSubnetsNumber := 2
 				sameZoneSubnets := []string{
@@ -1803,8 +1811,8 @@ var _ = Describe("Create cluster with invalid options will",
 				}
 				for additionalSubnetsNumber > 0 {
 					_, subnet, err := vpc.CreatePairSubnet(azs[0])
-					Expect(err).ToNot(HaveOccurred())
-					Expect(len(subnet)).To(Equal(2))
+					gomega.Expect(err).ToNot(gomega.HaveOccurred())
+					gomega.Expect(len(subnet)).To(gomega.Equal(2))
 					sameZoneSubnets = append(sameZoneSubnets, subnet[0].ID, subnet[1].ID)
 					additionalSubnetsNumber--
 				}
@@ -1815,15 +1823,16 @@ var _ = Describe("Create cluster with invalid options will",
 					"--region", testingTegion,
 					"--multi-az",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring(
+						"The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
 			})
 
-		It("to validate the network when create cluster - [id:38857]", labels.Medium, labels.Runtime.Day1Negative,
+		ginkgo.It("to validate the network when create cluster - [id:38857]", labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "rosaci-38857"
-				By("illegal machine/service/pod cidr when create cluster")
+				ginkgo.By("illegal machine/service/pod cidr when create cluster")
 				illegalCIDRMap := map[string]string{
 					"--machine-cidr": "10111.0.0.0/16",
 					"--service-cidr": "10111.0.0.0/16",
@@ -1833,21 +1842,21 @@ var _ = Describe("Create cluster with invalid options will",
 					output, err, _ := clusterService.Create(clusterName,
 						flag, invalidValue,
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring(`invalid argument "%s" for "%s" flag: invalid CIDR address: %s`,
+					gomega.Expect(err).To(gomega.HaveOccurred())
+					gomega.Expect(output.String()).Should(
+						gomega.ContainSubstring(`invalid argument "%s" for "%s" flag: invalid CIDR address: %s`,
 							invalidValue, flag, invalidValue))
 				}
-				By("Check the overlapped CIDR block validation")
+				ginkgo.By("Check the overlapped CIDR block validation")
 				output, err, _ := clusterService.Create(clusterName,
 					"--service-cidr", "1.0.0.0/16",
 					"--pod-cidr", "1.0.0.0/16",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("Service CIDR '1.0.0.0/16' and pod CIDR '1.0.0.0/16' overlap"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("Service CIDR '1.0.0.0/16' and pod CIDR '1.0.0.0/16' overlap"))
 
-				By("Check the invalid machine/service/pod CIDR")
+				ginkgo.By("Check the invalid machine/service/pod CIDR")
 				invalidCIDRMap := map[string]string{
 					"--machine-cidr": "2.0.0.0/8",
 					"--service-cidr": "1.0.0.0/25",
@@ -1857,76 +1866,77 @@ var _ = Describe("Create cluster with invalid options will",
 					output, err, _ := clusterService.Create(clusterName,
 						flag, invalidValue,
 					)
-					Expect(err).To(HaveOccurred())
+					gomega.Expect(err).To(gomega.HaveOccurred())
 					switch flag {
 					case "--machine-cidr":
-						Expect(output.String()).Should(
-							ContainSubstring("The allowed block size must be between a /16 netmask and /25"))
+						gomega.Expect(output.String()).Should(
+							gomega.ContainSubstring("The allowed block size must be between a /16 netmask and /25"))
 					case "--service-cidr":
-						Expect(output.String()).Should(
-							ContainSubstring("Service CIDR value range is too small for correct provisioning."))
+						gomega.Expect(output.String()).Should(
+							gomega.ContainSubstring("Service CIDR value range is too small for correct provisioning."))
 					case "--pod-cidr":
-						Expect(output.String()).Should(
-							ContainSubstring("Pod CIDR value range is too small for correct provisioning"))
+						gomega.Expect(output.String()).Should(
+							gomega.ContainSubstring("Pod CIDR value range is too small for correct provisioning"))
 					}
 					time.Sleep(3 * time.Second) // sleep 3 seconds for next round run
 
 				}
-				By("Check the invalid machine CIDR for multi az")
+				ginkgo.By("Check the invalid machine CIDR for multi az")
 				output, err, _ = clusterService.Create(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--multi-az",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("The allowed block size must be between a /16 netmask and /24"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("The allowed block size must be between a /16 netmask and /24"))
 
-				By("Check illegal host prefix")
+				ginkgo.By("Check illegal host prefix")
 				output, err, _ = clusterService.Create(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "28",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("Subnet length should be between 23 and 26"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("Subnet length should be between 23 and 26"))
 
-				By("Check invalid host prefix")
+				ginkgo.By("Check invalid host prefix")
 				output, err, _ = clusterService.Create(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "invalid",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring(`invalid argument "invalid" for "--host-prefix" flag`))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring(`invalid argument "invalid" for "--host-prefix" flag`))
 
 			})
 
-		It("to validate the invalid proxy when create cluster - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
+		ginkgo.It("to validate the invalid proxy when create cluster - [id:45509]",
+			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				zone := constants.CommonAWSRegion + "a"
 				clusterName := "rosacli-45509"
-				By("Create rosa cluster which has proxy without subnets set by command ")
+				ginkgo.By("Create rosa cluster which has proxy without subnets set by command ")
 				output, err := clusterService.CreateDryRun(
 					"cl-45509",
 					"--http-proxy", "http://example.com",
 					"--https-proxy", "https://example.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring(
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(gomega.ContainSubstring(
 					"No subnets found in current region that are valid for the chosen CIDR ranges"),
 				)
 
-				By("Prepare vpc with subnets")
+				ginkgo.By("Prepare vpc with subnets")
 				vpc, err := vpc_client.PrepareVPC(clusterName, constants.CommonAWSRegion, "", true, "")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				defer vpc.DeleteVPCChain(true)
 
 				subnetMap, err := vpc.PreparePairSubnetByZone(zone)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				privateSubnet := subnetMap["private"].ID
 				publicSubnet := subnetMap["public"].ID
 
-				By("Create ccs existing cluster with invalid http_proxy set")
+				ginkgo.By("Create ccs existing cluster with invalid http_proxy set")
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
@@ -1935,10 +1945,10 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--http-proxy", "invalid",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("Invalid 'proxy.http_proxy' attribute 'invalid'"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(gomega.ContainSubstring("Invalid 'proxy.http_proxy' attribute 'invalid'"))
 
-				By("Create ccs existing cluster with invalid http_proxy not started with http")
+				ginkgo.By("Create ccs existing cluster with invalid http_proxy not started with http")
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
@@ -1947,11 +1957,11 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--http-proxy", "nohttp.prefix.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("Invalid 'proxy.http_proxy' attribute 'nohttp.prefix.com'"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("Invalid 'proxy.http_proxy' attribute 'nohttp.prefix.com'"))
 
-				By("Create ccs existing cluster with invalid https_proxy set")
+				ginkgo.By("Create ccs existing cluster with invalid https_proxy set")
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
@@ -1960,16 +1970,16 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--https-proxy", "invalid",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring(`ERR: parse "invalid": invalid URI for request`))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring(`ERR: parse "invalid": invalid URI for request`))
 
-				By("Create wide-proxy cluster with invalid additional_trust_bundle set")
+				ginkgo.By("Create wide-proxy cluster with invalid additional_trust_bundle set")
 				tempDir, err := os.MkdirTemp("", "*")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				defer os.RemoveAll(tempDir)
 				tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
@@ -1979,11 +1989,11 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--additional-trust-bundle-file", tempFile,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Failed to parse additional trust bundle"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("ERR: Failed to parse additional trust bundle"))
 
-				By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
+				ginkgo.By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
@@ -1992,11 +2002,11 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--additional-trust-bundle-file", "/not/existing",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: open /not/existing: no such file or directory"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("ERR: open /not/existing: no such file or directory"))
 
-				By("Create wide-proxy cluster with only no_proxy set")
+				ginkgo.By("Create wide-proxy cluster with only no_proxy set")
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
@@ -2005,9 +2015,9 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--no-proxy", "nohttp.prefix.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
 
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
@@ -2019,66 +2029,67 @@ var _ = Describe("Create cluster with invalid options will",
 					"--https-proxy", "https://example.com",
 					"--no-proxy", "*",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: expected a valid user no-proxy value"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("ERR: expected a valid user no-proxy value"))
 
-				By("Create a cluster with proxy settings but without subnet-ids")
+				ginkgo.By("Create a cluster with proxy settings but without subnet-ids")
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--http-proxy", "http://example.com",
 					"--https-proxy", "https://example.com",
 					"--no-proxy", "example.com",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).ShouldNot(ContainSubstring("The number of subnets for a 'single AZ' 'cluster' should be"))
-				Expect(output.String()).Should(
-					ContainSubstring("cluster_wide_proxy is only supported if subnetIDs exist"),
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).ShouldNot(
+					gomega.ContainSubstring("The number of subnets for a 'single AZ' 'cluster' should be"))
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("cluster_wide_proxy is only supported if subnetIDs exist"),
 				)
 			})
 	})
 
-var _ = Describe("Classic cluster deletion validation",
+var _ = ginkgo.Describe("Classic cluster deletion validation",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient *rosacli.Client
 		)
 
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			// Init the client
 			rosaClient = rosacli.NewClient()
 		})
 
-		It("to validate the ROSA cluster deletion will work via rosacli	- [id:38778]",
+		ginkgo.It("to validate the ROSA cluster deletion will work via rosacli	- [id:38778]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterService := rosaClient.Cluster
 				notExistID := "no-exist-cluster-id"
-				By("Delete the cluster without indicated cluster Name or ID")
+				ginkgo.By("Delete the cluster without indicated cluster Name or ID")
 				cmd := []string{"rosa", "delete", "cluster"}
 				out, err := rosaClient.Runner.RunCMD(cmd)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("\"cluster\" not set"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("\"cluster\" not set"))
 
-				By("Delete a non-existed cluster")
+				ginkgo.By("Delete a non-existed cluster")
 				out, err = clusterService.DeleteCluster(notExistID, "-y")
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("There is no cluster with identifier or name"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("There is no cluster with identifier or name"))
 
-				By("Delete with unknown flag --interactive")
+				ginkgo.By("Delete with unknown flag --interactive")
 				out, err = clusterService.DeleteCluster(notExistID, "-y", "--interactive")
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("unknown flag: --interactive"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("unknown flag: --interactive"))
 			})
 	})
 
-var _ = Describe("Classic cluster creation negative testing",
+var _ = ginkgo.Describe("Classic cluster creation negative testing",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient               *rosacli.Client
@@ -2086,46 +2097,46 @@ var _ = Describe("Classic cluster creation negative testing",
 			accountRolePrefixToClean string
 			ocmResourceService       rosacli.OCMResourceService
 		)
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
 		})
-		AfterEach(func() {
-			By("Delete the resources for testing")
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Delete the resources for testing")
 			if accountRolePrefixToClean != "" {
-				By("Delete the account-roles")
+				ginkgo.By("Delete the account-roles")
 				rosaClient.Runner.UnsetArgs()
 				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
 					"--prefix", accountRolePrefixToClean,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			}
 		})
 
-		It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]",
+		ginkgo.It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterService = rosaClient.Cluster
 				ocmResourceService := rosaClient.OCMResource
 
-				By("Porepare version for testing")
+				ginkgo.By("Porepare version for testing")
 				var accRoleversion string
 				versionService := rosaClient.Version
 				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupStable, false)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				defaultVersion := versionList.DefaultVersion()
-				Expect(defaultVersion).ToNot(BeNil())
+				gomega.Expect(defaultVersion).ToNot(gomega.BeNil())
 				lowerVersion, err := versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
-				Expect(err).To(BeNil())
-				Expect(lowerVersion).NotTo(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(lowerVersion).NotTo(gomega.BeNil())
 
 				_, _, accRoleversion, err = lowerVersion.MajorMinor()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Create account-roles in low version 4.14")
+				ginkgo.By("Create account-roles in low version 4.14")
 				accrolePrefix := "testAr45176"
 				path := "/a/b/"
 				output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
@@ -2133,25 +2144,25 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--path", path,
 					"--version", accRoleversion,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				defer func() {
-					By("Delete the account-roles")
+					ginkgo.By("Delete the account-roles")
 					output, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
 						"--prefix", accrolePrefix,
 						"-y")
 
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("Successfully deleted"))
+					gomega.Expect(textData).To(gomega.ContainSubstring("Successfully deleted"))
 				}()
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Created role"))
+				gomega.Expect(textData).To(gomega.ContainSubstring("Created role"))
 
 				arl, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				ar := arl.DigAccountRoles(accrolePrefix, false)
 
-				By("Create cluster with latest version and use the low version account-roles")
+				ginkgo.By("Create cluster with latest version and use the low version account-roles")
 				clusterName := "cluster45176"
 				operatorRolePrefix := "cluster45176-xvfa"
 				out, err, _ := clusterService.Create(
@@ -2164,28 +2175,28 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", operatorRolePrefix,
 					"-y", "--dry-run",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("is not compatible with version"))
-				Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("is not compatible with version"))
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("to create compatible roles and try again"))
 			})
-		It("to validate to create sts cluster with invalid role arn and operator IAM roles prefix - [id:41824]",
+		ginkgo.It("to validate to create sts cluster with invalid role arn and operator IAM roles prefix - [id:41824]",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
-				By("Create account-roles for testing")
+				ginkgo.By("Create account-roles for testing")
 				accountRolePrefixToClean = "testAr41824"
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefixToClean,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Created role"))
+				gomega.Expect(textData).To(gomega.ContainSubstring("Created role"))
 
 				arl, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				ar := arl.DigAccountRoles(accountRolePrefixToClean, false)
 
-				By("Create cluster with operator roles prefix longer than 32 characters")
+				ginkgo.By("Create cluster with operator roles prefix longer than 32 characters")
 				clusterName := "test41824"
 				oprPrefixExceed32Chars := "opPrefix45742opPrefix45742opPrefix45742"
 				output, err, _ = clusterService.Create(
@@ -2198,10 +2209,10 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", oprPrefixExceed32Chars,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("Expected a prefix with no more than 32 characters"))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("Expected a prefix with no more than 32 characters"))
 
-				By("Create cluster with operator roles prefix with invalid format")
+				ginkgo.By("Create cluster with operator roles prefix with invalid format")
 				oprPrefixInvaliad := "%%%###@@@"
 				output, err, _ = clusterService.Create(
 					clusterName, "--sts",
@@ -2213,10 +2224,10 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", oprPrefixInvaliad,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("Expected valid operator roles prefix matching"))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("Expected valid operator roles prefix matching"))
 
-				By("Create cluster with account roles with invalid format")
+				ginkgo.By("Create cluster with account roles with invalid format")
 				invalidArn := "invalidaArnFormat"
 				output, err, _ = clusterService.Create(
 					clusterName, "--sts",
@@ -2228,42 +2239,42 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", clusterName,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("Expected a valid Role ARN"))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("Expected a valid Role ARN"))
 			})
 
-		It("to validate creating a cluster with invalid subnets - [id:72657]",
+		ginkgo.It("to validate creating a cluster with invalid subnets - [id:72657]",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
 				clusterService := rosaClient.Cluster
 				clusterName := "ocp-72657"
 
-				By("Create cluster with invalid subnets")
+				ginkgo.By("Create cluster with invalid subnets")
 				out, err := clusterService.CreateDryRun(
 					clusterName, "--subnet-ids", "subnet-xxx",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
 
 			})
-		It("to validate to create sts cluster with dulicated role arns- [id:74620]",
+		ginkgo.It("to validate to create sts cluster with dulicated role arns- [id:74620]",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
-				By("Create account-roles for testing")
+				ginkgo.By("Create account-roles for testing")
 				accountRolePrefixToClean = "testAr74620"
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefixToClean,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Created role"))
+				gomega.Expect(textData).To(gomega.ContainSubstring("Created role"))
 
 				arl, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				ar := arl.DigAccountRoles(accountRolePrefixToClean, false)
 
-				By("Create cluster with operator roles prefix longer than 32 characters")
+				ginkgo.By("Create cluster with operator roles prefix longer than 32 characters")
 				clusterName := "test41824"
 				output, err, _ = clusterService.Create(
 					clusterName, "--sts",
@@ -2275,17 +2286,17 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", clusterName,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("ROSA IAM roles must have unique ARNs"))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("ROSA IAM roles must have unique ARNs"))
 			})
 
-		It("to validate creating a cluster with invalid autoscaler - [id:66761]",
+		ginkgo.It("to validate creating a cluster with invalid autoscaler - [id:66761]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterService := rosaClient.Cluster
 				clusterName := "ocp-66761"
 
-				By("Create cluster with invalid subnets")
+				ginkgo.By("Create cluster with invalid subnets")
 				basicFlags := []string{"--enable-autoscaling", "--min-replicas", "3", "--max-replicas", "3"}
 
 				errAndFlagMap := map[string][]string{
@@ -2336,18 +2347,18 @@ var _ = Describe("Classic cluster creation negative testing",
 						clusterName,
 						flag...,
 					)
-					Expect(err).NotTo(BeNil())
-					Expect(err).To(HaveOccurred())
+					gomega.Expect(err).NotTo(gomega.BeNil())
+					gomega.Expect(err).To(gomega.HaveOccurred())
 					textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-					Expect(textData).To(ContainSubstring(errMsg))
+					gomega.Expect(textData).To(gomega.ContainSubstring(errMsg))
 				}
 			})
 	})
 
-var _ = Describe("HCP cluster creation negative testing",
+var _ = ginkgo.Describe("HCP cluster creation negative testing",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -2359,9 +2370,9 @@ var _ = Describe("HCP cluster creation negative testing",
 			clusterHandler handler.ClusterHandler
 			err            error
 		)
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 
@@ -2374,26 +2385,26 @@ var _ = Describe("HCP cluster creation negative testing",
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
 			profile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Prepare creation command")
+			ginkgo.By("Prepare creation command")
 			flags, err := clusterHandler.GenerateClusterCreateFlags()
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
 			rosalCommand = config.GenerateCommand(command)
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			errs := clusterHandler.Destroy()
-			Expect(len(errs)).To(Equal(0))
+			gomega.Expect(len(errs)).To(gomega.Equal(0))
 		})
 
-		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
+		ginkgo.It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := helper.GenerateRandomName("cluster-73725", 2)
-				By("Create HCP cluster with --no-cni and \"--network-type={OVNKubernetes, OpenshiftSDN}\" at the same time")
+				ginkgo.By("Create HCP cluster with --no-cni and \"--network-type={OVNKubernetes, OpenshiftSDN}\" at the same time")
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -2402,38 +2413,40 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--no-cni", "--network-type='{OVNKubernetes,OpenshiftSDN}'", "-y")
 				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: Expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
 
-				By("Create HCP cluster with invalid --no-cni value")
+				ginkgo.By("Create HCP cluster with invalid --no-cni value")
 				rosalCommand.DeleteFlag("--network-type", true)
 				rosalCommand.DeleteFlag("--no-cni", true)
 				rosalCommand.AddFlags("--no-cni=ui")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							`Failed to execute root command: invalid argument "ui" for "--no-cni" flag: ` +
 								`strconv.ParseBool: parsing "ui": invalid syntax`))
 
-				By("Create HCP cluster with --no-cni and --network-type=OVNKubernetes at the same time")
+				ginkgo.By("Create HCP cluster with --no-cni and --network-type=OVNKubernetes at the same time")
 				rosalCommand.DeleteFlag("--no-cni=ui", false)
 				rosalCommand.AddFlags("--no-cni", "--network-type=OVNKubernetes")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: --no-cni and --network-type are mutually exclusive parameters"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).To(
+					gomega.ContainSubstring("ERR: --no-cni and --network-type are mutually exclusive parameters"))
 
-				By("Create non-HCP cluster with --no-cni flag")
+				ginkgo.By("Create non-HCP cluster with --no-cni flag")
 				output, err = clusterService.CreateDryRun("ocp-73725", "--no-cni")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).To(
+					gomega.ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
 			})
 
-		It("to validate creating a hosted cluster with invalid subnets - [id:75916]",
+		ginkgo.It("to validate creating a hosted cluster with invalid subnets - [id:75916]",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-75916"
@@ -2443,15 +2456,15 @@ var _ = Describe("HCP cluster creation negative testing",
 					"--domain-prefix": clusterName,
 				}
 
-				By("Create cluster with invalid subnets")
+				ginkgo.By("Create cluster with invalid subnets")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--subnet-ids", "subnet-xxx", "-y")
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
 			})
 
-		It("Create a hosted cluster cluster with invalid volume size [id:66372]",
+		ginkgo.It("Create a hosted cluster cluster with invalid volume size [id:66372]",
 			labels.Medium,
 			labels.Runtime.Day1Negative,
 			func() {
@@ -2468,7 +2481,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 
-				By("Try a worker disk size that's too small")
+				ginkgo.By("Try a worker disk size that's too small")
 				rosalCommand.AddFlags(
 					"--dry-run",
 					"--worker-disk-size",
@@ -2476,55 +2489,55 @@ var _ = Describe("HCP cluster creation negative testing",
 					"-y")
 
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
+				gomega.Expect(err).NotTo(gomega.BeNil())
 				stdout := client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
+				gomega.Expect(stdout).
+					To(gomega.ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
 
-				By("Try a worker disk size that's a little bigger")
+				ginkgo.By("Try a worker disk size that's a little bigger")
 				replacingFlags["--worker-disk-size"] = fmt.Sprintf("%dGiB", maxSize+1)
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
+				gomega.Expect(stdout).
+					To(gomega.ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
 
-				By("Try a worker disk size that's very big")
+				ginkgo.By("Try a worker disk size that's very big")
 				veryBigData := "34567865467898765789"
 				replacingFlags["--worker-disk-size"] = fmt.Sprintf("%sGiB", veryBigData)
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
+				gomega.Expect(stdout).
+					To(gomega.ContainSubstring("Expected a valid machine pool root disk size value '%sGiB': "+
 						"invalid disk size: '%sGi'. maximum size exceeded",
 						veryBigData,
 						veryBigData))
 
-				By("Try a worker disk size that's negative")
+				ginkgo.By("Try a worker disk size that's negative")
 				replacingFlags["--worker-disk-size"] = "-1GiB"
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
+				gomega.Expect(stdout).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"Expected a valid machine pool root disk size value '-1GiB': " +
 								"invalid disk size: '-1Gi'. positive size required"))
 
-				By("Try a worker disk size that's a string")
+				ginkgo.By("Try a worker disk size that's a string")
 				invalidStr := "invalid"
 				replacingFlags["--worker-disk-size"] = invalidStr
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				gomega.Expect(err).To(gomega.HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
+				gomega.Expect(stdout).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"Expected a valid machine pool root disk size value '%s': invalid disk size "+
 								"format: '%s'. accepted units are Giga or Tera in the form of "+
 								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
@@ -2532,7 +2545,7 @@ var _ = Describe("HCP cluster creation negative testing",
 							invalidStr))
 			})
 
-		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
+		ginkgo.It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-70970"
@@ -2542,41 +2555,41 @@ var _ = Describe("HCP cluster creation negative testing",
 					"--domain-prefix": clusterName,
 				}
 
-				By("Create cluster with a CIDR that doesn't exist")
+				ginkgo.By("Create cluster with a CIDR that doesn't exist")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--machine-cidr", "192.168.1.0/23", "-y")
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: All Hosted Control Plane clusters need a pre-configured VPC. " +
 								"Please check: " +
 								"https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"))
 			})
 
-		It("to validate create cluster with external_auth_config can work well - [id:73755]",
+		ginkgo.It("to validate create cluster with external_auth_config can work well - [id:73755]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				By("Create non-HCP cluster with --external-auth-providers-enabled")
+				ginkgo.By("Create non-HCP cluster with --external-auth-providers-enabled")
 				clusterName := helper.GenerateRandomName("ocp-73755", 2)
 				output, err := clusterService.CreateDryRun(clusterName, "--external-auth-providers-enabled")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: External authentication configuration is only supported for a Hosted Control Plane cluster."))
 
-				By("Create HCP cluster with --external-auth-providers-enabled and cluster version lower than 4.15")
+				ginkgo.By("Create HCP cluster with --external-auth-providers-enabled and cluster version lower than 4.15")
 				cg := rosalCommand.GetFlagValue("--channel-group", true)
 				if cg == "" {
 					cg = rosacli.VersionChannelGroupStable
 				}
 				versionList, err := rosaClient.Version.ListAndReflectVersions(cg, rosalCommand.CheckFlagExist("--hosted-cp"))
-				Expect(err).To(BeNil())
-				Expect(versionList).ToNot(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(versionList).ToNot(gomega.BeNil())
 				previousVersionsList, err := versionList.FindNearestBackwardMinorVersion("4.14", 0, true)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				foundVersion := previousVersionsList.Version
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
@@ -2591,32 +2604,32 @@ var _ = Describe("HCP cluster creation negative testing",
 					rosalCommand.AddFlags("--dry-run", "-y")
 				}
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"External authentication is only supported in version '4.15.9' or greater, current cluster version is '%s'",
 							foundVersion))
 			})
 
-		It("to validate '--ec2-metadata-http-tokens' flag during creating cluster - [id:64078]",
+		ginkgo.It("to validate '--ec2-metadata-http-tokens' flag during creating cluster - [id:64078]",
 			labels.Medium,
 			labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-64078"
 
-				By("Create classic cluster with invalid httpTokens")
+				ginkgo.By("Create classic cluster with invalid httpTokens")
 				errorOutput, err := clusterService.CreateDryRun(
 					clusterName, "--ec2-metadata-http-tokens=invalid",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(errorOutput.String()).
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(errorOutput.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: Expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 
-				By("Create HCP cluster  with invalid httpTokens")
+				ginkgo.By("Create HCP cluster  with invalid httpTokens")
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -2626,18 +2639,18 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--ec2-metadata-http-tokens=invalid", "-y")
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: Expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 			})
 
-		It("expose additional allowed principals for HCP negative - [id:74433]",
+		ginkgo.It("expose additional allowed principals for HCP negative - [id:74433]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				By("Create hcp cluster using --additional-allowed-principals and invalid formatted arn")
+				ginkgo.By("Create hcp cluster using --additional-allowed-principals and invalid formatted arn")
 				clusterName := "ocp-74408"
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
@@ -2645,34 +2658,34 @@ var _ = Describe("HCP cluster creation negative testing",
 					"--domain-prefix": clusterName,
 				}
 
-				By("Create cluster with invalid additional allowed principals")
+				ginkgo.By("Create cluster with invalid additional allowed principals")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				if rosalCommand.CheckFlagExist("--additional-allowed-principals") {
 					rosalCommand.DeleteFlag("--additional-allowed-principals", true)
 				}
 				rosalCommand.AddFlags("--dry-run", "--additional-allowed-principals", "zzzz", "-y")
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(out.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix"))
 
-				By("Create classic cluster with additional allowed principals")
+				ginkgo.By("Create classic cluster with additional allowed principals")
 				output, err := clusterService.CreateDryRun(clusterName,
 					"--additional-allowed-principals", "zzzz",
 					"-y", "--debug")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: Additional Allowed Principals is supported only for Hosted Control Planes"))
 			})
 
-		It("Updating default ingress settings is not supported for HCP clusters - [id:71174]",
+		ginkgo.It("Updating default ingress settings is not supported for HCP clusters - [id:71174]",
 			labels.Low, labels.Runtime.Day1Negative,
 			func() {
-				By("Create hcp cluster using non-default ingress settings")
+				ginkgo.By("Create hcp cluster using non-default ingress settings")
 				clusterName := helper.GenerateRandomName("c71174", 2)
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
@@ -2682,15 +2695,15 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--default-ingress-route-selector", "10.0.0.1", "-y")
 				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring(
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring(
 					"Updating default ingress settings is not supported for Hosted Control Plane clusters"))
 			})
 
-		It("to validate create cluster with audit log forwarding - [id:73672]",
+		ginkgo.It("to validate create cluster with audit log forwarding - [id:73672]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				By("Create non-HCP cluster with --audit-log-arn")
+				ginkgo.By("Create non-HCP cluster with --audit-log-arn")
 				clusterName := helper.GenerateRandomName("ocp-73672", 2)
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
@@ -2702,32 +2715,32 @@ var _ = Describe("HCP cluster creation negative testing",
 				log.Logger.Debug(profile.Name)
 				log.Logger.Debug(strings.Split(rosalCommand.GetFullCommand(), " "))
 
-				By("Create classic cluster with  audit log arn")
+				ginkgo.By("Create classic cluster with  audit log arn")
 				if rosalCommand.CheckFlagExist("--audit-log-arn") {
 					rosalCommand.DeleteFlag("--audit-log-arn", true)
 				}
 
 				output, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "-y")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters"))
 
-				By("Create HCP cluster with incorrect format audit log arn")
+				ginkgo.By("Create HCP cluster with incorrect format audit log arn")
 				rosalCommand.AddFlags("--audit-log-arn", "qwertyugf234543234")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).
 					To(
-						ContainSubstring(
+						gomega.ContainSubstring(
 							"ERR: Expected a valid value for audit log arn matching ^arn:aws"))
 			})
 
-		It("to validate role's managed policy when creating hcp cluster - [id:59547]",
+		ginkgo.It("to validate role's managed policy when creating hcp cluster - [id:59547]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				By("Create managed account-roles and make sure some ones are not attached the managed policies.")
+				ginkgo.By("Create managed account-roles and make sure some ones are not attached the managed policies.")
 				clusterService = rosaClient.Cluster
 				ocmResourceService := rosaClient.OCMResource
 				var arbitraryPolicyService rosacli.PolicyService
@@ -2737,24 +2750,24 @@ var _ = Describe("HCP cluster creation negative testing",
 					"--prefix", accountRolePrefix,
 					"--hosted-cp",
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				defer func() {
 					if accountRolePrefix != "" {
-						By("Delete the account-roles")
+						ginkgo.By("Delete the account-roles")
 						rosaClient.Runner.UnsetArgs()
 						_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
 							"--hosted-cp",
 							"--prefix", accountRolePrefix,
 							"-y")
-						Expect(err).To(BeNil())
+						gomega.Expect(err).To(gomega.BeNil())
 					}
 				}()
 
 				arl, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				ar := arl.DigAccountRoles(accountRolePrefix, true)
 
-				By("Create cluster with the account roles ")
+				ginkgo.By("Create cluster with the account roles ")
 				clusterName := helper.GenerateRandomName("ocp-59547", 2)
 				replacingFlags := map[string]string{
 					"-c":                 clusterName,
@@ -2783,28 +2796,28 @@ var _ = Describe("HCP cluster creation negative testing",
 				arbitraryPolicyService = rosaClient.Policy
 				for r, p := range accountRoles {
 					_, err := arbitraryPolicyService.DetachPolicy(r, []string{p}, "--mode", "auto")
-					Expect(err).To(BeNil())
-					By("Create cluster with the account roles")
+					gomega.Expect(err).To(gomega.BeNil())
+					ginkgo.By("Create cluster with the account roles")
 					rosalCommand.ReplaceFlagValue(replacingFlags)
 
 					out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).
+					gomega.Expect(err).To(gomega.HaveOccurred())
+					gomega.Expect(out.String()).
 						To(
-							ContainSubstring(
+							gomega.ContainSubstring(
 								fmt.Sprintf("Failed while validating account roles: role"+
 									" '%s' is missing the attached managed policy '%s'", r, p)))
 
-					By("Attach the deleted managed policies")
+					ginkgo.By("Attach the deleted managed policies")
 					_, err = arbitraryPolicyService.AttachPolicy(r, []string{p}, "--mode", "auto")
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 			})
 
-		It("to validate hcp creation with registry config via rosacli - [id:76396]",
+		ginkgo.It("to validate hcp creation with registry config via rosacli - [id:76396]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				By("Create non-HCP cluster with registry config")
+				ginkgo.By("Create non-HCP cluster with registry config")
 				clusterName := helper.GenerateRandomName("ocp-76396", 2)
 				registryFlags := []string{
 					"--registry-config-allowed-registries",
@@ -2818,14 +2831,14 @@ var _ = Describe("HCP cluster creation negative testing",
 						rosalCommand.DeleteFlag(flag, true)
 					}
 					output, err := clusterService.CreateDryRun(clusterName, flag, "-y")
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).
+					gomega.Expect(err).To(gomega.HaveOccurred())
+					gomega.Expect(output.String()).
 						To(
-							ContainSubstring(
+							gomega.ContainSubstring(
 								"ERR: Setting the registry config is only supported for hosted clusters"))
 				}
 
-				By("create hcp with invalid value for --registry-config-allowed-registries-for-import flag")
+				ginkgo.By("create hcp with invalid value for --registry-config-allowed-registries-for-import flag")
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
@@ -2839,23 +2852,25 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.AddFlags("--registry-config-allowed-registries-for-import", "test.com:invalid")
 				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				log.Logger.Info(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: Expected valid allowed registries for import values"))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).To(
+					gomega.ContainSubstring("ERR: Expected valid allowed registries for import values"))
 
-				By("create hcp with --registry-config-blocked-registries and --registry-config-allowed-registries at same time")
+				ginkgo.By("create hcp with --registry-config-blocked-registries and " +
+					"--registry-config-allowed-registries at same time")
 				rosalCommand.DeleteFlag("--registry-config-allowed-registries-for-import", true)
 				rosalCommand.AddFlags("--registry-config-allowed-registries", "test.com",
 					"--registry-config-blocked-registries", "test.blocked.com")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring(
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring(
 					"ERR: Allowed registries and blocked registries are mutually exclusive fields"))
 			})
 	})
-var _ = Describe("HCP cluster creation subnets validation",
+var _ = ginkgo.Describe("HCP cluster creation subnets validation",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -2870,13 +2885,13 @@ var _ = Describe("HCP cluster creation subnets validation",
 			err                error
 			command            string
 		)
-		BeforeEach(func() {
-			By("Init the client")
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
 
-			By("Prepare custom profile")
+			ginkgo.By("Prepare custom profile")
 			customProfile = &handler.Profile{
 				ClusterConfig: &handler.ClusterConfig{
 					HCP:                   true,
@@ -2900,49 +2915,49 @@ var _ = Describe("HCP cluster creation subnets validation",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Init the cluster id and testing cluster name")
-			By("Prepare creation command")
+			ginkgo.By("Init the cluster id and testing cluster name")
+			ginkgo.By("Prepare creation command")
 			flags, err := clusterHandler.GenerateClusterCreateFlags()
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			command = "rosa create cluster --cluster-name " + customProfile.ClusterConfig.Name + " " + strings.Join(flags, " ")
 			rosalCommand = config.GenerateCommand(command)
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			defer func() {
-				By("Clean resources")
+				ginkgo.By("Clean resources")
 				clusterHandler.Destroy()
 			}()
 
 			if clusterID != "" {
-				By("Delete cluster by id")
+				ginkgo.By("Delete cluster by id")
 				rosaClient.Runner.UnsetArgs()
 				_, err := clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Delete operator-roles")
+				ginkgo.By("Delete operator-roles")
 				_, err = ocmResourceService.DeleteOperatorRoles(
 					"-c", clusterID,
 					"--mode", "auto",
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			} else if testingClusterName != "" {
 				// At least try to delete testing cluster
-				By("Delete cluster by name")
+				ginkgo.By("Delete cluster by name")
 				rosaClient.Runner.UnsetArgs()
 				_, err := clusterService.DeleteCluster(testingClusterName, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			}
 		})
-		It("HCP cluster creation subnets validation - [id:72538]",
+		ginkgo.It("HCP cluster creation subnets validation - [id:72538]",
 			labels.High, labels.Runtime.Day1Negative,
 			func() {
 				clusterName := "ocp-72538"
@@ -2958,20 +2973,20 @@ var _ = Describe("HCP cluster creation subnets validation",
 					_ = rosalCommand.DeleteFlag("--subnet-ids", true)
 				}
 
-				By("Prepare a vpc for the testing")
+				ginkgo.By("Prepare a vpc for the testing")
 				resourcesHandler := clusterHandler.GetResourcesHandler()
 				vpc, err := resourcesHandler.PrepareVPC(vpcName, "", false, false)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				// defer vpc.DeleteVPCChain()
 
 				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, true)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				availabilityZone := vpc.SubnetList[0].Zone
 				additionalPrivateSubnet, err := vpc.CreatePrivateSubnet(availabilityZone, true)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				additionalPublicSubnet, err := vpc.CreatePublicSubnet(availabilityZone)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				successOutput := "Creating cluster '" + clusterName +
 					"' should succeed. Run without the '--dry-run' flag to create the cluster"
@@ -2979,14 +2994,14 @@ var _ = Describe("HCP cluster creation subnets validation",
 				failOutput_2 := "Availability zone " + availabilityZone +
 					" has more than one private subnet. Check the subnets and try again"
 
-				By("Create a public cluster with 1 private subnet and 1 public subnet")
+				ginkgo.By("Create a public cluster with 1 private subnet and 1 public subnet")
 				subnets := []string{subnetMap["private"][0], subnetMap["public"][0]}
 				rosalCommand.AddFlags("--dry-run", "--subnet-ids", strings.Join(subnets, ","))
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(successOutput))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(successOutput))
 
-				By("Create a public cluster with 3 private subnets and 1 public subnet")
+				ginkgo.By("Create a public cluster with 3 private subnets and 1 public subnet")
 				subnets = []string{
 					subnetMap["private"][0],
 					subnetMap["private"][1],
@@ -2995,18 +3010,18 @@ var _ = Describe("HCP cluster creation subnets validation",
 				}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(successOutput))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(successOutput))
 
-				By("Create a public cluster with 2 private subnets from same AZ and 1 public subnet")
+				ginkgo.By("Create a public cluster with 2 private subnets from same AZ and 1 public subnet")
 				subnets = []string{subnetMap["private"][0], additionalPrivateSubnet.ID, subnetMap["public"][0]}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_1))
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_2))
 
-				By("Create a public cluster with 4 private subnets (2 subnets from same AZ) and 1 public subnet")
+				ginkgo.By("Create a public cluster with 4 private subnets (2 subnets from same AZ) and 1 public subnet")
 				subnets = []string{
 					subnetMap["private"][0],
 					additionalPrivateSubnet.ID,
@@ -3016,41 +3031,41 @@ var _ = Describe("HCP cluster creation subnets validation",
 				}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_1))
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_2))
 
-				By("Create a public cluster with 1 private subnet and 2 public subnet from same AZ")
+				ginkgo.By("Create a public cluster with 1 private subnet and 2 public subnet from same AZ")
 				subnets = []string{subnetMap["private"][0], subnetMap["public"][0], additionalPublicSubnet.ID}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(successOutput))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(successOutput))
 
-				By("Create a private cluster with 1 private subnet")
+				ginkgo.By("Create a private cluster with 1 private subnet")
 				rosalCommand.AddFlags("--private")
 				rosalCommand.AddFlags("--default-ingress-private")
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": subnetMap["private"][0]})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(successOutput))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(successOutput))
 
-				By("Create a private cluster with 3 private subnets")
+				ginkgo.By("Create a private cluster with 3 private subnets")
 				subnets = []string{subnetMap["private"][0], subnetMap["private"][1], subnetMap["private"][2]}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(successOutput))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(successOutput))
 
-				By("Create a private cluster with 2 private subnets from same AZ")
+				ginkgo.By("Create a private cluster with 2 private subnets from same AZ")
 				subnets = []string{subnetMap["private"][0], additionalPrivateSubnet.ID}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_1))
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_2))
 
-				By("Create a private cluster with 4 private subnets (2 subnets from same AZ)")
+				ginkgo.By("Create a private cluster with 4 private subnets (2 subnets from same AZ)")
 				subnets = []string{
 					subnetMap["private"][0],
 					additionalPrivateSubnet.ID,
@@ -3059,27 +3074,27 @@ var _ = Describe("HCP cluster creation subnets validation",
 				}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_1))
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(failOutput_2))
 
-				By("Create a private cluster with 1 private subnet and 1 public subnet")
+				ginkgo.By("Create a private cluster with 1 private subnet and 1 public subnet")
 				subnets = []string{subnetMap["private"][0], subnetMap["public"][0]}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(
 					"The following subnets have been excluded because they have an " +
 						"Internet Gateway Targetded Route and the Cluster choice is private: [" + subnetMap["public"][0] + "]"))
-				Expect(out.String()).To(ContainSubstring(
+				gomega.Expect(out.String()).To(gomega.ContainSubstring(
 					"Cluster is set as private, cannot use public '%s'", subnetMap["public"][0]))
 			})
 	})
 
-var _ = Describe("Create cluster with availability zones testing",
+var _ = ginkgo.Describe("Create cluster with availability zones testing",
 	labels.Feature.Machinepool,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 		var (
 			availabilityZones  string
 			clusterID          string
@@ -3087,30 +3102,30 @@ var _ = Describe("Create cluster with availability zones testing",
 			machinePoolService rosacli.MachinePoolService
 		)
 
-		BeforeEach(func() {
-			By("Get the cluster")
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Get the cluster")
 			clusterID = config.GetClusterID()
-			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+			gomega.Expect(clusterID).ToNot(gomega.Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			machinePoolService = rosaClient.MachinePool
 
-			By("Skip testing if the cluster is not a Classic cluster")
+			ginkgo.By("Skip testing if the cluster is not a Classic cluster")
 			isHostedCP, err := rosaClient.Cluster.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			if isHostedCP {
 				SkipNotClassic()
 			}
 		})
 
-		AfterEach(func() {
-			By("Clean remaining resources")
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Clean remaining resources")
 			rosaClient.CleanResources(clusterID)
 
 		})
 
-		It("User can set availability zones - [id:52691]",
+		ginkgo.It("User can set availability zones - [id:52691]",
 			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
@@ -3121,111 +3136,112 @@ var _ = Describe("Create cluster with availability zones testing",
 					SkipTestOnFeature("create rosa cluster with availability zones")
 				}
 
-				By("List machine pool and check the default one")
+				ginkgo.By("List machine pool and check the default one")
 				availabilityZones = profile.ClusterConfig.Zones
 				output, err := machinePoolService.ListMachinePool(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				mpList, err := machinePoolService.ReflectMachinePoolList(output)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				mp := mpList.Machinepool(constants.DefaultClassicWorkerPool)
-				Expect(err).To(BeNil())
-				Expect(helper.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(helper.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(gomega.Equal(availabilityZones))
 
-				By("Create another machinepool")
+				ginkgo.By("Create another machinepool")
 				_, err = machinePoolService.CreateMachinePool(clusterID, mpID,
 					"--replicas", "3",
 					"--instance-type", machineType,
 				)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-				By("List machine pool and check availability zone")
+				ginkgo.By("List machine pool and check availability zone")
 				output, err = machinePoolService.ListMachinePool(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				mpList, err = machinePoolService.ReflectMachinePoolList(output)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				mp = mpList.Machinepool(mpID)
-				Expect(err).To(BeNil())
-				Expect(helper.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(helper.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(gomega.Equal(availabilityZones))
 			})
 	})
-var _ = Describe("Create sts and hcp cluster with the IAM roles with path setting", labels.Feature.Cluster, func() {
-	defer GinkgoRecover()
-	var (
-		clusterID      string
-		rosaClient     *rosacli.Client
-		profile        *handler.Profile
-		err            error
-		clusterService rosacli.ClusterService
-		path           string
-		awsClient      *aws_client.AWSClient
-	)
-
-	BeforeEach(func() {
-		By("Get the cluster")
-		profile = handler.LoadProfileYamlFileByENV()
-		Expect(err).ToNot(HaveOccurred())
-
-		By("Init the client")
-		rosaClient = rosacli.NewClient()
-		clusterService = rosaClient.Cluster
-		clusterID = config.GetClusterID()
-	})
-
-	AfterEach(func() {
-		By("Clean remaining resources")
-		rosaClient.CleanResources(clusterID)
-
-	})
-
-	It("to check the IAM roles can be used to create clsuters - [id:53570]",
-		labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
-		func() {
-			By("Skip testing if the cluster is a Classic NON-STS cluster")
-			isSTS, err := clusterService.IsSTSCluster(clusterID)
-			Expect(err).To(BeNil())
-			if !isSTS {
-				Skip("Skip this case as it only supports on STS clusters")
-			}
-
-			By("Check the account-roles using on the cluster has path setting")
-			if profile.AccountRoleConfig.Path == "" {
-				Skip("Skip this case as it only checks the cluster which has the account-roles with path setting")
-			} else {
-				path = profile.AccountRoleConfig.Path
-			}
-
-			By("Get operator-roles arns and installer role arn")
-			output, err := clusterService.DescribeCluster(clusterID)
-			Expect(err).To(BeNil())
-			CD, err := clusterService.ReflectClusterDescription(output)
-			Expect(err).To(BeNil())
-			operatorRolesArns := CD.OperatorIAMRoles
-
-			installerRole := CD.STSRoleArn
-			Expect(installerRole).To(ContainSubstring(path))
-
-			By("Check the operator-roles has the path setting")
-			for _, pArn := range operatorRolesArns {
-				Expect(pArn).To(ContainSubstring(path))
-			}
-			if profile.ClusterConfig.STS && !profile.ClusterConfig.HCP {
-				By("Check the operator role policies has the path setting")
-				awsClient, err = aws_client.CreateAWSClient("", "")
-				Expect(err).To(BeNil())
-				for _, pArn := range operatorRolesArns {
-					_, roleName, err := helper.ParseRoleARN(pArn)
-					Expect(err).To(BeNil())
-					attachedPolicy, err := awsClient.ListRoleAttachedPolicies(roleName)
-					Expect(err).To(BeNil())
-					Expect(*(attachedPolicy[0].PolicyArn)).To(ContainSubstring(path))
-				}
-			}
-		})
-})
-
-var _ = Describe("Create cluster with existing operator-roles prefix which roles are not using byo oidc",
+var _ = ginkgo.Describe("Create sts and hcp cluster with the IAM roles with path setting",
 	labels.Feature.Cluster, func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
+		var (
+			clusterID      string
+			rosaClient     *rosacli.Client
+			profile        *handler.Profile
+			err            error
+			clusterService rosacli.ClusterService
+			path           string
+			awsClient      *aws_client.AWSClient
+		)
+
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Get the cluster")
+			profile = handler.LoadProfileYamlFileByENV()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+			ginkgo.By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			clusterID = config.GetClusterID()
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Clean remaining resources")
+			rosaClient.CleanResources(clusterID)
+
+		})
+
+		ginkgo.It("to check the IAM roles can be used to create clsuters - [id:53570]",
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+			func() {
+				ginkgo.By("Skip testing if the cluster is a Classic NON-STS cluster")
+				isSTS, err := clusterService.IsSTSCluster(clusterID)
+				gomega.Expect(err).To(gomega.BeNil())
+				if !isSTS {
+					ginkgo.Skip("Skip this case as it only supports on STS clusters")
+				}
+
+				ginkgo.By("Check the account-roles using on the cluster has path setting")
+				if profile.AccountRoleConfig.Path == "" {
+					ginkgo.Skip("Skip this case as it only checks the cluster which has the account-roles with path setting")
+				} else {
+					path = profile.AccountRoleConfig.Path
+				}
+
+				ginkgo.By("Get operator-roles arns and installer role arn")
+				output, err := clusterService.DescribeCluster(clusterID)
+				gomega.Expect(err).To(gomega.BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				gomega.Expect(err).To(gomega.BeNil())
+				operatorRolesArns := CD.OperatorIAMRoles
+
+				installerRole := CD.STSRoleArn
+				gomega.Expect(installerRole).To(gomega.ContainSubstring(path))
+
+				ginkgo.By("Check the operator-roles has the path setting")
+				for _, pArn := range operatorRolesArns {
+					gomega.Expect(pArn).To(gomega.ContainSubstring(path))
+				}
+				if profile.ClusterConfig.STS && !profile.ClusterConfig.HCP {
+					ginkgo.By("Check the operator role policies has the path setting")
+					awsClient, err = aws_client.CreateAWSClient("", "")
+					gomega.Expect(err).To(gomega.BeNil())
+					for _, pArn := range operatorRolesArns {
+						_, roleName, err := helper.ParseRoleARN(pArn)
+						gomega.Expect(err).To(gomega.BeNil())
+						attachedPolicy, err := awsClient.ListRoleAttachedPolicies(roleName)
+						gomega.Expect(err).To(gomega.BeNil())
+						gomega.Expect(*(attachedPolicy[0].PolicyArn)).To(gomega.ContainSubstring(path))
+					}
+				}
+			})
+	})
+
+var _ = ginkgo.Describe("Create cluster with existing operator-roles prefix which roles are not using byo oidc",
+	labels.Feature.Cluster, func() {
+		defer ginkgo.GinkgoRecover()
 		var (
 			// clusterID  string
 			rosaClient         *rosacli.Client
@@ -3237,77 +3253,77 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 			clusterID          string
 		)
 
-		BeforeEach(func() {
-			By("Init the client")
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
 			clusterService = rosaClient.Cluster
 		})
 
-		AfterEach(func() {
-			By("Delete the cluster")
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Delete the cluster")
 			if clusterNameToClean != "" {
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(clusterNameToClean).ID
 
 				rosaClient.Runner.UnsetArgs()
 				_, err = clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			}
-			By("Delete operator-roles")
+			ginkgo.By("Delete operator-roles")
 			_, err = ocmResourceService.DeleteOperatorRoles(
 				"-c", clusterID,
 				"--mode", "auto",
 				"-y",
 			)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Delete oidc-provider")
+			ginkgo.By("Delete oidc-provider")
 			_, err = ocmResourceService.DeleteOIDCProvider(
 				"-c", clusterID,
 				"--mode", "auto",
 				"-y")
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Delete account-roles")
+			ginkgo.By("Delete account-roles")
 			if accountRolePrefix != "" {
-				By("Delete the account-roles")
+				ginkgo.By("Delete the account-roles")
 				rosaClient.Runner.UnsetArgs()
 				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
 					"--prefix", accountRolePrefix,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			}
 
 		})
 
-		It("to validate to create cluster with existing operator roles prefix - [id:45742]",
+		ginkgo.It("to validate to create cluster with existing operator roles prefix - [id:45742]",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Create acount-roles")
+				ginkgo.By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar45742", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Created role"))
+				gomega.Expect(textData).To(gomega.ContainSubstring("Created role"))
 
 				arl, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				ar := arl.DigAccountRoles(accountRolePrefix, false)
 
-				By("Create one sts cluster")
+				ginkgo.By("Create one sts cluster")
 				clusterNameToClean = "test-45742"
 				operatorRolePreifx := "opPrefix45742"
 				_, err, _ = clusterService.Create(
@@ -3320,9 +3336,9 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 					"--operator-roles-prefix", operatorRolePreifx,
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Create another cluster with the same operator-roles-prefix")
+				ginkgo.By("Create another cluster with the same operator-roles-prefix")
 				clusterName := "test-45742b"
 				out, err, _ := clusterService.Create(
 					clusterName, "--sts",
@@ -3334,15 +3350,15 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 					"--operator-roles-prefix", operatorRolePreifx,
 					"-y",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("already exists"))
-				Expect(out.String()).To(ContainSubstring("provide a different prefix"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("already exists"))
+				gomega.Expect(out.String()).To(gomega.ContainSubstring("provide a different prefix"))
 			})
 	})
 
-var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
+var _ = ginkgo.Describe("create/delete operator-roles and oidc-provider to cluster",
 	labels.Feature.Cluster, func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 		var (
 			rosaClient *rosacli.Client
 
@@ -3355,77 +3371,77 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 			dirToClean         string
 		)
 
-		BeforeEach(func() {
-			By("Init the client")
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
 			clusterService = rosaClient.Cluster
 
-			By("Get the default dir")
+			ginkgo.By("Get the default dir")
 			defaultDir = rosaClient.Runner.GetDir()
 		})
 
-		AfterEach(func() {
-			By("Go back original by setting runner dir")
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Go back original by setting runner dir")
 			rosaClient.Runner.SetDir(defaultDir)
 
-			By("Delete cluster")
+			ginkgo.By("Delete cluster")
 			rosaClient.Runner.UnsetArgs()
 			clusterListout, err := clusterService.List()
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			clusterList, err := clusterService.ReflectClusterList(clusterListout)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			if clusterList.IsExist(clusterID) {
 				rosaClient.Runner.UnsetArgs()
 				_, err = clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			}
-			By("Delete operator-roles")
+			ginkgo.By("Delete operator-roles")
 			_, err = ocmResourceService.DeleteOperatorRoles(
 				"-c", clusterID,
 				"--mode", "auto",
 				"-y",
 			)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Delete oidc-provider")
+			ginkgo.By("Delete oidc-provider")
 			_, err = ocmResourceService.DeleteOIDCProvider(
 				"-c", clusterID,
 				"--mode", "auto",
 				"-y")
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Delete the account-roles")
+			ginkgo.By("Delete the account-roles")
 			rosaClient.Runner.UnsetArgs()
 			_, err = ocmResourceService.DeleteAccountRole("--mode", "auto",
 				"--prefix", accountRolePrefix,
 				"-y")
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		It("to create/delete operator-roles and oidc-provider to cluster in manual mode - [id:43053]",
+		ginkgo.It("to create/delete operator-roles and oidc-provider to cluster in manual mode - [id:43053]",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Create acount-roles")
+				ginkgo.By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar43053", 2)
 				output, err := ocmResourceService.CreateAccountRole(
 					"--mode", "auto",
 					"--prefix", accountRolePrefix,
 					"-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("Created role"))
+				gomega.Expect(textData).To(gomega.ContainSubstring("Created role"))
 
 				arl, _, err := ocmResourceService.ListAccountRole()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				ar := arl.DigAccountRoles(accountRolePrefix, false)
 
-				By("Create a temp dir to execute the create commands")
+				ginkgo.By("Create a temp dir to execute the create commands")
 				dirToClean, err = os.MkdirTemp("", "*")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Create one sts cluster in manual mode")
+				ginkgo.By("Create one sts cluster in manual mode")
 				rosaClient.Runner.SetDir(dirToClean)
 				clusterNameToClean = helper.GenerateRandomName("c43053", 2)
 				// Configure with a random str, which can solve the rerun failure
@@ -3440,84 +3456,84 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"--operator-roles-prefix", operatorRolePreifx,
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(clusterNameToClean).ID
 
-				By("Create operator-roles in manual mode")
+				ginkgo.By("Create operator-roles in manual mode")
 				output, err = ocmResourceService.CreateOperatorRoles(
 					"-c", clusterID,
 					"--mode", "manual",
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				commands := helper.ExtractCommandsToCreateAWSResources(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 
-				By("Create oidc provider in manual mode")
+				ginkgo.By("Create oidc provider in manual mode")
 				output, err = ocmResourceService.CreateOIDCProvider(
 					"-c", clusterID,
 					"--mode", "manual",
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				commands = helper.ExtractCommandsToCreateAWSResources(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 
-				By("Check cluster status to installing")
+				ginkgo.By("Check cluster status to installing")
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
-				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+				gomega.Expect(err).To(gomega.BeNil(), "It met error or timeout when waiting cluster to installing status")
 
-				By("Delete cluster and wait it deleted")
+				ginkgo.By("Delete cluster and wait it deleted")
 				rosaClient.Runner.UnsetArgs()
 				_, err = clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 24)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Delete operator-roles in manual mode")
+				ginkgo.By("Delete operator-roles in manual mode")
 				output, err = ocmResourceService.DeleteOperatorRoles(
 					"-c", clusterID,
 					"--mode", "manual",
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 
-				By("Delete oidc provider in manual mode")
+				ginkgo.By("Delete oidc provider in manual mode")
 				output, err = ocmResourceService.DeleteOIDCProvider(
 					"-c", clusterID,
 					"--mode", "manual",
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 			})
 	})
-var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", labels.Feature.Cluster, func() {
-	defer GinkgoRecover()
+var _ = ginkgo.Describe("Reusing opeartor prefix and oidc config to create clsuter", labels.Feature.Cluster, func() {
+	defer ginkgo.GinkgoRecover()
 	var (
 		rosaClient               *rosacli.Client
 		profile                  *handler.Profile
@@ -3532,36 +3548,36 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	)
 	const versionTagName = "rosa_openshift_version"
 
-	BeforeEach(func() {
-		By("Init the client")
+	ginkgo.BeforeEach(func() {
+		ginkgo.By("Init the client")
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
 		clusterService = rosaClient.Cluster
 		profile = handler.LoadProfileYamlFileByENV()
-		Expect(err).ToNot(HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 		awsClient, err = aws_client.CreateAWSClient("", "")
-		Expect(err).To(BeNil())
+		gomega.Expect(err).To(gomega.BeNil())
 
-		By("Get the cluster")
+		ginkgo.By("Get the cluster")
 		clusterID = config.GetClusterID()
-		Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+		gomega.Expect(clusterID).ToNot(gomega.Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 	})
 
-	AfterEach(func() {
+	ginkgo.AfterEach(func() {
 		hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-		Expect(err).ToNot(HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		if !hostedCluster {
-			By("Recover the operator role policy version")
+			ginkgo.By("Recover the operator role policy version")
 			keysToUntag := []string{versionTagName}
 			err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			tags := map[string]string{versionTagName: originalMajorMinorVerson}
 			err = awsClient.TagPolicy(operatorPolicyArn, tags)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		}
 
-		By("Delete resources for testing")
+		ginkgo.By("Delete resources for testing")
 		if oidcConfigToClean != "" {
 			output, err := ocmResourceService.DeleteOIDCConfig(
 				"--oidc-config-id", oidcConfigToClean,
@@ -3569,34 +3585,34 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 				"--mode", "auto",
 				"-y",
 			)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("Successfully deleted the OIDC provider"))
+			gomega.Expect(textData).To(gomega.ContainSubstring("Successfully deleted the OIDC provider"))
 		}
 
 	})
 
-	It("to reuse operator-roles prefix and oidc config - [id:60688]",
+	ginkgo.It("to reuse operator-roles prefix and oidc config - [id:60688]",
 		labels.Critical, labels.Runtime.Day2,
 		func() {
-			By("Check if it is using oidc config")
+			ginkgo.By("Check if it is using oidc config")
 			if profile.ClusterConfig.OIDCConfig == "" {
-				Skip("Skip this case as it is only for byo oidc cluster")
+				ginkgo.Skip("Skip this case as it is only for byo oidc cluster")
 			}
 
-			By("Skip if the cluster is shared vpc cluster")
+			ginkgo.By("Skip if the cluster is shared vpc cluster")
 			if profile.ClusterConfig.SharedVPC {
-				Skip("Skip this case as it is not supported for byo oidc cluster")
+				ginkgo.Skip("Skip this case as it is not supported for byo oidc cluster")
 			}
 
-			By("Prepare creation command")
+			ginkgo.By("Prepare creation command")
 			var originalOidcConfigID string
 			var rosalCommand config.Command
 
 			sharedDIR := os.Getenv("SHARED_DIR")
 			filePath := sharedDIR + "/create_cluster.sh"
 			rosalCommand, err = config.RetrieveClusterCreationCommand(filePath)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			originalOidcConfigID = rosalCommand.GetFlagValue("--oidc-config-id", true)
 			rosalCommand.AddFlags("--dry-run")
@@ -3610,75 +3626,75 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 				})
 			}
 
-			By("Reuse the oidc config and operator-roles")
+			ginkgo.By("Reuse the oidc config and operator-roles")
 			stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-			Expect(err).To(BeNil())
-			Expect(stdout.String()).To(ContainSubstring("Creating cluster '%s' should succeed", testClusterName))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(stdout.String()).To(gomega.ContainSubstring("Creating cluster '%s' should succeed", testClusterName))
 
-			By("Reuse the operator prefix to create cluster but using different oidc config")
+			ginkgo.By("Reuse the operator prefix to create cluster but using different oidc config")
 			output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			oidcPrivodeARNFromOutputMessage := helper.ExtractOIDCProviderARN(output.String())
 			oidcPrivodeIDFromOutputMessage := helper.ExtractOIDCProviderIDFromARN(oidcPrivodeARNFromOutputMessage)
 			oidcConfigToClean, err = ocmResourceService.GetOIDCIdFromList(oidcPrivodeIDFromOutputMessage)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			rosalCommand.ReplaceFlagValue(map[string]string{
 				"--oidc-config-id": oidcConfigToClean,
 			})
 			stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-			Expect(err).NotTo(BeNil())
-			Expect(stdout.String()).To(ContainSubstring("does not have trusted relationship to"))
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(stdout.String()).To(gomega.ContainSubstring("does not have trusted relationship to"))
 
-			By("Find the nearest backward minor version")
+			ginkgo.By("Find the nearest backward minor version")
 			output, err = clusterService.DescribeCluster(clusterID)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			clusterDetail, err := clusterService.ReflectClusterDescription(output)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			operatorRolesArns := clusterDetail.OperatorIAMRoles
 
 			versionOutput, err := clusterService.GetClusterVersion(clusterID)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			clusterVersion := versionOutput.RawID
 			major, minor, _, err := helper.ParseVersion(clusterVersion)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			originalMajorMinorVerson = fmt.Sprintf("%d.%d", major, minor)
 			testingRoleVersion := fmt.Sprintf("%d.%d", major, minor-1)
 
 			isHosted, err := clusterService.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			if !isHosted {
-				By("Update the all operator policies tags to low version")
+				ginkgo.By("Update the all operator policies tags to low version")
 				_, roleName, err := helper.ParseRoleARN(operatorRolesArns[1])
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				policies, err := awsClient.ListAttachedRolePolicies(roleName)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				operatorPolicyArn = *policies[0].PolicyArn
 
 				keysToUntag := []string{versionTagName}
 				err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
-				Expect(err).To(BeNil(), fmt.Sprintf("Expected no error, but got: %v", err))
+				gomega.Expect(err).To(gomega.BeNil(), fmt.Sprintf("Expected no error, but got: %v", err))
 
 				tags := map[string]string{versionTagName: testingRoleVersion}
 
 				err = awsClient.TagPolicy(operatorPolicyArn, tags)
-				Expect(err).To(BeNil(), fmt.Sprintf("Expected no error, but got: %v", err))
+				gomega.Expect(err).To(gomega.BeNil(), fmt.Sprintf("Expected no error, but got: %v", err))
 
-				By("Reuse operatot-role prefix and oidc config to create cluster with non-compatible version")
+				ginkgo.By("Reuse operatot-role prefix and oidc config to create cluster with non-compatible version")
 
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--oidc-config-id": originalOidcConfigID,
 				})
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("is not compatible with cluster version"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(gomega.ContainSubstring("is not compatible with cluster version"))
 			}
 		})
 })
-var _ = Describe("Sts cluster creation with external id",
+var _ = ginkgo.Describe("Sts cluster creation with external id",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -3690,19 +3706,19 @@ var _ = Describe("Sts cluster creation with external id",
 			testingClusterName string
 			clusterHandler     handler.ClusterHandler
 		)
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			var err error
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
 
-			By("Get AWS account id")
+			ginkgo.By("Get AWS account id")
 			rosaClient.Runner.JsonFormat()
 			rosaClient.Runner.UnsetFormat()
 
-			By("Prepare custom profile")
+			ginkgo.By("Prepare custom profile")
 			customProfile = &handler.Profile{
 				ClusterConfig: &handler.ClusterConfig{
 					HCP:           false,
@@ -3722,41 +3738,41 @@ var _ = Describe("Sts cluster creation with external id",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			defer func() {
-				By("Clean resources")
+				ginkgo.By("Clean resources")
 				clusterHandler.Destroy()
 			}()
 
-			By("Delete cluster")
+			ginkgo.By("Delete cluster")
 			rosaClient.Runner.UnsetArgs()
 			_, err := clusterService.DeleteCluster(clusterID, "-y")
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			rosaClient.Runner.UnsetArgs()
 			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Delete operator-roles")
+			ginkgo.By("Delete operator-roles")
 			_, err = ocmResourceService.DeleteOperatorRoles(
 				"-c", clusterID,
 				"--mode", "auto",
 				"-y",
 			)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		It("Creating cluster with sts external id should succeed - [id:75603]",
+		ginkgo.It("Creating cluster with sts external id should succeed - [id:75603]",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Create classic cluster in auto mode")
+				ginkgo.By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75603", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75603", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
@@ -3766,29 +3782,29 @@ var _ = Describe("Sts cluster creation with external id",
 
 				rosalCommand.AddFlags("--mode", "auto")
 
-				By("Update installer role")
+				ginkgo.By("Update installer role")
 				ExternalId := "223B9588-36A5-ECA4-BE8D-7C673B77CEC1"
 				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
 				_, roleName, err := helper.ParseRoleARN(installRoleArn)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				awsClient, err := aws_client.CreateAWSClient("", "")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				opRole, err := awsClient.IamClient.GetRole(
 					context.TODO(),
 					&iam.GetRoleInput{
 						RoleName: &roleName,
 					})
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				decodedPolicyDocument, err := url.QueryUnescape(*opRole.Role.AssumeRolePolicyDocument)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("update the trust relationship")
+				ginkgo.By("update the trust relationship")
 				var policyDocument map[string]interface{}
 
 				err = json.Unmarshal([]byte(decodedPolicyDocument), &policyDocument)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				newCondition := map[string]interface{}{
 					"StringEquals": map[string]interface{}{
@@ -3802,15 +3818,15 @@ var _ = Describe("Sts cluster creation with external id",
 					stmt["Condition"] = newCondition
 				}
 				updatedPolicyDocument, err := json.Marshal(policyDocument)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				_, err = awsClient.IamClient.UpdateAssumeRolePolicy(context.TODO(), &iam.UpdateAssumeRolePolicyInput{
 					RoleName:       aws.String(roleName),
 					PolicyDocument: aws.String(string(updatedPolicyDocument)),
 				})
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Wait for the trust relationship to be updated")
+				ginkgo.By("Wait for the trust relationship to be updated")
 				err = wait.PollUntilContextTimeout(
 					context.Background(),
 					20*time.Second,
@@ -3827,37 +3843,37 @@ var _ = Describe("Sts cluster creation with external id",
 
 						return false, err
 					})
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Create cluster with external id not same with the role setting one")
+				ginkgo.By("Create cluster with external id not same with the role setting one")
 				notMatchExternalId := "333B9588-36A5-ECA4-BE8D-7C673B77CDCD"
 				rosalCommand.AddFlags("--external-id", notMatchExternalId)
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(gomega.ContainSubstring(
 					"An error occurred while trying to create an AWS client: Failed to assume role with ARN"))
 
-				By("Create cluster with external id")
+				ginkgo.By("Create cluster with external id")
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--external-id": ExternalId,
 				})
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 20)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			})
 	})
-var _ = Describe("HCP cluster creation supplemental testing",
+var _ = ginkgo.Describe("HCP cluster creation supplemental testing",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -3870,21 +3886,21 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			testingClusterName string
 			clusterHandler     handler.ClusterHandler
 		)
-		BeforeEach(func() {
-			By("Init the client")
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
 
-			By("Get AWS account id")
+			ginkgo.By("Get AWS account id")
 			rosaClient.Runner.JsonFormat()
 			whoamiOutput, err := ocmResourceService.Whoami()
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			rosaClient.Runner.UnsetFormat()
 			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 			AWSAccountID = whoamiData.AWSAccountID
 
-			By("Prepare custom profile")
+			ginkgo.By("Prepare custom profile")
 			customProfile = &handler.Profile{
 				ClusterConfig: &handler.ClusterConfig{
 					HCP:           true,
@@ -3905,53 +3921,53 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Init the cluster id and testing cluster name")
+			ginkgo.By("Init the cluster id and testing cluster name")
 			clusterID = ""
 			testingClusterName = ""
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			defer func() {
-				By("Clean resources")
+				ginkgo.By("Clean resources")
 				clusterHandler.Destroy()
 			}()
 
 			if clusterID != "" {
-				By("Delete cluster by id")
+				ginkgo.By("Delete cluster by id")
 				rosaClient.Runner.UnsetArgs()
 				_, err := clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Delete operator-roles")
+				ginkgo.By("Delete operator-roles")
 				_, err = ocmResourceService.DeleteOperatorRoles(
 					"-c", clusterID,
 					"--mode", "auto",
 					"-y",
 				)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			} else if testingClusterName != "" {
 				// At least try to delete testing cluster
-				By("Delete cluster by name")
+				ginkgo.By("Delete cluster by name")
 				rosaClient.Runner.UnsetArgs()
 				_, err := clusterService.DeleteCluster(testingClusterName, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			}
 		})
 
-		It("Check the output of the STS cluster creation with new oidc flow - [id:75925]",
+		ginkgo.It("Check the output of the STS cluster creation with new oidc flow - [id:75925]",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Create hcp cluster in auto mode")
+				ginkgo.By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75925", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75925", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
@@ -3962,25 +3978,25 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				rosalCommand.AddFlags("--mode", "auto")
 				rosalCommand.AddFlags("--billing-account", AWSAccountID)
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(gomega.ContainSubstring("Attached trust policy"))
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				gomega.Expect(clusterID).ToNot(gomega.BeNil())
 			})
 
-		It("ROSA CLI cluster creation should show install/uninstall logs - [id:75534]",
+		ginkgo.It("ROSA CLI cluster creation should show install/uninstall logs - [id:75534]",
 			labels.Critical,
 			labels.Runtime.Day1Supplemental,
 			func() {
 				testingClusterName = helper.GenerateRandomName("ocp-75534", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " +
 					testingClusterName + " " + strings.Join(flags, " ") + " " + "--mode auto -y"
@@ -3988,52 +4004,57 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				fmt.Println("debug command is: ", rosalCommand.GetFullCommand())
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 
-				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(
+					gomega.ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
 
-				By("Check the install logs of the hypershift cluster")
-				Eventually(func() (string, error) {
+				ginkgo.By("Check the install logs of the hypershift cluster")
+				gomega.Eventually(func() (string, error) {
 					output, err := clusterService.InstallLog(testingClusterName)
 					return output.String(), err
-				}, time.Minute*10, time.Second*30).Should(And(
-					ContainSubstring("hostedclusters %s Version", testingClusterName),
-					ContainSubstring("hostedclusters %s Release image is valid", testingClusterName)))
+				}, time.Minute*10, time.Second*30).Should(gomega.And(
+					gomega.ContainSubstring("hostedclusters %s Version", testingClusterName),
+					gomega.ContainSubstring("hostedclusters %s Release image is valid", testingClusterName)))
 
-				By("Check the install logs of the hypershift cluster with flag --watch")
+				ginkgo.By("Check the install logs of the hypershift cluster with flag --watch")
 				output, err := clusterService.InstallLog(testingClusterName, "--watch")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Version", testingClusterName))
-				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Release image is valid", testingClusterName))
-				Expect(output.String()).Should(ContainSubstring("Cluster '%s' is now ready", testingClusterName))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(gomega.ContainSubstring("hostedclusters %s Version", testingClusterName))
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("hostedclusters %s Release image is valid", testingClusterName))
+				gomega.Expect(output.String()).Should(gomega.ContainSubstring("Cluster '%s' is now ready", testingClusterName))
 
-				By("Delete the Hypershift cluster")
+				ginkgo.By("Delete the Hypershift cluster")
 				output, err = clusterService.DeleteCluster(testingClusterName, "-y")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("Cluster '%s' will start uninstalling now", testingClusterName))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("Cluster '%s' will start uninstalling now", testingClusterName))
 
-				By("Check the uninstall logs of the hypershift cluster")
-				Eventually(func() (string, error) {
+				ginkgo.By("Check the uninstall logs of the hypershift cluster")
+				gomega.Eventually(func() (string, error) {
 					output, err := clusterService.UnInstallLog(testingClusterName)
 					return output.String(), err
 				}, time.Minute*20, time.Second*30).
 					Should(
-						ContainSubstring("hostedclusters %s Reconciliation completed successfully", testingClusterName))
+						gomega.ContainSubstring("hostedclusters %s Reconciliation completed successfully", testingClusterName))
 
-				By("Check the uninstall log of the hosted cluster with flag --watch")
+				ginkgo.By("Check the uninstall log of the hosted cluster with flag --watch")
 				output, err = clusterService.UnInstallLog(testingClusterName, "--watch")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("hostedclusters %s Reconciliation completed successfully",
-					testingClusterName))
-				Expect(output.String()).Should(ContainSubstring("Cluster '%s' completed uninstallation", testingClusterName))
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("hostedclusters %s Reconciliation completed successfully",
+						testingClusterName))
+				gomega.Expect(output.String()).Should(
+					gomega.ContainSubstring("Cluster '%s' completed uninstallation", testingClusterName))
 				testingClusterName = ""
 			})
 
-		It("Check single AZ hosted cluster can be created - [id:54413]",
+		ginkgo.It("Check single AZ hosted cluster can be created - [id:54413]",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
 				testingClusterName = helper.GenerateRandomName("c54413", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
@@ -4055,30 +4076,31 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				}
 
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(
+					gomega.ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
 
-				By("Retrieve cluster ID")
+				ginkgo.By("Retrieve cluster ID")
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 
-				By("Wait for Cluster")
+				ginkgo.By("Wait for Cluster")
 				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
-				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+				gomega.Expect(err).To(gomega.BeNil(), "It met error or timeout when waiting cluster to ready status")
 			})
 
-		It("Create hosted cluster in manual mode - [id:75536]",
+		ginkgo.It("Create hosted cluster in manual mode - [id:75536]",
 			labels.High, labels.Runtime.Day1Supplemental,
 			func() {
 				customProfile.ClusterConfig.ManualCreationMode = true
-				By("Prepare command for testing")
+				ginkgo.By("Prepare command for testing")
 				testingClusterName = helper.GenerateRandomName("c75536", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
 				if rosalCommand.CheckFlagExist("--mode") {
@@ -4086,40 +4108,41 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				}
 				rosalCommand.AddFlags("--mode", "manual")
 
-				By("Create temp dir for manual execution")
+				ginkgo.By("Create temp dir for manual execution")
 				dirForManual, err := os.MkdirTemp("", "*")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				rosaClient.Runner.SetDir(dirForManual)
 
-				By("Run create cluster command")
+				ginkgo.By("Run create cluster command")
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(
+					gomega.ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
 
-				By("Run individual manual commands")
+				ginkgo.By("Run individual manual commands")
 				commands := helper.ExtractAWSCmdsForClusterCreation(stdout)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}
 
-				By("Retrieve cluster ID")
+				ginkgo.By("Retrieve cluster ID")
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 
-				By("Wait for Cluster")
+				ginkgo.By("Wait for Cluster")
 				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
-				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+				gomega.Expect(err).To(gomega.BeNil(), "It met error or timeout when waiting cluster to ready status")
 			})
 	})
-var _ = Describe("Sts cluster creation supplemental testing",
+var _ = ginkgo.Describe("Sts cluster creation supplemental testing",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -4130,18 +4153,18 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			clusterID          string
 			testingClusterName string
 		)
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			var err error
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 
-			By("Get AWS account id")
+			ginkgo.By("Get AWS account id")
 			rosaClient.Runner.JsonFormat()
 			rosaClient.Runner.UnsetFormat()
 
-			By("Prepare custom profile")
+			ginkgo.By("Prepare custom profile")
 			customProfile = &handler.Profile{
 				ClusterConfig: &handler.ClusterConfig{
 					HCP:           false,
@@ -4161,22 +4184,22 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		})
 
-		AfterEach(func() {
-			By("Clean resources")
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Clean resources")
 			clusterHandler.Destroy()
 		})
 
-		It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
+		ginkgo.It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Create hcp cluster in auto mode")
+				ginkgo.By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75927", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75927", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
@@ -4186,134 +4209,134 @@ var _ = Describe("Sts cluster creation supplemental testing",
 
 				rosalCommand.AddFlags("--mode", "auto")
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				defer func() {
-					By("Delete cluster")
+					ginkgo.By("Delete cluster")
 					_, err := clusterService.DeleteCluster(testingClusterName, "-y")
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}()
-				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+				gomega.Expect(stdout.String()).To(gomega.ContainSubstring("Attached trust policy"))
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				gomega.Expect(clusterID).ToNot(gomega.BeNil())
 			})
 
-		It("User can set availability zones to create rosa multi-az STS cluster - [id:56224]",
+		ginkgo.It("User can set availability zones to create rosa multi-az STS cluster - [id:56224]",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Create classic sts cluster in auto mode")
+				ginkgo.By("Create classic sts cluster in auto mode")
 				customProfile.ClusterConfig.Zones = "us-east-2a,us-east-2b,us-east-2c"
 				customProfile.NamePrefix = helper.GenerateRandomName("rosa56224", 2)
 				testingClusterName = helper.GenerateRandomName("cluster56224", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				flags = append(flags, "-m")
 				flags = append(flags, "auto")
 				_, err, _ = clusterService.Create(testingClusterName, flags[:]...)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				defer func() {
-					By("Delete cluster")
+					ginkgo.By("Delete cluster")
 					_, err = clusterService.DeleteCluster(clusterID, "-y")
-					Expect(err).To(BeNil())
+					gomega.Expect(err).To(gomega.BeNil())
 				}()
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListOut, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListOut)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				gomega.Expect(clusterID).ToNot(gomega.BeNil())
 
-				By("Describe cluster in json format")
+				ginkgo.By("Describe cluster in json format")
 				rosaClient.Runner.JsonFormat()
 				jsonOutput, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				rosaClient.Runner.UnsetFormat()
 				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
 
 				zones := jsonData.DigString("nodes", "availability_zones")
-				Expect(zones).To(Equal("[us-east-2a us-east-2b us-east-2c]"))
+				gomega.Expect(zones).To(gomega.Equal("[us-east-2a us-east-2b us-east-2c]"))
 			})
 
-		It("rosacli makes STS cluster by default - [id:55701]",
+		ginkgo.It("rosacli makes STS cluster by default - [id:55701]",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Check the help message of 'rosa describe upgrade -h'")
+				ginkgo.By("Check the help message of 'rosa describe upgrade -h'")
 				output, err, _ := clusterService.Create("ocp55701", "--help")
-				Expect(err).To(BeNil())
-				Expect(output.String()).To(ContainSubstring("rosa create cluster [flags]"))
-				Expect(output.String()).To(ContainSubstring("--sts"))
-				Expect(output.String()).To(ContainSubstring("--non-sts"))
-				Expect(output.String()).To(ContainSubstring("--mint-mode"))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("rosa create cluster [flags]"))
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("--sts"))
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("--non-sts"))
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("--mint-mode"))
 
-				By("Create cluster with '--sts' flag")
+				ginkgo.By("Create cluster with '--sts' flag")
 				testingClusterName = helper.GenerateRandomName("c55701", 2)
 				output, err, _ = clusterService.Create(testingClusterName, "--sts")
-				Expect(err).NotTo(BeNil())
-				Expect(output.String()).To(ContainSubstring("More than one Installer role found"))
-				Expect(output.String()).To(ContainSubstring("Expected a valid role ARN"))
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("More than one Installer role found"))
+				gomega.Expect(output.String()).To(gomega.ContainSubstring("Expected a valid role ARN"))
 
-				By("Create cluster with '--non-sts' flag")
+				ginkgo.By("Create cluster with '--non-sts' flag")
 				testingClusterName = helper.GenerateRandomName("c55701", 2)
 				output, err, _ = clusterService.Create(testingClusterName, "--non-sts")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				gomega.Expect(clusterID).ToNot(gomega.BeNil())
 
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
-				Expect(CD.STSRoleArn).To(BeEmpty())
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(CD.STSRoleArn).To(gomega.BeEmpty())
 
-				By("Delete cluster which created with '--non-sts' flag")
+				ginkgo.By("Delete cluster which created with '--non-sts' flag")
 				rosaClient.Runner.UnsetArgs()
 				_, err = clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Create cluster with '--mint-mode' flag")
+				ginkgo.By("Create cluster with '--mint-mode' flag")
 				testingClusterName = helper.GenerateRandomName("c55701", 2)
 				output, err, _ = clusterService.Create(testingClusterName, "--mint-mode")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err = clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err = clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				gomega.Expect(clusterID).ToNot(gomega.BeNil())
 
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err = clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
-				Expect(CD.STSRoleArn).To(BeEmpty())
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(CD.STSRoleArn).To(gomega.BeEmpty())
 
-				By("Delete cluster which created with '--mint-mode' flag")
+				ginkgo.By("Delete cluster which created with '--mint-mode' flag")
 				rosaClient.Runner.UnsetArgs()
 				_, err = clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Create cluster without setting '--sts'/'--non-sts'/'--mint-mode' flags but with the " +
+				ginkgo.By("Create cluster without setting '--sts'/'--non-sts'/'--mint-mode' flags but with the " +
 					"account-roles arns set")
 				testingClusterName = helper.GenerateRandomName("c55701", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp55701", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
@@ -4323,33 +4346,33 @@ var _ = Describe("Sts cluster creation supplemental testing",
 
 				rosalCommand.AddFlags("--mode", "auto")
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(stdout.String()).To(gomega.ContainSubstring("Attached trust policy"))
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err = clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err = clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				gomega.Expect(clusterID).ToNot(gomega.BeNil())
 
 				output, err = clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				CD, err = clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
-				Expect(CD.STSRoleArn).NotTo(BeEmpty())
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(CD.STSRoleArn).NotTo(gomega.BeEmpty())
 
-				By("Delete cluster")
+				ginkgo.By("Delete cluster")
 				_, err = clusterService.DeleteCluster(testingClusterName, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			})
 	})
 
-var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
+var _ = ginkgo.Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient         *rosacli.Client
@@ -4360,15 +4383,15 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 			ocmResourceService rosacli.OCMResourceService
 			testingClusterName string
 		)
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			var err error
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
 
-			By("Prepare custom profile")
+			ginkgo.By("Prepare custom profile")
 			customProfile = &handler.Profile{
 				ClusterConfig: &handler.ClusterConfig{
 					HCP:           false,
@@ -4388,84 +4411,84 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			defer func() {
-				By("Clean resources")
+				ginkgo.By("Clean resources")
 				clusterHandler.Destroy()
 			}()
 
-			By("Delete the cluster")
+			ginkgo.By("Delete the cluster")
 			if clusterID != "" {
 				rosaClient.Runner.UnsetArgs()
 				_, err := clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 35)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			}
 		})
 
-		It("Create STS cluster with oidc config id but no oidc provider via rosacli in auto mode - [id:76093]",
+		ginkgo.It("Create STS cluster with oidc config id but no oidc provider via rosacli in auto mode - [id:76093]",
 			labels.Critical, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Prepare command for custom cluster creation")
+				ginkgo.By("Prepare command for custom cluster creation")
 				testingClusterName = helper.GenerateRandomName("c76093", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
 				rosalCommand.AddFlags("--mode", "auto", "-y")
 
-				By("Delete the oidc provider")
+				ginkgo.By("Delete the oidc provider")
 				ocmResourceService = rosaClient.OCMResource
 				rosaClient.Runner.JsonFormat()
 				whoamiOutput, err := ocmResourceService.Whoami()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				rosaClient.Runner.UnsetFormat()
 				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 				AWSAccountID := whoamiData.AWSAccountID
 
 				oidcConfigID := clusterHandler.GetResourcesHandler().GetOIDCConfigID()
 				oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				foundOIDCConfig := oidcConfigList.OIDCConfig(oidcConfigID)
-				Expect(foundOIDCConfig).ToNot(Equal(rosacli.OIDCConfig{}))
+				gomega.Expect(foundOIDCConfig).ToNot(gomega.Equal(rosacli.OIDCConfig{}))
 				issueURL := foundOIDCConfig.IssuerUrl
 				oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s",
 					AWSAccountID, strings.TrimPrefix(issueURL, "https://"))
 
 				awsClient, err := aws_client.CreateAWSClient("", "")
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				_, err = awsClient.IamClient.DeleteOpenIDConnectProvider(context.TODO(), &iam.DeleteOpenIDConnectProviderInput{
 					OpenIDConnectProviderArn: aws.String(oidcProviderARN),
 				})
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Create the custom cluster")
+				ginkgo.By("Create the custom cluster")
 				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				gomega.Expect(clusterID).ToNot(gomega.BeNil())
 
-				By("Wait cluster to instaling status")
+				ginkgo.By("Wait cluster to instaling status")
 				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
-				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+				gomega.Expect(err).To(gomega.BeNil(), "It met error or timeout when waiting cluster to installing status")
 			})
 	})
-var _ = Describe("Non-STS cluster with local credentials",
+var _ = ginkgo.Describe("Non-STS cluster with local credentials",
 	labels.Feature.Cluster,
 	func() {
-		defer GinkgoRecover()
+		defer ginkgo.GinkgoRecover()
 
 		var (
 			rosaClient     *rosacli.Client
@@ -4477,19 +4500,19 @@ var _ = Describe("Non-STS cluster with local credentials",
 			testingClusterName string
 			clusterHandler     handler.ClusterHandler
 		)
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			var err error
 
-			By("Init the client")
+			ginkgo.By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
 
-			By("Get AWS account id")
+			ginkgo.By("Get AWS account id")
 			rosaClient.Runner.JsonFormat()
 			rosaClient.Runner.UnsetFormat()
 
-			By("Prepare custom profile")
+			ginkgo.By("Prepare custom profile")
 			customProfile = &handler.Profile{
 				ClusterConfig: &handler.ClusterConfig{
 					HCP:                 false,
@@ -4510,41 +4533,41 @@ var _ = Describe("Non-STS cluster with local credentials",
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		})
 
-		AfterEach(func() {
+		ginkgo.AfterEach(func() {
 			defer func() {
-				By("Clean resources")
+				ginkgo.By("Clean resources")
 				clusterHandler.Destroy()
 			}()
 
-			By("Delete cluster")
+			ginkgo.By("Delete cluster")
 			rosaClient.Runner.UnsetArgs()
 			_, err := clusterService.DeleteCluster(clusterID, "-y")
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			rosaClient.Runner.UnsetArgs()
 			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
-			By("Delete operator-roles")
+			ginkgo.By("Delete operator-roles")
 			_, err = ocmResourceService.DeleteOperatorRoles(
 				"-c", clusterID,
 				"--mode", "auto",
 				"-y",
 			)
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		It("Creating cluster with non-sts use-local-credentials should succeed - [id:65900]",
+		ginkgo.It("Creating cluster with non-sts use-local-credentials should succeed - [id:65900]",
 			labels.Medium, labels.Runtime.Day1Supplemental,
 			func() {
-				By("Create classic cluster in auto mode")
+				ginkgo.By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c65900", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp65900", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
@@ -4554,20 +4577,20 @@ var _ = Describe("Non-STS cluster with local credentials",
 
 				rosalCommand.AddFlags("--mode", "auto")
 				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Wait for the cluster to be installing")
+				ginkgo.By("Wait for the cluster to be installing")
 				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 20)
-				Expect(err).To(BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 
-				By("Check the properties of the cluster")
+				ginkgo.By("Check the properties of the cluster")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(jsonData.DigBool("properties", "use_local_credentials")).To(BeTrue())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(jsonData.DigBool("properties", "use_local_credentials")).To(gomega.BeTrue())
 			})
 	})
