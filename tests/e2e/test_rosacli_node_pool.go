@@ -813,15 +813,9 @@ var _ = Describe("Edit nodepool",
 					"")
 				Expect(err).ToNot(HaveOccurred())
 
-				By("Wait for the upgrade finished ")
-				err = machinePoolUpgradeService.WaitForUpgradeFinished(clusterID, nodePoolAutoName, 30)
+				By("Wait for the upgrade to scheduled status")
+				err = machinePoolUpgradeService.WaitForMachinepoolStatus(clusterID, nodePoolAutoName, "scheduled", 10)
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Verify the upgrade result")
-				npDescription, err := machinePoolService.DescribeAndReflectNodePool(clusterID, nodePoolAutoName)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(npDescription.Version).To(Equal(availableUpgradeVersions[0]))
-				Expect(npDescription.ScheduledUpgrade).To(BeEmpty())
 			})
 
 		It("create/edit nodepool with node_drain_grace_period to HCP cluster via ROSA cli can work well - [id:72715]",

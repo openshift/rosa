@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/openshift/rosa/tests/utils/helper"
-	. "github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 type MachinePoolUpgradeService interface {
@@ -37,6 +37,7 @@ type MachinePoolUpgradeService interface {
 	RetrieveHelpForDelete() (bytes.Buffer, error)
 
 	WaitForUpgradeFinished(cluster string, mpID string, timeout int) error
+	WaitForMachinepoolStatus(cluster string, mpID string, status string, timeout int) error
 }
 
 type machinePoolUpgradeService struct {
@@ -216,11 +217,27 @@ func (mpus *machinePoolUpgradeService) WaitForUpgradeFinished(cluster string, mp
 	return fmt.Errorf("timeout after %v minutes for upgrade waiting", timeout)
 }
 
+func (mpus *machinePoolUpgradeService) WaitForMachinepoolStatus(
+	cluster string, mpID string, status string, timeout int) error {
+	startTime := time.Now()
+	for time.Now().Before(startTime.Add(time.Duration(timeout) * time.Minute)) {
+		upgrade, err := mpus.DescribeAndReflectUpgrade(cluster, mpID)
+		if err != nil {
+			return err
+		}
+		if upgrade.UpgradeState == status {
+			return nil
+		}
+		time.Sleep(2 * time.Minute)
+	}
+	return fmt.Errorf("timeout after %v minutes for waiting machinepool upgrade status to %s", timeout, status)
+}
+
 func (mpus *machinePoolUpgradeService) CleanResources(clusterID string) (errors []error) {
 	var mpsToDel []string
 	mpsToDel = append(mpsToDel, mpus.machinePools[clusterID]...)
 	for _, mpID := range mpsToDel {
-		Logger.Infof("Remove remaining machinepool upgrade on '%s'", mpID)
+		log.Logger.Infof("Remove remaining machinepool upgrade on '%s'", mpID)
 		_, err := mpus.DeleteUpgrade(clusterID, mpID)
 		if err != nil {
 			errors = append(errors, err)
