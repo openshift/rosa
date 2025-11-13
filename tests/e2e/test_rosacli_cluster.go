@@ -558,22 +558,43 @@ var _ = Describe("Edit cluster",
 		It("Changing billing account for the cluster - [id:75921]",
 			labels.High, labels.Runtime.Day2,
 			func() {
+				var (
+					originBillingAccount  string
+					testingBillingAccount string
+				)
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
+				if clusterConfig.BillingAccount == "" {
+					Skip("It is only for cluster setting with billing account")
+				}
+				By("Get the original billing account")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				CD, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				originBillingAccount = CD.AWSBillingAccount
+				if originBillingAccount == constants.BillingAccount {
+					testingBillingAccount = constants.ChangedBillingAccount
+				} else {
+					testingBillingAccount = constants.BillingAccount
+				}
+
 				By("Check the help message of 'rosa edit cluster -h'")
 				helpOutput, err := clusterService.EditCluster("", "-h")
 				Expect(err).To(BeNil())
 				Expect(helpOutput.String()).To(ContainSubstring("--billing-account"))
 
 				By("Change the billing account for the cluster")
-				output, err := clusterService.EditCluster(clusterID, "--billing-account", constants.ChangedBillingAccount)
+				output, err = clusterService.EditCluster(clusterID, "--billing-account", testingBillingAccount)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("Updated cluster"))
 
 				By("Check if billing account is changed")
 				output, err = clusterService.DescribeCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
-				CD, err := clusterService.ReflectClusterDescription(output)
+				CD, err = clusterService.ReflectClusterDescription(output)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(CD.AWSBillingAccount).To(Equal(constants.ChangedBillingAccount))
+				Expect(CD.AWSBillingAccount).To(Equal(testingBillingAccount))
 
 				By("Create another machinepool without security groups and describe it")
 				mpName := "mp-75921"
@@ -587,7 +608,7 @@ var _ = Describe("Edit cluster",
 					_, _ = rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
 					By("Change the billing account back")
-					output, err := clusterService.EditCluster(clusterID, "--billing-account", constants.BillingAccount)
+					output, err := clusterService.EditCluster(clusterID, "--billing-account", originBillingAccount)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(output.String()).Should(ContainSubstring("Updated cluster"))
 				}()
