@@ -7,7 +7,6 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
-	"github.com/openshift/rosa/pkg/reporter"
 )
 
 type CreateMachinepoolUserOptions struct {
@@ -59,8 +58,6 @@ const (
 )
 
 type CreateMachinepoolOptions struct {
-	reporter reporter.Logger
-
 	args *CreateMachinepoolUserOptions
 }
 
@@ -70,8 +67,7 @@ func NewCreateMachinepoolUserOptions() *CreateMachinepoolUserOptions {
 
 func NewCreateMachinepoolOptions() *CreateMachinepoolOptions {
 	return &CreateMachinepoolOptions{
-		reporter: reporter.CreateReporter(),
-		args:     &CreateMachinepoolUserOptions{},
+		args: &CreateMachinepoolUserOptions{},
 	}
 }
 

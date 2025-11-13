@@ -51,7 +51,7 @@ func ParseLabels(labels string) (map[string]string, error) {
 			continue
 		}
 		if !strings.Contains(label, "=") {
-			return nil, fmt.Errorf("Expected key=value format for labels")
+			return nil, fmt.Errorf("expected key=value format for labels")
 		}
 		tokens := strings.Split(label, "=")
 		err := ValidateLabelKeyValuePair(tokens[0], tokens[1])
@@ -61,7 +61,7 @@ func ParseLabels(labels string) (map[string]string, error) {
 		key := strings.TrimSpace(tokens[0])
 		value := strings.TrimSpace(tokens[1])
 		if _, exists := labelMap[key]; exists {
-			return nil, fmt.Errorf("Duplicated label key '%s' used", key)
+			return nil, fmt.Errorf("duplicated label key '%s' used", key)
 		}
 		labelMap[key] = value
 	}
@@ -118,7 +118,7 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 			continue
 		}
 		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
-			return nil, fmt.Errorf("Expected key=value:scheduleType format for taints. Got '%s'", taint)
+			return nil, fmt.Errorf("expected key=value:scheduleType format for taints. Got '%s'", taint)
 		}
 		// First split effect
 		splitEffect := strings.Split(taint, ":")
@@ -132,7 +132,7 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 		}
 		if newTaint.Effect() == "" {
 			// Note: an empty effect means any effect. For the moment this is not supported
-			errs = append(errs, fmt.Errorf("Expected a not empty effect"))
+			errs = append(errs, fmt.Errorf("expected a not empty effect"))
 			continue
 		}
 		if err := validateMachinePoolTaintEffect(taint); err != nil {
@@ -152,11 +152,11 @@ func ParseTaints(taints string) ([]*cmv1.TaintBuilder, error) {
 func validateMachinePoolTaintEffect(taint string) error {
 	parts := strings.Split(taint, ":")
 	if len(parts) != 2 {
-		return fmt.Errorf("Invalid taint format: '%s'. Expected format is '<key>=<value>:<effect>'", taint)
+		return fmt.Errorf("invalid taint format: '%s'. Expected format is '<key>=<value>:<effect>'", taint)
 	}
 	effect := parts[1]
 	if !slices.Contains(allowedTaintEffects, effect) {
-		return fmt.Errorf("Invalid taint effect '%s', only the following effects are supported:"+
+		return fmt.Errorf("invalid taint effect '%s', only the following effects are supported:"+
 			" 'NoExecute', 'NoSchedule', 'PreferNoSchedule'", effect)
 	}
 	return nil
@@ -172,11 +172,11 @@ func ValidateLabelKeyValuePair(key, value string) error {
 
 func ValidateKeyValuePair(key, value string, resourceName string) error {
 	if errs := validation.IsQualifiedName(key); len(errs) != 0 {
-		return fmt.Errorf("Invalid %s key '%s': %s", resourceName, key, strings.Join(errs, "; "))
+		return fmt.Errorf("invalid %s key '%s': %s", resourceName, key, strings.Join(errs, "; "))
 	}
 
 	if errs := validation.IsValidLabelValue(value); len(errs) != 0 {
-		return fmt.Errorf("Invalid %s value '%s': at key: '%s': %s", resourceName,
+		return fmt.Errorf("invalid %s value '%s': at key: '%s': %s", resourceName,
 			value, key, strings.Join(errs, "; "))
 	}
 	return nil
@@ -282,7 +282,7 @@ func CreateNodeDrainGracePeriodBuilder(nodeDrainGracePeriod string) (*cmv1.Value
 	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
 	nodeDrainValue, err := strconv.ParseFloat(nodeDrainParsed[0], commonUtils.MaxByteSize)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid time for the node drain grace period: %s", err)
+		return nil, fmt.Errorf("invalid time for the node drain grace period: %s", err)
 	}
 
 	// Default to minutes if no unit is specified
@@ -304,12 +304,12 @@ func ValidateNodeDrainGracePeriod(val interface{}) error {
 
 	nodeDrainParsed := strings.Split(nodeDrainGracePeriod, " ")
 	if len(nodeDrainParsed) > 2 {
-		return fmt.Errorf("Expected format to include the duration and "+
-			"the unit (%s).", nodeDrainUnits)
+		return fmt.Errorf("expected format to include the duration and "+
+			"the unit (%s)", nodeDrainUnits)
 	}
 	nodeDrainValue, err := strconv.ParseInt(nodeDrainParsed[0], 10, 64)
 	if err != nil {
-		return fmt.Errorf("Invalid value '%s', the duration must be an integer.",
+		return fmt.Errorf("invalid value '%s', the duration must be an integer",
 			nodeDrainParsed[0])
 	}
 
@@ -317,21 +317,21 @@ func ValidateNodeDrainGracePeriod(val interface{}) error {
 	if len(nodeDrainParsed) > 1 {
 		if nodeDrainParsed[1] != nodeDrainUnitHours && nodeDrainParsed[1] != nodeDrainUnitHour &&
 			nodeDrainParsed[1] != "minutes" && nodeDrainParsed[1] != "minute" {
-			return fmt.Errorf("Invalid unit '%s', value unit is '%s'", nodeDrainParsed[1], nodeDrainUnits)
+			return fmt.Errorf("invalid unit '%s', value unit is '%s'", nodeDrainParsed[1], nodeDrainUnits)
 		}
 		if nodeDrainParsed[1] == nodeDrainUnitHours || nodeDrainParsed[1] == nodeDrainUnitHour {
 			if nodeDrainValue > MaxNodeDrainTimeInHours {
-				return fmt.Errorf("Value '%v' cannot exceed the maximum of %d hours "+
+				return fmt.Errorf("value '%v' cannot exceed the maximum of %d hours "+
 					"(1 week)", nodeDrainValue, MaxNodeDrainTimeInHours)
 			}
 			nodeDrainValue = nodeDrainValue * 60
 		}
 	}
 	if nodeDrainValue < 0 {
-		return fmt.Errorf("Value '%v' cannot be negative", nodeDrainValue)
+		return fmt.Errorf("value '%v' cannot be negative", nodeDrainValue)
 	}
 	if nodeDrainValue > MaxNodeDrainTimeInMinutes {
-		return fmt.Errorf("Value '%v' cannot exceed the maximum of %d minutes "+
+		return fmt.Errorf("value '%v' cannot exceed the maximum of %d minutes "+
 			"(1 week)", nodeDrainValue, MaxNodeDrainTimeInMinutes)
 	}
 	return nil
@@ -346,18 +346,18 @@ func ValidateUpgradeMaxSurgeUnavailable(val interface{}) error {
 	if strings.HasSuffix(maxSurgeOrUnavail, "%") {
 		percent, err := strconv.Atoi(strings.TrimSuffix(maxSurgeOrUnavail, "%"))
 		if err != nil {
-			return fmt.Errorf("Percentage value '%s' must be an integer", strings.TrimSuffix(maxSurgeOrUnavail, "%"))
+			return fmt.Errorf("percentage value '%s' must be an integer", strings.TrimSuffix(maxSurgeOrUnavail, "%"))
 		}
 		if percent < 0 || percent > 100 {
-			return fmt.Errorf("Percentage value %d must be between 0 and 100", percent)
+			return fmt.Errorf("percentage value %d must be between 0 and 100", percent)
 		}
 	} else {
 		intMaxSurgeOrUnavail, err := strconv.Atoi(maxSurgeOrUnavail)
 		if err != nil {
-			return fmt.Errorf("Value '%s' must be an integer", maxSurgeOrUnavail)
+			return fmt.Errorf("value '%s' must be an integer", maxSurgeOrUnavail)
 		}
 		if intMaxSurgeOrUnavail < 0 {
-			return fmt.Errorf("Value %d cannot be negative", intMaxSurgeOrUnavail)
+			return fmt.Errorf("value %d cannot be negative", intMaxSurgeOrUnavail)
 		}
 	}
 

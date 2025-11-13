@@ -1610,7 +1610,7 @@ var _ = Describe("Classic cluster creation validation",
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", emptyWorkerMpLabel, "-y")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Expected key=value format for labels"))
+				Expect(output.String()).To(ContainSubstring("expected key=value format for labels"))
 
 				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
@@ -1645,7 +1645,7 @@ var _ = Describe("Classic cluster creation validation",
 				key = duplicateKey[:index]
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Duplicated label key '%s' used", key))
+				Expect(output.String()).To(ContainSubstring("duplicated label key '%s' used", key))
 			})
 
 		It("to validate to create the cluster with version not in the channel group - [id:74399]",
