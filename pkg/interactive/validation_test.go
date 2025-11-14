@@ -108,6 +108,134 @@ var _ = Describe("Validation", func() {
 		})
 	})
 
+	Context("IsURL", func() {
+		It("accepts empty string", func() {
+			err := IsURL("")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts nil", func() {
+			err := IsURL(nil)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts valid http URL", func() {
+			err := IsURL("http://example.com")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts valid https URL", func() {
+			err := IsURL("https://example.com")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts URL with authentication", func() {
+			err := IsURL("http://user:pass@example.com:8080")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects URL with unencoded special characters in password", func() {
+			err := IsURL("http://proxyuser:QvoZjyy/trkCiY5@10.0.0.161:8080")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("accepts URL with percent-encoded special characters in password", func() {
+			err := IsURL("http://proxyuser:QvoZjyy%2FtrkCiY5@10.0.0.161:8080")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects URL with unencoded @ in password", func() {
+			err := IsURL("http://user:pass@word@example.com:8080")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("invalid URL: password contains invalid character '@'"))
+		})
+
+		It("accepts URL with percent-encoded @ in password", func() {
+			err := IsURL("http://user:pass%40word@example.com:8080")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects URL with extra colon in password", func() {
+			err := IsURL("http://user:pass:word@example.com:8080")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("invalid URL: password contains invalid character ':'"))
+		})
+
+		It("accepts URL with percent-encoded colon in password", func() {
+			err := IsURL("http://user:pass%3Aword@example.com:8080")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects URL without scheme", func() {
+			err := IsURL("example.com")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("url must have a scheme and host"))
+		})
+
+		It("rejects URL without host", func() {
+			err := IsURL("http://")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("url must have a scheme and host"))
+		})
+
+		It("rejects non-string input", func() {
+			err := IsURL(123)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+		})
+	})
+
+	Context("IsURLHttps", func() {
+		It("accepts empty string", func() {
+			err := IsURLHttps("")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts nil", func() {
+			err := IsURLHttps(nil)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts valid https URL", func() {
+			err := IsURLHttps("https://example.com")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts https URL with authentication", func() {
+			err := IsURLHttps("https://user:pass@example.com:8080")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects https URL with unencoded special characters in password", func() {
+			err := IsURLHttps("https://proxyuser:QvoZjyy/trkCiY5@10.0.0.161:8080")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("invalid URL: password contains invalid character '/'"))
+		})
+
+		It("accepts https URL with percent-encoded special characters in password", func() {
+			err := IsURLHttps("https://proxyuser:QvoZjyy%2FtrkCiY5@10.0.0.161:8080")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects http URL", func() {
+			err := IsURLHttps("http://example.com")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expect URL 'http://example.com' to use an 'https://' scheme"))
+		})
+
+		It("rejects URL without scheme", func() {
+			err := IsURLHttps("example.com")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("url must have a scheme and host"))
+		})
+
+		It("rejects non-string input", func() {
+			err := IsURLHttps(123)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+		})
+	})
+
 })
 
 var _ = Describe("SubnetsValidator", func() {
@@ -131,7 +259,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 			err := validator(answers)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("The number of subnets for a public hosted " +
+			Expect(err.Error()).To(ContainSubstring("the number of subnets for a public hosted " +
 				"cluster should be at least two"))
 		})
 
@@ -153,7 +281,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 			err := validator(answers)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Must have at least one public subnet when not using both " +
+			Expect(err.Error()).To(ContainSubstring("must have at least one public subnet when not using both " +
 				"'private API' and 'private ingress'"))
 		})
 
@@ -169,7 +297,7 @@ var _ = Describe("SubnetsValidator", func() {
 
 			err := validator(answers)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("The number of subnets for a 'multi-AZ'"+
+			Expect(err.Error()).To(ContainSubstring("the number of subnets for a 'multi-AZ'"+
 				" 'private link cluster' should be '3', instead received: '%d'", len(answers)))
 		})
 

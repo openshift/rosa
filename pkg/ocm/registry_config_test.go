@@ -111,9 +111,9 @@ var _ = Describe("Registry Config", func() {
 		})
 		It("KO: should fail if the user does not pass the correct regex", func() {
 			_, err := BuildAllowedRegistriesForImport("abc")
-			Expect(err).To(MatchError("invalid identifier 'abc' for 'allowed registries for import.' " +
-				"Should be in a <registry>:<boolean> format. " +
-				"The boolean indicates whether the registry is secure or not."))
+			Expect(err).To(MatchError("invalid identifier 'abc' for 'allowed registries for import' " +
+				"should be in a <registry>:<boolean> format; " +
+				"the boolean indicates whether the registry is secure or not"))
 
 		})
 	})
