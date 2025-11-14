@@ -77,6 +77,10 @@ func CreateMachinepoolRunner(userOptions *mpOpts.CreateMachinepoolUserOptions) r
 			return err
 		}
 
+		if err := machinepool.ValidateImageType(cmd, options.args, cluster); err != nil {
+			return err
+		}
+
 		r.AWSClient, err = aws.NewClient().
 			Region(cluster.Region().ID()).
 			Logger(r.Logger).

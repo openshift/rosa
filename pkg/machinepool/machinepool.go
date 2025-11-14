@@ -540,6 +540,28 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		return fmt.Errorf("expected a valid name for the machine pool")
 	}
 
+	imageType := ""
+	if args.Type != "" && cluster.Hypershift().Enabled() {
+		imageType = args.Type
+	}
+
+	// Image type (supports things such as WinLI // Windows VMs)
+	if interactive.Enabled() && cluster.Hypershift().Enabled() {
+		imageType, err = interactive.GetOption(interactive.Input{
+			Question: "Image Type",
+			Default:  cmv1.ImageTypeDefault,
+			Required: false,
+			Options:  mpHelpers.ImageTypes,
+		})
+		if err != nil {
+			return fmt.Errorf("expected a valid image type: '%s'", err)
+		}
+	}
+
+	if imageType != "" && !mpHelpers.IsValidImageType(imageType) {
+		return fmt.Errorf("expected a valid image type for the machine pool: '%s'", imageType)
+	}
+
 	// OpenShift version:
 	isVersionSet := cmd.Flags().Changed("version")
 	version := args.Version
@@ -1023,6 +1045,10 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			r.Reporter.Infof("Actual total nodes in the cluster will be more than the maximum nodes configured " +
 				"in the cluster autoscaler")
 		}
+	}
+
+	if imageType != "" {
+		npBuilder.ImageType(cmv1.ImageType(imageType))
 	}
 
 	if version != "" {

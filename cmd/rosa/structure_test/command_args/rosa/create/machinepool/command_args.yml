@@ -26,3 +26,4 @@
 - name: use-spot-instances
 - name: version
 - name: capacity-reservation-id
+- name: type

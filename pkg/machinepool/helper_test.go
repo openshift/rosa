@@ -9,11 +9,13 @@ import (
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	v1 "github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper/features"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -907,5 +909,73 @@ var _ = Describe("isDedicatedHost Function", func() {
 
 		result := isDedicatedHost(machinePool, runtime)
 		Expect(result).To(Equal(displayValueUnknown))
+	})
+})
+
+var _ = Describe("ValidateImageType", func() {
+	It("OK: Pass Windows + Default string as image type", func() {
+		Expect(mpHelpers.IsValidImageType(string(v1.ImageTypeWindows))).To(BeTrue())
+		Expect(mpHelpers.IsValidImageType(string(v1.ImageTypeDefault))).To(BeTrue())
+	})
+	It("KO: Do not pass anything else as image type", func() {
+		Expect(mpHelpers.IsValidImageType("")).To(BeFalse())
+		Expect(mpHelpers.IsValidImageType("win-li")).To(BeFalse())
+		Expect(mpHelpers.IsValidImageType("windows")).To(BeFalse())
+		Expect(mpHelpers.IsValidImageType("unix")).To(BeFalse())
+		Expect(mpHelpers.IsValidImageType("123123123")).To(BeFalse())
+	})
+	It("OK: Validate full flow works", func() {
+		cmd := &cobra.Command{}
+		args := &mpOpts.CreateMachinepoolUserOptions{}
+		cmd.Flags().StringVar(&args.Type, "type", "", "")
+		cluster, err := cmv1.NewCluster().Hypershift(cmv1.NewHypershift().Enabled(true)).Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		args.Type = string(v1.ImageTypeWindows)
+		cmd.SetArgs([]string{fmt.Sprintf("--type=%s", args.Type)})
+		Expect(cmd.Execute()).ToNot(HaveOccurred())
+		err = ValidateImageType(cmd, args, cluster)
+		Expect(err).ToNot(HaveOccurred())
+
+		args.Type = string(v1.ImageTypeDefault)
+		cmd.SetArgs([]string{fmt.Sprintf("--type=%s", args.Type)})
+		Expect(cmd.Execute()).ToNot(HaveOccurred())
+		err = ValidateImageType(cmd, args, cluster)
+		Expect(err).ToNot(HaveOccurred())
+	})
+	It("KO: Validate full flow fails", func() {
+		cmd := &cobra.Command{}
+		args := &mpOpts.CreateMachinepoolUserOptions{}
+		cluster, err := cmv1.NewCluster().Hypershift(cmv1.NewHypershift().Enabled(true)).Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		cmd.Flags().StringVar(&args.Type, "type", "", "")
+
+		args.Type = ""
+		cmd.SetArgs([]string{fmt.Sprintf("--type=%s", args.Type)})
+		Expect(cmd.Execute()).ToNot(HaveOccurred())
+		err = ValidateImageType(cmd, args, cluster)
+		Expect(err).To(HaveOccurred())
+
+		args.Type = "windows"
+		cmd.SetArgs([]string{fmt.Sprintf("--type=%s", args.Type)})
+		Expect(cmd.Execute()).ToNot(HaveOccurred())
+		err = ValidateImageType(cmd, args, cluster)
+		Expect(err).To(HaveOccurred())
+
+		args.Type = "w123123123"
+		cmd.SetArgs([]string{fmt.Sprintf("--type=%s", args.Type)})
+		Expect(cmd.Execute()).ToNot(HaveOccurred())
+		err = ValidateImageType(cmd, args, cluster)
+		Expect(err).To(HaveOccurred())
+
+		clusterClassic, err := cmv1.NewCluster().Hypershift(cmv1.NewHypershift().Enabled(false)).Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		args.Type = "w123123123"
+		cmd.SetArgs([]string{fmt.Sprintf("--type=%s", args.Type)})
+		Expect(cmd.Execute()).ToNot(HaveOccurred())
+		err = ValidateImageType(cmd, args, clusterClassic)
+		Expect(err).To(HaveOccurred())
 	})
 })
