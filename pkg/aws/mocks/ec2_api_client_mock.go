@@ -60,6 +60,26 @@ func (mr *MockEc2ApiClientMockRecorder) DescribeAvailabilityZones(ctx, params an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeAvailabilityZones", reflect.TypeOf((*MockEc2ApiClient)(nil).DescribeAvailabilityZones), varargs...)
 }
 
+// DescribeCapacityReservations mocks base method.
+func (m *MockEc2ApiClient) DescribeCapacityReservations(ctx context.Context, params *ec2.DescribeCapacityReservationsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeCapacityReservationsOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeCapacityReservations", varargs...)
+	ret0, _ := ret[0].(*ec2.DescribeCapacityReservationsOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeCapacityReservations indicates an expected call of DescribeCapacityReservations.
+func (mr *MockEc2ApiClientMockRecorder) DescribeCapacityReservations(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeCapacityReservations", reflect.TypeOf((*MockEc2ApiClient)(nil).DescribeCapacityReservations), varargs...)
+}
+
 // DescribeInstanceTypeOfferings mocks base method.
 func (m *MockEc2ApiClient) DescribeInstanceTypeOfferings(ctx context.Context, params *ec2.DescribeInstanceTypeOfferingsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
 	m.ctrl.T.Helper()

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2/core"
+
+	"github.com/openshift/rosa/pkg/aws"
 )
 
 func ValidateKubeletConfig(input interface{}) error {
@@ -58,5 +60,39 @@ func validateCapacityReservationId(proposedId, nodepoolId, existingId string) er
 		return fmt.Errorf("Unable to change 'capacity-reservation-id' to '%s'. AWS NodePool '%s' already has a "+
 			"Capacity Reservation ID: '%s'", proposedId, nodepoolId, existingId)
 	}
+	return nil
+}
+
+// validateCapacityReservationReplicas validates that the requested replicas don't exceed available capacity
+func validateCapacityReservationReplicas(capacityReservationId string, requestedReplicas int,
+	awsClient aws.Client, isAutoscaling bool, minReplicas int, maxReplicas int) error {
+
+	if capacityReservationId == "" {
+		return nil // No capacity reservation, no validation needed
+	}
+
+	_, availableInstances, err := awsClient.GetCapacityReservationDetails(capacityReservationId)
+	if err != nil {
+		return fmt.Errorf("unable to validate capacity reservation '%s': %v", capacityReservationId, err)
+	}
+
+	if isAutoscaling {
+		// For autoscaling, validate both min and max replicas
+		if minReplicas > int(availableInstances) {
+			return fmt.Errorf("cannot set min replicas to %d: capacity reservation '%s' only has %d available instance(s)",
+				minReplicas, capacityReservationId, availableInstances)
+		}
+		if maxReplicas > int(availableInstances) {
+			return fmt.Errorf("cannot set max replicas to %d: capacity reservation '%s' only has %d available instance(s)",
+				maxReplicas, capacityReservationId, availableInstances)
+		}
+	} else {
+		// For fixed replicas
+		if requestedReplicas > int(availableInstances) {
+			return fmt.Errorf("cannot set replicas to %d: capacity reservation '%s' only has %d available instance(s)",
+				requestedReplicas, capacityReservationId, availableInstances)
+		}
+	}
+
 	return nil
 }

@@ -1546,6 +1546,8 @@ var _ = Describe("NodePools", func() {
 
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
 			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			// Expect validation of capacity reservation
+			mockClient.EXPECT().GetCapacityReservationDetails("fake-capacity-reservation-id").Return(int32(5), int32(3), nil)
 
 			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
 			machineType, err := mtBuilder.Build()

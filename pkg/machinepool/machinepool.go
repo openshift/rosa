@@ -1034,6 +1034,15 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		return fmt.Errorf("failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
+	// Validate capacity reservation limits before creating the node pool
+	if capacityReservationId != "" && !autoscaling {
+		err = validateCapacityReservationReplicas(capacityReservationId, replicas,
+			r.AWSClient, autoscaling, minReplicas, maxReplicas)
+		if err != nil {
+			return err
+		}
+	}
+
 	createdNodePool, err := r.OCMClient.CreateNodePool(cluster.ID(), nodePool)
 	if err != nil {
 		return fmt.Errorf("failed to add machine pool to hosted cluster '%s': %v", clusterKey, err)
@@ -1713,7 +1722,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas, err := getNodePoolReplicas(cmd, nodePoolID,
-		nodePool.Replicas(), nodePool.Autoscaling(), isAnyAdditionalParameterSet, cluster.OpenshiftVersion())
+		nodePool.Replicas(), nodePool.Autoscaling(), isAnyAdditionalParameterSet, cluster.OpenshiftVersion(),
+		nodePool, r)
 	if err != nil {
 		return fmt.Errorf("failed to get autoscaling or replicas: '%s'", err)
 	}
@@ -1721,6 +1731,18 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	err = validateNodePoolEdit(cmd, autoscaling, replicas, minReplicas, maxReplicas)
 	if err != nil {
 		return err
+	}
+
+	// Validate capacity reservation limits if applicable
+	if nodePool.AWSNodePool() != nil && nodePool.AWSNodePool().CapacityReservation() != nil {
+		capacityReservationId, _ := nodePool.AWSNodePool().CapacityReservation().GetId()
+		if capacityReservationId != "" {
+			err = validateCapacityReservationReplicas(capacityReservationId, replicas,
+				r.AWSClient, autoscaling, minReplicas, maxReplicas)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	labels := cmd.Flags().Lookup("labels").Value.String()
@@ -2050,7 +2072,9 @@ func getNodePoolReplicas(cmd *cobra.Command,
 	existingReplicas int,
 	existingAutoscaling *cmv1.NodePoolAutoscaling,
 	isAnyAdditionalParameterSet bool,
-	clusterVersion string) (autoscaling bool,
+	clusterVersion string,
+	nodePool *cmv1.NodePool,
+	r *rosa.Runtime) (autoscaling bool,
 	replicas, minReplicas, maxReplicas int, err error) {
 
 	isMinReplicasSet := cmd.Flags().Changed("min-replicas")
@@ -2116,6 +2140,23 @@ func getNodePoolReplicas(cmd *cobra.Command,
 		MultiAz:        false,
 		Autoscaling:    autoscaling,
 		IsHostedCp:     true,
+	}
+
+	// Get capacity reservation limits for interactive mode
+	var capacityReservationId string
+	var availableInstances int32
+	if interactive.Enabled() && nodePool != nil && nodePool.AWSNodePool() != nil &&
+		nodePool.AWSNodePool().CapacityReservation() != nil {
+		capacityReservationId, _ = nodePool.AWSNodePool().CapacityReservation().GetId()
+		if capacityReservationId != "" && r != nil && r.AWSClient != nil {
+			_, available, queryErr := r.AWSClient.GetCapacityReservationDetails(capacityReservationId)
+			if queryErr == nil {
+				availableInstances = available
+				// Show capacity reservation info to user
+				r.Reporter.Infof("Capacity reservation '%s' has %d available instance(s)",
+					capacityReservationId, availableInstances)
+			}
+		}
 	}
 
 	if autoscaling {
