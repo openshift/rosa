@@ -49,7 +49,7 @@ var _ = Describe("Test edit machinepool options", func() {
 			args.labels = testLabels
 			args.machinepool = testMachinepool
 			err := options.Bind(args, []string{})
-			Expect(err).To(MatchError("Expected key=value format for labels"))
+			Expect(err).To(MatchError("expected key=value format for labels"))
 		})
 		It("Test min replicas negative value (fail)", func() {
 			args.minReplicas = -1

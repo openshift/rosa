@@ -797,7 +797,7 @@ var _ = Describe("Create machinepool",
 						"-y",
 					)
 					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Expected key=value format for labels"))
+					Expect(output.String()).Should(ContainSubstring("expected key=value format for labels"))
 
 					By("Create with invalid taints fmt will fail")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
@@ -1468,7 +1468,7 @@ var _ = Describe("Edit machinepool",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Duplicated label key 'dupkey' used"))
+					ContainSubstring("duplicated label key 'dupkey' used"))
 
 				By("Edit taints with invalid values will fail")
 				output, err = machinePoolService.EditMachinePool(clusterID,

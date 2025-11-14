@@ -83,7 +83,7 @@ func CreateMachinepoolRunner(userOptions *mpOpts.CreateMachinepoolUserOptions) r
 			UseLocalCredentials(useLocalCredentials).
 			Build()
 		if err != nil {
-			return fmt.Errorf("Failed to create awsClient: %s", err)
+			return fmt.Errorf("failed to create awsClient: %s", err)
 		}
 
 		return newService.service.CreateMachinePoolBasedOnClusterType(r,

@@ -38,7 +38,7 @@ var _ = Describe("MachinePool", func() {
 		Entry(
 			"Empty value taint bad format",
 			"node-role.kubernetes.io/infraNoSchedule",
-			"Expected key=value:scheduleType format", 0),
+			"expected key=value:scheduleType format", 0),
 		Entry(
 			"Empty value taint good format",
 			"node-role.kubernetes.io/infra=:NoSchedule",
@@ -50,11 +50,11 @@ var _ = Describe("MachinePool", func() {
 		Entry(
 			"Empty effect taint -> KO",
 			"node-role.kubernetes.io/infra=:",
-			"Expected a not empty effect", 0),
+			"expected a not empty effect", 0),
 		Entry(
 			"Bad value -> KO",
 			"key=node-role.kubernetes.io/infra:NoEffect",
-			"Invalid taint value 'node-role.kubernetes.io/infra': at key: 'key'", 0),
+			"invalid taint value 'node-role.kubernetes.io/infra': at key: 'key'", 0),
 	)
 
 	DescribeTable("Parse Labels", func(userLabels, expectedError string, numberOfLabels int) {
@@ -86,10 +86,10 @@ var _ = Describe("MachinePool", func() {
 			"com.example.foo=,com.example.baz=bob", "", 2,
 		),
 		Entry("Duplicate labels are not supported",
-			"com.example.foo=bar,com.example.foo=bob", "Duplicated label key 'com.example.foo' used", 0,
+			"com.example.foo=bar,com.example.foo=bob", "duplicated label key 'com.example.foo' used", 0,
 		),
 		Entry("Malformed labels are not supported",
-			"com.example.foo,com.example.bar=bob", "Expected key=value format for labels", 0,
+			"com.example.foo,com.example.bar=bob", "expected key=value format for labels", 0,
 		),
 	)
 
@@ -212,7 +212,7 @@ var _ = Describe("Create node drain grace period builder validations", func() {
 		),
 		Entry("Should error if the time is not a numeric value",
 			"hour",
-			"Invalid time for the node drain grace period",
+			"invalid time for the node drain grace period",
 		),
 	)
 })
@@ -254,11 +254,11 @@ var _ = Describe("Validate node drain grace period", func() {
 		),
 		Entry("Should error with invalid number of tokens",
 			"1 minute later",
-			"Expected format to include the duration",
+			"expected format to include the duration",
 		),
 		Entry("Should error with invalid unit",
 			"1 day",
-			"Invalid unit",
+			"invalid unit",
 		),
 		Entry("Should error with float value",
 			"1.1",
@@ -288,10 +288,10 @@ var _ = Describe("ValidateMachinePoolTaintEffect", func() {
 
 	It("should return an error for unrecognized taint effects", func() {
 		Expect(validateMachinePoolTaintEffect("key=value:unrecognized")).To(MatchError(
-			MatchRegexp("Invalid taint effect 'unrecognized', only the following" +
+			MatchRegexp("invalid taint effect 'unrecognized', only the following" +
 				" effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'")))
 		Expect(validateMachinePoolTaintEffect("key=value:unrecognized:")).To(MatchError(
-			MatchRegexp("Invalid taint format: 'key=value:unrecognized:'. Expected format" +
+			MatchRegexp("invalid taint format: 'key=value:unrecognized:'. Expected format" +
 				" is '<key>=<value>:<effect>'")))
 	})
 })
@@ -321,15 +321,15 @@ var _ = Describe("Validate MaxSurge and MaxUnavailable", func() {
 		),
 		Entry("Should error with negative percentage",
 			"-1%",
-			"Percentage value -1 must be between 0 and 100",
+			"percentage value -1 must be between 0 and 100",
 		),
 		Entry("Should error with 101% percent",
 			"101%",
-			"Percentage value 101 must be between 0 and 100",
+			"percentage value 101 must be between 0 and 100",
 		),
 		Entry("Should error with non-integer percent",
 			"1.1%",
-			"Percentage value '1.1' must be an integer",
+			"percentage value '1.1' must be an integer",
 		),
 		Entry("Should not error with 0",
 			"0",
@@ -341,11 +341,11 @@ var _ = Describe("Validate MaxSurge and MaxUnavailable", func() {
 		),
 		Entry("Should error with negative number",
 			"-1",
-			"Value -1 cannot be negative",
+			"value -1 cannot be negative",
 		),
 		Entry("Should error with non-integer",
 			"1.1",
-			"Value '1.1' must be an integer",
+			"value '1.1' must be an integer",
 		),
 	)
 })
