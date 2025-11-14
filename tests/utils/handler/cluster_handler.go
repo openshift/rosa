@@ -610,7 +610,8 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			PublicSubnetIds:  strings.Join(subnets["public"], ","),
 		}
 		if (ch.profile.ClusterConfig.PrivateLink && !ch.profile.ClusterConfig.HCP) ||
-			(ch.profile.ClusterConfig.HCP && ch.profile.ClusterConfig.Private && ch.profile.ClusterConfig.DefaultIngressPrivate) {
+			(ch.profile.ClusterConfig.HCP && ch.profile.ClusterConfig.Private &&
+				ch.profile.ClusterConfig.DefaultIngressPrivate) {
 			log.Logger.Info("Got private link set to true. Only set private subnets to cluster flags")
 			subnetsFlagValue = strings.Join(subnets["private"], ",")
 			ch.clusterConfig.Subnets = &ClusterConfigure.Subnets{
@@ -622,7 +623,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				return flags, err
 			}
 			// It is only for classic private cluster and version is for 4.19+ now
-			// Or we use one gloabl env pramater to manage it
+			// Or we use one global env parameter to manage it
 			if (!ch.profile.ClusterConfig.HCP && result) ||
 				ch.profile.ClusterConfig.Add_UnManaged_Tag {
 				log.Logger.Info("Add unmanaged tag for public subnets when cluster is private + classic clusters")
@@ -748,8 +749,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				if err != nil {
 					return flags, err
 				}
-				proxy, err = resourcesHandler.
-					PrepareProxyWithAuth(ch.profile.Region, proxyName, config.Test.OutputDir, config.Test.ProxyCABundleFile, username, password)
+				proxy, err = resourcesHandler.PrepareProxyWithAuth(
+					ch.profile.Region, proxyName, config.Test.OutputDir,
+					config.Test.ProxyCABundleFile, username, password)
 			} else {
 				proxy, err = resourcesHandler.
 					PrepareProxy(ch.profile.Region, proxyName, config.Test.OutputDir, config.Test.ProxyCABundleFile)
@@ -781,7 +783,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		flags = append(flags, "--disable-scp-checks")
 		ch.clusterConfig.DisableScpChecks = true
 	}
-	if ch.profile.ClusterConfig.DisableUserWorKloadMonitoring {
+	// Only add disable-workload-monitoring flag for non-HCP clusters
+	// UWM is deprecated for HCP clusters
+	if ch.profile.ClusterConfig.DisableUserWorKloadMonitoring && !ch.profile.ClusterConfig.HCP {
 		flags = append(flags, "--disable-workload-monitoring")
 		ch.clusterConfig.DisableWorkloadMonitoring = true
 	}
@@ -934,7 +938,7 @@ func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
 	var err error
 	clusterID := ch.clusterDetail.ClusterID
 	if clusterID == "" {
-		return errors.New("No Cluster ID defined to wait for")
+		return errors.New("no Cluster ID defined to wait for")
 	}
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")

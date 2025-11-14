@@ -457,16 +457,12 @@ func run(cmd *cobra.Command, argv []string) {
 		deleteProtection,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
 
-	uwmString := "%s" +
-		"User Workload Monitoring:   %s\n"
-	if isHypershift {
-		uwmString = "%s" +
-			"[DEPRECATED] User Workload Monitoring:   %s\n"
+	if !isHypershift {
+		str = fmt.Sprintf("%s"+
+			"User Workload Monitoring:   %s\n",
+			str,
+			getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
 	}
-
-	str = fmt.Sprintf(uwmString,
-		str,
-		getUseworkloadMonitoring(cluster.DisableUserWorkloadMonitoring()))
 
 	if cluster.FIPS() {
 		str = fmt.Sprintf("%s"+
@@ -1046,7 +1042,7 @@ func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.Po
 	prefix string) (string, error) {
 	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
-		return "", fmt.Errorf("Failed to get role name from arn %s: %v", roleARN, err)
+		return "", fmt.Errorf("failed to get role name from arn %s: %v", roleARN, err)
 	}
 	str := ""
 	if rolePolicyDetails[roleName] != nil {
@@ -1061,7 +1057,7 @@ func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.Po
 func getZeroEgressStatus(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
 	techPreviewMsg, err := r.OCMClient.GetTechnologyPreviewMessage("hcp-zero-egress", time.Now())
 	if err != nil {
-		return "", fmt.Errorf("Failed to get technology preview message for zero egress: %v", err)
+		return "", fmt.Errorf("failed to get technology preview message for zero egress: %v", err)
 	}
 	if techPreviewMsg != "" {
 		zeroEgressOutput := DisabledOutput

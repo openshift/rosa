@@ -147,7 +147,7 @@ var _ = Describe("Client", func() {
 		It("Returns error with flag that has no value", func() {
 			err := PreprocessUnknownFlagsWithId(cmd, []string{"test", "-c", "-c", "-c", "-c"})
 			Expect(err).To(HaveOccurred())
-			Expect(fmt.Sprint(err)).To(Equal("No value given for flag '-c'"))
+			Expect(fmt.Sprint(err)).To(Equal("no value given for flag '-c'"))
 		})
 	})
 })

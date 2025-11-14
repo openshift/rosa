@@ -108,7 +108,7 @@ var _ = Describe("Edit cluster", func() {
 		})
 		It("KO: should fail with error if ca file does not exist", func() {
 			_, err := BuildClusterConfigWithRegistry(clusterConfig, allowedRegistries, nil, nil, "not-exist", "", "")
-			Expect(err).To(MatchError("Failed to build the additional trusted ca from file not-exist, " +
+			Expect(err).To(MatchError("failed to build the additional trusted ca from file not-exist, " +
 				"got error: expected a valid additional trusted certificate spec file:" +
 				" open not-exist: no such file or directory"))
 		})

@@ -94,9 +94,6 @@ var Cmd = &cobra.Command{
 	Example: `  # Edit a cluster named "mycluster" to make it private
   rosa edit cluster -c mycluster --private
 
-  # Edit a cluster named "mycluster" to enable User Workload Monitoring
-  rosa edit cluster -c mycluster --disable-workload-monitoring=false
-
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
 	Run:  run,
@@ -144,9 +141,9 @@ func init() {
 		&args.disableWorkloadMonitoring,
 		"disable-workload-monitoring",
 		false,
-		"[DEPRECATED FOR ROSA HCP] Enables you to monitor your own projects in isolation from Red Hat Site "+
-			"Reliability Engineer (SRE) "+
-			"platform metrics.",
+		"Enables you to monitor your own projects in isolation from Red Hat Site "+
+			"Reliability Engineer (SRE) platform metrics. "+
+			"Not supported for Hosted Control Plane clusters.",
 	)
 	flags.StringVar(
 		&args.httpProxy,
@@ -273,7 +270,8 @@ func run(cmd *cobra.Command, _ []string) {
 	cluster := r.FetchCluster()
 
 	if aws.IsHostedCP(cluster) && cmd.Flags().Changed("disable-workload-monitoring") {
-		r.Reporter.Warnf(arguments.UwmDeprecationMessage)
+		r.Reporter.Errorf(arguments.UwmNotSupportedMessage)
+		os.Exit(1)
 	}
 
 	// Validate flags:
@@ -388,6 +386,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	var disableWorkloadMonitoring *bool
 	var disableWorkloadMonitoringValue bool
+	isHostedCP := aws.IsHostedCP(cluster)
 
 	if cmd.Flags().Changed("disable-workload-monitoring") {
 		disableWorkloadMonitoringValue = args.disableWorkloadMonitoring
@@ -396,7 +395,7 @@ func run(cmd *cobra.Command, _ []string) {
 		disableWorkloadMonitoringValue = cluster.DisableUserWorkloadMonitoring()
 	}
 
-	if interactive.Enabled() {
+	if interactive.Enabled() && !isHostedCP {
 		disableWorkloadMonitoringValue, err = interactive.GetBool(interactive.Input{
 			Question: "Disable Workload monitoring",
 			Help:     cmd.Flags().Lookup("disable-workload-monitoring").Usage,
@@ -404,14 +403,10 @@ func run(cmd *cobra.Command, _ []string) {
 		})
 		if err != nil {
 			_ = r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
-			_ = r.Reporter.Errorf("Expected a valid disable-workload-monitoring value: %v", err)
 			os.Exit(1)
 		}
-		if aws.IsHostedCP(cluster) {
-			r.Reporter.Warnf(arguments.UwmDeprecationMessage)
-		}
 		disableWorkloadMonitoring = &disableWorkloadMonitoringValue
-	} else if disableWorkloadMonitoringValue {
+	} else if disableWorkloadMonitoringValue && !isHostedCP {
 		if !confirm.Confirm("disable workload monitoring for your cluster %s", clusterKey) {
 			os.Exit(0)
 		}
@@ -562,10 +557,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	/*******  AdditionalTrustBundle *******/
-	updateAdditionalTrustBundle := false
-	if additionalTrustBundleFile != nil {
-		updateAdditionalTrustBundle = true
-	}
+	updateAdditionalTrustBundle := additionalTrustBundleFile != nil
 	if useExistingVPC && !updateAdditionalTrustBundle && additionalTrustBundleFile == nil &&
 		interactive.Enabled() {
 		updateAdditionalTrustBundleValue, err := interactive.GetBool(interactive.Input{
@@ -620,10 +612,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	/*******  AdditionalAllowedPrincipals *******/
-	updateAdditionalAllowedPrincipals := false
-	if additionalAllowedPrincipals != nil {
-		updateAdditionalAllowedPrincipals = true
-	}
+	updateAdditionalAllowedPrincipals := additionalAllowedPrincipals != nil
 	if !updateAdditionalAllowedPrincipals && additionalAllowedPrincipals == nil &&
 		interactive.Enabled() {
 		updateAdditionalAllowedPrincipalsValue, err := interactive.GetBool(interactive.Input{
@@ -702,9 +691,13 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	clusterConfig := ocm.Spec{
-		Expiration:                expiration,
-		Private:                   private,
-		DisableWorkloadMonitoring: disableWorkloadMonitoring,
+		Expiration: expiration,
+		Private:    private,
+	}
+
+	// Only set DisableWorkloadMonitoring for non-HCP clusters
+	if !isHostedCP {
+		clusterConfig.DisableWorkloadMonitoring = disableWorkloadMonitoring
 	}
 
 	if httpProxy != nil {
@@ -1013,7 +1006,7 @@ func warnUserForOAuthHCPVisibility(r *rosa.Runtime, clusterKey string, cluster *
 func validateExpiration() (expiration time.Time, err error) {
 	// Validate options
 	if len(args.expirationTime) > 0 && args.expirationDuration != 0 {
-		err = errors.New("At most one of 'expiration-time' or 'expiration' may be specified")
+		err = errors.New("at most one of 'expiration-time' or 'expiration' may be specified")
 		return
 	}
 
@@ -1021,7 +1014,7 @@ func validateExpiration() (expiration time.Time, err error) {
 	if len(args.expirationTime) > 0 {
 		t, err := parseRFC3339(args.expirationTime)
 		if err != nil {
-			err = fmt.Errorf("Failed to parse expiration-time: %s", err)
+			err = fmt.Errorf("failed to parse expiration-time: %s", err)
 			return expiration, err
 		}
 
@@ -1039,7 +1032,7 @@ func validateExpiration() (expiration time.Time, err error) {
 func validateOvnInternalSubnetConfiguration() (ovnInternalSubnets map[string]string, err error) {
 	if len(args.ovnInternalSubnets) > 0 {
 		if args.networkType == "" {
-			err = fmt.Errorf("Expected a value for %s when supplying the flag %s", ocm.NetworkTypeFlagName,
+			err = fmt.Errorf("expected a value for %s when supplying the flag %s", ocm.NetworkTypeFlagName,
 				ocm.OvnInternalSubnetsFlagName)
 			return
 		}
@@ -1052,7 +1045,7 @@ func validateOvnInternalSubnetConfiguration() (ovnInternalSubnets map[string]str
 func validateNetworkType() (networkConfig string, err error) {
 	if len(args.networkType) > 0 {
 		if args.networkType != ocm.NetworkTypeOvn && args.networkType != ocm.NetworkTypeOvnAlias {
-			err = fmt.Errorf("Incorrect network type '%s', please use '%s' or remove the flag",
+			err = fmt.Errorf("incorrect network type '%s', please use '%s' or remove the flag",
 				args.networkType, ocm.NetworkTypeOvn)
 		} else {
 			networkConfig = ocm.NetworkTypeOvn // allows use of alias (OVN-Kubernetes)- but sets it to correct value for API
@@ -1088,11 +1081,11 @@ func setAuditLogForwarding(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cl
 	argValuePtr *string, err error) {
 	if cmd.Flags().Changed("audit-log-arn") {
 		if !aws.IsHostedCP(cluster) {
-			return nil, fmt.Errorf("Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
+			return nil, fmt.Errorf("audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters")
 
 		}
 		if auditLogArn != "" && !aws.RoleArnRE.MatchString(auditLogArn) {
-			return nil, fmt.Errorf("Expected a valid value for audit-log-arn matching %s", aws.RoleArnRE.String())
+			return nil, fmt.Errorf("expected a valid value for audit-log-arn matching %s", aws.RoleArnRE.String())
 		}
 		argValuePtr := new(string)
 		*argValuePtr = auditLogArn
@@ -1129,7 +1122,7 @@ func auditLogInteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv
 		Required: true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Expected a valid value: %s", err)
+		return nil, fmt.Errorf("expected a valid value: %s", err)
 	}
 	if requestAuditLogForwarding {
 
@@ -1146,7 +1139,7 @@ func auditLogInteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Expected a valid value for audit-log-arn: %s", err)
+			return nil, fmt.Errorf("expected a valid value for audit-log-arn: %s", err)
 		}
 		*auditLogRolePtr = auditLogRoleValue
 		return auditLogRolePtr, nil
@@ -1159,7 +1152,7 @@ func auditLogInteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv
 			Default:  false,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Expected a valid value: %s", err)
+			return nil, fmt.Errorf("expected a valid value: %s", err)
 		}
 		if disableAuditLog {
 			*auditLogRolePtr = ""
@@ -1190,7 +1183,7 @@ func BuildClusterConfigWithRegistry(clusterConfig ocm.Spec, allowedRegistries []
 		ca, err := clusterregistryconfig.BuildAdditionalTrustedCAFromInputFile(additionalTrustedCa)
 		if err != nil {
 			return clusterConfig, fmt.Errorf(
-				"Failed to build the additional trusted ca from file %s, got error: %s",
+				"failed to build the additional trusted ca from file %s, got error: %s",
 				additionalTrustedCa, err)
 		}
 		clusterConfig.AdditionalTrustedCa = ca
