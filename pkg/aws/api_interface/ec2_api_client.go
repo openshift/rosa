@@ -43,6 +43,10 @@ type Ec2ApiClient interface {
 	DescribeInstances(ctx context.Context,
 		params *ec2.DescribeInstancesInput, optFns ...func(*ec2.Options),
 	) (*ec2.DescribeInstancesOutput, error)
+
+	DescribeCapacityReservations(ctx context.Context,
+		params *ec2.DescribeCapacityReservationsInput, optFns ...func(*ec2.Options),
+	) (*ec2.DescribeCapacityReservationsOutput, error)
 }
 
 // interface guard to ensure that all methods defined in the Ec2ApiClient

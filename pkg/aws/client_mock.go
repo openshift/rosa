@@ -770,6 +770,21 @@ func (mr *MockClientMockRecorder) GetCallerIdentity() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCallerIdentity", reflect.TypeOf((*MockClient)(nil).GetCallerIdentity))
 }
 
+// GetCapacityReservationDetails mocks base method.
+func (m *MockClient) GetCapacityReservationDetails(capacityReservationID string) (int32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCapacityReservationDetails", capacityReservationID)
+	ret0, _ := ret[0].(int32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCapacityReservationDetails indicates an expected call of GetCapacityReservationDetails.
+func (mr *MockClientMockRecorder) GetCapacityReservationDetails(capacityReservationID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCapacityReservationDetails", reflect.TypeOf((*MockClient)(nil).GetCapacityReservationDetails), capacityReservationID)
+}
+
 // GetClusterRegionTagForUser mocks base method.
 func (m *MockClient) GetClusterRegionTagForUser(username string) (string, error) {
 	m.ctrl.T.Helper()
