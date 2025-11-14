@@ -13,7 +13,7 @@ var _ = Describe("MachinePool validation", func() {
 			kubeletConfigs := []string{"foo", "bar"}
 			err := ValidateKubeletConfig(kubeletConfigs)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Only a single kubelet config is supported for Machine Pools"))
+			Expect(err.Error()).To(Equal("only a single kubelet config is supported for Machine Pools"))
 		})
 
 		It("Fails if customer requests more than 1 kubelet config via []core.OptionAnswer", func() {
@@ -29,7 +29,7 @@ var _ = Describe("MachinePool validation", func() {
 			}
 			err := ValidateKubeletConfig(kubeletConfigs)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Only a single kubelet config is supported for Machine Pools"))
+			Expect(err.Error()).To(Equal("only a single kubelet config is supported for Machine Pools"))
 		})
 
 		It("Passes if a customer selects only a single kubelet config via []core.OptionAnswer", func() {
@@ -62,7 +62,7 @@ var _ = Describe("MachinePool validation", func() {
 		It("Fails if the input is not a []string or []core.OptionAnswer", func() {
 			err := ValidateKubeletConfig("foo")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Input for kubelet config flag is not valid"))
+			Expect(err.Error()).To(Equal("input for kubelet config flag is not valid"))
 		})
 	})
 	Context("Validate edit machinepool options", func() {
@@ -116,7 +116,7 @@ var _ = Describe("MachinePool validation", func() {
 		})
 		It("Fails when capacity reservation ID is set", func() {
 			Expect(validateCapacityReservationId("new-id", "aws-nodepool-1", "old-id").Error()).
-				Should(ContainSubstring("Unable to change 'capacity-reservation-id' to 'new-id'. " +
+				Should(ContainSubstring("unable to change 'capacity-reservation-id' to 'new-id'. " +
 					"AWS NodePool 'aws-nodepool-1' already has a Capacity Reservation ID: 'old-id'"))
 		})
 	})
