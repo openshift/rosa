@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 
+	v1 "github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -30,6 +31,10 @@ const (
 		nodeDrainUnitHour + "|" + nodeDrainUnitHours
 	MaxNodeDrainTimeInMinutes = 10080
 	MaxNodeDrainTimeInHours   = 168
+)
+
+var (
+	ImageTypes = []string{string(v1.ImageTypeDefault), string(v1.ImageTypeWindows)}
 )
 
 var allowedTaintEffects = []string{
@@ -362,4 +367,13 @@ func ValidateUpgradeMaxSurgeUnavailable(val interface{}) error {
 	}
 
 	return nil
+}
+
+func IsValidImageType(imageType string) bool {
+	for t := range ImageTypes {
+		if ImageTypes[t] == imageType {
+			return true
+		}
+	}
+	return false
 }

@@ -35,6 +35,7 @@ type CreateMachinepoolUserOptions struct {
 	MaxUnavailable        string
 	EC2MetadataHttpTokens string
 	CapacityReservationId string
+	Type                  string
 }
 
 const (
@@ -63,12 +64,6 @@ type CreateMachinepoolOptions struct {
 
 func NewCreateMachinepoolUserOptions() *CreateMachinepoolUserOptions {
 	return &CreateMachinepoolUserOptions{}
-}
-
-func NewCreateMachinepoolOptions() *CreateMachinepoolOptions {
-	return &CreateMachinepoolOptions{
-		args: &CreateMachinepoolUserOptions{},
-	}
 }
 
 func (m *CreateMachinepoolOptions) Machinepool() *CreateMachinepoolUserOptions {
@@ -279,6 +274,13 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 		"",
 		"The ID of an AWS On-Demand Capacity Reservation. The 'capacity-reservation-id' must be pre-created "+
 			"in advance, before creating a NodePool.")
+
+	flags.StringVar(&options.Type,
+		"type",
+		"",
+		"Specifies the type of AMI this machinepool uses. You may supply '--type Windows' for example if you want "+
+			"support for Windows VMs.")
+
 	output.AddFlag(cmd)
 	interactive.AddFlag(flags)
 	return cmd, options
