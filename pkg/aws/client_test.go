@@ -515,8 +515,8 @@ var _ = Describe("Client", func() {
 
 			valid, err := client.ValidateCredentials()
 			Expect(valid).To(BeFalse())
-			Expect(err.Error()).To(ContainSubstring(
-				"Invalid AWS Credentials: %s.\n For help configuring your credentials, see", errMsg))
+			expectedErr := fmt.Sprintf("invalid AWS Credentials: %s.\n For help configuring your credentials, see", errMsg)
+			Expect(err.Error()).To(ContainSubstring(expectedErr))
 		})
 
 		It("Does not wrap other errors and returns false", func() {
