@@ -12,9 +12,10 @@ import (
 )
 
 // List the Amazon Web Services services for which the specified account is a
-// delegated administrator. This operation can be called only from the
-// organization's management account or by a member account that is a delegated
-// administrator for an Amazon Web Services service.
+// delegated administrator.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
 func (c *Client) ListDelegatedServicesForAccount(ctx context.Context, params *ListDelegatedServicesForAccountInput, optFns ...func(*Options)) (*ListDelegatedServicesForAccountOutput, error) {
 	if params == nil {
 		params = &ListDelegatedServicesForAccountInput{}
@@ -117,6 +118,9 @@ func (c *Client) addOperationListDelegatedServicesForAccountMiddlewares(stack *m
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -127,6 +131,15 @@ func (c *Client) addOperationListDelegatedServicesForAccountMiddlewares(stack *m
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListDelegatedServicesForAccountValidationMiddleware(stack); err != nil {
@@ -150,16 +163,17 @@ func (c *Client) addOperationListDelegatedServicesForAccountMiddlewares(stack *m
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListDelegatedServicesForAccountAPIClient is a client that implements the
-// ListDelegatedServicesForAccount operation.
-type ListDelegatedServicesForAccountAPIClient interface {
-	ListDelegatedServicesForAccount(context.Context, *ListDelegatedServicesForAccountInput, ...func(*Options)) (*ListDelegatedServicesForAccountOutput, error)
-}
-
-var _ ListDelegatedServicesForAccountAPIClient = (*Client)(nil)
 
 // ListDelegatedServicesForAccountPaginatorOptions is the paginator options for
 // ListDelegatedServicesForAccount
@@ -235,6 +249,9 @@ func (p *ListDelegatedServicesForAccountPaginator) NextPage(ctx context.Context,
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListDelegatedServicesForAccount(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -253,6 +270,14 @@ func (p *ListDelegatedServicesForAccountPaginator) NextPage(ctx context.Context,
 
 	return result, nil
 }
+
+// ListDelegatedServicesForAccountAPIClient is a client that implements the
+// ListDelegatedServicesForAccount operation.
+type ListDelegatedServicesForAccountAPIClient interface {
+	ListDelegatedServicesForAccount(context.Context, *ListDelegatedServicesForAccountInput, ...func(*Options)) (*ListDelegatedServicesForAccountOutput, error)
+}
+
+var _ ListDelegatedServicesForAccountAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListDelegatedServicesForAccount(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

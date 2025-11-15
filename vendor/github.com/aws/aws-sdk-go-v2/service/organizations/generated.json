@@ -42,10 +42,12 @@
         "api_op_ListAWSServiceAccessForOrganization.go",
         "api_op_ListAccounts.go",
         "api_op_ListAccountsForParent.go",
+        "api_op_ListAccountsWithInvalidEffectivePolicy.go",
         "api_op_ListChildren.go",
         "api_op_ListCreateAccountStatus.go",
         "api_op_ListDelegatedAdministrators.go",
         "api_op_ListDelegatedServicesForAccount.go",
+        "api_op_ListEffectivePolicyValidationErrors.go",
         "api_op_ListHandshakesForAccount.go",
         "api_op_ListHandshakesForOrganization.go",
         "api_op_ListOrganizationalUnitsForParent.go",
@@ -76,12 +78,13 @@
         "protocol_test.go",
         "serializers.go",
         "snapshot_test.go",
+        "sra_operation_order_test.go",
         "types/enums.go",
         "types/errors.go",
         "types/types.go",
         "validators.go"
     ],
-    "go": "1.15",
+    "go": "1.23",
     "module": "github.com/aws/aws-sdk-go-v2/service/organizations",
     "unstable": false
 }

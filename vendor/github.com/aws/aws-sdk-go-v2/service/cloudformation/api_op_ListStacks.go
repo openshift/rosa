@@ -12,10 +12,10 @@ import (
 )
 
 // Returns the summary information for stacks whose status matches the specified
-// StackStatusFilter. Summary information for stacks that have been deleted is kept
-// for 90 days after the stack is deleted. If no StackStatusFilter is specified,
-// summary information for all stacks is returned (including existing stacks and
-// stacks that have been deleted).
+// StackStatusFilter . Summary information for stacks that have been deleted is
+// kept for 90 days after the stack is deleted. If no StackStatusFilter is
+// specified, summary information for all stacks is returned (including existing
+// stacks and stacks that have been deleted).
 func (c *Client) ListStacks(ctx context.Context, params *ListStacksInput, optFns ...func(*Options)) (*ListStacksOutput, error) {
 	if params == nil {
 		params = &ListStacksInput{}
@@ -34,7 +34,8 @@ func (c *Client) ListStacks(ctx context.Context, params *ListStacksInput, optFns
 // The input for ListStacks action.
 type ListStacksInput struct {
 
-	// A string that identifies the next page of stacks that you want to retrieve.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	// Stack status to use as a filter. Specify one or more stack status codes to list
@@ -52,7 +53,7 @@ type ListStacksOutput struct {
 	// stacks. If no additional page exists, this value is null.
 	NextToken *string
 
-	// A list of StackSummary structures containing information about the specified
+	// A list of StackSummary structures that contains information about the specified
 	// stacks.
 	StackSummaries []types.StackSummary
 
@@ -105,6 +106,9 @@ func (c *Client) addOperationListStacksMiddlewares(stack *middleware.Stack, opti
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -115,6 +119,15 @@ func (c *Client) addOperationListStacksMiddlewares(stack *middleware.Stack, opti
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListStacks(options.Region), middleware.Before); err != nil {
@@ -135,15 +148,17 @@ func (c *Client) addOperationListStacksMiddlewares(stack *middleware.Stack, opti
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListStacksAPIClient is a client that implements the ListStacks operation.
-type ListStacksAPIClient interface {
-	ListStacks(context.Context, *ListStacksInput, ...func(*Options)) (*ListStacksOutput, error)
-}
-
-var _ ListStacksAPIClient = (*Client)(nil)
 
 // ListStacksPaginatorOptions is the paginator options for ListStacks
 type ListStacksPaginatorOptions struct {
@@ -196,6 +211,9 @@ func (p *ListStacksPaginator) NextPage(ctx context.Context, optFns ...func(*Opti
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListStacks(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -214,6 +232,13 @@ func (p *ListStacksPaginator) NextPage(ctx context.Context, optFns ...func(*Opti
 
 	return result, nil
 }
+
+// ListStacksAPIClient is a client that implements the ListStacks operation.
+type ListStacksAPIClient interface {
+	ListStacks(context.Context, *ListStacksInput, ...func(*Options)) (*ListStacksOutput, error)
+}
+
+var _ ListStacksAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListStacks(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

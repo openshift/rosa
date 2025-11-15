@@ -12,13 +12,15 @@ import (
 )
 
 // Lists all the roots, organizational units (OUs), and accounts that the
-// specified policy is attached to. Always check the NextToken response parameter
-// for a null value when calling a List* operation. These operations can
-// occasionally return an empty set of results even when there are more results
-// available. The NextToken response parameter value is null only when there are
-// no more results to display. This operation can be called only from the
-// organization's management account or by a member account that is a delegated
-// administrator for an Amazon Web Services service.
+// specified policy is attached to.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// List* operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
 func (c *Client) ListTargetsForPolicy(ctx context.Context, params *ListTargetsForPolicyInput, optFns ...func(*Options)) (*ListTargetsForPolicyOutput, error) {
 	if params == nil {
 		params = &ListTargetsForPolicyInput{}
@@ -37,9 +39,11 @@ func (c *Client) ListTargetsForPolicy(ctx context.Context, params *ListTargetsFo
 type ListTargetsForPolicyInput struct {
 
 	// The unique identifier (ID) of the policy whose attachments you want to know.
-	// The regex pattern (http://wikipedia.org/wiki/regex) for a policy ID string
-	// requires "p-" followed by from 8 to 128 lowercase or uppercase letters, digits,
-	// or the underscore character (_).
+	//
+	// The [regex pattern] for a policy ID string requires "p-" followed by from 8 to 128 lowercase
+	// or uppercase letters, digits, or the underscore character (_).
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	PolicyId *string
@@ -125,6 +129,9 @@ func (c *Client) addOperationListTargetsForPolicyMiddlewares(stack *middleware.S
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -135,6 +142,15 @@ func (c *Client) addOperationListTargetsForPolicyMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListTargetsForPolicyValidationMiddleware(stack); err != nil {
@@ -158,16 +174,17 @@ func (c *Client) addOperationListTargetsForPolicyMiddlewares(stack *middleware.S
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListTargetsForPolicyAPIClient is a client that implements the
-// ListTargetsForPolicy operation.
-type ListTargetsForPolicyAPIClient interface {
-	ListTargetsForPolicy(context.Context, *ListTargetsForPolicyInput, ...func(*Options)) (*ListTargetsForPolicyOutput, error)
-}
-
-var _ ListTargetsForPolicyAPIClient = (*Client)(nil)
 
 // ListTargetsForPolicyPaginatorOptions is the paginator options for
 // ListTargetsForPolicy
@@ -241,6 +258,9 @@ func (p *ListTargetsForPolicyPaginator) NextPage(ctx context.Context, optFns ...
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListTargetsForPolicy(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -259,6 +279,14 @@ func (p *ListTargetsForPolicyPaginator) NextPage(ctx context.Context, optFns ...
 
 	return result, nil
 }
+
+// ListTargetsForPolicyAPIClient is a client that implements the
+// ListTargetsForPolicy operation.
+type ListTargetsForPolicyAPIClient interface {
+	ListTargetsForPolicy(context.Context, *ListTargetsForPolicyInput, ...func(*Options)) (*ListTargetsForPolicyOutput, error)
+}
+
+var _ ListTargetsForPolicyAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListTargetsForPolicy(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

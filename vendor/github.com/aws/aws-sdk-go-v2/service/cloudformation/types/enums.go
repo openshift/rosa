@@ -13,8 +13,9 @@ const (
 )
 
 // Values returns all known values for AccountFilterType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AccountFilterType) Values() []AccountFilterType {
 	return []AccountFilterType{
 		"NONE",
@@ -34,11 +35,58 @@ const (
 )
 
 // Values returns all known values for AccountGateStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AccountGateStatus) Values() []AccountGateStatus {
 	return []AccountGateStatus{
 		"SUCCEEDED",
+		"FAILED",
+		"SKIPPED",
+	}
+}
+
+type AnnotationSeverityLevel string
+
+// Enum values for AnnotationSeverityLevel
+const (
+	AnnotationSeverityLevelInformational AnnotationSeverityLevel = "INFORMATIONAL"
+	AnnotationSeverityLevelLow           AnnotationSeverityLevel = "LOW"
+	AnnotationSeverityLevelMedium        AnnotationSeverityLevel = "MEDIUM"
+	AnnotationSeverityLevelHigh          AnnotationSeverityLevel = "HIGH"
+	AnnotationSeverityLevelCritical      AnnotationSeverityLevel = "CRITICAL"
+)
+
+// Values returns all known values for AnnotationSeverityLevel. Note that this can
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AnnotationSeverityLevel) Values() []AnnotationSeverityLevel {
+	return []AnnotationSeverityLevel{
+		"INFORMATIONAL",
+		"LOW",
+		"MEDIUM",
+		"HIGH",
+		"CRITICAL",
+	}
+}
+
+type AnnotationStatus string
+
+// Enum values for AnnotationStatus
+const (
+	AnnotationStatusPassed  AnnotationStatus = "PASSED"
+	AnnotationStatusFailed  AnnotationStatus = "FAILED"
+	AnnotationStatusSkipped AnnotationStatus = "SKIPPED"
+)
+
+// Values returns all known values for AnnotationStatus. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AnnotationStatus) Values() []AnnotationStatus {
+	return []AnnotationStatus{
+		"PASSED",
 		"FAILED",
 		"SKIPPED",
 	}
@@ -54,8 +102,9 @@ const (
 )
 
 // Values returns all known values for AttributeChangeType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AttributeChangeType) Values() []AttributeChangeType {
 	return []AttributeChangeType{
 		"Add",
@@ -73,8 +122,9 @@ const (
 )
 
 // Values returns all known values for CallAs. Note that this can be expanded in
-// the future, and so it is only as up to date as the client. The ordering of this
-// slice is not guaranteed to be stable across updates.
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (CallAs) Values() []CallAs {
 	return []CallAs{
 		"SELF",
@@ -92,8 +142,9 @@ const (
 )
 
 // Values returns all known values for Capability. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (Capability) Values() []Capability {
 	return []Capability{
 		"CAPABILITY_IAM",
@@ -113,8 +164,9 @@ const (
 )
 
 // Values returns all known values for Category. Note that this can be expanded in
-// the future, and so it is only as up to date as the client. The ordering of this
-// slice is not guaranteed to be stable across updates.
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (Category) Values() []Category {
 	return []Category{
 		"REGISTERED",
@@ -136,8 +188,9 @@ const (
 )
 
 // Values returns all known values for ChangeAction. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ChangeAction) Values() []ChangeAction {
 	return []ChangeAction{
 		"Add",
@@ -158,8 +211,9 @@ const (
 )
 
 // Values returns all known values for ChangeSetHooksStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ChangeSetHooksStatus) Values() []ChangeSetHooksStatus {
 	return []ChangeSetHooksStatus{
 		"PLANNING",
@@ -183,8 +237,9 @@ const (
 )
 
 // Values returns all known values for ChangeSetStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ChangeSetStatus) Values() []ChangeSetStatus {
 	return []ChangeSetStatus{
 		"CREATE_PENDING",
@@ -208,8 +263,9 @@ const (
 )
 
 // Values returns all known values for ChangeSetType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ChangeSetType) Values() []ChangeSetType {
 	return []ChangeSetType{
 		"CREATE",
@@ -230,8 +286,9 @@ const (
 )
 
 // Values returns all known values for ChangeSource. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ChangeSource) Values() []ChangeSource {
 	return []ChangeSource{
 		"ResourceReference",
@@ -250,8 +307,9 @@ const (
 )
 
 // Values returns all known values for ChangeType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ChangeType) Values() []ChangeType {
 	return []ChangeType{
 		"Resource",
@@ -267,12 +325,32 @@ const (
 )
 
 // Values returns all known values for ConcurrencyMode. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ConcurrencyMode) Values() []ConcurrencyMode {
 	return []ConcurrencyMode{
 		"STRICT_FAILURE_TOLERANCE",
 		"SOFT_FAILURE_TOLERANCE",
+	}
+}
+
+type DeletionMode string
+
+// Enum values for DeletionMode
+const (
+	DeletionModeStandard         DeletionMode = "STANDARD"
+	DeletionModeForceDeleteStack DeletionMode = "FORCE_DELETE_STACK"
+)
+
+// Values returns all known values for DeletionMode. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (DeletionMode) Values() []DeletionMode {
+	return []DeletionMode{
+		"STANDARD",
+		"FORCE_DELETE_STACK",
 	}
 }
 
@@ -285,8 +363,9 @@ const (
 )
 
 // Values returns all known values for DeprecatedStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (DeprecatedStatus) Values() []DeprecatedStatus {
 	return []DeprecatedStatus{
 		"LIVE",
@@ -303,8 +382,9 @@ const (
 )
 
 // Values returns all known values for DetailedStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (DetailedStatus) Values() []DetailedStatus {
 	return []DetailedStatus{
 		"CONFIGURATION_COMPLETE",
@@ -322,8 +402,9 @@ const (
 )
 
 // Values returns all known values for DifferenceType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (DifferenceType) Values() []DifferenceType {
 	return []DifferenceType{
 		"ADD",
@@ -341,8 +422,9 @@ const (
 )
 
 // Values returns all known values for EvaluationType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (EvaluationType) Values() []EvaluationType {
 	return []EvaluationType{
 		"Static",
@@ -363,8 +445,9 @@ const (
 )
 
 // Values returns all known values for ExecutionStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ExecutionStatus) Values() []ExecutionStatus {
 	return []ExecutionStatus{
 		"UNAVAILABLE",
@@ -386,8 +469,9 @@ const (
 
 // Values returns all known values for GeneratedTemplateDeletionPolicy. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (GeneratedTemplateDeletionPolicy) Values() []GeneratedTemplateDeletionPolicy {
 	return []GeneratedTemplateDeletionPolicy{
 		"DELETE",
@@ -407,8 +491,9 @@ const (
 
 // Values returns all known values for GeneratedTemplateResourceStatus. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (GeneratedTemplateResourceStatus) Values() []GeneratedTemplateResourceStatus {
 	return []GeneratedTemplateResourceStatus{
 		"PENDING",
@@ -433,8 +518,9 @@ const (
 )
 
 // Values returns all known values for GeneratedTemplateStatus. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (GeneratedTemplateStatus) Values() []GeneratedTemplateStatus {
 	return []GeneratedTemplateStatus{
 		"CREATE_PENDING",
@@ -458,8 +544,9 @@ const (
 
 // Values returns all known values for GeneratedTemplateUpdateReplacePolicy. Note
 // that this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (GeneratedTemplateUpdateReplacePolicy) Values() []GeneratedTemplateUpdateReplacePolicy {
 	return []GeneratedTemplateUpdateReplacePolicy{
 		"DELETE",
@@ -493,8 +580,9 @@ const (
 )
 
 // Values returns all known values for HandlerErrorCode. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HandlerErrorCode) Values() []HandlerErrorCode {
 	return []HandlerErrorCode{
 		"NotUpdatable",
@@ -528,8 +616,9 @@ const (
 )
 
 // Values returns all known values for HookFailureMode. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HookFailureMode) Values() []HookFailureMode {
 	return []HookFailureMode{
 		"FAIL",
@@ -545,8 +634,9 @@ const (
 )
 
 // Values returns all known values for HookInvocationPoint. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HookInvocationPoint) Values() []HookInvocationPoint {
 	return []HookInvocationPoint{
 		"PRE_PROVISION",
@@ -564,14 +654,38 @@ const (
 )
 
 // Values returns all known values for HookStatus. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HookStatus) Values() []HookStatus {
 	return []HookStatus{
 		"HOOK_IN_PROGRESS",
 		"HOOK_COMPLETE_SUCCEEDED",
 		"HOOK_COMPLETE_FAILED",
 		"HOOK_FAILED",
+	}
+}
+
+type HookTargetAction string
+
+// Enum values for HookTargetAction
+const (
+	HookTargetActionCreate HookTargetAction = "CREATE"
+	HookTargetActionUpdate HookTargetAction = "UPDATE"
+	HookTargetActionDelete HookTargetAction = "DELETE"
+	HookTargetActionImport HookTargetAction = "IMPORT"
+)
+
+// Values returns all known values for HookTargetAction. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (HookTargetAction) Values() []HookTargetAction {
+	return []HookTargetAction{
+		"CREATE",
+		"UPDATE",
+		"DELETE",
+		"IMPORT",
 	}
 }
 
@@ -583,8 +697,9 @@ const (
 )
 
 // Values returns all known values for HookTargetType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HookTargetType) Values() []HookTargetType {
 	return []HookTargetType{
 		"RESOURCE",
@@ -601,13 +716,37 @@ const (
 )
 
 // Values returns all known values for IdentityProvider. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (IdentityProvider) Values() []IdentityProvider {
 	return []IdentityProvider{
 		"AWS_Marketplace",
 		"GitHub",
 		"Bitbucket",
+	}
+}
+
+type ListHookResultsTargetType string
+
+// Enum values for ListHookResultsTargetType
+const (
+	ListHookResultsTargetTypeChangeSet    ListHookResultsTargetType = "CHANGE_SET"
+	ListHookResultsTargetTypeStack        ListHookResultsTargetType = "STACK"
+	ListHookResultsTargetTypeResource     ListHookResultsTargetType = "RESOURCE"
+	ListHookResultsTargetTypeCloudControl ListHookResultsTargetType = "CLOUD_CONTROL"
+)
+
+// Values returns all known values for ListHookResultsTargetType. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ListHookResultsTargetType) Values() []ListHookResultsTargetType {
+	return []ListHookResultsTargetType{
+		"CHANGE_SET",
+		"STACK",
+		"RESOURCE",
+		"CLOUD_CONTROL",
 	}
 }
 
@@ -621,8 +760,9 @@ const (
 )
 
 // Values returns all known values for OnFailure. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (OnFailure) Values() []OnFailure {
 	return []OnFailure{
 		"DO_NOTHING",
@@ -641,8 +781,9 @@ const (
 )
 
 // Values returns all known values for OnStackFailure. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (OnStackFailure) Values() []OnStackFailure {
 	return []OnStackFailure{
 		"DO_NOTHING",
@@ -660,6 +801,7 @@ const (
 
 // Values returns all known values for OperationResultFilterName. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (OperationResultFilterName) Values() []OperationResultFilterName {
 	return []OperationResultFilterName{
@@ -678,8 +820,9 @@ const (
 )
 
 // Values returns all known values for OperationStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (OperationStatus) Values() []OperationStatus {
 	return []OperationStatus{
 		"PENDING",
@@ -699,8 +842,9 @@ const (
 )
 
 // Values returns all known values for OrganizationStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (OrganizationStatus) Values() []OrganizationStatus {
 	return []OrganizationStatus{
 		"ENABLED",
@@ -718,8 +862,9 @@ const (
 )
 
 // Values returns all known values for PermissionModels. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PermissionModels) Values() []PermissionModels {
 	return []PermissionModels{
 		"SERVICE_MANAGED",
@@ -740,8 +885,9 @@ const (
 )
 
 // Values returns all known values for PolicyAction. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PolicyAction) Values() []PolicyAction {
 	return []PolicyAction{
 		"Delete",
@@ -763,8 +909,9 @@ const (
 )
 
 // Values returns all known values for ProvisioningType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ProvisioningType) Values() []ProvisioningType {
 	return []ProvisioningType{
 		"NON_PROVISIONABLE",
@@ -782,8 +929,9 @@ const (
 )
 
 // Values returns all known values for PublisherStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PublisherStatus) Values() []PublisherStatus {
 	return []PublisherStatus{
 		"VERIFIED",
@@ -800,8 +948,9 @@ const (
 )
 
 // Values returns all known values for RegionConcurrencyType. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RegionConcurrencyType) Values() []RegionConcurrencyType {
 	return []RegionConcurrencyType{
 		"SEQUENTIAL",
@@ -819,8 +968,9 @@ const (
 )
 
 // Values returns all known values for RegistrationStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RegistrationStatus) Values() []RegistrationStatus {
 	return []RegistrationStatus{
 		"COMPLETE",
@@ -839,8 +989,9 @@ const (
 )
 
 // Values returns all known values for RegistryType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RegistryType) Values() []RegistryType {
 	return []RegistryType{
 		"RESOURCE",
@@ -859,8 +1010,9 @@ const (
 )
 
 // Values returns all known values for Replacement. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (Replacement) Values() []Replacement {
 	return []Replacement{
 		"True",
@@ -879,8 +1031,9 @@ const (
 )
 
 // Values returns all known values for RequiresRecreation. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RequiresRecreation) Values() []RequiresRecreation {
 	return []RequiresRecreation{
 		"Never",
@@ -903,8 +1056,9 @@ const (
 )
 
 // Values returns all known values for ResourceAttribute. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ResourceAttribute) Values() []ResourceAttribute {
 	return []ResourceAttribute{
 		"Properties",
@@ -928,8 +1082,9 @@ const (
 )
 
 // Values returns all known values for ResourceScanStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ResourceScanStatus) Values() []ResourceScanStatus {
 	return []ResourceScanStatus{
 		"IN_PROGRESS",
@@ -948,8 +1103,9 @@ const (
 )
 
 // Values returns all known values for ResourceSignalStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ResourceSignalStatus) Values() []ResourceSignalStatus {
 	return []ResourceSignalStatus{
 		"SUCCESS",
@@ -977,6 +1133,12 @@ const (
 	ResourceStatusImportRollbackInProgress ResourceStatus = "IMPORT_ROLLBACK_IN_PROGRESS"
 	ResourceStatusImportRollbackFailed     ResourceStatus = "IMPORT_ROLLBACK_FAILED"
 	ResourceStatusImportRollbackComplete   ResourceStatus = "IMPORT_ROLLBACK_COMPLETE"
+	ResourceStatusExportFailed             ResourceStatus = "EXPORT_FAILED"
+	ResourceStatusExportComplete           ResourceStatus = "EXPORT_COMPLETE"
+	ResourceStatusExportInProgress         ResourceStatus = "EXPORT_IN_PROGRESS"
+	ResourceStatusExportRollbackInProgress ResourceStatus = "EXPORT_ROLLBACK_IN_PROGRESS"
+	ResourceStatusExportRollbackFailed     ResourceStatus = "EXPORT_ROLLBACK_FAILED"
+	ResourceStatusExportRollbackComplete   ResourceStatus = "EXPORT_ROLLBACK_COMPLETE"
 	ResourceStatusUpdateRollbackInProgress ResourceStatus = "UPDATE_ROLLBACK_IN_PROGRESS"
 	ResourceStatusUpdateRollbackComplete   ResourceStatus = "UPDATE_ROLLBACK_COMPLETE"
 	ResourceStatusUpdateRollbackFailed     ResourceStatus = "UPDATE_ROLLBACK_FAILED"
@@ -986,8 +1148,9 @@ const (
 )
 
 // Values returns all known values for ResourceStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ResourceStatus) Values() []ResourceStatus {
 	return []ResourceStatus{
 		"CREATE_IN_PROGRESS",
@@ -1006,12 +1169,37 @@ func (ResourceStatus) Values() []ResourceStatus {
 		"IMPORT_ROLLBACK_IN_PROGRESS",
 		"IMPORT_ROLLBACK_FAILED",
 		"IMPORT_ROLLBACK_COMPLETE",
+		"EXPORT_FAILED",
+		"EXPORT_COMPLETE",
+		"EXPORT_IN_PROGRESS",
+		"EXPORT_ROLLBACK_IN_PROGRESS",
+		"EXPORT_ROLLBACK_FAILED",
+		"EXPORT_ROLLBACK_COMPLETE",
 		"UPDATE_ROLLBACK_IN_PROGRESS",
 		"UPDATE_ROLLBACK_COMPLETE",
 		"UPDATE_ROLLBACK_FAILED",
 		"ROLLBACK_IN_PROGRESS",
 		"ROLLBACK_COMPLETE",
 		"ROLLBACK_FAILED",
+	}
+}
+
+type ScanType string
+
+// Enum values for ScanType
+const (
+	ScanTypeFull    ScanType = "FULL"
+	ScanTypePartial ScanType = "PARTIAL"
+)
+
+// Values returns all known values for ScanType. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ScanType) Values() []ScanType {
+	return []ScanType{
+		"FULL",
+		"PARTIAL",
 	}
 }
 
@@ -1026,6 +1214,7 @@ const (
 
 // Values returns all known values for StackDriftDetectionStatus. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (StackDriftDetectionStatus) Values() []StackDriftDetectionStatus {
 	return []StackDriftDetectionStatus{
@@ -1046,8 +1235,9 @@ const (
 )
 
 // Values returns all known values for StackDriftStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackDriftStatus) Values() []StackDriftStatus {
 	return []StackDriftStatus{
 		"DRIFTED",
@@ -1073,6 +1263,7 @@ const (
 
 // Values returns all known values for StackInstanceDetailedStatus. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (StackInstanceDetailedStatus) Values() []StackInstanceDetailedStatus {
 	return []StackInstanceDetailedStatus{
@@ -1097,8 +1288,9 @@ const (
 )
 
 // Values returns all known values for StackInstanceFilterName. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackInstanceFilterName) Values() []StackInstanceFilterName {
 	return []StackInstanceFilterName{
 		"DETAILED_STATUS",
@@ -1117,13 +1309,132 @@ const (
 )
 
 // Values returns all known values for StackInstanceStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackInstanceStatus) Values() []StackInstanceStatus {
 	return []StackInstanceStatus{
 		"CURRENT",
 		"OUTDATED",
 		"INOPERABLE",
+	}
+}
+
+type StackRefactorActionEntity string
+
+// Enum values for StackRefactorActionEntity
+const (
+	StackRefactorActionEntityResource StackRefactorActionEntity = "RESOURCE"
+	StackRefactorActionEntityStack    StackRefactorActionEntity = "STACK"
+)
+
+// Values returns all known values for StackRefactorActionEntity. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (StackRefactorActionEntity) Values() []StackRefactorActionEntity {
+	return []StackRefactorActionEntity{
+		"RESOURCE",
+		"STACK",
+	}
+}
+
+type StackRefactorActionType string
+
+// Enum values for StackRefactorActionType
+const (
+	StackRefactorActionTypeMove   StackRefactorActionType = "MOVE"
+	StackRefactorActionTypeCreate StackRefactorActionType = "CREATE"
+)
+
+// Values returns all known values for StackRefactorActionType. Note that this can
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (StackRefactorActionType) Values() []StackRefactorActionType {
+	return []StackRefactorActionType{
+		"MOVE",
+		"CREATE",
+	}
+}
+
+type StackRefactorDetection string
+
+// Enum values for StackRefactorDetection
+const (
+	StackRefactorDetectionAuto   StackRefactorDetection = "AUTO"
+	StackRefactorDetectionManual StackRefactorDetection = "MANUAL"
+)
+
+// Values returns all known values for StackRefactorDetection. Note that this can
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (StackRefactorDetection) Values() []StackRefactorDetection {
+	return []StackRefactorDetection{
+		"AUTO",
+		"MANUAL",
+	}
+}
+
+type StackRefactorExecutionStatus string
+
+// Enum values for StackRefactorExecutionStatus
+const (
+	StackRefactorExecutionStatusUnavailable        StackRefactorExecutionStatus = "UNAVAILABLE"
+	StackRefactorExecutionStatusAvailable          StackRefactorExecutionStatus = "AVAILABLE"
+	StackRefactorExecutionStatusObsolete           StackRefactorExecutionStatus = "OBSOLETE"
+	StackRefactorExecutionStatusExecuteInProgress  StackRefactorExecutionStatus = "EXECUTE_IN_PROGRESS"
+	StackRefactorExecutionStatusExecuteComplete    StackRefactorExecutionStatus = "EXECUTE_COMPLETE"
+	StackRefactorExecutionStatusExecuteFailed      StackRefactorExecutionStatus = "EXECUTE_FAILED"
+	StackRefactorExecutionStatusRollbackInProgress StackRefactorExecutionStatus = "ROLLBACK_IN_PROGRESS"
+	StackRefactorExecutionStatusRollbackComplete   StackRefactorExecutionStatus = "ROLLBACK_COMPLETE"
+	StackRefactorExecutionStatusRollbackFailed     StackRefactorExecutionStatus = "ROLLBACK_FAILED"
+)
+
+// Values returns all known values for StackRefactorExecutionStatus. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (StackRefactorExecutionStatus) Values() []StackRefactorExecutionStatus {
+	return []StackRefactorExecutionStatus{
+		"UNAVAILABLE",
+		"AVAILABLE",
+		"OBSOLETE",
+		"EXECUTE_IN_PROGRESS",
+		"EXECUTE_COMPLETE",
+		"EXECUTE_FAILED",
+		"ROLLBACK_IN_PROGRESS",
+		"ROLLBACK_COMPLETE",
+		"ROLLBACK_FAILED",
+	}
+}
+
+type StackRefactorStatus string
+
+// Enum values for StackRefactorStatus
+const (
+	StackRefactorStatusCreateInProgress StackRefactorStatus = "CREATE_IN_PROGRESS"
+	StackRefactorStatusCreateComplete   StackRefactorStatus = "CREATE_COMPLETE"
+	StackRefactorStatusCreateFailed     StackRefactorStatus = "CREATE_FAILED"
+	StackRefactorStatusDeleteInProgress StackRefactorStatus = "DELETE_IN_PROGRESS"
+	StackRefactorStatusDeleteComplete   StackRefactorStatus = "DELETE_COMPLETE"
+	StackRefactorStatusDeleteFailed     StackRefactorStatus = "DELETE_FAILED"
+)
+
+// Values returns all known values for StackRefactorStatus. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (StackRefactorStatus) Values() []StackRefactorStatus {
+	return []StackRefactorStatus{
+		"CREATE_IN_PROGRESS",
+		"CREATE_COMPLETE",
+		"CREATE_FAILED",
+		"DELETE_IN_PROGRESS",
+		"DELETE_COMPLETE",
+		"DELETE_FAILED",
 	}
 }
 
@@ -1135,10 +1446,12 @@ const (
 	StackResourceDriftStatusModified   StackResourceDriftStatus = "MODIFIED"
 	StackResourceDriftStatusDeleted    StackResourceDriftStatus = "DELETED"
 	StackResourceDriftStatusNotChecked StackResourceDriftStatus = "NOT_CHECKED"
+	StackResourceDriftStatusUnknown    StackResourceDriftStatus = "UNKNOWN"
 )
 
 // Values returns all known values for StackResourceDriftStatus. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (StackResourceDriftStatus) Values() []StackResourceDriftStatus {
 	return []StackResourceDriftStatus{
@@ -1146,6 +1459,7 @@ func (StackResourceDriftStatus) Values() []StackResourceDriftStatus {
 		"MODIFIED",
 		"DELETED",
 		"NOT_CHECKED",
+		"UNKNOWN",
 	}
 }
 
@@ -1162,8 +1476,9 @@ const (
 
 // Values returns all known values for StackSetDriftDetectionStatus. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackSetDriftDetectionStatus) Values() []StackSetDriftDetectionStatus {
 	return []StackSetDriftDetectionStatus{
 		"COMPLETED",
@@ -1184,8 +1499,9 @@ const (
 )
 
 // Values returns all known values for StackSetDriftStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackSetDriftStatus) Values() []StackSetDriftStatus {
 	return []StackSetDriftStatus{
 		"DRIFTED",
@@ -1205,8 +1521,9 @@ const (
 )
 
 // Values returns all known values for StackSetOperationAction. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackSetOperationAction) Values() []StackSetOperationAction {
 	return []StackSetOperationAction{
 		"CREATE",
@@ -1229,8 +1546,9 @@ const (
 
 // Values returns all known values for StackSetOperationResultStatus. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackSetOperationResultStatus) Values() []StackSetOperationResultStatus {
 	return []StackSetOperationResultStatus{
 		"PENDING",
@@ -1254,8 +1572,9 @@ const (
 )
 
 // Values returns all known values for StackSetOperationStatus. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackSetOperationStatus) Values() []StackSetOperationStatus {
 	return []StackSetOperationStatus{
 		"RUNNING",
@@ -1276,8 +1595,9 @@ const (
 )
 
 // Values returns all known values for StackSetStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackSetStatus) Values() []StackSetStatus {
 	return []StackSetStatus{
 		"ACTIVE",
@@ -1315,8 +1635,9 @@ const (
 )
 
 // Values returns all known values for StackStatus. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StackStatus) Values() []StackStatus {
 	return []StackStatus{
 		"CREATE_IN_PROGRESS",
@@ -1354,8 +1675,9 @@ const (
 )
 
 // Values returns all known values for TemplateFormat. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (TemplateFormat) Values() []TemplateFormat {
 	return []TemplateFormat{
 		"JSON",
@@ -1372,8 +1694,9 @@ const (
 )
 
 // Values returns all known values for TemplateStage. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (TemplateStage) Values() []TemplateStage {
 	return []TemplateStage{
 		"Original",
@@ -1391,8 +1714,9 @@ const (
 )
 
 // Values returns all known values for ThirdPartyType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ThirdPartyType) Values() []ThirdPartyType {
 	return []ThirdPartyType{
 		"RESOURCE",
@@ -1412,8 +1736,9 @@ const (
 )
 
 // Values returns all known values for TypeTestsStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (TypeTestsStatus) Values() []TypeTestsStatus {
 	return []TypeTestsStatus{
 		"PASSED",
@@ -1432,8 +1757,9 @@ const (
 )
 
 // Values returns all known values for VersionBump. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (VersionBump) Values() []VersionBump {
 	return []VersionBump{
 		"MAJOR",
@@ -1450,8 +1776,9 @@ const (
 )
 
 // Values returns all known values for Visibility. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (Visibility) Values() []Visibility {
 	return []Visibility{
 		"PUBLIC",
@@ -1466,15 +1793,20 @@ const (
 	WarningTypeMutuallyExclusiveProperties WarningType = "MUTUALLY_EXCLUSIVE_PROPERTIES"
 	WarningTypeUnsupportedProperties       WarningType = "UNSUPPORTED_PROPERTIES"
 	WarningTypeMutuallyExclusiveTypes      WarningType = "MUTUALLY_EXCLUSIVE_TYPES"
+	WarningTypeExcludedProperties          WarningType = "EXCLUDED_PROPERTIES"
+	WarningTypeExcludedResources           WarningType = "EXCLUDED_RESOURCES"
 )
 
 // Values returns all known values for WarningType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (WarningType) Values() []WarningType {
 	return []WarningType{
 		"MUTUALLY_EXCLUSIVE_PROPERTIES",
 		"UNSUPPORTED_PROPERTIES",
 		"MUTUALLY_EXCLUSIVE_TYPES",
+		"EXCLUDED_PROPERTIES",
+		"EXCLUDED_RESOURCES",
 	}
 }

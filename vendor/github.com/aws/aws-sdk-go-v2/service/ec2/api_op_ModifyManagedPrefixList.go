@@ -11,10 +11,13 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Modifies the specified managed prefix list. Adding or removing entries in a
-// prefix list creates a new version of the prefix list. Changing the name of the
-// prefix list does not affect the version. If you specify a current version number
-// that does not match the true current version number, the request fails.
+// Modifies the specified managed prefix list.
+//
+// Adding or removing entries in a prefix list creates a new version of the prefix
+// list. Changing the name of the prefix list does not affect the version.
+//
+// If you specify a current version number that does not match the true current
+// version number, the request fails.
 func (c *Client) ModifyManagedPrefixList(ctx context.Context, params *ModifyManagedPrefixListInput, optFns ...func(*Options)) (*ModifyManagedPrefixListOutput, error) {
 	if params == nil {
 		params = &ModifyManagedPrefixListInput{}
@@ -49,8 +52,14 @@ type ModifyManagedPrefixListInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
+	// Indicates whether synchronization with an IPAM prefix list resolver should be
+	// enabled for this managed prefix list. When enabled, the prefix list CIDRs are
+	// automatically updated based on the associated resolver's CIDR selection rules.
+	IpamPrefixListResolverSyncEnabled *bool
+
 	// The maximum number of entries for the prefix list. You cannot modify the
 	// entries of a prefix list and modify the size of a prefix list at the same time.
+	//
 	// If any of the resources that reference the prefix list cannot support the new
 	// maximum size, the modify operation fails. Check the state message for the IDs of
 	// the first ten resources that do not support the new maximum size.
@@ -119,6 +128,9 @@ func (c *Client) addOperationModifyManagedPrefixListMiddlewares(stack *middlewar
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -129,6 +141,15 @@ func (c *Client) addOperationModifyManagedPrefixListMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyManagedPrefixListValidationMiddleware(stack); err != nil {
@@ -150,6 +171,15 @@ func (c *Client) addOperationModifyManagedPrefixListMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

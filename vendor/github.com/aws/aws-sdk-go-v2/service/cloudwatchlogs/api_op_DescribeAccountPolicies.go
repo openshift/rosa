@@ -12,6 +12,21 @@ import (
 )
 
 // Returns a list of all CloudWatch Logs account policies in the account.
+//
+// To use this operation, you must be signed on with the correct permissions
+// depending on the type of policy that you are retrieving information for.
+//
+//   - To see data protection policies, you must have the
+//     logs:GetDataProtectionPolicy and logs:DescribeAccountPolicies permissions.
+//
+//   - To see subscription filter policies, you must have the
+//     logs:DescribeSubscriptionFilters and logs:DescribeAccountPolicies permissions.
+//
+//   - To see transformer policies, you must have the logs:GetTransformer and
+//     logs:DescribeAccountPolicies permissions.
+//
+//   - To see field index policies, you must have the logs:DescribeIndexPolicies
+//     and logs:DescribeAccountPolicies permissions.
 func (c *Client) DescribeAccountPolicies(ctx context.Context, params *DescribeAccountPoliciesInput, optFns ...func(*Options)) (*DescribeAccountPoliciesOutput, error) {
 	if params == nil {
 		params = &DescribeAccountPoliciesInput{}
@@ -39,9 +54,14 @@ type DescribeAccountPoliciesInput struct {
 	// CloudWatch unified cross-account observability, you can use this to specify the
 	// account ID of a source account. If you do, the operation returns the account
 	// policy for the specified account. Currently, you can specify only one account ID
-	// in this parameter. If you omit this parameter, only the policy in the current
-	// account is returned.
+	// in this parameter.
+	//
+	// If you omit this parameter, only the policy in the current account is returned.
 	AccountIdentifiers []string
+
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
+	NextToken *string
 
 	// Use this parameter to limit the returned policies to only the policy with the
 	// name that you specify.
@@ -55,6 +75,10 @@ type DescribeAccountPoliciesOutput struct {
 	// An array of structures that contain information about the CloudWatch Logs
 	// account policies that match the specified filters.
 	AccountPolicies []types.AccountPolicy
+
+	// The token to use when requesting the next set of items. The token expires after
+	// 24 hours.
+	NextToken *string
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -105,6 +129,9 @@ func (c *Client) addOperationDescribeAccountPoliciesMiddlewares(stack *middlewar
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -115,6 +142,15 @@ func (c *Client) addOperationDescribeAccountPoliciesMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeAccountPoliciesValidationMiddleware(stack); err != nil {
@@ -136,6 +172,15 @@ func (c *Client) addOperationDescribeAccountPoliciesMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
