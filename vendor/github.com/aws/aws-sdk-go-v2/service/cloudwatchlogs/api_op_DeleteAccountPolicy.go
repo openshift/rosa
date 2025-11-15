@@ -11,15 +11,29 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes a CloudWatch Logs account policy. This stops the policy from applying
-// to all log groups or a subset of log groups in the account. Log-group level
-// policies will still be in effect. To use this operation, you must be signed on
-// with the correct permissions depending on the type of policy that you are
-// deleting.
+// Deletes a CloudWatch Logs account policy. This stops the account-wide policy
+// from applying to log groups in the account. If you delete a data protection
+// policy or subscription filter policy, any log-group level policies of those
+// types remain in effect.
+//
+// To use this operation, you must be signed on with the correct permissions
+// depending on the type of policy that you are deleting.
+//
 //   - To delete a data protection policy, you must have the
 //     logs:DeleteDataProtectionPolicy and logs:DeleteAccountPolicy permissions.
+//
 //   - To delete a subscription filter policy, you must have the
 //     logs:DeleteSubscriptionFilter and logs:DeleteAccountPolicy permissions.
+//
+//   - To delete a transformer policy, you must have the logs:DeleteTransformer and
+//     logs:DeleteAccountPolicy permissions.
+//
+//   - To delete a field index policy, you must have the logs:DeleteIndexPolicy and
+//     logs:DeleteAccountPolicy permissions.
+//
+// If you delete a field index policy, the indexing of the log events that
+// happened before you deleted the policy will still be used for up to 30 days to
+// improve CloudWatch Logs Insights queries.
 func (c *Client) DeleteAccountPolicy(ctx context.Context, params *DeleteAccountPolicyInput, optFns ...func(*Options)) (*DeleteAccountPolicyOutput, error) {
 	if params == nil {
 		params = &DeleteAccountPolicyInput{}
@@ -100,6 +114,9 @@ func (c *Client) addOperationDeleteAccountPolicyMiddlewares(stack *middleware.St
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -110,6 +127,15 @@ func (c *Client) addOperationDeleteAccountPolicyMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteAccountPolicyValidationMiddleware(stack); err != nil {
@@ -131,6 +157,15 @@ func (c *Client) addOperationDeleteAccountPolicyMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

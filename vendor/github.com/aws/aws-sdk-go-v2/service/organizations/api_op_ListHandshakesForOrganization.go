@@ -14,15 +14,19 @@ import (
 // Lists the handshakes that are associated with the organization that the
 // requesting user is part of. The ListHandshakesForOrganization operation returns
 // a list of handshake structures. Each structure contains details and status about
-// a handshake. Handshakes that are ACCEPTED , DECLINED , CANCELED , or EXPIRED
-// appear in the results of this API for only 30 days after changing to that state.
-// After that, they're deleted and no longer accessible. Always check the NextToken
-// response parameter for a null value when calling a List* operation. These
-// operations can occasionally return an empty set of results even when there are
-// more results available. The NextToken response parameter value is null only
-// when there are no more results to display. This operation can be called only
-// from the organization's management account or by a member account that is a
-// delegated administrator for an Amazon Web Services service.
+// a handshake.
+//
+// Handshakes that are ACCEPTED , DECLINED , CANCELED , or EXPIRED appear in the
+// results of this API for only 30 days after changing to that state. After that,
+// they're deleted and no longer accessible.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// List* operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
+//
+// This operation can be called only from the organization's management account or
+// by a member account that is a delegated administrator.
 func (c *Client) ListHandshakesForOrganization(ctx context.Context, params *ListHandshakesForOrganizationInput, optFns ...func(*Options)) (*ListHandshakesForOrganizationOutput, error) {
 	if params == nil {
 		params = &ListHandshakesForOrganizationInput{}
@@ -129,6 +133,9 @@ func (c *Client) addOperationListHandshakesForOrganizationMiddlewares(stack *mid
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -139,6 +146,15 @@ func (c *Client) addOperationListHandshakesForOrganizationMiddlewares(stack *mid
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListHandshakesForOrganization(options.Region), middleware.Before); err != nil {
@@ -159,16 +175,17 @@ func (c *Client) addOperationListHandshakesForOrganizationMiddlewares(stack *mid
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListHandshakesForOrganizationAPIClient is a client that implements the
-// ListHandshakesForOrganization operation.
-type ListHandshakesForOrganizationAPIClient interface {
-	ListHandshakesForOrganization(context.Context, *ListHandshakesForOrganizationInput, ...func(*Options)) (*ListHandshakesForOrganizationOutput, error)
-}
-
-var _ ListHandshakesForOrganizationAPIClient = (*Client)(nil)
 
 // ListHandshakesForOrganizationPaginatorOptions is the paginator options for
 // ListHandshakesForOrganization
@@ -244,6 +261,9 @@ func (p *ListHandshakesForOrganizationPaginator) NextPage(ctx context.Context, o
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListHandshakesForOrganization(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -262,6 +282,14 @@ func (p *ListHandshakesForOrganizationPaginator) NextPage(ctx context.Context, o
 
 	return result, nil
 }
+
+// ListHandshakesForOrganizationAPIClient is a client that implements the
+// ListHandshakesForOrganization operation.
+type ListHandshakesForOrganizationAPIClient interface {
+	ListHandshakesForOrganization(context.Context, *ListHandshakesForOrganizationInput, ...func(*Options)) (*ListHandshakesForOrganizationOutput, error)
+}
+
+var _ ListHandshakesForOrganizationAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListHandshakesForOrganization(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

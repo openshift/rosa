@@ -170,6 +170,26 @@ func (m *validateOpCreateAccountAlias) HandleInitialize(ctx context.Context, in 
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpCreateDelegationRequest struct {
+}
+
+func (*validateOpCreateDelegationRequest) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpCreateDelegationRequest) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*CreateDelegationRequestInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpCreateDelegationRequestInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpCreateGroup struct {
 }
 
@@ -205,26 +225,6 @@ func (m *validateOpCreateInstanceProfile) HandleInitialize(ctx context.Context, 
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpCreateInstanceProfileInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
-type validateOpCreateLoginProfile struct {
-}
-
-func (*validateOpCreateLoginProfile) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpCreateLoginProfile) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*CreateLoginProfileInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpCreateLoginProfileInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -525,26 +525,6 @@ func (m *validateOpDeleteInstanceProfile) HandleInitialize(ctx context.Context, 
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpDeleteInstanceProfileInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
-type validateOpDeleteLoginProfile struct {
-}
-
-func (*validateOpDeleteLoginProfile) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpDeleteLoginProfile) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*DeleteLoginProfileInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpDeleteLoginProfileInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -1105,26 +1085,6 @@ func (m *validateOpGetInstanceProfile) HandleInitialize(ctx context.Context, in 
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpGetInstanceProfileInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
-type validateOpGetLoginProfile struct {
-}
-
-func (*validateOpGetLoginProfile) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpGetLoginProfile) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*GetLoginProfileInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpGetLoginProfileInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -2742,16 +2702,16 @@ func addOpCreateAccountAliasValidationMiddleware(stack *middleware.Stack) error 
 	return stack.Initialize.Add(&validateOpCreateAccountAlias{}, middleware.After)
 }
 
+func addOpCreateDelegationRequestValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpCreateDelegationRequest{}, middleware.After)
+}
+
 func addOpCreateGroupValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateGroup{}, middleware.After)
 }
 
 func addOpCreateInstanceProfileValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateInstanceProfile{}, middleware.After)
-}
-
-func addOpCreateLoginProfileValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpCreateLoginProfile{}, middleware.After)
 }
 
 func addOpCreateOpenIDConnectProviderValidationMiddleware(stack *middleware.Stack) error {
@@ -2812,10 +2772,6 @@ func addOpDeleteGroupPolicyValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpDeleteInstanceProfileValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteInstanceProfile{}, middleware.After)
-}
-
-func addOpDeleteLoginProfileValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpDeleteLoginProfile{}, middleware.After)
 }
 
 func addOpDeleteOpenIDConnectProviderValidationMiddleware(stack *middleware.Stack) error {
@@ -2928,10 +2884,6 @@ func addOpGetGroupPolicyValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpGetInstanceProfileValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetInstanceProfile{}, middleware.After)
-}
-
-func addOpGetLoginProfileValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpGetLoginProfile{}, middleware.After)
 }
 
 func addOpGetMFADeviceValidationMiddleware(stack *middleware.Stack) error {
@@ -3426,6 +3378,33 @@ func validateOpCreateAccountAliasInput(v *CreateAccountAliasInput) error {
 	}
 }
 
+func validateOpCreateDelegationRequestInput(v *CreateDelegationRequestInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "CreateDelegationRequestInput"}
+	if v.Description == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Description"))
+	}
+	if v.Permissions == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Permissions"))
+	}
+	if v.RequestorWorkflowId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("RequestorWorkflowId"))
+	}
+	if v.NotificationChannel == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("NotificationChannel"))
+	}
+	if v.SessionDuration == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SessionDuration"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpCreateGroupInput(v *CreateGroupInput) error {
 	if v == nil {
 		return nil
@@ -3453,24 +3432,6 @@ func validateOpCreateInstanceProfileInput(v *CreateInstanceProfileInput) error {
 		if err := validateTagListType(v.Tags); err != nil {
 			invalidParams.AddNested("Tags", err.(smithy.InvalidParamsError))
 		}
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
-func validateOpCreateLoginProfileInput(v *CreateLoginProfileInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "CreateLoginProfileInput"}
-	if v.UserName == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("UserName"))
-	}
-	if v.Password == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("Password"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3664,9 +3625,6 @@ func validateOpDeactivateMFADeviceInput(v *DeactivateMFADeviceInput) error {
 		return nil
 	}
 	invalidParams := smithy.InvalidParamsError{Context: "DeactivateMFADeviceInput"}
-	if v.UserName == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("UserName"))
-	}
 	if v.SerialNumber == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("SerialNumber"))
 	}
@@ -3747,21 +3705,6 @@ func validateOpDeleteInstanceProfileInput(v *DeleteInstanceProfileInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "DeleteInstanceProfileInput"}
 	if v.InstanceProfileName == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("InstanceProfileName"))
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
-func validateOpDeleteLoginProfileInput(v *DeleteLoginProfileInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "DeleteLoginProfileInput"}
-	if v.UserName == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("UserName"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -4215,21 +4158,6 @@ func validateOpGetInstanceProfileInput(v *GetInstanceProfileInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "GetInstanceProfileInput"}
 	if v.InstanceProfileName == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("InstanceProfileName"))
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
-func validateOpGetLoginProfileInput(v *GetLoginProfileInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "GetLoginProfileInput"}
-	if v.UserName == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("UserName"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -5457,9 +5385,6 @@ func validateOpUpdateSAMLProviderInput(v *UpdateSAMLProviderInput) error {
 		return nil
 	}
 	invalidParams := smithy.InvalidParamsError{Context: "UpdateSAMLProviderInput"}
-	if v.SAMLMetadataDocument == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("SAMLMetadataDocument"))
-	}
 	if v.SAMLProviderArn == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("SAMLProviderArn"))
 	}
