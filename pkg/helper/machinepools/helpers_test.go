@@ -1,8 +1,11 @@
 package machinepools
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var _ = Describe("MachinePool", func() {
@@ -348,4 +351,44 @@ var _ = Describe("Validate MaxSurge and MaxUnavailable", func() {
 			"value '1.1' must be an integer",
 		),
 	)
+})
+
+var _ = Describe("Validate Capacity Reservation Preference", func() {
+	noneValue := string(cmv1.CapacityReservationPreferenceNone)
+	onlyValue := string(cmv1.CapacityReservationPreferenceCapacityReservationsOnly)
+	openValue := string(cmv1.CapacityReservationPreferenceOpen)
+
+	It("OK: Valid values provided", func() {
+		Expect(ValidateCapacityReservationPreference(onlyValue, "123")).ToNot(HaveOccurred())
+		Expect(ValidateCapacityReservationPreference(onlyValue, "")).ToNot(HaveOccurred())
+		Expect(ValidateCapacityReservationPreference(openValue, "")).ToNot(HaveOccurred())
+		Expect(ValidateCapacityReservationPreference(noneValue, "")).ToNot(HaveOccurred())
+		Expect(ValidateCapacityReservationPreference("", "123")).ToNot(HaveOccurred())
+		// The below case would never happen in the real world, since the function is not called unless the preference
+		// is != "". But, its good to confirm it would work in-case this function is improperly used in the future
+		Expect(ValidateCapacityReservationPreference("", "")).ToNot(HaveOccurred())
+	})
+	It("KO: Invalid values provided", func() {
+		invalidValue := "None!"
+		err := ValidateCapacityReservationPreference(invalidValue, "123")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring(
+			fmt.Sprintf("When specifying a capacity reservation id ('%s'), "+
+				"you may only provide the '%s' preference", "123", onlyValue)))
+
+		err = ValidateCapacityReservationPreference(noneValue, "123")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring(
+			fmt.Sprintf("invalid Capacity Reservation Preference: '%s'. "+
+				"When specifying a capacity reservation id ('%s'), you may only provide the "+
+				"'%s' preference", noneValue, "123", onlyValue)))
+
+		err = ValidateCapacityReservationPreference(openValue, "123")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring(
+			fmt.Sprintf("invalid Capacity Reservation Preference: '%s'. "+
+				"When specifying a capacity reservation id ('%s'), you may only provide the "+
+				"'%s' preference", openValue, "123", onlyValue)))
+
+	})
 })

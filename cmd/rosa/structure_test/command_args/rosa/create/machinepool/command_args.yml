@@ -27,3 +27,4 @@
 - name: version
 - name: capacity-reservation-id
 - name: type
+- name: capacity-reservation-preference

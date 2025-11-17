@@ -800,7 +800,30 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
-	capacityReservation := cmv1.NewAWSCapacityReservation().Id(capacityReservationId)
+	capacityReservationPreference := args.CapacityReservationPreference
+
+	if interactive.Enabled() && !autoscaling && !fedramp.Enabled() {
+		capacityReservationId, err = interactive.GetOption(interactive.Input{
+			Question: "Capacity Reservation Preference",
+			Help:     cmd.Flags().Lookup("capacity-reservation-preference").Usage,
+			Options: []string{mpHelpers.CapacityReservationPreferenceNone,
+				mpHelpers.CapacityReservationPreferenceOnly, mpHelpers.CapacityReservationPreferenceOpen},
+			Required: false,
+		})
+		if err != nil {
+			return fmt.Errorf("expected a valid value for Capacity Reservation Preference: %s", err)
+		}
+	}
+
+	if capacityReservationPreference != "" {
+		err = mpHelpers.ValidateCapacityReservationPreference(capacityReservationPreference, capacityReservationId)
+		if err != nil {
+			return fmt.Errorf("expected a valid value for Capacity Reservation Preference: %s", err)
+		}
+	}
+
+	capacityReservation := cmv1.NewAWSCapacityReservation().Id(capacityReservationId).Preference(
+		cmv1.CapacityReservationPreference(capacityReservationPreference))
 
 	kubeletConfigs := args.KubeletConfigs
 
