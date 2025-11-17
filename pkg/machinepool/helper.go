@@ -59,6 +59,22 @@ func ValidateLabels(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 	return nil
 }
 
+// Validate that the image type is a real one
+func ValidateImageType(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions, cluster *cmv1.Cluster) error {
+	if cmd.Flags().Changed("type") {
+		if !cluster.Hypershift().Enabled() {
+			return fmt.Errorf("the '--type' flag can only be used with Hosted Control Plane clusters")
+		}
+		imageType := args.Type
+
+		if mpHelpers.IsValidImageType(imageType) {
+			return nil
+		}
+		return fmt.Errorf("invalid image type: '%s' - please use one of: %v", imageType, prettyPrintImageTypes())
+	}
+	return nil
+}
+
 // Validate the cluster's state is ready
 func ValidateClusterState(cluster *cmv1.Cluster, clusterKey string) error {
 	if cluster.State() != cmv1.ClusterStateReady {
@@ -461,4 +477,16 @@ func isDedicatedHost(machinePool *cmv1.MachinePool, runtime *rosa.Runtime) strin
 		return displayValueYes
 	}
 	return displayValueNo
+}
+
+func prettyPrintImageTypes() string {
+	s := "'"
+	for i, t := range mpHelpers.ImageTypes {
+		if i == 0 {
+			s += t
+		} else {
+			s += "', '" + t
+		}
+	}
+	return s + "'"
 }
