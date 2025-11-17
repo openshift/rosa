@@ -340,17 +340,16 @@ var _ = Describe("Edit cluster",
 
 				By("Attempt to edit cluster with UWM flag and expect error")
 				_, err = clusterService.EditCluster(clusterID,
-					"--disable-workload-monitoring",
-					"--dry-run")
-				// Command should error for HCP clusters
+					"--disable-workload-monitoring")
+				By("Command should error for HCP clusters")
 				Expect(err).To(HaveOccurred())
-				// Check that error mentions it's not supported
+				By("Check that error mentions it's not supported")
 				Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
 
 				By("Check that UWM is NOT shown in cluster description")
 				output, err2 := clusterService.DescribeCluster(clusterID)
 				Expect(err2).ToNot(HaveOccurred())
-				// For HCP clusters, UWM should not appear at all
+				By("For HCP clusters, UWM should not appear at all")
 				Expect(output.String()).ToNot(ContainSubstring("User Workload Monitoring"))
 			})
 
@@ -703,17 +702,22 @@ var _ = Describe("Edit cluster help text validation", labels.Feature.Cluster, fu
 
 	// Test that UWM example was removed from help text
 	It("does not show UWM example in edit cluster help text - [id:UWM-HELP-001]",
-		labels.Low, labels.Runtime.Day1,
+		labels.Low, labels.Runtime.Day1Supplemental,
 		func() {
 			By("Check edit cluster help text for UWM example")
 			helpOutput, err := clusterService.EditCluster("", "-h")
 			Expect(err).ToNot(HaveOccurred())
 
-			// The help text should NOT contain the UWM example
+			By("The help text should NOT contain the UWM example")
 			Expect(helpOutput.String()).ToNot(ContainSubstring("enable User Workload Monitoring"))
 			Expect(helpOutput.String()).ToNot(ContainSubstring("--disable-workload-monitoring=false"))
 
-			// But should still contain the private cluster example
+			By("The help text should mention that UWM is not supported for HCP")
+			Expect(helpOutput.String()).To(MatchRegexp(
+				"--disable-workload-monitoring.*Not supported for Hosted Control Plane clusters.",
+			))
+
+			By("But should still contain the private cluster example")
 			Expect(helpOutput.String()).To(ContainSubstring("Edit a cluster named"))
 			Expect(helpOutput.String()).To(ContainSubstring("--private"))
 		})

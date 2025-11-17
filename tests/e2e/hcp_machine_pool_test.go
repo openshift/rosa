@@ -574,12 +574,12 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			By("with taint no schedule type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "k=v")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Expected key=value:scheduleType format for taints. Got 'k=v'"))
+			Expect(err.Error()).Should(ContainSubstring("expected key=value:scheduleType format for taints. Got 'k=v'"))
 
 			By("with taint empty schedule type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "k=v:")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Expected a not empty effect"))
+			Expect(err.Error()).Should(ContainSubstring("expected a not empty effect"))
 
 			By("with auto-repair wrong value")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--autorepair=v")
