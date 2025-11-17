@@ -10,32 +10,33 @@ import (
 )
 
 type CreateMachinepoolUserOptions struct {
-	Name                  string
-	InstanceType          string
-	Replicas              int
-	AutoscalingEnabled    bool
-	MinReplicas           int
-	MaxReplicas           int
-	Labels                string
-	Taints                string
-	UseSpotInstances      bool
-	SpotMaxPrice          string
-	MultiAvailabilityZone bool
-	AvailabilityZone      string
-	Subnet                string
-	Version               string
-	Autorepair            bool
-	TuningConfigs         string
-	KubeletConfigs        string
-	RootDiskSize          string
-	SecurityGroupIds      []string
-	NodeDrainGracePeriod  string
-	Tags                  []string
-	MaxSurge              string
-	MaxUnavailable        string
-	EC2MetadataHttpTokens string
-	CapacityReservationId string
-	Type                  string
+	Name                          string
+	InstanceType                  string
+	Replicas                      int
+	AutoscalingEnabled            bool
+	MinReplicas                   int
+	MaxReplicas                   int
+	Labels                        string
+	Taints                        string
+	UseSpotInstances              bool
+	SpotMaxPrice                  string
+	MultiAvailabilityZone         bool
+	AvailabilityZone              string
+	Subnet                        string
+	Version                       string
+	Autorepair                    bool
+	TuningConfigs                 string
+	KubeletConfigs                string
+	RootDiskSize                  string
+	SecurityGroupIds              []string
+	NodeDrainGracePeriod          string
+	Tags                          []string
+	MaxSurge                      string
+	MaxUnavailable                string
+	EC2MetadataHttpTokens         string
+	CapacityReservationId         string
+	Type                          string
+	CapacityReservationPreference string
 }
 
 const (
@@ -281,6 +282,11 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 		"Specifies the type of AMI this machinepool uses. You may supply '--type Windows' for example if you want "+
 			"support for Windows VMs.")
 
+	flags.StringVar(&options.CapacityReservationPreference,
+		"capacity-reservation-preference",
+		"",
+		"A configurable preference for a capacity-reservation. Options are: 'none' | "+
+			"'capacity-reservsations-only' | 'open'")
 	output.AddFlag(cmd)
 	interactive.AddFlag(flags)
 	return cmd, options

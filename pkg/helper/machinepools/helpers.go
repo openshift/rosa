@@ -31,6 +31,10 @@ const (
 		nodeDrainUnitHour + "|" + nodeDrainUnitHours
 	MaxNodeDrainTimeInMinutes = 10080
 	MaxNodeDrainTimeInHours   = 168
+
+	CapacityReservationPreferenceNone = string(cmv1.CapacityReservationPreferenceNone)
+	CapacityReservationPreferenceOnly = string(cmv1.CapacityReservationPreferenceCapacityReservationsOnly)
+	CapacityReservationPreferenceOpen = string(cmv1.CapacityReservationPreferenceOpen)
 )
 
 var (
@@ -376,4 +380,28 @@ func IsValidImageType(imageType string) bool {
 		}
 	}
 	return false
+}
+
+func ValidateCapacityReservationPreference(preference, capResId string) error {
+	var preferenceValid = false
+	for _, validOption := range []string{
+		CapacityReservationPreferenceNone, CapacityReservationPreferenceOnly, CapacityReservationPreferenceOpen} {
+		if preference == validOption {
+			preferenceValid = true
+		}
+	}
+
+	if capResId != "" && preference != "" && preference != CapacityReservationPreferenceOnly {
+		return fmt.Errorf("invalid Capacity Reservation Preference: '%s'. "+
+			"When specifying a capacity reservation id ('%s'), you may only provide the "+
+			"'%s' preference", preference, capResId, CapacityReservationPreferenceOnly)
+	}
+
+	if !preferenceValid && preference != "" {
+		return fmt.Errorf("invalid Capacity Reservation Preference: '%s'. Valid options are: '%s', '%s', '%s'",
+			preference, CapacityReservationPreferenceNone, CapacityReservationPreferenceOpen,
+			CapacityReservationPreferenceOnly)
+	}
+
+	return nil
 }
