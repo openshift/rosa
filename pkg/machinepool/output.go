@@ -16,6 +16,7 @@ var nodePoolOutputString string = "\n" +
 	"Desired replicas:                      %s\n" +
 	"Current replicas:                      %s\n" +
 	"Instance type:                         %s\n" +
+	"Image type:                            %s\n" +
 	"Labels:                                %s\n" +
 	"Tags:                                  %s\n" +
 	"Taints:                                %s\n" +
@@ -74,6 +75,7 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		ocmOutput.PrintNodePoolReplicas(nodePool.Autoscaling(), nodePool.Replicas()),
 		ocmOutput.PrintNodePoolCurrentReplicas(nodePool.Status()),
 		ocmOutput.PrintNodePoolInstanceType(nodePool.AWSNodePool()),
+		ocmOutput.PrintNodePoolImageType(nodePool.ImageType()),
 		ocmOutput.PrintLabels(nodePool.Labels()),
 		ocmOutput.PrintUserAwsTags(nodePool.AWSNodePool().Tags()),
 		ocmOutput.PrintTaints(nodePool.Taints()),
