@@ -617,13 +617,7 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	if len(limitedSupportReasons) > 0 {
-		str = fmt.Sprintf("%s"+"Limited Support:\n", str)
-	}
-	for _, reason := range limitedSupportReasons {
-		str = fmt.Sprintf("%s"+
-			" - Summary:                 %s\n"+
-			" - Details:                 %s\n",
-			str, reason.Summary(), reason.Details())
+		str = fmt.Sprintf("%s"+"Limited Support:\n"+"%s", str, getLimitedSupportReasons(limitedSupportReasons))
 	}
 
 	inflightChecks, err := r.OCMClient.GetInflightChecks(cluster.ID())
@@ -1069,4 +1063,15 @@ func getZeroEgressStatus(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error)
 		return str, nil
 	}
 	return "", nil
+}
+
+func getLimitedSupportReasons(limitedSupportReasons []*cmv1.LimitedSupportReason) string {
+	var str string
+	for _, reason := range limitedSupportReasons {
+		str = fmt.Sprintf("%s"+
+			" - Summary:                 %s\n"+
+			" - Details:                 %s\n",
+			str, reason.Summary(), reason.Details())
+	}
+	return str
 }
