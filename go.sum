@@ -339,8 +339,8 @@ github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5t
 github.com/zalando/go-keyring v0.2.3 h1:v9CUu9phlABObO4LPWycf+zwMG7nlbb3t/B5wa97yms=
 github.com/zalando/go-keyring v0.2.3/go.mod h1:HL4k+OXQfJUWaMnqyuSOc0drfGPX2b51Du6K+MRgZMk=
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
-github.com/zgalor/weberr v0.6.0 h1:k6XSpFcOUNco8qtyAMBqXbCAVUivV7mRxGE5CMqHHdM=
-github.com/zgalor/weberr v0.6.0/go.mod h1:cqK89mj84q3PRgqQXQFWJDzCorOd8xOtov/ulOnqDwc=
+github.com/zgalor/weberr v0.9.0 h1:ps/W5wlzv6aruKF/e6cN+/t79Dmp23e8qpFUyCFvgg0=
+github.com/zgalor/weberr v0.9.0/go.mod h1:cqK89mj84q3PRgqQXQFWJDzCorOd8xOtov/ulOnqDwc=
 gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a h1:DxppxFKRqJ8WD6oJ3+ZXKDY0iMONQDl5UTg2aTyHh8k=
 gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a/go.mod h1:NREvu3a57BaK0R1+ztrEzHWiZAihohNLQ6trPxlIqZI=
 go.uber.org/atomic v1.3.2/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
