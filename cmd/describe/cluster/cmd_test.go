@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -176,6 +177,46 @@ var _ = Describe("Cluster description", Ordered, func() {
 				expectClusterWithMigrations, nil),
 		)
 
+	})
+})
+
+var _ = Describe("getLimitedSupportReasons", func() {
+	It("Should return expected LimitedSupportReasons output", func() {
+		By("handle single limited support reason")
+		limitedSupportReason, err := cmv1.NewLimitedSupportReason().
+			ID("test-reason-id").
+			Summary("Single Test Reason").
+			Details("This is a single test limited support reason").
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		limitedSupportReasons := []*cmv1.LimitedSupportReason{limitedSupportReason}
+		output := getLimitedSupportReasons(limitedSupportReasons)
+
+		expectedOutput := fmt.Sprintf(" - Summary:                 %s\n"+
+			" - Details:                 %s\n", limitedSupportReason.Summary(), limitedSupportReason.Details())
+
+		Expect(output).To(Equal(expectedOutput))
+
+		By("handle multiple limited support reasons")
+		limitedSupportReason2, err := cmv1.NewLimitedSupportReason().
+			ID("test-reason-id2").
+			Summary("Test Reason 2").
+			Details("This is the second test limited support reason").
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		limitedSupportReasons = []*cmv1.LimitedSupportReason{
+			limitedSupportReason,
+			limitedSupportReason2,
+		}
+		output = getLimitedSupportReasons(limitedSupportReasons)
+		expectedOutput = fmt.Sprintf(" - Summary:                 %s\n"+
+			" - Details:                 %s\n"+
+			" - Summary:                 %s\n"+
+			" - Details:                 %s\n", limitedSupportReason.Summary(), limitedSupportReason.Details(),
+			limitedSupportReason2.Summary(), limitedSupportReason2.Details())
+		Expect(output).To(Equal(expectedOutput))
 	})
 })
 

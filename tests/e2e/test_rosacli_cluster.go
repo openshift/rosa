@@ -1004,6 +1004,50 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				ContainSubstring("ERR: Expected valid allowed registries for import values"))
 
 		})
+	It("can validate autonode edit - [id:84982]", labels.Medium, labels.Runtime.Day2,
+		labels.FedRAMP, func() {
+			By("Load the original cluster config")
+			clusterConfig, err := config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+
+			roleArn := clusterConfig.Aws.Sts.RoleArn
+
+			By("Autonode is only suppored for hosted-cp cluster")
+			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			if !hostedCluster {
+				output, err := clusterService.EditCluster(clusterID,
+					"--autonode-iam-role-arn", roleArn,
+					"--autonode", "enabled")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring("AutoNode is only supported for Hosted Control Plane clusters"))
+				return
+			}
+
+			By("Invalide value of --autonode flag")
+			output, err := clusterService.EditCluster(clusterID,
+				"--autonode-iam-role-arn", roleArn,
+				"--autonode", "invalid")
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("Invalid value for --autonode. Currently only 'enabled' is supported"))
+
+			By("Invalide autonde-iam-role-arn")
+			output, err = clusterService.EditCluster(clusterID,
+				"--autonode-iam-role-arn", "invalide-arn",
+				"--autonode", "enabled")
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("Invalid IAM role ARN format"))
+
+			By("Edit autonde-iam-role-arn without --autonode flag ")
+			output, err = clusterService.EditCluster(clusterID,
+				"--autonode-iam-role-arn", roleArn)
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				ContainSubstring("Enable AutoNode first with --autonode=enabled"))
+		})
 })
 var _ = Describe("Additional security groups validation",
 	labels.Feature.Cluster,

@@ -1549,6 +1549,48 @@ var _ = Describe("Edit machinepool",
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).Should(ContainSubstring("require that the number of MachinePool replicas be a multiple of 3"))
 			})
+		It("will validate replicas on single-az classic cluster - [id:38840]",
+			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
+			func() {
+				if clusterConfig.MultiAZ {
+					Skip("It is only for single-az clusters")
+				}
+
+				By("Create an additional machinepool for following testing")
+				mpName := "np-38840"
+				_, err := machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--replicas", "0",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
+
+				By("Edit with negative replicas number")
+				_, err = machinePoolService.EditMachinePool(clusterID, mpName, "--replicas", "-9")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("must be a non-negative number"))
+
+				By("Edit with replicas and enable-autoscaling at the same time")
+				_, err = machinePoolService.EditMachinePool(
+					clusterID, mpName, "--replicas", "3",
+					"--enable-autoscaling")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("Autoscaling enabled on machine pool"))
+				Expect(err.Error()).Should(ContainSubstring("can't set replicas"))
+
+				By("Edit with not-existed cluster id")
+				_, err = machinePoolService.EditMachinePool(
+					"not-existed-cluster", mpName, "--replicas", "4",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("There is no cluster with identifier"))
+
+				By("Edit with not-existed machinepool id")
+				_, err = machinePoolService.EditMachinePool(
+					clusterID, "not-existed-mp-id", "--replicas", "3")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("failed to get machine pool"))
+
+			})
 	})
 
 var _ = Describe("Upgrade machinepool",
