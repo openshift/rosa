@@ -27,6 +27,7 @@ Autoscaling:                           No
 Desired replicas:                      0
 Current replicas:                      
 Instance type:                         m5.xlarge
+Image type:                            
 Labels:                                
 Tags:                                  
 Taints:                                
@@ -54,6 +55,7 @@ Autoscaling:                           No
 Desired replicas:                      0
 Current replicas:                      
 Instance type:                         m5.xlarge
+Image type:                            
 Labels:                                
 Tags:                                  
 Taints:                                
@@ -83,6 +85,7 @@ Autoscaling:                           No
 Desired replicas:                      0
 Current replicas:                      
 Instance type:                         m5.xlarge
+Image type:                            
 Labels:                                
 Tags:                                  
 Taints:                                
@@ -111,6 +114,7 @@ Autoscaling:                           No
 Desired replicas:                      0
 Current replicas:                      
 Instance type:                         m5.xlarge
+Image type:                            
 Labels:                                
 Tags:                                  foo=bar
 Taints:                                

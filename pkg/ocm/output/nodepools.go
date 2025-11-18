@@ -61,6 +61,10 @@ func PrintNodePoolInstanceType(aws *cmv1.AWSNodePool) string {
 	return aws.InstanceType()
 }
 
+func PrintNodePoolImageType(imgType cmv1.ImageType) string {
+	return string(imgType)
+}
+
 func PrintNodePoolAdditionalSecurityGroups(aws *cmv1.AWSNodePool) string {
 	if aws == nil {
 		return ""
