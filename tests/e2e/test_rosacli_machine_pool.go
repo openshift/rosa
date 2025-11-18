@@ -807,7 +807,7 @@ var _ = Describe("Create machinepool",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
-						ContainSubstring("Expected key=value:scheduleType format for taints. Got 'aaabbb:Invalid'"))
+						ContainSubstring("expected key=value:scheduleType format for taints. Got 'aaabbb:Invalid'"))
 
 					By("Create with invalid taints effect will fail")
 					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
@@ -817,7 +817,7 @@ var _ = Describe("Create machinepool",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
-						ContainSubstring("Invalid taint effect 'Invalid'," +
+						ContainSubstring("invalid taint effect 'Invalid'," +
 							" only the following effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'"))
 
 				})
@@ -1450,7 +1450,7 @@ var _ = Describe("Edit machinepool",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Invalid label key 'p*': name part must consist of alphanumeric characters"))
+					ContainSubstring("invalid label key 'p*': name part must consist of alphanumeric characters"))
 
 				By("Edit machinepool label with empty key =test will fail")
 				output, err = machinePoolService.EditMachinePool(clusterID,
@@ -1459,7 +1459,7 @@ var _ = Describe("Edit machinepool",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Invalid label key '': name part must be non-empty"))
+					ContainSubstring("invalid label key '': name part must be non-empty"))
 
 				By("Edit machinepool with duplicate key will fail")
 				output, err = machinePoolService.EditMachinePool(clusterID,
@@ -1477,7 +1477,7 @@ var _ = Describe("Edit machinepool",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Invalid taint effect 'InvalidEffect'," +
+					ContainSubstring("invalid taint effect 'InvalidEffect'," +
 						" only the following effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'"))
 
 				By("Remove other machinepools to make sure there is only workers left")
