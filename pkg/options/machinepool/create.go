@@ -286,7 +286,7 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 		"capacity-reservation-preference",
 		"",
 		"A configurable preference for a capacity-reservation. Options are: 'none' | "+
-			"'capacity-reservsations-only' | 'open'")
+			"'capacity-reservations-only' | 'open'")
 	output.AddFlag(cmd)
 	interactive.AddFlag(flags)
 	return cmd, options
