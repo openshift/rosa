@@ -803,7 +803,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	capacityReservationPreference := args.CapacityReservationPreference
 
 	if interactive.Enabled() && !autoscaling && !fedramp.Enabled() {
-		capacityReservationId, err = interactive.GetOption(interactive.Input{
+		capacityReservationPreference, err = interactive.GetOption(interactive.Input{
 			Question: "Capacity Reservation Preference",
 			Help:     cmd.Flags().Lookup("capacity-reservation-preference").Usage,
 			Options: []string{mpHelpers.CapacityReservationPreferenceNone,
