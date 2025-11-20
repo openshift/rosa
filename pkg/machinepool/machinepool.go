@@ -832,9 +832,6 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
-	capacityReservation := cmv1.NewAWSCapacityReservation().Id(capacityReservationId).Preference(
-		cmv1.CapacityReservationPreference(capacityReservationPreference))
-
 	kubeletConfigs := args.KubeletConfigs
 
 	if (kubeletConfigs != "" || interactive.Enabled()) && !fedramp.Enabled() {
@@ -959,8 +956,21 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		rootDiskSize,
 	)
 
-	if capacityReservationId != "" && !fedramp.Enabled() && !autoscaling {
-		awsNodepoolBuilder = awsNodepoolBuilder.CapacityReservation(capacityReservation)
+	if !fedramp.Enabled() && !autoscaling {
+		capacityReservation := cmv1.NewAWSCapacityReservation()
+		changed := false
+		if capacityReservationId != "" {
+			capacityReservation = capacityReservation.Id(capacityReservationId)
+			changed = true
+		}
+		if capacityReservationPreference != "" {
+			capacityReservation = capacityReservation.Preference(
+				cmv1.CapacityReservationPreference(capacityReservationPreference))
+			changed = true
+		}
+		if changed {
+			awsNodepoolBuilder = awsNodepoolBuilder.CapacityReservation(capacityReservation)
+		}
 	}
 
 	npBuilder.AWSNodePool(awsNodepoolBuilder)
