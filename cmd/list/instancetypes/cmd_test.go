@@ -246,6 +246,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 	It("Succeeds with --region", func() {
 
 		cmd.Flags().Set("region", "us-east-1")
+		cmd.Flags().Set("win-li", "false")
 
 		mockAwsClient.EXPECT().FindRoleARNs(aws.InstallerAccountRole, "").Return([]string{"fake_installer_arn"}, nil)
 
@@ -290,6 +291,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 	It("Handles unknown --region", func() {
 
 		cmd.Flags().Set("region", "us-east-xyz")
+		cmd.Flags().Set("win-li", "false")
 
 		mockAwsClient.EXPECT().FindRoleARNs(aws.InstallerAccountRole, "").Return([]string{"fake_installer_arn"}, nil)
 
@@ -304,7 +306,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("Region 'us-east-xyz' not found."))
+			ContainSubstring("region 'us-east-xyz' not found"))
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal("INFO: Using fake_installer_arn for the Installer role\n"))
 	})
@@ -373,7 +375,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("There are no machine types supported for your account. Contact Red Hat support."))
+			ContainSubstring("there are no machine types supported for your account. Contact Red Hat support"))
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal(""))
 	})

@@ -34,6 +34,10 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+const (
+	winLiFlagName = "win-li"
+)
+
 var Cmd = makeCmd()
 
 func makeCmd() *cobra.Command {
@@ -60,6 +64,7 @@ var args struct {
 	installerRoleArn     string
 	externalId           string
 	hostedClusterEnabled bool
+	winLi                bool
 }
 
 const (
@@ -92,6 +97,13 @@ func initFlags(cmd *cobra.Command) {
 		"STS Role ARN with get secrets permission.",
 	)
 
+	flags.BoolVar(
+		&args.winLi,
+		winLiFlagName,
+		false,
+		"When used, filters for instance types which are supported for WinLI (Windows License)",
+	)
+
 	arguments.AddRegionFlag(flags)
 	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
@@ -102,7 +114,7 @@ func run(cmd *cobra.Command, _ []string) {
 	defer r.Cleanup()
 	err := runWithRuntime(r, cmd)
 	if err != nil {
-		r.Reporter.Errorf(err.Error())
+		_ = r.Reporter.Errorf("%v", err.Error())
 		os.Exit(1)
 	}
 }
@@ -119,7 +131,27 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	checkInteractiveModeNeeded(cmd)
 	r.Reporter.Debugf("Fetching instance types")
 	var machineTypes ocm.MachineTypeList
+
+	fetchWinLiEnabled, err := cmd.Flags().GetBool(winLiFlagName)
+	if err != nil {
+		_ = r.Reporter.Errorf("'%s' is a bool flag, please do not provide a value, or, specify a boolean value"+
+			" such as '--%s=true': '%s'", winLiFlagName, winLiFlagName, err.Error())
+		os.Exit(1)
+	}
+
 	if cmd.Flags().Changed("region") {
+		if interactive.Enabled() && !cmd.Flags().Changed(winLiFlagName) {
+			fetchWinLiEnabled, err = interactive.GetBool(interactive.Input{
+				Question: "Get instance types which are WinLI (Windows License) enabled",
+				Help:     cmd.Flags().Lookup(winLiFlagName).Usage,
+				Required: false,
+			})
+			if err != nil {
+				_ = r.Reporter.Errorf("Expected a valid value for WinLI enablement filter: %v", err.Error())
+				os.Exit(1)
+			}
+		}
+
 		if interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "") {
 			args.installerRoleArn = interactiveRoles.
 				GetInstallerRoleArn(
@@ -138,21 +170,38 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			return err
 		}
 		if found := helper.Contains(regionList, arguments.GetRegion()); !found {
-			return fmt.Errorf("Region '%s' not found.", arguments.GetRegion())
+			return fmt.Errorf("region '%s' not found", arguments.GetRegion())
 		}
 
 		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypesInRegion(arguments.GetRegion(),
 			availabilityZones, roleArn, r.AWSClient, args.externalId)
 		if err != nil {
-			return fmt.Errorf("Failed to fetch instance types: %v", err)
+			return fmt.Errorf("failed to fetch instance types: %v", err)
 		}
 		machineTypes = availableMachineTypes
 	} else {
 		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypes()
 		if err != nil {
-			return fmt.Errorf("Failed to fetch instance types: %v", err)
+			return fmt.Errorf("failed to fetch instance types: %v", err)
 		}
 		machineTypes = availableMachineTypes
+	}
+
+	if fetchWinLiEnabled {
+		machineTypes = machineTypes.Filter(func(machineType *ocm.MachineType) bool {
+			if machineType.MachineType == nil {
+				return false
+			}
+			features, ok := machineType.MachineType.GetFeatures()
+			if !ok {
+				return false
+			}
+			winLi, ok := features.GetWinLI()
+			if ok {
+				return winLi
+			}
+			return false
+		})
 	}
 
 	if output.HasFlag() {
@@ -169,7 +218,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	if len(machineTypes.Items) == 0 {
-		return fmt.Errorf("There are no machine types supported for your account. Contact Red Hat support.")
+		return fmt.Errorf("there are no machine types supported for your account. Contact Red Hat support")
 	}
 
 	// Create the writer that will be used to print the tabulated results:

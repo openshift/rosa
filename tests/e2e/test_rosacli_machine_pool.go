@@ -264,7 +264,7 @@ var _ = Describe("Create machinepool",
 				availableMachineTypes, _, err := ocmResourceService.ListInstanceTypes()
 
 				if err != nil {
-					log.Logger.Errorf("Failed to fetch instance types: %v", err)
+					log.Logger.Errorf("failed to fetch instance types: %v", err)
 				} else {
 					var availableMachineTypesIDs []string
 					for _, it := range availableMachineTypes.InstanceTypesList {
