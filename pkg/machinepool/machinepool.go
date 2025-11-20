@@ -309,7 +309,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",
 			Help:     cmd.Flags().Lookup("instance-type").Usage,
-			Options:  instanceTypeList.GetAvailableIDs(cluster.MultiAZ()),
+			Options:  instanceTypeList.GetAvailableIDs(cluster.MultiAZ()).IDs(),
 			Default:  instanceType,
 			Required: true,
 		})
@@ -722,10 +722,11 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		if instanceType == "" {
 			instanceType = instanceTypeList.Items[0].MachineType.ID()
 		}
+
 		instanceType, err = interactive.GetOption(interactive.Input{
 			Question: "Instance type",
 			Help:     cmd.Flags().Lookup("instance-type").Usage,
-			Options:  instanceTypeList.GetAvailableIDs(cluster.MultiAZ()),
+			Options:  instanceTypeList.GetAvailableIDs(cluster.MultiAZ()).GetWinLi(imageType).IDs(),
 			Default:  instanceType,
 			Required: true,
 		})
