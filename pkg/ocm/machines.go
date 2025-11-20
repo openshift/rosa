@@ -61,14 +61,21 @@ func (c *Client) GetMachineTypesInRegion(cloudProviderData *cmv1.CloudProviderDa
 	return machineTypes, nil
 }
 
-func (c *Client) GetMachineTypes() (machineTypes MachineTypeList, err error) {
+func (c *Client) GetMachineTypes(searchQuery string) (machineTypes MachineTypeList, err error) {
 	collection := c.ocm.ClustersMgmt().V1().MachineTypes()
 	page := 1
 	size := 100
+
+	// Build the base search query
+	search := "cloud_provider.id = 'aws'"
+	if searchQuery != "" {
+		search = fmt.Sprintf("%s and %s", search, searchQuery)
+	}
+
 	for {
 		var response *cmv1.MachineTypesListResponse
 		response, err := collection.List().
-			Search("cloud_provider.id = 'aws'").
+			Search(search).
 			Order("category asc").
 			Page(page).
 			Size(size).
@@ -149,8 +156,8 @@ func (c *Client) GetAvailableMachineTypesInRegion(region string, availabilityZon
 	return machineTypes, nil
 }
 
-func (c *Client) GetAvailableMachineTypes() (MachineTypeList, error) {
-	machineTypes, err := c.GetMachineTypes()
+func (c *Client) GetAvailableMachineTypes(searchQuery string) (MachineTypeList, error) {
+	machineTypes, err := c.GetMachineTypes(searchQuery)
 	if err != nil {
 		return MachineTypeList{}, err
 	}
@@ -265,7 +272,7 @@ func (mtl *MachineTypeList) ValidateMachineType(machineType string, multiAZ bool
 	}
 
 	if !v.HasQuota(multiAZ) {
-		err := fmt.Errorf("Insufficient quota for instance type: %s", machineType)
+		err := fmt.Errorf("insufficient quota for instance type: %s", machineType)
 		return err
 	}
 
