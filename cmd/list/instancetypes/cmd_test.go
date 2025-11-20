@@ -304,7 +304,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("Region 'us-east-xyz' not found."))
+			ContainSubstring("region 'us-east-xyz' not found."))
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal("INFO: Using fake_installer_arn for the Installer role\n"))
 	})
@@ -376,5 +376,154 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 			ContainSubstring("There are no machine types supported for your account. Contact Red Hat support."))
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal(""))
+	})
+
+	It("Succeeds with --with-feature flag", func() {
+
+		args.withFeature = []string{"win_li=true"}
+		cmd.Flags().Set("output", "yaml")
+
+		// GET /api/clusters_mgmt/v1/machine_types
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				machinesSuccess,
+			),
+		)
+
+		// GET /api/accounts_mgmt/v1/current_account
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				currentAccount,
+			),
+		)
+
+		// GET /api/accounts_mgmt/v1/organizations/123abc/quota_cost
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				orgQuota,
+			),
+		)
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(ContainSubstring("d1-gaudi-24x"))
+		Expect(stdout).To(ContainSubstring("t4-gpu-48"))
+	})
+
+	It("Succeeds with multiple --with-feature flags", func() {
+
+		args.withFeature = []string{"win_li=true", "another_feature=value"}
+		cmd.Flags().Set("output", "yaml")
+
+		// GET /api/clusters_mgmt/v1/machine_types
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				machinesSuccess,
+			),
+		)
+
+		// GET /api/accounts_mgmt/v1/current_account
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				currentAccount,
+			),
+		)
+
+		// GET /api/accounts_mgmt/v1/organizations/123abc/quota_cost
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				orgQuota,
+			),
+		)
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(ContainSubstring("d1-gaudi-24x"))
+		Expect(stdout).To(ContainSubstring("t4-gpu-48"))
+	})
+
+	It("Fails with invalid --with-feature format (missing value)", func() {
+		args.withFeature = []string{"win_li"}
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(ContainSubstring("invalid feature format 'win_li': expected format: key=value"))
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(""))
+	})
+
+	It("Fails with invalid --with-feature format (empty key)", func() {
+		args.withFeature = []string{"=true"}
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(ContainSubstring("invalid feature format '=true': both key and value must be non-empty"))
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(""))
+	})
+
+	It("Fails with invalid --with-feature format (empty value)", func() {
+		args.withFeature = []string{"win_li="}
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(ContainSubstring("invalid feature format 'win_li=': both key and value must be non-empty"))
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(""))
+	})
+})
+
+var _ = Describe("buildFeatureSearchQuery", func() {
+	It("Returns empty string for no features", func() {
+		result, err := buildFeatureSearchQuery([]string{})
+		Expect(err).To(BeNil())
+		Expect(result).To(Equal(""))
+	})
+
+	It("Builds query for single feature", func() {
+		result, err := buildFeatureSearchQuery([]string{"win_li=true"})
+		Expect(err).To(BeNil())
+		Expect(result).To(Equal("features.win_li=true"))
+	})
+
+	It("Builds query for multiple features", func() {
+		result, err := buildFeatureSearchQuery([]string{"win_li=true", "another_feature=value"})
+		Expect(err).To(BeNil())
+		Expect(result).To(Equal("features.win_li=true and features.another_feature=value"))
+	})
+
+	It("Handles whitespace in feature", func() {
+		result, err := buildFeatureSearchQuery([]string{" win_li = true "})
+		Expect(err).To(BeNil())
+		Expect(result).To(Equal("features.win_li=true"))
+	})
+
+	It("Fails for invalid format (missing equals)", func() {
+		result, err := buildFeatureSearchQuery([]string{"win_li"})
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(ContainSubstring("invalid feature format 'win_li': expected format: key=value"))
+		Expect(result).To(Equal(""))
+	})
+
+	It("Fails for empty key", func() {
+		result, err := buildFeatureSearchQuery([]string{"=true"})
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(ContainSubstring("invalid feature format '=true': both key and value must be non-empty"))
+		Expect(result).To(Equal(""))
+	})
+
+	It("Fails for empty value", func() {
+		result, err := buildFeatureSearchQuery([]string{"win_li="})
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(ContainSubstring("invalid feature format 'win_li=': both key and value must be non-empty"))
+		Expect(result).To(Equal(""))
 	})
 })
