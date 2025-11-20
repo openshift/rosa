@@ -86,6 +86,11 @@ func (m machinePool) CreateMachinePoolBasedOnClusterType(r *rosa.Runtime,
 func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster,
 	args *mpOpts.CreateMachinepoolUserOptions) error {
 
+	if cmd.Flags().Changed("capacity-reservation-id") || cmd.Flags().Changed("capacity-reservation-preference") {
+		return fmt.Errorf("setting the 'capacity-reservation-id' or 'capacity-reservation-preference' flags " +
+			"is only allowed for Hosted Control Plane clusters")
+	}
+
 	// Validate flags that are only allowed for multi-AZ clusters
 	isMultiAvailabilityZoneSet := cmd.Flags().Changed("multi-availability-zone")
 	if isMultiAvailabilityZoneSet && !cluster.MultiAZ() {
