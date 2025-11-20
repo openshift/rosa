@@ -695,3 +695,42 @@ var _ = Describe("GetAutoNodeRoleArn", func() {
 		Expect(exists).To(BeTrue())
 	})
 })
+
+var _ = Describe("GetWinLi", func() {
+	It("OK: Filters when WinLi is the image type properly", func() {
+		winLiMachineType, err := cmv1.NewMachineType().ID("test").Features(cmv1.NewMachineTypeFeatures().
+			WinLI(true)).Build()
+		nonWinLiMachineType, err := cmv1.NewMachineType().ID("test2").Features(cmv1.NewMachineTypeFeatures().
+			WinLI(false)).Build()
+		Expect(err).ToNot(HaveOccurred())
+		list := MachineTypeList{}
+		list.Items = []*MachineType{
+			{winLiMachineType, true, 1},
+			{nonWinLiMachineType, true, 1},
+		}
+
+		winLiList := list.GetWinLi("Windows")
+
+		Expect(winLiList.Items).To(HaveLen(1))
+		Expect(winLiList.Items[0].MachineType).ToNot(BeNil())
+		Expect(winLiList.Items[0].MachineType).To(Equal(winLiMachineType))
+
+		defaultList := list.GetWinLi("Default")
+
+		Expect(defaultList.Items).To(HaveLen(2))
+		Expect(defaultList.Items[0].MachineType).To(Equal(winLiMachineType))
+		Expect(defaultList.Items[1].MachineType).To(Equal(nonWinLiMachineType))
+
+		skipList := list.GetWinLi("Skip")
+
+		Expect(skipList.Items).To(HaveLen(2))
+		Expect(skipList.Items[0].MachineType).To(Equal(winLiMachineType))
+		Expect(skipList.Items[1].MachineType).To(Equal(nonWinLiMachineType))
+
+		lowercaseWinLiList := list.GetWinLi("windows")
+
+		Expect(lowercaseWinLiList.Items).To(HaveLen(1))
+		Expect(lowercaseWinLiList.Items[0].MachineType).ToNot(BeNil())
+		Expect(lowercaseWinLiList.Items[0].MachineType).To(Equal(winLiMachineType))
+	})
+})
