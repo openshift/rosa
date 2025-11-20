@@ -268,3 +268,65 @@ func FilterEmptyStrings(strings []string) []string {
 	}
 	return filteredResult
 }
+
+type URLCredentialValidation struct {
+	Field       string
+	InvalidChar rune
+	HasInvalid  bool
+}
+
+func ValidateURLCredentials(urlString string) *URLCredentialValidation {
+	if !strings.Contains(urlString, "@") || !strings.Contains(urlString, "://") {
+		return &URLCredentialValidation{HasInvalid: false}
+	}
+
+	schemeIdx := strings.Index(urlString, "://")
+	if schemeIdx == -1 {
+		return &URLCredentialValidation{HasInvalid: false}
+	}
+
+	rest := urlString[schemeIdx+3:]
+	atIdx := strings.LastIndex(rest, "@")
+	if atIdx == -1 {
+		return &URLCredentialValidation{HasInvalid: false}
+	}
+
+	userinfo := rest[:atIdx]
+
+	if strings.Count(urlString, "@") > 1 {
+		return &URLCredentialValidation{
+			Field:       "password",
+			InvalidChar: '@',
+			HasInvalid:  true,
+		}
+	}
+
+	colonIdx := strings.Index(userinfo, ":")
+	if colonIdx == -1 {
+		return checkForInvalidChars(userinfo, "username")
+	}
+
+	username := userinfo[:colonIdx]
+	if result := checkForInvalidChars(username, "username"); result.HasInvalid {
+		return result
+	}
+
+	password := userinfo[colonIdx+1:]
+	return checkForInvalidChars(password, "password")
+}
+
+func checkForInvalidChars(value, field string) *URLCredentialValidation {
+	invalidChars := "/:#?[]@!$&'()*+,;="
+
+	for _, char := range value {
+		if strings.ContainsRune(invalidChars, char) {
+			return &URLCredentialValidation{
+				Field:       field,
+				InvalidChar: char,
+				HasInvalid:  true,
+			}
+		}
+	}
+
+	return &URLCredentialValidation{HasInvalid: false}
+}
