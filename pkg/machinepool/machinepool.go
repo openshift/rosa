@@ -551,7 +551,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	}
 
 	// Image type (supports things such as WinLI // Windows VMs)
-	if interactive.Enabled() && cluster.Hypershift().Enabled() {
+	if interactive.Enabled() && cluster.Hypershift().Enabled() && !fedramp.Enabled() {
 		imageType, err = interactive.GetOption(interactive.Input{
 			Question: "Image Type",
 			Default:  cmv1.ImageTypeDefault,
@@ -563,7 +563,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
-	if imageType != "" && !mpHelpers.IsValidImageType(imageType) {
+	if imageType != "" && !mpHelpers.IsValidImageType(imageType) && !fedramp.Enabled() {
 		return fmt.Errorf("expected a valid image type for the machine pool: '%s'", imageType)
 	}
 
