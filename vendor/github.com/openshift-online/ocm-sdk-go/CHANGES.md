@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.483
+
+- Update model to 0.0.438
+  - Add LastLimitedSupportOverrideCheck, LastHibernationCheck, and
+    LastClusterImagesetSync fields to Environment type
+
 ## 0.1.482
 
 - Update model to 0.0.437
