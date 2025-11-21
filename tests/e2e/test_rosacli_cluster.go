@@ -268,11 +268,20 @@ var _ = Describe("Edit cluster",
 		It("can disable workload monitoring on/off - [id:45159]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP,
 			func() {
-				// Skip UWM tests for HCP clusters as it's deprecated
 				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				if isHostedCP {
-					Skip("User Workload Monitoring is deprecated for HCP clusters")
+					By("Attempt to edit cluster with UWM flag and expect error")
+					_, err = clusterService.EditCluster(clusterID,
+						"--disable-workload-monitoring")
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+
+					By("Check that UWM is NOT shown in cluster description")
+					output, err := clusterService.DescribeCluster(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(output.String()).ToNot(ContainSubstring("User Workload Monitoring"))
+					return
 				}
 
 				By("Load the original cluster config")
@@ -326,31 +335,6 @@ var _ = Describe("Edit cluster",
 				clusterDetail, err = clusterService.ReflectClusterDescription(output)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(clusterDetail.UserWorkloadMonitoring).To(Equal(expectedUWMValue))
-			})
-
-		It("blocks workload monitoring configuration for HCP clusters - [id:UWM-HCP-001]",
-			labels.Medium, labels.Runtime.Day2,
-			func() {
-				// Only run this test for HCP clusters
-				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				if !isHostedCP {
-					Skip("This test is only for HCP clusters to verify UWM is blocked")
-				}
-
-				By("Attempt to edit cluster with UWM flag and expect error")
-				_, err = clusterService.EditCluster(clusterID,
-					"--disable-workload-monitoring")
-				By("Command should error for HCP clusters")
-				Expect(err).To(HaveOccurred())
-				By("Check that error mentions it's not supported")
-				Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
-
-				By("Check that UWM is NOT shown in cluster description")
-				output, err2 := clusterService.DescribeCluster(clusterID)
-				Expect(err2).ToNot(HaveOccurred())
-				By("For HCP clusters, UWM should not appear at all")
-				Expect(output.String()).ToNot(ContainSubstring("User Workload Monitoring"))
 			})
 
 		It("can edit privacy and workload monitoring via rosa-cli - [id:60275]",
@@ -2524,6 +2508,18 @@ var _ = Describe("HCP cluster creation negative testing",
 			errs := clusterHandler.Destroy()
 			Expect(len(errs)).To(Equal(0))
 		})
+
+		It("creating HCP cluster with UWM should fail - [id:86119]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := helper.GenerateRandomName("cluster-86119", 2)
+				By("Create HCP cluster with --disable-workload-monitoring")
+				rosalCommand.AddFlags("--cluster-name", clusterName)
+				rosalCommand.AddFlags("--disable-workload-monitoring")
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+			})
 
 		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
 			labels.Medium, labels.Runtime.Day1Negative,
