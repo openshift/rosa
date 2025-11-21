@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/fedramp"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -62,6 +63,9 @@ func ValidateLabels(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 // Validate that the image type is a real one
 func ValidateImageType(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions, cluster *cmv1.Cluster) error {
 	if cmd.Flags().Changed("type") {
+		if fedramp.Enabled() {
+			return fmt.Errorf("the '--type' flag cannot be used for AWS Govcloud clusters")
+		}
 		if !cluster.Hypershift().Enabled() {
 			return fmt.Errorf("the '--type' flag can only be used with Hosted Control Plane clusters")
 		}
