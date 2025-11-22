@@ -10,16 +10,20 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Removes any tags with the specified keys from the specified resource. You can
-// attach tags to the following resources in Organizations.
+// Removes any tags with the specified keys from the specified resource.
+//
+// You can attach tags to the following resources in Organizations.
+//
 //   - Amazon Web Services account
+//
 //   - Organization root
+//
 //   - Organizational unit (OU)
+//
 //   - Policy (any type)
 //
-// This operation can be called only from the organization's management account or
-// by a member account that is a delegated administrator for an Amazon Web Services
-// service.
+// You can only call this operation from the management account or a member
+// account that is a delegated administrator.
 func (c *Client) UntagResource(ctx context.Context, params *UntagResourceInput, optFns ...func(*Options)) (*UntagResourceOutput, error) {
 	if params == nil {
 		params = &UntagResourceInput{}
@@ -37,12 +41,17 @@ func (c *Client) UntagResource(ctx context.Context, params *UntagResourceInput, 
 
 type UntagResourceInput struct {
 
-	// The ID of the resource to remove a tag from. You can specify any of the
-	// following taggable resources.
+	// The ID of the resource to remove a tag from.
+	//
+	// You can specify any of the following taggable resources.
+	//
 	//   - Amazon Web Services account – specify the account ID number.
+	//
 	//   - Organizational unit – specify the OU ID that begins with ou- and looks
 	//   similar to: ou-1a2b-34uvwxyz
+	//
 	//   - Root – specify the root ID that begins with r- and looks similar to: r-1a2b
+	//
 	//   - Policy – specify the policy ID that begins with p- andlooks similar to:
 	//   p-12abcdefg3
 	//
@@ -107,6 +116,9 @@ func (c *Client) addOperationUntagResourceMiddlewares(stack *middleware.Stack, o
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -117,6 +129,15 @@ func (c *Client) addOperationUntagResourceMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUntagResourceValidationMiddleware(stack); err != nil {
@@ -138,6 +159,15 @@ func (c *Client) addOperationUntagResourceMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
