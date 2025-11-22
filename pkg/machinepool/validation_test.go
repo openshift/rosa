@@ -1,9 +1,15 @@
 package machinepool
 
 import (
+	"fmt"
+
+	"go.uber.org/mock/gomock"
+
 	"github.com/AlecAivazis/survey/v2/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/pkg/aws"
 )
 
 var _ = Describe("MachinePool validation", func() {
@@ -118,6 +124,67 @@ var _ = Describe("MachinePool validation", func() {
 			Expect(validateCapacityReservationId("new-id", "aws-nodepool-1", "old-id").Error()).
 				Should(ContainSubstring("unable to change 'capacity-reservation-id' to 'new-id'. " +
 					"AWS NodePool 'aws-nodepool-1' already has a Capacity Reservation ID: 'old-id'"))
+		})
+	})
+
+	Context("Validate capacity reservation replicas", func() {
+		var (
+			mockCtrl   *gomock.Controller
+			mockClient *aws.MockClient
+		)
+
+		BeforeEach(func() {
+			mockCtrl = gomock.NewController(GinkgoT())
+			mockClient = aws.NewMockClient(mockCtrl)
+		})
+
+		AfterEach(func() {
+			mockCtrl.Finish()
+		})
+
+		It("Passes when replicas are within available capacity", func() {
+			capacityReservationID := "cr-12345678"
+			availableInstances := int32(3)
+			mockClient.EXPECT().GetCapacityReservationDetails(capacityReservationID).
+				Return(availableInstances, nil)
+
+			err := validateCapacityReservationReplicas(capacityReservationID, 2, mockClient)
+			Expect(err).To(BeNil())
+		})
+
+		It("Fails when replicas exceed available capacity", func() {
+			capacityReservationID := "cr-12345678"
+			availableInstances := int32(1)
+			mockClient.EXPECT().GetCapacityReservationDetails(capacityReservationID).
+				Return(availableInstances, nil)
+
+			err := validateCapacityReservationReplicas(capacityReservationID, 3, mockClient)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("cannot set replicas to 3: capacity reservation 'cr-12345678' only has 1 available instance(s)"))
+		})
+
+		It("Handles AWS API errors gracefully", func() {
+			capacityReservationID := "cr-12345678"
+			awsError := fmt.Errorf("AWS API error: capacity reservation not found")
+
+			mockClient.EXPECT().GetCapacityReservationDetails(capacityReservationID).
+				Return(int32(0), awsError)
+
+			err := validateCapacityReservationReplicas(capacityReservationID, 2, mockClient)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unable to validate capacity reservation"))
+			Expect(err.Error()).To(ContainSubstring(capacityReservationID))
+			Expect(err.Error()).To(ContainSubstring("AWS API error"))
+		})
+
+		It("Passes when capacity reservation has zero available instances and replicas is zero", func() {
+			capacityReservationID := "cr-12345678"
+			availableInstances := int32(0)
+			mockClient.EXPECT().GetCapacityReservationDetails(capacityReservationID).
+				Return(availableInstances, nil)
+
+			err := validateCapacityReservationReplicas(capacityReservationID, 0, mockClient)
+			Expect(err).To(BeNil())
 		})
 	})
 })

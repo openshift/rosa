@@ -119,6 +119,7 @@ type Client interface {
 	GetAvailabilityZoneType(availabilityZoneName string) (string, error)
 	GetVPCSubnets(subnetID string) ([]ec2types.Subnet, error)
 	GetVPCPrivateSubnets(subnetID string) ([]ec2types.Subnet, error)
+	GetCapacityReservationDetails(capacityReservationID string) (int32, error)
 	FilterVPCsPrivateSubnets(subnets []ec2types.Subnet) ([]ec2types.Subnet, error)
 	ValidateQuota() (bool, error)
 	TagUserRegion(username string, region string) error
@@ -1141,6 +1142,25 @@ func (c *awsClient) GetAvailabilityZoneType(availabilityZoneName string) (string
 		return "", fmt.Errorf("failed to find availability zone '%s'", availabilityZoneName)
 	}
 	return aws.ToString(availabilityZones.AvailabilityZones[0].ZoneType), nil
+}
+
+func (c *awsClient) GetCapacityReservationDetails(capacityReservationID string) (int32, error) {
+	resp, err := c.ec2Client.DescribeCapacityReservations(context.Background(),
+		&ec2.DescribeCapacityReservationsInput{
+			CapacityReservationIds: []string{capacityReservationID},
+		})
+	if err != nil {
+		return 0, fmt.Errorf("failed to describe capacity reservation '%s': %v", capacityReservationID, err)
+	}
+
+	if len(resp.CapacityReservations) == 0 {
+		return 0, fmt.Errorf("capacity reservation '%s' not found", capacityReservationID)
+	}
+
+	cr := resp.CapacityReservations[0]
+	availableInstanceCount := aws.ToInt32(cr.AvailableInstanceCount)
+
+	return availableInstanceCount, nil
 }
 
 func (c *awsClient) DetachRolePolicies(roleName string) error {
