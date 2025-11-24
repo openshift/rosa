@@ -1,0 +1,7 @@
+- name: api-key
+- name: api-url
+- name: debug
+- name: message
+- name: model
+- name: stdin
+- name: system-message-file

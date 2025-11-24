@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	cobra_mcp "github.com/paulczar/cobra-mcp/pkg"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/arguments"
@@ -49,6 +50,55 @@ func init() {
 
 	// Register the subcommands:
 	commands.RegisterCommands(root)
+
+	// Add MCP support with sub-process execution mode
+	serverConfig := &cobra_mcp.ServerConfig{
+		ToolPrefix:      "rosa",
+		ExecutionMode:   "sub-process",
+		EnableResources: true,
+	}
+	mcpCmd := cobra_mcp.NewMCPCommand(root, serverConfig)
+	mcpCmd.Args = cobra.NoArgs
+	// Set Args for mcp subcommands
+	for _, subCmd := range mcpCmd.Commands() {
+		subCmd.Args = cobra.NoArgs
+		// Convert RunE to Run for test compatibility
+		if subCmd.RunE != nil {
+			runE := subCmd.RunE
+			subCmd.RunE = nil
+			subCmd.Run = func(cmd *cobra.Command, args []string) {
+				if err := runE(cmd, args); err != nil {
+					cmd.PrintErrln(err)
+					os.Exit(1)
+				}
+			}
+		}
+	}
+	root.AddCommand(mcpCmd)
+
+	// Add Chat support
+	chatConfig := &cobra_mcp.ChatConfig{
+		Model: "gpt-5-mini",
+		Debug: false,
+	}
+	chatCmd := cobra_mcp.NewChatCommand(root, chatConfig, serverConfig)
+	chatCmd.Args = cobra.NoArgs
+	// Set Args and Run for system-message subcommand
+	if systemMsgCmd := chatCmd.Commands()[0]; systemMsgCmd != nil && systemMsgCmd.Name() == "system-message" {
+		systemMsgCmd.Args = cobra.NoArgs
+		// Convert RunE to Run for test compatibility
+		if systemMsgCmd.RunE != nil {
+			runE := systemMsgCmd.RunE
+			systemMsgCmd.RunE = nil
+			systemMsgCmd.Run = func(cmd *cobra.Command, args []string) {
+				if err := runE(cmd, args); err != nil {
+					cmd.PrintErrln(err)
+					os.Exit(1)
+				}
+			}
+		}
+	}
+	root.AddCommand(chatCmd)
 }
 
 func main() {
