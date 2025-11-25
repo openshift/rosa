@@ -198,6 +198,19 @@ type Spec struct {
 	// Master/Infra Machine Config
 	MasterMachineType string
 	InfraMachineType  string
+
+	// LogForward
+	LogForwarder *LogForwarderConfig
+}
+
+// LogForwarderConfig represent the log forward config for applications, cloudWatch, S3 and groupVersion.
+type LogForwarderConfig struct {
+	Applications           []string
+	CloudWatchLogRoleArn   string
+	CloudWatchLogGroupName string
+	GroupsLogVersion       []string
+	S3ConfigBucketName     string
+	S3ConfigBucketPrefix   string
 }
 
 // Volume represents a volume property for a disk
@@ -744,6 +757,23 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		return handleErr(response.Error(), err)
 	}
 
+	logForward, err := c.GetLogForwarder(cluster.ID())
+	if err != nil && logForward != nil {
+		logFowrwardConfig := GetLogForwardConfig(logForward)
+		if !reflect.DeepEqual(logFowrwardConfig, config.LogForwarder) {
+			logFwBuilder := BuildLogForwader(config.LogForwarder)
+			if logFwBuilder != nil {
+				logForwarder, err := logFwBuilder.Build()
+				if err != nil {
+					return err
+				}
+				if _, err := c.SetLogForwarder(cluster.ID(), logForwarder); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -1191,6 +1221,13 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	if config.AutoscalerConfig != nil {
 		clusterBuilder.Autoscaler(BuildClusterAutoscaler(config.AutoscalerConfig))
+	}
+
+	// LogForwarder
+	logFwBuilder := BuildLogForwader(config.LogForwarder)
+	if logFwBuilder != nil {
+		clusterBuilder.ControlPlane(cmv1.NewControlPlane().
+			LogForwarders(cmv1.NewLogForwarderList().Items(logFwBuilder)))
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
