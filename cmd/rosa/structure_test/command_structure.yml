@@ -6,6 +6,9 @@
 #
 name: rosa
 children:
+- name: chat
+  children:
+    - name: system-message
 - name: completion
 - name: config
   children:
@@ -139,6 +142,11 @@ children:
     - name: versions
 - name: login
 - name: logout
+- name: mcp
+  children:
+    - name: start
+    - name: stream
+    - name: tools
 - name: logs
   children:
     - name: install
