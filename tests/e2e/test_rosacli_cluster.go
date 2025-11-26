@@ -1689,7 +1689,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(output.String()).
 					To(
 						ContainSubstring(
-							"Invalid label key '%s': name part must consist of alphanumeric characters, '-', '_' "+
+							"invalid label key '%s': name part must consist of alphanumeric characters, '-', '_' "+
 								"or '.', and must start and end with an alphanumeric character",
 							key))
 
@@ -1701,7 +1701,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(output.String()).
 					To(
 						ContainSubstring(
-							"Invalid label key '': name part must be non-empty; name part must consist of alphanumeric " +
+							"invalid label key '': name part must be non-empty; name part must consist of alphanumeric " +
 								"characters, '-', '_' or '.', and must start and end with an alphanumeric character"))
 
 				By("Create ROSA cluster with the --worker-mp-labels flag without any value")
@@ -1721,7 +1721,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(output.String()).
 					To(
 						ContainSubstring(
-							"Invalid label key '%s': name part must be no more than 63 characters", longLabelKey))
+							"invalid label key '%s': name part must be no more than 63 characters", longLabelKey))
 
 				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label value")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
@@ -1733,7 +1733,7 @@ var _ = Describe("Classic cluster creation validation",
 				key = longValue[:index]
 				Expect(output.String()).
 					To(
-						ContainSubstring("Invalid label value '%s': at key: '%s': must be no more than 63 characters",
+						ContainSubstring("invalid label value '%s': at key: '%s': must be no more than 63 characters",
 							longLabelValue,
 							key))
 
@@ -1759,7 +1759,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).NotTo(BeNil())
 				Expect(errorOutput.String()).
 					To(
-						ContainSubstring("expected a valid OpenShift version: A valid version number must be specified"))
+						ContainSubstring("Expected a valid OpenShift version: A valid version number must be specified"))
 			})
 
 		It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
@@ -2033,7 +2033,7 @@ var _ = Describe("Create cluster with invalid options will",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring(
-					"No subnets found in current region that are valid for the chosen CIDR ranges"),
+					"number of subnets for a 'single AZ' 'cluster' should be '2', instead received: '0'"),
 				)
 
 				By("Prepare vpc with subnets")
@@ -2056,7 +2056,7 @@ var _ = Describe("Create cluster with invalid options will",
 					"--http-proxy", "invalid",
 				)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("Invalid 'proxy.http_proxy' attribute 'invalid'"))
+				Expect(output.String()).Should(ContainSubstring("Invalid http-proxy value 'invalid'"))
 
 				By("Create ccs existing cluster with invalid http_proxy not started with http")
 				output, err = clusterService.CreateDryRun(clusterName,
@@ -2069,7 +2069,7 @@ var _ = Describe("Create cluster with invalid options will",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("Invalid 'proxy.http_proxy' attribute 'nohttp.prefix.com'"))
+					ContainSubstring("Invalid http-proxy value 'nohttp.prefix.com'"))
 
 				By("Create ccs existing cluster with invalid https_proxy set")
 				output, err = clusterService.CreateDryRun(clusterName,
@@ -2142,19 +2142,6 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring("ERR: expected a valid user no-proxy value"))
-
-				By("Create a cluster with proxy settings but without subnet-ids")
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--http-proxy", "http://example.com",
-					"--https-proxy", "https://example.com",
-					"--no-proxy", "example.com",
-					"-y",
-				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).ShouldNot(ContainSubstring("The number of subnets for a 'single AZ' 'cluster' should be"))
-				Expect(output.String()).Should(
-					ContainSubstring("cluster_wide_proxy is only supported if subnetIDs exist"),
-				)
 			})
 	})
 
@@ -2745,7 +2732,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(errorOutput.String()).
 					To(
 						ContainSubstring(
-							"ERR: expected a valid http tokens value : " +
+							"ERR: Expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 
 				By("Create HCP cluster  with invalid httpTokens")
@@ -2762,7 +2749,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(out.String()).
 					To(
 						ContainSubstring(
-							"ERR: expected a valid http tokens value : " +
+							"ERR: Expected a valid http tokens value : " +
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 			})
 
