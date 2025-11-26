@@ -28,7 +28,6 @@ import (
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -261,7 +260,7 @@ func (c *Client) HasClusters(creator *aws.Creator) (bool, error) {
 func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 	spec, err := c.createClusterSpec(config)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create cluster spec: %v", err)
+		return nil, fmt.Errorf("unable to create cluster spec: %v", err)
 	}
 
 	cluster, err := c.ocm.ClustersMgmt().V1().Clusters().
@@ -383,7 +382,7 @@ func (c *Client) GetCluster(clusterKey string, creator *aws.Creator) (*cmv1.Clus
 	case 1:
 		return response.Items().Slice()[0], nil
 	default:
-		return nil, fmt.Errorf("There are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
+		return nil, fmt.Errorf("there are %d clusters with identifier or name '%s'", response.Total(), clusterKey)
 	}
 }
 
@@ -422,7 +421,7 @@ func (c *Client) GetClusterByID(clusterKey string, creator *aws.Creator) (*cmv1.
 	case 1:
 		return response.Items().Slice()[0], nil
 	default:
-		return nil, fmt.Errorf("There are %d clusters with identifier '%s'", response.Total(), clusterKey)
+		return nil, fmt.Errorf("there are %d clusters with identifier '%s'", response.Total(), clusterKey)
 	}
 }
 
@@ -641,12 +640,12 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 	// SDN -> OVN Migration
 	if config.NetworkType == NetworkTypes[1] {
 		// Create a request body for the specific cluster migration.
-		requestBuilder := v1.ClusterMigrationBuilder{}
-		requestBuilder.Type(v1.ClusterMigrationTypeSdnToOvn) // Type is required
+		requestBuilder := cmv1.ClusterMigrationBuilder{}
+		requestBuilder.Type(cmv1.ClusterMigrationTypeSdnToOvn) // Type is required
 
 		if len(config.OvnInternalSubnetConfiguration) > 0 {
 			// Create a builder for the specific migration type's configuration if necessary
-			sdnToOvnBuilder := &v1.SdnToOvnClusterMigrationBuilder{}
+			sdnToOvnBuilder := &cmv1.SdnToOvnClusterMigrationBuilder{}
 			if _, ok := config.OvnInternalSubnetConfiguration[SubnetConfigJoin]; ok {
 				sdnToOvnBuilder.JoinIpv4(config.OvnInternalSubnetConfiguration[SubnetConfigJoin])
 			}
@@ -827,14 +826,14 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 	// Make sure we don't have a custom properties collision
 	if _, present := clusterProperties[ocmConsts.CreatorArn]; present {
 		return nil, fmt.Errorf(
-			"Custom properties key %s collides with a property needed by rosa",
+			"custom properties key %s collides with a property needed by rosa",
 			ocmConsts.CreatorArn,
 		)
 	}
 
 	if _, present := clusterProperties[properties.CLIVersion]; present {
 		return nil, fmt.Errorf(
-			"Custom properties key %s collides with a property needed by rosa",
+			"custom properties key %s collides with a property needed by rosa",
 			properties.CLIVersion,
 		)
 	}
@@ -1095,7 +1094,7 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		awsBuilder = awsBuilder.HcpInternalCommunicationHostedZoneId(config.InternalCommunicationHostedZoneId)
 	}
 	if config.BaseDomain != "" {
-		clusterBuilder = clusterBuilder.DNS(v1.NewDNS().BaseDomain(config.BaseDomain))
+		clusterBuilder = clusterBuilder.DNS(cmv1.NewDNS().BaseDomain(config.BaseDomain))
 	}
 
 	clusterBuilder = clusterBuilder.AWS(awsBuilder)
@@ -1145,14 +1144,14 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 	if config.ClusterAdminUser != "" {
 		hashedPwd, err := idputils.GenerateHTPasswdCompatibleHash(config.ClusterAdminPassword)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get access keys for user '%s': %v",
+			return nil, fmt.Errorf("failed to get access keys for user '%s': %v",
 				aws.AdminUserName, err)
 		}
-		htpasswdUsers := []*v1.HTPasswdUserBuilder{}
-		htpasswdUsers = append(htpasswdUsers, v1.NewHTPasswdUser().
+		htpasswdUsers := []*cmv1.HTPasswdUserBuilder{}
+		htpasswdUsers = append(htpasswdUsers, cmv1.NewHTPasswdUser().
 			Username(config.ClusterAdminUser).HashedPassword(hashedPwd))
-		htpassUserList := v1.NewHTPasswdUserList().Items(htpasswdUsers...)
-		htPasswdIDP := v1.NewHTPasswdIdentityProvider().Users(htpassUserList)
+		htpassUserList := cmv1.NewHTPasswdUserList().Items(htpasswdUsers...)
+		htPasswdIDP := cmv1.NewHTPasswdIdentityProvider().Users(htpassUserList)
 		clusterBuilder = clusterBuilder.Htpasswd(htPasswdIDP)
 	}
 
@@ -1165,11 +1164,11 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		defaultIngress.ExcludedNamespaces(config.DefaultIngress.ExcludedNamespaces...)
 	}
 	if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.WildcardPolicy) {
-		defaultIngress.RouteWildcardPolicy(v1.WildcardPolicy(config.DefaultIngress.WildcardPolicy))
+		defaultIngress.RouteWildcardPolicy(cmv1.WildcardPolicy(config.DefaultIngress.WildcardPolicy))
 	}
 	if !helper.Contains([]string{"", consts.SkipSelectionOption}, config.DefaultIngress.NamespaceOwnershipPolicy) {
 		defaultIngress.RouteNamespaceOwnershipPolicy(
-			v1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
+			cmv1.NamespaceOwnershipPolicy(config.DefaultIngress.NamespaceOwnershipPolicy))
 	}
 
 	// Decide ingress listening method if HCP and not fedramp enabled
@@ -1196,7 +1195,7 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	clusterSpec, err := clusterBuilder.Build()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create description of cluster: %v", err)
+		return nil, fmt.Errorf("failed to create description of cluster: %v", err)
 	}
 
 	return clusterSpec, nil
@@ -1208,11 +1207,11 @@ func (c *Client) HibernateCluster(clusterID string) error {
 		return err
 	}
 	if !enabled {
-		return fmt.Errorf("The '%s' capability is not set for current org", HibernateCapability)
+		return fmt.Errorf("the '%s' capability is not set for current org", HibernateCapability)
 	}
 	_, err = c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).Hibernate().Send()
 	if err != nil {
-		return fmt.Errorf("Failed to hibernate the cluster: %v", err)
+		return fmt.Errorf("failed to hibernate the cluster: %v", err)
 	}
 
 	return nil
@@ -1224,11 +1223,11 @@ func (c *Client) ResumeCluster(clusterID string) error {
 		return err
 	}
 	if !enabled {
-		return fmt.Errorf("The '%s' capability is not set for current org", HibernateCapability)
+		return fmt.Errorf("the '%s' capability is not set for current org", HibernateCapability)
 	}
 	_, err = c.ocm.ClustersMgmt().V1().Clusters().Cluster(clusterID).Resume().Send()
 	if err != nil {
-		return fmt.Errorf("Failed to resume the cluster: %v", err)
+		return fmt.Errorf("failed to resume the cluster: %v", err)
 	}
 
 	return nil
@@ -1255,7 +1254,7 @@ func (c *Client) HasLegacyIngressSupport(cluster *cmv1.Cluster) (bool, error) {
 	labelList, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(cluster.ID()).ExternalConfiguration().Labels().List().Send()
 	if err != nil {
-		return true, fmt.Errorf("Failed to retrieve external configuration label list: %v", err)
+		return true, fmt.Errorf("failed to retrieve external configuration label list: %v", err)
 	}
 
 	for _, label := range labelList.Items().Slice() {
