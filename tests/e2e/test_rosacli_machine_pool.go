@@ -1516,7 +1516,7 @@ var _ = Describe("Edit machinepool",
 				By("Edit with negative replicas number")
 				_, err = machinePoolService.EditMachinePool(clusterID, mpName, "--replicas", "-9")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("Replicas must be a non-negative number"))
+				Expect(err.Error()).Should(ContainSubstring("replicas must be a non-negative number"))
 
 				By("Edit with replicas and enable-autoscaling at the same time")
 				_, err = machinePoolService.EditMachinePool(
