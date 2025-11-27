@@ -12,6 +12,9 @@ github.com/AlecAivazis/survey/v2/terminal
 # github.com/Masterminds/semver v1.5.0
 ## explicit
 github.com/Masterminds/semver
+# github.com/Masterminds/semver/v3 v3.4.0
+## explicit; go 1.21
+github.com/Masterminds/semver/v3
 # github.com/PuerkitoBio/goquery v1.8.1
 ## explicit; go 1.13
 github.com/PuerkitoBio/goquery
@@ -255,14 +258,14 @@ github.com/fatih/color
 github.com/go-jose/go-jose/v4
 github.com/go-jose/go-jose/v4/cipher
 github.com/go-jose/go-jose/v4/json
-# github.com/go-logr/logr v1.4.1
+# github.com/go-logr/logr v1.4.3
 ## explicit; go 1.18
 github.com/go-logr/logr
 github.com/go-logr/logr/funcr
 github.com/go-logr/logr/slogr
-# github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572
-## explicit; go 1.13
-github.com/go-task/slim-sprig
+# github.com/go-task/slim-sprig/v3 v3.0.0
+## explicit; go 1.20
+github.com/go-task/slim-sprig/v3
 # github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2
 ## explicit; go 1.12
 github.com/godbus/dbus
@@ -278,9 +281,6 @@ github.com/golang-jwt/jwt/v4
 # github.com/golang/glog v1.2.5 => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
 ## explicit
 github.com/golang/glog
-# github.com/golang/protobuf v1.5.4
-## explicit; go 1.17
-github.com/golang/protobuf/proto
 # github.com/google/go-cmp v0.7.0
 ## explicit; go 1.21
 github.com/google/go-cmp/cmp
@@ -289,8 +289,8 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1
-## explicit; go 1.14
+# github.com/google/pprof v0.0.0-20250403155104-27863c87afa6
+## explicit; go 1.23
 github.com/google/pprof/profile
 # github.com/google/uuid v1.6.0
 ## explicit
@@ -378,8 +378,8 @@ github.com/munnerz/goautoneg
 # github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
 ## explicit
 github.com/nathan-fiscaletti/consolesize-go
-# github.com/onsi/ginkgo/v2 v2.17.1
-## explicit; go 1.20
+# github.com/onsi/ginkgo/v2 v2.25.1
+## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
 github.com/onsi/ginkgo/v2/dsl/core
@@ -403,14 +403,15 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.30.0
-## explicit; go 1.18
+# github.com/onsi/gomega v1.38.2
+## explicit; go 1.23.0
 github.com/onsi/gomega
 github.com/onsi/gomega/format
 github.com/onsi/gomega/ghttp
 github.com/onsi/gomega/internal
 github.com/onsi/gomega/internal/gutil
 github.com/onsi/gomega/matchers
+github.com/onsi/gomega/matchers/internal/miter
 github.com/onsi/gomega/matchers/support/goraph/bipartitegraph
 github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
@@ -559,12 +560,21 @@ github.com/zgalor/weberr
 # gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a
 ## explicit
 gitlab.com/c0b/go-ordered-json
+# go.uber.org/automaxprocs v1.6.0
+## explicit; go 1.20
+go.uber.org/automaxprocs
+go.uber.org/automaxprocs/internal/cgroups
+go.uber.org/automaxprocs/internal/runtime
+go.uber.org/automaxprocs/maxprocs
 # go.uber.org/mock v0.5.2
 ## explicit; go 1.23
 go.uber.org/mock/gomock
 # go.yaml.in/yaml/v2 v2.4.3
 ## explicit; go 1.15
 go.yaml.in/yaml/v2
+# go.yaml.in/yaml/v3 v3.0.4
+## explicit; go 1.16
+go.yaml.in/yaml/v3
 # golang.org/x/crypto v0.45.0
 ## explicit; go 1.24.0
 golang.org/x/crypto/bcrypt
@@ -578,7 +588,6 @@ golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 # golang.org/x/net v0.47.0
 ## explicit; go 1.24.0
-golang.org/x/net/context
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
@@ -641,7 +650,6 @@ google.golang.org/protobuf/internal/descfmt
 google.golang.org/protobuf/internal/descopts
 google.golang.org/protobuf/internal/detrand
 google.golang.org/protobuf/internal/editiondefaults
-google.golang.org/protobuf/internal/editionssupport
 google.golang.org/protobuf/internal/encoding/defval
 google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
@@ -659,13 +667,11 @@ google.golang.org/protobuf/internal/set
 google.golang.org/protobuf/internal/strs
 google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
-google.golang.org/protobuf/reflect/protodesc
+google.golang.org/protobuf/protoadapt
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
-google.golang.org/protobuf/types/descriptorpb
-google.golang.org/protobuf/types/gofeaturespb
 google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
