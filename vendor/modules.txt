@@ -234,7 +234,7 @@ github.com/dchest/validator
 # github.com/dustin/go-humanize v1.0.0
 ## explicit
 github.com/dustin/go-humanize
-# github.com/dvsekhvalnov/jose2go v1.7.0
+# github.com/dvsekhvalnov/jose2go v1.8.0
 ## explicit; go 1.15
 github.com/dvsekhvalnov/jose2go
 github.com/dvsekhvalnov/jose2go/aes
