@@ -97,7 +97,8 @@ fmt:
 .PHONY: lint
 lint:
 	golangci-lint --version
-	golangci-lint run
+	golangci-lint custom && \
+	$(LOCAL_BIN_PATH)/ocm-lint run
 
 # set "normal" alias matching kube and ocp
 .PHONY: update
