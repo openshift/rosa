@@ -12,8 +12,7 @@ import (
 )
 
 // Describes your managed prefix lists and any Amazon Web Services-managed prefix
-// lists. To view the entries for your prefix list, use GetManagedPrefixListEntries
-// .
+// lists.
 func (c *Client) DescribeManagedPrefixLists(ctx context.Context, params *DescribeManagedPrefixListsInput, optFns ...func(*Options)) (*DescribeManagedPrefixListsOutput, error) {
 	if params == nil {
 		params = &DescribeManagedPrefixListsInput{}
@@ -38,8 +37,11 @@ type DescribeManagedPrefixListsInput struct {
 	DryRun *bool
 
 	// One or more filters.
+	//
 	//   - owner-id - The ID of the prefix list owner.
+	//
 	//   - prefix-list-id - The ID of the prefix list.
+	//
 	//   - prefix-list-name - The name of the prefix list.
 	Filters []types.Filter
 
@@ -114,6 +116,9 @@ func (c *Client) addOperationDescribeManagedPrefixListsMiddlewares(stack *middle
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -124,6 +129,15 @@ func (c *Client) addOperationDescribeManagedPrefixListsMiddlewares(stack *middle
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeManagedPrefixLists(options.Region), middleware.Before); err != nil {
@@ -144,16 +158,17 @@ func (c *Client) addOperationDescribeManagedPrefixListsMiddlewares(stack *middle
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeManagedPrefixListsAPIClient is a client that implements the
-// DescribeManagedPrefixLists operation.
-type DescribeManagedPrefixListsAPIClient interface {
-	DescribeManagedPrefixLists(context.Context, *DescribeManagedPrefixListsInput, ...func(*Options)) (*DescribeManagedPrefixListsOutput, error)
-}
-
-var _ DescribeManagedPrefixListsAPIClient = (*Client)(nil)
 
 // DescribeManagedPrefixListsPaginatorOptions is the paginator options for
 // DescribeManagedPrefixLists
@@ -222,6 +237,9 @@ func (p *DescribeManagedPrefixListsPaginator) NextPage(ctx context.Context, optF
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeManagedPrefixLists(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -240,6 +258,14 @@ func (p *DescribeManagedPrefixListsPaginator) NextPage(ctx context.Context, optF
 
 	return result, nil
 }
+
+// DescribeManagedPrefixListsAPIClient is a client that implements the
+// DescribeManagedPrefixLists operation.
+type DescribeManagedPrefixListsAPIClient interface {
+	DescribeManagedPrefixLists(context.Context, *DescribeManagedPrefixListsInput, ...func(*Options)) (*DescribeManagedPrefixListsOutput, error)
+}
+
+var _ DescribeManagedPrefixListsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeManagedPrefixLists(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
