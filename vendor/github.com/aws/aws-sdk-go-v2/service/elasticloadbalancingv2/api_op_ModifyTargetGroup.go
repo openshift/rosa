@@ -35,7 +35,9 @@ type ModifyTargetGroupInput struct {
 	// This member is required.
 	TargetGroupArn *string
 
-	// Indicates whether health checks are enabled.
+	// Indicates whether health checks are enabled. If the target type is lambda ,
+	// health checks are disabled by default but can be enabled. If the target type is
+	// instance , ip , or alb , health checks are always enabled and can't be disabled.
 	HealthCheckEnabled *bool
 
 	// The approximate amount of time, in seconds, between health checks of an
@@ -59,8 +61,8 @@ type ModifyTargetGroupInput struct {
 	// and Gateway Load Balancers, the default is TCP. The TCP protocol is not
 	// supported for health checks if the protocol of the target group is HTTP or
 	// HTTPS. It is supported for health checks only if the protocol of the target
-	// group is TCP, TLS, UDP, or TCP_UDP. The GENEVE, TLS, UDP, and TCP_UDP protocols
-	// are not supported for health checks.
+	// group is TCP, TLS, UDP, or TCP_UDP. The GENEVE, TLS, UDP, TCP_UDP, QUIC, and
+	// TCP_QUIC protocols are not supported for health checks.
 	HealthCheckProtocol types.ProtocolEnum
 
 	// [HTTP/HTTPS health checks] The amount of time, in seconds, during which no
@@ -139,6 +141,9 @@ func (c *Client) addOperationModifyTargetGroupMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -155,6 +160,9 @@ func (c *Client) addOperationModifyTargetGroupMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyTargetGroupValidationMiddleware(stack); err != nil {
@@ -176,6 +184,15 @@ func (c *Client) addOperationModifyTargetGroupMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

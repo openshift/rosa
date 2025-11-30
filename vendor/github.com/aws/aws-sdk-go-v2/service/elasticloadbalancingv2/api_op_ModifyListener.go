@@ -59,7 +59,7 @@ type ModifyListenerInput struct {
 	//
 	// For more information, see [ALPN policies] in the Network Load Balancers Guide.
 	//
-	// [ALPN policies]: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/create-tls-listener.html#alpn-policies
+	// [ALPN policies]: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-listeners.html#alpn-policies
 	AlpnPolicy []string
 
 	// [HTTPS and TLS listeners] The default certificate for the listener. You must
@@ -70,18 +70,18 @@ type ModifyListenerInput struct {
 	// The actions for the default rule.
 	DefaultActions []types.Action
 
-	// The mutual authentication configuration information.
+	// [HTTPS listeners] The mutual authentication configuration information.
 	MutualAuthentication *types.MutualAuthenticationAttributes
 
-	// The port for connections from clients to the load balancer. You cannot specify
-	// a port for a Gateway Load Balancer.
+	// The port for connections from clients to the load balancer. You can't specify a
+	// port for a Gateway Load Balancer.
 	Port *int32
 
 	// The protocol for connections from clients to the load balancer. Application
 	// Load Balancers support the HTTP and HTTPS protocols. Network Load Balancers
-	// support the TCP, TLS, UDP, and TCP_UDP protocols. You can’t change the protocol
-	// to UDP or TCP_UDP if dual-stack mode is enabled. You cannot specify a protocol
-	// for a Gateway Load Balancer.
+	// support the TCP, TLS, UDP, TCP_UDP, QUIC, and TCP_QUIC protocols. You can’t
+	// change the protocol to UDP, TCP_UDP, QUIC, or TCP_QUIC if dual-stack mode is
+	// enabled. You can't specify a protocol for a Gateway Load Balancer.
 	Protocol types.ProtocolEnum
 
 	// [HTTPS and TLS listeners] The security policy that defines which protocols and
@@ -90,7 +90,7 @@ type ModifyListenerInput struct {
 	// For more information, see [Security policies] in the Application Load Balancers Guide or [Security policies] in the
 	// Network Load Balancers Guide.
 	//
-	// [Security policies]: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/create-tls-listener.html#describe-ssl-policies
+	// [Security policies]: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/describe-ssl-policies.html
 	SslPolicy *string
 
 	noSmithyDocumentSerde
@@ -150,6 +150,9 @@ func (c *Client) addOperationModifyListenerMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -166,6 +169,9 @@ func (c *Client) addOperationModifyListenerMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyListenerValidationMiddleware(stack); err != nil {
@@ -187,6 +193,15 @@ func (c *Client) addOperationModifyListenerMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

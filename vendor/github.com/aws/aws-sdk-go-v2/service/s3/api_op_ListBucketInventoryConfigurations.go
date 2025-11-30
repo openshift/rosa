@@ -14,26 +14,44 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This operation is not supported by directory buckets. Returns a list of
-// inventory configurations for the bucket. You can have up to 1,000 analytics
-// configurations per bucket. This action supports list pagination and does not
-// return more than 100 configurations at a time. Always check the IsTruncated
-// element in the response. If there are no more configurations to list,
-// IsTruncated is set to false. If there are more configurations to list,
-// IsTruncated is set to true, and there is a value in NextContinuationToken . You
-// use the NextContinuationToken value to continue the pagination of the list by
-// passing the value in continuation-token in the request to GET the next page. To
-// use this operation, you must have permissions to perform the
+// This operation is not supported for directory buckets.
+//
+// Returns a list of S3 Inventory configurations for the bucket. You can have up
+// to 1,000 inventory configurations per bucket.
+//
+// This action supports list pagination and does not return more than 100
+// configurations at a time. Always check the IsTruncated element in the response.
+// If there are no more configurations to list, IsTruncated is set to false. If
+// there are more configurations to list, IsTruncated is set to true, and there is
+// a value in NextContinuationToken . You use the NextContinuationToken value to
+// continue the pagination of the list by passing the value in continuation-token
+// in the request to GET the next page.
+//
+// To use this operation, you must have permissions to perform the
 // s3:GetInventoryConfiguration action. The bucket owner has this permission by
 // default. The bucket owner can grant this permission to others. For more
-// information about permissions, see Permissions Related to Bucket Subresource
-// Operations (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-actions.html#using-with-s3-actions-related-to-bucket-subresources)
-// and Managing Access Permissions to Your Amazon S3 Resources (https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-access-control.html)
-// . For information about the Amazon S3 inventory feature, see Amazon S3 Inventory (https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-inventory.html)
+// information about permissions, see [Permissions Related to Bucket Subresource Operations]and [Managing Access Permissions to Your Amazon S3 Resources].
+//
+// For information about the Amazon S3 inventory feature, see [Amazon S3 Inventory]
+//
 // The following operations are related to ListBucketInventoryConfigurations :
-//   - GetBucketInventoryConfiguration (https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketInventoryConfiguration.html)
-//   - DeleteBucketInventoryConfiguration (https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucketInventoryConfiguration.html)
-//   - PutBucketInventoryConfiguration (https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketInventoryConfiguration.html)
+//
+// [GetBucketInventoryConfiguration]
+//
+// [DeleteBucketInventoryConfiguration]
+//
+// [PutBucketInventoryConfiguration]
+//
+// You must URL encode any signed header values that contain spaces. For example,
+// if your header value is my file.txt , containing two spaces after my , you must
+// URL encode this value to my%20%20file.txt .
+//
+// [Amazon S3 Inventory]: https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-inventory.html
+// [Permissions Related to Bucket Subresource Operations]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-actions.html#using-with-s3-actions-related-to-bucket-subresources
+// [DeleteBucketInventoryConfiguration]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucketInventoryConfiguration.html
+// [Managing Access Permissions to Your Amazon S3 Resources]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-access-control.html
+// [PutBucketInventoryConfiguration]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketInventoryConfiguration.html
+// [GetBucketInventoryConfiguration]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketInventoryConfiguration.html
 func (c *Client) ListBucketInventoryConfigurations(ctx context.Context, params *ListBucketInventoryConfigurationsInput, optFns ...func(*Options)) (*ListBucketInventoryConfigurationsOutput, error) {
 	if params == nil {
 		params = &ListBucketInventoryConfigurationsInput{}
@@ -71,6 +89,7 @@ type ListBucketInventoryConfigurationsInput struct {
 }
 
 func (in *ListBucketInventoryConfigurationsInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.Bucket = in.Bucket
 	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
@@ -143,6 +162,9 @@ func (c *Client) addOperationListBucketInventoryConfigurationsMiddlewares(stack 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -156,6 +178,18 @@ func (c *Client) addOperationListBucketInventoryConfigurationsMiddlewares(stack 
 		return err
 	}
 	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addIsExpressUserAgent(stack); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListBucketInventoryConfigurationsValidationMiddleware(stack); err != nil {
@@ -189,6 +223,15 @@ func (c *Client) addOperationListBucketInventoryConfigurationsMiddlewares(stack 
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
