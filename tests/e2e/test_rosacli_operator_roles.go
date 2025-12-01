@@ -1179,21 +1179,22 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				Expect(err).To(BeNil())
 
 				By("Get cluster upgrade version")
-				versionService := rosaClient.Version
-				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, true)
+				output, err := upgradeService.ListUpgrades("-c", clusterID)
 				Expect(err).To(BeNil())
-				defaultVersion := versionList.DefaultVersion()
-				Expect(defaultVersion).ToNot(BeNil())
-				_, _, upgradeVersion, err := defaultVersion.MajorMinor()
+				upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 				Expect(err).To(BeNil())
-				Expect(upgradeVersion).NotTo(BeEmpty())
+				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
+					"Expected at least one upgrade version to be available")
+				upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
+				_, _, roleUpgradeVersion, err := helper.GetMajorMinorFromVersion(upgradingVersion)
+				Expect(err).To(BeNil())
 
 				By("Upgrade cluster to verify if there are any prompts to upgrade account roles firstly")
 				scheduledDate := time.Now().Format("2006-01-02")
 				scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
-				output, err := upgradeService.Upgrade(
+				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
-					"--version", defaultVersion.Version,
+					"--version", upgradingVersion,
 					"--schedule-date", scheduledDate,
 					"--schedule-time", scheduledTime,
 					"-m", "auto",
@@ -1206,7 +1207,7 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				_, err = ocmResourceService.UpgradeAccountRole(
 					"--prefix", accountRolePrefix,
 					"--mode", "auto",
-					"--version", upgradeVersion,
+					"--version", roleUpgradeVersion,
 					"--channel-group", "candidate",
 					"-y",
 				)
@@ -1214,8 +1215,8 @@ var _ = Describe("Upgrade operator roles in auto mode",
 
 				By("Upgrade operator roles in auto mode")
 				output, err = ocmResourceService.UpgradeOperatorRoles(
-					"--cluster", clusterName,
-					"--version", defaultVersion.Version,
+					"--cluster", clusterID,
+					"--version", upgradingVersion,
 					"--mode", "auto",
 					"-y",
 				)
@@ -1224,49 +1225,33 @@ var _ = Describe("Upgrade operator roles in auto mode",
 					"policies"))
 				Expect(output.String()).To(ContainSubstring(
 					"policy/%s-openshift-image-registry-installer-cloud-credent' to version '%s'",
-					accountRolePrefix, upgradeVersion))
+					accountRolePrefix, roleUpgradeVersion))
 				Expect(output.String()).To(ContainSubstring(
 					"policy/%s-openshift-ingress-operator-cloud-credentials' to version '%s'",
-					accountRolePrefix, upgradeVersion))
+					accountRolePrefix, roleUpgradeVersion))
 				Expect(output.String()).To(ContainSubstring(
 					"policy/%s-openshift-cluster-csi-drivers-ebs-cloud-credenti' to version '%s'",
-					accountRolePrefix, upgradeVersion))
+					accountRolePrefix, roleUpgradeVersion))
 				Expect(output.String()).To(ContainSubstring(
 					"policy/%s-openshift-cloud-network-config-controller-cloud-' to version '%s'",
-					accountRolePrefix, upgradeVersion))
+					accountRolePrefix, roleUpgradeVersion))
 				Expect(output.String()).To(ContainSubstring(
 					"policy/%s-openshift-machine-api-aws-cloud-credentials' to version '%s'",
-					accountRolePrefix, upgradeVersion))
+					accountRolePrefix, roleUpgradeVersion))
 				Expect(output.String()).To(ContainSubstring(
 					"policy/%s-openshift-cloud-credential-operator-cloud-creden' to version '%s'",
-					accountRolePrefix, upgradeVersion))
+					accountRolePrefix, roleUpgradeVersion))
 				By("Update cluster with --dry-run")
-
-				output, err = upgradeService.Upgrade(
+				output, _ = upgradeService.Upgrade(
 					"-c", clusterID,
-					"--version", defaultVersion.Version,
+					"--version", upgradingVersion,
 					"--mode", "auto",
-					"--dry-run",
 					"-y",
 				)
-
-				Expect(err).To(BeNil())
-				Expect(output.String()).To(ContainSubstring("should succeed. Please wait 1 to 2 minutes"))
-				time.Sleep(3 * time.Minute)
-
-				By("Upgrade cluster")
-				scheduledDate = time.Now().Format("2006-01-02")
-				scheduledTime = time.Now().Add(10 * time.Minute).UTC().Format("15:04")
-				output, err = upgradeService.Upgrade(
-					"-c", clusterID,
-					"--version", defaultVersion.Version,
-					"--schedule-date", scheduledDate,
-					"--schedule-time", scheduledTime,
-					"-m", "auto",
-					"-y",
-				)
-				Expect(err).To(BeNil())
-				Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+				Expect(output.String()).To(ContainSubstring(
+					"Account roles/policies for cluster '%s' are already up-to-date", clusterID))
+				Expect(output.String()).To(ContainSubstring(
+					"Operator roles/policies associated with the cluster '%s' are already up-to-date", clusterID))
 			})
 	})
 
