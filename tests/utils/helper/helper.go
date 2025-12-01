@@ -2,8 +2,11 @@ package helper
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"os"
+
+	"github.com/Masterminds/semver"
 
 	"github.com/openshift/rosa/tests/utils/constants"
 )
@@ -32,4 +35,15 @@ func GetConsoleUrlBasedOnEnv(ocmApi string) string {
 	default:
 		return ""
 	}
+}
+
+func GetMajorMinorFromVersion(version string) (major int64, minor int64, majorMinorVersion string, err error) {
+	var semverVersion *semver.Version
+	if semverVersion, err = semver.NewVersion(version); err != nil {
+		return
+	}
+	major = semverVersion.Major()
+	minor = semverVersion.Minor()
+	majorMinorVersion = fmt.Sprintf("%d.%d", major, minor)
+	return
 }
