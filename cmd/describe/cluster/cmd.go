@@ -551,7 +551,8 @@ func run(cmd *cobra.Command, argv []string) {
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
 		}
 		// Display AutoNode status
-		if cluster.AutoNode() != nil {
+		autoNodeStatus := getAutoNodeStatus(cluster)
+		if autoNodeStatus == EnabledOutput {
 			str = fmt.Sprintf("%s"+
 				"AutoNode:\n", str)
 			str = fmt.Sprintf("%s"+
@@ -566,6 +567,9 @@ func run(cmd *cobra.Command, argv []string) {
 				str = fmt.Sprintf("%s"+
 					"  IAM Role ARN:             %s\n", str, cluster.AWS().AutoNode().RoleArn())
 			}
+		} else {
+			str = fmt.Sprintf("%s"+
+				"AutoNode:                   %s\n", str, autoNodeStatus)
 		}
 		str = fmt.Sprintf("%s"+
 			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
@@ -1030,6 +1034,13 @@ func getEtcdStatus(cluster *cmv1.Cluster) string {
 		etcdStatus = EnabledOutput
 	}
 	return etcdStatus
+}
+
+func getAutoNodeStatus(cluster *cmv1.Cluster) string {
+	if cluster.AutoNode() != nil && cluster.AutoNode().Mode() == "enabled" {
+		return EnabledOutput
+	}
+	return DisabledOutput
 }
 
 func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.PolicyDetail,
