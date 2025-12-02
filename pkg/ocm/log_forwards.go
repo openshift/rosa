@@ -97,7 +97,11 @@ func (c *Client) GetLogForwarder(clusterID string) (*cmv1.LogForwarder, error) {
 		page++
 	}
 
-	return LogForwarderList[0], nil
+	if len(LogForwarderList) > 0 {
+		return LogForwarderList[0], nil
+	}
+
+	return nil, nil
 }
 
 func (c *Client) SetLogForwarder(clusterID string,
