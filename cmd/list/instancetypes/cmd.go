@@ -19,6 +19,7 @@ package instancetypes
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -43,7 +44,13 @@ func makeCmd() *cobra.Command {
 		Short:   "List Instance types",
 		Long:    "List Instance types that are available for use with ROSA.",
 		Example: `  # List all instance types
-	rosa list instance-types`,
+	rosa list instance-types
+
+  # List instance types that support Windows license integration
+  rosa list instance-types --with-feature=win_li=true
+
+  # List instance types with multiple features
+  rosa list instance-types --with-feature=win_li=true --with-feature=another_feature=value`,
 		Run:  run,
 		Args: cobra.NoArgs,
 	}
@@ -60,6 +67,7 @@ var args struct {
 	installerRoleArn     string
 	externalId           string
 	hostedClusterEnabled bool
+	withFeature          []string
 }
 
 const (
@@ -92,6 +100,13 @@ func initFlags(cmd *cobra.Command) {
 		"STS Role ARN with get secrets permission.",
 	)
 
+	flags.StringSliceVar(
+		&args.withFeature,
+		"with-feature",
+		nil,
+		"Filter instance types by feature (e.g., win_li=true). Can be specified multiple times.",
+	)
+
 	arguments.AddRegionFlag(flags)
 	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
@@ -107,6 +122,28 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+func buildFeatureSearchQuery(features []string) (string, error) {
+	if len(features) == 0 {
+		return "", nil
+	}
+
+	var searchTerms []string
+	for _, feature := range features {
+		parts := strings.SplitN(feature, "=", 2)
+		if len(parts) != 2 {
+			return "", fmt.Errorf("invalid feature format '%s': expected format: key=value", feature)
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if key == "" || value == "" {
+			return "", fmt.Errorf("invalid feature format '%s': both key and value must be non-empty", feature)
+		}
+		searchTerms = append(searchTerms, fmt.Sprintf("features.%s=%s", key, value))
+	}
+
+	return strings.Join(searchTerms, " and "), nil
+}
+
 func checkInteractiveModeNeeded(cmd *cobra.Command) {
 	installerRoleArnNotSet := (!cmd.Flags().Changed(InstallerRoleArnFlag) || args.installerRoleArn == "") &&
 		!confirm.Yes()
@@ -118,6 +155,13 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	checkInteractiveModeNeeded(cmd)
 	r.Reporter.Debugf("Fetching instance types")
+
+	// Build feature search query
+	searchQuery, err := buildFeatureSearchQuery(args.withFeature)
+	if err != nil {
+		return err
+	}
+
 	var machineTypes ocm.MachineTypeList
 	if cmd.Flags().Changed("region") {
 		if interactive.Enabled() || (confirm.Yes() && args.installerRoleArn == "") {
@@ -138,19 +182,19 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			return err
 		}
 		if found := helper.Contains(regionList, arguments.GetRegion()); !found {
-			return fmt.Errorf("Region '%s' not found.", arguments.GetRegion())
+			return fmt.Errorf("region '%s' not found.", arguments.GetRegion())
 		}
 
 		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypesInRegion(arguments.GetRegion(),
 			availabilityZones, roleArn, r.AWSClient, args.externalId)
 		if err != nil {
-			return fmt.Errorf("Failed to fetch instance types: %v", err)
+			return fmt.Errorf("failed to fetch instance types: %v", err)
 		}
 		machineTypes = availableMachineTypes
 	} else {
-		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypes()
+		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypes(searchQuery)
 		if err != nil {
-			return fmt.Errorf("Failed to fetch instance types: %v", err)
+			return fmt.Errorf("failed to fetch instance types: %v", err)
 		}
 		machineTypes = availableMachineTypes
 	}
