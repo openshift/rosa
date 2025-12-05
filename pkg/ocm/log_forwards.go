@@ -115,3 +115,11 @@ func (c *Client) SetLogForwarder(clusterID string,
 	}
 	return response.Body(), nil
 }
+
+func (c *Client) GetLogForwarderGroupVersions() ([]*cmv1.LogForwarderGroupVersions, error) {
+	response, err := c.ocm.ClustersMgmt().V1().LogForwarding().Groups().List().Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Items().Slice(), nil
+}

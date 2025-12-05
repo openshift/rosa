@@ -200,17 +200,17 @@ type Spec struct {
 	InfraMachineType  string
 
 	// LogForward
-	LogForwarder *LogForwarderConfig
+	LogForwarders []*LogForwarderConfig
 }
 
 // LogForwarderConfig represent the log forward config for applications, cloudWatch, S3 and groupVersion.
 type LogForwarderConfig struct {
-	Applications           []string
-	CloudWatchLogRoleArn   string
-	CloudWatchLogGroupName string
-	GroupsLogVersion       []string
-	S3ConfigBucketName     string
-	S3ConfigBucketPrefix   string
+	Applications           []string `yaml:"applications,omitempty"`
+	CloudWatchLogRoleArn   string   `yaml:"cloud_watch_log_role_arn,omitempty"`
+	CloudWatchLogGroupName string   `yaml:"cloud_watch_log_group_name,omitempty"`
+	GroupsLogVersion       []string `yaml:"groups_log_version,omitempty"`
+	S3ConfigBucketName     string   `yaml:"s3_config_bucket_name,omitempty"`
+	S3ConfigBucketPrefix   string   `yaml:"s3_config_bucket_prefix,omitempty"`
 }
 
 // Volume represents a volume property for a disk
@@ -757,18 +757,20 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		return handleErr(response.Error(), err)
 	}
 
-	logForward, err := c.GetLogForwarder(cluster.ID())
-	if err != nil && logForward != nil {
-		logFowrwardConfig := GetLogForwardConfig(logForward)
-		if !reflect.DeepEqual(logFowrwardConfig, config.LogForwarder) {
-			logFwBuilder := BuildLogForwader(config.LogForwarder)
-			if logFwBuilder != nil {
-				logForwarder, err := logFwBuilder.Build()
-				if err != nil {
-					return err
-				}
-				if _, err := c.SetLogForwarder(cluster.ID(), logForwarder); err != nil {
-					return err
+	for _, logForwarder := range config.LogForwarders {
+		logForward, err := c.GetLogForwarder(cluster.ID())
+		if err != nil && logForward != nil {
+			logForwardConfig := GetLogForwardConfig(logForward)
+			if !reflect.DeepEqual(logForwardConfig, logForwarder) {
+				logFwBuilder := BuildLogForwader(logForwarder)
+				if logFwBuilder != nil {
+					result, err := logFwBuilder.Build()
+					if err != nil {
+						return err
+					}
+					if _, err := c.SetLogForwarder(cluster.ID(), result); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -1224,8 +1226,9 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 	}
 
 	if config.Hypershift.Enabled {
-		logFwBuilder := BuildLogForwader(config.LogForwarder)
-		if logFwBuilder != nil {
+		// LogForwarder
+		for _, logForwarder := range config.LogForwarders {
+			logFwBuilder := BuildLogForwader(logForwarder)
 			clusterBuilder.ControlPlane(cmv1.NewControlPlane().
 				LogForwarders(cmv1.NewLogForwarderList().Items(logFwBuilder)))
 		}
