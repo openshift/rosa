@@ -1223,11 +1223,12 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		clusterBuilder.Autoscaler(BuildClusterAutoscaler(config.AutoscalerConfig))
 	}
 
-	// LogForwarder
-	logFwBuilder := BuildLogForwader(config.LogForwarder)
-	if logFwBuilder != nil {
-		clusterBuilder.ControlPlane(cmv1.NewControlPlane().
-			LogForwarders(cmv1.NewLogForwarderList().Items(logFwBuilder)))
+	if config.Hypershift.Enabled {
+		logFwBuilder := BuildLogForwader(config.LogForwarder)
+		if logFwBuilder != nil {
+			clusterBuilder.ControlPlane(cmv1.NewControlPlane().
+				LogForwarders(cmv1.NewLogForwarderList().Items(logFwBuilder)))
+		}
 	}
 
 	clusterSpec, err := clusterBuilder.Build()
