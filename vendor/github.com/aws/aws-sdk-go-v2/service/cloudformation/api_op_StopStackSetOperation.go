@@ -11,7 +11,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Stops an in-progress operation on a stack set and its associated stack
+// Stops an in-progress operation on a StackSet and its associated stack
 // instances. StackSets will cancel all the unstarted stack instance deployments
 // and wait for those are in-progress to complete.
 func (c *Client) StopStackSetOperation(ctx context.Context, params *StopStackSetOperationInput, optFns ...func(*Options)) (*StopStackSetOperationOutput, error) {
@@ -36,21 +36,28 @@ type StopStackSetOperationInput struct {
 	// This member is required.
 	OperationId *string
 
-	// The name or unique ID of the stack set that you want to stop the operation for.
+	// The name or unique ID of the StackSet that you want to stop the operation for.
 	//
 	// This member is required.
 	StackSetName *string
 
-	// [Service-managed permissions] Specifies whether you are acting as an account
-	// administrator in the organization's management account or as a delegated
-	// administrator in a member account. By default, SELF is specified. Use SELF for
-	// stack sets with self-managed permissions.
+	// Specifies whether you are acting as an account administrator in the
+	// organization's management account or as a delegated administrator in a member
+	// account. Valid only if the StackSet uses service-managed permissions.
+	//
+	// By default, SELF is specified. Use SELF for StackSets with self-managed
+	// permissions.
+	//
 	//   - If you are signed in to the management account, specify SELF .
+	//
 	//   - If you are signed in to a delegated administrator account, specify
-	//   DELEGATED_ADMIN . Your Amazon Web Services account must be registered as a
-	//   delegated administrator in the management account. For more information, see
-	//   Register a delegated administrator (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html)
-	//   in the CloudFormation User Guide.
+	//   DELEGATED_ADMIN .
+	//
+	// Your Amazon Web Services account must be registered as a delegated
+	//   administrator in the management account. For more information, see [Register a delegated administrator]in the
+	//   CloudFormation User Guide.
+	//
+	// [Register a delegated administrator]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html
 	CallAs types.CallAs
 
 	noSmithyDocumentSerde
@@ -106,6 +113,9 @@ func (c *Client) addOperationStopStackSetOperationMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -116,6 +126,15 @@ func (c *Client) addOperationStopStackSetOperationMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpStopStackSetOperationValidationMiddleware(stack); err != nil {
@@ -137,6 +156,15 @@ func (c *Client) addOperationStopStackSetOperationMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

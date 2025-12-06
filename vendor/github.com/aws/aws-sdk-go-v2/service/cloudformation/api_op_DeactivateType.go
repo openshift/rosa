@@ -11,12 +11,22 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deactivates a public extension that was previously activated in this account
-// and Region. Once deactivated, an extension can't be used in any CloudFormation
-// operation. This includes stack update operations where the stack template
-// includes the extension, even if no updates are being made to the extension. In
-// addition, deactivated extensions aren't automatically updated if a new version
-// of the extension is released.
+// Deactivates a public third-party extension, such as a resource or module, or a
+// CloudFormation Hook when you no longer use it.
+//
+// Deactivating an extension deletes the configuration details that are associated
+// with it. To temporarily disable a CloudFormation Hook instead, you can use [SetTypeConfiguration].
+//
+// Once deactivated, an extension can't be used in any CloudFormation operation.
+// This includes stack update operations where the stack template includes the
+// extension, even if no updates are being made to the extension. In addition,
+// deactivated extensions aren't automatically updated if a new version of the
+// extension is released.
+//
+// To see which extensions are currently activated, use [ListTypes].
+//
+// [SetTypeConfiguration]: https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_SetTypeConfiguration.html
+// [ListTypes]: https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ListTypes.html
 func (c *Client) DeactivateType(ctx context.Context, params *DeactivateTypeInput, optFns ...func(*Options)) (*DeactivateTypeOutput, error) {
 	if params == nil {
 		params = &DeactivateTypeInput{}
@@ -34,16 +44,19 @@ func (c *Client) DeactivateType(ctx context.Context, params *DeactivateTypeInput
 
 type DeactivateTypeInput struct {
 
-	// The Amazon Resource Name (ARN) for the extension, in this account and Region.
+	// The Amazon Resource Name (ARN) for the extension in this account and Region.
+	//
 	// Conditional: You must specify either Arn , or TypeName and Type .
 	Arn *string
 
-	// The extension type. Conditional: You must specify either Arn , or TypeName and
-	// Type .
+	// The extension type.
+	//
+	// Conditional: You must specify either Arn , or TypeName and Type .
 	Type types.ThirdPartyType
 
-	// The type name of the extension, in this account and Region. If you specified a
+	// The type name of the extension in this account and Region. If you specified a
 	// type name alias when enabling the extension, use the type name alias.
+	//
 	// Conditional: You must specify either Arn , or TypeName and Type .
 	TypeName *string
 
@@ -100,6 +113,9 @@ func (c *Client) addOperationDeactivateTypeMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -110,6 +126,15 @@ func (c *Client) addOperationDeactivateTypeMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeactivateType(options.Region), middleware.Before); err != nil {
@@ -128,6 +153,15 @@ func (c *Client) addOperationDeactivateTypeMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

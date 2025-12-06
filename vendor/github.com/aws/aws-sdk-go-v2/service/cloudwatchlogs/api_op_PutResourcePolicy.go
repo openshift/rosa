@@ -12,8 +12,23 @@ import (
 )
 
 // Creates or updates a resource policy allowing other Amazon Web Services
-// services to put log events to this account, such as Amazon Route 53. An account
-// can have up to 10 resource policies per Amazon Web Services Region.
+// services to put log events to this account, such as Amazon Route 53. This API
+// has the following restrictions:
+//
+//   - Supported actions - Policy only supports logs:PutLogEvents and
+//     logs:CreateLogStream actions
+//
+//   - Supported principals - Policy only applies when operations are invoked by
+//     Amazon Web Services service principals (not IAM users, roles, or cross-account
+//     principals
+//
+//   - Policy limits - An account can have a maximum of 10 policies without
+//     resourceARN and one per LogGroup resourceARN
+//
+// Resource policies with actions invoked by non-Amazon Web Services service
+// principals (such as IAM users, roles, or other Amazon Web Services accounts)
+// will not be enforced. For access control involving these principals, use the IAM
+// policies.
 func (c *Client) PutResourcePolicy(ctx context.Context, params *PutResourcePolicyInput, optFns ...func(*Options)) (*PutResourcePolicyOutput, error) {
 	if params == nil {
 		params = &PutResourcePolicyInput{}
@@ -31,26 +46,42 @@ func (c *Client) PutResourcePolicy(ctx context.Context, params *PutResourcePolic
 
 type PutResourcePolicyInput struct {
 
+	// The expected revision ID of the resource policy. Required when resourceArn is
+	// provided to prevent concurrent modifications. Use null when creating a resource
+	// policy for the first time.
+	ExpectedRevisionId *string
+
 	// Details of the new policy, including the identity of the principal that is
 	// enabled to put logs to this account. This is formatted as a JSON string. This
-	// parameter is required. The following example creates a resource policy enabling
-	// the Route 53 service to put DNS query logs in to the specified log group.
-	// Replace "logArn" with the ARN of your CloudWatch Logs resource, such as a log
-	// group or log stream. CloudWatch Logs also supports aws:SourceArn (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-sourcearn)
-	// and aws:SourceAccount (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-sourceaccount)
-	// condition context keys. In the example resource policy, you would replace the
-	// value of SourceArn with the resource making the call from Route 53 to
-	// CloudWatch Logs. You would also replace the value of SourceAccount with the
-	// Amazon Web Services account ID making that call. { "Version": "2012-10-17",
-	// "Statement": [ { "Sid": "Route53LogsToCloudWatchLogs", "Effect": "Allow",
-	// "Principal": { "Service": [ "route53.amazonaws.com" ] }, "Action":
-	// "logs:PutLogEvents", "Resource": "logArn", "Condition": { "ArnLike": {
-	// "aws:SourceArn": "myRoute53ResourceArn" }, "StringEquals": {
-	// "aws:SourceAccount": "myAwsAccountId" } } } ] }
+	// parameter is required.
+	//
+	// The following example creates a resource policy enabling the Route 53 service
+	// to put DNS query logs in to the specified log group. Replace "logArn" with the
+	// ARN of your CloudWatch Logs resource, such as a log group or log stream.
+	//
+	// CloudWatch Logs also supports [aws:SourceArn] and [aws:SourceAccount] condition context keys.
+	//
+	// In the example resource policy, you would replace the value of SourceArn with
+	// the resource making the call from Route 53 to CloudWatch Logs. You would also
+	// replace the value of SourceAccount with the Amazon Web Services account ID
+	// making that call.
+	//
+	//     { "Version": "2012-10-17", "Statement": [ { "Sid":
+	//     "Route53LogsToCloudWatchLogs", "Effect": "Allow", "Principal": { "Service": [
+	//     "route53.amazonaws.com" ] }, "Action": "logs:PutLogEvents", "Resource":
+	//     "logArn", "Condition": { "ArnLike": { "aws:SourceArn": "myRoute53ResourceArn" },
+	//     "StringEquals": { "aws:SourceAccount": "myAwsAccountId" } } } ] }
+	//
+	// [aws:SourceAccount]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-sourceaccount
+	// [aws:SourceArn]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-sourcearn
 	PolicyDocument *string
 
 	// Name of the new policy. This parameter is required.
 	PolicyName *string
+
+	// The ARN of the CloudWatch Logs resource to which the resource policy needs to
+	// be added or attached. Currently only supports LogGroup ARN.
+	ResourceArn *string
 
 	noSmithyDocumentSerde
 }
@@ -59,6 +90,10 @@ type PutResourcePolicyOutput struct {
 
 	// The new policy.
 	ResourcePolicy *types.ResourcePolicy
+
+	// The revision ID of the created or updated resource policy. Only returned for
+	// resource-scoped policies.
+	RevisionId *string
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -109,6 +144,9 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -119,6 +157,15 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutResourcePolicy(options.Region), middleware.Before); err != nil {
@@ -137,6 +184,15 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
