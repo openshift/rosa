@@ -11,7 +11,8 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Retrieves information about the log anomaly detector that you specify.
+// Retrieves information about the log anomaly detector that you specify. The KMS
+// key ARN detected is valid.
 func (c *Client) GetLogAnomalyDetector(ctx context.Context, params *GetLogAnomalyDetectorInput, optFns ...func(*Options)) (*GetLogAnomalyDetectorOutput, error) {
 	if params == nil {
 		params = &GetLogAnomalyDetectorInput{}
@@ -30,9 +31,9 @@ func (c *Client) GetLogAnomalyDetector(ctx context.Context, params *GetLogAnomal
 type GetLogAnomalyDetectorInput struct {
 
 	// The ARN of the anomaly detector to retrieve information about. You can find the
-	// ARNs of log anomaly detectors in your account by using the
-	// ListLogAnomalyDetectors (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_ListLogAnomalyDetectors.html)
-	// operation.
+	// ARNs of log anomaly detectors in your account by using the [ListLogAnomalyDetectors]operation.
+	//
+	// [ListLogAnomalyDetectors]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_ListLogAnomalyDetectors.html
 	//
 	// This member is required.
 	AnomalyDetectorArn *string
@@ -43,8 +44,9 @@ type GetLogAnomalyDetectorInput struct {
 type GetLogAnomalyDetectorOutput struct {
 
 	// Specifies whether the anomaly detector is currently active. To change its
-	// status, use the enabled parameter in the UpdateLogAnomalyDetector (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_UpdateLogAnomalyDetector.html)
-	// operation.
+	// status, use the enabled parameter in the [UpdateLogAnomalyDetector] operation.
+	//
+	// [UpdateLogAnomalyDetector]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_UpdateLogAnomalyDetector.html
 	AnomalyDetectorStatus types.AnomalyDetectorStatus
 
 	// The number of days used as the life cycle of anomalies. After this time,
@@ -70,7 +72,7 @@ type GetLogAnomalyDetectorOutput struct {
 	// the log event message.
 	FilterPattern *string
 
-	// The ID of the KMS key assigned to this anomaly detector, if any.
+	// The ARN of the KMS key assigned to this anomaly detector, if any.
 	KmsKeyId *string
 
 	// The date and time when this anomaly detector was most recently modified.
@@ -129,6 +131,9 @@ func (c *Client) addOperationGetLogAnomalyDetectorMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -139,6 +144,15 @@ func (c *Client) addOperationGetLogAnomalyDetectorMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetLogAnomalyDetectorValidationMiddleware(stack); err != nil {
@@ -160,6 +174,15 @@ func (c *Client) addOperationGetLogAnomalyDetectorMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

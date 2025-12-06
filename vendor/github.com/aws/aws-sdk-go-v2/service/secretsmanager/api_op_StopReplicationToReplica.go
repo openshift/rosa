@@ -11,16 +11,21 @@ import (
 )
 
 // Removes the link between the replica secret and the primary secret and promotes
-// the replica to a primary secret in the replica Region. You must call this
-// operation from the Region in which you want to promote the replica to a primary
-// secret. Secrets Manager generates a CloudTrail log entry when you call this
-// action. Do not include sensitive information in request parameters because it
-// might be logged. For more information, see Logging Secrets Manager events with
-// CloudTrail (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html)
-// . Required permissions: secretsmanager:StopReplicationToReplica . For more
-// information, see IAM policy actions for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions)
-// and Authentication and access control in Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)
-// .
+// the replica to a primary secret in the replica Region.
+//
+// You must call this operation from the Region in which you want to promote the
+// replica to a primary secret.
+//
+// Secrets Manager generates a CloudTrail log entry when you call this action. Do
+// not include sensitive information in request parameters because it might be
+// logged. For more information, see [Logging Secrets Manager events with CloudTrail].
+//
+// Required permissions: secretsmanager:StopReplicationToReplica . For more
+// information, see [IAM policy actions for Secrets Manager]and [Authentication and access control in Secrets Manager].
+//
+// [Authentication and access control in Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html
+// [Logging Secrets Manager events with CloudTrail]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html
+// [IAM policy actions for Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions
 func (c *Client) StopReplicationToReplica(ctx context.Context, params *StopReplicationToReplicaInput, optFns ...func(*Options)) (*StopReplicationToReplicaOutput, error) {
 	if params == nil {
 		params = &StopReplicationToReplicaInput{}
@@ -38,7 +43,8 @@ func (c *Client) StopReplicationToReplica(ctx context.Context, params *StopRepli
 
 type StopReplicationToReplicaInput struct {
 
-	// The ARN of the primary secret.
+	// The name of the secret or the replica ARN. The replica ARN is the same as the
+	// original primary secret ARN expect the Region is changed to the replica Region.
 	//
 	// This member is required.
 	SecretId *string
@@ -101,6 +107,9 @@ func (c *Client) addOperationStopReplicationToReplicaMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -111,6 +120,15 @@ func (c *Client) addOperationStopReplicationToReplicaMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpStopReplicationToReplicaValidationMiddleware(stack); err != nil {
@@ -132,6 +150,15 @@ func (c *Client) addOperationStopReplicationToReplicaMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

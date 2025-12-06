@@ -14,17 +14,30 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This operation is not supported by directory buckets. Returns the website
-// configuration for a bucket. To host website on Amazon S3, you can configure a
-// bucket as website by adding a website configuration. For more information about
-// hosting websites, see Hosting Websites on Amazon S3 (https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html)
-// . This GET action requires the S3:GetBucketWebsite permission. By default, only
+// This operation is not supported for directory buckets.
+//
+// Returns the website configuration for a bucket. To host website on Amazon S3,
+// you can configure a bucket as website by adding a website configuration. For
+// more information about hosting websites, see [Hosting Websites on Amazon S3].
+//
+// This GET action requires the S3:GetBucketWebsite permission. By default, only
 // the bucket owner can read the bucket website configuration. However, bucket
 // owners can allow other users to read the website configuration by writing a
-// bucket policy granting them the S3:GetBucketWebsite permission. The following
-// operations are related to GetBucketWebsite :
-//   - DeleteBucketWebsite (https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucketWebsite.html)
-//   - PutBucketWebsite (https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketWebsite.html)
+// bucket policy granting them the S3:GetBucketWebsite permission.
+//
+// The following operations are related to GetBucketWebsite :
+//
+// [DeleteBucketWebsite]
+//
+// [PutBucketWebsite]
+//
+// You must URL encode any signed header values that contain spaces. For example,
+// if your header value is my file.txt , containing two spaces after my , you must
+// URL encode this value to my%20%20file.txt .
+//
+// [PutBucketWebsite]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketWebsite.html
+// [Hosting Websites on Amazon S3]: https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html
+// [DeleteBucketWebsite]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucketWebsite.html
 func (c *Client) GetBucketWebsite(ctx context.Context, params *GetBucketWebsiteInput, optFns ...func(*Options)) (*GetBucketWebsiteOutput, error) {
 	if params == nil {
 		params = &GetBucketWebsiteInput{}
@@ -56,6 +69,7 @@ type GetBucketWebsiteInput struct {
 }
 
 func (in *GetBucketWebsiteInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.Bucket = in.Bucket
 	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
@@ -124,6 +138,9 @@ func (c *Client) addOperationGetBucketWebsiteMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -137,6 +154,18 @@ func (c *Client) addOperationGetBucketWebsiteMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addIsExpressUserAgent(stack); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetBucketWebsiteValidationMiddleware(stack); err != nil {
@@ -170,6 +199,15 @@ func (c *Client) addOperationGetBucketWebsiteMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

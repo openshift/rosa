@@ -11,10 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Retrieves Organizations-related information about the specified account. This
-// operation can be called only from the organization's management account or by a
-// member account that is a delegated administrator for an Amazon Web Services
-// service.
+// Retrieves Organizations-related information about the specified account.
+//
+// You can only call this operation from the management account or a member
+// account that is a delegated administrator.
 func (c *Client) DescribeAccount(ctx context.Context, params *DescribeAccountInput, optFns ...func(*Options)) (*DescribeAccountOutput, error) {
 	if params == nil {
 		params = &DescribeAccountInput{}
@@ -33,9 +33,11 @@ func (c *Client) DescribeAccount(ctx context.Context, params *DescribeAccountInp
 type DescribeAccountInput struct {
 
 	// The unique identifier (ID) of the Amazon Web Services account that you want
-	// information about. You can get the ID from the ListAccounts or
-	// ListAccountsForParent operations. The regex pattern (http://wikipedia.org/wiki/regex)
-	// for an account ID string requires exactly 12 digits.
+	// information about. You can get the ID from the ListAccountsor ListAccountsForParent operations.
+	//
+	// The [regex pattern] for an account ID string requires exactly 12 digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	AccountId *string
@@ -46,6 +48,12 @@ type DescribeAccountInput struct {
 type DescribeAccountOutput struct {
 
 	// A structure that contains information about the requested account.
+	//
+	// The Status parameter in the API response will be retired on September 9, 2026.
+	// Although both the account State and account Status parameters are currently
+	// available in the Organizations APIs ( DescribeAccount , ListAccounts ,
+	// ListAccountsForParent ), we recommend that you update your scripts or other code
+	// to use the State parameter instead of Status before September 9, 2026.
 	Account *types.Account
 
 	// Metadata pertaining to the operation's result.
@@ -97,6 +105,9 @@ func (c *Client) addOperationDescribeAccountMiddlewares(stack *middleware.Stack,
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -107,6 +118,15 @@ func (c *Client) addOperationDescribeAccountMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeAccountValidationMiddleware(stack); err != nil {
@@ -128,6 +148,15 @@ func (c *Client) addOperationDescribeAccountMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

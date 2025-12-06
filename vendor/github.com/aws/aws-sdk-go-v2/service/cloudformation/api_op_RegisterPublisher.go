@@ -13,10 +13,12 @@ import (
 // Registers your account as a publisher of public extensions in the
 // CloudFormation registry. Public extensions are available for use by all
 // CloudFormation users. This publisher ID applies to your account in all Amazon
-// Web Services Regions. For information about requirements for registering as a
-// public extension publisher, see Registering your account to publish
-// CloudFormation extensions (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/publish-extension.html#publish-extension-prereqs)
-// in the CloudFormation CLI User Guide.
+// Web Services Regions.
+//
+// For information about requirements for registering as a public extension
+// publisher, see [Prerequisite: Registering your account to publish CloudFormation extensions]in the CloudFormation Command Line Interface (CLI) User Guide.
+//
+// [Prerequisite: Registering your account to publish CloudFormation extensions]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/publish-extension.html#publish-extension-prereqs
 func (c *Client) RegisterPublisher(ctx context.Context, params *RegisterPublisherInput, optFns ...func(*Options)) (*RegisterPublisherOutput, error) {
 	if params == nil {
 		params = &RegisterPublisherInput{}
@@ -34,16 +36,22 @@ func (c *Client) RegisterPublisher(ctx context.Context, params *RegisterPublishe
 
 type RegisterPublisherInput struct {
 
-	// Whether you accept the Terms and Conditions (https://cloudformation-registry-documents.s3.amazonaws.com/Terms_and_Conditions_for_AWS_CloudFormation_Registry_Publishers.pdf)
-	// for publishing extensions in the CloudFormation registry. You must accept the
-	// terms and conditions in order to register to publish public extensions to the
-	// CloudFormation registry. The default is false .
+	// Whether you accept the [Terms and Conditions] for publishing extensions in the CloudFormation
+	// registry. You must accept the terms and conditions in order to register to
+	// publish public extensions to the CloudFormation registry.
+	//
+	// The default is false .
+	//
+	// [Terms and Conditions]: https://cloudformation-registry-documents.s3.amazonaws.com/Terms_and_Conditions_for_AWS_CloudFormation_Registry_Publishers.pdf
 	AcceptTermsAndConditions *bool
 
 	// If you are using a Bitbucket or GitHub account for identity verification, the
-	// Amazon Resource Name (ARN) for your connection to that account. For more
-	// information, see Registering your account to publish CloudFormation extensions (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/publish-extension.html#publish-extension-prereqs)
-	// in the CloudFormation CLI User Guide.
+	// Amazon Resource Name (ARN) for your connection to that account.
+	//
+	// For more information, see [Prerequisite: Registering your account to publish CloudFormation extensions] in the CloudFormation Command Line Interface (CLI)
+	// User Guide.
+	//
+	// [Prerequisite: Registering your account to publish CloudFormation extensions]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/publish-extension.html#publish-extension-prereqs
 	ConnectionArn *string
 
 	noSmithyDocumentSerde
@@ -103,6 +111,9 @@ func (c *Client) addOperationRegisterPublisherMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -113,6 +124,15 @@ func (c *Client) addOperationRegisterPublisherMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opRegisterPublisher(options.Region), middleware.Before); err != nil {
@@ -131,6 +151,15 @@ func (c *Client) addOperationRegisterPublisherMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

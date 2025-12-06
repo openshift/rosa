@@ -11,8 +11,9 @@ import (
 )
 
 // Moves an account from its current source parent root or organizational unit
-// (OU) to the specified destination parent root or OU. This operation can be
-// called only from the organization's management account.
+// (OU) to the specified destination parent root or OU.
+//
+// You can only call this operation from the management account.
 func (c *Client) MoveAccount(ctx context.Context, params *MoveAccountInput, optFns ...func(*Options)) (*MoveAccountOutput, error) {
 	if params == nil {
 		params = &MoveAccountInput{}
@@ -30,35 +31,45 @@ func (c *Client) MoveAccount(ctx context.Context, params *MoveAccountInput, optF
 
 type MoveAccountInput struct {
 
-	// The unique identifier (ID) of the account that you want to move. The regex
-	// pattern (http://wikipedia.org/wiki/regex) for an account ID string requires
-	// exactly 12 digits.
+	// ID for the account that you want to move.
+	//
+	// The [regex pattern] for an account ID string requires exactly 12 digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	AccountId *string
 
-	// The unique identifier (ID) of the root or organizational unit that you want to
-	// move the account to. The regex pattern (http://wikipedia.org/wiki/regex) for a
-	// parent ID string requires one of the following:
+	// ID for the root or organizational unit that you want to move the account to.
+	//
+	// The [regex pattern] for a parent ID string requires one of the following:
+	//
 	//   - Root - A string that begins with "r-" followed by from 4 to 32 lowercase
 	//   letters or digits.
+	//
 	//   - Organizational unit (OU) - A string that begins with "ou-" followed by from
 	//   4 to 32 lowercase letters or digits (the ID of the root that the OU is in). This
 	//   string is followed by a second "-" dash and from 8 to 32 additional lowercase
 	//   letters or digits.
 	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
+	//
 	// This member is required.
 	DestinationParentId *string
 
-	// The unique identifier (ID) of the root or organizational unit that you want to
-	// move the account from. The regex pattern (http://wikipedia.org/wiki/regex) for
-	// a parent ID string requires one of the following:
+	// ID for the root or organizational unit that you want to move the account from.
+	//
+	// The [regex pattern] for a parent ID string requires one of the following:
+	//
 	//   - Root - A string that begins with "r-" followed by from 4 to 32 lowercase
 	//   letters or digits.
+	//
 	//   - Organizational unit (OU) - A string that begins with "ou-" followed by from
 	//   4 to 32 lowercase letters or digits (the ID of the root that the OU is in). This
 	//   string is followed by a second "-" dash and from 8 to 32 additional lowercase
 	//   letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	SourceParentId *string
@@ -116,6 +127,9 @@ func (c *Client) addOperationMoveAccountMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -126,6 +140,15 @@ func (c *Client) addOperationMoveAccountMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpMoveAccountValidationMiddleware(stack); err != nil {
@@ -147,6 +170,15 @@ func (c *Client) addOperationMoveAccountMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
