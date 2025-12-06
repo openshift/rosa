@@ -14,6 +14,11 @@ import (
 // Returns a list of CloudWatch Logs Insights queries that are scheduled, running,
 // or have been run recently in this account. You can request all queries or limit
 // it to queries of a specific log group or queries with a certain status.
+//
+// This operation includes both interactive queries started directly by users and
+// automated queries executed by scheduled query configurations. Scheduled query
+// executions appear in the results alongside manually initiated queries, providing
+// visibility into all query activity in your account.
 func (c *Client) DescribeQueries(ctx context.Context, params *DescribeQueriesInput, optFns ...func(*Options)) (*DescribeQueriesOutput, error) {
 	if params == nil {
 		params = &DescribeQueriesInput{}
@@ -39,6 +44,10 @@ type DescribeQueriesInput struct {
 
 	// The token for the next set of items to return. The token expires after 24 hours.
 	NextToken *string
+
+	// Limits the returned queries to only the queries that use the specified query
+	// language.
+	QueryLanguage types.QueryLanguage
 
 	// Limits the returned queries to only those that have the specified status. Valid
 	// values are Cancelled , Complete , Failed , Running , and Scheduled .
@@ -104,6 +113,9 @@ func (c *Client) addOperationDescribeQueriesMiddlewares(stack *middleware.Stack,
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -114,6 +126,15 @@ func (c *Client) addOperationDescribeQueriesMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeQueries(options.Region), middleware.Before); err != nil {
@@ -132,6 +153,15 @@ func (c *Client) addOperationDescribeQueriesMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
