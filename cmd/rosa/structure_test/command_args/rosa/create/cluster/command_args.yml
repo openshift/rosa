@@ -113,3 +113,4 @@
 - name: "yes"
 - name: master-machine-type
 - name: infra-machine-type
+- name: log-fwd-config

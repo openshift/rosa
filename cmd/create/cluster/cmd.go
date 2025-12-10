@@ -59,8 +59,10 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/consts"
+	interactiveLogForwarding "github.com/openshift/rosa/pkg/interactive/logforwarding"
 	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
 	interactiveSgs "github.com/openshift/rosa/pkg/interactive/securitygroups"
+	"github.com/openshift/rosa/pkg/logforwarding"
 	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -260,6 +262,9 @@ var args struct {
 	// Master / Infra Machine Config
 	masterMachineType string
 	infraMachineType  string
+
+	// Log Fowarding
+	logFwdConfig string
 }
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
@@ -946,6 +951,26 @@ func initFlags(cmd *cobra.Command) {
 		"Instance type for the Infra nodes",
 	)
 	_ = flags.MarkHidden("infra-machine-type")
+
+	flags.StringVar(
+		&args.logFwdConfig,
+		logforwarding.FlagName,
+		"",
+		"A path to a log forwarding config file. This should be a YAML file with the following structure:\n\n"+
+			"cloudwatch:\n"+
+			"  cloudwatch_log_role_arn: \"role_arn_here\"\n"+
+			"  cloudwatch_log_group_name: \"group_name_here\"\n"+
+			"  applications: [\"example_app_1\", \"example_app_2\"]\n"+
+			"  groups: \"group-name\"\n"+
+			"s3:\n"+
+			"  s3_config_bucket_name: \"bucket_name_here\"\n"+
+			"  s3_config_bucket_prefix: \"bucket_prefix_here\"\n"+
+			"  applications: [\"example_app_1\", \"example_app_2\"]\n"+
+			"  groups: \"group-name\"\n"+
+			"\n"+
+			"\nPlease use interactive mode and enter '?' on the associated prompts to get the up to date lists "+
+			"for allowed Applications and allowed Groups\n",
+	)
 
 	interactive.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
@@ -2178,6 +2203,35 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Log forwarding for HCP:
+	var logFwdS3ConfigObject *logforwarding.S3LogForwarderConfig
+	var logFwdCloudWatchConfigObject *logforwarding.CloudWatchLogForwarderConfig
+	if isHostedCP {
+		if args.logFwdConfig != "" {
+			yamlObject, err := logforwarding.UnmarshalLogForwarderConfigYaml(
+				args.logFwdConfig)
+			if err != nil {
+				r.Reporter.Errorf("error parsing log forwarder config '%s': %s", args.logFwdConfig, err)
+				os.Exit(1)
+			}
+			logFwdS3ConfigObject = yamlObject.S3
+			logFwdCloudWatchConfigObject = yamlObject.CloudWatch
+		} else if args.logFwdConfig == "" && interactive.Enabled() {
+			interactiveObject, err := interactiveLogForwarding.InteractiveLogForwardingConfig(
+				r.OCMClient, cmd.Flags().Lookup(logforwarding.FlagName).Usage)
+			if err != nil {
+				r.Reporter.Errorf("failed to create log fowarder config: %s", err)
+				os.Exit(1)
+			}
+			if interactiveObject.S3 != nil && interactiveObject.S3.S3ConfigBucketName != "" {
+				logFwdS3ConfigObject = interactiveObject.S3
+			}
+			if interactiveObject.CloudWatch != nil && interactiveObject.CloudWatch.CloudWatchLogRoleArn != "" {
+				logFwdCloudWatchConfigObject = interactiveObject.CloudWatch
+			}
+		}
+	}
+
 	// Machine CIDR:
 	machineCIDR := args.machineCIDR
 	if ocm.IsEmptyCIDR(machineCIDR) {
@@ -3402,6 +3456,8 @@ func run(cmd *cobra.Command, _ []string) {
 		Mode:                         mode,
 		Tags:                         tagsList,
 		KMSKeyArn:                    kmsKeyARN,
+		S3LogForwarder:               logFwdS3ConfigObject,
+		CloudWatchLogForwarder:       logFwdCloudWatchConfigObject,
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
@@ -4238,6 +4294,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --%s %s",
 			interactiveSgs.ControlPlaneSecurityGroupFlag,
 			strings.Join(spec.AdditionalControlPlaneSecurityGroupIds, ","))
+	}
+
+	if args.logFwdConfig != "" {
+		command += fmt.Sprintf(" --%s %s", logforwarding.FlagName, args.logFwdConfig)
 	}
 
 	if spec.BillingAccount != "" {

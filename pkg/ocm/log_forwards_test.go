@@ -17,141 +17,177 @@ limitations under the License.
 package ocm
 
 import (
-	"reflect"
-	"testing"
-
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func TestBuildLogForwarder(t *testing.T) {
-	tests := []struct {
-		name   string
-		input  *LogForwarderConfig
-		verify func(t *testing.T, out *cmv1.LogForwarder)
-	}{
-		{
-			name:  "nil config returns empty builder",
-			input: nil,
-			verify: func(t *testing.T, out *cmv1.LogForwarder) {
-				if len(out.Applications()) != 0 {
-					t.Errorf("expected no applications, got %+v", out.Applications())
-				}
-				if cw, ok := out.GetCloudwatch(); ok {
-					t.Errorf("expected no CloudWatch config, got %+v", cw)
-				}
-				if groups, ok := out.GetGroups(); ok && len(groups) > 0 {
-					t.Errorf("expected no groups, got %+v", groups)
-				}
-				if s3, ok := out.GetS3(); ok {
-					t.Errorf("expected no S3 config, got %+v", s3)
-				}
-			},
-		},
-		{
-			name: "full config populates builder",
-			input: &LogForwarderConfig{
-				Applications:           []string{"app1", "app2"},
-				CloudWatchLogGroupName: "cw-group",
-				CloudWatchLogRoleArn:   "cw-arn",
-				GroupsLogVersion:       []string{"v1", "v2"},
-				S3ConfigBucketName:     "my-bucket",
-				S3ConfigBucketPrefix:   "logs/",
-			},
-			verify: func(t *testing.T, out *cmv1.LogForwarder) {
-				if !reflect.DeepEqual(out.Applications(), []string{"app1", "app2"}) {
-					t.Errorf("applications mismatch: %+v", out.Applications())
-				}
-
-				if cw, ok := out.GetCloudwatch(); !ok {
-					t.Errorf("expected CloudWatch config")
-				} else {
-					if cw.LogGroupName() != "cw-group" {
-						t.Errorf("cw group mismatch: %v", cw.LogGroupName())
-					}
-					if cw.LogDistributionRoleArn() != "cw-arn" {
-						t.Errorf("cw arn mismatch: %v", cw.LogDistributionRoleArn())
-					}
-				}
-
-				if groups, ok := out.GetGroups(); !ok || len(groups) != 2 {
-					t.Fatalf("expected 2 groups but got %+v", groups)
-				} else {
-					got := []string{groups[0].Version(), groups[1].Version()}
-					expected := []string{"v1", "v2"}
-					if !reflect.DeepEqual(got, expected) {
-						t.Errorf("group versions mismatch: %v", got)
-					}
-				}
-
-				if s3, ok := out.GetS3(); !ok {
-					t.Errorf("expected S3 config")
-				} else {
-					if s3.BucketName() != "my-bucket" {
-						t.Errorf("s3 bucket mismatch: %v", s3.BucketName())
-					}
-					if s3.BucketPrefix() != "logs/" {
-						t.Errorf("s3 prefix mismatch: %v", s3.BucketPrefix())
-					}
-				}
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			builder := BuildLogForwader(tc.input)
+var _ = Describe("BuildLogForwarder", func() {
+	Context("When input is nil", func() {
+		It("Should return empty builder", func() {
+			builder := BuildLogForwarder(nil)
 			out, err := builder.Build()
-			if err != nil {
-				t.Fatalf("failed to build logForwarder: %v", err)
-			}
-			tc.verify(t, out)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Applications()).To(BeEmpty())
+			_, hasCloudWatch := out.GetCloudwatch()
+			Expect(hasCloudWatch).To(BeFalse())
+			groups, hasGroups := out.GetGroups()
+			Expect(hasGroups).To(BeFalse())
+			Expect(groups).To(BeEmpty())
+			_, hasS3 := out.GetS3()
+			Expect(hasS3).To(BeFalse())
 		})
-	}
-}
-
-func TestGetLogForwardConfig(t *testing.T) {
-	t.Run("returns nil when input is nil", func(t *testing.T) {
-		cfg := GetLogForwardConfig(nil)
-		if cfg != nil {
-			t.Errorf("expected nil, got %+v", cfg)
-		}
 	})
 
-	t.Run("extracts config from LogForwarder object", func(t *testing.T) {
-		lf, err := cmv1.NewLogForwarder().
-			Applications("a1", "a2").
-			Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig().
-				LogGroupName("cw-group").
-				LogDistributionRoleArn("cw-arn")).
-			Groups(
-				cmv1.NewLogForwarderGroup().Version("v1"),
-				cmv1.NewLogForwarderGroup().Version("v2"),
-			).
-			S3(cmv1.NewLogForwarderS3Config().BucketName("bucket").BucketPrefix("prefix/")).
-			Build()
-		if err != nil {
-			t.Fatalf("failed to build lf: %v", err)
-		}
+	Context("When input has full configuration", func() {
+		It("Should populate all fields correctly", func() {
+			input, err := cmv1.NewLogForwarder().
+				Applications("app1", "app2").
+				Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig().
+					LogGroupName("cw-group").
+					LogDistributionRoleArn("cw-arn")).
+				Groups(
+					cmv1.NewLogForwarderGroup().Version("v1"),
+					cmv1.NewLogForwarderGroup().Version("v2"),
+				).
+				S3(cmv1.NewLogForwarderS3Config().
+					BucketName("my-bucket").
+					BucketPrefix("logs/")).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
 
-		cfg := GetLogForwardConfig(lf)
+			builder := BuildLogForwarder(input)
+			out, err := builder.Build()
+			Expect(err).ToNot(HaveOccurred())
 
-		if !reflect.DeepEqual(cfg.Applications, []string{"a1", "a2"}) {
-			t.Errorf("applications mismatch: %+v", cfg.Applications)
-		}
-		if cfg.CloudWatchLogGroupName != "cw-group" {
-			t.Errorf("cw group mismatch: %s", cfg.CloudWatchLogGroupName)
-		}
-		if cfg.CloudWatchLogRoleArn != "cw-arn" {
-			t.Errorf("cw arn mismatch: %s", cfg.CloudWatchLogRoleArn)
-		}
-		if !reflect.DeepEqual(cfg.GroupsLogVersion, []string{"v1", "v2"}) {
-			t.Errorf("group versions mismatch: %+v", cfg.GroupsLogVersion)
-		}
-		if cfg.S3ConfigBucketName != "bucket" {
-			t.Errorf("s3 bucket mismatch: %s", cfg.S3ConfigBucketName)
-		}
-		if cfg.S3ConfigBucketPrefix != "prefix/" {
-			t.Errorf("s3 prefix mismatch: %s", cfg.S3ConfigBucketPrefix)
-		}
+			Expect(out.Applications()).To(Equal([]string{"app1", "app2"}))
+
+			cw, hasCloudWatch := out.GetCloudwatch()
+			Expect(hasCloudWatch).To(BeTrue())
+			Expect(cw.LogGroupName()).To(Equal("cw-group"))
+			Expect(cw.LogDistributionRoleArn()).To(Equal("cw-arn"))
+
+			groups, hasGroups := out.GetGroups()
+			Expect(hasGroups).To(BeTrue())
+			Expect(groups).To(HaveLen(2))
+			Expect(groups[0].Version()).To(Equal("v1"))
+			Expect(groups[1].Version()).To(Equal("v2"))
+
+			s3, hasS3 := out.GetS3()
+			Expect(hasS3).To(BeTrue())
+			Expect(s3.BucketName()).To(Equal("my-bucket"))
+			Expect(s3.BucketPrefix()).To(Equal("logs/"))
+		})
 	})
-}
+
+	Context("When input has partial CloudWatch config", func() {
+		It("Should handle partial CloudWatch configuration", func() {
+			input, err := cmv1.NewLogForwarder().
+				Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig().
+					LogGroupName("test-group")).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			builder := BuildLogForwarder(input)
+			out, err := builder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			cw, hasCloudWatch := out.GetCloudwatch()
+			Expect(hasCloudWatch).To(BeTrue())
+			Expect(cw.LogGroupName()).To(Equal("test-group"))
+		})
+	})
+
+	Context("When input has partial S3 config", func() {
+		It("Should handle partial S3 configuration", func() {
+			input, err := cmv1.NewLogForwarder().
+				S3(cmv1.NewLogForwarderS3Config().
+					BucketName("test-bucket")).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			builder := BuildLogForwarder(input)
+			out, err := builder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			s3, hasS3 := out.GetS3()
+			Expect(hasS3).To(BeTrue())
+			Expect(s3.BucketName()).To(Equal("test-bucket"))
+		})
+	})
+
+	Context("When input has empty applications", func() {
+		It("Should handle empty applications list", func() {
+			input, err := cmv1.NewLogForwarder().
+				Applications().
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			builder := BuildLogForwarder(input)
+			out, err := builder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(out.Applications()).To(BeEmpty())
+		})
+	})
+})
+
+var _ = Describe("BuildLogForwarder Function Tests", func() {
+	Context("Edge cases and error handling", func() {
+		It("Should handle empty CloudWatch config properly", func() {
+			input, err := cmv1.NewLogForwarder().
+				Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig()).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			builder := BuildLogForwarder(input)
+			out, err := builder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, hasCloudWatch := out.GetCloudwatch()
+			Expect(hasCloudWatch).To(BeFalse())
+		})
+
+		It("Should handle empty S3 config properly", func() {
+			input, err := cmv1.NewLogForwarder().
+				S3(cmv1.NewLogForwarderS3Config()).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			builder := BuildLogForwarder(input)
+			out, err := builder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, hasS3 := out.GetS3()
+			Expect(hasS3).To(BeFalse())
+		})
+
+		It("Should handle mixed configuration", func() {
+			input, err := cmv1.NewLogForwarder().
+				Applications("app1").
+				Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig().
+					LogGroupName("test-group")).
+				Groups(cmv1.NewLogForwarderGroup().Version("v1")).
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			builder := BuildLogForwarder(input)
+			out, err := builder.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(out.Applications()).To(Equal([]string{"app1"}))
+
+			cw, hasCloudWatch := out.GetCloudwatch()
+			Expect(hasCloudWatch).To(BeTrue())
+			Expect(cw.LogGroupName()).To(Equal("test-group"))
+
+			groups, hasGroups := out.GetGroups()
+			Expect(hasGroups).To(BeTrue())
+			Expect(groups).To(HaveLen(1))
+			Expect(groups[0].Version()).To(Equal("v1"))
+
+			_, hasS3 := out.GetS3()
+			Expect(hasS3).To(BeFalse())
+		})
+	})
+})

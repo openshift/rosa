@@ -35,6 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/interactive/consts"
+	"github.com/openshift/rosa/pkg/logforwarding"
 	"github.com/openshift/rosa/pkg/properties"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
@@ -200,17 +201,8 @@ type Spec struct {
 	InfraMachineType  string
 
 	// LogForward
-	LogForwarder *LogForwarderConfig
-}
-
-// LogForwarderConfig represent the log forward config for applications, cloudWatch, S3 and groupVersion.
-type LogForwarderConfig struct {
-	Applications           []string
-	CloudWatchLogRoleArn   string
-	CloudWatchLogGroupName string
-	GroupsLogVersion       []string
-	S3ConfigBucketName     string
-	S3ConfigBucketPrefix   string
+	S3LogForwarder         *logforwarding.S3LogForwarderConfig
+	CloudWatchLogForwarder *logforwarding.CloudWatchLogForwarderConfig
 }
 
 // Volume represents a volume property for a disk
@@ -757,20 +749,30 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		return handleErr(response.Error(), err)
 	}
 
-	logForward, err := c.GetLogForwarder(cluster.ID())
-	if err != nil && logForward != nil {
-		logFowrwardConfig := GetLogForwardConfig(logForward)
-		if !reflect.DeepEqual(logFowrwardConfig, config.LogForwarder) {
-			logFwBuilder := BuildLogForwader(config.LogForwarder)
-			if logFwBuilder != nil {
-				logForwarder, err := logFwBuilder.Build()
-				if err != nil {
-					return err
-				}
-				if _, err := c.SetLogForwarder(cluster.ID(), logForwarder); err != nil {
-					return err
-				}
-			}
+	if config.S3LogForwarder != nil {
+		builtForwarder, err := logforwarding.BindS3LogForwarder(config.S3LogForwarder).Build()
+		if err != nil {
+			return err
+		}
+		err = c.UpdateLogForwarder(
+			builtForwarder,
+			cluster.ID(),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	if config.CloudWatchLogForwarder != nil {
+		builtForwarder, err := logforwarding.BindCloudWatchLogForwarder(config.CloudWatchLogForwarder).Build()
+		if err != nil {
+			return err
+		}
+		err = c.UpdateLogForwarder(
+			builtForwarder,
+			cluster.ID(),
+		)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -794,6 +796,25 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 	}
 
 	return cluster, nil
+}
+
+func (c *Client) UpdateLogForwarder(logForwarder *cmv1.LogForwarder, clusterId string) error {
+	logForward, err := c.GetLogForwarder(clusterId)
+	if err != nil && logForward != nil {
+		if !reflect.DeepEqual(logForward, logForwarder) {
+			logFwBuilder := BuildLogForwarder(logForwarder)
+			if logFwBuilder != nil {
+				result, err := logFwBuilder.Build()
+				if err != nil {
+					return err
+				}
+				if _, err := c.SetLogForwarder(clusterId, result); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Client) UpdateClusterDeletionProtection(clusterId string, deleteProtection *cmv1.DeleteProtection) error {
@@ -1224,10 +1245,27 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 	}
 
 	if config.Hypershift.Enabled {
-		logFwBuilder := BuildLogForwader(config.LogForwarder)
-		if logFwBuilder != nil {
-			clusterBuilder.ControlPlane(cmv1.NewControlPlane().
-				LogForwarders(cmv1.NewLogForwarderList().Items(logFwBuilder)))
+		// LogForwarder
+		var logForwarderList []*cmv1.LogForwarderBuilder
+		if config.S3LogForwarder != nil {
+			boundForwarder, err := logforwarding.BindS3LogForwarder(config.S3LogForwarder).Build()
+			if err != nil {
+				return nil, fmt.Errorf("failed to create S3 log forwarder: %v", err)
+			}
+			s3LogFwBuilder := BuildLogForwarder(boundForwarder)
+			logForwarderList = append(logForwarderList, s3LogFwBuilder)
+		}
+		if config.CloudWatchLogForwarder != nil {
+			boundForwarder, err := logforwarding.BindCloudWatchLogForwarder(config.CloudWatchLogForwarder).Build()
+			if err != nil {
+				return nil, fmt.Errorf("failed to create CloudWatch log forwarder: %v", err)
+			}
+			cloudWatchFwBuilder := BuildLogForwarder(boundForwarder)
+			logForwarderList = append(logForwarderList, cloudWatchFwBuilder)
+		}
+		if len(logForwarderList) > 0 {
+			clusterBuilder.ControlPlane(cmv1.NewControlPlane().LogForwarders(
+				cmv1.NewLogForwarderList().Items(logForwarderList...)))
 		}
 	}
 
