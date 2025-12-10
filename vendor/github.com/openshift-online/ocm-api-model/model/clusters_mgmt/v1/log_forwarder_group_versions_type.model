@@ -16,11 +16,11 @@ limitations under the License.
 
 // Represents a log forwarder group versions configuration.
 struct LogForwarderGroupVersions {
-    // The identifier of the log forwarder group.
-    ID String
+    // The name of the log forwarder group.
+    Name String
 
     // Indicates whether this group is available for use for log forwarding.
-    State String
+    Enabled Boolean
 
     // List of available versions for this group.
     Versions []LogForwarderGroupVersion

@@ -29,9 +29,9 @@ require (
 	github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.30.0
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.438
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.440
 	github.com/openshift-online/ocm-common v0.0.31
-	github.com/openshift-online/ocm-sdk-go v0.1.483
+	github.com/openshift-online/ocm-sdk-go v0.1.486
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
@@ -51,7 +51,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.438 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.440 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 )
 

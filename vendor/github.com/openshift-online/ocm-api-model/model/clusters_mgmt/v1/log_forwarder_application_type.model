@@ -16,10 +16,10 @@ limitations under the License.
 
 // Represents an application that can be configured for log forwarding.
 struct LogForwarderApplication {
-    // The identifier of the application.
-    ID String
+    // The name of the application.
+    Name String
 
     // Indicates whether this application is available for use for log forwarding.
-    State String
+    Enabled Boolean
 }
 

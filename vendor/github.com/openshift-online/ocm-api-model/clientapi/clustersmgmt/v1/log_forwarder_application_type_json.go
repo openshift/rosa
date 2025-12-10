@@ -47,8 +47,8 @@ func WriteLogForwarderApplication(object *LogForwarderApplication, stream *jsoni
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("id")
-		stream.WriteString(object.id)
+		stream.WriteObjectField("enabled")
+		stream.WriteBool(object.enabled)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 1 && object.fieldSet_[1]
@@ -56,8 +56,8 @@ func WriteLogForwarderApplication(object *LogForwarderApplication, stream *jsoni
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("state")
-		stream.WriteString(object.state)
+		stream.WriteObjectField("name")
+		stream.WriteString(object.name)
 	}
 	stream.WriteObjectEnd()
 }
@@ -85,13 +85,13 @@ func ReadLogForwarderApplication(iterator *jsoniter.Iterator) *LogForwarderAppli
 			break
 		}
 		switch field {
-		case "id":
-			value := iterator.ReadString()
-			object.id = value
+		case "enabled":
+			value := iterator.ReadBool()
+			object.enabled = value
 			object.fieldSet_[0] = true
-		case "state":
+		case "name":
 			value := iterator.ReadString()
-			object.state = value
+			object.name = value
 			object.fieldSet_[1] = true
 		default:
 			iterator.ReadAny()
