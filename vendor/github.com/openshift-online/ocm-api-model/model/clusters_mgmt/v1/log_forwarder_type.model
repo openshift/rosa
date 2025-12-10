@@ -23,7 +23,7 @@ class LogForwarder {
     S3 LogForwarderS3Config
 
     // CloudWatch configuration for log forwarding destination.
-    CloudWatch LogForwarderCloudWatchConfig
+    Cloudwatch LogForwarderCloudWatchConfig
 
     // List of additional applications to forward logs for.
     Applications []String
