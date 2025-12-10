@@ -36,7 +36,7 @@ func TestBuildLogForwarder(t *testing.T) {
 				if len(out.Applications()) != 0 {
 					t.Errorf("expected no applications, got %+v", out.Applications())
 				}
-				if cw, ok := out.GetCloudWatch(); ok {
+				if cw, ok := out.GetCloudwatch(); ok {
 					t.Errorf("expected no CloudWatch config, got %+v", cw)
 				}
 				if groups, ok := out.GetGroups(); ok && len(groups) > 0 {
@@ -62,7 +62,7 @@ func TestBuildLogForwarder(t *testing.T) {
 					t.Errorf("applications mismatch: %+v", out.Applications())
 				}
 
-				if cw, ok := out.GetCloudWatch(); !ok {
+				if cw, ok := out.GetCloudwatch(); !ok {
 					t.Errorf("expected CloudWatch config")
 				} else {
 					if cw.LogGroupName() != "cw-group" {
@@ -120,7 +120,7 @@ func TestGetLogForwardConfig(t *testing.T) {
 	t.Run("extracts config from LogForwarder object", func(t *testing.T) {
 		lf, err := cmv1.NewLogForwarder().
 			Applications("a1", "a2").
-			CloudWatch(cmv1.NewLogForwarderCloudWatchConfig().
+			Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig().
 				LogGroupName("cw-group").
 				LogDistributionRoleArn("cw-arn")).
 			Groups(
