@@ -51,7 +51,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.438 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.440 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 )
 
