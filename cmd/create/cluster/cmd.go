@@ -958,8 +958,8 @@ func initFlags(cmd *cobra.Command) {
 		"",
 		"A path to a log forwarding config file. This should be a YAML file with the following structure:\n\n"+
 			"cloudwatch:\n"+
-			"  cloud_watch_log_role_arn: \"role_arn_here\"\n"+
-			"  cloud_watch_log_group_name: \"group_name_here\"\n"+
+			"  cloudwatch_log_role_arn: \"role_arn_here\"\n"+
+			"  cloudwatch_log_group_name: \"group_name_here\"\n"+
 			"  applications: [\"example_app_1\", \"example_app_2\"]\n"+
 			"  groups: \"group-name\"\n"+
 			"s3:\n"+
@@ -2223,7 +2223,7 @@ func run(cmd *cobra.Command, _ []string) {
 				r.Reporter.Errorf("failed to create log fowarder config: %s", err)
 				os.Exit(1)
 			}
-			if interactiveObject.S3 != nil && interactiveObject.S3.S3ConfigBucketPrefix != "" {
+			if interactiveObject.S3 != nil && interactiveObject.S3.S3ConfigBucketName != "" {
 				logFwdS3ConfigObject = interactiveObject.S3
 			}
 			if interactiveObject.CloudWatch != nil && interactiveObject.CloudWatch.CloudWatchLogRoleArn != "" {

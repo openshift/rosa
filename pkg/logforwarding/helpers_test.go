@@ -11,8 +11,8 @@ import (
 
 var testConfig = `
 cloudwatch:
-  cloud_watch_log_role_arn: "arn"
-  cloud_watch_log_group_name: "abcd"
+  cloudwatch_log_role_arn: "arn"
+  cloudwatch_log_group_name: "abcd"
   applications: ["test3", "test4"]
   groups: "group-name"
 s3:

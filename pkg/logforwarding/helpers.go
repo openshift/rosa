@@ -12,21 +12,6 @@ import (
 // FlagName contains the common log forwarding config command flag name
 const FlagName = "log-fwd-config"
 
-const AllowedGroupsPreset = "API (kube-apiserver, openshift-apiserver), Authentication (oauth-server, " +
-	"oauth-apiserver), Controller Manager (kube-controller-manager, openshift-controller-manager, " +
-	"openshift-route-controller-manager), Scheduler (kube-scheduler)"
-
-const AllowedApplicationsPreset = "audit-webhook, aws-ebs-csi-driver-controller, capi-provider-controller-manager, " +
-	"catalog-operator, certified-operators-catalog, cloud-controller-manager, cloud-credential-operator, " +
-	"cloud-network-config-controller, cluster-api, cluster-network-operator, cluster-node-tuning-operator, " +
-	"cluster-policy-controller, cluster-version-operator, community-operators-catalog, control-plane-operator, " +
-	"control-plane-pki-operator, csi-snapshot-controller-operator, csi-snapshot-controller, dns-operator, etcd, " +
-	"hosted-cluster-config-operator, ignition-server, ingress-operator, konnectivity-agent, kube-apiserver, " +
-	"kube-controller-manager, kube-scheduler, machine-approver, multus-admission-controller, network-node-identity, " +
-	"oauth-openshift, olm-operator, openshift-apiserver, openshift-controller-manager, openshift-oauth-apiserver, " +
-	"openshift-route-controller-manager, ovnkube-control-plane, packageserver, private-router, " +
-	"redhat-marketplace-catalog, redhat-operators-catalog, unknown, validation-webhook"
-
 // S3LogForwarderConfig represents the log forward config for S3
 type S3LogForwarderConfig struct {
 	Applications         []string `yaml:"applications,omitempty"`
@@ -39,8 +24,8 @@ type S3LogForwarderConfig struct {
 type CloudWatchLogForwarderConfig struct {
 	Applications           []string `yaml:"applications,omitempty"`
 	GroupsLogVersion       string   `yaml:"groups,omitempty"`
-	CloudWatchLogRoleArn   string   `yaml:"cloud_watch_log_role_arn,omitempty"`
-	CloudWatchLogGroupName string   `yaml:"cloud_watch_log_group_name,omitempty"`
+	CloudWatchLogRoleArn   string   `yaml:"cloudwatch_log_role_arn,omitempty"`
+	CloudWatchLogGroupName string   `yaml:"cloudwatch_log_group_name,omitempty"`
 }
 
 type LogForwarderYaml struct {
