@@ -27,7 +27,7 @@ func BuildLogForwader(logForwarderConfig *LogForwarderConfig) *cmv1.LogForwarder
 			logForwardbldr.Applications(logForwarderConfig.Applications...)
 		}
 		if logForwarderConfig.CloudWatchLogGroupName != "" || logForwarderConfig.CloudWatchLogRoleArn != "" {
-			logForwardbldr.CloudWatch(cmv1.NewLogForwarderCloudWatchConfig().
+			logForwardbldr.Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig().
 				LogDistributionRoleArn(logForwarderConfig.CloudWatchLogRoleArn).
 				LogGroupName(logForwarderConfig.CloudWatchLogGroupName))
 		}
@@ -52,9 +52,9 @@ func GetLogForwardConfig(logForwarder *cmv1.LogForwarder) *LogForwarderConfig {
 		logForwarderConfig := &LogForwarderConfig{}
 
 		logForwarderConfig.Applications = logForwarder.Applications()
-		if _, ok := logForwarder.GetCloudWatch(); ok {
-			logForwarderConfig.CloudWatchLogRoleArn = logForwarder.CloudWatch().LogDistributionRoleArn()
-			logForwarderConfig.CloudWatchLogGroupName = logForwarder.CloudWatch().LogGroupName()
+		if _, ok := logForwarder.GetCloudwatch(); ok {
+			logForwarderConfig.CloudWatchLogRoleArn = logForwarder.Cloudwatch().LogDistributionRoleArn()
+			logForwarderConfig.CloudWatchLogGroupName = logForwarder.Cloudwatch().LogGroupName()
 		}
 		if groups, ok := logForwarder.GetGroups(); ok && len(groups) > 0 {
 			versions := make([]string, 0)

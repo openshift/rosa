@@ -22,8 +22,8 @@ package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v
 // Represents an application that can be configured for log forwarding.
 type LogForwarderApplicationBuilder struct {
 	fieldSet_ []bool
-	id        string
-	state     string
+	name      string
+	enabled   bool
 }
 
 // NewLogForwarderApplication creates a new builder of 'log_forwarder_application' objects.
@@ -46,22 +46,22 @@ func (b *LogForwarderApplicationBuilder) Empty() bool {
 	return true
 }
 
-// ID sets the value of the 'ID' attribute to the given value.
-func (b *LogForwarderApplicationBuilder) ID(value string) *LogForwarderApplicationBuilder {
+// Enabled sets the value of the 'enabled' attribute to the given value.
+func (b *LogForwarderApplicationBuilder) Enabled(value bool) *LogForwarderApplicationBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 2)
 	}
-	b.id = value
+	b.enabled = value
 	b.fieldSet_[0] = true
 	return b
 }
 
-// State sets the value of the 'state' attribute to the given value.
-func (b *LogForwarderApplicationBuilder) State(value string) *LogForwarderApplicationBuilder {
+// Name sets the value of the 'name' attribute to the given value.
+func (b *LogForwarderApplicationBuilder) Name(value string) *LogForwarderApplicationBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 2)
 	}
-	b.state = value
+	b.name = value
 	b.fieldSet_[1] = true
 	return b
 }
@@ -75,8 +75,8 @@ func (b *LogForwarderApplicationBuilder) Copy(object *LogForwarderApplication) *
 		b.fieldSet_ = make([]bool, len(object.fieldSet_))
 		copy(b.fieldSet_, object.fieldSet_)
 	}
-	b.id = object.id
-	b.state = object.state
+	b.enabled = object.enabled
+	b.name = object.name
 	return b
 }
 
@@ -87,7 +87,7 @@ func (b *LogForwarderApplicationBuilder) Build() (object *LogForwarderApplicatio
 		object.fieldSet_ = make([]bool, len(b.fieldSet_))
 		copy(object.fieldSet_, b.fieldSet_)
 	}
-	object.id = b.id
-	object.state = b.state
+	object.enabled = b.enabled
+	object.name = b.name
 	return
 }
