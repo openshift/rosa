@@ -26,7 +26,7 @@ type LogForwarderBuilder struct {
 	href         string
 	s3           *LogForwarderS3ConfigBuilder
 	applications []string
-	cloudWatch   *LogForwarderCloudWatchConfigBuilder
+	cloudwatch   *LogForwarderCloudWatchConfigBuilder
 	clusterID    string
 	groups       []*LogForwarderGroupBuilder
 	status       *LogForwarderStatusBuilder
@@ -109,14 +109,14 @@ func (b *LogForwarderBuilder) Applications(values ...string) *LogForwarderBuilde
 	return b
 }
 
-// CloudWatch sets the value of the 'cloud_watch' attribute to the given value.
+// Cloudwatch sets the value of the 'cloudwatch' attribute to the given value.
 //
 // CloudWatch configuration for log forwarding.
-func (b *LogForwarderBuilder) CloudWatch(value *LogForwarderCloudWatchConfigBuilder) *LogForwarderBuilder {
+func (b *LogForwarderBuilder) Cloudwatch(value *LogForwarderCloudWatchConfigBuilder) *LogForwarderBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 9)
 	}
-	b.cloudWatch = value
+	b.cloudwatch = value
 	if value != nil {
 		b.fieldSet_[5] = true
 	} else {
@@ -184,10 +184,10 @@ func (b *LogForwarderBuilder) Copy(object *LogForwarder) *LogForwarderBuilder {
 	} else {
 		b.applications = nil
 	}
-	if object.cloudWatch != nil {
-		b.cloudWatch = NewLogForwarderCloudWatchConfig().Copy(object.cloudWatch)
+	if object.cloudwatch != nil {
+		b.cloudwatch = NewLogForwarderCloudWatchConfig().Copy(object.cloudwatch)
 	} else {
-		b.cloudWatch = nil
+		b.cloudwatch = nil
 	}
 	b.clusterID = object.clusterID
 	if object.groups != nil {
@@ -225,8 +225,8 @@ func (b *LogForwarderBuilder) Build() (object *LogForwarder, err error) {
 		object.applications = make([]string, len(b.applications))
 		copy(object.applications, b.applications)
 	}
-	if b.cloudWatch != nil {
-		object.cloudWatch, err = b.cloudWatch.Build()
+	if b.cloudwatch != nil {
+		object.cloudwatch, err = b.cloudwatch.Build()
 		if err != nil {
 			return
 		}

@@ -24,8 +24,8 @@ package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v
 // Represents an application that can be configured for log forwarding.
 type LogForwarderApplication struct {
 	fieldSet_ []bool
-	id        string
-	state     string
+	name      string
+	enabled   bool
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -41,48 +41,48 @@ func (o *LogForwarderApplication) Empty() bool {
 	return true
 }
 
-// ID returns the value of the 'ID' attribute, or
+// Enabled returns the value of the 'enabled' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// The identifier of the application.
-func (o *LogForwarderApplication) ID() string {
+// Indicates whether this application is available for use for log forwarding.
+func (o *LogForwarderApplication) Enabled() bool {
 	if o != nil && len(o.fieldSet_) > 0 && o.fieldSet_[0] {
-		return o.id
+		return o.enabled
 	}
-	return ""
+	return false
 }
 
-// GetID returns the value of the 'ID' attribute and
+// GetEnabled returns the value of the 'enabled' attribute and
 // a flag indicating if the attribute has a value.
 //
-// The identifier of the application.
-func (o *LogForwarderApplication) GetID() (value string, ok bool) {
+// Indicates whether this application is available for use for log forwarding.
+func (o *LogForwarderApplication) GetEnabled() (value bool, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 0 && o.fieldSet_[0]
 	if ok {
-		value = o.id
+		value = o.enabled
 	}
 	return
 }
 
-// State returns the value of the 'state' attribute, or
+// Name returns the value of the 'name' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Indicates whether this application is available for use for log forwarding.
-func (o *LogForwarderApplication) State() string {
+// The name of the application.
+func (o *LogForwarderApplication) Name() string {
 	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
-		return o.state
+		return o.name
 	}
 	return ""
 }
 
-// GetState returns the value of the 'state' attribute and
+// GetName returns the value of the 'name' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Indicates whether this application is available for use for log forwarding.
-func (o *LogForwarderApplication) GetState() (value string, ok bool) {
+// The name of the application.
+func (o *LogForwarderApplication) GetName() (value string, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
 	if ok {
-		value = o.state
+		value = o.name
 	}
 	return
 }
