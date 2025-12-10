@@ -22,9 +22,9 @@ package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v
 // Represents a log forwarder group versions configuration.
 type LogForwarderGroupVersionsBuilder struct {
 	fieldSet_ []bool
-	id        string
-	state     string
+	name      string
 	versions  []*LogForwarderGroupVersionBuilder
+	enabled   bool
 }
 
 // NewLogForwarderGroupVersions creates a new builder of 'log_forwarder_group_versions' objects.
@@ -47,22 +47,22 @@ func (b *LogForwarderGroupVersionsBuilder) Empty() bool {
 	return true
 }
 
-// ID sets the value of the 'ID' attribute to the given value.
-func (b *LogForwarderGroupVersionsBuilder) ID(value string) *LogForwarderGroupVersionsBuilder {
+// Enabled sets the value of the 'enabled' attribute to the given value.
+func (b *LogForwarderGroupVersionsBuilder) Enabled(value bool) *LogForwarderGroupVersionsBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 3)
 	}
-	b.id = value
+	b.enabled = value
 	b.fieldSet_[0] = true
 	return b
 }
 
-// State sets the value of the 'state' attribute to the given value.
-func (b *LogForwarderGroupVersionsBuilder) State(value string) *LogForwarderGroupVersionsBuilder {
+// Name sets the value of the 'name' attribute to the given value.
+func (b *LogForwarderGroupVersionsBuilder) Name(value string) *LogForwarderGroupVersionsBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 3)
 	}
-	b.state = value
+	b.name = value
 	b.fieldSet_[1] = true
 	return b
 }
@@ -87,8 +87,8 @@ func (b *LogForwarderGroupVersionsBuilder) Copy(object *LogForwarderGroupVersion
 		b.fieldSet_ = make([]bool, len(object.fieldSet_))
 		copy(b.fieldSet_, object.fieldSet_)
 	}
-	b.id = object.id
-	b.state = object.state
+	b.enabled = object.enabled
+	b.name = object.name
 	if object.versions != nil {
 		b.versions = make([]*LogForwarderGroupVersionBuilder, len(object.versions))
 		for i, v := range object.versions {
@@ -107,8 +107,8 @@ func (b *LogForwarderGroupVersionsBuilder) Build() (object *LogForwarderGroupVer
 		object.fieldSet_ = make([]bool, len(b.fieldSet_))
 		copy(object.fieldSet_, b.fieldSet_)
 	}
-	object.id = b.id
-	object.state = b.state
+	object.enabled = b.enabled
+	object.name = b.name
 	if b.versions != nil {
 		object.versions = make([]*LogForwarderGroupVersion, len(b.versions))
 		for i, v := range b.versions {
