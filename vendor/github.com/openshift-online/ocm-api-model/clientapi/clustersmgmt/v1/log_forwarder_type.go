@@ -40,7 +40,7 @@ type LogForwarder struct {
 	href         string
 	s3           *LogForwarderS3Config
 	applications []string
-	cloudWatch   *LogForwarderCloudWatchConfig
+	cloudwatch   *LogForwarderCloudWatchConfig
 	clusterID    string
 	groups       []*LogForwarderGroup
 	status       *LogForwarderStatus
@@ -159,25 +159,25 @@ func (o *LogForwarder) GetApplications() (value []string, ok bool) {
 	return
 }
 
-// CloudWatch returns the value of the 'cloud_watch' attribute, or
+// Cloudwatch returns the value of the 'cloudwatch' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // CloudWatch configuration for log forwarding destination.
-func (o *LogForwarder) CloudWatch() *LogForwarderCloudWatchConfig {
+func (o *LogForwarder) Cloudwatch() *LogForwarderCloudWatchConfig {
 	if o != nil && len(o.fieldSet_) > 5 && o.fieldSet_[5] {
-		return o.cloudWatch
+		return o.cloudwatch
 	}
 	return nil
 }
 
-// GetCloudWatch returns the value of the 'cloud_watch' attribute and
+// GetCloudwatch returns the value of the 'cloudwatch' attribute and
 // a flag indicating if the attribute has a value.
 //
 // CloudWatch configuration for log forwarding destination.
-func (o *LogForwarder) GetCloudWatch() (value *LogForwarderCloudWatchConfig, ok bool) {
+func (o *LogForwarder) GetCloudwatch() (value *LogForwarderCloudWatchConfig, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 5 && o.fieldSet_[5]
 	if ok {
-		value = o.cloudWatch
+		value = o.cloudwatch
 	}
 	return
 }

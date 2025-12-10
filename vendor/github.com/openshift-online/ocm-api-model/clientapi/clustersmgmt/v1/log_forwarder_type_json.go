@@ -83,13 +83,13 @@ func WriteLogForwarder(object *LogForwarder, stream *jsoniter.Stream) {
 		WriteStringList(object.applications, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 5 && object.fieldSet_[5] && object.cloudWatch != nil
+	present_ = len(object.fieldSet_) > 5 && object.fieldSet_[5] && object.cloudwatch != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("cloud_watch")
-		WriteLogForwarderCloudWatchConfig(object.cloudWatch, stream)
+		stream.WriteObjectField("cloudwatch")
+		WriteLogForwarderCloudWatchConfig(object.cloudwatch, stream)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 6 && object.fieldSet_[6]
@@ -163,9 +163,9 @@ func ReadLogForwarder(iterator *jsoniter.Iterator) *LogForwarder {
 			value := ReadStringList(iterator)
 			object.applications = value
 			object.fieldSet_[4] = true
-		case "cloud_watch":
+		case "cloudwatch":
 			value := ReadLogForwarderCloudWatchConfig(iterator)
-			object.cloudWatch = value
+			object.cloudwatch = value
 			object.fieldSet_[5] = true
 		case "cluster_id":
 			value := iterator.ReadString()
