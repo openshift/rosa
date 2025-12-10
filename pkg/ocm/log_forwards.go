@@ -20,61 +20,38 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
-func BuildLogForwader(logForwarderConfig *LogForwarderConfig) *cmv1.LogForwarderBuilder {
+func BuildLogForwarder(logForwarderConfig *cmv1.LogForwarder) *cmv1.LogForwarderBuilder {
 	logForwardbldr := cmv1.NewLogForwarder()
 	if logForwarderConfig != nil {
-		if len(logForwarderConfig.Applications) > 0 {
-			logForwardbldr.Applications(logForwarderConfig.Applications...)
+		if len(logForwarderConfig.Applications()) > 0 {
+			logForwardbldr.Applications(logForwarderConfig.Applications()...)
 		}
-		if logForwarderConfig.CloudWatchLogGroupName != "" || logForwarderConfig.CloudWatchLogRoleArn != "" {
+		if logForwarderConfig.Cloudwatch() != nil && (logForwarderConfig.Cloudwatch().LogGroupName() != "" ||
+			logForwarderConfig.Cloudwatch().LogDistributionRoleArn() != "") {
 			logForwardbldr.Cloudwatch(cmv1.NewLogForwarderCloudWatchConfig().
-				LogDistributionRoleArn(logForwarderConfig.CloudWatchLogRoleArn).
-				LogGroupName(logForwarderConfig.CloudWatchLogGroupName))
+				LogDistributionRoleArn(logForwarderConfig.Cloudwatch().LogDistributionRoleArn()).
+				LogGroupName(logForwarderConfig.Cloudwatch().LogGroupName()))
 		}
-		if len(logForwarderConfig.GroupsLogVersion) > 0 {
+		if len(logForwarderConfig.Groups()) > 0 {
 			logForwarderGroupBlds := make([]*cmv1.LogForwarderGroupBuilder, 0)
-			for _, version := range logForwarderConfig.GroupsLogVersion {
-				logForwarderGroupBlds = append(logForwarderGroupBlds, cmv1.NewLogForwarderGroup().Version(version))
+			for _, group := range logForwarderConfig.Groups() {
+				logForwarderGroupBlds = append(logForwarderGroupBlds, cmv1.NewLogForwarderGroup().
+					Version(group.Version()).ID(group.ID()))
 			}
 			logForwardbldr.Groups(logForwarderGroupBlds...)
 		}
-		if logForwarderConfig.S3ConfigBucketName != "" || logForwarderConfig.S3ConfigBucketPrefix != "" {
-			logForwardbldr.S3(cmv1.NewLogForwarderS3Config().BucketName(logForwarderConfig.S3ConfigBucketName).
-				BucketPrefix(logForwarderConfig.S3ConfigBucketPrefix))
+		if logForwarderConfig.S3() != nil && (logForwarderConfig.S3().BucketName() != "" ||
+			logForwarderConfig.S3().BucketPrefix() != "") {
+			logForwardbldr.S3(cmv1.NewLogForwarderS3Config().BucketName(logForwarderConfig.S3().BucketName()).
+				BucketPrefix(logForwarderConfig.S3().BucketPrefix()))
 		}
 	}
 
 	return logForwardbldr
 }
 
-func GetLogForwardConfig(logForwarder *cmv1.LogForwarder) *LogForwarderConfig {
-	if logForwarder != nil {
-		logForwarderConfig := &LogForwarderConfig{}
-
-		logForwarderConfig.Applications = logForwarder.Applications()
-		if _, ok := logForwarder.GetCloudwatch(); ok {
-			logForwarderConfig.CloudWatchLogRoleArn = logForwarder.Cloudwatch().LogDistributionRoleArn()
-			logForwarderConfig.CloudWatchLogGroupName = logForwarder.Cloudwatch().LogGroupName()
-		}
-		if groups, ok := logForwarder.GetGroups(); ok && len(groups) > 0 {
-			versions := make([]string, 0)
-			for _, group := range groups {
-				versions = append(versions, group.Version())
-			}
-			logForwarderConfig.GroupsLogVersion = versions
-		}
-		if _, ok := logForwarder.GetS3(); ok {
-			logForwarderConfig.S3ConfigBucketName = logForwarder.S3().BucketName()
-			logForwarderConfig.S3ConfigBucketPrefix = logForwarder.S3().BucketPrefix()
-		}
-
-		return logForwarderConfig
-	}
-	return nil
-}
-
 func (c *Client) GetLogForwarder(clusterID string) (*cmv1.LogForwarder, error) {
-	LogForwarderList := []*cmv1.LogForwarder{}
+	var LogForwarderList []*cmv1.LogForwarder
 	collection := c.ocm.ClustersMgmt().V1().
 		Clusters().
 		Cluster(clusterID).
@@ -114,4 +91,12 @@ func (c *Client) SetLogForwarder(clusterID string,
 		return nil, handleErr(response.Error(), err)
 	}
 	return response.Body(), nil
+}
+
+func (c *Client) GetLogForwarderGroupVersions() ([]*cmv1.LogForwarderGroupVersions, error) {
+	response, err := c.ocm.ClustersMgmt().V1().LogForwarding().Groups().List().Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Items().Slice(), nil
 }
