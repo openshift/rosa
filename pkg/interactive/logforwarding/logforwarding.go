@@ -88,8 +88,11 @@ func interactiveCloudWatch(ocmClient *ocm.Client) (
 	if err != nil {
 		return nil, err
 	}
-	cloudWatchConfig.Applications = strings.Split(applications, ",")
-
+	if applications == "" {
+		cloudWatchConfig.Applications = []string{}
+	} else {
+		cloudWatchConfig.Applications = strings.Split(applications, ",")
+	}
 	return &cloudWatchConfig, nil
 }
 
