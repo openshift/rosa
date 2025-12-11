@@ -82,7 +82,7 @@ func interactiveCloudWatch(ocmClient *ocm.Client) (
 	if err != nil {
 		return nil, err
 	}
-	cloudWatchConfig.GroupsLogVersion = podGroups
+	cloudWatchConfig.GroupsLogVersions = podGroups
 
 	applications, err := promptForApplications("CloudWatch")
 	if err != nil {
@@ -119,7 +119,7 @@ func interactiveS3(ocmClient *ocm.Client) (*logforwarding.S3LogForwarderConfig, 
 	if err != nil {
 		return nil, err
 	}
-	s3Config.GroupsLogVersion = podGroups
+	s3Config.GroupsLogVersions = podGroups
 
 	applications, err := promptForApplications("S3")
 	if err != nil {
@@ -146,12 +146,12 @@ func promptForApplications(t string) (applications string, err error) {
 	return
 }
 
-func promptForPodGroups(ocmClient *ocm.Client, t string) (podGroups string, err error) {
+func promptForPodGroups(ocmClient *ocm.Client, t string) (podGroups []string, err error) {
 	availableOptions, err := ocmClient.GetLogForwarderGroupVersions()
 	if err != nil {
 		return
 	}
-	podGroups, err = interactive.GetOption(interactive.Input{
+	podGroups, err = interactive.GetMultipleOptions(interactive.Input{
 		Question: fmt.Sprintf("%s Log forwarding pod groups", t),
 		Help: fmt.Sprintf("Which preset pod group of logs to forward to '%s'. Available options:\n"+
 			logforwarding.ConstructPodGroupsHelpMessage(availableOptions), t),

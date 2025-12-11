@@ -15,7 +15,7 @@ const FlagName = "log-fwd-config"
 // S3LogForwarderConfig represents the log forward config for S3
 type S3LogForwarderConfig struct {
 	Applications         []string `yaml:"applications,omitempty"`
-	GroupsLogVersion     string   `yaml:"groups,omitempty"`
+	GroupsLogVersions    []string `yaml:"groups,omitempty"`
 	S3ConfigBucketName   string   `yaml:"s3_config_bucket_name,omitempty"`
 	S3ConfigBucketPrefix string   `yaml:"s3_config_bucket_prefix,omitempty"`
 }
@@ -23,7 +23,7 @@ type S3LogForwarderConfig struct {
 // CloudWatchLogForwarderConfig represents the log forward config for CloudWatch
 type CloudWatchLogForwarderConfig struct {
 	Applications           []string `yaml:"applications,omitempty"`
-	GroupsLogVersion       string   `yaml:"groups,omitempty"`
+	GroupsLogVersions      []string `yaml:"groups,omitempty"`
 	CloudWatchLogRoleArn   string   `yaml:"cloudwatch_log_role_arn,omitempty"`
 	CloudWatchLogGroupName string   `yaml:"cloudwatch_log_group_name,omitempty"`
 }
@@ -61,7 +61,13 @@ func BindCloudWatchLogForwarder(input *CloudWatchLogForwarderConfig) *cmv1.LogFo
 	cloudWatchBuilder.LogGroupName(input.CloudWatchLogGroupName)
 	outputBuilder := cmv1.NewLogForwarder().Cloudwatch(cloudWatchBuilder)
 	outputBuilder.Applications(input.Applications...)
-	outputBuilder.Groups(cmv1.NewLogForwarderGroup().ID(input.GroupsLogVersion))
+	if len(input.GroupsLogVersions) > 0 {
+		logForwarderGroups := make([]*cmv1.LogForwarderGroupBuilder, 0)
+		for _, group := range input.GroupsLogVersions {
+			logForwarderGroups = append(logForwarderGroups, cmv1.NewLogForwarderGroup().ID(group))
+		}
+		outputBuilder.Groups(logForwarderGroups...)
+	}
 	return outputBuilder
 }
 
@@ -71,7 +77,13 @@ func BindS3LogForwarder(input *S3LogForwarderConfig) *cmv1.LogForwarderBuilder {
 	s3Builder.BucketPrefix(input.S3ConfigBucketPrefix)
 	outputBuilder := cmv1.NewLogForwarder().S3(s3Builder)
 	outputBuilder.Applications(input.Applications...)
-	outputBuilder.Groups(cmv1.NewLogForwarderGroup().ID(input.GroupsLogVersion))
+	if len(input.GroupsLogVersions) > 0 {
+		logForwarderGroups := make([]*cmv1.LogForwarderGroupBuilder, 0)
+		for _, group := range input.GroupsLogVersions {
+			logForwarderGroups = append(logForwarderGroups, cmv1.NewLogForwarderGroup().ID(group))
+		}
+		outputBuilder.Groups(logForwarderGroups...)
+	}
 	return outputBuilder
 }
 
