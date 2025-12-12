@@ -567,6 +567,26 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		return fmt.Errorf("expected a valid image type for the machine pool: '%s'", imageType)
 	}
 
+	// Check if Windows LI image type is being used and if the tech preview is active
+	if imageType != "" && strings.EqualFold(imageType, string(cmv1.ImageTypeWindows)) {
+		isTechPreview, err := r.OCMClient.IsTechnologyPreview("windows-li", time.Now())
+		if err != nil {
+			return fmt.Errorf("failed to check Windows LI technology preview status: %v", err)
+		}
+		if !isTechPreview {
+			return fmt.Errorf("windows License Included AMI support for ROSA HCP node pools is not yet " +
+				"available")
+		}
+
+		techPreviewMsg, err := r.OCMClient.GetTechnologyPreviewMessage("windows-li", time.Now())
+		if err != nil {
+			return fmt.Errorf("failed to get Windows LI technology preview message: %v", err)
+		}
+		if techPreviewMsg != "" {
+			r.Reporter.Warnf("Technology Preview Message for Windows LI: %s", techPreviewMsg)
+		}
+	}
+
 	// OpenShift version:
 	isVersionSet := cmd.Flags().Changed("version")
 	version := args.Version
