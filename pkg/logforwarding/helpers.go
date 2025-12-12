@@ -11,6 +11,18 @@ import (
 
 // FlagName contains the common log forwarding config command flag name
 const FlagName = "log-fwd-config"
+const LogFwdConfigHelpMessage = "A path to a log forwarding config file. This should be a YAML file with the" +
+	" following structure:\n\n" +
+	"cloudwatch:\n" +
+	"  cloudwatch_log_role_arn: \"role_arn_here\"\n" +
+	"  cloudwatch_log_group_name: \"group_name_here\"\n" +
+	"  applications: [\"example_app_1\", \"example_app_2\"]\n" +
+	"  groups: [\"group-name\", \"group_name-2\"]\n" +
+	"s3:\n" +
+	"  s3_config_bucket_name: \"bucket_name_here\"\n" +
+	"  s3_config_bucket_prefix: \"bucket_prefix_here\"\n" +
+	"  applications: [\"example_app_1\", \"example_app_2\"]\n" +
+	"  groups: [\"group-name\"]"
 
 // S3LogForwarderConfig represents the log forward config for S3
 type S3LogForwarderConfig struct {

@@ -956,20 +956,7 @@ func initFlags(cmd *cobra.Command) {
 		&args.logFwdConfig,
 		logforwarding.FlagName,
 		"",
-		"A path to a log forwarding config file. This should be a YAML file with the following structure:\n\n"+
-			"cloudwatch:\n"+
-			"  cloudwatch_log_role_arn: \"role_arn_here\"\n"+
-			"  cloudwatch_log_group_name: \"group_name_here\"\n"+
-			"  applications: [\"example_app_1\", \"example_app_2\"]\n"+
-			"  groups: \"group-name\"\n"+
-			"s3:\n"+
-			"  s3_config_bucket_name: \"bucket_name_here\"\n"+
-			"  s3_config_bucket_prefix: \"bucket_prefix_here\"\n"+
-			"  applications: [\"example_app_1\", \"example_app_2\"]\n"+
-			"  groups: \"group-name\"\n"+
-			"\n"+
-			"\nPlease use interactive mode and enter '?' on the associated prompts to get the up to date lists "+
-			"for allowed Applications and allowed Groups\n",
+		logforwarding.LogFwdConfigHelpMessage,
 	)
 
 	interactive.AddModeFlag(cmd)

@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/idp"
 	"github.com/openshift/rosa/cmd/create/imagemirror"
 	"github.com/openshift/rosa/cmd/create/kubeletconfig"
+	"github.com/openshift/rosa/cmd/create/logforwarder"
 	"github.com/openshift/rosa/cmd/create/machinepool"
 	"github.com/openshift/rosa/cmd/create/network"
 	"github.com/openshift/rosa/cmd/create/ocmrole"
@@ -72,6 +73,8 @@ func init() {
 	Cmd.AddCommand(autoscalerCommand)
 	kubeletConfig := kubeletconfig.NewCreateKubeletConfigCommand()
 	Cmd.AddCommand(kubeletConfig)
+	logforwarderCommand := logforwarder.NewCreateLogForwarderCommand()
+	Cmd.AddCommand(logforwarderCommand)
 	imageMirrorCommand := imagemirror.NewCreateImageMirrorCommand()
 	Cmd.AddCommand(imageMirrorCommand)
 	Cmd.AddCommand(externalauthprovider.Cmd)
