@@ -47,6 +47,7 @@ children:
     - name: image-mirror
     - name: ingress
     - name: kubeletconfig
+    - name: log-forwarder
     - name: machinepool
     - name: ocm-role
     - name: oidc-config

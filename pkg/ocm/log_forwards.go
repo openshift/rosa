@@ -112,6 +112,20 @@ func (c *Client) SetLogForwarder(clusterID string,
 	return response.Body(), nil
 }
 
+func (c *Client) DeleteLogForwarder(clusterID string, logForwarderID string) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().Cluster(clusterID).
+		ControlPlane().
+		LogForwarders().
+		LogForwarder(logForwarderID).
+		Delete().
+		Send()
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
 func (c *Client) GetLogForwarderGroupVersions() ([]*cmv1.LogForwarderGroupVersions, error) {
 	response, err := c.ocm.ClustersMgmt().V1().LogForwarding().Groups().List().Send()
 	if err != nil {
