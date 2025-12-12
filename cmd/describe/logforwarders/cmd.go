@@ -20,7 +20,7 @@ const (
 	example = `rosa describe log-forwarder <log_fwd_id> -c mycluster-hcp`
 )
 
-var logForwarderKeyRE = regexp.MustCompile(`^[a-z0-9]+$`)
+var logForwarderKeyRE = regexp.MustCompile(`^[a-z-0-9]+$`)
 
 func NewDescribeLogForwarderCommand() *cobra.Command {
 	options := NewDescribeLogForwarderUserOptions()
