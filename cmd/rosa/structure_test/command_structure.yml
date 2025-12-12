@@ -127,6 +127,7 @@ children:
     - name: ingresses
     - name: instance-types
     - name: kubeletconfigs
+    - name: log-forwarders
     - name: machinepools
     - name: ocm-roles
     - name: oidc-config
