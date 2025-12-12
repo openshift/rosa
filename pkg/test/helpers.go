@@ -10,7 +10,9 @@ import (
 
 	"go.uber.org/mock/gomock"
 
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
@@ -18,6 +20,7 @@ import (
 	amsv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
+	//nolint:staticcheck
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 	"github.com/spf13/cobra"
 
@@ -206,6 +209,19 @@ func FormatClusterList(clusters []*v1.Cluster) string {
 
 func FormatIngressList(ingresses []*v1.Ingress) string {
 	return FormatList(ingresses, v1.MarshalIngressList, "IngressList")
+}
+
+func FormatLogForwarderList(logForwarders []*v1.LogForwarder) string {
+	return FormatList(logForwarders, v1.MarshalLogForwarderList, "LogForwarderList")
+}
+
+func FormatLogForwarder(logForwarder *v1.LogForwarder) string {
+	var json bytes.Buffer
+	err := v1.MarshalLogForwarder(logForwarder, &json)
+	if err != nil {
+		return err.Error()
+	}
+	return json.String()
 }
 
 func FormatVersionList(versions []*v1.Version) string {

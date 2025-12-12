@@ -81,6 +81,25 @@ func (c *Client) GetLogForwarder(clusterID string) (*cmv1.LogForwarder, error) {
 	return nil, nil
 }
 
+func (c *Client) GetLogForwarderByID(clusterID string, logForwarderID string) (*cmv1.LogForwarder, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(clusterID).
+		ControlPlane().
+		LogForwarders().
+		LogForwarder(logForwarderID).
+		Get().
+		Send()
+
+	if err != nil {
+		if response != nil && response.Status() == 404 {
+			return nil, nil
+		}
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
 func (c *Client) SetLogForwarder(clusterID string,
 	logForwarder *cmv1.LogForwarder) (*cmv1.LogForwarder, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
