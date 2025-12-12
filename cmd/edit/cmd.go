@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/rosa/cmd/edit/imagemirror"
 	"github.com/openshift/rosa/cmd/edit/ingress"
 	"github.com/openshift/rosa/cmd/edit/kubeletconfig"
+	"github.com/openshift/rosa/cmd/edit/logforwarder"
 	"github.com/openshift/rosa/cmd/edit/machinepool"
 	"github.com/openshift/rosa/cmd/edit/service"
 	"github.com/openshift/rosa/cmd/edit/tuningconfigs"
@@ -53,6 +54,8 @@ func init() {
 	Cmd.AddCommand(kubeletConfig)
 	imageMirrorCommand := imagemirror.NewEditImageMirrorCommand()
 	Cmd.AddCommand(imageMirrorCommand)
+	logForwarderCommand := logforwarder.NewEditLogForwarderCommand()
+	Cmd.AddCommand(logForwarderCommand)
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -66,7 +69,7 @@ func init() {
 		autoscalerCommand, addon.Cmd,
 		service.Cmd, cluster.Cmd,
 		imageMirrorCommand, ingress.Cmd, kubeletConfig,
-		machinepoolCommand, tuningconfigs.Cmd,
+		logForwarderCommand, machinepoolCommand, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }

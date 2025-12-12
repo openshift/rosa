@@ -15,11 +15,11 @@ const cloudWatch = "CloudWatch"
 const s3 = "S3"
 const both = "Both"
 
-func InteractiveLogForwardingConfig(ocmClient *ocm.Client, mainHelpMsg string) (
+func InteractiveLogForwardingConfig(ocmClient *ocm.Client) (
 	*logforwarding.LogForwarderYaml, error) {
 	con, err := interactive.GetOption(interactive.Input{
 		Question: "Enabled log forwarding",
-		Help:     mainHelpMsg,
+		Help:     "Whether log forwarding is enabled, and if so, which types of log forwarder(s) to create",
 		Required: false,
 		Default:  false,
 		Options:  []string{cloudWatch, s3, both},

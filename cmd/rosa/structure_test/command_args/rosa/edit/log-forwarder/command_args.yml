@@ -1,0 +1,6 @@
+- name: cluster
+- name: log-fwd-config
+- name: interactive
+- name: profile
+- name: region
+- name: "yes"

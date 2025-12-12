@@ -17,7 +17,12 @@ limitations under the License.
 package ocm
 
 import (
+	"reflect"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	errors "github.com/zgalor/weberr"
+
+	"github.com/openshift/rosa/pkg/logforwarding"
 )
 
 func BuildLogForwarder(logForwarderConfig *cmv1.LogForwarder) *cmv1.LogForwarderBuilder {
@@ -50,11 +55,11 @@ func BuildLogForwarder(logForwarderConfig *cmv1.LogForwarder) *cmv1.LogForwarder
 	return logForwardbldr
 }
 
-func (c *Client) GetLogForwarder(clusterID string) (*cmv1.LogForwarder, error) {
+func (c *Client) GetLogForwarder(clusterId string) (*cmv1.LogForwarder, error) {
 	var LogForwarderList []*cmv1.LogForwarder
 	collection := c.ocm.ClustersMgmt().V1().
 		Clusters().
-		Cluster(clusterID).
+		Cluster(clusterId).
 		ControlPlane().LogForwarders().List()
 
 	page := 1
@@ -100,10 +105,10 @@ func (c *Client) GetLogForwarderByID(clusterID string, logForwarderID string) (*
 	return response.Body(), nil
 }
 
-func (c *Client) SetLogForwarder(clusterID string,
+func (c *Client) SetLogForwarder(clusterId string,
 	logForwarder *cmv1.LogForwarder) (*cmv1.LogForwarder, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
-		Clusters().Cluster(clusterID).ControlPlane().
+		Clusters().Cluster(clusterId).ControlPlane().
 		LogForwarders().Add().Body(logForwarder).Send()
 
 	if err != nil {
@@ -118,4 +123,112 @@ func (c *Client) GetLogForwarderGroupVersions() ([]*cmv1.LogForwarderGroupVersio
 		return nil, handleErr(response.Error(), err)
 	}
 	return response.Items().Slice(), nil
+}
+
+func (c *Client) FetchLogForwarder(clusterId string, logForwarderId string) (*cmv1.LogForwarder, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(clusterId).
+		ControlPlane().
+		LogForwarders().
+		LogForwarder(logForwarderId).
+		Get().
+		Send()
+
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body(), nil
+}
+
+func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
+	logForwarderYaml logforwarding.LogForwarderYaml) error {
+
+	if logForwarderYaml.S3 == nil && logForwarderYaml.CloudWatch == nil {
+		return errors.UserErrorf("log forwarding config provided contained no valid log forwarders")
+	}
+
+	var logForwarderConfig *cmv1.LogForwarderBuilder
+
+	currentLogForwarder, err := c.FetchLogForwarder(clusterId, logForwarderId)
+	if err != nil {
+		return err
+	}
+	if currentLogForwarder == nil {
+		return errors.UserErrorf("Unable to fetch log forwarder with id '%s' from cluster '%s'",
+			logForwarderId, clusterId)
+	}
+
+	if logForwarderYaml.S3 != nil {
+		logForwarderConfigBuilder := cmv1.NewLogForwarder()
+		logForwarderS3ConfigBuilder := cmv1.NewLogForwarderS3Config()
+		if logForwarderYaml.S3.S3ConfigBucketPrefix != currentLogForwarder.S3().BucketPrefix() {
+			logForwarderS3ConfigBuilder.BucketPrefix(logForwarderYaml.S3.S3ConfigBucketPrefix)
+		}
+		if logForwarderYaml.S3.S3ConfigBucketName != currentLogForwarder.S3().BucketName() {
+			logForwarderS3ConfigBuilder.BucketName(logForwarderYaml.S3.S3ConfigBucketName)
+		}
+
+		if !reflect.DeepEqual(currentLogForwarder.Applications(), logForwarderYaml.S3.Applications) {
+			logForwarderConfigBuilder.Applications(logForwarderYaml.S3.Applications...)
+		}
+
+		if !reflect.DeepEqual(currentLogForwarder.Groups(), logForwarderYaml.S3.GroupsLogVersions) {
+			var groupBuilder []*cmv1.LogForwarderGroupBuilder
+			for _, group := range logForwarderYaml.S3.GroupsLogVersions {
+				groupBuilder = append(groupBuilder, cmv1.NewLogForwarderGroup().ID(group))
+			}
+			logForwarderConfigBuilder.Groups(groupBuilder...)
+		}
+
+		logForwarderConfig = logForwarderConfigBuilder
+	} else if logForwarderYaml.CloudWatch != nil {
+		logForwarderConfigBuilder := cmv1.NewLogForwarder()
+		logForwarderCWConfigBuilder := cmv1.NewLogForwarderCloudWatchConfig()
+		if logForwarderYaml.CloudWatch.CloudWatchLogGroupName != currentLogForwarder.Cloudwatch().LogGroupName() {
+			logForwarderCWConfigBuilder.LogGroupName(logForwarderYaml.CloudWatch.CloudWatchLogGroupName)
+		}
+		if logForwarderYaml.CloudWatch.CloudWatchLogRoleArn !=
+			currentLogForwarder.Cloudwatch().LogDistributionRoleArn() {
+			logForwarderCWConfigBuilder.LogDistributionRoleArn(logForwarderYaml.CloudWatch.CloudWatchLogRoleArn)
+		}
+
+		if !reflect.DeepEqual(currentLogForwarder.Applications(), logForwarderYaml.CloudWatch.Applications) {
+			logForwarderConfigBuilder.Applications(logForwarderYaml.CloudWatch.Applications...)
+		}
+
+		if !reflect.DeepEqual(currentLogForwarder.Groups(), logForwarderYaml.CloudWatch.GroupsLogVersions) {
+			var groupBuilder []*cmv1.LogForwarderGroupBuilder
+			for _, group := range logForwarderYaml.CloudWatch.GroupsLogVersions {
+				groupBuilder = append(groupBuilder, cmv1.NewLogForwarderGroup().ID(group))
+			}
+			logForwarderConfigBuilder.Groups(groupBuilder...)
+		}
+
+		logForwarderConfig = logForwarderConfigBuilder
+	}
+
+	if logForwarderConfig == nil {
+		return errors.UserErrorf("log forwarding config changes contained no valid log forwarder changes")
+	}
+
+	body, err := logForwarderConfig.Build()
+	if err != nil {
+		return err
+	}
+
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(clusterId).
+		ControlPlane().
+		LogForwarders().
+		LogForwarder(logForwarderId).
+		Update().
+		Body(body).
+		Send()
+
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
 }

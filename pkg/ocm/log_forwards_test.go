@@ -20,6 +20,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	"github.com/openshift/rosa/pkg/logforwarding"
 )
 
 var _ = Describe("BuildLogForwarder", func() {
@@ -188,6 +190,19 @@ var _ = Describe("BuildLogForwarder Function Tests", func() {
 
 			_, hasS3 := out.GetS3()
 			Expect(hasS3).To(BeFalse())
+		})
+	})
+})
+
+var _ = Describe("EditLogForwarder", func() {
+	Context("EditLogForwarder function", func() {
+		It("Should handle empty config", func() {
+			client := Client{}
+			emptyConfig := logforwarding.LogForwarderYaml{}
+			err := client.EditLogForwarder("cluster-123", "log-fwd-123", emptyConfig)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(
+				"log forwarding config provided contained no valid log forwarders"))
 		})
 	})
 })
