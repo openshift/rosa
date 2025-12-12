@@ -69,6 +69,7 @@ children:
     - name: ingress
     - name: addon-installation
     - name: kubeletconfig
+    - name: log-forwarder
     - name: machinepool
     - name: managed-service
     - name: tuning-configs

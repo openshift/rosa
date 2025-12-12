@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestHelper(t *testing.T) {
+func TestLogforwarding(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Helper Suite")
+	RunSpecs(t, "Logforwarding Suite")
 }
