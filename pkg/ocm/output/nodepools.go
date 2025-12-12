@@ -160,12 +160,22 @@ func PrintCapacityReservationDetails(capacityReservation *cmv1.AWSCapacityReserv
 		}
 		marketType, ok := capacityReservation.GetMarketType()
 		if !ok {
-			return ""
+			return fmt.Sprintf("\n"+
+				" - ID:                                 %s\n",
+				id)
+		}
+		preference, ok := capacityReservation.GetPreference()
+		if !ok {
+			return fmt.Sprintf("\n"+
+				" - ID:                                 %s\n"+
+				" - Type:                               %s",
+				id, marketType)
 		}
 		return fmt.Sprintf("\n"+
 			" - ID:                                 %s\n"+
-			" - Type:                               %s",
-			id, marketType)
+			" - Type:                               %s\n"+
+			" - Preference:                         %s",
+			id, marketType, preference)
 	}
 	return ""
 }
