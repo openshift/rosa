@@ -24,6 +24,7 @@ children:
     - name: iamserviceaccount
     - name: image-mirror
     - name: kubeletconfig
+    - name: log-forwarder
     - name: machinepool
     - name: ocm-role
     - name: oidc-config
