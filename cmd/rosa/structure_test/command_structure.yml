@@ -90,6 +90,7 @@ children:
     - name: image-mirror
     - name: ingress
     - name: kubeletconfig
+    - name: log-forwarder
     - name: machinepool
     - name: managed-service
     - name: tuning-configs

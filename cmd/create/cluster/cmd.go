@@ -2217,8 +2217,7 @@ func run(cmd *cobra.Command, _ []string) {
 			logFwdS3ConfigObject = yamlObject.S3
 			logFwdCloudWatchConfigObject = yamlObject.CloudWatch
 		} else if args.logFwdConfig == "" && interactive.Enabled() {
-			interactiveObject, err := interactiveLogForwarding.InteractiveLogForwardingConfig(
-				r.OCMClient, cmd.Flags().Lookup(logforwarding.FlagName).Usage)
+			interactiveObject, err := interactiveLogForwarding.InteractiveLogForwardingConfig(r.OCMClient)
 			if err != nil {
 				r.Reporter.Errorf("failed to create log fowarder config: %s", err)
 				os.Exit(1)
