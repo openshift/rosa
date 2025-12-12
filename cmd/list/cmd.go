@@ -33,6 +33,7 @@ import (
 	"github.com/openshift/rosa/cmd/list/ingress"
 	"github.com/openshift/rosa/cmd/list/instancetypes"
 	"github.com/openshift/rosa/cmd/list/kubeletconfig"
+	"github.com/openshift/rosa/cmd/list/logforwarders"
 	"github.com/openshift/rosa/cmd/list/machinepool"
 	"github.com/openshift/rosa/cmd/list/ocmroles"
 	"github.com/openshift/rosa/cmd/list/oidcconfig"
@@ -86,6 +87,8 @@ func init() {
 	Cmd.AddCommand(breakglasscredential.Cmd)
 	kubeletconfig := kubeletconfig.NewListKubeletConfigsCommand()
 	Cmd.AddCommand(kubeletconfig)
+	logforwardersCommand := logforwarders.NewListLogForwardersCommand()
+	Cmd.AddCommand(logforwardersCommand)
 	accessrequest := accessrequests.NewListAccessRequestsCommand()
 	Cmd.AddCommand(accessrequest)
 	flags := Cmd.PersistentFlags()
@@ -101,7 +104,7 @@ func init() {
 		gates.Cmd, iamserviceaccounts.Cmd, idp.Cmd, ingress.Cmd, machinePoolCommand,
 		operatorroles.Cmd, region.Cmd, rhRegion.Cmd,
 		service.Cmd, tuningconfigs.Cmd, upgrade.Cmd,
-		user.Cmd, version.Cmd, kubeletconfig, accessrequest,
+		user.Cmd, version.Cmd, kubeletconfig, logforwardersCommand, accessrequest,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }
