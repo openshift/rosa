@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/rosa/cmd/dlt/imagemirror"
 	"github.com/openshift/rosa/cmd/dlt/ingress"
 	"github.com/openshift/rosa/cmd/dlt/kubeletconfig"
+	"github.com/openshift/rosa/cmd/dlt/logforwarder"
 	"github.com/openshift/rosa/cmd/dlt/machinepool"
 	"github.com/openshift/rosa/cmd/dlt/ocmrole"
 	"github.com/openshift/rosa/cmd/dlt/oidcconfig"
@@ -75,6 +76,8 @@ func init() {
 	Cmd.AddCommand(kubeletconfig)
 	imageMirrorCommand := imagemirror.NewDeleteImageMirrorCommand()
 	Cmd.AddCommand(imageMirrorCommand)
+	logForwarderCommand := logforwarder.NewDeleteLogForwarderCommand()
+	Cmd.AddCommand(logForwarderCommand)
 	Cmd.AddCommand(externalauthprovider.Cmd)
 
 	flags := Cmd.PersistentFlags()
@@ -88,7 +91,7 @@ func init() {
 		oidcprovider.Cmd, upgrade.Cmd, admin.Cmd,
 		service.Cmd, autoscalerCommand, iamserviceaccount.Cmd, idp.Cmd,
 		imageMirrorCommand, cluster.Cmd, dnsdomains.Cmd, externalauthprovider.Cmd,
-		kubeletconfig, machinepoolCommand, tuningconfigs.Cmd,
+		kubeletconfig, machinepoolCommand, tuningconfigs.Cmd, logForwarderCommand,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
 }
