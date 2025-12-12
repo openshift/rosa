@@ -961,12 +961,12 @@ func initFlags(cmd *cobra.Command) {
 			"  cloudwatch_log_role_arn: \"role_arn_here\"\n"+
 			"  cloudwatch_log_group_name: \"group_name_here\"\n"+
 			"  applications: [\"example_app_1\", \"example_app_2\"]\n"+
-			"  groups: \"group-name\"\n"+
+			"  groups: [\"group-name\", \"group-name-2\"]\n"+
 			"s3:\n"+
 			"  s3_config_bucket_name: \"bucket_name_here\"\n"+
 			"  s3_config_bucket_prefix: \"bucket_prefix_here\"\n"+
 			"  applications: [\"example_app_1\", \"example_app_2\"]\n"+
-			"  groups: \"group-name\"\n"+
+			"  groups: [\"group-name\", \"group-name-2\"]\n"+
 			"\n"+
 			"\nPlease use interactive mode and enter '?' on the associated prompts to get the up to date lists "+
 			"for allowed Applications and allowed Groups\n",
@@ -2217,8 +2217,7 @@ func run(cmd *cobra.Command, _ []string) {
 			logFwdS3ConfigObject = yamlObject.S3
 			logFwdCloudWatchConfigObject = yamlObject.CloudWatch
 		} else if args.logFwdConfig == "" && interactive.Enabled() {
-			interactiveObject, err := interactiveLogForwarding.InteractiveLogForwardingConfig(
-				r.OCMClient, cmd.Flags().Lookup(logforwarding.FlagName).Usage)
+			interactiveObject, err := interactiveLogForwarding.InteractiveLogForwardingConfig(r.OCMClient)
 			if err != nil {
 				r.Reporter.Errorf("failed to create log fowarder config: %s", err)
 				os.Exit(1)
