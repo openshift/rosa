@@ -11,27 +11,28 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Sends a response to the originator of a handshake agreeing to the action
-// proposed by the handshake request. You can only call this operation by the
-// following principals when they also have the relevant IAM permissions:
-//   - Invitation to join or Approve all features request handshakes: only a
-//     principal from the member account. The user who calls the API for an invitation
-//     to join must have the organizations:AcceptHandshake permission. If you enabled
-//     all features in the organization, the user must also have the
-//     iam:CreateServiceLinkedRole permission so that Organizations can create the
-//     required service-linked role named AWSServiceRoleForOrganizations . For more
-//     information, see Organizations and service-linked roles (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integration_services.html#orgs_integrate_services-using_slrs)
-//     in the Organizations User Guide.
-//   - Enable all features final confirmation handshake: only a principal from the
-//     management account. For more information about invitations, see Inviting an
-//     Amazon Web Services account to join your organization (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_invites.html)
-//     in the Organizations User Guide. For more information about requests to enable
-//     all features in the organization, see Enabling all features in your
-//     organization (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_org_support-all-features.html)
-//     in the Organizations User Guide.
+// Accepts a handshake by sending an ACCEPTED response to the sender. You can view
+// accepted handshakes in API responses for 30 days before they are deleted.
 //
-// After you accept a handshake, it continues to appear in the results of relevant
-// APIs for only 30 days. After that, it's deleted.
+// Only the management account can accept the following handshakes:
+//
+//   - Enable all features final confirmation ( APPROVE_ALL_FEATURES )
+//
+//   - Billing transfer ( TRANSFER_RESPONSIBILITY )
+//
+// For more information, see [Enabling all features] and [Responding to a billing transfer invitation] in the Organizations User Guide.
+//
+// Only a member account can accept the following handshakes:
+//
+//   - Invitation to join ( INVITE )
+//
+//   - Approve all features request ( ENABLE_ALL_FEATURES )
+//
+// For more information, see [Responding to invitations] and [Enabling all features] in the Organizations User Guide.
+//
+// [Enabling all features]: https://docs.aws.amazon.com/organizations/latest/userguide/manage-begin-all-features-standard-migration.html#manage-approve-all-features-invite
+// [Responding to invitations]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_accept-decline-invite.html
+// [Responding to a billing transfer invitation]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_transfer_billing-respond-invitation.html
 func (c *Client) AcceptHandshake(ctx context.Context, params *AcceptHandshakeInput, optFns ...func(*Options)) (*AcceptHandshakeOutput, error) {
 	if params == nil {
 		params = &AcceptHandshakeInput{}
@@ -49,9 +50,12 @@ func (c *Client) AcceptHandshake(ctx context.Context, params *AcceptHandshakeInp
 
 type AcceptHandshakeInput struct {
 
-	// The unique identifier (ID) of the handshake that you want to accept. The regex
-	// pattern (http://wikipedia.org/wiki/regex) for handshake ID string requires "h-"
-	// followed by from 8 to 32 lowercase letters or digits.
+	// ID for the handshake that you want to accept.
+	//
+	// The [regex pattern] for handshake ID string requires "h-" followed by from 8 to 32 lowercase
+	// letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	HandshakeId *string
@@ -61,7 +65,7 @@ type AcceptHandshakeInput struct {
 
 type AcceptHandshakeOutput struct {
 
-	// A structure that contains details about the accepted handshake.
+	// A Handshake object. Contains details for the handshake.
 	Handshake *types.Handshake
 
 	// Metadata pertaining to the operation's result.
@@ -113,6 +117,9 @@ func (c *Client) addOperationAcceptHandshakeMiddlewares(stack *middleware.Stack,
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -123,6 +130,15 @@ func (c *Client) addOperationAcceptHandshakeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAcceptHandshakeValidationMiddleware(stack); err != nil {
@@ -144,6 +160,15 @@ func (c *Client) addOperationAcceptHandshakeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
