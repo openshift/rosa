@@ -41,7 +41,7 @@ var (
 	aliases = []string{"log_forwarder", "log-forwarder", "logforwarder"}
 )
 
-var logForwarderKeyRE = regexp.MustCompile(`^[a-z0-9]+$`)
+var logForwarderKeyRE = regexp.MustCompile(`^[a-z-0-9]+$`)
 
 func NewDeleteLogForwarderCommand() *cobra.Command {
 	options := NewDeleteLogForwarderUserOptions()
