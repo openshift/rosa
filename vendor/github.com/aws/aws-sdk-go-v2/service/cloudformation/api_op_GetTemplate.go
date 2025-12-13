@@ -12,9 +12,12 @@ import (
 )
 
 // Returns the template body for a specified stack. You can get the template for
-// running or deleted stacks. For deleted stacks, GetTemplate returns the template
-// for up to 90 days after the stack has been deleted. If the template doesn't
-// exist, a ValidationError is returned.
+// running or deleted stacks.
+//
+// For deleted stacks, GetTemplate returns the template for up to 90 days after
+// the stack has been deleted.
+//
+// If the template doesn't exist, a ValidationError is returned.
 func (c *Client) GetTemplate(ctx context.Context, params *GetTemplateInput, optFns ...func(*Options)) (*GetTemplateOutput, error) {
 	if params == nil {
 		params = &GetTemplateInput{}
@@ -40,17 +43,20 @@ type GetTemplateInput struct {
 
 	// The name or the unique stack ID that's associated with the stack, which aren't
 	// always interchangeable:
+	//
 	//   - Running stacks: You can specify either the stack's name or its unique stack
 	//   ID.
+	//
 	//   - Deleted stacks: You must specify the unique stack ID.
-	// Default: There is no default value.
 	StackName *string
 
 	// For templates that include transforms, the stage of the template that
 	// CloudFormation returns. To get the user-submitted template, specify Original .
 	// To get the template after CloudFormation has processed all transforms, specify
-	// Processed . If the template doesn't include transforms, Original and Processed
-	// return the same template. By default, CloudFormation specifies Processed .
+	// Processed .
+	//
+	// If the template doesn't include transforms, Original and Processed return the
+	// same template. By default, CloudFormation specifies Processed .
 	TemplateStage types.TemplateStage
 
 	noSmithyDocumentSerde
@@ -65,10 +71,10 @@ type GetTemplateOutput struct {
 	// set, the Processed template becomes available.
 	StagesAvailable []types.TemplateStage
 
-	// Structure containing the template body. (For more information, go to Template
-	// Anatomy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html)
-	// in the CloudFormation User Guide.) CloudFormation returns the same template that
-	// was used when the stack was created.
+	// Structure that contains the template body.
+	//
+	// CloudFormation returns the same template that was used when the stack was
+	// created.
 	TemplateBody *string
 
 	// Metadata pertaining to the operation's result.
@@ -120,6 +126,9 @@ func (c *Client) addOperationGetTemplateMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -130,6 +139,15 @@ func (c *Client) addOperationGetTemplateMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetTemplate(options.Region), middleware.Before); err != nil {
@@ -148,6 +166,15 @@ func (c *Client) addOperationGetTemplateMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

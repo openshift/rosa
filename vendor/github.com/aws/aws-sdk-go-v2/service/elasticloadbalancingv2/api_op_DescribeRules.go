@@ -12,7 +12,7 @@ import (
 )
 
 // Describes the specified rules or the rules for the specified listener. You must
-// specify either a listener or one or more rules.
+// specify either a listener or rules.
 func (c *Client) DescribeRules(ctx context.Context, params *DescribeRulesInput, optFns ...func(*Options)) (*DescribeRulesOutput, error) {
 	if params == nil {
 		params = &DescribeRulesInput{}
@@ -104,6 +104,9 @@ func (c *Client) addOperationDescribeRulesMiddlewares(stack *middleware.Stack, o
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -120,6 +123,9 @@ func (c *Client) addOperationDescribeRulesMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeRules(options.Region), middleware.Before); err != nil {
@@ -140,8 +146,97 @@ func (c *Client) addOperationDescribeRulesMiddlewares(stack *middleware.Stack, o
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
+
+// DescribeRulesPaginatorOptions is the paginator options for DescribeRules
+type DescribeRulesPaginatorOptions struct {
+	// Set to true if pagination should stop if the service returns a pagination token
+	// that matches the most recent token provided to the service.
+	StopOnDuplicateToken bool
+}
+
+// DescribeRulesPaginator is a paginator for DescribeRules
+type DescribeRulesPaginator struct {
+	options   DescribeRulesPaginatorOptions
+	client    DescribeRulesAPIClient
+	params    *DescribeRulesInput
+	nextToken *string
+	firstPage bool
+}
+
+// NewDescribeRulesPaginator returns a new DescribeRulesPaginator
+func NewDescribeRulesPaginator(client DescribeRulesAPIClient, params *DescribeRulesInput, optFns ...func(*DescribeRulesPaginatorOptions)) *DescribeRulesPaginator {
+	if params == nil {
+		params = &DescribeRulesInput{}
+	}
+
+	options := DescribeRulesPaginatorOptions{}
+
+	for _, fn := range optFns {
+		fn(&options)
+	}
+
+	return &DescribeRulesPaginator{
+		options:   options,
+		client:    client,
+		params:    params,
+		firstPage: true,
+		nextToken: params.Marker,
+	}
+}
+
+// HasMorePages returns a boolean indicating whether more pages are available
+func (p *DescribeRulesPaginator) HasMorePages() bool {
+	return p.firstPage || (p.nextToken != nil && len(*p.nextToken) != 0)
+}
+
+// NextPage retrieves the next DescribeRules page.
+func (p *DescribeRulesPaginator) NextPage(ctx context.Context, optFns ...func(*Options)) (*DescribeRulesOutput, error) {
+	if !p.HasMorePages() {
+		return nil, fmt.Errorf("no more pages available")
+	}
+
+	params := *p.params
+	params.Marker = p.nextToken
+
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
+	result, err := p.client.DescribeRules(ctx, &params, optFns...)
+	if err != nil {
+		return nil, err
+	}
+	p.firstPage = false
+
+	prevToken := p.nextToken
+	p.nextToken = result.NextMarker
+
+	if p.options.StopOnDuplicateToken &&
+		prevToken != nil &&
+		p.nextToken != nil &&
+		*prevToken == *p.nextToken {
+		p.nextToken = nil
+	}
+
+	return result, nil
+}
+
+// DescribeRulesAPIClient is a client that implements the DescribeRules operation.
+type DescribeRulesAPIClient interface {
+	DescribeRules(context.Context, *DescribeRulesInput, ...func(*Options)) (*DescribeRulesOutput, error)
+}
+
+var _ DescribeRulesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeRules(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

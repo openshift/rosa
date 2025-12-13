@@ -10,8 +10,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes the specified retention policy. Log events do not expire if they belong
-// to log groups without a retention policy.
+// Deletes the specified retention policy.
+//
+// Log events do not expire if they belong to log groups without a retention
+// policy.
 func (c *Client) DeleteRetentionPolicy(ctx context.Context, params *DeleteRetentionPolicyInput, optFns ...func(*Options)) (*DeleteRetentionPolicyOutput, error) {
 	if params == nil {
 		params = &DeleteRetentionPolicyInput{}
@@ -87,6 +89,9 @@ func (c *Client) addOperationDeleteRetentionPolicyMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -97,6 +102,15 @@ func (c *Client) addOperationDeleteRetentionPolicyMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteRetentionPolicyValidationMiddleware(stack); err != nil {
@@ -118,6 +132,15 @@ func (c *Client) addOperationDeleteRetentionPolicyMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
