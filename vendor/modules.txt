@@ -231,8 +231,8 @@ github.com/danieljoos/wincred
 # github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
 ## explicit
 github.com/dchest/validator
-# github.com/dustin/go-humanize v1.0.0
-## explicit
+# github.com/dustin/go-humanize v1.0.1
+## explicit; go 1.16
 github.com/dustin/go-humanize
 # github.com/dvsekhvalnov/jose2go v1.7.0
 ## explicit; go 1.15
