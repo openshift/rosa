@@ -3087,7 +3087,7 @@ func run(cmd *cobra.Command, _ []string) {
 			Help:     cmd.Flags().Lookup("https-proxy").Usage,
 			Default:  httpsProxy,
 			Validators: []interactive.Validator{
-				interactive.IsURL,
+				ocm.ValidateHTTPSProxy,
 			},
 		})
 		if err != nil {
@@ -3095,7 +3095,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	err = interactive.IsURL(httpsProxy)
+	err = ocm.ValidateHTTPSProxy(httpsProxy)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
