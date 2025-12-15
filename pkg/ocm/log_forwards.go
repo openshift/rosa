@@ -183,7 +183,7 @@ func (c *Client) FetchLogForwarder(clusterId string, logForwarderId string) (*cm
 }
 
 func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
-	logForwarderYaml logforwarding.LogForwarderYaml) error {
+	logForwarderYaml logforwarding.LogForwarderYaml, currentLogForwarder *cmv1.LogForwarder) error {
 
 	if logForwarderYaml.S3 == nil && logForwarderYaml.CloudWatch == nil {
 		return errors.UserErrorf("log forwarding config provided contained no valid log forwarders")
@@ -191,24 +191,13 @@ func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
 
 	var logForwarderConfig *cmv1.LogForwarderBuilder
 
-	currentLogForwarder, err := c.FetchLogForwarder(clusterId, logForwarderId)
-	if err != nil {
-		return err
-	}
-	if currentLogForwarder == nil {
-		return errors.UserErrorf("Unable to fetch log forwarder with id '%s' from cluster '%s'",
-			logForwarderId, clusterId)
-	}
-
 	if logForwarderYaml.S3 != nil {
 		logForwarderConfigBuilder := cmv1.NewLogForwarder()
 		logForwarderS3ConfigBuilder := cmv1.NewLogForwarderS3Config()
-		if logForwarderYaml.S3.S3ConfigBucketPrefix != currentLogForwarder.S3().BucketPrefix() {
-			logForwarderS3ConfigBuilder.BucketPrefix(logForwarderYaml.S3.S3ConfigBucketPrefix)
-		}
-		if logForwarderYaml.S3.S3ConfigBucketName != currentLogForwarder.S3().BucketName() {
-			logForwarderS3ConfigBuilder.BucketName(logForwarderYaml.S3.S3ConfigBucketName)
-		}
+
+		logForwarderS3ConfigBuilder.BucketPrefix(logForwarderYaml.S3.S3ConfigBucketPrefix)
+
+		logForwarderS3ConfigBuilder.BucketName(logForwarderYaml.S3.S3ConfigBucketName)
 
 		if !reflect.DeepEqual(currentLogForwarder.Applications(), logForwarderYaml.S3.Applications) {
 			logForwarderConfigBuilder.Applications(logForwarderYaml.S3.Applications...)
@@ -222,17 +211,15 @@ func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
 			logForwarderConfigBuilder.Groups(groupBuilder...)
 		}
 
+		logForwarderConfigBuilder.S3(logForwarderS3ConfigBuilder)
 		logForwarderConfig = logForwarderConfigBuilder
 	} else if logForwarderYaml.CloudWatch != nil {
 		logForwarderConfigBuilder := cmv1.NewLogForwarder()
 		logForwarderCWConfigBuilder := cmv1.NewLogForwarderCloudWatchConfig()
-		if logForwarderYaml.CloudWatch.CloudWatchLogGroupName != currentLogForwarder.Cloudwatch().LogGroupName() {
-			logForwarderCWConfigBuilder.LogGroupName(logForwarderYaml.CloudWatch.CloudWatchLogGroupName)
-		}
-		if logForwarderYaml.CloudWatch.CloudWatchLogRoleArn !=
-			currentLogForwarder.Cloudwatch().LogDistributionRoleArn() {
-			logForwarderCWConfigBuilder.LogDistributionRoleArn(logForwarderYaml.CloudWatch.CloudWatchLogRoleArn)
-		}
+
+		logForwarderCWConfigBuilder.LogGroupName(logForwarderYaml.CloudWatch.CloudWatchLogGroupName)
+
+		logForwarderCWConfigBuilder.LogDistributionRoleArn(logForwarderYaml.CloudWatch.CloudWatchLogRoleArn)
 
 		if !reflect.DeepEqual(currentLogForwarder.Applications(), logForwarderYaml.CloudWatch.Applications) {
 			logForwarderConfigBuilder.Applications(logForwarderYaml.CloudWatch.Applications...)
@@ -246,6 +233,7 @@ func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
 			logForwarderConfigBuilder.Groups(groupBuilder...)
 		}
 
+		logForwarderConfigBuilder.Cloudwatch(logForwarderCWConfigBuilder)
 		logForwarderConfig = logForwarderConfigBuilder
 	}
 
