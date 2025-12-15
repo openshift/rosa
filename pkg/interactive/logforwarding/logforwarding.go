@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logforwarding"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -36,13 +38,13 @@ func InteractiveLogForwardingConfig(ocmClient *ocm.Client) (
 	cloudWatchResult := &logforwarding.CloudWatchLogForwarderConfig{}
 
 	if con == cloudWatch || con == both {
-		cloudWatchResult, err = interactiveCloudWatch(ocmClient)
+		cloudWatchResult, err = interactiveCloudWatch(ocmClient, "", "")
 		if err != nil {
 			return nil, err
 		}
 	}
 	if con == s3 || con == both {
-		s3Result, err = interactiveS3(ocmClient)
+		s3Result, err = interactiveS3(ocmClient, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -55,12 +57,43 @@ func InteractiveLogForwardingConfig(ocmClient *ocm.Client) (
 	return &result, nil
 }
 
-func interactiveCloudWatch(ocmClient *ocm.Client) (
+func InteractiveLogForwardingConfigWithDefaults(ocmClient *ocm.Client, logForwarder *cmv1.LogForwarder) (
+	*logforwarding.LogForwarderYaml, error) {
+
+	s3Result := &logforwarding.S3LogForwarderConfig{}
+	cloudWatchResult := &logforwarding.CloudWatchLogForwarderConfig{}
+
+	var err error
+
+	if logForwarder.Cloudwatch() != nil && logForwarder.Cloudwatch().LogDistributionRoleArn() != "" {
+		cloudWatchResult, err = interactiveCloudWatch(ocmClient,
+			logForwarder.Cloudwatch().LogGroupName(), logForwarder.Cloudwatch().LogDistributionRoleArn())
+		if err != nil {
+			return nil, err
+		}
+	}
+	if logForwarder.S3() != nil && logForwarder.S3().BucketName() != "" {
+		s3Result, err = interactiveS3(ocmClient, logForwarder.S3().BucketName(), logForwarder.S3().BucketPrefix())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	result := logforwarding.LogForwarderYaml{}
+	result.S3 = s3Result
+	result.CloudWatch = cloudWatchResult
+
+	return &result, nil
+}
+
+func interactiveCloudWatch(ocmClient *ocm.Client, defaultLogGroupName string, defaultLogRoleArn string) (
 	*logforwarding.CloudWatchLogForwarderConfig, error) {
+
 	cloudWatchConfig := logforwarding.CloudWatchLogForwarderConfig{}
 	roleArn, err := interactive.GetString(interactive.Input{
 		Question: "CloudWatch Log forwarding role ARN",
 		Help:     "The role ARN which forwards logs to CloudWatch",
+		Default:  defaultLogRoleArn,
 		Required: true,
 	})
 	if err != nil {
@@ -71,6 +104,7 @@ func interactiveCloudWatch(ocmClient *ocm.Client) (
 	groupName, err := interactive.GetString(interactive.Input{
 		Question: "CloudWatch log group name",
 		Help:     "The name of the group on CloudWatch which will contain the logs",
+		Default:  defaultLogGroupName,
 		Required: true,
 	})
 	if err != nil {
@@ -96,11 +130,14 @@ func interactiveCloudWatch(ocmClient *ocm.Client) (
 	return &cloudWatchConfig, nil
 }
 
-func interactiveS3(ocmClient *ocm.Client) (*logforwarding.S3LogForwarderConfig, error) {
+func interactiveS3(ocmClient *ocm.Client, defaultBucketName string, defaultBucketPrefix string) (
+	*logforwarding.S3LogForwarderConfig, error) {
+
 	s3Config := logforwarding.S3LogForwarderConfig{}
 	bucketPrefix, err := interactive.GetString(interactive.Input{
 		Question: "S3 Bucket prefix",
 		Help:     "The identifiable prefix to prepend to the S3 Bucket used for log forwarding",
+		Default:  defaultBucketPrefix,
 		Required: false,
 	})
 	if err != nil {
@@ -111,6 +148,7 @@ func interactiveS3(ocmClient *ocm.Client) (*logforwarding.S3LogForwarderConfig, 
 	bucketName, err := interactive.GetString(interactive.Input{
 		Question: "S3 Bucket name",
 		Help:     "The identifiable name to append to the S3 Bucket used for log forwarding",
+		Default:  defaultBucketName,
 		Required: true,
 	})
 	if err != nil {
