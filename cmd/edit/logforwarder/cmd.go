@@ -66,7 +66,7 @@ func NewEditLogForwarderCommand() *cobra.Command {
 	return cmd
 }
 
-func EditLogForwarderRunner(ctx context.Context, r *rosa.Runtime, command *cobra.Command, argv []string) error {
+func EditLogForwarderRunner(_ context.Context, r *rosa.Runtime, _ *cobra.Command, argv []string) error {
 	if len(argv) != 1 {
 		return fmt.Errorf("expected exactly one argument: log-forwarder ID")
 	}
@@ -90,9 +90,18 @@ func EditLogForwarderRunner(ctx context.Context, r *rosa.Runtime, command *cobra
 
 	var logForwarderYaml logforwarding.LogForwarderYaml
 
+	currentLogForwarder, err := r.OCMClient.FetchLogForwarder(cluster.ID(), logFwdID)
+	if err != nil {
+		return err
+	}
+	if currentLogForwarder == nil {
+		return errors.UserErrorf("Unable to fetch log forwarder with id '%s' from cluster '%s'",
+			logFwdID, cluster.ID())
+	}
+
 	if len(configData) == 0 {
-		interactiveObject, err := interactiveLogForwarding.InteractiveLogForwardingConfig(
-			r.OCMClient)
+		interactiveObject, err := interactiveLogForwarding.InteractiveLogForwardingConfigWithDefaults(
+			r.OCMClient, currentLogForwarder)
 		if err != nil {
 			return errors.UserErrorf("failed to create log fowarder config: %s", err)
 		}
@@ -110,7 +119,7 @@ func EditLogForwarderRunner(ctx context.Context, r *rosa.Runtime, command *cobra
 		}
 	}
 
-	err = r.OCMClient.EditLogForwarder(cluster.ID(), logFwdID, logForwarderYaml)
+	err = r.OCMClient.EditLogForwarder(cluster.ID(), logFwdID, logForwarderYaml, currentLogForwarder)
 	if err != nil {
 		return fmt.Errorf("failed to edit log forwarder '%s' for cluster '%s': %s", logFwdID, cluster.ID(), err)
 	}
