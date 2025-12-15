@@ -199,7 +199,7 @@ var _ = Describe("EditLogForwarder", func() {
 		It("Should handle empty config", func() {
 			client := Client{}
 			emptyConfig := logforwarding.LogForwarderYaml{}
-			err := client.EditLogForwarder("cluster-123", "log-fwd-123", emptyConfig)
+			err := client.EditLogForwarder("cluster-123", "log-fwd-123", emptyConfig, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring(
 				"log forwarding config provided contained no valid log forwarders"))
