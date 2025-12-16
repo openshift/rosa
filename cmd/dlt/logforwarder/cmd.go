@@ -24,6 +24,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -71,6 +72,10 @@ func NewDeleteLogForwarderCommand() *cobra.Command {
 func DeleteLogForwarderRunner(userOptions *DeleteLogForwarderUserOptions) rosa.CommandRunner {
 	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		options := NewDeleteLogForwarderOptions()
+
+		if fedramp.Enabled() {
+			return fmt.Errorf("log forwarding is not supported on Govcloud")
+		}
 
 		err := options.Bind(userOptions, argv)
 		if err != nil {

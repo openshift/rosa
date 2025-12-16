@@ -25,6 +25,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -59,6 +60,10 @@ func NewListLogForwardersCommand() *cobra.Command {
 func ListLogForwardersRunner() rosa.CommandRunner {
 	return func(_ context.Context, runtime *rosa.Runtime, cmd *cobra.Command, _ []string) error {
 		clusterKey := runtime.GetClusterKey()
+
+		if fedramp.Enabled() {
+			return fmt.Errorf("log forwarding is not supported on Govcloud")
+		}
 
 		cluster, err := runtime.OCMClient.GetCluster(clusterKey, runtime.Creator)
 		if err != nil {
