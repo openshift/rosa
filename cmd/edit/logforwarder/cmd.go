@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
+	"github.com/openshift/rosa/pkg/fedramp"
 	interactiveLogForwarding "github.com/openshift/rosa/pkg/interactive/logforwarding"
 	"github.com/openshift/rosa/pkg/logforwarding"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -69,6 +70,10 @@ func NewEditLogForwarderCommand() *cobra.Command {
 func EditLogForwarderRunner(_ context.Context, r *rosa.Runtime, _ *cobra.Command, argv []string) error {
 	if len(argv) != 1 {
 		return fmt.Errorf("expected exactly one argument: log-forwarder ID")
+	}
+
+	if fedramp.Enabled() {
+		return fmt.Errorf("log forwarding is not supported on Govcloud")
 	}
 
 	logFwdID := argv[0]

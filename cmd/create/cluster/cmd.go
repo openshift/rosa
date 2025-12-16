@@ -980,6 +980,12 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if fedramp.Enabled() && args.logFwdConfig != "" {
+		r.Reporter.Errorf("log forwarding is not supported on Govcloud, please remove the '--%s' flag",
+			logforwarding.FlagName)
+		os.Exit(1)
+	}
+
 	for _, val := range userSpecifiedAutoscalerValues {
 		if val.Changed && !args.autoscalingEnabled {
 			r.Reporter.Errorf("Using autoscaling flag '%s', requires flag '--enable-autoscaling'. "+
@@ -2193,7 +2199,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Log forwarding for HCP:
 	var logFwdS3ConfigObject *logforwarding.S3LogForwarderConfig
 	var logFwdCloudWatchConfigObject *logforwarding.CloudWatchLogForwarderConfig
-	if isHostedCP {
+	if isHostedCP && !fedramp.Enabled() {
 		if args.logFwdConfig != "" {
 			yamlObject, err := logforwarding.UnmarshalLogForwarderConfigYaml(
 				args.logFwdConfig)
