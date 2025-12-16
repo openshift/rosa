@@ -191,7 +191,7 @@ func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
 
 	var logForwarderConfig *cmv1.LogForwarderBuilder
 
-	if logForwarderYaml.S3 != nil {
+	if currentLogForwarder.S3() != nil && currentLogForwarder.S3().BucketName() != "" {
 		logForwarderConfigBuilder := cmv1.NewLogForwarder()
 		logForwarderS3ConfigBuilder := cmv1.NewLogForwarderS3Config()
 
@@ -213,7 +213,9 @@ func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
 
 		logForwarderConfigBuilder.S3(logForwarderS3ConfigBuilder)
 		logForwarderConfig = logForwarderConfigBuilder
-	} else if logForwarderYaml.CloudWatch != nil {
+	} else if currentLogForwarder.Cloudwatch() != nil && currentLogForwarder.Cloudwatch().
+		LogDistributionRoleArn() != "" {
+
 		logForwarderConfigBuilder := cmv1.NewLogForwarder()
 		logForwarderCWConfigBuilder := cmv1.NewLogForwarderCloudWatchConfig()
 
