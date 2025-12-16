@@ -127,9 +127,11 @@ func CreateLogForwarderRunner(userOptions *CreateLogForwarderUserOptions) rosa.C
 		var logForwarderBuilder *cmv1.LogForwarderBuilder
 		if logFwdS3ConfigObject != nil {
 			logForwarderBuilder = logforwarding.BindS3LogForwarder(logFwdS3ConfigObject)
-		} else if logFwdCloudWatchConfigObject != nil {
+		}
+		if logFwdCloudWatchConfigObject != nil {
 			logForwarderBuilder = logforwarding.BindCloudWatchLogForwarder(logFwdCloudWatchConfigObject)
-		} else {
+		}
+		if logForwarderBuilder == nil {
 			return fmt.Errorf("no proper log forwarding configuration provided")
 		}
 
