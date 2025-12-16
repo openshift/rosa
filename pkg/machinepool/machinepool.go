@@ -819,6 +819,11 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			"'--capacity-reservation-id' and associated flags")
 	}
 
+	if args.CapacityReservationPreference != "" && fedramp.Enabled() {
+		return fmt.Errorf("capacity reservation is not supported in govcloud, please remove " +
+			"'--capacity-reservation-preference' and associated flags")
+	}
+
 	if interactive.Enabled() && !autoscaling && !fedramp.Enabled() {
 		capacityReservationId, err = interactive.GetString(interactive.Input{
 			Question: "Capacity Reservation ID",
