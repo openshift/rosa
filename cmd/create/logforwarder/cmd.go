@@ -22,6 +22,7 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -132,33 +133,46 @@ func CreateLogForwarderRunner(userOptions *CreateLogForwarderUserOptions) rosa.C
 		var logForwarderBuilder *cmv1.LogForwarderBuilder
 		if logFwdS3ConfigObject != nil {
 			logForwarderBuilder = logforwarding.BindS3LogForwarder(logFwdS3ConfigObject)
+			err = createLogForwarder(r, cluster.ID(), logForwarderBuilder)
+			if err != nil {
+				return errors.UserErrorf("failed to create S3 log forwarder: %v", err)
+			}
+			r.Reporter.Infof("Successfully created S3 log forwarder for HCP cluster '%s'", cluster.ID())
 		}
 		if logFwdCloudWatchConfigObject != nil {
 			logForwarderBuilder = logforwarding.BindCloudWatchLogForwarder(logFwdCloudWatchConfigObject)
-		}
-		if logForwarderBuilder == nil {
-			return fmt.Errorf("no proper log forwarding configuration provided")
-		}
-
-		logForwarder, err := logForwarderBuilder.Build()
-		if err != nil {
-			return fmt.Errorf("failed to build log forwarder from inputs: %v", err)
-		}
-
-		createdLogForwarder, err := r.OCMClient.SetLogForwarder(cluster.ID(), logForwarder)
-		if err != nil {
-			return fmt.Errorf("failed to create log forwarder: %v", err)
-		}
-
-		if output.HasFlag() {
-			err = output.Print(createdLogForwarder)
+			err = createLogForwarder(r, cluster.ID(), logForwarderBuilder)
 			if err != nil {
-				return fmt.Errorf("failed to output log forwarder: %v", err)
+				return errors.UserErrorf("failed to create CloudWatch log forwarder: %v", err)
 			}
-			return nil
+			r.Reporter.Infof("Successfully created CloudWatch log forwarder for HCP cluster '%s'", cluster.ID())
 		}
 
-		r.Reporter.Infof("Successfully created log forwarder for HCP cluster '%s'", clusterKey)
 		return nil
 	}
+}
+
+func createLogForwarder(r *rosa.Runtime, clusterId string, forwarder *cmv1.LogForwarderBuilder) error {
+	if forwarder == nil {
+		return fmt.Errorf("no proper log forwarding configuration provided")
+	}
+
+	logForwarder, err := forwarder.Build()
+	if err != nil {
+		return fmt.Errorf("failed to build log forwarder from inputs: %v", err)
+	}
+
+	createdLogForwarder, err := r.OCMClient.SetLogForwarder(clusterId, logForwarder)
+	if err != nil {
+		return fmt.Errorf("failed to create log forwarder on cluster '%s': %v", clusterId, err)
+	}
+
+	if output.HasFlag() {
+		err = output.Print(createdLogForwarder)
+		if err != nil {
+			return fmt.Errorf("failed to output log forwarder: %v", err)
+		}
+	}
+
+	return nil
 }
