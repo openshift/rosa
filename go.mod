@@ -42,7 +42,7 @@ require (
 	go.uber.org/mock v0.5.2
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.2
-	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
+	k8s.io/utils v0.0.0-20251222233032-718f0e51e6d2
 	sigs.k8s.io/yaml v1.3.0
 )
 
