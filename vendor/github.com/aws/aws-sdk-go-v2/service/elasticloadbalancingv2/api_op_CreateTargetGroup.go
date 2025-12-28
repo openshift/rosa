@@ -56,14 +56,14 @@ type CreateTargetGroupInput struct {
 
 	// Indicates whether health checks are enabled. If the target type is lambda ,
 	// health checks are disabled by default but can be enabled. If the target type is
-	// instance , ip , or alb , health checks are always enabled and cannot be disabled.
+	// instance , ip , or alb , health checks are always enabled and can't be disabled.
 	HealthCheckEnabled *bool
 
 	// The approximate amount of time, in seconds, between health checks of an
 	// individual target. The range is 5-300. If the target group protocol is TCP, TLS,
-	// UDP, TCP_UDP, HTTP or HTTPS, the default is 30 seconds. If the target group
-	// protocol is GENEVE, the default is 10 seconds. If the target type is lambda ,
-	// the default is 35 seconds.
+	// UDP, TCP_UDP, QUIC, TCP_QUIC, HTTP or HTTPS, the default is 30 seconds. If the
+	// target group protocol is GENEVE, the default is 10 seconds. If the target type
+	// is lambda , the default is 35 seconds.
 	HealthCheckIntervalSeconds *int32
 
 	// [HTTP/HTTPS health checks] The destination for health checks on the targets.
@@ -76,17 +76,18 @@ type CreateTargetGroupInput struct {
 	HealthCheckPath *string
 
 	// The port the load balancer uses when performing health checks on targets. If
-	// the protocol is HTTP, HTTPS, TCP, TLS, UDP, or TCP_UDP, the default is
-	// traffic-port , which is the port on which each target receives traffic from the
-	// load balancer. If the protocol is GENEVE, the default is port 80.
+	// the protocol is HTTP, HTTPS, TCP, TLS, UDP, TCP_UDP, QUIC, or TCP_QUIC the
+	// default is traffic-port , which is the port on which each target receives
+	// traffic from the load balancer. If the protocol is GENEVE, the default is port
+	// 80.
 	HealthCheckPort *string
 
 	// The protocol the load balancer uses when performing health checks on targets.
 	// For Application Load Balancers, the default is HTTP. For Network Load Balancers
 	// and Gateway Load Balancers, the default is TCP. The TCP protocol is not
 	// supported for health checks if the protocol of the target group is HTTP or
-	// HTTPS. The GENEVE, TLS, UDP, and TCP_UDP protocols are not supported for health
-	// checks.
+	// HTTPS. The GENEVE, TLS, UDP, TCP_UDP, QUIC, and TCP_QUIC protocols are not
+	// supported for health checks.
 	HealthCheckProtocol types.ProtocolEnum
 
 	// The amount of time, in seconds, during which no response from a target means a
@@ -103,16 +104,14 @@ type CreateTargetGroupInput struct {
 	// GENEVE, the default is 5. If the target type is lambda , the default is 5.
 	HealthyThresholdCount *int32
 
-	// The type of IP address used for this target group. The possible values are ipv4
-	// and ipv6 . This is an optional parameter. If not specified, the IP address type
-	// defaults to ipv4 .
+	// The IP address type. The default value is ipv4 .
 	IpAddressType types.TargetGroupIpAddressTypeEnum
 
 	// [HTTP/HTTPS health checks] The HTTP or gRPC codes to use when checking for a
 	// successful response from a target. For target groups with a protocol of TCP,
-	// TCP_UDP, UDP or TLS the range is 200-599. For target groups with a protocol of
-	// HTTP or HTTPS, the range is 200-499. For target groups with a protocol of
-	// GENEVE, the range is 200-399.
+	// TCP_UDP, UDP, QUIC, TCP_QUIC, or TLS the range is 200-599. For target groups
+	// with a protocol of HTTP or HTTPS, the range is 200-499. For target groups with a
+	// protocol of GENEVE, the range is 200-399.
 	Matcher *types.Matcher
 
 	// The port on which the targets receive traffic. This port is used unless you
@@ -123,10 +122,11 @@ type CreateTargetGroupInput struct {
 
 	// The protocol to use for routing traffic to the targets. For Application Load
 	// Balancers, the supported protocols are HTTP and HTTPS. For Network Load
-	// Balancers, the supported protocols are TCP, TLS, UDP, or TCP_UDP. For Gateway
-	// Load Balancers, the supported protocol is GENEVE. A TCP_UDP listener must be
-	// associated with a TCP_UDP target group. If the target is a Lambda function, this
-	// parameter does not apply.
+	// Balancers, the supported protocols are TCP, TLS, UDP, TCP_UDP, QUIC, or
+	// TCP_QUIC. For Gateway Load Balancers, the supported protocol is GENEVE. A
+	// TCP_UDP listener must be associated with a TCP_UDP target group. A TCP_QUIC
+	// listener must be associated with a TCP_QUIC target group. If the target is a
+	// Lambda function, this parameter does not apply.
 	Protocol types.ProtocolEnum
 
 	// [HTTP/HTTPS protocol] The protocol version. Specify GRPC to send requests to
@@ -136,6 +136,10 @@ type CreateTargetGroupInput struct {
 
 	// The tags to assign to the target group.
 	Tags []types.Tag
+
+	// The port on which the target control agent and application load balancer
+	// exchange management traffic for the target optimizer feature.
+	TargetControlPort *int32
 
 	// The type of target that you must specify when registering targets with this
 	// target group. You can't specify targets for a target group using more than one
@@ -155,9 +159,9 @@ type CreateTargetGroupInput struct {
 
 	// The number of consecutive health check failures required before considering a
 	// target unhealthy. The range is 2-10. If the target group protocol is TCP,
-	// TCP_UDP, UDP, TLS, HTTP or HTTPS, the default is 2. For target groups with a
-	// protocol of GENEVE, the default is 2. If the target type is lambda , the default
-	// is 5.
+	// TCP_UDP, UDP, TLS, QUIC, TCP_QUIC, HTTP or HTTPS, the default is 2. For target
+	// groups with a protocol of GENEVE, the default is 2. If the target type is lambda
+	// , the default is 5.
 	UnhealthyThresholdCount *int32
 
 	// The identifier of the virtual private cloud (VPC). If the target is a Lambda
@@ -221,6 +225,9 @@ func (c *Client) addOperationCreateTargetGroupMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -237,6 +244,9 @@ func (c *Client) addOperationCreateTargetGroupMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTargetGroupValidationMiddleware(stack); err != nil {
@@ -258,6 +268,15 @@ func (c *Client) addOperationCreateTargetGroupMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
