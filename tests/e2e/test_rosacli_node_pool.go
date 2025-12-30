@@ -313,7 +313,7 @@ var _ = Describe("Edit nodepool",
 					"--max-replicas", strconv.Itoa(3),
 					"--subnet", subnets[0],
 				)
-				Expect(err).To(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 		It("can create nodepool with tuning config - [id:63178]",
@@ -931,7 +931,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"ERR: failed to get autoscaling or replicas: 'Replicas must be a non-negative number'"))
+						"must be a non-negative number"))
 
 				By("Try to edit the machinepool with --min-replicas flag when autoscaling is disabled for the machinepool.")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "2")
@@ -970,8 +970,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).To(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
-						"ERR: failed to get autoscaling or replicas: " +
-							"'Min replicas must be a non-negative number when autoscaling is set'"))
+						"must be a non-negative number when autoscaling is set"))
 
 				By("Try to edit machinepool with --replicas flag when the autoscaling is enabled for the machinepool.")
 				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "3")

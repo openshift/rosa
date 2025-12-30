@@ -4,7 +4,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
@@ -535,7 +537,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).
 					Should(ContainSubstring(
-						"Only a single kubelet config is supported for Machine Pools"))
+						"only a single kubelet config is supported for Machine Pools"))
 
 				By("Create machinepool with not existing kubeletconfig name")
 				out, err = machinePoolService.CreateMachinePool(clusterID, "unknown",
@@ -580,7 +582,7 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).
 					Should(ContainSubstring(
-						"Only a single kubelet config is supported for Machine Pools"))
+						"only a single kubelet config is supported for Machine Pools"))
 
 				By("Edit machinepool with not existing kubeletconfig name")
 				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
