@@ -33,6 +33,7 @@ profiles:
     registries_config: true
     allowed_registries: true
     billing_account: "487962084830"
+    log_forward: true
   account-role:
     customized_prefix: true
     path: ""

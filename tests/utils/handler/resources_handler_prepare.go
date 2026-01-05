@@ -12,8 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
@@ -269,9 +273,10 @@ func (rh *resourcesHandler) PrepareProxyWithAuth(zone string, sshPemFileName str
 	caFile string, username string, password string) (*ProxyDetail, error) {
 
 	if rh.vpc == nil {
-		return nil, errors.New("VPC has not been initialized ...")
+		return nil, errors.New("VPC has not been initialized")
 	}
-	instance, privateIP, caContent, err := rh.vpc.LaunchProxyInstanceWithAuth(zone, sshPemFileName, sshPemFileRecordDir, username, password)
+	instance, privateIP, caContent, err := rh.vpc.LaunchProxyInstanceWithAuth(
+		zone, sshPemFileName, sshPemFileRecordDir, username, password)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +319,7 @@ func (rh *resourcesHandler) PrepareAdditionalSecurityGroups(
 	securityGroupCount int,
 	namePrefix string) ([]string, error) {
 	if rh.vpc == nil {
-		return nil, errors.New("VPC has not been initialized ...")
+		return nil, errors.New("VPC has not been initialized")
 	}
 
 	return rh.vpc.CreateAdditionalSecurityGroups(securityGroupCount, namePrefix, "")
@@ -322,7 +327,7 @@ func (rh *resourcesHandler) PrepareAdditionalSecurityGroups(
 
 func (rh *resourcesHandler) PrepareZeroEgressResources() error {
 	if rh.vpc == nil {
-		return errors.New("VPC has not been initialized ...")
+		return errors.New("VPC has not been initialized")
 	}
 
 	//STEP1
@@ -982,4 +987,101 @@ func (rh *resourcesHandler) generateAccountRoleCreationFlag(
 		flags = append(flags, "--vpc-endpoint-role-arn", vpcEndpointRoleArn)
 	}
 	return flags
+}
+
+func (rh *resourcesHandler) PrepareS3ForLogForward(s3Name string, region string) (string, error) {
+	awsClient, err := rh.GetAWSClient(false)
+	if err != nil {
+		return "", err
+	}
+
+	// Create an S3 client from the existing aws client config
+	s3Client := s3.NewFromConfig(*awsClient.AWSConfig)
+
+	_, err = s3Client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
+		Bucket: aws.String(s3Name),
+	})
+	if err == nil {
+		return "", fmt.Errorf("bucket '%s' already exists", s3Name)
+	}
+
+	bucketInput := &s3.CreateBucketInput{
+		Bucket: aws.String(s3Name),
+	}
+	if region != "" {
+		bucketInput.CreateBucketConfiguration = &s3types.CreateBucketConfiguration{
+			LocationConstraint: s3types.BucketLocationConstraint(region),
+		}
+	}
+
+	_, err = s3Client.CreateBucket(context.TODO(), bucketInput)
+	if err != nil {
+		return "", err
+	}
+	err = rh.registerS3Bucket(s3Name)
+	return s3Name, err
+}
+func (rh *resourcesHandler) PrepareCWLogGroup(groupName string, region string) (string, error) {
+	awsClient, err := rh.GetAWSClient(false)
+	if err != nil {
+		return "", err
+	}
+
+	var cwClient *cloudwatchlogs.Client
+	if awsClient.CloudWatchLogsClient != nil {
+		cwClient = awsClient.CloudWatchLogsClient
+	} else {
+		cwClient = cloudwatchlogs.NewFromConfig(*awsClient.AWSConfig)
+	}
+
+	_, err = cwClient.CreateLogGroup(context.TODO(), &cloudwatchlogs.CreateLogGroupInput{
+		LogGroupName: aws.String(groupName),
+	})
+	if err != nil {
+		var existsErr *cwtypes.ResourceAlreadyExistsException
+		if !errors.As(err, &existsErr) {
+			return "", err
+		}
+	}
+
+	// Set retention to 1 day
+	_, err = cwClient.PutRetentionPolicy(context.TODO(), &cloudwatchlogs.PutRetentionPolicyInput{
+		LogGroupName:    aws.String(groupName),
+		RetentionInDays: aws.Int32(1),
+	})
+	if err != nil {
+		return "", err
+	}
+	err = rh.registerCWLogGroup(groupName)
+	return groupName, err
+}
+func (rh *resourcesHandler) PrepareLogForwardRole(oidcProviderURL string, rolePrefix string) (string, error) {
+	// Create AWS client (uses default region/profile)
+	awsClient, err := rh.GetAWSClient(false)
+
+	if err != nil {
+		return "", err
+	}
+
+	// Generate role name with 4 random chars suffix
+	roleName := fmt.Sprintf("%s-%s", rolePrefix, helper.GenerateRandomString(4))
+
+	// Create policy for log forwarding (uses same statement as required)
+	policyName := fmt.Sprintf("%s-policy", roleName)
+	policyArn, err := awsClient.CreatePolicyForAuditLogForward(policyName)
+	if err != nil {
+		return "", err
+	}
+
+	// Create role with OIDC trust relationship and attach the policy
+	role, err := awsClient.CreateRoleForAuditLogForward(roleName, awsClient.AccountID, oidcProviderURL, policyArn)
+	if err != nil {
+		return "", err
+	}
+	roleArn := aws.ToString(role.Arn)
+	err = rh.registerLogForwardRole(roleArn)
+	if err != nil {
+		log.Logger.Errorf("Error happened when record resource share: %s", err.Error())
+	}
+	return roleArn, nil
 }

@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -57,7 +59,217 @@ var _ = Describe("HCP cluster testing",
 			By("Clean the cluster")
 			rosaClient.CleanResources(clusterID)
 		})
+		It("Create/Edit/List/Describe/Delete log forwarders on hosted-cp cluster - [id:86415]",
+			labels.Critical, labels.Runtime.Day2,
+			func() {
+				var (
+					originalS3Applications []string
+					originalS3Groups       []string
+					originalS3Name         string
+					originalS3Prefix       string
+					originalCWApplications []string
+					originalCWGroups       []string
+					originalCWARN          string
+					originCWLogGroupName   string
+				)
+				logForwarderService := rosaClient.LogForwarderService
+				By("List log forwarders")
 
+				out, err := logForwarderService.ListLogForwarder(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				logforwarders, err := logForwarderService.ReflectLogForwarderList(out)
+
+				s3logForwarderID := logforwarders.GetLogForwarderByType("S3").ID
+				cloudWatchForwarderID := logforwarders.GetLogForwarderByType("CloudWatch").ID
+
+				By("Decribe s3 log forwarder")
+				rosaClient.Runner.JsonFormat()
+				s3lfwJsonOut, err := logForwarderService.DescribeLogForwarder(
+					clusterID,
+					s3logForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				rosaClient.Runner.UnsetFormat()
+				s3lfwJsonData := rosaClient.Parser.JsonData.Input(s3lfwJsonOut).Parse()
+
+				// s3 nested fields
+				if s3lfwJsonData.DigObject("groups") != nil {
+					for _, value := range s3lfwJsonData.DigObject("groups").([]interface{}) {
+						m, ok := value.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						if idv, ok := m["id"].(string); ok {
+							originalS3Groups = append(originalS3Groups, idv)
+						}
+					}
+				}
+
+				if s3lfwJsonData.DigObject("applications") != nil {
+					for _, v := range s3lfwJsonData.DigObject("applications").([]interface{}) {
+						if s, ok := v.(string); ok {
+							originalS3Applications = append(originalS3Applications, s)
+						}
+					}
+				}
+
+				if s3lfwJsonData.DigObject("s3", "bucket_name") != nil {
+					originalS3Name = s3lfwJsonData.DigString("s3", "bucket_name")
+				}
+
+				if s3lfwJsonData.DigObject("s3", "bucket_prefix") != nil {
+					originalS3Prefix = s3lfwJsonData.DigString("s3", "bucket_prefix")
+				}
+
+				By("Decribe cloudwatch log forwarder")
+				rosaClient.Runner.JsonFormat()
+				cwlfwJsonOut, err := logForwarderService.DescribeLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				rosaClient.Runner.UnsetFormat()
+				cwlfwJsonData := rosaClient.Parser.JsonData.Input(cwlfwJsonOut).Parse()
+
+				// cloudwatch nested fields
+				if cwlfwJsonData.DigObject("applications") != nil {
+					for _, v := range cwlfwJsonData.DigObject("applications").([]interface{}) {
+						if s, ok := v.(string); ok {
+							originalCWApplications = append(originalCWApplications, s)
+						}
+					}
+				}
+				if cwlfwJsonData.DigObject("cloudwatch", "log_distribution_role_arn") != nil {
+					originalCWARN = cwlfwJsonData.DigString("cloudwatch", "log_distribution_role_arn")
+				}
+				if cwlfwJsonData.DigObject("cloudwatch", "log_group_name") != nil {
+					originCWLogGroupName = cwlfwJsonData.DigString("cloudwatch", "log_group_name")
+				}
+
+				if cwlfwJsonData.DigObject("groups") != nil {
+					for _, value := range cwlfwJsonData.DigObject("groups").([]interface{}) {
+						m, ok := value.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						if idv, ok := m["id"].(string); ok {
+							originalCWGroups = append(originalCWGroups, idv)
+						}
+					}
+				}
+
+				By("Edit log forwarders")
+				editGroups := []string{"scheduler"}
+				editApplications := []string{"etcd", "cluster-api"}
+
+				testLFConfig := &handler.LogForwardConigs{
+					S3:         &handler.S3LogForward{},
+					Cloudwatch: &handler.CloudWatchLogForward{},
+				}
+
+				testLFConfig.Cloudwatch.Groups = editGroups
+				testLFConfig.Cloudwatch.Applications = editApplications
+				testLFConfig.Cloudwatch.CloudwatchLogGroupName = originCWLogGroupName
+				testLFConfig.Cloudwatch.CloudwatchLogRoleArn = originalCWARN
+				testLFConfig.S3.Applications = editApplications
+				testLFConfig.S3.Groups = editGroups
+				testLFConfig.S3.S3ConfigBucketPrefix = "rosa/test/s3log_forward/edit"
+				testLFConfig.S3.S3ConfigBucketName = originalS3Name
+
+				tmpDirForEdit, err := os.MkdirTemp("", "*")
+				Expect(err).ToNot(HaveOccurred())
+				tmpFilePath1 := filepath.Join(tmpDirForEdit, "log_forward_config_edit.yaml")
+				_, _ = handler.DumpLogForwardConfigYAML(testLFConfig, tmpFilePath1)
+
+				out, err = logForwarderService.EditLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+					"--log-fwd-config", tmpFilePath1,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully edited log forwarder"))
+
+				out, err = logForwarderService.EditLogForwarder(
+					clusterID,
+					s3logForwarderID,
+					"--log-fwd-config", tmpFilePath1,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully edited log forwarder"))
+
+				By("Descirbe log forwarders")
+				s3lfwJsonOut, err = logForwarderService.DescribeLogForwarder(
+					clusterID,
+					s3logForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				for _, g := range editGroups {
+					Expect(s3lfwJsonOut.String()).To(ContainSubstring(g))
+				}
+				Expect(s3lfwJsonOut.String()).To(ContainSubstring(testLFConfig.S3.S3ConfigBucketPrefix))
+
+				for _, a := range editApplications {
+					Expect(s3lfwJsonOut.String()).To(ContainSubstring(a))
+				}
+
+				cwlfwJsonOut, err = logForwarderService.DescribeLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				for _, g := range editGroups {
+					Expect(cwlfwJsonOut.String()).To(ContainSubstring(g))
+				}
+
+				for _, a := range editApplications {
+					Expect(cwlfwJsonOut.String()).To(ContainSubstring(a))
+				}
+
+				By("Delete log forwarders")
+				out, err = logForwarderService.DeleteLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully deleted log forwarder"))
+				out, err = logForwarderService.DeleteLogForwarder(
+					clusterID, s3logForwarderID,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully deleted log forwarder"))
+				defer func() {
+					By("Create log forwarders back")
+					testLFConfig2 := &handler.LogForwardConigs{
+						S3:         &handler.S3LogForward{},
+						Cloudwatch: &handler.CloudWatchLogForward{},
+					}
+					testLFConfig2.S3.S3ConfigBucketPrefix = originalS3Prefix
+					testLFConfig2.S3.S3ConfigBucketName = originalS3Name
+					testLFConfig2.S3.Applications = originalS3Applications
+					testLFConfig2.S3.Groups = originalS3Groups
+					testLFConfig2.Cloudwatch.Groups = originalCWGroups
+					testLFConfig2.Cloudwatch.Applications = originalCWApplications
+					testLFConfig2.Cloudwatch.CloudwatchLogGroupName = originCWLogGroupName
+					testLFConfig2.Cloudwatch.CloudwatchLogRoleArn = originalCWARN
+
+					tmpDirForEdit2, err := os.MkdirTemp("", "*")
+					Expect(err).ToNot(HaveOccurred())
+					tmpFilePath2 := filepath.Join(tmpDirForEdit2, "log_forward_config_create.yaml")
+					_, _ = handler.DumpLogForwardConfigYAML(testLFConfig, tmpFilePath2)
+
+					out, err = logForwarderService.CreateLogForwarder(
+						clusterID,
+						"--log-fwd-config", tmpFilePath2,
+						"-y",
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("Successfully created S3 log forwarder"))
+					Expect(out.String()).To(ContainSubstring("Successfully created CloudWatch log forwarder"))
+				}()
+
+			})
 		It("create and edit hosted-cp cluster with AuditLog Forwarding enabled/disabled via rosacli - [id:64491]",
 			labels.High, labels.Runtime.Day2,
 			func() {
