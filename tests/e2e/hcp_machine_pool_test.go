@@ -345,7 +345,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		},
 
 		Entry("Scale replica too large [id:60278]", constants.M52XLarge, "1000", "exceeds the maximum allowed"),
-		Entry("Scale replica to -1 [id:60278]", constants.M52XLarge, "-1", "Replicas must be a non-negative number"),
+		Entry("Scale replica to -1 [id:60278]", constants.M52XLarge, "-1", "must be a non-negative number"),
 		Entry("Scale replica to a char [id:60278]", constants.M52XLarge, "a", "invalid syntax"),
 	)
 
@@ -454,7 +454,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", downMinReplica),
 				"-y",
 			)
-			expectErrMsg = "Min replicas must be a non-negative number when autoscaling is set"
+			expectErrMsg = "must be a non-negative number when autoscaling is set"
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
