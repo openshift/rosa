@@ -62,6 +62,15 @@ func (rh *resourcesHandler) DeleteAuditLogRoleArn() error {
 	return awsClent.DeleteRoleAndPolicy(roleName, false)
 }
 
+func (rh *resourcesHandler) DeleteCWLogForwardRoleArn() error {
+	roleName := strings.Split(rh.resources.LogForwardConigs.Cloudwatch.CloudwatchLogRoleArn, "/")[1]
+	awsClent, err := rh.GetAWSClient(false)
+	if err != nil {
+		return err
+	}
+	return awsClent.DeleteRoleAndPolicy(roleName, false)
+}
+
 func (rh *resourcesHandler) DeleteHostedZone(hostedZoneID string) error {
 	awsClient, err := rh.GetAWSClient(true)
 	if err != nil {

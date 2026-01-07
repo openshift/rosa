@@ -50,6 +50,7 @@ type Client struct {
 	Upgrade              UpgradeService
 	Verify               VerifyService
 	Version              VersionService
+	LogForwarderService  LogForwarderService
 }
 
 func NewClient() *Client {
@@ -82,6 +83,7 @@ func NewClient() *Client {
 	client.Upgrade = NewUpgradeService(client)
 	client.Verify = NewVerifyService(client)
 	client.Version = NewVersionService(client)
+	client.LogForwarderService = NewLogForwarderService(client)
 
 	return client
 }

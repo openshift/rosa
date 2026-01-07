@@ -1,8 +1,15 @@
 package handler
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"os"
 
+	yamlv3 "gopkg.in/yaml.v3"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
@@ -316,11 +323,68 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 		}
 	}
 
+	if resources.LogForwardConigs != nil &&
+		resources.LogForwardConigs.Cloudwatch != nil &&
+		resources.LogForwardConigs.Cloudwatch.CloudwatchLogRoleArn != "" {
+		log.Logger.Infof("Found cloud watch log forward role arn: %s",
+			resources.LogForwardConigs.Cloudwatch.CloudwatchLogRoleArn)
+		err = rh.DeleteCWLogForwardRoleArn()
+		success := destroyLog(err, "cloud watch log forward arn")
+		if success {
+			// Clear stored role arn
+			rh.registerLogForwardRole("")
+		}
+	}
+	if resources.LogForwardConigs != nil &&
+		resources.LogForwardConigs.S3 != nil &&
+		resources.LogForwardConigs.S3.S3ConfigBucketName != "" {
+		log.Logger.Infof("Find prepared s3 config bucket: %s", resources.LogForwardConigs.S3.S3ConfigBucketName)
+		var delErr error
+		awsClient, aerr := rh.GetAWSClient(false)
+		if aerr != nil {
+			delErr = aerr
+		} else {
+			s3Client := s3.NewFromConfig(*awsClient.AWSConfig)
+			ctx := context.TODO()
+			bucket := resources.LogForwardConigs.S3.S3ConfigBucketName
+
+			// List and delete objects in batches
+			paginator := s3.NewListObjectsV2Paginator(s3Client, &s3.ListObjectsV2Input{Bucket: &bucket})
+			for paginator.HasMorePages() {
+				page, err := paginator.NextPage(ctx)
+				if err != nil {
+					delErr = err
+					break
+				}
+				if len(page.Contents) == 0 {
+					continue
+				}
+				objs := make([]s3types.ObjectIdentifier, 0, len(page.Contents))
+				for _, o := range page.Contents {
+					objs = append(objs, s3types.ObjectIdentifier{Key: o.Key})
+				}
+				_, err = s3Client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+					Bucket: &bucket,
+					Delete: &s3types.Delete{Objects: objs},
+				})
+				if err != nil {
+					delErr = err
+					break
+				}
+			}
+			if delErr == nil {
+				_, delErr = s3Client.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: &bucket})
+			}
+		}
+		success := destroyLog(delErr, "s3 config bucket")
+		if success {
+			rh.registerS3Bucket("")
+		}
+	}
 	if len(errors) <= 0 {
 		rh.resources = &Resources{}
 		rh.saveToFile()
 	}
-
 	return errors
 }
 
@@ -511,3 +575,104 @@ func (rh *resourcesHandler) GetAWSClient(useSharedAccount bool) (*aws_client.AWS
 	}
 	return aws_client.CreateAWSClient("", rh.resources.Region)
 }
+
+// DumpLogForwardConfigYAML writes the LogForwardConigs into a YAML file at the
+// given path. Returns the path when successful.
+func DumpLogForwardConfigYAML(cfg *LogForwardConigs, filePath string) (string, error) {
+	if cfg == nil {
+		return "", fmt.Errorf("LogForwardConigs is nil")
+	}
+	// Marshal to YAML v3 node so we can set sequence style to flow for arrays
+	b, err := yamlv3.Marshal(cfg)
+	if err != nil {
+		return "", err
+	}
+	var node yamlv3.Node
+	if err := yamlv3.Unmarshal(b, &node); err != nil {
+		return "", err
+	}
+	// node.Content[0] is the document root mapping of LogForwardConigs
+	if len(node.Content) > 0 {
+		root := node.Content[0]
+		for i := 0; i < len(root.Content); i += 2 {
+			key := root.Content[i].Value
+			val := root.Content[i+1]
+			if key == "cloudwatch" && val.Kind == yamlv3.MappingNode {
+				for j := 0; j < len(val.Content); j += 2 {
+					kk := val.Content[j].Value
+					vv := val.Content[j+1]
+					if (kk == "applications" || kk == "groups") && vv.Kind == yamlv3.SequenceNode {
+						vv.Style |= yamlv3.FlowStyle
+					}
+				}
+			}
+			if key == "s3" && val.Kind == yamlv3.MappingNode {
+				for j := 0; j < len(val.Content); j += 2 {
+					kk := val.Content[j].Value
+					vv := val.Content[j+1]
+					if (kk == "applications" || kk == "groups") && vv.Kind == yamlv3.SequenceNode {
+						vv.Style |= yamlv3.FlowStyle
+					}
+				}
+			}
+		}
+	}
+	// Encode node back to bytes
+	var buf bytes.Buffer
+	enc := yamlv3.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&node); err != nil {
+		enc.Close()
+		return "", err
+	}
+	enc.Close()
+	data := buf.Bytes()
+	if err := os.WriteFile(filePath, data, 0644); err != nil { // #nosec G306
+		return "", err
+	}
+	return filePath, nil
+}
+
+func (rh *resourcesHandler) registerLogForwardRole(logForwardRoleArn string) error {
+	if rh.resources.LogForwardConigs == nil {
+		rh.resources.LogForwardConigs = &LogForwardConigs{}
+	}
+	if rh.resources.LogForwardConigs.Cloudwatch == nil {
+		rh.resources.LogForwardConigs.Cloudwatch = &CloudWatchLogForward{}
+	}
+	rh.resources.LogForwardConigs.Cloudwatch.CloudwatchLogRoleArn = logForwardRoleArn
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerCWLogGroup(groupName string) error {
+	if rh.resources.LogForwardConigs == nil {
+		rh.resources.LogForwardConigs = &LogForwardConigs{}
+	}
+	if rh.resources.LogForwardConigs.Cloudwatch == nil {
+		rh.resources.LogForwardConigs.Cloudwatch = &CloudWatchLogForward{}
+	}
+	rh.resources.LogForwardConigs.Cloudwatch.CloudwatchLogGroupName = groupName
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerS3Bucket(s3Name string) error {
+	if rh.resources.LogForwardConigs == nil {
+		rh.resources.LogForwardConigs = &LogForwardConigs{}
+	}
+	if rh.resources.LogForwardConigs.S3 == nil {
+		rh.resources.LogForwardConigs.S3 = &S3LogForward{}
+	}
+	rh.resources.LogForwardConigs.S3.S3ConfigBucketName = s3Name
+	return rh.saveToFile()
+}
+
+// func (rh *resourcesHandler) registerCloudwatchGroups(groups []string) error {
+// 	if rh.resources.LogForwardConigs == nil {
+// 		rh.resources.LogForwardConigs = &LogForwardConigs{}
+// 	}
+// 	if rh.resources.LogForwardConigs.Cloudwatch == nil {
+// 		rh.resources.LogForwardConigs.Cloudwatch = &CloudWatchLogForward{}
+// 	}
+// 	rh.resources.LogForwardConigs.Cloudwatch.Groups = groups
+// 	return rh.saveToFile()
+// }

@@ -11,7 +11,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
@@ -846,18 +848,20 @@ var _ = Describe("Post-Check testing for cluster creation",
 	labels.Feature.Cluster, func() {
 		defer GinkgoRecover()
 		var (
-			rosaClient     *rosacli.Client
-			err            error
-			clusterID      string
-			clusterService rosacli.ClusterService
-			oidcConfigC    string
-			awsClient      *aws_client.AWSClient
+			rosaClient          *rosacli.Client
+			err                 error
+			clusterID           string
+			clusterService      rosacli.ClusterService
+			logForwarderService rosacli.LogForwarderService
+			oidcConfigC         string
+			awsClient           *aws_client.AWSClient
 		)
 
 		BeforeEach(func() {
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
+			logForwarderService = rosaClient.LogForwarderService
 			awsClient, err = aws_client.CreateAWSClient("", "")
 			Expect(err).To(BeNil())
 		})
@@ -1003,7 +1007,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 				profile := handler.LoadProfileYamlFileByENV()
 
 				By("Check if it is a shared-vpc hosted-cp cluster")
-				if !(profile.ClusterConfig.HCP && profile.ClusterConfig.SharedVPC) {
+				if !profile.ClusterConfig.HCP || !profile.ClusterConfig.SharedVPC {
 					Skip("Skip this case as it is only for shared-vpc hosted-cp cluster")
 				}
 
@@ -1060,6 +1064,24 @@ var _ = Describe("Post-Check testing for cluster creation",
 					// If --billing-account is not set when creating cluster, it will use the default one
 					Expect(clusterDescription.AWSBillingAccount).To(Equal(constants.BillingAccount))
 				}
+			})
+		It("to verify log forward config - [id:86415]",
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
+			func() {
+				By("Check the cluster is with log forwarders config")
+				profile := handler.LoadProfileYamlFileByENV()
+				if !profile.ClusterConfig.LogForward {
+					Skip("This case is only for the cluster with log forwarder config")
+				}
+				By("Check the cluster has log forwarder config")
+				clusterID = config.GetClusterID()
+				out, err := logForwarderService.ListLogForwarder(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				logforwarders, err := logForwarderService.ReflectLogForwarderList(out)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(logforwarders.LogForwarders)).To(Equal(2))
+				Expect(out.String()).To(ContainSubstring("S3"))
+				Expect(out.String()).To(ContainSubstring("CloudWatch"))
 			})
 	})
 

@@ -3,7 +3,9 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -929,6 +931,50 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		ch.clusterConfig.Properties = &ClusterConfigure.Properties{
 			ZeroEgress: ch.profile.ClusterConfig.ZeroEgress,
 		}
+
+	}
+	if ch.profile.ClusterConfig.LogForward {
+		//Prepare resources for cloudwatch and s3 for log forward configs
+		_, err := resourcesHandler.PrepareS3ForLogForward(
+			fmt.Sprintf("rosaclis3bucket-%s", strings.ToLower(helper.GenerateRandomString(3))),
+			ch.profile.Region)
+		if err != nil {
+			return flags, err
+		}
+		_, err = resourcesHandler.PrepareCWLogGroup(
+			fmt.Sprintf("rosaclicloudwatch%s", strings.ToLower(helper.GenerateRandomString(3))),
+			ch.profile.Region)
+		if err != nil {
+			return flags, err
+		}
+		oidcConfig, err := resourcesHandler.rosaClient.OCMResource.GetOIDCConfigFromList(
+			ch.clusterConfig.Aws.Sts.OidcConfigID)
+		if err != nil {
+			return flags, err
+		}
+		oidcProvider := strings.TrimPrefix(oidcConfig.IssuerUrl, "https://")
+		_, err = resourcesHandler.PrepareLogForwardRole(oidcProvider, "log_forward")
+		if err != nil {
+			return flags, err
+		}
+
+		testGroups := []string{"authentication", "api"}
+		testApplications := []string{"kube-scheduler", "certified-operators-catalog"}
+		resourcesHandler.resources.LogForwardConigs.S3.S3ConfigBucketPrefix = "rosa/test/s3log_forward"
+		resourcesHandler.resources.LogForwardConigs.Cloudwatch.Groups = testGroups
+		resourcesHandler.resources.LogForwardConigs.Cloudwatch.Applications = testApplications
+		resourcesHandler.resources.LogForwardConigs.S3.Applications = testApplications
+		resourcesHandler.resources.LogForwardConigs.S3.Groups = testGroups
+		resourcesHandler.saveToFile()
+		// Dump the LogForwardConigs to a YAML file in the output directory
+		tmpDir, err := os.MkdirTemp("", "*")
+		if err != nil {
+			return flags, err
+		}
+		tmpFilePath := filepath.Join(tmpDir, "log_forward_config.yaml")
+		_, _ = DumpLogForwardConfigYAML(resourcesHandler.resources.LogForwardConigs, tmpFilePath)
+
+		flags = append(flags, "--log-fwd-config", tmpFilePath)
 
 	}
 	return flags, nil

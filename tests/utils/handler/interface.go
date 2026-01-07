@@ -76,6 +76,7 @@ type ClusterConfig struct {
 	ZeroEgress                    bool   `yaml:"zero_egress" json:"zero_egress,omitempty"`
 	UseLocalCredentials           bool   `yaml:"use_local_credentials,omitempty" json:"use_local_credentials,omitempty"`
 	Add_UnManaged_Tag             bool   `yaml:"add_unmanaged_tag" json:"add_unmanaged_tag,omitempty"`
+	LogForward                    bool   `yaml:"log_forward,omitempty" json:"log_forward,omitempty"`
 }
 
 // Resources will record the resources prepared
@@ -100,11 +101,30 @@ type Resources struct {
 	HCPRoute53ShareRole          string                `json:"hcp_route53_share_role,omitempty"`
 	HCPVPCEndpointShareRole      string                `json:"hcp_vpc_endpoint_share_role,omitempty"`
 	ProxyInstanceID              string                `json:"proxy_instance_id,omitempty"`
+	LogForwardConigs             *LogForwardConigs     `json:"lfw_configs,omitempty" yaml:"lfw_configs,omitempty"`
 }
 
 type FromSharedAWSAccount struct {
 	VPC                 bool `json:"vpc,omitempty"`
 	AdditionalPrincipls bool `json:"additional_principals,omitempty"`
+}
+
+type LogForwardConigs struct {
+	Cloudwatch *CloudWatchLogForward `json:"cloudwatch,omitempty" yaml:"cloudwatch,omitempty"`
+	S3         *S3LogForward         `json:"s3,omitempty" yaml:"s3,omitempty"`
+}
+type S3LogForward struct {
+	Applications         []string `json:"applications,omitempty" yaml:"applications,omitempty"`
+	Groups               []string `json:"groups,omitempty" yaml:"groups,omitempty"`
+	S3ConfigBucketName   string   `json:"s3_config_bucket_name,omitempty" yaml:"s3_config_bucket_name,omitempty"`
+	S3ConfigBucketPrefix string   `json:"s3_config_bucket_prefix,omitempty" yaml:"s3_config_bucket_prefix,omitempty"`
+}
+
+type CloudWatchLogForward struct {
+	CloudwatchLogRoleArn   string   `json:"cloudwatch_log_role_arn,omitempty" yaml:"cloudwatch_log_role_arn,omitempty"`
+	CloudwatchLogGroupName string   `json:"cloudwatch_log_group_name,omitempty" yaml:"cloudwatch_log_group_name,omitempty"`
+	Applications           []string `json:"applications,omitempty" yaml:"applications,omitempty"`
+	Groups                 []string `json:"groups,omitempty" yaml:"groups,omitempty"`
 }
 
 // ClusterDetail will record basic cluster info to support other team's testing
