@@ -82,9 +82,9 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 					By("Create a break-glass-credential to the cluster")
 					resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(clusterID, value...)
 					createTime := time.Now().UTC()
-					expiredTime := createTime.Add(15 * time.Minute).Format("Jan _2 2006 15:04 MST")
+					expiredTime := createTime.Add(15 * time.Minute)
 					if key == "emptyExpiration" || key == "empty" {
-						expiredTime = createTime.Add(24 * time.Hour).Format("Jan _2 2006 15:04 MST")
+						expiredTime = createTime.Add(24 * time.Hour)
 					}
 					Expect(err).ToNot(HaveOccurred())
 					textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
@@ -118,11 +118,10 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 					By("Describe the break-glass-credential")
 					output, err := rosaClient.BreakGlassCredential.DescribeBreakGlassCredentialsAndReflect(clusterID, breakGlassCredID)
 					Expect(err).ToNot(HaveOccurred())
-					// expiration timestamp changes from 4 to 5 seconds ahead, so have to remove second from time stamp
 					expirationTime, err := time.Parse("Jan _2 2006 15:04:05 MST", output.ExpireAt)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(output.ID).To(Equal(breakGlassCredID))
-					Expect(expirationTime.Format("Jan _2 2006 15:04 MST")).To(Equal(expiredTime))
+					Expect(expirationTime).To(BeTemporally("~", expiredTime, time.Minute))
 					Expect(output.Username).To(Equal(userName))
 					Expect(output.Status).To(Equal("issued"))
 
