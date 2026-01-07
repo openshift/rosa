@@ -887,12 +887,8 @@ func run(cmd *cobra.Command, _ []string) {
 		if cmd.Flags().Changed("billing-account") {
 			billingAccount = args.billingAccount
 
-			if billingAccount != "" && fedramp.Enabled() {
-				_ = r.Reporter.Errorf("Billing accounts are not supported for govcloud clusters")
-				os.Exit(1)
-			}
 			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				_ = r.Reporter.Errorf("Provided billing account number %s is not valid. "+
+				_ = r.Reporter.Errorf("provided billing account number %s is not valid. "+
 					"Rerun the command with a valid billing account number", billingAccount)
 				os.Exit(1)
 			}
@@ -900,8 +896,8 @@ func run(cmd *cobra.Command, _ []string) {
 			billingAccount = cluster.AWS().BillingAccountID()
 		}
 
-		if interactive.Enabled() && !fedramp.Enabled() &&
-			(aws.IsHostedCP(cluster) && isClassicBillingCapabilityEnabled) {
+		if interactive.Enabled() &&
+			(aws.IsHostedCP(cluster) || isClassicBillingCapabilityEnabled) {
 			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
 			if err != nil {
 				_ = r.Reporter.Errorf("%s", err)
