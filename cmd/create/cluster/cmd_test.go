@@ -481,7 +481,7 @@ var _ = Describe("validateBillingAccount()", func() {
 		wrongBillingAccount := "123"
 		err := ocm.ValidateBillingAccount(wrongBillingAccount)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Provided billing account number 123 is not valid. " +
+		Expect(err.Error()).To(Equal("provided billing account number 123 is not valid. " +
 			"Rerun the command with a valid billing account number"))
 	})
 
@@ -489,7 +489,7 @@ var _ = Describe("validateBillingAccount()", func() {
 		wrongBillingAccount := ""
 		err := ocm.ValidateBillingAccount(wrongBillingAccount)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("A billing account number is required"))
+		Expect(err.Error()).To(Equal("a billing account number is required"))
 	})
 
 })

@@ -1222,106 +1222,89 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Billing Account
 	billingAccount := args.billingAccount
-	if !fedramp.Enabled() {
-		isClassicBillingCapabilityEnabled, err := r.OCMClient.IsCapabilityEnabled(
-			"capability.cluster.rosa_classic_billing_account")
-		if err != nil {
-			_ = r.Reporter.Errorf("Failed to determine if billing account capability is enabled for user "+
-				"organization: %s", err)
+	isClassicBillingCapabilityEnabled, err := r.OCMClient.IsCapabilityEnabled(
+		"capability.cluster.rosa_classic_billing_account")
+	if err != nil {
+		_ = r.Reporter.Errorf("failed to determine if billing account capability is enabled for user "+
+			"organization: %s", err)
+		os.Exit(1)
+	}
+
+	isHcpBillingTechPreview, err := r.OCMClient.IsTechnologyPreview(ocm.HcpBillingAccount, time.Now())
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
+	if (isHostedCP && !isHcpBillingTechPreview) || (!isHostedCP && isClassicBillingCapabilityEnabled) {
+
+		if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
+			r.Reporter.Errorf("provided billing account number %s is not valid. "+
+				"Rerun the command with a valid billing account number. %s",
+				billingAccount, listBillingAccountMessage)
 			os.Exit(1)
 		}
 
-		isHcpBillingTechPreview, err := r.OCMClient.IsTechnologyPreview(ocm.HcpBillingAccount, time.Now())
+		cloudAccounts, err := r.OCMClient.GetBillingAccounts()
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
 
-		if (isHostedCP && !isHcpBillingTechPreview) || (!isHostedCP && isClassicBillingCapabilityEnabled) {
+		billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
 
-			if billingAccount != "" && !ocm.IsValidAWSAccount(billingAccount) {
-				r.Reporter.Errorf("Provided billing account number %s is not valid. "+
-					"Rerun the command with a valid billing account number. %s",
-					billingAccount, listBillingAccountMessage)
-				os.Exit(1)
+		if interactive.Enabled() {
+			if len(billingAccounts) > 0 {
+				billingAccount, err = interactive.GetOption(interactive.Input{
+					Question: "Billing Account",
+					Help:     cmd.Flags().Lookup("billing-account").Usage,
+					Default:  billingAccount,
+					Required: true,
+					Options:  billingAccounts,
+				})
+
+				if err != nil {
+					r.Reporter.Errorf("expected a valid billing account: '%s'", err)
+					os.Exit(1)
+				}
+
+				billingAccount = aws.ParseOption(billingAccount)
 			}
 
-			cloudAccounts, err := r.OCMClient.GetBillingAccounts()
+			// Get contract info
+			contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
+
+			if billingAccount != awsCreator.AccountID {
+				r.Reporter.Infof(
+					"The AWS billing account you selected is different from your AWS infrastructure account. " +
+						"The AWS billing account will be charged for subscription usage. " +
+						"The AWS infrastructure account contains the ROSA infrastructure.",
+				)
+			} else {
+				r.Reporter.Infof("Using '%s' as billing account.",
+					billingAccount)
+			}
+
+			if isContractEnabled && len(contracts) > 0 {
+				//currently, an AWS account will have only one ROSA HCP active contract at a time
+				contractDisplay := GenerateContractDisplay(contracts[0])
+				r.Reporter.Infof(contractDisplay)
+			}
+		}
+
+		if billingAccount == "" && !interactive.Enabled() {
+			// if a billing account is not provided we will try to use the infrastructure account as default
+			billingAccount, err = provideBillingAccount(billingAccounts, awsCreator.AccountID, r)
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
 			}
-
-			billingAccounts := ocm.GenerateBillingAccountsList(cloudAccounts)
-
-			if billingAccount == "" && !interactive.Enabled() {
-				// if a billing account is not provided we will try to use the infrastructure account as default
-				billingAccount, err = provideBillingAccount(billingAccounts, awsCreator.AccountID, r)
-				if err != nil {
-					r.Reporter.Errorf("%s", err)
-					os.Exit(1)
-				}
-			}
-
-			if interactive.Enabled() {
-				if len(billingAccounts) > 0 {
-					billingAccount, err = interactive.GetOption(interactive.Input{
-						Question: "Billing Account",
-						Help:     cmd.Flags().Lookup("billing-account").Usage,
-						Default:  billingAccount,
-						Required: true,
-						Options:  billingAccounts,
-					})
-
-					if err != nil {
-						r.Reporter.Errorf("Expected a valid billing account: '%s'", err)
-						os.Exit(1)
-					}
-
-					billingAccount = aws.ParseOption(billingAccount)
-				}
-
-				err := ocm.ValidateBillingAccount(billingAccount)
-				if err != nil {
-					r.Reporter.Errorf("%v", err)
-					os.Exit(1)
-				}
-
-				// Get contract info
-				contracts, isContractEnabled := ocm.GetBillingAccountContracts(cloudAccounts, billingAccount)
-
-				if billingAccount != awsCreator.AccountID {
-					r.Reporter.Infof(
-						"The AWS billing account you selected is different from your AWS infrastructure account. " +
-							"The AWS billing account will be charged for subscription usage. " +
-							"The AWS infrastructure account contains the ROSA infrastructure.",
-					)
-				} else {
-					r.Reporter.Infof("Using '%s' as billing account.",
-						billingAccount)
-				}
-
-				if isContractEnabled && len(contracts) > 0 {
-					//currently, an AWS account will have only one ROSA HCP active contract at a time
-					contractDisplay := GenerateContractDisplay(contracts[0])
-					r.Reporter.Infof(contractDisplay)
-				}
-			}
 		}
-	}
 
-	if fedramp.Enabled() && billingAccount != "" {
-		_ = r.Reporter.Errorf(billingAccountsGovErrorMsg)
-		os.Exit(1)
-	}
-
-	if isHostedCP && fedramp.Enabled() && billingAccount != "" {
-		if cmd.Flags().Changed(billingAccountFlag) {
-			_ = r.Reporter.Errorf(billingAccountsGovErrorMsg)
-		} else {
-			r.Reporter.Warnf("Billing accounts when using Govcloud are associated with non-govcloud accounts, " +
-				"using empty ID for billing account to create cluster")
-			billingAccount = ""
+		err = ocm.ValidateBillingAccount(billingAccount)
+		if err != nil {
+			r.Reporter.Errorf("%v", err)
+			os.Exit(1)
 		}
 	}
 
