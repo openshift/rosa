@@ -369,6 +369,39 @@ var _ = Describe("getZeroEgressStatus", func() {
 	})
 })
 
+var _ = Describe("getAutoNodeStatus", func() {
+	It("Should return Disabled when AutoNode is nil", func() {
+		mockCluster, err := cmv1.NewCluster().Build()
+		Expect(err).NotTo(HaveOccurred())
+		output := getAutoNodeStatus(mockCluster)
+		Expect(output).To(Equal(DisabledOutput))
+	})
+	It("Should return Disabled when AutoNode mode is empty", func() {
+		mockCluster, err := cmv1.NewCluster().
+			AutoNode(cmv1.NewClusterAutoNode().Mode("")).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+		output := getAutoNodeStatus(mockCluster)
+		Expect(output).To(Equal(DisabledOutput))
+	})
+	It("Should return Disabled when AutoNode mode is disabled", func() {
+		mockCluster, err := cmv1.NewCluster().
+			AutoNode(cmv1.NewClusterAutoNode().Mode("disabled")).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+		output := getAutoNodeStatus(mockCluster)
+		Expect(output).To(Equal(DisabledOutput))
+	})
+	It("Should return Enabled when AutoNode mode is enabled", func() {
+		mockCluster, err := cmv1.NewCluster().
+			AutoNode(cmv1.NewClusterAutoNode().Mode("enabled")).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+		output := getAutoNodeStatus(mockCluster)
+		Expect(output).To(Equal(EnabledOutput))
+	})
+})
+
 func printJson(cluster func() *cmv1.Cluster,
 	upgrade func() *cmv1.UpgradePolicy,
 	state func() *cmv1.UpgradePolicyState,
