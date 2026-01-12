@@ -508,7 +508,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 	if httpsProxy != nil && *httpsProxy != input.DoubleQuotesToRemove {
-		err = interactive.IsURL(*httpsProxy)
+		err = ocm.ValidateHTTPSProxy(*httpsProxy)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
