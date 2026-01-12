@@ -3728,6 +3728,9 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 					"--domain-prefix": "dp60688",
 				})
 			}
+			if profile.ClusterConfig.LogForward {
+				rosalCommand.DeleteFlag("--log-fwd-config", true)
+			}
 
 			By("Reuse the oidc config and operator-roles")
 			stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
