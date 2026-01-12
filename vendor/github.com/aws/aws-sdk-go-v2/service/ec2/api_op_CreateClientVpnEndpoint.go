@@ -36,32 +36,36 @@ type CreateClientVpnEndpointInput struct {
 	// This member is required.
 	AuthenticationOptions []types.ClientVpnAuthenticationRequest
 
+	// Information about the client connection logging options.
+	//
+	// If you enable client connection logging, data about client connections is sent
+	// to a Cloudwatch Logs log stream. The following information is logged:
+	//
+	//   - Client connection requests
+	//
+	//   - Client connection results (successful and unsuccessful)
+	//
+	//   - Reasons for unsuccessful client connection requests
+	//
+	//   - Client connection termination time
+	//
+	// This member is required.
+	ConnectionLogOptions *types.ConnectionLogOptions
+
+	// The ARN of the server certificate. For more information, see the [Certificate Manager User Guide].
+	//
+	// [Certificate Manager User Guide]: https://docs.aws.amazon.com/acm/latest/userguide/
+	//
+	// This member is required.
+	ServerCertificateArn *string
+
 	// The IPv4 address range, in CIDR notation, from which to assign client IP
 	// addresses. The address range cannot overlap with the local CIDR of the VPC in
 	// which the associated subnet is located, or the routes that you add manually. The
 	// address range cannot be changed after the Client VPN endpoint has been created.
 	// Client CIDR range must have a size of at least /22 and must not be greater than
 	// /12.
-	//
-	// This member is required.
 	ClientCidrBlock *string
-
-	// Information about the client connection logging options. If you enable client
-	// connection logging, data about client connections is sent to a Cloudwatch Logs
-	// log stream. The following information is logged:
-	//   - Client connection requests
-	//   - Client connection results (successful and unsuccessful)
-	//   - Reasons for unsuccessful client connection requests
-	//   - Client connection termination time
-	//
-	// This member is required.
-	ConnectionLogOptions *types.ConnectionLogOptions
-
-	// The ARN of the server certificate. For more information, see the Certificate
-	// Manager User Guide (https://docs.aws.amazon.com/acm/latest/userguide/) .
-	//
-	// This member is required.
-	ServerCertificateArn *string
 
 	// The options for managing connection authorization for new client connections.
 	ClientConnectOptions *types.ClientConnectOptions
@@ -70,13 +74,32 @@ type CreateClientVpnEndpointInput struct {
 	// Amazon Web Services provided clients when a VPN session is established.
 	ClientLoginBannerOptions *types.ClientLoginBannerOptions
 
+	// Client route enforcement is a feature of the Client VPN service that helps
+	// enforce administrator defined routes on devices connected through the VPN. T his
+	// feature helps improve your security posture by ensuring that network traffic
+	// originating from a connected client is not inadvertently sent outside the VPN
+	// tunnel.
+	//
+	// Client route enforcement works by monitoring the route table of a connected
+	// device for routing policy changes to the VPN connection. If the feature detects
+	// any VPN routing policy modifications, it will automatically force an update to
+	// the route table, reverting it back to the expected route configurations.
+	ClientRouteEnforcementOptions *types.ClientRouteEnforcementOptions
+
 	// Unique, case-sensitive identifier that you provide to ensure the idempotency of
-	// the request. For more information, see How to ensure idempotency (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Run_Instance_Idempotency.html)
-	// .
+	// the request. For more information, see [Ensuring idempotency].
+	//
+	// [Ensuring idempotency]: https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-idempotency.html
 	ClientToken *string
 
 	// A brief description of the Client VPN endpoint.
 	Description *string
+
+	// Indicates whether the client VPN session is disconnected after the maximum
+	// timeout specified in SessionTimeoutHours is reached. If true , users are
+	// prompted to reconnect client VPN. If false , client VPN attempts to reconnect
+	// automatically. The default value is true .
+	DisconnectOnSessionTimeout *bool
 
 	// Information about the DNS servers to be used for DNS resolution. A Client VPN
 	// endpoint can have up to two DNS servers. If no DNS server is specified, the DNS
@@ -89,28 +112,50 @@ type CreateClientVpnEndpointInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
+	// The IP address type for the Client VPN endpoint. Valid values are ipv4
+	// (default) for IPv4 addressing only, ipv6 for IPv6 addressing only, or dual-stack
+	// for both IPv4 and IPv6 addressing. When set to dual-stack, clients can connect
+	// to the endpoint using either IPv4 or IPv6 addresses..
+	EndpointIpAddressType types.EndpointIpAddressType
+
 	// The IDs of one or more security groups to apply to the target network. You must
 	// also specify the ID of the VPC that contains the security groups.
 	SecurityGroupIds []string
 
 	// Specify whether to enable the self-service portal for the Client VPN endpoint.
+	//
 	// Default Value: enabled
 	SelfServicePortal types.SelfServicePortal
 
-	// The maximum VPN session duration time in hours. Valid values: 8 | 10 | 12 | 24
+	// The maximum VPN session duration time in hours.
+	//
+	// Valid values: 8 | 10 | 12 | 24
+	//
 	// Default value: 24
 	SessionTimeoutHours *int32
 
-	// Indicates whether split-tunnel is enabled on the Client VPN endpoint. By
-	// default, split-tunnel on a VPN endpoint is disabled. For information about
-	// split-tunnel VPN endpoints, see Split-tunnel Client VPN endpoint (https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/split-tunnel-vpn.html)
-	// in the Client VPN Administrator Guide.
+	// Indicates whether split-tunnel is enabled on the Client VPN endpoint.
+	//
+	// By default, split-tunnel on a VPN endpoint is disabled.
+	//
+	// For information about split-tunnel VPN endpoints, see [Split-tunnel Client VPN endpoint] in the Client VPN
+	// Administrator Guide.
+	//
+	// [Split-tunnel Client VPN endpoint]: https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/split-tunnel-vpn.html
 	SplitTunnel *bool
 
 	// The tags to apply to the Client VPN endpoint during creation.
 	TagSpecifications []types.TagSpecification
 
-	// The transport protocol to be used by the VPN session. Default value: udp
+	// The IP address type for traffic within the Client VPN tunnel. Valid values are
+	// ipv4 (default) for IPv4 traffic only, ipv6 for IPv6 addressing only, or
+	// dual-stack for both IPv4 and IPv6 traffic. When set to dual-stack , clients can
+	// access both IPv4 and IPv6 resources through the VPN .
+	TrafficIpAddressType types.TrafficIpAddressType
+
+	// The transport protocol to be used by the VPN session.
+	//
+	// Default value: udp
 	TransportProtocol types.TransportProtocol
 
 	// The ID of the VPC to associate with the Client VPN endpoint. If no security
@@ -119,7 +164,10 @@ type CreateClientVpnEndpointInput struct {
 	VpcId *string
 
 	// The port number to assign to the Client VPN endpoint for TCP and UDP traffic.
-	// Valid Values: 443 | 1194 Default Value: 443
+	//
+	// Valid Values: 443 | 1194
+	//
+	// Default Value: 443
 	VpnPort *int32
 
 	noSmithyDocumentSerde
@@ -185,6 +233,9 @@ func (c *Client) addOperationCreateClientVpnEndpointMiddlewares(stack *middlewar
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -195,6 +246,15 @@ func (c *Client) addOperationCreateClientVpnEndpointMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateClientVpnEndpointMiddleware(stack, options); err != nil {
@@ -219,6 +279,15 @@ func (c *Client) addOperationCreateClientVpnEndpointMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

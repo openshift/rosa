@@ -30,15 +30,22 @@ func (c *Client) DisableFastSnapshotRestores(ctx context.Context, params *Disabl
 
 type DisableFastSnapshotRestoresInput struct {
 
-	// One or more Availability Zones. For example, us-east-2a .
-	//
-	// This member is required.
-	AvailabilityZones []string
-
 	// The IDs of one or more snapshots. For example, snap-1234567890abcdef0 .
 	//
 	// This member is required.
 	SourceSnapshotIds []string
+
+	// One or more Availability Zone IDs. For example, use2-az1 .
+	//
+	// Either AvailabilityZone or AvailabilityZoneId must be specified in the request,
+	// but not both.
+	AvailabilityZoneIds []string
+
+	// One or more Availability Zones. For example, us-east-2a .
+	//
+	// Either AvailabilityZone or AvailabilityZoneId must be specified in the request,
+	// but not both.
+	AvailabilityZones []string
 
 	// Checks whether you have the required permissions for the action, without
 	// actually making the request, and provides an error response. If you have the
@@ -108,6 +115,9 @@ func (c *Client) addOperationDisableFastSnapshotRestoresMiddlewares(stack *middl
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -118,6 +128,15 @@ func (c *Client) addOperationDisableFastSnapshotRestoresMiddlewares(stack *middl
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisableFastSnapshotRestoresValidationMiddleware(stack); err != nil {
@@ -139,6 +158,15 @@ func (c *Client) addOperationDisableFastSnapshotRestoresMiddlewares(stack *middl
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
