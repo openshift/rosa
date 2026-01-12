@@ -13,8 +13,9 @@ import (
 
 // Creates a default subnet with a size /20 IPv4 CIDR block in the specified
 // Availability Zone in your default VPC. You can have only one default subnet per
-// Availability Zone. For more information, see Create a default subnet (https://docs.aws.amazon.com/vpc/latest/userguide/default-vpc.html#create-default-subnet)
-// in the Amazon VPC User Guide.
+// Availability Zone. For more information, see [Create a default subnet]in the Amazon VPC User Guide.
+//
+// [Create a default subnet]: https://docs.aws.amazon.com/vpc/latest/userguide/work-with-default-vpc.html#create-default-subnet
 func (c *Client) CreateDefaultSubnet(ctx context.Context, params *CreateDefaultSubnetInput, optFns ...func(*Options)) (*CreateDefaultSubnetOutput, error) {
 	if params == nil {
 		params = &CreateDefaultSubnetInput{}
@@ -34,8 +35,13 @@ type CreateDefaultSubnetInput struct {
 
 	// The Availability Zone in which to create the default subnet.
 	//
-	// This member is required.
+	// Either AvailabilityZone or AvailabilityZoneId must be specified, but not both.
 	AvailabilityZone *string
+
+	// The ID of the Availability Zone.
+	//
+	// Either AvailabilityZone or AvailabilityZoneId must be specified, but not both.
+	AvailabilityZoneId *string
 
 	// Checks whether you have the required permissions for the action, without
 	// actually making the request, and provides an error response. If you have the
@@ -105,6 +111,9 @@ func (c *Client) addOperationCreateDefaultSubnetMiddlewares(stack *middleware.St
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -117,7 +126,13 @@ func (c *Client) addOperationCreateDefaultSubnetMiddlewares(stack *middleware.St
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addOpCreateDefaultSubnetValidationMiddleware(stack); err != nil {
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateDefaultSubnet(options.Region), middleware.Before); err != nil {
@@ -136,6 +151,15 @@ func (c *Client) addOperationCreateDefaultSubnetMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

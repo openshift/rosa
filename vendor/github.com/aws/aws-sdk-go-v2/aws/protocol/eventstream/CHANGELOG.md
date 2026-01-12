@@ -1,3 +1,59 @@
+# v1.7.4 (2025-12-02)
+
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.7.3 (2025-11-04)
+
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.7.2 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+
+# v1.7.1 (2025-08-27)
+
+* **Dependency Update**: Update to smithy-go v1.23.0.
+
+# v1.7.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+
+# v1.6.11 (2025-06-17)
+
+* **Dependency Update**: Update to smithy-go v1.22.4.
+
+# v1.6.10 (2025-02-18)
+
+* **Bug Fix**: Bump go version to 1.22
+
+# v1.6.9 (2025-02-14)
+
+* **Bug Fix**: Remove max limit on event stream messages
+
+# v1.6.8 (2025-01-24)
+
+* **Dependency Update**: Upgrade to smithy-go v1.22.2.
+
+# v1.6.7 (2024-11-18)
+
+* **Dependency Update**: Update to smithy-go v1.22.1.
+
+# v1.6.6 (2024-10-04)
+
+* No change notes available for this release.
+
+# v1.6.5 (2024-09-20)
+
+* No change notes available for this release.
+
+# v1.6.4 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+
+# v1.6.3 (2024-06-28)
+
+* No change notes available for this release.
+
 # v1.6.2 (2024-03-29)
 
 * No change notes available for this release.

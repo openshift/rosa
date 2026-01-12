@@ -34,17 +34,20 @@ type SetStackPolicyInput struct {
 	// This member is required.
 	StackName *string
 
-	// Structure containing the stack policy body. For more information, go to
-	// Prevent updates to stack resources (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/protect-stack-resources.html)
-	// in the CloudFormation User Guide. You can specify either the StackPolicyBody or
+	// Structure that contains the stack policy body. For more information, see [Prevent updates to stack resources] in
+	// the CloudFormation User Guide. You can specify either the StackPolicyBody or
 	// the StackPolicyURL parameter, but not both.
+	//
+	// [Prevent updates to stack resources]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/protect-stack-resources.html
 	StackPolicyBody *string
 
-	// Location of a file containing the stack policy. The URL must point to a policy
-	// (maximum size: 16 KB) located in an Amazon S3 bucket in the same Amazon Web
-	// Services Region as the stack. The location for an Amazon S3 bucket must start
-	// with https:// . You can specify either the StackPolicyBody or the StackPolicyURL
-	// parameter, but not both.
+	// Location of a file that contains the stack policy. The URL must point to a
+	// policy (maximum size: 16 KB) located in an Amazon S3 bucket in the same Amazon
+	// Web Services Region as the stack. The location for an Amazon S3 bucket must
+	// start with https:// . URLs from S3 static websites are not supported.
+	//
+	// You can specify either the StackPolicyBody or the StackPolicyURL parameter, but
+	// not both.
 	StackPolicyURL *string
 
 	noSmithyDocumentSerde
@@ -100,6 +103,9 @@ func (c *Client) addOperationSetStackPolicyMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -110,6 +116,15 @@ func (c *Client) addOperationSetStackPolicyMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpSetStackPolicyValidationMiddleware(stack); err != nil {
@@ -131,6 +146,15 @@ func (c *Client) addOperationSetStackPolicyMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

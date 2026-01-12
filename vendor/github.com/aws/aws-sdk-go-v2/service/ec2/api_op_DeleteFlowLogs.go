@@ -29,7 +29,9 @@ func (c *Client) DeleteFlowLogs(ctx context.Context, params *DeleteFlowLogsInput
 
 type DeleteFlowLogsInput struct {
 
-	// One or more flow log IDs. Constraint: Maximum of 1000 flow log IDs.
+	// One or more flow log IDs.
+	//
+	// Constraint: Maximum of 1000 flow log IDs.
 	//
 	// This member is required.
 	FlowLogIds []string
@@ -97,6 +99,9 @@ func (c *Client) addOperationDeleteFlowLogsMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -107,6 +112,15 @@ func (c *Client) addOperationDeleteFlowLogsMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteFlowLogsValidationMiddleware(stack); err != nil {
@@ -128,6 +142,15 @@ func (c *Client) addOperationDeleteFlowLogsMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
