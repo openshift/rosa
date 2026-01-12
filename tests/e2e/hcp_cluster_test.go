@@ -72,6 +72,9 @@ var _ = Describe("HCP cluster testing",
 					originalCWARN          string
 					originCWLogGroupName   string
 				)
+				if !profile.ClusterConfig.LogForward {
+					Skip("This case is only for the cluster with log forwarder config")
+				}
 				logForwarderService := rosaClient.LogForwarderService
 				By("List log forwarders")
 
