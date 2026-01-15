@@ -263,8 +263,9 @@ func (r *ReplicaSizeValidation) MinReplicaValidator() interactive.Validator {
 		if err != nil {
 			return err
 		}
-		if r.Autoscaling && minReplicas < 1 && r.IsHostedCp {
-			return fmt.Errorf("min-replicas must be greater than zero")
+		if r.Autoscaling && minReplicas < 0 && r.IsHostedCp {
+			return fmt.Errorf("min-replicas must be a number that is 0 or greater when autoscaling is" +
+				" enabled")
 		}
 		if r.Autoscaling && minReplicas < 0 && !r.IsHostedCp {
 			return fmt.Errorf("min-replicas must be a number that is 0 or greater when autoscaling is" +
