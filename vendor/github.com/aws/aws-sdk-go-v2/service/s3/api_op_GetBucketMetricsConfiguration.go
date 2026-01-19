@@ -14,21 +14,38 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This operation is not supported by directory buckets. Gets a metrics
-// configuration (specified by the metrics configuration ID) from the bucket. Note
-// that this doesn't include the daily storage metrics. To use this operation, you
-// must have permissions to perform the s3:GetMetricsConfiguration action. The
-// bucket owner has this permission by default. The bucket owner can grant this
-// permission to others. For more information about permissions, see Permissions
-// Related to Bucket Subresource Operations (https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-actions.html#using-with-s3-actions-related-to-bucket-subresources)
-// and Managing Access Permissions to Your Amazon S3 Resources (https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-access-control.html)
-// . For information about CloudWatch request metrics for Amazon S3, see
-// Monitoring Metrics with Amazon CloudWatch (https://docs.aws.amazon.com/AmazonS3/latest/dev/cloudwatch-monitoring.html)
-// . The following operations are related to GetBucketMetricsConfiguration :
-//   - PutBucketMetricsConfiguration (https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketMetricsConfiguration.html)
-//   - DeleteBucketMetricsConfiguration (https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucketMetricsConfiguration.html)
-//   - ListBucketMetricsConfigurations (https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBucketMetricsConfigurations.html)
-//   - Monitoring Metrics with Amazon CloudWatch (https://docs.aws.amazon.com/AmazonS3/latest/dev/cloudwatch-monitoring.html)
+// This operation is not supported for directory buckets.
+//
+// Gets a metrics configuration (specified by the metrics configuration ID) from
+// the bucket. Note that this doesn't include the daily storage metrics.
+//
+// To use this operation, you must have permissions to perform the
+// s3:GetMetricsConfiguration action. The bucket owner has this permission by
+// default. The bucket owner can grant this permission to others. For more
+// information about permissions, see [Permissions Related to Bucket Subresource Operations]and [Managing Access Permissions to Your Amazon S3 Resources].
+//
+// For information about CloudWatch request metrics for Amazon S3, see [Monitoring Metrics with Amazon CloudWatch].
+//
+// The following operations are related to GetBucketMetricsConfiguration :
+//
+// [PutBucketMetricsConfiguration]
+//
+// [DeleteBucketMetricsConfiguration]
+//
+// [ListBucketMetricsConfigurations]
+//
+// [Monitoring Metrics with Amazon CloudWatch]
+//
+// You must URL encode any signed header values that contain spaces. For example,
+// if your header value is my file.txt , containing two spaces after my , you must
+// URL encode this value to my%20%20file.txt .
+//
+// [Permissions Related to Bucket Subresource Operations]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-actions.html#using-with-s3-actions-related-to-bucket-subresources
+// [Monitoring Metrics with Amazon CloudWatch]: https://docs.aws.amazon.com/AmazonS3/latest/dev/cloudwatch-monitoring.html
+// [ListBucketMetricsConfigurations]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBucketMetricsConfigurations.html
+// [PutBucketMetricsConfiguration]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketMetricsConfiguration.html
+// [DeleteBucketMetricsConfiguration]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucketMetricsConfiguration.html
+// [Managing Access Permissions to Your Amazon S3 Resources]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-access-control.html
 func (c *Client) GetBucketMetricsConfiguration(ctx context.Context, params *GetBucketMetricsConfigurationInput, optFns ...func(*Options)) (*GetBucketMetricsConfigurationOutput, error) {
 	if params == nil {
 		params = &GetBucketMetricsConfigurationInput{}
@@ -66,6 +83,7 @@ type GetBucketMetricsConfigurationInput struct {
 }
 
 func (in *GetBucketMetricsConfigurationInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.Bucket = in.Bucket
 	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
@@ -124,6 +142,9 @@ func (c *Client) addOperationGetBucketMetricsConfigurationMiddlewares(stack *mid
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -137,6 +158,18 @@ func (c *Client) addOperationGetBucketMetricsConfigurationMiddlewares(stack *mid
 		return err
 	}
 	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addIsExpressUserAgent(stack); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetBucketMetricsConfigurationValidationMiddleware(stack); err != nil {
@@ -170,6 +203,15 @@ func (c *Client) addOperationGetBucketMetricsConfigurationMiddlewares(stack *mid
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
