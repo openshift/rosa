@@ -749,33 +749,6 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		return handleErr(response.Error(), err)
 	}
 
-	if config.S3LogForwarder != nil {
-		builtForwarder, err := logforwarding.BindS3LogForwarder(config.S3LogForwarder).Build()
-		if err != nil {
-			return err
-		}
-		err = c.UpdateLogForwarder(
-			builtForwarder,
-			cluster.ID(),
-		)
-		if err != nil {
-			return err
-		}
-	}
-	if config.CloudWatchLogForwarder != nil {
-		builtForwarder, err := logforwarding.BindCloudWatchLogForwarder(config.CloudWatchLogForwarder).Build()
-		if err != nil {
-			return err
-		}
-		err = c.UpdateLogForwarder(
-			builtForwarder,
-			cluster.ID(),
-		)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -796,25 +769,6 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 	}
 
 	return cluster, nil
-}
-
-func (c *Client) UpdateLogForwarder(logForwarder *cmv1.LogForwarder, clusterId string) error {
-	logForward, err := c.GetLogForwarder(clusterId)
-	if err != nil && logForward != nil {
-		if !reflect.DeepEqual(logForward, logForwarder) {
-			logFwBuilder := BuildLogForwarder(logForwarder)
-			if logFwBuilder != nil {
-				result, err := logFwBuilder.Build()
-				if err != nil {
-					return err
-				}
-				if _, err := c.SetLogForwarder(clusterId, result); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }
 
 func (c *Client) UpdateClusterDeletionProtection(clusterId string, deleteProtection *cmv1.DeleteProtection) error {

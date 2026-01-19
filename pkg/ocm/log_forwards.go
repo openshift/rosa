@@ -55,37 +55,6 @@ func BuildLogForwarder(logForwarderConfig *cmv1.LogForwarder) *cmv1.LogForwarder
 	return logForwardbldr
 }
 
-func (c *Client) GetLogForwarder(clusterId string) (*cmv1.LogForwarder, error) {
-	var LogForwarderList []*cmv1.LogForwarder
-	collection := c.ocm.ClustersMgmt().V1().
-		Clusters().
-		Cluster(clusterId).
-		ControlPlane().LogForwarders().List()
-
-	page := 1
-	size := 1
-	for {
-		response, err := collection.
-			Page(page).
-			Size(size).
-			Send()
-		if err != nil {
-			return nil, handleErr(response.Error(), err)
-		}
-		LogForwarderList = append(LogForwarderList, response.Items().Slice()...)
-		if response.Size() < size {
-			break
-		}
-		page++
-	}
-
-	if len(LogForwarderList) > 0 {
-		return LogForwarderList[0], nil
-	}
-
-	return nil, nil
-}
-
 func (c *Client) GetLogForwarders(clusterId string) ([]*cmv1.LogForwarder, error) {
 	var LogForwarderList []*cmv1.LogForwarder
 	collection := c.ocm.ClustersMgmt().V1().
@@ -182,6 +151,23 @@ func (c *Client) FetchLogForwarder(clusterId string, logForwarderId string) (*cm
 	return response.Body(), nil
 }
 
+func (c *Client) UpdateLogForwarder(logForwarder *cmv1.LogForwarder, logForwarderId string, clusterId string) error {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(clusterId).
+		ControlPlane().
+		LogForwarders().
+		LogForwarder(logForwarderId).
+		Update().
+		Body(logForwarder).
+		Send()
+
+	if err != nil {
+		return handleErr(response.Error(), err)
+	}
+	return nil
+}
+
 func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
 	logForwarderYaml logforwarding.LogForwarderYaml, currentLogForwarder *cmv1.LogForwarder) error {
 
@@ -248,18 +234,5 @@ func (c *Client) EditLogForwarder(clusterId string, logForwarderId string,
 		return err
 	}
 
-	response, err := c.ocm.ClustersMgmt().V1().
-		Clusters().
-		Cluster(clusterId).
-		ControlPlane().
-		LogForwarders().
-		LogForwarder(logForwarderId).
-		Update().
-		Body(body).
-		Send()
-
-	if err != nil {
-		return handleErr(response.Error(), err)
-	}
-	return nil
+	return c.UpdateLogForwarder(body, logForwarderId, clusterId)
 }
