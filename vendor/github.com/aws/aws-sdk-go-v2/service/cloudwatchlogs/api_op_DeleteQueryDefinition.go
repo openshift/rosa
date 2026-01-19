@@ -11,9 +11,12 @@ import (
 )
 
 // Deletes a saved CloudWatch Logs Insights query definition. A query definition
-// contains details about a saved CloudWatch Logs Insights query. Each
-// DeleteQueryDefinition operation can delete one query definition. You must have
-// the logs:DeleteQueryDefinition permission to be able to perform this operation.
+// contains details about a saved CloudWatch Logs Insights query.
+//
+// Each DeleteQueryDefinition operation can delete one query definition.
+//
+// You must have the logs:DeleteQueryDefinition permission to be able to perform
+// this operation.
 func (c *Client) DeleteQueryDefinition(ctx context.Context, params *DeleteQueryDefinitionInput, optFns ...func(*Options)) (*DeleteQueryDefinitionOutput, error) {
 	if params == nil {
 		params = &DeleteQueryDefinitionInput{}
@@ -31,9 +34,10 @@ func (c *Client) DeleteQueryDefinition(ctx context.Context, params *DeleteQueryD
 
 type DeleteQueryDefinitionInput struct {
 
-	// The ID of the query definition that you want to delete. You can use
-	// DescribeQueryDefinitions (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeQueryDefinitions.html)
-	// to retrieve the IDs of your saved query definitions.
+	// The ID of the query definition that you want to delete. You can use [DescribeQueryDefinitions] to
+	// retrieve the IDs of your saved query definitions.
+	//
+	// [DescribeQueryDefinitions]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeQueryDefinitions.html
 	//
 	// This member is required.
 	QueryDefinitionId *string
@@ -96,6 +100,9 @@ func (c *Client) addOperationDeleteQueryDefinitionMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -106,6 +113,15 @@ func (c *Client) addOperationDeleteQueryDefinitionMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteQueryDefinitionValidationMiddleware(stack); err != nil {
@@ -127,6 +143,15 @@ func (c *Client) addOperationDeleteQueryDefinitionMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
