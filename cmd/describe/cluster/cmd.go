@@ -566,6 +566,9 @@ func run(cmd *cobra.Command, argv []string) {
 				str = fmt.Sprintf("%s"+
 					"  IAM Role ARN:             %s\n", str, cluster.AWS().AutoNode().RoleArn())
 			}
+		} else {
+			str = fmt.Sprintf("%s"+
+				"AutoNode:                   %s\n", str, DisabledOutput)
 		}
 		str = fmt.Sprintf("%s"+
 			"External Authentication:    %s\n", str, getExternalAuthConfigStatus(cluster))
