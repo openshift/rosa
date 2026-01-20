@@ -1,6 +1,7 @@
 package autonode
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -21,13 +22,15 @@ var _ = Describe("ValidateAutoNodeValue", func() {
 	It("returns error when value is empty", func() {
 		err := ValidateAutoNodeValue("")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Invalid value for --autonode. Currently only 'enabled' is supported"))
+		Expect(err.Error()).To(Equal(fmt.Sprintf("invalid value for --%s, only '%s' is supported",
+			AutoNodeFlagName, AutoNodeModeEnabled)))
 	})
 
 	It("returns error when value is arbitrary string", func() {
 		err := ValidateAutoNodeValue("invalid-value")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Invalid value for --autonode. Currently only 'enabled' is supported"))
+		Expect(err.Error()).To(Equal(fmt.Sprintf("invalid value for --%s, only '%s' is supported",
+			AutoNodeFlagName, AutoNodeModeEnabled)))
 	})
 })
 
@@ -42,20 +45,20 @@ var _ = Describe("ValidateRoleARN", func() {
 		It("returns error when ARN format is invalid - missing parts", func() {
 			err := ValidateRoleARN("arn:aws:iam::123456789012")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid IAM role ARN format"))
-			Expect(err.Error()).To(ContainSubstring("Expected format: arn:aws:iam::<account-id>:role/<role-name>"))
+			Expect(err.Error()).To(ContainSubstring("invalid IAM role ARN format"))
+			Expect(err.Error()).To(ContainSubstring("expected format: arn:aws:iam::<account-id>:role/<role-name>"))
 		})
 
 		It("returns error when ARN format is invalid - not a role", func() {
 			err := ValidateRoleARN("arn:aws:iam::123456789012:user/MyUser")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid IAM role ARN format"))
+			Expect(err.Error()).To(ContainSubstring("invalid IAM role ARN format"))
 		})
 
 		It("returns error when ARN has invalid account ID", func() {
 			err := ValidateRoleARN("arn:aws:iam::abc:role/MyRole")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid IAM role ARN format"))
+			Expect(err.Error()).To(ContainSubstring("invalid IAM role ARN format"))
 		})
 	})
 
@@ -88,13 +91,17 @@ var _ = Describe("ValidateAutoNodeConfiguration", func() {
 		It("returns error when enabling without IAM role ARN", func() {
 			err := ValidateAutoNodeConfiguration(true, false, false, "")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("IAM role ARN is required when enabling AutoNode"))
+			Expect(err.Error()).To(Equal(fmt.Sprintf(
+				"the AutoNode IAM role ARN flag '--%s' is required when enabling AutoNode",
+				AutoNodeIAMRoleArnFlagName)))
 		})
 
 		It("returns error when enabling with empty IAM role ARN", func() {
 			err := ValidateAutoNodeConfiguration(true, true, false, "")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("IAM role ARN is required when enabling AutoNode"))
+			Expect(err.Error()).To(Equal(fmt.Sprintf(
+				"the AutoNode IAM role ARN flag '--%s' is required when enabling AutoNode",
+				AutoNodeIAMRoleArnFlagName)))
 		})
 
 		It("returns nil when enabling with valid IAM role ARN", func() {
@@ -107,7 +114,9 @@ var _ = Describe("ValidateAutoNodeConfiguration", func() {
 		It("returns error when AutoNode is not enabled", func() {
 			err := ValidateAutoNodeConfiguration(false, true, false, "arn:aws:iam::123456789012:role/MyRole")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Cannot update IAM role ARN when AutoNode is not enabled. Enable AutoNode first with --autonode=enabled"))
+			Expect(err.Error()).To(Equal(fmt.Sprintf(
+				"cannot update IAM role ARN when AutoNode is not enabled. Enable AutoNode first with --%s=%s",
+				AutoNodeFlagName, AutoNodeModeEnabled)))
 		})
 
 		It("returns nil when updating role ARN with AutoNode already enabled", func() {

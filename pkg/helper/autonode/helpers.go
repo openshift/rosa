@@ -19,6 +19,7 @@ const (
 	AutoNodeFlagName = "autonode"
 	// AutoNodeIAMRoleArnFlagName is the flag name for the AutoNode IAM role ARN
 	AutoNodeIAMRoleArnFlagName = "autonode-iam-role-arn"
+	AutoNodeModeEnabled        = "enabled"
 )
 
 // AutoNodeConfig holds AutoNode configuration parameters and results
@@ -34,8 +35,9 @@ type AutoNodeConfig struct {
 
 // ValidateAutoNodeValue validates the autonode flag value
 func ValidateAutoNodeValue(value string) error {
-	if value != "enabled" {
-		return fmt.Errorf("Invalid value for --autonode. Currently only 'enabled' is supported")
+	if value != AutoNodeModeEnabled {
+		return fmt.Errorf("invalid value for --%s, only '%s' is supported",
+			AutoNodeFlagName, AutoNodeModeEnabled)
 	}
 	return nil
 }
@@ -46,7 +48,8 @@ func ValidateRoleARN(roleArn string) error {
 		return fmt.Errorf("IAM role ARN cannot be empty")
 	}
 	if !aws.RoleArnRE.MatchString(roleArn) {
-		return fmt.Errorf("Invalid IAM role ARN format: '%s'. Expected format: arn:aws:iam::<account-id>:role/<role-name>", roleArn)
+		return fmt.Errorf("invalid IAM role ARN format: '%s', "+
+			"expected format: arn:aws:iam::<account-id>:role/<role-name>", roleArn)
 	}
 	return nil
 }
@@ -60,13 +63,14 @@ func ValidateAutoNodeConfiguration(autoNodeChanged, roleArnChanged, currentEnabl
 
 	// Validate IAM role ARN is provided when enabling AutoNode
 	if autoNodeChanged && (!roleArnChanged || roleArnValue == "") {
-		return fmt.Errorf("IAM role ARN is required when enabling AutoNode")
+		return fmt.Errorf("the AutoNode IAM role ARN flag '--%s' is required when enabling AutoNode",
+			AutoNodeIAMRoleArnFlagName)
 	}
 
 	// Validate can't update IAM role when AutoNode is not enabled
 	if roleArnChanged && !autoNodeChanged && !currentEnabled {
-		return fmt.Errorf("Cannot update IAM role ARN when AutoNode is not enabled. " +
-			"Enable AutoNode first with --autonode=enabled")
+		return fmt.Errorf("cannot update IAM role ARN when AutoNode is not enabled. "+
+			"Enable AutoNode first with --%s=%s", AutoNodeFlagName, AutoNodeModeEnabled)
 	}
 
 	return nil
@@ -83,7 +87,8 @@ func DetermineAutoNodeMode(autoNodeChanged bool, flagValue string) string {
 }
 
 // SetAutoNode validates and sets AutoNode configuration for a cluster
-func SetAutoNode(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, flagValue string, roleArnValue string) (*AutoNodeConfig, error) {
+func SetAutoNode(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster,
+	flagValue string, roleArnValue string) (*AutoNodeConfig, error) {
 	config := &AutoNodeConfig{
 		AutoNodeFlag: flagValue,
 		RoleARNFlag:  roleArnValue,
@@ -103,7 +108,7 @@ func SetAutoNode(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, fla
 	}
 
 	currentAutoNodeMode, currentAutoNodeExists := ocm.GetAutoNodeMode(cluster)
-	currentAutoNodeEnabled := currentAutoNodeExists && currentAutoNodeMode == "enabled"
+	currentAutoNodeEnabled := currentAutoNodeExists && currentAutoNodeMode == AutoNodeModeEnabled
 
 	// Validate autonode value once if provided
 	if autoNodeChanged {
@@ -113,7 +118,8 @@ func SetAutoNode(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, fla
 	}
 
 	// Validate overall configuration
-	if err := ValidateAutoNodeConfiguration(autoNodeChanged, roleArnChanged, currentAutoNodeEnabled, config.RoleARNFlag); err != nil {
+	if err := ValidateAutoNodeConfiguration(
+		autoNodeChanged, roleArnChanged, currentAutoNodeEnabled, config.RoleARNFlag); err != nil {
 		return nil, err
 	}
 
@@ -143,7 +149,7 @@ func InteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluste
 	config := &AutoNodeConfig{}
 
 	autoNodeMode, autoNodeExists := ocm.GetAutoNodeMode(cluster)
-	autoNodeEnabled := autoNodeExists && autoNodeMode == "enabled"
+	autoNodeEnabled := autoNodeExists && autoNodeMode == AutoNodeModeEnabled
 	currentRoleArn, _ := ocm.GetAutoNodeRoleArn(cluster)
 
 	// Build the appropriate question based on current state
@@ -170,7 +176,7 @@ func InteractivePrompt(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluste
 
 	// Only set mode when enabling, not when updating role
 	if !autoNodeEnabled {
-		config.AutoNodeMode = "enabled"
+		config.AutoNodeMode = AutoNodeModeEnabled
 	}
 
 	// Build role ARN prompt based on state
