@@ -3,4 +3,5 @@
 - name: output
 - name: region
 - name: role-arn
+- name: with-feature
 - name: "yes"
