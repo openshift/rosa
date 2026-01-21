@@ -907,5 +907,92 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				Expect(output.String()).Should(ContainSubstring("invalid disk size: '25678987654567898765456789087654Gi'." +
 					" maximum size exceeded"))
 			})
+
+		It("validate maximum number of nodes - [id:78277]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
+			By("Prepare testing machinepool")
+			instanceType := constants.M5XLarge
+			mpPrefix := "mp78277na"
+			autoScaleMpPrefix := "mp78277a"
+			mpName := helper.GenerateRandomName(mpPrefix, 2)
+			autoScaleMpName := helper.GenerateRandomName(autoScaleMpPrefix, 2)
+			minReplica := 3
+			maxReplica := 6
+			testReplicas := 3
+			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+				"--instance-type", instanceType,
+				"--replicas", fmt.Sprintf("%v", testReplicas),
+				"-y",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+
+			_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, autoScaleMpName,
+				"--instance-type", instanceType,
+				"--enable-autoscaling",
+				"--min-replicas", fmt.Sprintf("%v", minReplica),
+				"--max-replicas", fmt.Sprintf("%v", maxReplica),
+				"-y",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, autoScaleMpName)
+
+			By("Edit node pool mini and max replicas with the numner execceed maximum number")
+			out, err := rosaClient.MachinePool.EditMachinePool(clusterID, autoScaleMpName,
+				"--min-replicas", fmt.Sprintf("%v", 6000),
+				"--max-replicas", fmt.Sprintf("%v", 6001),
+				"-y",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(ContainSubstring("Replicas+Autoscaling.Min: The total number of compute nodes"))
+			Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
+
+			out, err = rosaClient.MachinePool.EditMachinePool(clusterID, autoScaleMpName,
+				"--min-replicas", fmt.Sprintf("%v", 1),
+				"--max-replicas", fmt.Sprintf("%v", 6001),
+				"-y",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(ContainSubstring(" Replicas+Autoscaling.Max: The total number of compute nodes"))
+			Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
+
+			By("Edit node pool replicas with the numner execceed maximum number")
+			out, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+				"--replicas", fmt.Sprintf("%v", 6001),
+				"-y",
+			)
+			Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
+
+			By("Create node pool mini and max replicas with the numner execceed maximum number")
+
+			mpNameNegative := helper.GenerateRandomName("mp78277n", 2)
+			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
+				"--instance-type", instanceType,
+				"--enable-autoscaling",
+				"--min-replicas", fmt.Sprintf("%v", 1),
+				"--max-replicas", fmt.Sprintf("%v", 6000),
+				"-y",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
+
+			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
+				"--instance-type", instanceType,
+				"--enable-autoscaling",
+				"--min-replicas", fmt.Sprintf("%v", 6000),
+				"--max-replicas", fmt.Sprintf("%v", 6001),
+				"-y",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
+
+			By("Create node pool replicas with the numner execceed maximum number")
+			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
+				"--instance-type", instanceType,
+				"--replicas", fmt.Sprintf("%v", 6000),
+				"-y",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
+		})
 	})
 })
