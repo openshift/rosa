@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/handler"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("HCP cluster testing",
@@ -776,5 +778,77 @@ var _ = Describe("HCP cluster testing",
 						Expect(clusterDetail.RegistryConfiguration[1]["Blocked Registries"]).To(Equal(originValue))
 					}
 				}
+			})
+	})
+var _ = Describe("hosted-cp cluster creation",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			profilesMap    map[string]*handler.Profile
+			profile        *handler.Profile
+			clusterService rosacli.ClusterService
+			clusterHandler handler.ClusterHandler
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			// Init the client
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			// Get a random profile
+			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
+			profilesNames := make([]string, 0, len(profilesMap))
+			for k, v := range profilesMap {
+				if !v.ClusterConfig.SharedVPC && !v.ClusterConfig.AutoscalerEnabled {
+					profilesNames = append(profilesNames, k)
+				}
+			}
+			profile = profilesMap["rosa-hcp-basic"]
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			clusterHandler.Destroy()
+		})
+
+		It("to create cluster withskip_inflight property - [id:85689]",
+			labels.Medium, labels.Runtime.Day1Supplemental,
+			func() {
+				By("Prepare creation command")
+				var command string
+				var rosalCommand config.Command
+				profile.NamePrefix = helper.GenerateRandomName("ci856890", 3)
+
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
+				Expect(err).To(BeNil())
+
+				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
+				rosalCommand = config.GenerateCommand(command)
+
+				rosalCommand.AddFlags("--properties", "skip_inflight_tests:true")
+
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring("has been created"))
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(profile.ClusterConfig.Name).ID
+
+				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 20)
+				Expect(err).To(BeNil())
+
+				By("Check the properties of the cluster")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(jsonData.DigBool("properties", "skip_inflight_tests")).To(BeTrue())
 			})
 	})

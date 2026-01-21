@@ -240,3 +240,41 @@ profiles:
   account-role:
     path: ""
     permission_boundary: ""
+- as: rosa-hcp-basic
+  version: latest
+  channel_group: stable
+  region: "us-west-2"
+  cluster:
+    multi_az: true
+    instance_type: "c5.xlarge"
+    hcp: true
+    sts: true
+    byo_vpc: true
+    additional_principals: false
+    imdsv2: ""
+    private: false
+    default_ingress_private: false
+    etcd_encryption: false
+    autoscale: false
+    kms_key: false
+    networking: false
+    proxy_enabled: false
+    label_enabled: false
+    zones: ""
+    tag_enabled: false
+    etcd_kms: false
+    fips: false
+    oidc_config: "managed"
+    auditlog_forward: false
+    admin_enabled: false
+    volume_size: 75
+    disable_uwm: false
+    autoscaler_enabled: false
+    additional_sg_number: 3
+    registries_config: false
+    allowed_registries: false
+    log_forward: false
+  account-role:
+    customized_prefix: false
+    path: ""
+    permission_boundary: ""
