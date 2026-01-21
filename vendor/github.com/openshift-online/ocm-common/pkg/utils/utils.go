@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/openshift-online/ocm-common/pkg/log"
 	"math/rand"
 	"time"
+
+	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
 var r *rand.Rand
@@ -68,6 +69,10 @@ func GeneratePassword(length int) string {
 	shuffleStrings(password)
 	log.LogInfo("Generate squid password finished.")
 	return string(password)
+}
+
+func GetBoolNotNil(f *bool) bool {
+	return f != nil && *f
 }
 
 func randInt(max int) int {
