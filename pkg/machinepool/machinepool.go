@@ -838,7 +838,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 
 	capacityReservationPreference := args.CapacityReservationPreference
 
-	if interactive.Enabled() && !autoscaling && !fedramp.Enabled() {
+	if interactive.Enabled() && !fedramp.Enabled() {
 		options := []string{mpHelpers.CapacityReservationPreferenceOnly}
 		if capacityReservationId == "" {
 			options = []string{mpHelpers.CapacityReservationPreferenceNone,
@@ -986,7 +986,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		rootDiskSize,
 	)
 
-	if !fedramp.Enabled() && !autoscaling {
+	if !fedramp.Enabled() {
 		capacityReservation := cmv1.NewAWSCapacityReservation()
 		changed := false
 		if capacityReservationId != "" {
