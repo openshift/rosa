@@ -516,6 +516,59 @@ var _ = Describe("Machine pool min/max replicas validation", func() {
 			false,
 		),
 	)
+
+	DescribeTable("NodePool (HCP) min replicas validation",
+		func(minReplicas int, autoscaling bool, multiAZ bool, hasError bool) {
+			replicaSizeValidation := &ReplicaSizeValidation{
+				ClusterVersion: "openshift-v4.14.14",
+				MultiAz:        multiAZ,
+				Autoscaling:    autoscaling,
+				IsHostedCp:     true,
+			}
+			err := replicaSizeValidation.MinReplicaValidator()(minReplicas)
+			if hasError {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("Zero replicas - no autoscaling - should succeed",
+			0,
+			false,
+			false,
+			false,
+		),
+		Entry("Zero replicas - autoscaling - should succeed",
+			0,
+			true,
+			false,
+			false,
+		),
+		Entry("Negative replicas - autoscaling - should fail",
+			-1,
+			true,
+			false,
+			true,
+		),
+		Entry("One replica - autoscaling - should succeed",
+			1,
+			true,
+			false,
+			false,
+		),
+		Entry("Multi-AZ - 3 replicas - should succeed",
+			3,
+			true,
+			true,
+			false,
+		),
+		Entry("Multi-AZ - 2 replicas - should fail (not multiple of 3)",
+			2,
+			true,
+			true,
+			true,
+		),
+	)
 })
 
 var _ = Describe("CreateAwsNodePoolBuilder", func() {

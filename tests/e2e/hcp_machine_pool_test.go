@@ -424,7 +424,15 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", zeroMinReplica),
 				"-y",
 			)
-			expectErrMsg := "ERR: min-replicas must be greater than zero"
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Try to set machine pool min replica to negative value - should fail")
+			negativeMinReplica := -1
+			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+				"--min-replicas", fmt.Sprintf("%v", negativeMinReplica),
+				"-y",
+			)
+			expectErrMsg := "ERR: min-replicas must be a non-negative number when autoscaling is set"
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
