@@ -17,15 +17,14 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1alpha1 // github.com/openshift-online/ocm-api-model/clientapi/arohcp/v1alpha1
+package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1
 
-// ProvisionShardTopology represents the values of the 'provision_shard_topology' enumerated type.
-type ProvisionShardTopology string
+// DnsCloudProvider represents the values of the 'dns_cloud_provider' enumerated type.
+type DnsCloudProvider string
 
 const (
-	// Represents a provision shard with shared topology. In this topology, all
-	// ARO-HCP Clusters share a common pool of K8s Nodes for control plane
-	// request serving workloads, rather than using a different set of
-	// dedicated K8s Nodes per ARO-HCP cluster.
-	ProvisionShardTopologyShared ProvisionShardTopology = "shared"
+	//
+	DnsCloudProviderAws DnsCloudProvider = "aws"
+	//
+	DnsCloudProviderGcp DnsCloudProvider = "gcp"
 )
