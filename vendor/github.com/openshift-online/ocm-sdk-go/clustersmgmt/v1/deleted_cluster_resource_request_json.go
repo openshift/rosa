@@ -17,16 +17,15 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1alpha1 // github.com/openshift-online/ocm-sdk-go/arohcp/v1alpha1
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
 
-import (
-	api_v1alpha1 "github.com/openshift-online/ocm-api-model/clientapi/arohcp/v1alpha1"
-)
+import "io"
 
-// ServerConfigBuilder contains the data and logic needed to build 'server_config' objects.
-//
-// Representation of a server config
-type ServerConfigBuilder = api_v1alpha1.ServerConfigBuilder
-
-// NewServerConfig creates a new builder of 'server_config' objects.
-var NewServerConfig = api_v1alpha1.NewServerConfig
+func writeDeletedClusterGetRequest(request *DeletedClusterGetRequest, writer io.Writer) error {
+	return nil
+}
+func readDeletedClusterGetResponse(response *DeletedClusterGetResponse, reader io.Reader) error {
+	var err error
+	response.body, err = UnmarshalDeletedCluster(reader)
+	return err
+}

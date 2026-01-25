@@ -17,19 +17,20 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1alpha1 // github.com/openshift-online/ocm-api-model/clientapi/arohcp/v1alpha1
+package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1
 
 import (
 	"io"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/openshift-online/ocm-api-model/clientapi/helpers"
 )
 
-// MarshalServerConfig writes a value of the 'server_config' type to the given writer.
-func MarshalServerConfig(object *ServerConfig, writer io.Writer) error {
+// MarshalDeletedCluster writes a value of the 'deleted_cluster' type to the given writer.
+func MarshalDeletedCluster(object *DeletedCluster, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	WriteServerConfig(object, stream)
+	WriteDeletedCluster(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,15 +38,15 @@ func MarshalServerConfig(object *ServerConfig, writer io.Writer) error {
 	return stream.Error
 }
 
-// WriteServerConfig writes a value of the 'server_config' type to the given stream.
-func WriteServerConfig(object *ServerConfig, stream *jsoniter.Stream) {
+// WriteDeletedCluster writes a value of the 'deleted_cluster' type to the given stream.
+func WriteDeletedCluster(object *DeletedCluster, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	stream.WriteObjectField("kind")
 	if len(object.fieldSet_) > 0 && object.fieldSet_[0] {
-		stream.WriteString(ServerConfigLinkKind)
+		stream.WriteString(DeletedClusterLinkKind)
 	} else {
-		stream.WriteString(ServerConfigKind)
+		stream.WriteString(DeletedClusterKind)
 	}
 	count++
 	if len(object.fieldSet_) > 1 && object.fieldSet_[1] {
@@ -65,13 +66,13 @@ func WriteServerConfig(object *ServerConfig, stream *jsoniter.Stream) {
 		count++
 	}
 	var present_ bool
-	present_ = len(object.fieldSet_) > 3 && object.fieldSet_[3] && object.awsShard != nil
+	present_ = len(object.fieldSet_) > 3 && object.fieldSet_[3] && object.cluster != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("aws_shard")
-		WriteAWSShard(object.awsShard, stream)
+		stream.WriteObjectField("cluster")
+		WriteCluster(object.cluster, stream)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 4 && object.fieldSet_[4]
@@ -79,46 +80,28 @@ func WriteServerConfig(object *ServerConfig, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("kubeconfig")
-		stream.WriteString(object.kubeconfig)
-		count++
-	}
-	present_ = len(object.fieldSet_) > 5 && object.fieldSet_[5]
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("server")
-		stream.WriteString(object.server)
-		count++
-	}
-	present_ = len(object.fieldSet_) > 6 && object.fieldSet_[6]
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("topology")
-		stream.WriteString(string(object.topology))
+		stream.WriteObjectField("deleted_timestamp")
+		stream.WriteString((object.deletedTimestamp).Format(time.RFC3339))
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalServerConfig reads a value of the 'server_config' type from the given
+// UnmarshalDeletedCluster reads a value of the 'deleted_cluster' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalServerConfig(source interface{}) (object *ServerConfig, err error) {
+func UnmarshalDeletedCluster(source interface{}) (object *DeletedCluster, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = ReadServerConfig(iterator)
+	object = ReadDeletedCluster(iterator)
 	err = iterator.Error
 	return
 }
 
-// ReadServerConfig reads a value of the 'server_config' type from the given iterator.
-func ReadServerConfig(iterator *jsoniter.Iterator) *ServerConfig {
-	object := &ServerConfig{
-		fieldSet_: make([]bool, 7),
+// ReadDeletedCluster reads a value of the 'deleted_cluster' type from the given iterator.
+func ReadDeletedCluster(iterator *jsoniter.Iterator) *DeletedCluster {
+	object := &DeletedCluster{
+		fieldSet_: make([]bool, 5),
 	}
 	for {
 		field := iterator.ReadObject()
@@ -128,7 +111,7 @@ func ReadServerConfig(iterator *jsoniter.Iterator) *ServerConfig {
 		switch field {
 		case "kind":
 			value := iterator.ReadString()
-			if value == ServerConfigLinkKind {
+			if value == DeletedClusterLinkKind {
 				object.fieldSet_[0] = true
 			}
 		case "id":
@@ -137,23 +120,18 @@ func ReadServerConfig(iterator *jsoniter.Iterator) *ServerConfig {
 		case "href":
 			object.href = iterator.ReadString()
 			object.fieldSet_[2] = true
-		case "aws_shard":
-			value := ReadAWSShard(iterator)
-			object.awsShard = value
+		case "cluster":
+			value := ReadCluster(iterator)
+			object.cluster = value
 			object.fieldSet_[3] = true
-		case "kubeconfig":
-			value := iterator.ReadString()
-			object.kubeconfig = value
-			object.fieldSet_[4] = true
-		case "server":
-			value := iterator.ReadString()
-			object.server = value
-			object.fieldSet_[5] = true
-		case "topology":
+		case "deleted_timestamp":
 			text := iterator.ReadString()
-			value := ProvisionShardTopology(text)
-			object.topology = value
-			object.fieldSet_[6] = true
+			value, err := time.Parse(time.RFC3339, text)
+			if err != nil {
+				iterator.ReportError("", err.Error())
+			}
+			object.deletedTimestamp = value
+			object.fieldSet_[4] = true
 		default:
 			iterator.ReadAny()
 		}
