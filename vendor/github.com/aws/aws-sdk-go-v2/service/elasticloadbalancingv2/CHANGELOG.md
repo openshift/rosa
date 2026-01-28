@@ -1,3 +1,328 @@
+# v1.54.6 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.54.5 (2025-12-09)
+
+* No change notes available for this release.
+
+# v1.54.4 (2025-12-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.54.3 (2025-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.54.2 (2025-11-25)
+
+* **Bug Fix**: Add error check for endpoint param binding during auth scheme resolution to fix panic reported in #3234
+
+# v1.54.1 (2025-11-21)
+
+* **Documentation**: This release adds the health check log feature in ALB, allowing customers to send detailed target health check log data directly to their designated Amazon S3 bucket.
+
+# v1.54.0 (2025-11-20)
+
+* **Feature**: This release adds the target optimizer feature in ALB, enabling strict concurrency enforcement on targets.
+
+# v1.53.1 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.53.0 (2025-11-13)
+
+* **Feature**: QUIC and TCP_QUIC protocol support for Network Load Balancer (NLB). This capability enables customers to forward QUIC traffic to their targets with ultra-low latency while maintaining session stickiness using QUIC Connection IDs.
+
+# v1.52.0 (2025-11-12)
+
+* **Feature**: This release expands ALB Authentication to support JWT verification and adds support for a new JWT validation action in listener rule.
+* **Bug Fix**: Further reduce allocation overhead when the metrics system isn't in-use.
+* **Bug Fix**: Reduce allocation overhead when the client doesn't have any HTTP interceptors configured.
+* **Bug Fix**: Remove blank trace spans towards the beginning of the request that added no additional information. This conveys a slight reduction in overall allocations.
+
+# v1.51.6 (2025-11-11)
+
+* **Bug Fix**: Return validation error if input region is not a valid host label.
+
+# v1.51.5 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.51.4 (2025-10-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.51.3 (2025-10-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.51.2 (2025-10-22)
+
+* No change notes available for this release.
+
+# v1.51.1 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.51.0 (2025-10-15)
+
+* **Feature**: This release expands Listener Rule Conditions to support RegexValues and adds support for a new Transforms field in Listener Rules.
+
+# v1.50.6 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.5 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.4 (2025-09-10)
+
+* No change notes available for this release.
+
+# v1.50.3 (2025-09-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.2 (2025-08-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.1 (2025-08-27)
+
+* **Dependency Update**: Update to smithy-go v1.23.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.0 (2025-08-21)
+
+* **Feature**: Remove incorrect endpoint tests
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.49.1 (2025-08-20)
+
+* **Bug Fix**: Remove unused deserialization code.
+
+# v1.49.0 (2025-08-11)
+
+* **Feature**: Add support for configuring per-service Options via callback on global config.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.48.0 (2025-08-04)
+
+* **Feature**: Support configurable auth scheme preferences in service clients via AWS_AUTH_SCHEME_PREFERENCE in the environment, auth_scheme_preference in the config file, and through in-code settings on LoadDefaultConfig and client constructor methods.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.47.2 (2025-07-31)
+
+* **Documentation**: This release enables secondary IP addresses for Network Load Balancers.
+
+# v1.47.1 (2025-07-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.47.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.46.1 (2025-07-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.46.0 (2025-06-24)
+
+* **Feature**: Add Paginator for DescribeAccountLimits, and fix Paginators for DescribeTrustStoreAssociations, DescribeTrustStoreRevocations, and DescribeTrustStores
+
+# v1.45.5 (2025-06-17)
+
+* **Dependency Update**: Update to smithy-go v1.22.4.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.4 (2025-06-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.3 (2025-06-06)
+
+* No change notes available for this release.
+
+# v1.45.2 (2025-04-10)
+
+* No change notes available for this release.
+
+# v1.45.1 (2025-04-03)
+
+* No change notes available for this release.
+
+# v1.45.0 (2025-03-07)
+
+* **Feature**: This release adds support for assigning IP addresses to Application Load Balancers from VPC IP Address Manager pools.
+
+# v1.44.1 (2025-03-04.2)
+
+* **Bug Fix**: Add assurance test for operation order.
+
+# v1.44.0 (2025-02-27)
+
+* **Feature**: Track credential providers via User-Agent Feature ids
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.13 (2025-02-18)
+
+* **Bug Fix**: Bump go version to 1.22
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.12 (2025-02-05)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.11 (2025-02-04)
+
+* No change notes available for this release.
+
+# v1.43.10 (2025-01-31)
+
+* **Dependency Update**: Switch to code-generated waiter matchers, removing the dependency on go-jmespath.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.9 (2025-01-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.8 (2025-01-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.22.2.
+
+# v1.43.7 (2025-01-17)
+
+* **Bug Fix**: Fix bug where credentials weren't refreshed during retry loop.
+
+# v1.43.6 (2025-01-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.5 (2025-01-14)
+
+* **Bug Fix**: Fix issue where waiters were not failing on unmatched errors as they should. This may have breaking behavioral changes for users in fringe cases. See [this announcement](https://github.com/aws/aws-sdk-go-v2/discussions/2954) for more information.
+
+# v1.43.4 (2025-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.3 (2025-01-08)
+
+* No change notes available for this release.
+
+# v1.43.2 (2024-12-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.1 (2024-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.0 (2024-11-22)
+
+* **Feature**: This release adds support for advertising trusted CA certificate names in associated trust stores.
+
+# v1.42.1 (2024-11-21)
+
+* **Documentation**: This feature adds support for enabling zonal shift on cross-zone enabled Application Load Balancer, as well as modifying HTTP request and response headers.
+
+# v1.42.0 (2024-11-20)
+
+* **Feature**: This release adds support for configuring Load balancer Capacity Unit reservations
+
+# v1.41.2 (2024-11-18)
+
+* **Dependency Update**: Update to smithy-go v1.22.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.1 (2024-11-06)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.0 (2024-10-31)
+
+* **Feature**: Add UDP support for AWS PrivateLink and dual-stack Network Load Balancers
+
+# v1.40.1 (2024-10-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.0 (2024-10-11)
+
+* **Feature**: Add zonal_shift.config.enabled attribute. Add new AdministrativeOverride construct in the describe-target-health API response to include information about the override status applied to a target.
+
+# v1.39.2 (2024-10-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.1 (2024-10-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.0 (2024-10-04)
+
+* **Feature**: Add support for HTTP client metrics.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.4 (2024-10-03)
+
+* No change notes available for this release.
+
+# v1.38.3 (2024-09-27)
+
+* No change notes available for this release.
+
+# v1.38.2 (2024-09-25)
+
+* No change notes available for this release.
+
+# v1.38.1 (2024-09-23)
+
+* No change notes available for this release.
+
+# v1.38.0 (2024-09-20)
+
+* **Feature**: Add tracing and metrics support to service clients.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.1 (2024-09-17)
+
+* **Bug Fix**: **BREAKFIX**: Only generate AccountIDEndpointMode config for services that use it. This is a compiler break, but removes no actual functionality, as no services currently use the account ID in endpoint resolution.
+
+# v1.37.0 (2024-09-12)
+
+* **Feature**: Correct incorrectly mapped error in ELBv2 waiters
+
+# v1.36.0 (2024-09-09)
+
+* **Feature**: Add paginators for the ELBv2 DescribeListenerCertificates and DescribeRules APIs. Fix broken waiter for the ELBv2 DescribeLoadBalancers API.
+
+# v1.35.1 (2024-09-04)
+
+* No change notes available for this release.
+
+# v1.35.0 (2024-09-03)
+
+* **Feature**: This release adds support for configuring TCP idle timeout on NLB and GWLB listeners.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.2 (2024-08-22)
+
+* No change notes available for this release.
+
+# v1.34.1 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.34.0 (2024-07-25)
 
 * **Feature**: This release adds support for sharing trust stores across accounts and organizations through integration with AWS Resource Access Manager.
