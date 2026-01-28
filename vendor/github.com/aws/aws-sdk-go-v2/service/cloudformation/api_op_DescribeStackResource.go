@@ -11,9 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns a description of the specified resource in the specified stack. For
-// deleted stacks, DescribeStackResource returns resource information for up to 90
-// days after the stack has been deleted.
+// Returns a description of the specified resource in the specified stack.
+//
+// For deleted stacks, DescribeStackResource returns resource information for up
+// to 90 days after the stack has been deleted.
 func (c *Client) DescribeStackResource(ctx context.Context, params *DescribeStackResourceInput, optFns ...func(*Options)) (*DescribeStackResourceOutput, error) {
 	if params == nil {
 		params = &DescribeStackResourceInput{}
@@ -32,18 +33,18 @@ func (c *Client) DescribeStackResource(ctx context.Context, params *DescribeStac
 // The input for DescribeStackResource action.
 type DescribeStackResourceInput struct {
 
-	// The logical name of the resource as specified in the template. Default: There
-	// is no default value.
+	// The logical name of the resource as specified in the template.
 	//
 	// This member is required.
 	LogicalResourceId *string
 
 	// The name or the unique stack ID that's associated with the stack, which aren't
 	// always interchangeable:
+	//
 	//   - Running stacks: You can specify either the stack's name or its unique stack
 	//   ID.
+	//
 	//   - Deleted stacks: You must specify the unique stack ID.
-	// Default: There is no default value.
 	//
 	// This member is required.
 	StackName *string
@@ -54,7 +55,7 @@ type DescribeStackResourceInput struct {
 // The output for a DescribeStackResource action.
 type DescribeStackResourceOutput struct {
 
-	// A StackResourceDetail structure containing the description of the specified
+	// A StackResourceDetail structure that contains the description of the specified
 	// resource in the specified stack.
 	StackResourceDetail *types.StackResourceDetail
 
@@ -107,6 +108,9 @@ func (c *Client) addOperationDescribeStackResourceMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -117,6 +121,15 @@ func (c *Client) addOperationDescribeStackResourceMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeStackResourceValidationMiddleware(stack); err != nil {
@@ -138,6 +151,15 @@ func (c *Client) addOperationDescribeStackResourceMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

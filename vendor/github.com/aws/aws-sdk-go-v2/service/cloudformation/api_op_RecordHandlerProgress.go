@@ -11,9 +11,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Reports progress of a resource handler to CloudFormation. Reserved for use by
-// the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-// . Don't use this API in your code.
+// Reports progress of a resource handler to CloudFormation.
+//
+// Reserved for use by the [CloudFormation CLI]. Don't use this API in your code.
+//
+// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 func (c *Client) RecordHandlerProgress(ctx context.Context, params *RecordHandlerProgressInput, optFns ...func(*Options)) (*RecordHandlerProgressOutput, error) {
 	if params == nil {
 		params = &RecordHandlerProgressInput{}
@@ -31,36 +33,43 @@ func (c *Client) RecordHandlerProgress(ctx context.Context, params *RecordHandle
 
 type RecordHandlerProgressInput struct {
 
-	// Reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-	// .
+	// Reserved for use by the [CloudFormation CLI].
+	//
+	// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 	//
 	// This member is required.
 	BearerToken *string
 
-	// Reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-	// .
+	// Reserved for use by the [CloudFormation CLI].
+	//
+	// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 	//
 	// This member is required.
 	OperationStatus types.OperationStatus
 
-	// Reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-	// .
+	// Reserved for use by the [CloudFormation CLI].
+	//
+	// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 	ClientRequestToken *string
 
-	// Reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-	// .
+	// Reserved for use by the [CloudFormation CLI].
+	//
+	// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 	CurrentOperationStatus types.OperationStatus
 
-	// Reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-	// .
+	// Reserved for use by the [CloudFormation CLI].
+	//
+	// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 	ErrorCode types.HandlerErrorCode
 
-	// Reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-	// .
+	// Reserved for use by the [CloudFormation CLI].
+	//
+	// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 	ResourceModel *string
 
-	// Reserved for use by the CloudFormation CLI (https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html)
-	// .
+	// Reserved for use by the [CloudFormation CLI].
+	//
+	// [CloudFormation CLI]: https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/what-is-cloudformation-cli.html
 	StatusMessage *string
 
 	noSmithyDocumentSerde
@@ -116,6 +125,9 @@ func (c *Client) addOperationRecordHandlerProgressMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -126,6 +138,15 @@ func (c *Client) addOperationRecordHandlerProgressMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRecordHandlerProgressValidationMiddleware(stack); err != nil {
@@ -147,6 +168,15 @@ func (c *Client) addOperationRecordHandlerProgressMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
