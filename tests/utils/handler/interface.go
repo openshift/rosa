@@ -102,6 +102,8 @@ type Resources struct {
 	HCPVPCEndpointShareRole      string                `json:"hcp_vpc_endpoint_share_role,omitempty"`
 	ProxyInstanceID              string                `json:"proxy_instance_id,omitempty"`
 	LogForwardConigs             *LogForwardConigs     `json:"lfw_configs,omitempty" yaml:"lfw_configs,omitempty"`
+	OCMRoleArn                   string                `json:"ocm_role_arn,omitempty"`
+	UserRoleArn                  string                `json:"user_role_arn,omitempty"`
 }
 
 type FromSharedAWSAccount struct {

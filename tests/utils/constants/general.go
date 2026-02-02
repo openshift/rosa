@@ -30,3 +30,8 @@ const (
 	BillingAccount        = "090777400063"
 	ChangedBillingAccount = "487962084830"
 )
+
+const (
+	OCMRolePreifx  = "rosacli-ocm-role"
+	UserRolePreifx = "rosacli-user-role"
+)

@@ -49,6 +49,13 @@ type ResourcesHandler interface {
 	PrepareAccountRoles(namePrefix string, hcp bool, openshiftVersion string,
 		channelGroup string, path string, permissionsBoundary string, route53RoleARN string,
 		vpcEndpointRoleArn string) (accRoles *rosacli.AccountRolesUnit, err error)
+	PrepareUserRole(
+		userRolePrefix string,
+		path string) (userole *rosacli.UserRole, err error)
+	PrepareOCMRole(
+		ocmRolePrefix string,
+		admin bool,
+		path string) (ocmRole *rosacli.OCMRole, err error)
 	PrepareOperatorRolesByOIDCConfig(
 		namePrefix string,
 		oidcConfigID string,
@@ -323,6 +330,16 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 		}
 	}
 
+	if resources.OCMRoleArn != "" {
+		log.Logger.Infof("Find prepared ocm role with arn: %s", resources.OCMRoleArn)
+		rh.DeleteOCMRole()
+	}
+
+	if resources.UserRoleArn != "" {
+		log.Logger.Infof("Find prepared user role with prefix: %s", resources.UserRoleArn)
+		rh.DeleteUserRole()
+	}
+
 	if resources.LogForwardConigs != nil &&
 		resources.LogForwardConigs.Cloudwatch != nil &&
 		resources.LogForwardConigs.Cloudwatch.CloudwatchLogRoleArn != "" {
@@ -472,6 +489,16 @@ func (rh *resourcesHandler) registerClusterID(clusterID string) error {
 }
 func (rh *resourcesHandler) registerAccountRolesPrefix(accountRolesPrefix string) error {
 	rh.resources.AccountRolesPrefix = accountRolesPrefix
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerOCMRoleArn(ocmRoleArn string) error {
+	rh.resources.OCMRoleArn = ocmRoleArn
+	return rh.saveToFile()
+}
+
+func (rh *resourcesHandler) registerUserRoleArn(userRoleArn string) error {
+	rh.resources.UserRoleArn = userRoleArn
 	return rh.saveToFile()
 }
 
