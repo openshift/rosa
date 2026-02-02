@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	utilConfig "github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/occli"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/handler"
@@ -27,6 +28,12 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 			profile := handler.LoadProfileYamlFileByENV()
 			clusterHandler, err := handler.NewClusterHandler(client, profile)
 			Expect(err).ToNot(HaveOccurred())
+			//Prepare ocm role and user role before cluster creation
+			_, err = clusterHandler.GetResourcesHandler().PrepareOCMRole(constants.OCMRolePreifx, true, "/test/")
+			Expect(err).ToNot(HaveOccurred())
+			_, err = clusterHandler.GetResourcesHandler().PrepareUserRole(constants.UserRolePreifx, "/test/")
+			Expect(err).ToNot(HaveOccurred())
+
 			err = clusterHandler.CreateCluster(config.Test.GlobalENV.WaitSetupClusterReady)
 			Expect(err).ToNot(HaveOccurred())
 			clusterID := clusterHandler.GetClusterDetail().ClusterID

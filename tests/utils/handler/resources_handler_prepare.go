@@ -356,6 +356,104 @@ func (rh *resourcesHandler) PrepareZeroEgressResources() error {
 	return err
 }
 
+// To prepare ocm role
+func (rh *resourcesHandler) PrepareOCMRole(
+	ocmRolePrefix string,
+	admin bool,
+	path string) (
+	ocmRole *rosacli.OCMRole, err error) {
+	var flags []string
+	if path != "" {
+		flags = append(flags, "--path", path)
+	}
+	if admin {
+		flags = append(flags, "--admin")
+	}
+
+	ocmResourceService := rh.rosaClient.OCMResource
+	rh.rosaClient.Runner.JsonFormat()
+	whoamiOutput, err := ocmResourceService.Whoami()
+	if err != nil {
+		err = fmt.Errorf("error happens when get account information, %s", err.Error())
+		return
+	}
+	rh.rosaClient.Runner.UnsetFormat()
+	whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+	ocmOrganizationExternalID := whoamiData.OCMOrganizationExternalID
+
+	ocmRoleList, output, err := ocmResourceService.ListOCMRole()
+	if err != nil {
+		err = fmt.Errorf("error happens when list ocm role before cluster preparation, %s", output.String())
+		return
+	}
+	if ocmRoleList.OCMRole(ocmRolePrefix, ocmOrganizationExternalID).Linded == "Yes" {
+		return
+	}
+
+	flags = append(flags, "--prefix", ocmRolePrefix, "--mode", "auto", "-y")
+	output, err = ocmResourceService.CreateOCMRole(
+		flags...,
+	)
+	if err != nil {
+		err = fmt.Errorf("error happens when create ocm role, %s", output.String())
+		return
+	}
+	ocmRoleList, output, err = ocmResourceService.ListOCMRole()
+	if err != nil {
+		err = fmt.Errorf("error happens when list ocm role during cluster preparation, %s", output.String())
+		return
+	}
+	ocmrole := ocmRoleList.OCMRole(ocmRolePrefix, ocmOrganizationExternalID)
+
+	err = rh.registerOCMRoleArn(ocmrole.RoleArn)
+	if err != nil {
+		return
+	}
+	return &ocmrole, nil
+}
+
+// To prepare user role
+func (rh *resourcesHandler) PrepareUserRole(
+	userRolePrefix string,
+	path string) (
+	userole *rosacli.UserRole, err error) {
+	var flags []string
+	if path != "" {
+		flags = append(flags, "--path", path)
+	}
+
+	ocmResourceService := rh.rosaClient.OCMResource
+	rh.rosaClient.Runner.JsonFormat()
+	whoamiOutput, err := ocmResourceService.Whoami()
+	if err != nil {
+		err = fmt.Errorf("error happens when get account information, %s", err.Error())
+		return
+	}
+	rh.rosaClient.Runner.UnsetFormat()
+	whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+	ocmAccountUsername := whoamiData.OCMAccountUsername
+	flags = append(flags, "--prefix", userRolePrefix, "--mode", "auto", "-y")
+	output, err := ocmResourceService.CreateUserRole(
+		flags...,
+	)
+	if err != nil {
+		err = fmt.Errorf("error happens when create user role, %s", output.String())
+		return
+	}
+	userRoleList, output, err := ocmResourceService.ListUserRole()
+	if err != nil {
+		err = fmt.Errorf("error happens when list user role during cluster preparation, %s", output.String())
+		return
+	}
+	userRole := userRoleList.UserRole(userRolePrefix, ocmAccountUsername)
+
+	err = rh.registerUserRoleArn(userRole.RoleArn)
+	if err != nil {
+		return
+	}
+	return &userRole, nil
+}
+
 // PrepareAccountRoles will prepare account roles according to the parameters
 // openshiftVersion must follow 4.15.2-x format
 func (rh *resourcesHandler) PrepareAccountRoles(

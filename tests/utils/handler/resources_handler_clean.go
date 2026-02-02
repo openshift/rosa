@@ -168,6 +168,28 @@ func (rh *resourcesHandler) DeleteAccountRoles() error {
 	return nil
 }
 
+func (rh *resourcesHandler) DeleteOCMRole() error {
+	_, err := rh.rosaClient.OCMResource.DeleteOCMRole(
+		"--mode", "auto",
+		"--role-arn", rh.resources.OCMRoleArn,
+		"-y")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (rh *resourcesHandler) DeleteUserRole() error {
+	_, err := rh.rosaClient.OCMResource.DeleteUserRole(
+		"--mode", "auto",
+		"--role-arn", rh.resources.UserRoleArn,
+		"-y")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (rh *resourcesHandler) GetEIPAssociationAndAllocationIDsByInstanceID(
 	publicIP string, sharedVPC bool,
 ) (string, string, error) {

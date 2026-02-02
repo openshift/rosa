@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
@@ -25,33 +27,6 @@ var _ = Describe("Edit ocm role", labels.Feature.OCMRole,
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
 		})
-		It("make sure no ocm-role and user role linked - [id:52106]", labels.High, labels.Runtime.Day2, labels.FedRAMP, func() {
-			By("Check if there is the ocm-role linked, and delete it")
-			ocmRoleList, _, err := ocmResourceService.ListOCMRole()
-			ocmRole := ocmRoleList.FindLinkedOCMRole()
-			Expect(err).To(BeNil())
-			if (ocmRole != rosacli.OCMRole{}) {
-				output, err := ocmResourceService.DeleteOCMRole(
-					"--role-arn", ocmRole.RoleArn,
-					"--mode", "auto",
-					"-y")
-				Expect(err).To(BeNil())
-				Expect(output.String()).Should(ContainSubstring("Successfully deleted the OCM role"))
-			}
-			By("Check if there is the user-role linked, and delete it")
-			userRoleList, _, err := ocmResourceService.ListUserRole()
-			Expect(err).To(BeNil())
-			userRole := userRoleList.FindLinkedUserRole()
-			Expect(err).To(BeNil())
-			if (userRole != rosacli.UserRole{}) {
-				output, err := ocmResourceService.DeleteUserRole(
-					"--role-arn", userRole.RoleArn,
-					"--mode", "auto",
-					"-y")
-				Expect(err).To(BeNil())
-				Expect(output.String()).Should(ContainSubstring("Successfully deleted the user role"))
-			}
-		})
 
 		It("can create/delete/unlink/link ocm-roles in auto mode - [id:46187]",
 			labels.High, labels.Runtime.OCMResources,
@@ -68,6 +43,16 @@ var _ = Describe("Edit ocm role", labels.Feature.OCMRole,
 					ocmRoleList                                   rosacli.OCMRoleList
 					ocmRoleNeedRecoved                            rosacli.OCMRole
 				)
+				By("Skip if there is already existed and linked ocm-role")
+				ocmRoleList, _, err := ocmResourceService.ListOCMRole()
+				Expect(err).To(BeNil())
+				for _, role := range ocmRoleList.OCMRoleList {
+					if role.Linded == "Yes" {
+						Skip("Skip this case when some linked ocm role exists")
+					}
+				}
+
+				By("Get account info")
 				rosaClient.Runner.JsonFormat()
 				whoamiOutput, err := ocmResourceService.Whoami()
 				Expect(err).To(BeNil())
