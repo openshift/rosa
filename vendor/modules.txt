@@ -447,7 +447,7 @@ github.com/openshift-online/ocm-api-model/model/service_logs/v1
 github.com/openshift-online/ocm-api-model/model/service_mgmt/v1
 github.com/openshift-online/ocm-api-model/model/status_board/v1
 github.com/openshift-online/ocm-api-model/model/web_rca/v1
-# github.com/openshift-online/ocm-common v0.0.31
+# github.com/openshift-online/ocm-common v0.0.36
 ## explicit; go 1.21
 github.com/openshift-online/ocm-common/pkg/aws/aws_client
 github.com/openshift-online/ocm-common/pkg/aws/consts
