@@ -389,6 +389,11 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	if ocmRoleList.OCMRole(ocmRolePrefix, ocmOrganizationExternalID).Linded == "Yes" {
 		return
 	}
+	linkedRole := ocmRoleList.FindLinkedOCMRole()
+	if (linkedRole != rosacli.OCMRole{}) {
+		log.Logger.Infof("There's already an existing linked OCM role '%s'", linkedRole.RoleArn)
+		return
+	}
 
 	flags = append(flags, "--prefix", ocmRolePrefix, "--mode", "auto", "-y")
 	output, err = ocmResourceService.CreateOCMRole(
@@ -423,6 +428,19 @@ func (rh *resourcesHandler) PrepareUserRole(
 	}
 
 	ocmResourceService := rh.rosaClient.OCMResource
+
+	// Check for existing linked user role
+	userRoleList, output, err := ocmResourceService.ListUserRole()
+	if err != nil {
+		err = fmt.Errorf("error happens when listing user roles, %s", output.String())
+		return
+	}
+	linkedUserRole := userRoleList.FindLinkedUserRole()
+	if (linkedUserRole != rosacli.UserRole{}) {
+		log.Logger.Infof("There is already an existing linked user role '%s'", linkedUserRole.RoleArn)
+		return
+	}
+
 	rh.rosaClient.Runner.JsonFormat()
 	whoamiOutput, err := ocmResourceService.Whoami()
 	if err != nil {
@@ -433,14 +451,14 @@ func (rh *resourcesHandler) PrepareUserRole(
 	whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 	ocmAccountUsername := whoamiData.OCMAccountUsername
 	flags = append(flags, "--prefix", userRolePrefix, "--mode", "auto", "-y")
-	output, err := ocmResourceService.CreateUserRole(
+	output, err = ocmResourceService.CreateUserRole(
 		flags...,
 	)
 	if err != nil {
 		err = fmt.Errorf("error happens when create user role, %s", output.String())
 		return
 	}
-	userRoleList, output, err := ocmResourceService.ListUserRole()
+	userRoleList, output, err = ocmResourceService.ListUserRole()
 	if err != nil {
 		err = fmt.Errorf("error happens when list user role during cluster preparation, %s", output.String())
 		return
