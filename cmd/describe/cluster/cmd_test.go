@@ -225,14 +225,16 @@ var _ = Describe("getClusterRegistryConfig", func() {
 		mockCa := make(map[string]string)
 		mockCa["registry.io"] = "-----BEGIN CERTIFICATE-----\nlalala\n-----END CERTIFICATE-----\n"
 		mockCa["registry.io2"] = "-----BEGIN CERTIFICATE-----\nlalala\n-----END CERTIFICATE-----\n"
-		mockCluster, err := cmv1.NewCluster().RegistryConfig(cmv1.NewClusterRegistryConfig().AdditionalTrustedCa(mockCa).
-			RegistrySources(cmv1.NewRegistrySources().
-				AllowedRegistries([]string{"allow1.com", "allow2.com"}...).
-				InsecureRegistries([]string{"insecure1.com", "insecure2.com"}...).
-				BlockedRegistries([]string{"block1.com", "block2.com"}...)).
-			AllowedRegistriesForImport(cmv1.NewRegistryLocation().
-				DomainName("quay.io").Insecure(true)).
-			PlatformAllowlist(cmv1.NewRegistryAllowlist().ID("test-id"))).Build()
+		mockCluster, err := cmv1.NewCluster().
+			RegistryConfig(cmv1.NewClusterRegistryConfig().AdditionalTrustedCa(mockCa).
+				RegistrySources(cmv1.NewRegistrySources().
+					AllowedRegistries([]string{"allow1.com", "allow2.com"}...).
+					InsecureRegistries([]string{"insecure1.com", "insecure2.com"}...).
+					BlockedRegistries([]string{"block1.com", "block2.com"}...)).
+				AllowedRegistriesForImport(cmv1.NewRegistryLocation().
+					DomainName("quay.io").Insecure(true)).
+				PlatformAllowlist(cmv1.NewRegistryAllowlist().ID("test-id"))).
+			Build()
 		Expect(err).NotTo(HaveOccurred())
 
 		mockAllowlist, err := cmv1.NewRegistryAllowlist().ID("test-id").
@@ -258,16 +260,6 @@ var _ = Describe("getZeroEgressStatus", func() {
 	var (
 		ssoServer, apiServer *ghttp.Server
 		r                    *rosa.Runtime
-
-		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
-		zeroEgressResp = `
-	{
-      "kind":"ProductTechnologyPreview",
-      "id":"hcp-zero-egress",
-      "href":"/api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress",
-      "end_date":"2024-11-16T00:00:00Z",
-      "additional_text":"Zero Egress"
-	}`
 	)
 
 	BeforeEach(func() {
@@ -306,66 +298,21 @@ var _ = Describe("getZeroEgressStatus", func() {
 		}
 	})
 
-	// TODO: Temporarily disabled due to bug in CS
-	XIt("Should include zero egress enabled in the output", func() {
-		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				zeroEgressResp,
-			),
-		)
-
+	It("Should include zero egress enabled in the output", func() {
 		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "true"}).Build()
 		Expect(err).NotTo(HaveOccurred())
-		output, err := getZeroEgressStatus(r, mockCluster)
+		output, err := getZeroEgressStatus(mockCluster)
 		Expect(err).NotTo(HaveOccurred())
 		expectedOutput := "Zero Egress:                Enabled\n"
 		Expect(output).To(Equal(expectedOutput))
 	})
-	// TODO: Temporarily disabled due to bug in CS
-	XIt("Should include zero egress disabled in the output", func() {
-		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusOK,
-				zeroEgressResp,
-			),
-		)
-
+	It("Should include zero egress disabled in the output", func() {
 		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "false"}).Build()
 		Expect(err).NotTo(HaveOccurred())
-		output, err := getZeroEgressStatus(r, mockCluster)
+		output, err := getZeroEgressStatus(mockCluster)
 		Expect(err).NotTo(HaveOccurred())
 		expectedOutput := "Zero Egress:                Disabled\n"
 		Expect(output).To(Equal(expectedOutput))
-	})
-	It("Should not include zero egress in the output", func() {
-		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusNotFound, "",
-			),
-		)
-
-		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "true"}).Build()
-		Expect(err).NotTo(HaveOccurred())
-		output, err := getZeroEgressStatus(r, mockCluster)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(output).To(Equal(""))
-	})
-	It("Should not include zero egress in the output", func() {
-		// GET /api/clusters_mgmt/v1/products/rosa/technology_previews/hcp-zero-egress
-		apiServer.AppendHandlers(
-			RespondWithJSON(
-				http.StatusInternalServerError, "",
-			),
-		)
-
-		mockCluster, err := cmv1.NewCluster().Properties(map[string]string{"zero_egress": "true"}).Build()
-		Expect(err).NotTo(HaveOccurred())
-		_, err = getZeroEgressStatus(r, mockCluster)
-		Expect(err).To(HaveOccurred())
 	})
 })
 

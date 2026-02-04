@@ -24,7 +24,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	ocmConsts "github.com/openshift-online/ocm-common/pkg/ocm/consts"
@@ -594,7 +593,7 @@ func run(cmd *cobra.Command, argv []string) {
 				"%s\n", str, registryConfigOutput)
 		}
 
-		zeroEgressStatus, err := getZeroEgressStatus(r, cluster)
+		zeroEgressStatus, err := getZeroEgressStatus(cluster)
 		if err != nil {
 			r.Reporter.Errorf("Failed to get zero egress info: %v", err)
 			os.Exit(1)
@@ -1051,21 +1050,18 @@ func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.Po
 	return str, nil
 }
 
-func getZeroEgressStatus(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
-	techPreviewMsg, err := r.OCMClient.GetTechnologyPreviewMessage("hcp-zero-egress", time.Now())
+func getZeroEgressStatus(cluster *cmv1.Cluster) (string, error) {
+	zeroEgressOutput := DisabledOutput
+	zeroEgressPropVal, exists := cluster.Properties()["zero_egress"]
+	boolZeroEgressPropVal, err := strconv.ParseBool(zeroEgressPropVal)
 	if err != nil {
-		return "", fmt.Errorf("failed to get technology preview message for zero egress: %v", err)
+		return "", err
 	}
-	if techPreviewMsg != "" {
-		zeroEgressOutput := DisabledOutput
-		zeroEgressPropVal, ok := cluster.Properties()["zero_egress"]
-		if ok && zeroEgressPropVal == "true" {
-			zeroEgressOutput = EnabledOutput
-		}
-		str := fmt.Sprintf("%s:                %s\n", techPreviewMsg, zeroEgressOutput)
-		return str, nil
+	if exists && boolZeroEgressPropVal {
+		zeroEgressOutput = EnabledOutput
 	}
-	return "", nil
+	str := fmt.Sprintf("Zero Egress:                %s\n", zeroEgressOutput)
+	return str, nil
 }
 
 func getLimitedSupportReasons(limitedSupportReasons []*cmv1.LimitedSupportReason) string {
