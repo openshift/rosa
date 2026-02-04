@@ -1,3 +1,6 @@
+# al.essio.dev/pkg/shellescape v1.5.1
+## explicit; go 1.18
+al.essio.dev/pkg/shellescape
 # github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4
 ## explicit
 github.com/99designs/go-keychain
@@ -225,7 +228,7 @@ github.com/cespare/xxhash/v2
 # github.com/cpuguy83/go-md2man/v2 v2.0.3
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/danieljoos/wincred v1.2.0
+# github.com/danieljoos/wincred v1.2.2
 ## explicit; go 1.18
 github.com/danieljoos/wincred
 # github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
@@ -549,7 +552,7 @@ github.com/spf13/cobra/doc
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/zalando/go-keyring v0.2.3
+# github.com/zalando/go-keyring v0.2.6
 ## explicit; go 1.18
 github.com/zalando/go-keyring
 github.com/zalando/go-keyring/secret_service
