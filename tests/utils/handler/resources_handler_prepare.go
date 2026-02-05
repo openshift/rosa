@@ -23,6 +23,7 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -362,6 +363,7 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	admin bool,
 	path string) (
 	ocmRole *rosacli.OCMRole, err error) {
+	// Assemble flags
 	var flags []string
 	if path != "" {
 		flags = append(flags, "--path", path)
@@ -371,6 +373,8 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	}
 
 	ocmResourceService := rh.rosaClient.OCMResource
+
+	// Get account info
 	rh.rosaClient.Runner.JsonFormat()
 	whoamiOutput, err := ocmResourceService.Whoami()
 	if err != nil {
@@ -381,6 +385,7 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 	ocmOrganizationExternalID := whoamiData.OCMOrganizationExternalID
 
+	// Check if there's already an OCM role created that is already linked
 	ocmRoleList, output, err := ocmResourceService.ListOCMRole()
 	if err != nil {
 		err = fmt.Errorf("error happens when list ocm role before cluster preparation, %s", output.String())
@@ -395,6 +400,25 @@ func (rh *resourcesHandler) PrepareOCMRole(
 		return
 	}
 
+	// Check if there's any linked OCM roles via the API
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+	roles, err := r.OCMClient.GetOrganizationLinkedOCMRoles(whoamiData.OCMOrganizationID)
+	if err != nil {
+		err = fmt.Errorf("error happens when checking for existing linked OCM roles: %s", err.Error())
+		return
+	}
+	for _, role := range roles {
+		if role != "" {
+			output, err := ocmResourceService.UnlinkOCMRole("--role-arn", role, "-y")
+			if err != nil {
+				err = fmt.Errorf("error happens when unlinking existing OCM role: %s", output.String())
+				return nil, err
+			}
+		}
+	}
+
+	// Create the actual OCM role
 	flags = append(flags, "--prefix", ocmRolePrefix, "--mode", "auto", "-y")
 	output, err = ocmResourceService.CreateOCMRole(
 		flags...,
@@ -422,6 +446,7 @@ func (rh *resourcesHandler) PrepareUserRole(
 	userRolePrefix string,
 	path string) (
 	userole *rosacli.UserRole, err error) {
+	// Assemble creation flags
 	var flags []string
 	if path != "" {
 		flags = append(flags, "--path", path)
@@ -441,6 +466,7 @@ func (rh *resourcesHandler) PrepareUserRole(
 		return
 	}
 
+	// Get account info
 	rh.rosaClient.Runner.JsonFormat()
 	whoamiOutput, err := ocmResourceService.Whoami()
 	if err != nil {
@@ -449,6 +475,26 @@ func (rh *resourcesHandler) PrepareUserRole(
 	}
 	rh.rosaClient.Runner.UnsetFormat()
 	whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+
+	// Check if there's any linked user roles via the API
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+	roles, err := r.OCMClient.GetAccountLinkedUserRoles(whoamiData.OCMAccountID)
+	if err != nil {
+		err = fmt.Errorf("error happens when checking for existing linked user roles: %s", err.Error())
+		return
+	}
+	for _, role := range roles {
+		if role != "" {
+			output, err := ocmResourceService.UnlinkUserRole("--role-arn", role, "-y")
+			if err != nil {
+				err = fmt.Errorf("error happens when unlinking existing user role: %s", output.String())
+				return nil, err
+			}
+		}
+	}
+
+	// Create the user role
 	ocmAccountUsername := whoamiData.OCMAccountUsername
 	flags = append(flags, "--prefix", userRolePrefix, "--mode", "auto", "-y")
 	output, err = ocmResourceService.CreateUserRole(
