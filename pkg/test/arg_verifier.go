@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
