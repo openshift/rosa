@@ -90,6 +90,9 @@ func FinalizeProfilesAndReportsForSuites(suites TestSuites, cliConfig types.CLIC
 	if reporterConfig.JSONReport != "" {
 		reportFormats = append(reportFormats, reportFormat{ReportName: reporterConfig.JSONReport, GenerateFunc: reporters.GenerateJSONReport, MergeFunc: reporters.MergeAndCleanupJSONReports})
 	}
+	if reporterConfig.GoJSONReport != "" {
+		reportFormats = append(reportFormats, reportFormat{ReportName: reporterConfig.GoJSONReport, GenerateFunc: reporters.GenerateGoTestJSONReport, MergeFunc: reporters.MergeAndCleanupGoTestJSONReports})
+	}
 	if reporterConfig.JUnitReport != "" {
 		reportFormats = append(reportFormats, reportFormat{ReportName: reporterConfig.JUnitReport, GenerateFunc: reporters.GenerateJUnitReport, MergeFunc: reporters.MergeAndCleanupJUnitReports})
 	}
@@ -161,6 +164,7 @@ func MergeAndCleanupCoverProfiles(profiles []string, destination string) error {
 	if err != nil {
 		return err
 	}
+	defer dst.Close()
 	err = DumpCoverProfiles(merged, dst)
 	if err != nil {
 		return err
@@ -196,6 +200,7 @@ func MergeProfiles(profilePaths []string, destination string) error {
 			return fmt.Errorf("Could not open profile: %s\n%s", profilePath, err.Error())
 		}
 		prof, err := profile.Parse(proFile)
+		_ = proFile.Close()
 		if err != nil {
 			return fmt.Errorf("Could not parse profile: %s\n%s", profilePath, err.Error())
 		}

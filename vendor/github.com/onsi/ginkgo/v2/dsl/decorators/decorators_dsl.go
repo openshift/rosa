@@ -14,17 +14,21 @@ package decorators
 
 import (
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/types"
 )
 
 type Offset = ginkgo.Offset
 type FlakeAttempts = ginkgo.FlakeAttempts
 type MustPassRepeatedly = ginkgo.MustPassRepeatedly
 type Labels = ginkgo.Labels
+type SemVerConstraints = ginkgo.SemVerConstraints
+type ComponentSemVerConstraints = ginkgo.ComponentSemVerConstraints
 type PollProgressAfter = ginkgo.PollProgressAfter
 type PollProgressInterval = ginkgo.PollProgressInterval
 type NodeTimeout = ginkgo.NodeTimeout
 type SpecTimeout = ginkgo.SpecTimeout
 type GracePeriod = ginkgo.GracePeriod
+type SpecPriority = ginkgo.SpecPriority
 
 const Focus = ginkgo.Focus
 const Pending = ginkgo.Pending
@@ -35,3 +39,9 @@ const OncePerOrdered = ginkgo.OncePerOrdered
 const SuppressProgressReporting = ginkgo.SuppressProgressReporting
 
 var Label = ginkgo.Label
+var SemVerConstraint = ginkgo.SemVerConstraint
+var ComponentSemVerConstraint = ginkgo.ComponentSemVerConstraint
+
+func AroundNode[F types.AroundNodeAllowedFuncs](f F) types.AroundNodeDecorator {
+	return types.AroundNode(f, types.NewCodeLocation(1))
+}
