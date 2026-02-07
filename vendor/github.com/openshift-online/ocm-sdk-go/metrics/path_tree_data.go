@@ -175,10 +175,14 @@ var pathTreeData = `{
                 "status": null
               }
             },
+            "provision_shard": null,
             "status": null
           }
         },
         "managed_identities_requirements": null,
+        "provision_shards": {
+          "-": null
+        },
         "versions": {
           "-": null
         }
@@ -363,6 +367,9 @@ var pathTreeData = `{
             },
             "vpc": null
           }
+        },
+        "deleted_clusters": {
+          "-": null
         },
         "dns_domains": {
           "-": null

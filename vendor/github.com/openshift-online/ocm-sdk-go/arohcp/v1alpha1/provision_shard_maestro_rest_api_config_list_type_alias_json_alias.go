@@ -23,18 +23,18 @@ import (
 	api_v1alpha1 "github.com/openshift-online/ocm-api-model/clientapi/arohcp/v1alpha1"
 )
 
-// MarshalServerConfigList writes a list of values of the 'server_config' type to
+// MarshalProvisionShardMaestroRestApiConfigList writes a list of values of the 'provision_shard_maestro_rest_api_config' type to
 // the given writer.
-var MarshalServerConfigList = api_v1alpha1.MarshalServerConfigList
+var MarshalProvisionShardMaestroRestApiConfigList = api_v1alpha1.MarshalProvisionShardMaestroRestApiConfigList
 
-// WriteServerConfigList writes a list of value of the 'server_config' type to
+// WriteProvisionShardMaestroRestApiConfigList writes a list of value of the 'provision_shard_maestro_rest_api_config' type to
 // the given stream.
-var WriteServerConfigList = api_v1alpha1.WriteServerConfigList
+var WriteProvisionShardMaestroRestApiConfigList = api_v1alpha1.WriteProvisionShardMaestroRestApiConfigList
 
-// UnmarshalServerConfigList reads a list of values of the 'server_config' type
+// UnmarshalProvisionShardMaestroRestApiConfigList reads a list of values of the 'provision_shard_maestro_rest_api_config' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-var UnmarshalServerConfigList = api_v1alpha1.UnmarshalServerConfigList
+var UnmarshalProvisionShardMaestroRestApiConfigList = api_v1alpha1.UnmarshalProvisionShardMaestroRestApiConfigList
 
-// ReadServerConfigList reads list of values of the ”server_config' type from
+// ReadProvisionShardMaestroRestApiConfigList reads list of values of the ”provision_shard_maestro_rest_api_config' type from
 // the given iterator.
-var ReadServerConfigList = api_v1alpha1.ReadServerConfigList
+var ReadProvisionShardMaestroRestApiConfigList = api_v1alpha1.ReadProvisionShardMaestroRestApiConfigList

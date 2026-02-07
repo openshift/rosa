@@ -17,15 +17,14 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1alpha1 // github.com/openshift-online/ocm-sdk-go/arohcp/v1alpha1
+package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1
 
-import (
-	api_v1alpha1 "github.com/openshift-online/ocm-api-model/clientapi/arohcp/v1alpha1"
+// DnsCloudProvider represents the values of the 'dns_cloud_provider' enumerated type.
+type DnsCloudProvider string
+
+const (
+	//
+	DnsCloudProviderAws DnsCloudProvider = "aws"
+	//
+	DnsCloudProviderGcp DnsCloudProvider = "gcp"
 )
-
-// ServerConfigListBuilder contains the data and logic needed to build
-// 'server_config' objects.
-type ServerConfigListBuilder = api_v1alpha1.ServerConfigListBuilder
-
-// NewServerConfigList creates a new builder of 'server_config' objects.
-var NewServerConfigList = api_v1alpha1.NewServerConfigList

@@ -17,7 +17,7 @@ limitations under the License.
 // IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
 // your changes will be lost when the file is generated again.
 
-package v1alpha1 // github.com/openshift-online/ocm-api-model/clientapi/arohcp/v1alpha1
+package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1
 
 import (
 	"io"
@@ -26,11 +26,11 @@ import (
 	"github.com/openshift-online/ocm-api-model/clientapi/helpers"
 )
 
-// MarshalServerConfigList writes a list of values of the 'server_config' type to
+// MarshalNamespaceSelectorList writes a list of values of the 'namespace_selector' type to
 // the given writer.
-func MarshalServerConfigList(list []*ServerConfig, writer io.Writer) error {
+func MarshalNamespaceSelectorList(list []*NamespaceSelector, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	WriteServerConfigList(list, stream)
+	WriteNamespaceSelectorList(list, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -38,37 +38,37 @@ func MarshalServerConfigList(list []*ServerConfig, writer io.Writer) error {
 	return stream.Error
 }
 
-// WriteServerConfigList writes a list of value of the 'server_config' type to
+// WriteNamespaceSelectorList writes a list of value of the 'namespace_selector' type to
 // the given stream.
-func WriteServerConfigList(list []*ServerConfig, stream *jsoniter.Stream) {
+func WriteNamespaceSelectorList(list []*NamespaceSelector, stream *jsoniter.Stream) {
 	stream.WriteArrayStart()
 	for i, value := range list {
 		if i > 0 {
 			stream.WriteMore()
 		}
-		WriteServerConfig(value, stream)
+		WriteNamespaceSelector(value, stream)
 	}
 	stream.WriteArrayEnd()
 }
 
-// UnmarshalServerConfigList reads a list of values of the 'server_config' type
+// UnmarshalNamespaceSelectorList reads a list of values of the 'namespace_selector' type
 // from the given source, which can be a slice of bytes, a string or a reader.
-func UnmarshalServerConfigList(source interface{}) (items []*ServerConfig, err error) {
+func UnmarshalNamespaceSelectorList(source interface{}) (items []*NamespaceSelector, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	items = ReadServerConfigList(iterator)
+	items = ReadNamespaceSelectorList(iterator)
 	err = iterator.Error
 	return
 }
 
-// ReadServerConfigList reads list of values of the ”server_config' type from
+// ReadNamespaceSelectorList reads list of values of the ”namespace_selector' type from
 // the given iterator.
-func ReadServerConfigList(iterator *jsoniter.Iterator) []*ServerConfig {
-	list := []*ServerConfig{}
+func ReadNamespaceSelectorList(iterator *jsoniter.Iterator) []*NamespaceSelector {
+	list := []*NamespaceSelector{}
 	for iterator.ReadArray() {
-		item := ReadServerConfig(iterator)
+		item := ReadNamespaceSelector(iterator)
 		list = append(list, item)
 	}
 	return list
