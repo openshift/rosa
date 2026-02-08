@@ -14,23 +14,31 @@ import (
 // Creates a NAT gateway in the specified subnet. This action creates a network
 // interface in the specified subnet with a private IP address from the IP address
 // range of the subnet. You can create either a public NAT gateway or a private NAT
-// gateway. With a public NAT gateway, internet-bound traffic from a private subnet
-// can be routed to the NAT gateway, so that instances in a private subnet can
-// connect to the internet. With a private NAT gateway, private communication is
-// routed across VPCs and on-premises networks through a transit gateway or virtual
-// private gateway. Common use cases include running large workloads behind a small
-// pool of allowlisted IPv4 addresses, preserving private IPv4 addresses, and
-// communicating between overlapping networks. For more information, see NAT
-// gateways (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html)
-// in the Amazon VPC User Guide. When you create a public NAT gateway and assign it
-// an EIP or secondary EIPs, the network border group of the EIPs must match the
-// network border group of the Availability Zone (AZ) that the public NAT gateway
-// is in. If it's not the same, the NAT gateway will fail to launch. You can see
-// the network border group for the subnet's AZ by viewing the details of the
-// subnet. Similarly, you can view the network border group of an EIP by viewing
-// the details of the EIP address. For more information about network border groups
-// and EIPs, see Allocate an Elastic IP address (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-eips.html#allocate-eip)
-// in the Amazon VPC User Guide.
+// gateway.
+//
+// With a public NAT gateway, internet-bound traffic from a private subnet can be
+// routed to the NAT gateway, so that instances in a private subnet can connect to
+// the internet.
+//
+// With a private NAT gateway, private communication is routed across VPCs and
+// on-premises networks through a transit gateway or virtual private gateway.
+// Common use cases include running large workloads behind a small pool of
+// allowlisted IPv4 addresses, preserving private IPv4 addresses, and communicating
+// between overlapping networks.
+//
+// For more information, see [NAT gateways] in the Amazon VPC User Guide.
+//
+// When you create a public NAT gateway and assign it an EIP or secondary EIPs,
+// the network border group of the EIPs must match the network border group of the
+// Availability Zone (AZ) that the public NAT gateway is in. If it's not the same,
+// the NAT gateway will fail to launch. You can see the network border group for
+// the subnet's AZ by viewing the details of the subnet. Similarly, you can view
+// the network border group of an EIP by viewing the details of the EIP address.
+// For more information about network border groups and EIPs, see [Allocate an Elastic IP address]in the Amazon
+// VPC User Guide.
+//
+// [NAT gateways]: https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html
+// [Allocate an Elastic IP address]: https://docs.aws.amazon.com/vpc/latest/userguide/WorkWithEIPs.html
 func (c *Client) CreateNatGateway(ctx context.Context, params *CreateNatGatewayInput, optFns ...func(*Options)) (*CreateNatGatewayOutput, error) {
 	if params == nil {
 		params = &CreateNatGatewayInput{}
@@ -48,20 +56,49 @@ func (c *Client) CreateNatGateway(ctx context.Context, params *CreateNatGatewayI
 
 type CreateNatGatewayInput struct {
 
-	// The ID of the subnet in which to create the NAT gateway.
-	//
-	// This member is required.
-	SubnetId *string
-
 	// [Public NAT gateways only] The allocation ID of an Elastic IP address to
 	// associate with the NAT gateway. You cannot specify an Elastic IP address with a
 	// private NAT gateway. If the Elastic IP address is associated with another
 	// resource, you must first disassociate it.
 	AllocationId *string
 
+	// Specifies whether to create a zonal (single-AZ) or regional (multi-AZ) NAT
+	// gateway. Defaults to zonal .
+	//
+	// A zonal NAT gateway is a NAT Gateway that provides redundancy and scalability
+	// within a single availability zone. A regional NAT gateway is a single NAT
+	// Gateway that works across multiple availability zones (AZs) in your VPC,
+	// providing redundancy, scalability and availability across all the AZs in a
+	// Region.
+	//
+	// For more information, see [Regional NAT gateways for automatic multi-AZ expansion] in the Amazon VPC User Guide.
+	//
+	// [Regional NAT gateways for automatic multi-AZ expansion]: https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html
+	AvailabilityMode types.AvailabilityMode
+
+	// For regional NAT gateways only: Specifies which Availability Zones you want the
+	// NAT gateway to support and the Elastic IP addresses (EIPs) to use in each AZ.
+	// The regional NAT gateway uses these EIPs to handle outbound NAT traffic from
+	// their respective AZs. If not specified, the NAT gateway will automatically
+	// expand to new AZs and associate EIPs upon detection of an elastic network
+	// interface. If you specify this parameter, auto-expansion is disabled and you
+	// must manually manage AZ coverage.
+	//
+	// A regional NAT gateway is a single NAT Gateway that works across multiple
+	// availability zones (AZs) in your VPC, providing redundancy, scalability and
+	// availability across all the AZs in a Region.
+	//
+	// For more information, see [Regional NAT gateways for automatic multi-AZ expansion] in the Amazon VPC User Guide.
+	//
+	// [Regional NAT gateways for automatic multi-AZ expansion]: https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html
+	AvailabilityZoneAddresses []types.AvailabilityZoneAddress
+
 	// Unique, case-sensitive identifier that you provide to ensure the idempotency of
-	// the request. For more information, see Ensuring idempotency (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Run_Instance_Idempotency.html)
-	// . Constraint: Maximum 64 ASCII characters.
+	// the request. For more information, see [Ensuring idempotency].
+	//
+	// Constraint: Maximum 64 ASCII characters.
+	//
+	// [Ensuring idempotency]: https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-idempotency.html
 	ClientToken *string
 
 	// Indicates whether the NAT gateway supports public or private connectivity. The
@@ -78,23 +115,33 @@ type CreateNatGatewayInput struct {
 	// address, a private IPv4 address will be automatically assigned.
 	PrivateIpAddress *string
 
-	// Secondary EIP allocation IDs. For more information, see Create a NAT gateway (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html#nat-gateway-creating)
-	// in the Amazon VPC User Guide.
+	// Secondary EIP allocation IDs. For more information, see [Create a NAT gateway] in the Amazon VPC User
+	// Guide.
+	//
+	// [Create a NAT gateway]: https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-working-with.html
 	SecondaryAllocationIds []string
 
 	// [Private NAT gateway only] The number of secondary private IPv4 addresses you
 	// want to assign to the NAT gateway. For more information about secondary
-	// addresses, see Create a NAT gateway (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html#nat-gateway-creating)
-	// in the Amazon VPC User Guide.
+	// addresses, see [Create a NAT gateway]in the Amazon VPC User Guide.
+	//
+	// [Create a NAT gateway]: https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-working-with.html
 	SecondaryPrivateIpAddressCount *int32
 
 	// Secondary private IPv4 addresses. For more information about secondary
-	// addresses, see Create a NAT gateway (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html#nat-gateway-creating)
-	// in the Amazon VPC User Guide.
+	// addresses, see [Create a NAT gateway]in the Amazon VPC User Guide.
+	//
+	// [Create a NAT gateway]: https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-working-with.html
 	SecondaryPrivateIpAddresses []string
+
+	// The ID of the subnet in which to create the NAT gateway.
+	SubnetId *string
 
 	// The tags to assign to the NAT gateway.
 	TagSpecifications []types.TagSpecification
+
+	// The ID of the VPC where you want to create a regional NAT gateway.
+	VpcId *string
 
 	noSmithyDocumentSerde
 }
@@ -157,6 +204,9 @@ func (c *Client) addOperationCreateNatGatewayMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -169,10 +219,16 @@ func (c *Client) addOperationCreateNatGatewayMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addIdempotencyToken_opCreateNatGatewayMiddleware(stack, options); err != nil {
+	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
-	if err = addOpCreateNatGatewayValidationMiddleware(stack); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
+	if err = addIdempotencyToken_opCreateNatGatewayMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateNatGateway(options.Region), middleware.Before); err != nil {
@@ -191,6 +247,15 @@ func (c *Client) addOperationCreateNatGatewayMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

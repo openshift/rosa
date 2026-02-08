@@ -38,8 +38,8 @@ type ListChangeSetsInput struct {
 	// This member is required.
 	StackName *string
 
-	// A string (provided by the ListChangeSets response output) that identifies the
-	// next page of change sets that you want to retrieve.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -105,6 +105,9 @@ func (c *Client) addOperationListChangeSetsMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -115,6 +118,15 @@ func (c *Client) addOperationListChangeSetsMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListChangeSetsValidationMiddleware(stack); err != nil {
@@ -138,16 +150,17 @@ func (c *Client) addOperationListChangeSetsMiddlewares(stack *middleware.Stack, 
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListChangeSetsAPIClient is a client that implements the ListChangeSets
-// operation.
-type ListChangeSetsAPIClient interface {
-	ListChangeSets(context.Context, *ListChangeSetsInput, ...func(*Options)) (*ListChangeSetsOutput, error)
-}
-
-var _ ListChangeSetsAPIClient = (*Client)(nil)
 
 // ListChangeSetsPaginatorOptions is the paginator options for ListChangeSets
 type ListChangeSetsPaginatorOptions struct {
@@ -200,6 +213,9 @@ func (p *ListChangeSetsPaginator) NextPage(ctx context.Context, optFns ...func(*
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListChangeSets(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -218,6 +234,14 @@ func (p *ListChangeSetsPaginator) NextPage(ctx context.Context, optFns ...func(*
 
 	return result, nil
 }
+
+// ListChangeSetsAPIClient is a client that implements the ListChangeSets
+// operation.
+type ListChangeSetsAPIClient interface {
+	ListChangeSets(context.Context, *ListChangeSetsInput, ...func(*Options)) (*ListChangeSetsOutput, error)
+}
+
+var _ ListChangeSetsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListChangeSets(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

@@ -12,15 +12,23 @@ import (
 
 // When specifying RollbackStack , you preserve the state of previously provisioned
 // resources when an operation fails. You can check the status of the stack through
-// the DescribeStacks operation. Rolls back the specified stack to the last known
-// stable state from CREATE_FAILED or UPDATE_FAILED stack statuses. This operation
-// will delete a stack if it doesn't contain a last known stable state. A last
-// known stable state includes any status in a *_COMPLETE . This includes the
-// following stack statuses.
+// the DescribeStacksoperation.
+//
+// Rolls back the specified stack to the last known stable state from CREATE_FAILED
+// or UPDATE_FAILED stack statuses.
+//
+// This operation will delete a stack if it doesn't contain a last known stable
+// state. A last known stable state includes any status in a *_COMPLETE . This
+// includes the following stack statuses.
+//
 //   - CREATE_COMPLETE
+//
 //   - UPDATE_COMPLETE
+//
 //   - UPDATE_ROLLBACK_COMPLETE
+//
 //   - IMPORT_COMPLETE
+//
 //   - IMPORT_ROLLBACK_COMPLETE
 func (c *Client) RollbackStack(ctx context.Context, params *RollbackStackInput, optFns ...func(*Options)) (*RollbackStackOutput, error) {
 	if params == nil {
@@ -49,17 +57,23 @@ type RollbackStackInput struct {
 
 	// When set to true , newly created resources are deleted when the operation rolls
 	// back. This includes newly created resources marked with a deletion policy of
-	// Retain . Default: false
+	// Retain .
+	//
+	// Default: false
 	RetainExceptOnCreate *bool
 
-	// The Amazon Resource Name (ARN) of an Identity and Access Management role that
-	// CloudFormation assumes to rollback the stack.
+	// The Amazon Resource Name (ARN) of an IAM role that CloudFormation assumes to
+	// rollback the stack.
 	RoleARN *string
 
 	noSmithyDocumentSerde
 }
 
 type RollbackStackOutput struct {
+
+	// A unique identifier for this rollback operation that can be used to track the
+	// operation's progress and events.
+	OperationId *string
 
 	// Unique identifier of the stack.
 	StackId *string
@@ -113,6 +127,9 @@ func (c *Client) addOperationRollbackStackMiddlewares(stack *middleware.Stack, o
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -123,6 +140,15 @@ func (c *Client) addOperationRollbackStackMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRollbackStackValidationMiddleware(stack); err != nil {
@@ -144,6 +170,15 @@ func (c *Client) addOperationRollbackStackMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

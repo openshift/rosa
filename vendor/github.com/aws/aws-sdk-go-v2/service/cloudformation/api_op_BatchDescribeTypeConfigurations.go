@@ -12,9 +12,11 @@ import (
 )
 
 // Returns configuration data for the specified CloudFormation extensions, from
-// the CloudFormation registry for the account and Region. For more information,
-// see Configuring extensions at the account level (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/registry-private.html#registry-set-configuration)
-// in the CloudFormation User Guide.
+// the CloudFormation registry in your current account and Region.
+//
+// For more information, see [Edit configuration data for extensions in your account] in the CloudFormation User Guide.
+//
+// [Edit configuration data for extensions in your account]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/registry-set-configuration.html
 func (c *Client) BatchDescribeTypeConfigurations(ctx context.Context, params *BatchDescribeTypeConfigurationsInput, optFns ...func(*Options)) (*BatchDescribeTypeConfigurationsOutput, error) {
 	if params == nil {
 		params = &BatchDescribeTypeConfigurationsInput{}
@@ -103,6 +105,9 @@ func (c *Client) addOperationBatchDescribeTypeConfigurationsMiddlewares(stack *m
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -113,6 +118,15 @@ func (c *Client) addOperationBatchDescribeTypeConfigurationsMiddlewares(stack *m
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpBatchDescribeTypeConfigurationsValidationMiddleware(stack); err != nil {
@@ -134,6 +148,15 @@ func (c *Client) addOperationBatchDescribeTypeConfigurationsMiddlewares(stack *m
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

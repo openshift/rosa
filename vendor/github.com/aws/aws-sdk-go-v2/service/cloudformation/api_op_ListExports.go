@@ -13,9 +13,12 @@ import (
 
 // Lists all exported output values in the account and Region in which you call
 // this action. Use this action to see the exported output values that you can
-// import into other stacks. To import values, use the Fn::ImportValue (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-importvalue.html)
-// function. For more information, see CloudFormation export stack output values (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-exports.html)
-// .
+// import into other stacks. To import values, use the [Fn::ImportValue]function.
+//
+// For more information, see [Get exported outputs from a deployed CloudFormation stack].
+//
+// [Get exported outputs from a deployed CloudFormation stack]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-exports.html
+// [Fn::ImportValue]: https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/intrinsic-function-reference-importvalue.html
 func (c *Client) ListExports(ctx context.Context, params *ListExportsInput, optFns ...func(*Options)) (*ListExportsOutput, error) {
 	if params == nil {
 		params = &ListExportsInput{}
@@ -33,8 +36,8 @@ func (c *Client) ListExports(ctx context.Context, params *ListExportsInput, optF
 
 type ListExportsInput struct {
 
-	// A string (provided by the ListExports response output) that identifies the next
-	// page of exported output values that you asked to retrieve.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -98,6 +101,9 @@ func (c *Client) addOperationListExportsMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -108,6 +114,15 @@ func (c *Client) addOperationListExportsMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListExports(options.Region), middleware.Before); err != nil {
@@ -128,15 +143,17 @@ func (c *Client) addOperationListExportsMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListExportsAPIClient is a client that implements the ListExports operation.
-type ListExportsAPIClient interface {
-	ListExports(context.Context, *ListExportsInput, ...func(*Options)) (*ListExportsOutput, error)
-}
-
-var _ ListExportsAPIClient = (*Client)(nil)
 
 // ListExportsPaginatorOptions is the paginator options for ListExports
 type ListExportsPaginatorOptions struct {
@@ -189,6 +206,9 @@ func (p *ListExportsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListExports(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -207,6 +227,13 @@ func (p *ListExportsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 
 	return result, nil
 }
+
+// ListExportsAPIClient is a client that implements the ListExports operation.
+type ListExportsAPIClient interface {
+	ListExports(context.Context, *ListExportsInput, ...func(*Options)) (*ListExportsOutput, error)
+}
+
+var _ ListExportsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListExports(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

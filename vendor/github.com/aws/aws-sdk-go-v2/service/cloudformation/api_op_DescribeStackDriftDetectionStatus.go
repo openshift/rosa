@@ -17,13 +17,14 @@ import (
 // has drifted, from its expected configuration, as defined in the stack template
 // and any values specified as template parameters. A stack is considered to have
 // drifted if one or more of its resources have drifted. For more information about
-// stack and resource drift, see Detecting Unregulated Configuration Changes to
-// Stacks and Resources (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-drift.html)
-// . Use DetectStackDrift to initiate a stack drift detection operation.
-// DetectStackDrift returns a StackDriftDetectionId you can use to monitor the
-// progress of the operation using DescribeStackDriftDetectionStatus . Once the
-// drift detection operation has completed, use DescribeStackResourceDrifts to
-// return drift information about the stack and its resources.
+// stack and resource drift, see [Detect unmanaged configuration changes to stacks and resources with drift detection].
+//
+// Use DetectStackDrift to initiate a stack drift detection operation. DetectStackDrift returns a
+// StackDriftDetectionId you can use to monitor the progress of the operation using
+// DescribeStackDriftDetectionStatus . Once the drift detection operation has
+// completed, use DescribeStackResourceDriftsto return drift information about the stack and its resources.
+//
+// [Detect unmanaged configuration changes to stacks and resources with drift detection]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-drift.html
 func (c *Client) DescribeStackDriftDetectionStatus(ctx context.Context, params *DescribeStackDriftDetectionStatusInput, optFns ...func(*Options)) (*DescribeStackDriftDetectionStatusOutput, error) {
 	if params == nil {
 		params = &DescribeStackDriftDetectionStatusInput{}
@@ -41,10 +42,11 @@ func (c *Client) DescribeStackDriftDetectionStatus(ctx context.Context, params *
 
 type DescribeStackDriftDetectionStatusInput struct {
 
-	// The ID of the drift detection results of this operation. CloudFormation
-	// generates new results, with a new drift detection ID, each time this operation
-	// is run. However, the number of drift results CloudFormation retains for any
-	// given stack, and for how long, may vary.
+	// The ID of the drift detection results of this operation.
+	//
+	// CloudFormation generates new results, with a new drift detection ID, each time
+	// this operation is run. However, the number of drift results CloudFormation
+	// retains for any given stack, and for how long, may vary.
 	//
 	// This member is required.
 	StackDriftDetectionId *string
@@ -55,25 +57,30 @@ type DescribeStackDriftDetectionStatusInput struct {
 type DescribeStackDriftDetectionStatusOutput struct {
 
 	// The status of the stack drift detection operation.
+	//
 	//   - DETECTION_COMPLETE : The stack drift detection operation has successfully
 	//   completed for all resources in the stack that support drift detection.
-	//   (Resources that don't currently support stack detection remain unchecked.) If
-	//   you specified logical resource IDs for CloudFormation to use as a filter for the
-	//   stack drift detection operation, only the resources with those logical IDs are
-	//   checked for drift.
+	//   (Resources that don't currently support stack detection remain unchecked.)
+	//
+	// If you specified logical resource IDs for CloudFormation to use as a filter for
+	//   the stack drift detection operation, only the resources with those logical IDs
+	//   are checked for drift.
+	//
 	//   - DETECTION_FAILED : The stack drift detection operation has failed for at
 	//   least one resource in the stack. Results will be available for resources on
 	//   which CloudFormation successfully completed drift detection.
+	//
 	//   - DETECTION_IN_PROGRESS : The stack drift detection operation is currently in
 	//   progress.
 	//
 	// This member is required.
 	DetectionStatus types.StackDriftDetectionStatus
 
-	// The ID of the drift detection results of this operation. CloudFormation
-	// generates new results, with a new drift detection ID, each time this operation
-	// is run. However, the number of reports CloudFormation retains for any given
-	// stack, and for how long, may vary.
+	// The ID of the drift detection results of this operation.
+	//
+	// CloudFormation generates new results, with a new drift detection ID, each time
+	// this operation is run. However, the number of reports CloudFormation retains for
+	// any given stack, and for how long, may vary.
 	//
 	// This member is required.
 	StackDriftDetectionId *string
@@ -98,14 +105,19 @@ type DescribeStackDriftDetectionStatusOutput struct {
 
 	// Status of the stack's actual configuration compared to its expected
 	// configuration.
+	//
 	//   - DRIFTED : The stack differs from its expected template configuration. A
 	//   stack is considered to have drifted if one or more of its resources have
 	//   drifted.
+	//
 	//   - NOT_CHECKED : CloudFormation hasn't checked if the stack differs from its
 	//   expected template configuration.
+	//
 	//   - IN_SYNC : The stack's actual configuration matches its expected template
 	//   configuration.
-	//   - UNKNOWN : This value is reserved for future use.
+	//
+	//   - UNKNOWN : CloudFormation could not run drift detection for a resource in the
+	//   stack. See the DetectionStatusReason for details.
 	StackDriftStatus types.StackDriftStatus
 
 	// Metadata pertaining to the operation's result.
@@ -157,6 +169,9 @@ func (c *Client) addOperationDescribeStackDriftDetectionStatusMiddlewares(stack 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -167,6 +182,15 @@ func (c *Client) addOperationDescribeStackDriftDetectionStatusMiddlewares(stack 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeStackDriftDetectionStatusValidationMiddleware(stack); err != nil {
@@ -188,6 +212,15 @@ func (c *Client) addOperationDescribeStackDriftDetectionStatusMiddlewares(stack 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -16,8 +16,11 @@ import (
 // for a single network. The private scope is intended for all private IP address
 // space. The public scope is intended for all public IP address space. Scopes
 // enable you to reuse IP addresses across multiple unconnected networks without
-// causing IP address overlap or conflict. For more information, see Add a scope (https://docs.aws.amazon.com/vpc/latest/ipam/add-scope-ipam.html)
-// in the Amazon VPC IPAM User Guide.
+// causing IP address overlap or conflict.
+//
+// For more information, see [Add a scope] in the Amazon VPC IPAM User Guide.
+//
+// [Add a scope]: https://docs.aws.amazon.com/vpc/latest/ipam/add-scope-ipam.html
 func (c *Client) CreateIpamScope(ctx context.Context, params *CreateIpamScopeInput, optFns ...func(*Options)) (*CreateIpamScopeOutput, error) {
 	if params == nil {
 		params = &CreateIpamScopeInput{}
@@ -41,8 +44,9 @@ type CreateIpamScopeInput struct {
 	IpamId *string
 
 	// A unique, case-sensitive identifier that you provide to ensure the idempotency
-	// of the request. For more information, see Ensuring Idempotency (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Run_Instance_Idempotency.html)
-	// .
+	// of the request. For more information, see [Ensuring idempotency].
+	//
+	// [Ensuring idempotency]: https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-idempotency.html
 	ClientToken *string
 
 	// A description for the scope you're creating.
@@ -53,6 +57,17 @@ type CreateIpamScopeInput struct {
 	// required permissions, the error response is DryRunOperation . Otherwise, it is
 	// UnauthorizedOperation .
 	DryRun *bool
+
+	// The configuration that links an Amazon VPC IPAM scope to an external authority
+	// system. It specifies the type of external system and the external resource
+	// identifier that identifies your account or instance in that system.
+	//
+	// In IPAM, an external authority is a third-party IP address management system
+	// that provides CIDR blocks when you provision address space for top-level IPAM
+	// pools. This allows you to use your existing IP management system to control
+	// which address ranges are allocated to Amazon Web Services while using Amazon VPC
+	// IPAM to manage subnets within those ranges.
+	ExternalAuthorityConfiguration *types.ExternalAuthorityConfiguration
 
 	// The key/value combination of a tag assigned to the resource. Use the tag key in
 	// the filter name and the tag value as the filter value. For example, to find all
@@ -117,6 +132,9 @@ func (c *Client) addOperationCreateIpamScopeMiddlewares(stack *middleware.Stack,
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -127,6 +145,15 @@ func (c *Client) addOperationCreateIpamScopeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateIpamScopeMiddleware(stack, options); err != nil {
@@ -151,6 +178,15 @@ func (c *Client) addOperationCreateIpamScopeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

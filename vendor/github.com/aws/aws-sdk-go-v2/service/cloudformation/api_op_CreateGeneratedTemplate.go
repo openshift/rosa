@@ -36,10 +36,11 @@ type CreateGeneratedTemplateInput struct {
 	// This member is required.
 	GeneratedTemplateName *string
 
-	// An optional list of resources to be included in the generated template. If no
-	// resources are specified,the template will be created without any resources.
-	// Resources can be added to the template using the UpdateGeneratedTemplate API
-	// action.
+	// An optional list of resources to be included in the generated template.
+	//
+	// If no resources are specified,the template will be created without any
+	// resources. Resources can be added to the template using the
+	// UpdateGeneratedTemplate API action.
 	Resources []types.ResourceDefinition
 
 	// An optional name or ARN of a stack to use as the base stack for the generated
@@ -107,6 +108,9 @@ func (c *Client) addOperationCreateGeneratedTemplateMiddlewares(stack *middlewar
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -117,6 +121,15 @@ func (c *Client) addOperationCreateGeneratedTemplateMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateGeneratedTemplateValidationMiddleware(stack); err != nil {
@@ -138,6 +151,15 @@ func (c *Client) addOperationCreateGeneratedTemplateMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

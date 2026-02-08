@@ -13,12 +13,15 @@ import (
 // Enables the specified member account to administer the Organizations features
 // of the specified Amazon Web Services service. It grants read-only access to
 // Organizations service data. The account still requires IAM permissions to access
-// and administer the Amazon Web Services service. You can run this action only for
-// Amazon Web Services services that support this feature. For a current list of
-// services that support it, see the column Supports Delegated Administrator in the
-// table at Amazon Web Services Services that you can use with Organizations (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services_list.html)
-// in the Organizations User Guide. This operation can be called only from the
-// organization's management account.
+// and administer the Amazon Web Services service.
+//
+// You can run this action only for Amazon Web Services services that support this
+// feature. For a current list of services that support it, see the column Supports
+// Delegated Administrator in the table at [Amazon Web Services Services that you can use with Organizations]in the Organizations User Guide.
+//
+// You can only call this operation from the management account.
+//
+// [Amazon Web Services Services that you can use with Organizations]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services_list.html
 func (c *Client) RegisterDelegatedAdministrator(ctx context.Context, params *RegisterDelegatedAdministratorInput, optFns ...func(*Options)) (*RegisterDelegatedAdministratorOutput, error) {
 	if params == nil {
 		params = &RegisterDelegatedAdministratorInput{}
@@ -101,6 +104,9 @@ func (c *Client) addOperationRegisterDelegatedAdministratorMiddlewares(stack *mi
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -111,6 +117,15 @@ func (c *Client) addOperationRegisterDelegatedAdministratorMiddlewares(stack *mi
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRegisterDelegatedAdministratorValidationMiddleware(stack); err != nil {
@@ -132,6 +147,15 @@ func (c *Client) addOperationRegisterDelegatedAdministratorMiddlewares(stack *mi
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

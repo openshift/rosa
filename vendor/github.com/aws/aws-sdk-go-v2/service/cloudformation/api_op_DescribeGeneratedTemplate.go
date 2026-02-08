@@ -71,13 +71,21 @@ type DescribeGeneratedTemplateOutput struct {
 	StackId *string
 
 	// The status of the template generation. Supported values are:
+	//
 	//   - CreatePending - the creation of the template is pending.
+	//
 	//   - CreateInProgress - the creation of the template is in progress.
+	//
 	//   - DeletePending - the deletion of the template is pending.
+	//
 	//   - DeleteInProgress - the deletion of the template is in progress.
+	//
 	//   - UpdatePending - the update of the template is pending.
+	//
 	//   - UpdateInProgress - the update of the template is in progress.
+	//
 	//   - Failed - the template operation failed.
+	//
 	//   - Complete - the template operation is complete.
 	Status types.GeneratedTemplateStatus
 
@@ -142,6 +150,9 @@ func (c *Client) addOperationDescribeGeneratedTemplateMiddlewares(stack *middlew
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -152,6 +163,15 @@ func (c *Client) addOperationDescribeGeneratedTemplateMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeGeneratedTemplateValidationMiddleware(stack); err != nil {
@@ -173,6 +193,15 @@ func (c *Client) addOperationDescribeGeneratedTemplateMiddlewares(stack *middlew
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

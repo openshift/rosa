@@ -11,10 +11,13 @@ import (
 )
 
 // The ListTagsLogGroup operation is on the path to deprecation. We recommend that
-// you use ListTagsForResource (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_ListTagsForResource.html)
-// instead. Lists the tags for the specified log group.
+// you use [ListTagsForResource]instead.
+//
+// Lists the tags for the specified log group.
 //
 // Deprecated: Please use the generic tagging API ListTagsForResource
+//
+// [ListTagsForResource]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_ListTagsForResource.html
 func (c *Client) ListTagsLogGroup(ctx context.Context, params *ListTagsLogGroupInput, optFns ...func(*Options)) (*ListTagsLogGroupOutput, error) {
 	if params == nil {
 		params = &ListTagsLogGroupInput{}
@@ -94,6 +97,9 @@ func (c *Client) addOperationListTagsLogGroupMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -104,6 +110,15 @@ func (c *Client) addOperationListTagsLogGroupMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListTagsLogGroupValidationMiddleware(stack); err != nil {
@@ -125,6 +140,15 @@ func (c *Client) addOperationListTagsLogGroupMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

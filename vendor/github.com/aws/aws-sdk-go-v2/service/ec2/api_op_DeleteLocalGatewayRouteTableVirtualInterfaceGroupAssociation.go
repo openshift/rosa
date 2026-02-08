@@ -29,7 +29,7 @@ func (c *Client) DeleteLocalGatewayRouteTableVirtualInterfaceGroupAssociation(ct
 
 type DeleteLocalGatewayRouteTableVirtualInterfaceGroupAssociationInput struct {
 
-	// The ID of the local gateway route table virtual interface group association.
+	//  The ID of the local gateway route table virtual interface group association.
 	//
 	// This member is required.
 	LocalGatewayRouteTableVirtualInterfaceGroupAssociationId *string
@@ -97,6 +97,9 @@ func (c *Client) addOperationDeleteLocalGatewayRouteTableVirtualInterfaceGroupAs
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -107,6 +110,15 @@ func (c *Client) addOperationDeleteLocalGatewayRouteTableVirtualInterfaceGroupAs
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteLocalGatewayRouteTableVirtualInterfaceGroupAssociationValidationMiddleware(stack); err != nil {
@@ -128,6 +140,15 @@ func (c *Client) addOperationDeleteLocalGatewayRouteTableVirtualInterfaceGroupAs
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
