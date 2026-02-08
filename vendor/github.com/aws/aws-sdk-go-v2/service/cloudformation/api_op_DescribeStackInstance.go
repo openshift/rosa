@@ -12,8 +12,10 @@ import (
 )
 
 // Returns the stack instance that's associated with the specified StackSet,
-// Amazon Web Services account, and Amazon Web Services Region. For a list of stack
-// instances that are associated with a specific StackSet, use ListStackInstances .
+// Amazon Web Services account, and Amazon Web Services Region.
+//
+// For a list of stack instances that are associated with a specific StackSet, use ListStackInstances
+// .
 func (c *Client) DescribeStackInstance(ctx context.Context, params *DescribeStackInstanceInput, optFns ...func(*Options)) (*DescribeStackInstanceOutput, error) {
 	if params == nil {
 		params = &DescribeStackInstanceInput{}
@@ -42,7 +44,7 @@ type DescribeStackInstanceInput struct {
 	// This member is required.
 	StackInstanceRegion *string
 
-	// The name or the unique stack ID of the stack set that you want to get stack
+	// The name or the unique stack ID of the StackSet that you want to get stack
 	// instance information for.
 	//
 	// This member is required.
@@ -50,14 +52,21 @@ type DescribeStackInstanceInput struct {
 
 	// [Service-managed permissions] Specifies whether you are acting as an account
 	// administrator in the organization's management account or as a delegated
-	// administrator in a member account. By default, SELF is specified. Use SELF for
-	// stack sets with self-managed permissions.
+	// administrator in a member account.
+	//
+	// By default, SELF is specified. Use SELF for StackSets with self-managed
+	// permissions.
+	//
 	//   - If you are signed in to the management account, specify SELF .
+	//
 	//   - If you are signed in to a delegated administrator account, specify
-	//   DELEGATED_ADMIN . Your Amazon Web Services account must be registered as a
-	//   delegated administrator in the management account. For more information, see
-	//   Register a delegated administrator (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html)
-	//   in the CloudFormation User Guide.
+	//   DELEGATED_ADMIN .
+	//
+	// Your Amazon Web Services account must be registered as a delegated
+	//   administrator in the management account. For more information, see [Register a delegated administrator]in the
+	//   CloudFormation User Guide.
+	//
+	// [Register a delegated administrator]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html
 	CallAs types.CallAs
 
 	noSmithyDocumentSerde
@@ -117,6 +126,9 @@ func (c *Client) addOperationDescribeStackInstanceMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -127,6 +139,15 @@ func (c *Client) addOperationDescribeStackInstanceMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeStackInstanceValidationMiddleware(stack); err != nil {
@@ -148,6 +169,15 @@ func (c *Client) addOperationDescribeStackInstanceMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

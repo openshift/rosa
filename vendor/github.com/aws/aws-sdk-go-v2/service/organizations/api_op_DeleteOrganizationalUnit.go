@@ -11,8 +11,9 @@ import (
 )
 
 // Deletes an organizational unit (OU) from a root or another OU. You must first
-// remove all accounts and child OUs from the OU that you want to delete. This
-// operation can be called only from the organization's management account.
+// remove all accounts and child OUs from the OU that you want to delete.
+//
+// You can only call this operation from the management account.
 func (c *Client) DeleteOrganizationalUnit(ctx context.Context, params *DeleteOrganizationalUnitInput, optFns ...func(*Options)) (*DeleteOrganizationalUnitOutput, error) {
 	if params == nil {
 		params = &DeleteOrganizationalUnitInput{}
@@ -30,12 +31,15 @@ func (c *Client) DeleteOrganizationalUnit(ctx context.Context, params *DeleteOrg
 
 type DeleteOrganizationalUnitInput struct {
 
-	// The unique identifier (ID) of the organizational unit that you want to delete.
-	// You can get the ID from the ListOrganizationalUnitsForParent operation. The
-	// regex pattern (http://wikipedia.org/wiki/regex) for an organizational unit ID
-	// string requires "ou-" followed by from 4 to 32 lowercase letters or digits (the
-	// ID of the root that contains the OU). This string is followed by a second "-"
-	// dash and from 8 to 32 additional lowercase letters or digits.
+	// ID for the organizational unit that you want to delete. You can get the ID from
+	// the ListOrganizationalUnitsForParentoperation.
+	//
+	// The [regex pattern] for an organizational unit ID string requires "ou-" followed by from 4 to
+	// 32 lowercase letters or digits (the ID of the root that contains the OU). This
+	// string is followed by a second "-" dash and from 8 to 32 additional lowercase
+	// letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	OrganizationalUnitId *string
@@ -93,6 +97,9 @@ func (c *Client) addOperationDeleteOrganizationalUnitMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -103,6 +110,15 @@ func (c *Client) addOperationDeleteOrganizationalUnitMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteOrganizationalUnitValidationMiddleware(stack); err != nil {
@@ -124,6 +140,15 @@ func (c *Client) addOperationDeleteOrganizationalUnitMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

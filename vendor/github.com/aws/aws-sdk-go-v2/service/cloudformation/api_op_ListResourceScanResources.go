@@ -43,7 +43,8 @@ type ListResourceScanResourcesInput struct {
 	// at most 100 results in each response. The maximum value is 100.
 	MaxResults *int32
 
-	// A string that identifies the next page of resource scan results.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	// If specified, the returned resources will have the specified resource
@@ -125,6 +126,9 @@ func (c *Client) addOperationListResourceScanResourcesMiddlewares(stack *middlew
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -135,6 +139,15 @@ func (c *Client) addOperationListResourceScanResourcesMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListResourceScanResourcesValidationMiddleware(stack); err != nil {
@@ -158,16 +171,17 @@ func (c *Client) addOperationListResourceScanResourcesMiddlewares(stack *middlew
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListResourceScanResourcesAPIClient is a client that implements the
-// ListResourceScanResources operation.
-type ListResourceScanResourcesAPIClient interface {
-	ListResourceScanResources(context.Context, *ListResourceScanResourcesInput, ...func(*Options)) (*ListResourceScanResourcesOutput, error)
-}
-
-var _ ListResourceScanResourcesAPIClient = (*Client)(nil)
 
 // ListResourceScanResourcesPaginatorOptions is the paginator options for
 // ListResourceScanResources
@@ -237,6 +251,9 @@ func (p *ListResourceScanResourcesPaginator) NextPage(ctx context.Context, optFn
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListResourceScanResources(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -255,6 +272,14 @@ func (p *ListResourceScanResourcesPaginator) NextPage(ctx context.Context, optFn
 
 	return result, nil
 }
+
+// ListResourceScanResourcesAPIClient is a client that implements the
+// ListResourceScanResources operation.
+type ListResourceScanResourcesAPIClient interface {
+	ListResourceScanResources(context.Context, *ListResourceScanResourcesInput, ...func(*Options)) (*ListResourceScanResourcesOutput, error)
+}
+
+var _ ListResourceScanResourcesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListResourceScanResources(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

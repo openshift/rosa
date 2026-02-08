@@ -10,23 +10,28 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Enables the integration of an Amazon Web Services service (the service that is
-// specified by ServicePrincipal ) with Organizations. When you enable integration,
-// you allow the specified service to create a service-linked role (https://docs.aws.amazon.com/IAM/latest/UserGuide/using-service-linked-roles.html)
-// in all the accounts in your organization. This allows the service to perform
-// operations on your behalf in your organization and its accounts. We recommend
-// that you enable integration between Organizations and the specified Amazon Web
-// Services service by using the console or commands that are provided by the
-// specified service. Doing so ensures that the service is aware that it can create
-// the resources that are required for the integration. How the service creates
-// those resources in the organization's accounts depends on that service. For more
-// information, see the documentation for the other Amazon Web Services service.
+// Provides an Amazon Web Services service (the service that is specified by
+// ServicePrincipal ) with permissions to view the structure of an organization,
+// create a [service-linked role]in all the accounts in the organization, and allow the service to
+// perform operations on behalf of the organization and its accounts. Establishing
+// these permissions can be a first step in enabling the integration of an Amazon
+// Web Services service with Organizations.
+//
+// We recommend that you enable integration between Organizations and the
+// specified Amazon Web Services service by using the console or commands that are
+// provided by the specified service. Doing so ensures that the service is aware
+// that it can create the resources that are required for the integration. How the
+// service creates those resources in the organization's accounts depends on that
+// service. For more information, see the documentation for the other Amazon Web
+// Services service.
+//
 // For more information about enabling services to integrate with Organizations,
-// see Using Organizations with other Amazon Web Services services (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services.html)
-// in the Organizations User Guide. You can only call this operation from the
-// organization's management account and only if the organization has enabled all
-// features (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_org_support-all-features.html)
-// .
+// see [Using Organizations with other Amazon Web Services services]in the Organizations User Guide.
+//
+// You can only call this operation from the management account.
+//
+// [Using Organizations with other Amazon Web Services services]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services.html
+// [service-linked role]: https://docs.aws.amazon.com/IAM/latest/UserGuide/using-service-linked-roles.html
 func (c *Client) EnableAWSServiceAccess(ctx context.Context, params *EnableAWSServiceAccessInput, optFns ...func(*Options)) (*EnableAWSServiceAccessOutput, error) {
 	if params == nil {
 		params = &EnableAWSServiceAccessInput{}
@@ -104,6 +109,9 @@ func (c *Client) addOperationEnableAWSServiceAccessMiddlewares(stack *middleware
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -114,6 +122,15 @@ func (c *Client) addOperationEnableAWSServiceAccessMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpEnableAWSServiceAccessValidationMiddleware(stack); err != nil {
@@ -135,6 +152,15 @@ func (c *Client) addOperationEnableAWSServiceAccessMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -12,9 +12,10 @@ import (
 
 // Deletes the specified policy from your organization. Before you perform this
 // operation, you must first detach the policy from all organizational units (OUs),
-// roots, and accounts. This operation can be called only from the organization's
-// management account or by a member account that is a delegated administrator for
-// an Amazon Web Services service.
+// roots, and accounts.
+//
+// You can only call this operation from the management account or a member
+// account that is a delegated administrator.
 func (c *Client) DeletePolicy(ctx context.Context, params *DeletePolicyInput, optFns ...func(*Options)) (*DeletePolicyOutput, error) {
 	if params == nil {
 		params = &DeletePolicyInput{}
@@ -32,11 +33,13 @@ func (c *Client) DeletePolicy(ctx context.Context, params *DeletePolicyInput, op
 
 type DeletePolicyInput struct {
 
-	// The unique identifier (ID) of the policy that you want to delete. You can get
-	// the ID from the ListPolicies or ListPoliciesForTarget operations. The regex
-	// pattern (http://wikipedia.org/wiki/regex) for a policy ID string requires "p-"
-	// followed by from 8 to 128 lowercase or uppercase letters, digits, or the
-	// underscore character (_).
+	// ID for the policy that you want to delete. You can get the ID from the ListPolicies or ListPoliciesForTarget
+	// operations.
+	//
+	// The [regex pattern] for a policy ID string requires "p-" followed by from 8 to 128 lowercase
+	// or uppercase letters, digits, or the underscore character (_).
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	PolicyId *string
@@ -94,6 +97,9 @@ func (c *Client) addOperationDeletePolicyMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -104,6 +110,15 @@ func (c *Client) addOperationDeletePolicyMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeletePolicyValidationMiddleware(stack); err != nil {
@@ -125,6 +140,15 @@ func (c *Client) addOperationDeletePolicyMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -12,12 +12,14 @@ import (
 	"time"
 )
 
-// Describes the Spot price history. For more information, see Spot Instance
-// pricing history (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances-history.html)
-// in the Amazon EC2 User Guide for Linux Instances. When you specify a start and
-// end time, the operation returns the prices of the instance types within that
-// time range. It also returns the last price change before the start time, which
-// is the effective price as of the start time.
+// Describes the Spot price history. For more information, see [Spot Instance pricing history] in the Amazon EC2
+// User Guide.
+//
+// When you specify a start and end time, the operation returns the prices of the
+// instance types within that time range. It also returns the last price change
+// before the start time, which is the effective price as of the start time.
+//
+// [Spot Instance pricing history]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances-history.html
 func (c *Client) DescribeSpotPriceHistory(ctx context.Context, params *DescribeSpotPriceHistoryInput, optFns ...func(*Options)) (*DescribeSpotPriceHistoryOutput, error) {
 	if params == nil {
 		params = &DescribeSpotPriceHistoryInput{}
@@ -37,7 +39,14 @@ func (c *Client) DescribeSpotPriceHistory(ctx context.Context, params *DescribeS
 type DescribeSpotPriceHistoryInput struct {
 
 	// Filters the results by the specified Availability Zone.
+	//
+	// Either AvailabilityZone or AvailabilityZoneId can be specified, but not both
 	AvailabilityZone *string
+
+	// Filters the results by the specified ID of the Availability Zone.
+	//
+	// Either AvailabilityZone or AvailabilityZoneId can be specified, but not both
+	AvailabilityZoneId *string
 
 	// Checks whether you have the required permissions for the action, without
 	// actually making the request, and provides an error response. If you have the
@@ -50,15 +59,23 @@ type DescribeSpotPriceHistoryInput struct {
 	EndTime *time.Time
 
 	// The filters.
+	//
 	//   - availability-zone - The Availability Zone for which prices should be
 	//   returned.
+	//
+	//   - availability-zone-id - The ID of the Availability Zone for which prices
+	//   should be returned.
+	//
 	//   - instance-type - The type of instance (for example, m3.medium ).
+	//
 	//   - product-description - The product description for the Spot price ( Linux/UNIX
 	//   | Red Hat Enterprise Linux | SUSE Linux | Windows | Linux/UNIX (Amazon VPC) |
 	//   Red Hat Enterprise Linux (Amazon VPC) | SUSE Linux (Amazon VPC) | Windows
 	//   (Amazon VPC) ).
+	//
 	//   - spot-price - The Spot price. The value must match exactly (or use wildcards;
 	//   greater than or less than comparison is not supported).
+	//
 	//   - timestamp - The time stamp of the Spot price history, in UTC format (for
 	//   example, ddd MMM dd HH:mm:ss UTC YYYY). You can use wildcards ( * and ? ).
 	//   Greater than or less than comparison is not supported.
@@ -69,8 +86,9 @@ type DescribeSpotPriceHistoryInput struct {
 
 	// The maximum number of items to return for this request. To get the next page of
 	// items, make another request with the token returned in the output. For more
-	// information, see Pagination (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html#api-pagination)
-	// .
+	// information, see [Pagination].
+	//
+	// [Pagination]: https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html#api-pagination
 	MaxResults *int32
 
 	// The token returned from a previous paginated request. Pagination continues from
@@ -146,6 +164,9 @@ func (c *Client) addOperationDescribeSpotPriceHistoryMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -156,6 +177,15 @@ func (c *Client) addOperationDescribeSpotPriceHistoryMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeSpotPriceHistory(options.Region), middleware.Before); err != nil {
@@ -176,24 +206,26 @@ func (c *Client) addOperationDescribeSpotPriceHistoryMiddlewares(stack *middlewa
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeSpotPriceHistoryAPIClient is a client that implements the
-// DescribeSpotPriceHistory operation.
-type DescribeSpotPriceHistoryAPIClient interface {
-	DescribeSpotPriceHistory(context.Context, *DescribeSpotPriceHistoryInput, ...func(*Options)) (*DescribeSpotPriceHistoryOutput, error)
-}
-
-var _ DescribeSpotPriceHistoryAPIClient = (*Client)(nil)
 
 // DescribeSpotPriceHistoryPaginatorOptions is the paginator options for
 // DescribeSpotPriceHistory
 type DescribeSpotPriceHistoryPaginatorOptions struct {
 	// The maximum number of items to return for this request. To get the next page of
 	// items, make another request with the token returned in the output. For more
-	// information, see Pagination (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html#api-pagination)
-	// .
+	// information, see [Pagination].
+	//
+	// [Pagination]: https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html#api-pagination
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -255,6 +287,9 @@ func (p *DescribeSpotPriceHistoryPaginator) NextPage(ctx context.Context, optFns
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeSpotPriceHistory(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -273,6 +308,14 @@ func (p *DescribeSpotPriceHistoryPaginator) NextPage(ctx context.Context, optFns
 
 	return result, nil
 }
+
+// DescribeSpotPriceHistoryAPIClient is a client that implements the
+// DescribeSpotPriceHistory operation.
+type DescribeSpotPriceHistoryAPIClient interface {
+	DescribeSpotPriceHistory(context.Context, *DescribeSpotPriceHistoryInput, ...func(*Options)) (*DescribeSpotPriceHistoryOutput, error)
+}
+
+var _ DescribeSpotPriceHistoryAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeSpotPriceHistory(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

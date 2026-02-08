@@ -112,6 +112,9 @@ func (c *Client) addOperationGetManagedPrefixListEntriesMiddlewares(stack *middl
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -122,6 +125,15 @@ func (c *Client) addOperationGetManagedPrefixListEntriesMiddlewares(stack *middl
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetManagedPrefixListEntriesValidationMiddleware(stack); err != nil {
@@ -145,16 +157,17 @@ func (c *Client) addOperationGetManagedPrefixListEntriesMiddlewares(stack *middl
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// GetManagedPrefixListEntriesAPIClient is a client that implements the
-// GetManagedPrefixListEntries operation.
-type GetManagedPrefixListEntriesAPIClient interface {
-	GetManagedPrefixListEntries(context.Context, *GetManagedPrefixListEntriesInput, ...func(*Options)) (*GetManagedPrefixListEntriesOutput, error)
-}
-
-var _ GetManagedPrefixListEntriesAPIClient = (*Client)(nil)
 
 // GetManagedPrefixListEntriesPaginatorOptions is the paginator options for
 // GetManagedPrefixListEntries
@@ -223,6 +236,9 @@ func (p *GetManagedPrefixListEntriesPaginator) NextPage(ctx context.Context, opt
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.GetManagedPrefixListEntries(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -241,6 +257,14 @@ func (p *GetManagedPrefixListEntriesPaginator) NextPage(ctx context.Context, opt
 
 	return result, nil
 }
+
+// GetManagedPrefixListEntriesAPIClient is a client that implements the
+// GetManagedPrefixListEntries operation.
+type GetManagedPrefixListEntriesAPIClient interface {
+	GetManagedPrefixListEntries(context.Context, *GetManagedPrefixListEntriesInput, ...func(*Options)) (*GetManagedPrefixListEntriesOutput, error)
+}
+
+var _ GetManagedPrefixListEntriesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opGetManagedPrefixListEntries(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

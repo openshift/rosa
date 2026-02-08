@@ -12,9 +12,9 @@ import (
 )
 
 // Retrieves the current status of an asynchronous request to create an account.
-// This operation can be called only from the organization's management account or
-// by a member account that is a delegated administrator for an Amazon Web Services
-// service.
+//
+// You can only call this operation from the management account or a member
+// account that is a delegated administrator.
 func (c *Client) DescribeCreateAccountStatus(ctx context.Context, params *DescribeCreateAccountStatusInput, optFns ...func(*Options)) (*DescribeCreateAccountStatusOutput, error) {
 	if params == nil {
 		params = &DescribeCreateAccountStatusInput{}
@@ -33,10 +33,13 @@ func (c *Client) DescribeCreateAccountStatus(ctx context.Context, params *Descri
 type DescribeCreateAccountStatusInput struct {
 
 	// Specifies the Id value that uniquely identifies the CreateAccount request. You
-	// can get the value from the CreateAccountStatus.Id response in an earlier
-	// CreateAccount request, or from the ListCreateAccountStatus operation. The regex
-	// pattern (http://wikipedia.org/wiki/regex) for a create account request ID string
-	// requires "car-" followed by from 8 to 32 lowercase letters or digits.
+	// can get the value from the CreateAccountStatus.Id response in an earlier CreateAccount
+	// request, or from the ListCreateAccountStatusoperation.
+	//
+	// The [regex pattern] for a create account request ID string requires "car-" followed by from 8
+	// to 32 lowercase letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	CreateAccountRequestId *string
@@ -98,6 +101,9 @@ func (c *Client) addOperationDescribeCreateAccountStatusMiddlewares(stack *middl
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -108,6 +114,15 @@ func (c *Client) addOperationDescribeCreateAccountStatusMiddlewares(stack *middl
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeCreateAccountStatusValidationMiddleware(stack); err != nil {
@@ -129,6 +144,15 @@ func (c *Client) addOperationDescribeCreateAccountStatusMiddlewares(stack *middl
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
