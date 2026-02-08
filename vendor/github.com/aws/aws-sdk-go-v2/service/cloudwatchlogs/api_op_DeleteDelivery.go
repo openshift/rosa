@@ -10,7 +10,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes s delivery. A delivery is a connection between a logical delivery
+// Deletes a delivery. A delivery is a connection between a logical delivery
 // source and a logical delivery destination. Deleting a delivery only deletes the
 // connection between the delivery source and delivery destination. It does not
 // delete the delivery destination or the delivery source.
@@ -32,8 +32,9 @@ func (c *Client) DeleteDelivery(ctx context.Context, params *DeleteDeliveryInput
 type DeleteDeliveryInput struct {
 
 	// The unique ID of the delivery to delete. You can find the ID of a delivery with
-	// the DescribeDeliveries (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeDeliveries.html)
-	// operation.
+	// the [DescribeDeliveries]operation.
+	//
+	// [DescribeDeliveries]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeDeliveries.html
 	//
 	// This member is required.
 	Id *string
@@ -91,6 +92,9 @@ func (c *Client) addOperationDeleteDeliveryMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -101,6 +105,15 @@ func (c *Client) addOperationDeleteDeliveryMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteDeliveryValidationMiddleware(stack); err != nil {
@@ -122,6 +135,15 @@ func (c *Client) addOperationDeleteDeliveryMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

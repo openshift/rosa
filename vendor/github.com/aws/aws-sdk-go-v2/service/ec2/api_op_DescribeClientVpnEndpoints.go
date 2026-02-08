@@ -39,7 +39,9 @@ type DescribeClientVpnEndpointsInput struct {
 	DryRun *bool
 
 	// One or more filters. Filter names and values are case-sensitive.
+	//
 	//   - endpoint-id - The ID of the Client VPN endpoint.
+	//
 	//   - transport-protocol - The transport protocol ( tcp | udp ).
 	Filters []types.Filter
 
@@ -112,6 +114,9 @@ func (c *Client) addOperationDescribeClientVpnEndpointsMiddlewares(stack *middle
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -122,6 +127,15 @@ func (c *Client) addOperationDescribeClientVpnEndpointsMiddlewares(stack *middle
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeClientVpnEndpoints(options.Region), middleware.Before); err != nil {
@@ -142,16 +156,17 @@ func (c *Client) addOperationDescribeClientVpnEndpointsMiddlewares(stack *middle
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeClientVpnEndpointsAPIClient is a client that implements the
-// DescribeClientVpnEndpoints operation.
-type DescribeClientVpnEndpointsAPIClient interface {
-	DescribeClientVpnEndpoints(context.Context, *DescribeClientVpnEndpointsInput, ...func(*Options)) (*DescribeClientVpnEndpointsOutput, error)
-}
-
-var _ DescribeClientVpnEndpointsAPIClient = (*Client)(nil)
 
 // DescribeClientVpnEndpointsPaginatorOptions is the paginator options for
 // DescribeClientVpnEndpoints
@@ -221,6 +236,9 @@ func (p *DescribeClientVpnEndpointsPaginator) NextPage(ctx context.Context, optF
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeClientVpnEndpoints(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -239,6 +257,14 @@ func (p *DescribeClientVpnEndpointsPaginator) NextPage(ctx context.Context, optF
 
 	return result, nil
 }
+
+// DescribeClientVpnEndpointsAPIClient is a client that implements the
+// DescribeClientVpnEndpoints operation.
+type DescribeClientVpnEndpointsAPIClient interface {
+	DescribeClientVpnEndpoints(context.Context, *DescribeClientVpnEndpointsInput, ...func(*Options)) (*DescribeClientVpnEndpointsOutput, error)
+}
+
+var _ DescribeClientVpnEndpointsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeClientVpnEndpoints(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

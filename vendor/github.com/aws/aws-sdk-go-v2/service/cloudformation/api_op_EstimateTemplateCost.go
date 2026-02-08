@@ -35,18 +35,20 @@ type EstimateTemplateCostInput struct {
 	// A list of Parameter structures that specify input parameters.
 	Parameters []types.Parameter
 
-	// Structure containing the template body with a minimum length of 1 byte and a
-	// maximum length of 51,200 bytes. (For more information, go to Template Anatomy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html)
-	// in the CloudFormation User Guide.) Conditional: You must pass TemplateBody or
-	// TemplateURL . If both are passed, only TemplateBody is used.
+	// Structure that contains the template body with a minimum length of 1 byte and a
+	// maximum length of 51,200 bytes.
+	//
+	// Conditional: You must pass TemplateBody or TemplateURL . If both are passed,
+	// only TemplateBody is used.
 	TemplateBody *string
 
-	// Location of file containing the template body. The URL must point to a template
-	// that's located in an Amazon S3 bucket or a Systems Manager document. For more
-	// information, go to Template Anatomy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html)
-	// in the CloudFormation User Guide. The location for an Amazon S3 bucket must
-	// start with https:// . Conditional: You must pass TemplateURL or TemplateBody .
-	// If both are passed, only TemplateBody is used.
+	// The URL of a file that contains the template body. The URL must point to a
+	// template that's located in an Amazon S3 bucket or a Systems Manager document.
+	// The location for an Amazon S3 bucket must start with https:// . URLs from S3
+	// static websites are not supported.
+	//
+	// Conditional: You must pass TemplateURL or TemplateBody . If both are passed,
+	// only TemplateBody is used.
 	TemplateURL *string
 
 	noSmithyDocumentSerde
@@ -108,6 +110,9 @@ func (c *Client) addOperationEstimateTemplateCostMiddlewares(stack *middleware.S
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -118,6 +123,15 @@ func (c *Client) addOperationEstimateTemplateCostMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opEstimateTemplateCost(options.Region), middleware.Before); err != nil {
@@ -136,6 +150,15 @@ func (c *Client) addOperationEstimateTemplateCostMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

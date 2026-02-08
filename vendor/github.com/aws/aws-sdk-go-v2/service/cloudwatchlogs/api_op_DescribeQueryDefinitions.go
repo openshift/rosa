@@ -13,9 +13,10 @@ import (
 
 // This operation returns a paginated list of your saved CloudWatch Logs Insights
 // query definitions. You can retrieve query definitions from the current account
-// or from a source account that is linked to the current account. You can use the
-// queryDefinitionNamePrefix parameter to limit the results to only the query
-// definitions that have names that start with a certain string.
+// or from a source account that is linked to the current account.
+//
+// You can use the queryDefinitionNamePrefix parameter to limit the results to
+// only the query definitions that have names that start with a certain string.
 func (c *Client) DescribeQueryDefinitions(ctx context.Context, params *DescribeQueryDefinitionsInput, optFns ...func(*Options)) (*DescribeQueryDefinitionsOutput, error) {
 	if params == nil {
 		params = &DescribeQueryDefinitionsInput{}
@@ -42,6 +43,12 @@ type DescribeQueryDefinitionsInput struct {
 	// Use this parameter to filter your results to only the query definitions that
 	// have names that start with the prefix you specify.
 	QueryDefinitionNamePrefix *string
+
+	// The query language used for this query. For more information about the query
+	// languages that CloudWatch Logs supports, see [Supported query languages].
+	//
+	// [Supported query languages]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_AnalyzeLogData_Languages.html
+	QueryLanguage types.QueryLanguage
 
 	noSmithyDocumentSerde
 }
@@ -103,6 +110,9 @@ func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -113,6 +123,15 @@ func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeQueryDefinitions(options.Region), middleware.Before); err != nil {
@@ -131,6 +150,15 @@ func (c *Client) addOperationDescribeQueryDefinitionsMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

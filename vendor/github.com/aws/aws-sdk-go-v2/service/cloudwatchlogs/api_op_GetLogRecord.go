@@ -13,7 +13,9 @@ import (
 // Retrieves all of the fields and values of a single log event. All fields are
 // retrieved, even if the original query that produced the logRecordPointer
 // retrieved only a subset of fields. Fields are returned as field name/field value
-// pairs. The full unparsed log event is returned within @message .
+// pairs.
+//
+// The full unparsed log event is returned within @message .
 func (c *Client) GetLogRecord(ctx context.Context, params *GetLogRecordInput, optFns ...func(*Options)) (*GetLogRecordOutput, error) {
 	if params == nil {
 		params = &GetLogRecordInput{}
@@ -40,8 +42,10 @@ type GetLogRecordInput struct {
 	LogRecordPointer *string
 
 	// Specify true to display the log event fields with all sensitive data unmasked
-	// and visible. The default is false . To use this operation with this parameter,
-	// you must be signed into an account with the logs:Unmask permission.
+	// and visible. The default is false .
+	//
+	// To use this operation with this parameter, you must be signed into an account
+	// with the logs:Unmask permission.
 	Unmask bool
 
 	noSmithyDocumentSerde
@@ -101,6 +105,9 @@ func (c *Client) addOperationGetLogRecordMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -111,6 +118,15 @@ func (c *Client) addOperationGetLogRecordMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetLogRecordValidationMiddleware(stack); err != nil {
@@ -132,6 +148,15 @@ func (c *Client) addOperationGetLogRecordMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

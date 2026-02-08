@@ -13,7 +13,8 @@ import (
 
 // Creates a resource share. You can provide a list of the [Amazon Resource Names (ARNs)] for the resources that
 // you want to share, a list of principals you want to share the resources with,
-// and the permissions to grant those principals.
+// the permissions to grant those principals, and optionally source constraints to
+// enhance security for service principal sharing.
 //
 // Sharing a resource makes it available for use by principals outside of the
 // Amazon Web Services account that created the resource. Sharing doesn't change
@@ -89,6 +90,8 @@ type CreateResourceShareInput struct {
 	//
 	//   - An ARN of an IAM user, for example: iam::123456789012user/username
 	//
+	//   - A service principal name, for example: service-id.amazonaws.com
+	//
 	// Not all resource types can be shared with IAM roles and users. For more
 	// information, see [Sharing with IAM roles and users]in the Resource Access Manager User Guide.
 	//
@@ -100,8 +103,12 @@ type CreateResourceShareInput struct {
 	// resource share.
 	ResourceArns []string
 
-	// Specifies from which source accounts the service principal has access to the
-	// resources in this resource share.
+	// Specifies source constraints (accounts, ARNs, organization IDs, or organization
+	// paths) that limit when service principals can access resources in this resource
+	// share. When a service principal attempts to access a shared resource, validation
+	// is performed to ensure the request originates from one of the specified sources.
+	// This helps prevent confused deputy attacks by applying constraints on where
+	// service principals can access resources from.
 	Sources []string
 
 	// Specifies one or more tags to attach to the resource share itself. It doesn't
@@ -171,6 +178,9 @@ func (c *Client) addOperationCreateResourceShareMiddlewares(stack *middleware.St
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -187,6 +197,9 @@ func (c *Client) addOperationCreateResourceShareMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateResourceShareValidationMiddleware(stack); err != nil {
@@ -208,6 +221,15 @@ func (c *Client) addOperationCreateResourceShareMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -13,14 +13,18 @@ import (
 
 // Returns drift information for the resources that have been checked for drift in
 // the specified stack. This includes actual and expected configuration values for
-// resources where CloudFormation detects configuration drift. For a given stack,
-// there will be one StackResourceDrift for each stack resource that has been
-// checked for drift. Resources that haven't yet been checked for drift aren't
-// included. Resources that don't currently support drift detection aren't checked,
-// and so not included. For a list of resources that support drift detection, see
-// Resources that Support Drift Detection (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-drift-resource-list.html)
-// . Use DetectStackResourceDrift to detect drift on individual resources, or
-// DetectStackDrift to detect drift on all supported resources for a given stack.
+// resources where CloudFormation detects configuration drift.
+//
+// For a given stack, there will be one StackResourceDrift for each stack resource
+// that has been checked for drift. Resources that haven't yet been checked for
+// drift aren't included. Resources that don't currently support drift detection
+// aren't checked, and so not included. For a list of resources that support drift
+// detection, see [Resource type support for imports and drift detection].
+//
+// Use DetectStackResourceDrift to detect drift on individual resources, or DetectStackDrift to detect drift on all
+// supported resources for a given stack.
+//
+// [Resource type support for imports and drift detection]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resource-import-supported-resources.html
 func (c *Client) DescribeStackResourceDrifts(ctx context.Context, params *DescribeStackResourceDriftsInput, optFns ...func(*Options)) (*DescribeStackResourceDriftsOutput, error) {
 	if params == nil {
 		params = &DescribeStackResourceDriftsInput{}
@@ -49,18 +53,25 @@ type DescribeStackResourceDriftsInput struct {
 	// set of results.
 	MaxResults *int32
 
-	// A string that identifies the next page of stack resource drift results.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	// The resource drift status values to use as filters for the resource drift
 	// results returned.
+	//
 	//   - DELETED : The resource differs from its expected template configuration in
 	//   that the resource has been deleted.
+	//
 	//   - MODIFIED : One or more resource properties differ from their expected
 	//   template values.
+	//
 	//   - IN_SYNC : The resource's actual configuration matches its expected template
 	//   configuration.
+	//
 	//   - NOT_CHECKED : CloudFormation doesn't currently return this value.
+	//
+	//   - UNKNOWN : CloudFormation could not run drift detection for the resource.
 	StackResourceDriftStatusFilters []types.StackResourceDriftStatus
 
 	noSmithyDocumentSerde
@@ -70,13 +81,15 @@ type DescribeStackResourceDriftsOutput struct {
 
 	// Drift information for the resources that have been checked for drift in the
 	// specified stack. This includes actual and expected configuration values for
-	// resources where CloudFormation detects drift. For a given stack, there will be
-	// one StackResourceDrift for each stack resource that has been checked for drift.
-	// Resources that haven't yet been checked for drift aren't included. Resources
-	// that do not currently support drift detection aren't checked, and so not
-	// included. For a list of resources that support drift detection, see Resources
-	// that Support Drift Detection (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-drift-resource-list.html)
-	// .
+	// resources where CloudFormation detects drift.
+	//
+	// For a given stack, there will be one StackResourceDrift for each stack resource
+	// that has been checked for drift. Resources that haven't yet been checked for
+	// drift aren't included. Resources that do not currently support drift detection
+	// aren't checked, and so not included. For a list of resources that support drift
+	// detection, see [Resource type support for imports and drift detection].
+	//
+	// [Resource type support for imports and drift detection]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resource-import-supported-resources.html
 	//
 	// This member is required.
 	StackResourceDrifts []types.StackResourceDrift
@@ -136,6 +149,9 @@ func (c *Client) addOperationDescribeStackResourceDriftsMiddlewares(stack *middl
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -146,6 +162,15 @@ func (c *Client) addOperationDescribeStackResourceDriftsMiddlewares(stack *middl
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeStackResourceDriftsValidationMiddleware(stack); err != nil {
@@ -169,16 +194,17 @@ func (c *Client) addOperationDescribeStackResourceDriftsMiddlewares(stack *middl
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeStackResourceDriftsAPIClient is a client that implements the
-// DescribeStackResourceDrifts operation.
-type DescribeStackResourceDriftsAPIClient interface {
-	DescribeStackResourceDrifts(context.Context, *DescribeStackResourceDriftsInput, ...func(*Options)) (*DescribeStackResourceDriftsOutput, error)
-}
-
-var _ DescribeStackResourceDriftsAPIClient = (*Client)(nil)
 
 // DescribeStackResourceDriftsPaginatorOptions is the paginator options for
 // DescribeStackResourceDrifts
@@ -249,6 +275,9 @@ func (p *DescribeStackResourceDriftsPaginator) NextPage(ctx context.Context, opt
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeStackResourceDrifts(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -267,6 +296,14 @@ func (p *DescribeStackResourceDriftsPaginator) NextPage(ctx context.Context, opt
 
 	return result, nil
 }
+
+// DescribeStackResourceDriftsAPIClient is a client that implements the
+// DescribeStackResourceDrifts operation.
+type DescribeStackResourceDriftsAPIClient interface {
+	DescribeStackResourceDrifts(context.Context, *DescribeStackResourceDriftsInput, ...func(*Options)) (*DescribeStackResourceDriftsOutput, error)
+}
+
+var _ DescribeStackResourceDriftsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeStackResourceDrifts(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

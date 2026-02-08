@@ -15,13 +15,16 @@ import (
 // target root or organizational unit (OU). If you specify the root, you get a list
 // of all the accounts that aren't in any OU. If you specify an OU, you get a list
 // of all the accounts in only that OU and not in any child OUs. To get a list of
-// all accounts in the organization, use the ListAccounts operation. Always check
-// the NextToken response parameter for a null value when calling a List*
-// operation. These operations can occasionally return an empty set of results even
-// when there are more results available. The NextToken response parameter value
-// is null only when there are no more results to display. This operation can be
-// called only from the organization's management account or by a member account
-// that is a delegated administrator for an Amazon Web Services service.
+// all accounts in the organization, use the ListAccountsoperation.
+//
+// When calling List* operations, always check the NextToken response parameter
+// value, even if you receive an empty result set. These operations can
+// occasionally return an empty set of results even when more results are
+// available. Continue making requests until NextToken returns null. A null
+// NextToken value indicates that you have retrieved all available results.
+//
+// You can only call this operation from the management account or a member
+// account that is a delegated administrator.
 func (c *Client) ListAccountsForParent(ctx context.Context, params *ListAccountsForParentInput, optFns ...func(*Options)) (*ListAccountsForParentOutput, error) {
 	if params == nil {
 		params = &ListAccountsForParentInput{}
@@ -45,15 +48,9 @@ type ListAccountsForParentInput struct {
 	// This member is required.
 	ParentId *string
 
-	// The total number of results that you want included on each page of the
-	// response. If you do not include this parameter, it defaults to a value that is
-	// specific to the operation. If additional items exist beyond the maximum you
-	// specify, the NextToken response element is present and has a value (is not
-	// null). Include that value as the NextToken request parameter in the next call
-	// to the operation to get the next part of the results. Note that Organizations
-	// might return fewer results than the maximum even when there are more results
-	// available. You should check NextToken after every operation to ensure that you
-	// receive all of the results.
+	// The maximum number of items to return in the response. If more results exist
+	// than the specified MaxResults value, a token is included in the response so
+	// that you can retrieve the remaining results.
 	MaxResults *int32
 
 	// The parameter for receiving additional results if you receive a NextToken
@@ -68,6 +65,12 @@ type ListAccountsForParentInput struct {
 type ListAccountsForParentOutput struct {
 
 	// A list of the accounts in the specified root or OU.
+	//
+	// The Status parameter in the API response will be retired on September 9, 2026.
+	// Although both the account State and account Status parameters are currently
+	// available in the Organizations APIs ( DescribeAccount , ListAccounts ,
+	// ListAccountsForParent ), we recommend that you update your scripts or other code
+	// to use the State parameter instead of Status before September 9, 2026.
 	Accounts []types.Account
 
 	// If present, indicates that more output is available than is included in the
@@ -125,6 +128,9 @@ func (c *Client) addOperationListAccountsForParentMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -135,6 +141,15 @@ func (c *Client) addOperationListAccountsForParentMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListAccountsForParentValidationMiddleware(stack); err != nil {
@@ -158,29 +173,24 @@ func (c *Client) addOperationListAccountsForParentMiddlewares(stack *middleware.
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListAccountsForParentAPIClient is a client that implements the
-// ListAccountsForParent operation.
-type ListAccountsForParentAPIClient interface {
-	ListAccountsForParent(context.Context, *ListAccountsForParentInput, ...func(*Options)) (*ListAccountsForParentOutput, error)
-}
-
-var _ ListAccountsForParentAPIClient = (*Client)(nil)
 
 // ListAccountsForParentPaginatorOptions is the paginator options for
 // ListAccountsForParent
 type ListAccountsForParentPaginatorOptions struct {
-	// The total number of results that you want included on each page of the
-	// response. If you do not include this parameter, it defaults to a value that is
-	// specific to the operation. If additional items exist beyond the maximum you
-	// specify, the NextToken response element is present and has a value (is not
-	// null). Include that value as the NextToken request parameter in the next call
-	// to the operation to get the next part of the results. Note that Organizations
-	// might return fewer results than the maximum even when there are more results
-	// available. You should check NextToken after every operation to ensure that you
-	// receive all of the results.
+	// The maximum number of items to return in the response. If more results exist
+	// than the specified MaxResults value, a token is included in the response so
+	// that you can retrieve the remaining results.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -241,6 +251,9 @@ func (p *ListAccountsForParentPaginator) NextPage(ctx context.Context, optFns ..
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListAccountsForParent(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -259,6 +272,14 @@ func (p *ListAccountsForParentPaginator) NextPage(ctx context.Context, optFns ..
 
 	return result, nil
 }
+
+// ListAccountsForParentAPIClient is a client that implements the
+// ListAccountsForParent operation.
+type ListAccountsForParentAPIClient interface {
+	ListAccountsForParent(context.Context, *ListAccountsForParentInput, ...func(*Options)) (*ListAccountsForParentOutput, error)
+}
+
+var _ ListAccountsForParentAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListAccountsForParent(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

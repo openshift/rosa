@@ -73,6 +73,36 @@ type AssociatedPermission struct {
 	noSmithyDocumentSerde
 }
 
+// Information about a source association in a resource share. Source associations
+// control which sources can be used with service principals.
+type AssociatedSource struct {
+
+	// The date and time when the source association was created.
+	CreationTime *time.Time
+
+	// The date and time when the source association was last updated.
+	LastUpdatedTime *time.Time
+
+	// The Amazon Resource Name (ARN) of the resource share that contains the source
+	// association.
+	ResourceShareArn *string
+
+	// The identifier of the source. This can be an account ID, Amazon Resource Name
+	// (ARN), organization ID, or organization path.
+	SourceId *string
+
+	// The type of source.
+	SourceType *string
+
+	// The current status of the source association.
+	Status *string
+
+	// A message about the status of the source association.
+	StatusMessage *string
+
+	noSmithyDocumentSerde
+}
+
 // Describes a principal for use with Resource Access Manager.
 type Principal struct {
 
@@ -568,6 +598,8 @@ type Tag struct {
 
 // A tag key and optional list of possible values that you can use to filter
 // results for tagged resources.
+//
+// Multiple tag filters are evaluated as an OR condition.
 type TagFilter struct {
 
 	// The tag key. This must have a valid string value and can't be empty.

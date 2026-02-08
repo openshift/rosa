@@ -36,6 +36,13 @@ type DescribeResourcePoliciesInput struct {
 	// The token for the next set of items to return. The token expires after 24 hours.
 	NextToken *string
 
+	// Specifies the scope of the resource policy. Valid values are ACCOUNT or RESOURCE
+	// . When not specified, defaults to ACCOUNT .
+	PolicyScope types.PolicyScope
+
+	// The ARN of the CloudWatch Logs resource for which to query the resource policy.
+	ResourceArn *string
+
 	noSmithyDocumentSerde
 }
 
@@ -96,6 +103,9 @@ func (c *Client) addOperationDescribeResourcePoliciesMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -106,6 +116,15 @@ func (c *Client) addOperationDescribeResourcePoliciesMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeResourcePolicies(options.Region), middleware.Before); err != nil {
@@ -124,6 +143,15 @@ func (c *Client) addOperationDescribeResourcePoliciesMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -12,6 +12,7 @@ import (
 
 // Cancels an update on the specified stack. If the call completes successfully,
 // the stack rolls back the update and reverts to the previous stack configuration.
+//
 // You can cancel only stacks that are in the UPDATE_IN_PROGRESS state.
 func (c *Client) CancelUpdateStack(ctx context.Context, params *CancelUpdateStackInput, optFns ...func(*Options)) (*CancelUpdateStackOutput, error) {
 	if params == nil {
@@ -32,12 +33,17 @@ func (c *Client) CancelUpdateStack(ctx context.Context, params *CancelUpdateStac
 type CancelUpdateStackInput struct {
 
 	// If you don't pass a parameter to StackName , the API returns a response that
-	// describes all resources in the account. The IAM policy below can be added to IAM
-	// policies when you want to limit resource-level permissions and avoid returning a
-	// response when no parameter is sent in the request: { "Version": "2012-10-17",
-	// "Statement": [{ "Effect": "Deny", "Action": "cloudformation:DescribeStacks",
-	// "NotResource": "arn:aws:cloudformation:*:*:stack/*/*" }] } The name or the
-	// unique stack ID that's associated with the stack.
+	// describes all resources in the account.
+	//
+	// The IAM policy below can be added to IAM policies when you want to limit
+	// resource-level permissions and avoid returning a response when no parameter is
+	// sent in the request:
+	//
+	//     { "Version": "2012-10-17", "Statement": [{ "Effect": "Deny", "Action":
+	//     "cloudformation:DescribeStacks", "NotResource":
+	//     "arn:aws:cloudformation:*:*:stack/*/*" }] }
+	//
+	// The name or the unique stack ID that's associated with the stack.
 	//
 	// This member is required.
 	StackName *string
@@ -102,6 +108,9 @@ func (c *Client) addOperationCancelUpdateStackMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -112,6 +121,15 @@ func (c *Client) addOperationCancelUpdateStackMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCancelUpdateStackValidationMiddleware(stack); err != nil {
@@ -133,6 +151,15 @@ func (c *Client) addOperationCancelUpdateStackMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -13,15 +13,18 @@ import (
 
 // Enables a policy type in a root. After you enable a policy type in a root, you
 // can attach policies of that type to the root, any organizational unit (OU), or
-// account in that root. You can undo this by using the DisablePolicyType
-// operation. This is an asynchronous request that Amazon Web Services performs in
-// the background. Amazon Web Services recommends that you first use ListRoots to
-// see the status of policy types for a specified root, and then use this
-// operation. This operation can be called only from the organization's management
-// account or by a member account that is a delegated administrator for an Amazon
-// Web Services service. You can enable a policy type in a root only if that policy
-// type is available in the organization. To view the status of available policy
-// types in the organization, use DescribeOrganization .
+// account in that root. You can undo this by using the DisablePolicyTypeoperation.
+//
+// This is an asynchronous request that Amazon Web Services performs in the
+// background. Amazon Web Services recommends that you first use ListRootsto see the status
+// of policy types for a specified root, and then use this operation.
+//
+// You can only call this operation from the management account or a member
+// account that is a delegated administrator.
+//
+// You can enable a policy type in a root only if that policy type is available in
+// the organization. To view the status of available policy types in the
+// organization, use ListRoots.
 func (c *Client) EnablePolicyType(ctx context.Context, params *EnablePolicyTypeInput, optFns ...func(*Options)) (*EnablePolicyTypeOutput, error) {
 	if params == nil {
 		params = &EnablePolicyTypeInput{}
@@ -41,18 +44,57 @@ type EnablePolicyTypeInput struct {
 
 	// The policy type that you want to enable. You can specify one of the following
 	// values:
-	//   - AISERVICES_OPT_OUT_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html)
-	//   - BACKUP_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html)
-	//   - SERVICE_CONTROL_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html)
-	//   - TAG_POLICY (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html)
+	//
+	// [SERVICE_CONTROL_POLICY]
+	//
+	// [RESOURCE_CONTROL_POLICY]
+	//
+	// [DECLARATIVE_POLICY_EC2]
+	//
+	// [BACKUP_POLICY]
+	//
+	// [TAG_POLICY]
+	//
+	// [CHATBOT_POLICY]
+	//
+	// [AISERVICES_OPT_OUT_POLICY]
+	//
+	// [SECURITYHUB_POLICY]
+	//
+	// [UPGRADE_ROLLOUT_POLICY]
+	//
+	// [INSPECTOR_POLICY]
+	//
+	// [BEDROCK_POLICY]
+	//
+	// [S3_POLICY]
+	//
+	// [NETWORK_SECURITY_DIRECTOR_POLICY]
+	//
+	// [BEDROCK_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_bedrock.html
+	// [NETWORK_SECURITY_DIRECTOR_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_network_security_director.html
+	// [UPGRADE_ROLLOUT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_upgrade_rollout.html
+	// [BACKUP_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_backup.html
+	// [CHATBOT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_chatbot.html
+	// [TAG_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html
+	// [INSPECTOR_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_inspector.html
+	// [S3_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_s3.html
+	// [RESOURCE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html
+	// [AISERVICES_OPT_OUT_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out.html
+	// [SECURITYHUB_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_security_hub.html
+	// [SERVICE_CONTROL_POLICY]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scp.html
+	// [DECLARATIVE_POLICY_EC2]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html
 	//
 	// This member is required.
 	PolicyType types.PolicyType
 
-	// The unique identifier (ID) of the root in which you want to enable a policy
-	// type. You can get the ID from the ListRoots operation. The regex pattern (http://wikipedia.org/wiki/regex)
-	// for a root ID string requires "r-" followed by from 4 to 32 lowercase letters or
-	// digits.
+	// ID for the root in which you want to enable a policy type. You can get the ID
+	// from the ListRootsoperation.
+	//
+	// The [regex pattern] for a root ID string requires "r-" followed by from 4 to 32 lowercase
+	// letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	RootId *string
@@ -114,6 +156,9 @@ func (c *Client) addOperationEnablePolicyTypeMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -124,6 +169,15 @@ func (c *Client) addOperationEnablePolicyTypeMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpEnablePolicyTypeValidationMiddleware(stack); err != nil {
@@ -145,6 +199,15 @@ func (c *Client) addOperationEnablePolicyTypeMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

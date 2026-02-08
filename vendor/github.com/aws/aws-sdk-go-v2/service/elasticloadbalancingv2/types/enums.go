@@ -11,6 +11,7 @@ const (
 	ActionTypeEnumAuthenticateCognito ActionTypeEnum = "authenticate-cognito"
 	ActionTypeEnumRedirect            ActionTypeEnum = "redirect"
 	ActionTypeEnumFixedResponse       ActionTypeEnum = "fixed-response"
+	ActionTypeEnumJwtValidation       ActionTypeEnum = "jwt-validation"
 )
 
 // Values returns all known values for ActionTypeEnum. Note that this can be
@@ -24,6 +25,27 @@ func (ActionTypeEnum) Values() []ActionTypeEnum {
 		"authenticate-cognito",
 		"redirect",
 		"fixed-response",
+		"jwt-validation",
+	}
+}
+
+type AdvertiseTrustStoreCaNamesEnum string
+
+// Enum values for AdvertiseTrustStoreCaNamesEnum
+const (
+	AdvertiseTrustStoreCaNamesEnumOn  AdvertiseTrustStoreCaNamesEnum = "on"
+	AdvertiseTrustStoreCaNamesEnumOff AdvertiseTrustStoreCaNamesEnum = "off"
+)
+
+// Values returns all known values for AdvertiseTrustStoreCaNamesEnum. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AdvertiseTrustStoreCaNamesEnum) Values() []AdvertiseTrustStoreCaNamesEnum {
+	return []AdvertiseTrustStoreCaNamesEnum{
+		"on",
+		"off",
 	}
 }
 
@@ -90,6 +112,30 @@ func (AuthenticateOidcActionConditionalBehaviorEnum) Values() []AuthenticateOidc
 	}
 }
 
+type CapacityReservationStateEnum string
+
+// Enum values for CapacityReservationStateEnum
+const (
+	CapacityReservationStateEnumProvisioned CapacityReservationStateEnum = "provisioned"
+	CapacityReservationStateEnumPending     CapacityReservationStateEnum = "pending"
+	CapacityReservationStateEnumRebalancing CapacityReservationStateEnum = "rebalancing"
+	CapacityReservationStateEnumFailed      CapacityReservationStateEnum = "failed"
+)
+
+// Values returns all known values for CapacityReservationStateEnum. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (CapacityReservationStateEnum) Values() []CapacityReservationStateEnum {
+	return []CapacityReservationStateEnum{
+		"provisioned",
+		"pending",
+		"rebalancing",
+		"failed",
+	}
+}
+
 type DescribeTargetHealthInputIncludeEnum string
 
 // Enum values for DescribeTargetHealthInputIncludeEnum
@@ -107,6 +153,26 @@ func (DescribeTargetHealthInputIncludeEnum) Values() []DescribeTargetHealthInput
 	return []DescribeTargetHealthInputIncludeEnum{
 		"AnomalyDetection",
 		"All",
+	}
+}
+
+type EnablePrefixForIpv6SourceNatEnum string
+
+// Enum values for EnablePrefixForIpv6SourceNatEnum
+const (
+	EnablePrefixForIpv6SourceNatEnumOn  EnablePrefixForIpv6SourceNatEnum = "on"
+	EnablePrefixForIpv6SourceNatEnumOff EnablePrefixForIpv6SourceNatEnum = "off"
+)
+
+// Values returns all known values for EnablePrefixForIpv6SourceNatEnum. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (EnablePrefixForIpv6SourceNatEnum) Values() []EnablePrefixForIpv6SourceNatEnum {
+	return []EnablePrefixForIpv6SourceNatEnum{
+		"on",
+		"off",
 	}
 }
 
@@ -148,6 +214,28 @@ func (IpAddressType) Values() []IpAddressType {
 		"ipv4",
 		"dualstack",
 		"dualstack-without-public-ipv4",
+	}
+}
+
+type JwtValidationActionAdditionalClaimFormatEnum string
+
+// Enum values for JwtValidationActionAdditionalClaimFormatEnum
+const (
+	JwtValidationActionAdditionalClaimFormatEnumSingleString         JwtValidationActionAdditionalClaimFormatEnum = "single-string"
+	JwtValidationActionAdditionalClaimFormatEnumStringArray          JwtValidationActionAdditionalClaimFormatEnum = "string-array"
+	JwtValidationActionAdditionalClaimFormatEnumSpaceSeparatedValues JwtValidationActionAdditionalClaimFormatEnum = "space-separated-values"
+)
+
+// Values returns all known values for
+// JwtValidationActionAdditionalClaimFormatEnum. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (JwtValidationActionAdditionalClaimFormatEnum) Values() []JwtValidationActionAdditionalClaimFormatEnum {
+	return []JwtValidationActionAdditionalClaimFormatEnum{
+		"single-string",
+		"string-array",
+		"space-separated-values",
 	}
 }
 
@@ -237,13 +325,15 @@ type ProtocolEnum string
 
 // Enum values for ProtocolEnum
 const (
-	ProtocolEnumHttp   ProtocolEnum = "HTTP"
-	ProtocolEnumHttps  ProtocolEnum = "HTTPS"
-	ProtocolEnumTcp    ProtocolEnum = "TCP"
-	ProtocolEnumTls    ProtocolEnum = "TLS"
-	ProtocolEnumUdp    ProtocolEnum = "UDP"
-	ProtocolEnumTcpUdp ProtocolEnum = "TCP_UDP"
-	ProtocolEnumGeneve ProtocolEnum = "GENEVE"
+	ProtocolEnumHttp    ProtocolEnum = "HTTP"
+	ProtocolEnumHttps   ProtocolEnum = "HTTPS"
+	ProtocolEnumTcp     ProtocolEnum = "TCP"
+	ProtocolEnumTls     ProtocolEnum = "TLS"
+	ProtocolEnumUdp     ProtocolEnum = "UDP"
+	ProtocolEnumTcpUdp  ProtocolEnum = "TCP_UDP"
+	ProtocolEnumGeneve  ProtocolEnum = "GENEVE"
+	ProtocolEnumQuic    ProtocolEnum = "QUIC"
+	ProtocolEnumTcpQuic ProtocolEnum = "TCP_QUIC"
 )
 
 // Values returns all known values for ProtocolEnum. Note that this can be
@@ -259,6 +349,8 @@ func (ProtocolEnum) Values() []ProtocolEnum {
 		"UDP",
 		"TCP_UDP",
 		"GENEVE",
+		"QUIC",
+		"TCP_QUIC",
 	}
 }
 
@@ -282,6 +374,23 @@ func (RedirectActionStatusCodeEnum) Values() []RedirectActionStatusCodeEnum {
 	}
 }
 
+type RemoveIpamPoolEnum string
+
+// Enum values for RemoveIpamPoolEnum
+const (
+	RemoveIpamPoolEnumIpv4 RemoveIpamPoolEnum = "ipv4"
+)
+
+// Values returns all known values for RemoveIpamPoolEnum. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (RemoveIpamPoolEnum) Values() []RemoveIpamPoolEnum {
+	return []RemoveIpamPoolEnum{
+		"ipv4",
+	}
+}
+
 type RevocationType string
 
 // Enum values for RevocationType
@@ -296,6 +405,54 @@ const (
 func (RevocationType) Values() []RevocationType {
 	return []RevocationType{
 		"CRL",
+	}
+}
+
+type TargetAdministrativeOverrideReasonEnum string
+
+// Enum values for TargetAdministrativeOverrideReasonEnum
+const (
+	TargetAdministrativeOverrideReasonEnumInternalError            TargetAdministrativeOverrideReasonEnum = "AdministrativeOverride.Unknown"
+	TargetAdministrativeOverrideReasonEnumNoOverrideEngaged        TargetAdministrativeOverrideReasonEnum = "AdministrativeOverride.NoOverride"
+	TargetAdministrativeOverrideReasonEnumZonalShiftEngaged        TargetAdministrativeOverrideReasonEnum = "AdministrativeOverride.ZonalShiftActive"
+	TargetAdministrativeOverrideReasonEnumZonalShiftDelegatedToDns TargetAdministrativeOverrideReasonEnum = "AdministrativeOverride.ZonalShiftDelegatedToDns"
+)
+
+// Values returns all known values for TargetAdministrativeOverrideReasonEnum.
+// Note that this can be expanded in the future, and so it is only as up to date as
+// the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (TargetAdministrativeOverrideReasonEnum) Values() []TargetAdministrativeOverrideReasonEnum {
+	return []TargetAdministrativeOverrideReasonEnum{
+		"AdministrativeOverride.Unknown",
+		"AdministrativeOverride.NoOverride",
+		"AdministrativeOverride.ZonalShiftActive",
+		"AdministrativeOverride.ZonalShiftDelegatedToDns",
+	}
+}
+
+type TargetAdministrativeOverrideStateEnum string
+
+// Enum values for TargetAdministrativeOverrideStateEnum
+const (
+	TargetAdministrativeOverrideStateEnumUnknown                  TargetAdministrativeOverrideStateEnum = "unknown"
+	TargetAdministrativeOverrideStateEnumNoOverride               TargetAdministrativeOverrideStateEnum = "no_override"
+	TargetAdministrativeOverrideStateEnumZonalShiftActive         TargetAdministrativeOverrideStateEnum = "zonal_shift_active"
+	TargetAdministrativeOverrideStateEnumZonalShiftDelegatedToDns TargetAdministrativeOverrideStateEnum = "zonal_shift_delegated_to_dns"
+)
+
+// Values returns all known values for TargetAdministrativeOverrideStateEnum. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (TargetAdministrativeOverrideStateEnum) Values() []TargetAdministrativeOverrideStateEnum {
+	return []TargetAdministrativeOverrideStateEnum{
+		"unknown",
+		"no_override",
+		"zonal_shift_active",
+		"zonal_shift_delegated_to_dns",
 	}
 }
 
@@ -407,6 +564,25 @@ func (TargetTypeEnum) Values() []TargetTypeEnum {
 		"ip",
 		"lambda",
 		"alb",
+	}
+}
+
+type TransformTypeEnum string
+
+// Enum values for TransformTypeEnum
+const (
+	TransformTypeEnumHostHeaderRewrite TransformTypeEnum = "host-header-rewrite"
+	TransformTypeEnumUrlRewrite        TransformTypeEnum = "url-rewrite"
+)
+
+// Values returns all known values for TransformTypeEnum. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (TransformTypeEnum) Values() []TransformTypeEnum {
+	return []TransformTypeEnum{
+		"host-header-rewrite",
+		"url-rewrite",
 	}
 }
 

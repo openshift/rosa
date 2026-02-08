@@ -30,22 +30,32 @@ func (c *Client) SearchTransitGatewayRoutes(ctx context.Context, params *SearchT
 type SearchTransitGatewayRoutesInput struct {
 
 	// One or more filters. The possible values are:
+	//
 	//   - attachment.transit-gateway-attachment-id - The id of the transit gateway
 	//   attachment.
+	//
 	//   - attachment.resource-id - The resource id of the transit gateway attachment.
+	//
 	//   - attachment.resource-type - The attachment resource type. Valid values are
 	//   vpc | vpn | direct-connect-gateway | peering | connect .
+	//
 	//   - prefix-list-id - The ID of the prefix list.
+	//
 	//   - route-search.exact-match - The exact match of the specified filter.
+	//
 	//   - route-search.longest-prefix-match - The longest prefix that matches the
 	//   route.
+	//
 	//   - route-search.subnet-of-match - The routes with a subnet that match the
 	//   specified CIDR filter.
+	//
 	//   - route-search.supernet-of-match - The routes with a CIDR that encompass the
 	//   CIDR filter. For example, if you have 10.0.1.0/29 and 10.0.1.0/31 routes in your
 	//   route table and you specify supernet-of-match as 10.0.1.0/30, then the result
 	//   returns 10.0.1.0/29.
+	//
 	//   - state - The state of the route ( active | blackhole ).
+	//
 	//   - type - The type of route ( propagated | static ).
 	//
 	// This member is required.
@@ -66,6 +76,9 @@ type SearchTransitGatewayRoutesInput struct {
 	// is 1000.
 	MaxResults *int32
 
+	// The token for the next page of results.
+	NextToken *string
+
 	noSmithyDocumentSerde
 }
 
@@ -73,6 +86,10 @@ type SearchTransitGatewayRoutesOutput struct {
 
 	// Indicates whether there are additional routes available.
 	AdditionalRoutesAvailable *bool
+
+	// The token to use to retrieve the next page of results. This value is null when
+	// there are no more results to return.
+	NextToken *string
 
 	// Information about the routes.
 	Routes []types.TransitGatewayRoute
@@ -126,6 +143,9 @@ func (c *Client) addOperationSearchTransitGatewayRoutesMiddlewares(stack *middle
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -136,6 +156,15 @@ func (c *Client) addOperationSearchTransitGatewayRoutesMiddlewares(stack *middle
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpSearchTransitGatewayRoutesValidationMiddleware(stack); err != nil {
@@ -159,8 +188,114 @@ func (c *Client) addOperationSearchTransitGatewayRoutesMiddlewares(stack *middle
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
+
+// SearchTransitGatewayRoutesPaginatorOptions is the paginator options for
+// SearchTransitGatewayRoutes
+type SearchTransitGatewayRoutesPaginatorOptions struct {
+	// The maximum number of routes to return. If a value is not provided, the default
+	// is 1000.
+	Limit int32
+
+	// Set to true if pagination should stop if the service returns a pagination token
+	// that matches the most recent token provided to the service.
+	StopOnDuplicateToken bool
+}
+
+// SearchTransitGatewayRoutesPaginator is a paginator for
+// SearchTransitGatewayRoutes
+type SearchTransitGatewayRoutesPaginator struct {
+	options   SearchTransitGatewayRoutesPaginatorOptions
+	client    SearchTransitGatewayRoutesAPIClient
+	params    *SearchTransitGatewayRoutesInput
+	nextToken *string
+	firstPage bool
+}
+
+// NewSearchTransitGatewayRoutesPaginator returns a new
+// SearchTransitGatewayRoutesPaginator
+func NewSearchTransitGatewayRoutesPaginator(client SearchTransitGatewayRoutesAPIClient, params *SearchTransitGatewayRoutesInput, optFns ...func(*SearchTransitGatewayRoutesPaginatorOptions)) *SearchTransitGatewayRoutesPaginator {
+	if params == nil {
+		params = &SearchTransitGatewayRoutesInput{}
+	}
+
+	options := SearchTransitGatewayRoutesPaginatorOptions{}
+	if params.MaxResults != nil {
+		options.Limit = *params.MaxResults
+	}
+
+	for _, fn := range optFns {
+		fn(&options)
+	}
+
+	return &SearchTransitGatewayRoutesPaginator{
+		options:   options,
+		client:    client,
+		params:    params,
+		firstPage: true,
+		nextToken: params.NextToken,
+	}
+}
+
+// HasMorePages returns a boolean indicating whether more pages are available
+func (p *SearchTransitGatewayRoutesPaginator) HasMorePages() bool {
+	return p.firstPage || (p.nextToken != nil && len(*p.nextToken) != 0)
+}
+
+// NextPage retrieves the next SearchTransitGatewayRoutes page.
+func (p *SearchTransitGatewayRoutesPaginator) NextPage(ctx context.Context, optFns ...func(*Options)) (*SearchTransitGatewayRoutesOutput, error) {
+	if !p.HasMorePages() {
+		return nil, fmt.Errorf("no more pages available")
+	}
+
+	params := *p.params
+	params.NextToken = p.nextToken
+
+	var limit *int32
+	if p.options.Limit > 0 {
+		limit = &p.options.Limit
+	}
+	params.MaxResults = limit
+
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
+	result, err := p.client.SearchTransitGatewayRoutes(ctx, &params, optFns...)
+	if err != nil {
+		return nil, err
+	}
+	p.firstPage = false
+
+	prevToken := p.nextToken
+	p.nextToken = result.NextToken
+
+	if p.options.StopOnDuplicateToken &&
+		prevToken != nil &&
+		p.nextToken != nil &&
+		*prevToken == *p.nextToken {
+		p.nextToken = nil
+	}
+
+	return result, nil
+}
+
+// SearchTransitGatewayRoutesAPIClient is a client that implements the
+// SearchTransitGatewayRoutes operation.
+type SearchTransitGatewayRoutesAPIClient interface {
+	SearchTransitGatewayRoutes(context.Context, *SearchTransitGatewayRoutesInput, ...func(*Options)) (*SearchTransitGatewayRoutesOutput, error)
+}
+
+var _ SearchTransitGatewayRoutesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opSearchTransitGatewayRoutes(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

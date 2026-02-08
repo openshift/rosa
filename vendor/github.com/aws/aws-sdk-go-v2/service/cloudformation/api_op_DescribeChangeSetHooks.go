@@ -11,7 +11,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns hook-related information for the change set and a list of changes that
+// Returns Hook-related information for the change set and a list of changes that
 // CloudFormation makes when you run the change set.
 func (c *Client) DescribeChangeSetHooks(ctx context.Context, params *DescribeChangeSetHooksInput, optFns ...func(*Options)) (*DescribeChangeSetHooksOutput, error) {
 	if params == nil {
@@ -36,11 +36,11 @@ type DescribeChangeSetHooksInput struct {
 	// This member is required.
 	ChangeSetName *string
 
-	// If specified, lists only the hooks related to the specified LogicalResourceId .
+	// If specified, lists only the Hooks related to the specified LogicalResourceId .
 	LogicalResourceId *string
 
-	// A string, provided by the DescribeChangeSetHooks response output, that
-	// identifies the next page of information that you want to retrieve.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	// If you specified the name of a change set, specify the stack name or stack ID
@@ -58,7 +58,7 @@ type DescribeChangeSetHooksOutput struct {
 	// The change set name.
 	ChangeSetName *string
 
-	// List of hook objects.
+	// List of Hook objects.
 	Hooks []types.ChangeSetHook
 
 	// Pagination token, null or empty if no more results.
@@ -70,7 +70,7 @@ type DescribeChangeSetHooksOutput struct {
 	// The stack name.
 	StackName *string
 
-	// Provides the status of the change set hook.
+	// Provides the status of the change set Hook.
 	Status types.ChangeSetHooksStatus
 
 	// Metadata pertaining to the operation's result.
@@ -122,6 +122,9 @@ func (c *Client) addOperationDescribeChangeSetHooksMiddlewares(stack *middleware
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -132,6 +135,15 @@ func (c *Client) addOperationDescribeChangeSetHooksMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeChangeSetHooksValidationMiddleware(stack); err != nil {
@@ -153,6 +165,15 @@ func (c *Client) addOperationDescribeChangeSetHooksMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

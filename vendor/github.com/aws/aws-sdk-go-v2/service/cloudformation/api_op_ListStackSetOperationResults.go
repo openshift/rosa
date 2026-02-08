@@ -11,7 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns summary information about the results of a stack set operation.
+// Returns summary information about the results of a StackSet operation.
+//
+// This API provides eventually consistent reads meaning it may take some time but
+// will eventually return the most up-to-date data.
 func (c *Client) ListStackSetOperationResults(ctx context.Context, params *ListStackSetOperationResultsInput, optFns ...func(*Options)) (*ListStackSetOperationResultsOutput, error) {
 	if params == nil {
 		params = &ListStackSetOperationResultsInput{}
@@ -29,12 +32,12 @@ func (c *Client) ListStackSetOperationResults(ctx context.Context, params *ListS
 
 type ListStackSetOperationResultsInput struct {
 
-	// The ID of the stack set operation.
+	// The ID of the StackSet operation.
 	//
 	// This member is required.
 	OperationId *string
 
-	// The name or unique ID of the stack set that you want to get operation results
+	// The name or unique ID of the StackSet that you want to get operation results
 	// for.
 	//
 	// This member is required.
@@ -42,14 +45,21 @@ type ListStackSetOperationResultsInput struct {
 
 	// [Service-managed permissions] Specifies whether you are acting as an account
 	// administrator in the organization's management account or as a delegated
-	// administrator in a member account. By default, SELF is specified. Use SELF for
-	// stack sets with self-managed permissions.
+	// administrator in a member account.
+	//
+	// By default, SELF is specified. Use SELF for StackSets with self-managed
+	// permissions.
+	//
 	//   - If you are signed in to the management account, specify SELF .
+	//
 	//   - If you are signed in to a delegated administrator account, specify
-	//   DELEGATED_ADMIN . Your Amazon Web Services account must be registered as a
-	//   delegated administrator in the management account. For more information, see
-	//   Register a delegated administrator (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html)
-	//   in the CloudFormation User Guide.
+	//   DELEGATED_ADMIN .
+	//
+	// Your Amazon Web Services account must be registered as a delegated
+	//   administrator in the management account. For more information, see [Register a delegated administrator]in the
+	//   CloudFormation User Guide.
+	//
+	// [Register a delegated administrator]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-delegated-admin.html
 	CallAs types.CallAs
 
 	// The filter to apply to operation results.
@@ -61,11 +71,8 @@ type ListStackSetOperationResultsInput struct {
 	// set of results.
 	MaxResults *int32
 
-	// If the previous request didn't return all the remaining results, the response
-	// object's NextToken parameter value is set to a token. To retrieve the next set
-	// of results, call ListStackSetOperationResults again and assign that token to
-	// the request object's NextToken parameter. If there are no remaining results,
-	// the previous response object's NextToken parameter is set to null .
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -133,6 +140,9 @@ func (c *Client) addOperationListStackSetOperationResultsMiddlewares(stack *midd
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -143,6 +153,15 @@ func (c *Client) addOperationListStackSetOperationResultsMiddlewares(stack *midd
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListStackSetOperationResultsValidationMiddleware(stack); err != nil {
@@ -166,16 +185,17 @@ func (c *Client) addOperationListStackSetOperationResultsMiddlewares(stack *midd
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListStackSetOperationResultsAPIClient is a client that implements the
-// ListStackSetOperationResults operation.
-type ListStackSetOperationResultsAPIClient interface {
-	ListStackSetOperationResults(context.Context, *ListStackSetOperationResultsInput, ...func(*Options)) (*ListStackSetOperationResultsOutput, error)
-}
-
-var _ ListStackSetOperationResultsAPIClient = (*Client)(nil)
 
 // ListStackSetOperationResultsPaginatorOptions is the paginator options for
 // ListStackSetOperationResults
@@ -246,6 +266,9 @@ func (p *ListStackSetOperationResultsPaginator) NextPage(ctx context.Context, op
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListStackSetOperationResults(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -264,6 +287,14 @@ func (p *ListStackSetOperationResultsPaginator) NextPage(ctx context.Context, op
 
 	return result, nil
 }
+
+// ListStackSetOperationResultsAPIClient is a client that implements the
+// ListStackSetOperationResults operation.
+type ListStackSetOperationResultsAPIClient interface {
+	ListStackSetOperationResults(context.Context, *ListStackSetOperationResultsInput, ...func(*Options)) (*ListStackSetOperationResultsOutput, error)
+}
+
+var _ ListStackSetOperationResultsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListStackSetOperationResults(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

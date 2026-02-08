@@ -15,11 +15,16 @@ import (
 // container for accounts that enables you to organize your accounts to apply
 // policies according to your business requirements. The number of levels deep that
 // you can nest OUs is dependent upon the policy types enabled for that root. For
-// service control policies, the limit is five. For more information about OUs, see
-// Managing organizational units (OUs) (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_ous.html)
-// in the Organizations User Guide. If the request includes tags, then the
-// requester must have the organizations:TagResource permission. This operation
-// can be called only from the organization's management account.
+// service control policies, the limit is five.
+//
+// For more information about OUs, see [Managing organizational units (OUs)] in the Organizations User Guide.
+//
+// If the request includes tags, then the requester must have the
+// organizations:TagResource permission.
+//
+// You can only call this operation from the management account.
+//
+// [Managing organizational units (OUs)]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_ous.html
 func (c *Client) CreateOrganizationalUnit(ctx context.Context, params *CreateOrganizationalUnitInput, optFns ...func(*Options)) (*CreateOrganizationalUnitOutput, error) {
 	if params == nil {
 		params = &CreateOrganizationalUnitInput{}
@@ -42,15 +47,19 @@ type CreateOrganizationalUnitInput struct {
 	// This member is required.
 	Name *string
 
-	// The unique identifier (ID) of the parent root or OU that you want to create the
-	// new OU in. The regex pattern (http://wikipedia.org/wiki/regex) for a parent ID
-	// string requires one of the following:
+	// ID for the parent root or OU that you want to create the new OU in.
+	//
+	// The [regex pattern] for a parent ID string requires one of the following:
+	//
 	//   - Root - A string that begins with "r-" followed by from 4 to 32 lowercase
 	//   letters or digits.
+	//
 	//   - Organizational unit (OU) - A string that begins with "ou-" followed by from
 	//   4 to 32 lowercase letters or digits (the ID of the root that the OU is in). This
 	//   string is followed by a second "-" dash and from 8 to 32 additional lowercase
 	//   letters or digits.
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	ParentId *string
@@ -58,10 +67,12 @@ type CreateOrganizationalUnitInput struct {
 	// A list of tags that you want to attach to the newly created OU. For each tag in
 	// the list, you must specify both a tag key and a value. You can set the value to
 	// an empty string, but you can't set it to null . For more information about
-	// tagging, see Tagging Organizations resources (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tagging.html)
-	// in the Organizations User Guide. If any one of the tags is not valid or if you
-	// exceed the allowed number of tags for an OU, then the entire request fails and
-	// the OU is not created.
+	// tagging, see [Tagging Organizations resources]in the Organizations User Guide.
+	//
+	// If any one of the tags is not valid or if you exceed the allowed number of tags
+	// for an OU, then the entire request fails and the OU is not created.
+	//
+	// [Tagging Organizations resources]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tagging.html
 	Tags []types.Tag
 
 	noSmithyDocumentSerde
@@ -121,6 +132,9 @@ func (c *Client) addOperationCreateOrganizationalUnitMiddlewares(stack *middlewa
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -131,6 +145,15 @@ func (c *Client) addOperationCreateOrganizationalUnitMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateOrganizationalUnitValidationMiddleware(stack); err != nil {
@@ -152,6 +175,15 @@ func (c *Client) addOperationCreateOrganizationalUnitMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

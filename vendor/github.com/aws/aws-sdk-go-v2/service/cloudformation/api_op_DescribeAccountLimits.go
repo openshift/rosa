@@ -13,8 +13,9 @@ import (
 
 // Retrieves your account's CloudFormation limits, such as the maximum number of
 // stacks that you can create in your account. For more information about account
-// limits, see CloudFormation Quotas (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html)
-// in the CloudFormation User Guide.
+// limits, see [Understand CloudFormation quotas]in the CloudFormation User Guide.
+//
+// [Understand CloudFormation quotas]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
 func (c *Client) DescribeAccountLimits(ctx context.Context, params *DescribeAccountLimitsInput, optFns ...func(*Options)) (*DescribeAccountLimitsOutput, error) {
 	if params == nil {
 		params = &DescribeAccountLimitsInput{}
@@ -33,7 +34,8 @@ func (c *Client) DescribeAccountLimits(ctx context.Context, params *DescribeAcco
 // The input for the DescribeAccountLimits action.
 type DescribeAccountLimitsInput struct {
 
-	// A string that identifies the next page of limits that you want to retrieve.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -99,6 +101,9 @@ func (c *Client) addOperationDescribeAccountLimitsMiddlewares(stack *middleware.
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -109,6 +114,15 @@ func (c *Client) addOperationDescribeAccountLimitsMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeAccountLimits(options.Region), middleware.Before); err != nil {
@@ -129,16 +143,17 @@ func (c *Client) addOperationDescribeAccountLimitsMiddlewares(stack *middleware.
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeAccountLimitsAPIClient is a client that implements the
-// DescribeAccountLimits operation.
-type DescribeAccountLimitsAPIClient interface {
-	DescribeAccountLimits(context.Context, *DescribeAccountLimitsInput, ...func(*Options)) (*DescribeAccountLimitsOutput, error)
-}
-
-var _ DescribeAccountLimitsAPIClient = (*Client)(nil)
 
 // DescribeAccountLimitsPaginatorOptions is the paginator options for
 // DescribeAccountLimits
@@ -192,6 +207,9 @@ func (p *DescribeAccountLimitsPaginator) NextPage(ctx context.Context, optFns ..
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeAccountLimits(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -210,6 +228,14 @@ func (p *DescribeAccountLimitsPaginator) NextPage(ctx context.Context, optFns ..
 
 	return result, nil
 }
+
+// DescribeAccountLimitsAPIClient is a client that implements the
+// DescribeAccountLimits operation.
+type DescribeAccountLimitsAPIClient interface {
+	DescribeAccountLimits(context.Context, *DescribeAccountLimitsInput, ...func(*Options)) (*DescribeAccountLimitsOutput, error)
+}
+
+var _ DescribeAccountLimitsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeAccountLimits(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

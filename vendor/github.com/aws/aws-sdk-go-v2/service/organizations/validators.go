@@ -370,6 +370,26 @@ func (m *validateOpDescribePolicy) HandleInitialize(ctx context.Context, in midd
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDescribeResponsibilityTransfer struct {
+}
+
+func (*validateOpDescribeResponsibilityTransfer) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDescribeResponsibilityTransfer) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DescribeResponsibilityTransferInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDescribeResponsibilityTransferInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDetachPolicy struct {
 }
 
@@ -490,6 +510,26 @@ func (m *validateOpInviteAccountToOrganization) HandleInitialize(ctx context.Con
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpInviteOrganizationToTransferResponsibility struct {
+}
+
+func (*validateOpInviteOrganizationToTransferResponsibility) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpInviteOrganizationToTransferResponsibility) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*InviteOrganizationToTransferResponsibilityInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpInviteOrganizationToTransferResponsibilityInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpListAccountsForParent struct {
 }
 
@@ -505,6 +545,26 @@ func (m *validateOpListAccountsForParent) HandleInitialize(ctx context.Context, 
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpListAccountsForParentInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpListAccountsWithInvalidEffectivePolicy struct {
+}
+
+func (*validateOpListAccountsWithInvalidEffectivePolicy) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListAccountsWithInvalidEffectivePolicy) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListAccountsWithInvalidEffectivePolicyInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListAccountsWithInvalidEffectivePolicyInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -550,6 +610,46 @@ func (m *validateOpListDelegatedServicesForAccount) HandleInitialize(ctx context
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpListEffectivePolicyValidationErrors struct {
+}
+
+func (*validateOpListEffectivePolicyValidationErrors) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListEffectivePolicyValidationErrors) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListEffectivePolicyValidationErrorsInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListEffectivePolicyValidationErrorsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpListInboundResponsibilityTransfers struct {
+}
+
+func (*validateOpListInboundResponsibilityTransfers) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListInboundResponsibilityTransfers) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListInboundResponsibilityTransfersInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListInboundResponsibilityTransfersInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpListOrganizationalUnitsForParent struct {
 }
 
@@ -565,6 +665,26 @@ func (m *validateOpListOrganizationalUnitsForParent) HandleInitialize(ctx contex
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpListOrganizationalUnitsForParentInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpListOutboundResponsibilityTransfers struct {
+}
+
+func (*validateOpListOutboundResponsibilityTransfers) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListOutboundResponsibilityTransfers) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListOutboundResponsibilityTransfersInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListOutboundResponsibilityTransfersInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -770,6 +890,26 @@ func (m *validateOpTagResource) HandleInitialize(ctx context.Context, in middlew
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpTerminateResponsibilityTransfer struct {
+}
+
+func (*validateOpTerminateResponsibilityTransfer) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpTerminateResponsibilityTransfer) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*TerminateResponsibilityTransferInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpTerminateResponsibilityTransferInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpUntagResource struct {
 }
 
@@ -825,6 +965,26 @@ func (m *validateOpUpdatePolicy) HandleInitialize(ctx context.Context, in middle
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpUpdatePolicyInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpUpdateResponsibilityTransfer struct {
+}
+
+func (*validateOpUpdateResponsibilityTransfer) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpUpdateResponsibilityTransfer) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*UpdateResponsibilityTransferInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpUpdateResponsibilityTransferInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -902,6 +1062,10 @@ func addOpDescribePolicyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDescribePolicy{}, middleware.After)
 }
 
+func addOpDescribeResponsibilityTransferValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDescribeResponsibilityTransfer{}, middleware.After)
+}
+
 func addOpDetachPolicyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDetachPolicy{}, middleware.After)
 }
@@ -926,8 +1090,16 @@ func addOpInviteAccountToOrganizationValidationMiddleware(stack *middleware.Stac
 	return stack.Initialize.Add(&validateOpInviteAccountToOrganization{}, middleware.After)
 }
 
+func addOpInviteOrganizationToTransferResponsibilityValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpInviteOrganizationToTransferResponsibility{}, middleware.After)
+}
+
 func addOpListAccountsForParentValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListAccountsForParent{}, middleware.After)
+}
+
+func addOpListAccountsWithInvalidEffectivePolicyValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListAccountsWithInvalidEffectivePolicy{}, middleware.After)
 }
 
 func addOpListChildrenValidationMiddleware(stack *middleware.Stack) error {
@@ -938,8 +1110,20 @@ func addOpListDelegatedServicesForAccountValidationMiddleware(stack *middleware.
 	return stack.Initialize.Add(&validateOpListDelegatedServicesForAccount{}, middleware.After)
 }
 
+func addOpListEffectivePolicyValidationErrorsValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListEffectivePolicyValidationErrors{}, middleware.After)
+}
+
+func addOpListInboundResponsibilityTransfersValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListInboundResponsibilityTransfers{}, middleware.After)
+}
+
 func addOpListOrganizationalUnitsForParentValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListOrganizationalUnitsForParent{}, middleware.After)
+}
+
+func addOpListOutboundResponsibilityTransfersValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListOutboundResponsibilityTransfers{}, middleware.After)
 }
 
 func addOpListParentsValidationMiddleware(stack *middleware.Stack) error {
@@ -982,6 +1166,10 @@ func addOpTagResourceValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpTagResource{}, middleware.After)
 }
 
+func addOpTerminateResponsibilityTransferValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpTerminateResponsibilityTransfer{}, middleware.After)
+}
+
 func addOpUntagResourceValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpUntagResource{}, middleware.After)
 }
@@ -992,6 +1180,10 @@ func addOpUpdateOrganizationalUnitValidationMiddleware(stack *middleware.Stack) 
 
 func addOpUpdatePolicyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpUpdatePolicy{}, middleware.After)
+}
+
+func addOpUpdateResponsibilityTransferValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpUpdateResponsibilityTransfer{}, middleware.After)
 }
 
 func validateHandshakeParty(v *types.HandshakeParty) error {
@@ -1361,6 +1553,21 @@ func validateOpDescribePolicyInput(v *DescribePolicyInput) error {
 	}
 }
 
+func validateOpDescribeResponsibilityTransferInput(v *DescribeResponsibilityTransferInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DescribeResponsibilityTransferInput"}
+	if v.Id == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Id"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpDetachPolicyInput(v *DetachPolicyInput) error {
 	if v == nil {
 		return nil
@@ -1469,6 +1676,39 @@ func validateOpInviteAccountToOrganizationInput(v *InviteAccountToOrganizationIn
 	}
 }
 
+func validateOpInviteOrganizationToTransferResponsibilityInput(v *InviteOrganizationToTransferResponsibilityInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "InviteOrganizationToTransferResponsibilityInput"}
+	if len(v.Type) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Type"))
+	}
+	if v.Target == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Target"))
+	} else if v.Target != nil {
+		if err := validateHandshakeParty(v.Target); err != nil {
+			invalidParams.AddNested("Target", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.StartTimestamp == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("StartTimestamp"))
+	}
+	if v.SourceName == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SourceName"))
+	}
+	if v.Tags != nil {
+		if err := validateTags(v.Tags); err != nil {
+			invalidParams.AddNested("Tags", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpListAccountsForParentInput(v *ListAccountsForParentInput) error {
 	if v == nil {
 		return nil
@@ -1476,6 +1716,21 @@ func validateOpListAccountsForParentInput(v *ListAccountsForParentInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "ListAccountsForParentInput"}
 	if v.ParentId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("ParentId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpListAccountsWithInvalidEffectivePolicyInput(v *ListAccountsWithInvalidEffectivePolicyInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListAccountsWithInvalidEffectivePolicyInput"}
+	if len(v.PolicyType) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("PolicyType"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1517,6 +1772,39 @@ func validateOpListDelegatedServicesForAccountInput(v *ListDelegatedServicesForA
 	}
 }
 
+func validateOpListEffectivePolicyValidationErrorsInput(v *ListEffectivePolicyValidationErrorsInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListEffectivePolicyValidationErrorsInput"}
+	if v.AccountId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("AccountId"))
+	}
+	if len(v.PolicyType) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("PolicyType"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpListInboundResponsibilityTransfersInput(v *ListInboundResponsibilityTransfersInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListInboundResponsibilityTransfersInput"}
+	if len(v.Type) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Type"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpListOrganizationalUnitsForParentInput(v *ListOrganizationalUnitsForParentInput) error {
 	if v == nil {
 		return nil
@@ -1524,6 +1812,21 @@ func validateOpListOrganizationalUnitsForParentInput(v *ListOrganizationalUnitsF
 	invalidParams := smithy.InvalidParamsError{Context: "ListOrganizationalUnitsForParentInput"}
 	if v.ParentId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("ParentId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpListOutboundResponsibilityTransfersInput(v *ListOutboundResponsibilityTransfersInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListOutboundResponsibilityTransfersInput"}
+	if len(v.Type) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Type"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1706,6 +2009,21 @@ func validateOpTagResourceInput(v *TagResourceInput) error {
 	}
 }
 
+func validateOpTerminateResponsibilityTransferInput(v *TerminateResponsibilityTransferInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "TerminateResponsibilityTransferInput"}
+	if v.Id == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Id"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpUntagResourceInput(v *UntagResourceInput) error {
 	if v == nil {
 		return nil
@@ -1746,6 +2064,24 @@ func validateOpUpdatePolicyInput(v *UpdatePolicyInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "UpdatePolicyInput"}
 	if v.PolicyId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("PolicyId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpUpdateResponsibilityTransferInput(v *UpdateResponsibilityTransferInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "UpdateResponsibilityTransferInput"}
+	if v.Id == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Id"))
+	}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

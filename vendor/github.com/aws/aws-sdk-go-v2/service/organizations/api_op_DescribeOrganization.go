@@ -11,11 +11,13 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Retrieves information about the organization that the user's account belongs
-// to. This operation can be called from any account in the organization. Even if a
-// policy type is shown as available in the organization, you can disable it
-// separately at the root level with DisablePolicyType . Use ListRoots to see the
-// status of policy types for a specified root.
+// Retrieves information about the organization that the user's account belongs to.
+//
+// You can call this operation from any account in a organization.
+//
+// Even if a policy type is shown as available in the organization, you can
+// disable it separately at the root level with DisablePolicyType. Use ListRoots to see the status of policy
+// types for a specified root.
 func (c *Client) DescribeOrganization(ctx context.Context, params *DescribeOrganizationInput, optFns ...func(*Options)) (*DescribeOrganizationOutput, error) {
 	if params == nil {
 		params = &DescribeOrganizationInput{}
@@ -37,11 +39,13 @@ type DescribeOrganizationInput struct {
 
 type DescribeOrganizationOutput struct {
 
-	// A structure that contains information about the organization. The
-	// AvailablePolicyTypes part of the response is deprecated, and you shouldn't use
-	// it in your apps. It doesn't include any policy type supported by Organizations
-	// other than SCPs. To determine which policy types are enabled in your
-	// organization, use the ListRoots operation.
+	// A structure that contains information about the organization.
+	//
+	// The AvailablePolicyTypes part of the response is deprecated, and you shouldn't
+	// use it in your apps. It doesn't include any policy type supported by
+	// Organizations other than SCPs. In the China (Ningxia) Region, no policy type is
+	// included. To determine which policy types are enabled in your organization, use
+	// the ListRootsoperation.
 	Organization *types.Organization
 
 	// Metadata pertaining to the operation's result.
@@ -93,6 +97,9 @@ func (c *Client) addOperationDescribeOrganizationMiddlewares(stack *middleware.S
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -103,6 +110,15 @@ func (c *Client) addOperationDescribeOrganizationMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeOrganization(options.Region), middleware.Before); err != nil {
@@ -121,6 +137,15 @@ func (c *Client) addOperationDescribeOrganizationMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

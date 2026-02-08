@@ -13,16 +13,16 @@ import (
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
-	"github.com/jmespath/go-jmespath"
 	"time"
 )
 
 // Returns the description for the specified stack; if no stack name was
 // specified, then it returns the description for all the stacks created. For more
-// information about a stack's event history, see CloudFormation stack creation
-// events (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stack-resource-configuration-complete.html)
-// in the CloudFormation User Guide. If the stack doesn't exist, a ValidationError
-// is returned.
+// information about a stack's event history, see [Understand CloudFormation stack creation events]in the CloudFormation User Guide.
+//
+// If the stack doesn't exist, a ValidationError is returned.
+//
+// [Understand CloudFormation stack creation events]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stack-resource-configuration-complete.html
 func (c *Client) DescribeStacks(ctx context.Context, params *DescribeStacksInput, optFns ...func(*Options)) (*DescribeStacksOutput, error) {
 	if params == nil {
 		params = &DescribeStacksInput{}
@@ -41,23 +41,31 @@ func (c *Client) DescribeStacks(ctx context.Context, params *DescribeStacksInput
 // The input for DescribeStacks action.
 type DescribeStacksInput struct {
 
-	// A string that identifies the next page of stacks that you want to retrieve.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
 
 	// If you don't pass a parameter to StackName , the API returns a response that
 	// describes all resources in the account, which can impact performance. This
-	// requires ListStacks and DescribeStacks permissions. Consider using the
-	// ListStacks API if you're not passing a parameter to StackName . The IAM policy
-	// below can be added to IAM policies when you want to limit resource-level
-	// permissions and avoid returning a response when no parameter is sent in the
-	// request: { "Version": "2012-10-17", "Statement": [{ "Effect": "Deny", "Action":
+	// requires ListStacks and DescribeStacks permissions.
+	//
+	// Consider using the ListStacks API if you're not passing a parameter to StackName .
+	//
+	// The IAM policy below can be added to IAM policies when you want to limit
+	// resource-level permissions and avoid returning a response when no parameter is
+	// sent in the request:
+	//
+	// { "Version": "2012-10-17", "Statement": [{ "Effect": "Deny", "Action":
 	// "cloudformation:DescribeStacks", "NotResource":
-	// "arn:aws:cloudformation:*:*:stack/*/*" }] } The name or the unique stack ID
-	// that's associated with the stack, which aren't always interchangeable:
+	// "arn:aws:cloudformation:*:*:stack/*/*" }] }
+	//
+	// The name or the unique stack ID that's associated with the stack, which aren't
+	// always interchangeable:
+	//
 	//   - Running stacks: You can specify either the stack's name or its unique stack
 	//   ID.
+	//
 	//   - Deleted stacks: You must specify the unique stack ID.
-	// Default: There is no default value.
 	StackName *string
 
 	noSmithyDocumentSerde
@@ -122,6 +130,9 @@ func (c *Client) addOperationDescribeStacksMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -132,6 +143,15 @@ func (c *Client) addOperationDescribeStacksMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeStacks(options.Region), middleware.Before); err != nil {
@@ -152,85 +172,16 @@ func (c *Client) addOperationDescribeStacksMiddlewares(stack *middleware.Stack, 
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
-}
-
-// DescribeStacksAPIClient is a client that implements the DescribeStacks
-// operation.
-type DescribeStacksAPIClient interface {
-	DescribeStacks(context.Context, *DescribeStacksInput, ...func(*Options)) (*DescribeStacksOutput, error)
-}
-
-var _ DescribeStacksAPIClient = (*Client)(nil)
-
-// DescribeStacksPaginatorOptions is the paginator options for DescribeStacks
-type DescribeStacksPaginatorOptions struct {
-	// Set to true if pagination should stop if the service returns a pagination token
-	// that matches the most recent token provided to the service.
-	StopOnDuplicateToken bool
-}
-
-// DescribeStacksPaginator is a paginator for DescribeStacks
-type DescribeStacksPaginator struct {
-	options   DescribeStacksPaginatorOptions
-	client    DescribeStacksAPIClient
-	params    *DescribeStacksInput
-	nextToken *string
-	firstPage bool
-}
-
-// NewDescribeStacksPaginator returns a new DescribeStacksPaginator
-func NewDescribeStacksPaginator(client DescribeStacksAPIClient, params *DescribeStacksInput, optFns ...func(*DescribeStacksPaginatorOptions)) *DescribeStacksPaginator {
-	if params == nil {
-		params = &DescribeStacksInput{}
-	}
-
-	options := DescribeStacksPaginatorOptions{}
-
-	for _, fn := range optFns {
-		fn(&options)
-	}
-
-	return &DescribeStacksPaginator{
-		options:   options,
-		client:    client,
-		params:    params,
-		firstPage: true,
-		nextToken: params.NextToken,
-	}
-}
-
-// HasMorePages returns a boolean indicating whether more pages are available
-func (p *DescribeStacksPaginator) HasMorePages() bool {
-	return p.firstPage || (p.nextToken != nil && len(*p.nextToken) != 0)
-}
-
-// NextPage retrieves the next DescribeStacks page.
-func (p *DescribeStacksPaginator) NextPage(ctx context.Context, optFns ...func(*Options)) (*DescribeStacksOutput, error) {
-	if !p.HasMorePages() {
-		return nil, fmt.Errorf("no more pages available")
-	}
-
-	params := *p.params
-	params.NextToken = p.nextToken
-
-	result, err := p.client.DescribeStacks(ctx, &params, optFns...)
-	if err != nil {
-		return nil, err
-	}
-	p.firstPage = false
-
-	prevToken := p.nextToken
-	p.nextToken = result.NextToken
-
-	if p.options.StopOnDuplicateToken &&
-		prevToken != nil &&
-		p.nextToken != nil &&
-		*prevToken == *p.nextToken {
-		p.nextToken = nil
-	}
-
-	return result, nil
 }
 
 // StackCreateCompleteWaiterOptions are waiter options for
@@ -267,12 +218,13 @@ type StackCreateCompleteWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeStacksInput, *DescribeStacksOutput, error) (bool, error)
 }
 
@@ -349,7 +301,13 @@ func (w *StackCreateCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 		}
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -388,29 +346,18 @@ func (w *StackCreateCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStacksInput, output *DescribeStacksOutput, err error) (bool, error) {
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "CREATE_COMPLETE"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -420,29 +367,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_COMPLETE"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -452,29 +388,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_IN_PROGRESS"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -484,29 +409,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -516,29 +430,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_FAILED"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -548,29 +451,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_IN_PROGRESS"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -580,29 +472,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_FAILED"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -612,29 +493,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -644,29 +514,18 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_COMPLETE"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -676,122 +535,107 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "CREATE_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "DELETE_COMPLETE"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "DELETE_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "ROLLBACK_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "ROLLBACK_COMPLETE"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
@@ -807,6 +651,9 @@ func stackCreateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -844,12 +691,13 @@ type StackDeleteCompleteWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeStacksInput, *DescribeStacksOutput, error) (bool, error)
 }
 
@@ -926,7 +774,13 @@ func (w *StackDeleteCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 		}
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -965,29 +819,18 @@ func (w *StackDeleteCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 func stackDeleteCompleteStateRetryable(ctx context.Context, input *DescribeStacksInput, output *DescribeStacksOutput, err error) (bool, error) {
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "DELETE_COMPLETE"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -1009,173 +852,155 @@ func stackDeleteCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "DELETE_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "CREATE_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "ROLLBACK_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_IN_PROGRESS"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_COMPLETE"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_COMPLETE"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -1211,12 +1036,13 @@ type StackExistsWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeStacksInput, *DescribeStacksOutput, error) (bool, error)
 }
 
@@ -1292,7 +1118,13 @@ func (w *StackExistsWaiter) WaitForOutput(ctx context.Context, params *DescribeS
 		}
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -1346,6 +1178,9 @@ func stackExistsStateRetryable(ctx context.Context, input *DescribeStacksInput, 
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -1383,12 +1218,13 @@ type StackImportCompleteWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeStacksInput, *DescribeStacksOutput, error) (bool, error)
 }
 
@@ -1465,7 +1301,13 @@ func (w *StackImportCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 		}
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -1504,29 +1346,18 @@ func (w *StackImportCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 func stackImportCompleteStateRetryable(ctx context.Context, input *DescribeStacksInput, output *DescribeStacksOutput, err error) (bool, error) {
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "IMPORT_COMPLETE"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -1536,122 +1367,107 @@ func stackImportCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "ROLLBACK_COMPLETE"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "ROLLBACK_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "IMPORT_ROLLBACK_IN_PROGRESS"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "IMPORT_ROLLBACK_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "IMPORT_ROLLBACK_COMPLETE"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
@@ -1667,6 +1483,9 @@ func stackImportCompleteStateRetryable(ctx context.Context, input *DescribeStack
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -1704,12 +1523,13 @@ type StackRollbackCompleteWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeStacksInput, *DescribeStacksOutput, error) (bool, error)
 }
 
@@ -1786,7 +1606,13 @@ func (w *StackRollbackCompleteWaiter) WaitForOutput(ctx context.Context, params 
 		}
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -1825,29 +1651,18 @@ func (w *StackRollbackCompleteWaiter) WaitForOutput(ctx context.Context, params 
 func stackRollbackCompleteStateRetryable(ctx context.Context, input *DescribeStacksInput, output *DescribeStacksOutput, err error) (bool, error) {
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_COMPLETE"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -1857,74 +1672,65 @@ func stackRollbackCompleteStateRetryable(ctx context.Context, input *DescribeSta
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "DELETE_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
@@ -1940,6 +1746,9 @@ func stackRollbackCompleteStateRetryable(ctx context.Context, input *DescribeSta
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -1977,12 +1786,13 @@ type StackUpdateCompleteWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeStacksInput, *DescribeStacksOutput, error) (bool, error)
 }
 
@@ -2059,7 +1869,13 @@ func (w *StackUpdateCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 		}
 
 		out, err := w.client.DescribeStacks(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -2098,29 +1914,18 @@ func (w *StackUpdateCompleteWaiter) WaitForOutput(ctx context.Context, params *D
 func stackUpdateCompleteStateRetryable(ctx context.Context, input *DescribeStacksInput, output *DescribeStacksOutput, err error) (bool, error) {
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_COMPLETE"
-		var match = true
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
-		}
-
-		if len(listOfValues) == 0 {
-			match = false
-		}
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) != expectedValue {
+		match := len(v2) > 0
+		for _, v := range v2 {
+			if string(v) != expectedValue {
 				match = false
+				break
 			}
 		}
 
@@ -2130,74 +1935,65 @@ func stackUpdateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_FAILED"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Stacks[].StackStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Stacks
+		var v2 []types.StackStatus
+		for _, v := range v1 {
+			v3 := v.StackStatus
+			v2 = append(v2, v3)
 		}
-
 		expectedValue := "UPDATE_ROLLBACK_COMPLETE"
-		listOfValues, ok := pathValue.([]interface{})
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected list got %T", pathValue)
+		var match bool
+		for _, v := range v2 {
+			if string(v) == expectedValue {
+				match = true
+				break
+			}
 		}
 
-		for _, v := range listOfValues {
-			value, ok := v.(types.StackStatus)
-			if !ok {
-				return false, fmt.Errorf("waiter comparator expected types.StackStatus value, got %T", pathValue)
-			}
-
-			if string(value) == expectedValue {
-				return false, fmt.Errorf("waiter state transitioned to Failure")
-			}
+		if match {
+			return false, fmt.Errorf("waiter state transitioned to Failure")
 		}
 	}
 
@@ -2213,8 +2009,92 @@ func stackUpdateCompleteStateRetryable(ctx context.Context, input *DescribeStack
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
+
+// DescribeStacksPaginatorOptions is the paginator options for DescribeStacks
+type DescribeStacksPaginatorOptions struct {
+	// Set to true if pagination should stop if the service returns a pagination token
+	// that matches the most recent token provided to the service.
+	StopOnDuplicateToken bool
+}
+
+// DescribeStacksPaginator is a paginator for DescribeStacks
+type DescribeStacksPaginator struct {
+	options   DescribeStacksPaginatorOptions
+	client    DescribeStacksAPIClient
+	params    *DescribeStacksInput
+	nextToken *string
+	firstPage bool
+}
+
+// NewDescribeStacksPaginator returns a new DescribeStacksPaginator
+func NewDescribeStacksPaginator(client DescribeStacksAPIClient, params *DescribeStacksInput, optFns ...func(*DescribeStacksPaginatorOptions)) *DescribeStacksPaginator {
+	if params == nil {
+		params = &DescribeStacksInput{}
+	}
+
+	options := DescribeStacksPaginatorOptions{}
+
+	for _, fn := range optFns {
+		fn(&options)
+	}
+
+	return &DescribeStacksPaginator{
+		options:   options,
+		client:    client,
+		params:    params,
+		firstPage: true,
+		nextToken: params.NextToken,
+	}
+}
+
+// HasMorePages returns a boolean indicating whether more pages are available
+func (p *DescribeStacksPaginator) HasMorePages() bool {
+	return p.firstPage || (p.nextToken != nil && len(*p.nextToken) != 0)
+}
+
+// NextPage retrieves the next DescribeStacks page.
+func (p *DescribeStacksPaginator) NextPage(ctx context.Context, optFns ...func(*Options)) (*DescribeStacksOutput, error) {
+	if !p.HasMorePages() {
+		return nil, fmt.Errorf("no more pages available")
+	}
+
+	params := *p.params
+	params.NextToken = p.nextToken
+
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
+	result, err := p.client.DescribeStacks(ctx, &params, optFns...)
+	if err != nil {
+		return nil, err
+	}
+	p.firstPage = false
+
+	prevToken := p.nextToken
+	p.nextToken = result.NextToken
+
+	if p.options.StopOnDuplicateToken &&
+		prevToken != nil &&
+		p.nextToken != nil &&
+		*prevToken == *p.nextToken {
+		p.nextToken = nil
+	}
+
+	return result, nil
+}
+
+// DescribeStacksAPIClient is a client that implements the DescribeStacks
+// operation.
+type DescribeStacksAPIClient interface {
+	DescribeStacks(context.Context, *DescribeStacksInput, ...func(*Options)) (*DescribeStacksOutput, error)
+}
+
+var _ DescribeStacksAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeStacks(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
