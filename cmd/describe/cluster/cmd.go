@@ -1053,12 +1053,14 @@ func getRolePolicyBindings(roleARN string, rolePolicyDetails map[string][]aws.Po
 func getZeroEgressStatus(cluster *cmv1.Cluster) (string, error) {
 	zeroEgressOutput := DisabledOutput
 	zeroEgressPropVal, exists := cluster.Properties()["zero_egress"]
-	boolZeroEgressPropVal, err := strconv.ParseBool(zeroEgressPropVal)
-	if err != nil {
-		return "", err
-	}
-	if exists && boolZeroEgressPropVal {
-		zeroEgressOutput = EnabledOutput
+	if exists {
+		boolZeroEgressPropVal, err := strconv.ParseBool(zeroEgressPropVal)
+		if err != nil {
+			return "", err
+		}
+		if boolZeroEgressPropVal {
+			zeroEgressOutput = EnabledOutput
+		}
 	}
 	str := fmt.Sprintf("Zero Egress:                %s\n", zeroEgressOutput)
 	return str, nil
