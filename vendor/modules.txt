@@ -553,7 +553,7 @@ github.com/spf13/pflag
 ## explicit; go 1.18
 github.com/zalando/go-keyring
 github.com/zalando/go-keyring/secret_service
-# github.com/zgalor/weberr v0.6.0
+# github.com/zgalor/weberr v0.9.0
 ## explicit
 github.com/zgalor/weberr
 # gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a
