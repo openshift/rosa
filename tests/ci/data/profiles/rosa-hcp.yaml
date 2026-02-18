@@ -22,7 +22,7 @@ profiles:
     zones: ""
     tag_enabled: true
     etcd_kms: true
-    fips: false
+    fips: true
     oidc_config: "managed"
     auditlog_forward: true
     admin_enabled: false
