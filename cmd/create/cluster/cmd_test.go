@@ -80,6 +80,31 @@ var _ = Describe("Validate build command", func() {
 			})
 		})
 
+		When("--fips is true", func() {
+			It("prints --fips", func() {
+				clusterConfig.FIPS = true
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
+						" --fips"))
+			})
+		})
+
+		When("--fips is true and --etcd-encryption is true without kms arn", func() {
+			It("prints --fips but not --etcd-encryption", func() {
+				clusterConfig.FIPS = true
+				clusterConfig.EtcdEncryption = true
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
+						" --fips"))
+			})
+		})
+
 		When("--properties is not present", func() {
 			It("should not include --properties", func() {
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
