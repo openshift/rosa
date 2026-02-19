@@ -163,6 +163,10 @@ class Cluster {
 	// Link to the version of _OpenShift_ that will be used to install the cluster.
 	link Version Version
 
+	// Channel is the Y-stream update channel for the cluster (e.g., "stable-4.16", "eus-4.16").
+	// This field allows specifying the update channel independently from the version.
+	Channel String
+
 	// Link to the collection of identity providers of the cluster.
 	link IdentityProviders []IdentityProvider
 

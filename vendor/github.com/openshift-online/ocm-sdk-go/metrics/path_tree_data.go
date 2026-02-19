@@ -364,6 +364,9 @@ var pathTreeData = `{
             "vpc": null
           }
         },
+        "deleted_clusters": {
+          "-": null
+        },
         "dns_domains": {
           "-": null
         },

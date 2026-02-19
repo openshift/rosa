@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.489
+- Update model to 0.0.443
+  - Add `Channel` field to `Cluster` type for Y-stream update channel management
+
+## 0.1.488
+- Update model to 0.0.442
+  - Add DeletedClusters new resource to list deleted clusters and get a deleted cluster by its id
+
+## 0.1.487
+- Add `cloud_provider` field to CS `dns_domains` type
+
 ## 0.1.486
 - Align log forwarding config endpoints with API
 
