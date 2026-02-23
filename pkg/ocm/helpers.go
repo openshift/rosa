@@ -864,41 +864,6 @@ func (c *Client) CheckUpgradeClusterVersion(
 	return nil
 }
 
-func (c *Client) GetPolicyVersion(userRequestedVersion string, channelGroup string) (string, error) {
-	if userRequestedVersion == "" {
-		version, err := c.GetLatestVersion(channelGroup)
-		if err != nil {
-			return userRequestedVersion, err
-		}
-		return version, nil
-	}
-
-	versionList, err := c.GetVersionsList(channelGroup, false)
-	if err != nil {
-		err := fmt.Errorf("%v", err)
-		return userRequestedVersion, err
-	}
-
-	hasVersion := false
-	for _, vs := range versionList {
-		if vs == userRequestedVersion {
-			hasVersion = true
-			break
-		}
-	}
-
-	if !hasVersion {
-		versionSet := helper.SliceToMap(versionList)
-		err := errors.Errorf(
-			"A valid policy version number must be specified\nValid versions: %v",
-			helper.MapKeysToString(versionSet),
-		)
-		return userRequestedVersion, err
-	}
-
-	return userRequestedVersion, nil
-}
-
 func ParseVersion(version string) (string, error) {
 	parsedVersion, err := semver.NewVersion(version)
 	if err != nil {
@@ -906,32 +871,6 @@ func ParseVersion(version string) (string, error) {
 	}
 	versionSplit := parsedVersion.Segments64()
 	return fmt.Sprintf("%d.%d", versionSplit[0], versionSplit[1]), nil
-}
-
-func (c *Client) GetVersionsList(channelGroup string, defaultFirst bool) ([]string, error) {
-	response, err := c.GetVersions(channelGroup, defaultFirst)
-	if err != nil {
-		err := fmt.Errorf("error getting versions: %s", err)
-		return make([]string, 0), err
-	}
-	versionList := make([]string, 0)
-	for _, v := range response {
-		if !HasSTSSupport(v.RawID(), v.ChannelGroup()) {
-			continue
-		}
-		parsedVersion, err := ParseVersion(v.RawID())
-		if err != nil {
-			err = fmt.Errorf("error parsing version")
-			return versionList, err
-		}
-		versionList = append(versionList, parsedVersion)
-	}
-
-	if len(versionList) == 0 {
-		err = fmt.Errorf("could not find versions for the provided channel-group: '%s'", channelGroup)
-		return versionList, err
-	}
-	return versionList, nil
 }
 
 func ValidateOperatorRolesMatchOidcProvider(reporter reporter.Logger, awsClient aws.Client,

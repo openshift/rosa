@@ -594,9 +594,14 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		// NodePool will take channel group from the cluster
 		channelGroup := cluster.Version().ChannelGroup()
 		clusterVersion := cluster.Version().RawID()
+		channel := cluster.Channel()
+		channelInfo, err := ocm.BuildChannelInfo(channel, channelGroup)
+		if err != nil {
+			return err
+		}
 		// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
 		// so we pass the relative parameter as false
-		_, versionList, err := versions.GetVersionList(r, channelGroup, true, true, false, false)
+		_, versionList, err := versions.GetVersionList(r, channelInfo, true, true, false, false)
 		if err != nil {
 			return err
 		}

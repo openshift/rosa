@@ -109,7 +109,7 @@ var _ = Describe("Get version list", func() {
 				),
 			)
 
-			vs, err := ocmClient.GetVersionsWithProduct("", DefaultChannelGroup, true)
+			vs, err := ocmClient.GetVersionsWithProduct("", NewMockChannelInfo("", DefaultChannelGroup), true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(vs)).To(Equal(1))
 		})

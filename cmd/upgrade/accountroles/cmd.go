@@ -43,6 +43,7 @@ var args struct {
 	prefix       string
 	version      string
 	channelGroup string
+	channel      string
 	hostedCP     bool
 }
 
@@ -81,10 +82,18 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		ocm.DefaultChannelGroup,
+		"",
 		"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"fast\".",
 	)
 	flags.MarkHidden("channel-group")
+
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"Channel is the name of the channel where this image belongs, for example \"stable-4.18\" or \"fast-4.20\".",
+	)
+	flags.MarkHidden("channel")
 
 	flags.BoolVar(
 		&args.hostedCP,
@@ -115,7 +124,13 @@ func run(cmd *cobra.Command, _ []string) {
 	version := args.version
 	isVersionChosen := version != ""
 	channelGroup := args.channelGroup
-	policyVersion, err := ocmClient.GetPolicyVersion(version, channelGroup)
+	channel := args.channel
+	channelInfo, err := ocm.BuildChannelInfo(channel, channelGroup)
+	if err != nil {
+		r.Reporter.Errorf("Invalid channel + channel_group: %s", err)
+		os.Exit(1)
+	}
+	policyVersion, err := ocmClient.GetPolicyVersion(version, channelInfo)
 	if err != nil {
 		reporter.Errorf("Error getting version: %s", err)
 		os.Exit(1)

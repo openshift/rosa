@@ -33,6 +33,7 @@ import (
 
 var args struct {
 	channelGroup string
+	channel      string
 	hostedCp     bool
 }
 
@@ -53,8 +54,14 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		ocm.DefaultChannelGroup,
+		"",
 		"List only versions from the specified channel group",
+	)
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"List only versions present in the specified channel",
 	)
 	flags.BoolVar(
 		&args.hostedCp,
@@ -75,7 +82,12 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Try to find the cluster:
 	r.Reporter.Debugf("Fetching versions")
-	versions, err := r.OCMClient.GetVersionsWithProduct(product, args.channelGroup, false)
+	channelInfo, err := ocm.BuildChannelInfo(args.channel, args.channelGroup)
+	if err != nil {
+		r.Reporter.Errorf("Channel group '%s' is incompatible with channel '%s'", args.channelGroup, args.channel)
+		os.Exit(1)
+	}
+	versions, err := r.OCMClient.GetVersionsWithProduct(product, channelInfo, false)
 	if err != nil {
 		r.Reporter.Errorf("Failed to fetch versions: %v", err)
 		os.Exit(1)

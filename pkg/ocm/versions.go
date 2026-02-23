@@ -64,19 +64,19 @@ func (c *Client) ManagedServiceVersionInquiry(serviceType string) (string, error
 	return versionInquiryResponse.Body().Version(), nil
 }
 
-func (c *Client) GetVersions(channelGroup string, defaultFirst bool) (versions []*cmv1.Version, err error) {
-	return c.GetVersionsWithProduct("", channelGroup, defaultFirst)
+func (c *Client) GetVersions(channelInfo ChannelInfo, defaultFirst bool) (versions []*cmv1.Version, err error) {
+	return c.GetVersionsWithProduct("", channelInfo, defaultFirst)
 }
 
-func (c *Client) GetVersionsWithProduct(product string, channelGroup string,
+func (c *Client) GetVersionsWithProduct(product string, channelInfo ChannelInfo,
 	defaultFirst bool) (versions []*cmv1.Version, err error) {
 	collection := c.ocm.ClustersMgmt().V1().Versions()
 	page := 1
 	size := 100
 	filter := "enabled = 'true' AND rosa_enabled = 'true'"
 	order := "default desc, id desc"
-	if channelGroup != "" {
-		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
+	if channelInfo.ChannelGroup() != "" {
+		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelInfo.ChannelGroup())
 	}
 	for {
 		var response *cmv1.VersionsListResponse
@@ -87,6 +87,9 @@ func (c *Client) GetVersionsWithProduct(product string, channelGroup string,
 			Size(size)
 		if product != "" {
 			request.Parameter("product", product)
+		}
+		if channel := channelInfo.Channel(); channel != "" {
+			request.Parameter("channel", channel)
 		}
 		response, err = request.Send()
 		if err != nil {
@@ -248,9 +251,13 @@ func GetRawVersionId(versionId string) string {
 
 // Get a list of all STS-supported minor versions
 func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
-	vs, err := ocmClient.GetVersions("", false)
+	channelInfo, err := BuildChannelInfo("", "")
 	if err != nil {
-		err = fmt.Errorf("Failed to retrieve versions: %s", err)
+		return nil, fmt.Errorf("failed to build channel information for listing all minor versions: %w", err)
+	}
+	vs, err := ocmClient.GetVersions(channelInfo, false)
+	if err != nil {
+		err = fmt.Errorf("failed to retrieve versions: %s", err)
 		return
 	}
 
@@ -277,12 +284,12 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 	return
 }
 
-func (c *Client) GetLatestVersion(channelGroup string) (version string, err error) {
-	return c.getFirstVersion(channelGroup, false)
+func (c *Client) GetLatestVersion(channelInfo ChannelInfo) (version string, err error) {
+	return c.getFirstVersion(channelInfo, false)
 }
 
-func (c *Client) getFirstVersion(channelGroup string, defaultFirst bool) (version string, err error) {
-	response, err := c.GetVersions(channelGroup, defaultFirst)
+func (c *Client) getFirstVersion(channelInfo ChannelInfo, defaultFirst bool) (version string, err error) {
+	response, err := c.GetVersions(channelInfo, defaultFirst)
 	if err != nil {
 		return "", err
 	}
@@ -297,7 +304,7 @@ func (c *Client) getFirstVersion(channelGroup string, defaultFirst bool) (versio
 		}
 
 	}
-	return "", fmt.Errorf("There are no OpenShift versions available")
+	return "", fmt.Errorf("there are no OpenShift versions available")
 }
 
 func IsValidVersion(userRequestedVersion string, supportedVersion string, clusterVersion string) (bool, error) {
@@ -436,7 +443,7 @@ func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channe
 		ocmVersion.EndOfLifeTimestamp().Compare(
 			now.Add(time.Duration(daysAwayToCheck)*OneDayHourDuration*time.Hour)) <= 0 {
 		return fmt.Errorf(
-			"The version of Red Hat OpenShift Service on AWS that you are installing will no longer be supported after '%s'."+
+			"the version of Red Hat OpenShift Service on AWS that you are installing will no longer be supported after '%s'."+
 				" Red Hat recommends selecting a newer version. For more information,"+
 				" see https://docs.openshift.com/rosa/rosa_policy/rosa-life-cycle.html",
 			ocmVersion.EndOfLifeTimestamp().Format(time.DateOnly),
@@ -460,16 +467,16 @@ func (c *Client) ValidateVersion(version string, versionList []string, channelGr
 	}
 	if !hasVersion {
 		allVersions := strings.Join(versionList, " ")
-		err := fmt.Errorf("A valid version number must be specified\nValid versions: %s", allVersions)
+		err := fmt.Errorf("a valid version number must be specified\nValid versions: %s", allVersions)
 		return version, err
 	}
 
 	if isSTS && !HasSTSSupport(version, channelGroup) {
-		err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
+		err := fmt.Errorf("version '%s' is not supported for STS clusters", version)
 		return version, err
 	}
 	if !HasSTSSupportMinor(version) {
-		err := fmt.Errorf("Version '%s' is not supported for STS clusters", version)
+		err := fmt.Errorf("version '%s' is not supported for STS clusters", version)
 		return version, err
 	}
 

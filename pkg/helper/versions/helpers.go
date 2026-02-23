@@ -16,7 +16,7 @@ const (
 	MajorMinorPatchFormattedErrorOutput = "an error occurred formatting the version for output: %v"
 )
 
-func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP bool, filterHostedCP bool,
+func GetVersionList(r *rosa.Runtime, channelInfo ocm.ChannelInfo, isSTS bool, isHostedCP bool, filterHostedCP bool,
 	defaultFirst bool) (defaultVersion string, versionList []string, err error) {
 	var vs []*v1.Version
 	var product string
@@ -24,7 +24,7 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 		product = ocm.HcpProduct
 	}
 	// Product can be empty. In this case, no filter will be applied
-	vs, err = r.OCMClient.GetVersionsWithProduct(product, channelGroup, defaultFirst)
+	vs, err = r.OCMClient.GetVersionsWithProduct(product, channelInfo, defaultFirst)
 	if err != nil {
 		err = fmt.Errorf("failed to retrieve versions: %s", err)
 		return
@@ -37,7 +37,7 @@ func GetVersionList(r *rosa.Runtime, channelGroup string, isSTS bool, isHostedCP
 	}
 
 	if len(versionList) == 0 {
-		err = fmt.Errorf("could not find versions for the provided channel-group: '%s'", channelGroup)
+		err = fmt.Errorf("could not find versions for the provided channel-group: '%s'", channelInfo)
 		return
 	}
 

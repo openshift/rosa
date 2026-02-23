@@ -23,6 +23,7 @@
 - name: network-type
 - name: ovn-internal-subnets
 - name: channel-group
+- name: channel
 - name: interactive
 - name: profile
 - name: region

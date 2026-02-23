@@ -83,6 +83,7 @@ var args struct {
 
 	// Added for EUS region support
 	channelGroup string
+	channel      string
 }
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
@@ -236,6 +237,14 @@ func init() {
 		"",
 		"Changes the channel group used for cluster versions. "+
 			"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"eus\".",
+	)
+
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"Changes the channel used for cluster versions. "+
+			"Channel is the name of the channel where this image belongs, for example \"stable-4.18\" or \"eus-4.20\".",
 	)
 }
 
@@ -953,8 +962,16 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.BillingAccount = billingAccount
 	}
 
-	if args.channelGroup != "" {
-		clusterConfig.ChannelGroup = args.channelGroup
+	channelInfo, err := ocm.BuildChannelInfo(args.channel, args.channelGroup)
+	if err != nil {
+		r.Reporter.Errorf("Invalid channel configuration in cluster edit: %s", err)
+		os.Exit(1)
+	}
+	if group := channelInfo.SpecifiedChannelGroup(); group != "" {
+		clusterConfig.ChannelGroup = group
+	}
+	if channel := channelInfo.Channel(); channel != "" {
+		clusterConfig.Channel = channel
 	}
 
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)

@@ -133,6 +133,7 @@ var args struct {
 	region                    string
 	version                   string
 	channelGroup              string
+	channel                   string
 	flavour                   string
 	disableWorkloadMonitoring bool
 	ec2MetadataHttpTokens     string
@@ -450,8 +451,14 @@ func initFlags(cmd *cobra.Command) {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		ocm.DefaultChannelGroup,
+		"",
 		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
+	)
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"Channel is the version channel to which the cluster subscribes, i.e. \"stable-4.20\" or \"eus-4.18\"",
 	)
 
 	flags.StringVar(
@@ -1388,7 +1395,26 @@ func run(cmd *cobra.Command, _ []string) {
 	// OpenShift version:
 	version := args.version
 	channelGroup := args.channelGroup
-	defaultVersion, versionList, err := versions.GetVersionList(r, channelGroup, isSTS, isHostedCP, isHostedCP, true)
+	channel := args.channel
+
+	if interactive.Enabled() {
+		channel, err = interactive.GetString(interactive.Input{
+			Question: "Openshift Channel",
+			Help:     cmd.Flags().Lookup("channel").Usage,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Failed to retrieve openshift channel: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	channelInfo, err := ocm.BuildChannelInfo(channel, channelGroup)
+	if err != nil {
+		r.Reporter.Errorf("Invalid channel configuration: %s", err)
+		os.Exit(1)
+	}
+
+	defaultVersion, versionList, err := versions.GetVersionList(r, channelInfo, isSTS, isHostedCP, isHostedCP, true)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
@@ -1409,7 +1435,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 	}
-	version, err = r.OCMClient.ValidateVersion(version, versionList, channelGroup, isSTS, isHostedCP)
+	version, err = r.OCMClient.ValidateVersion(version, versionList, channelInfo.ChannelGroup(), isSTS, isHostedCP)
 	if err != nil {
 		r.Reporter.Errorf("Expected a valid OpenShift version: %s", err)
 		os.Exit(1)
@@ -3393,7 +3419,8 @@ func run(cmd *cobra.Command, _ []string) {
 		Region:                       region,
 		MultiAZ:                      multiAZ,
 		Version:                      version,
-		ChannelGroup:                 channelGroup,
+		ChannelGroup:                 channelInfo.SpecifiedChannelGroup(),
+		Channel:                      channelInfo.Channel(),
 		Flavour:                      args.flavour,
 		FIPS:                         fips,
 		EtcdEncryption:               etcdEncryption,

@@ -26,9 +26,11 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/deprecation"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/sirupsen/logrus"
+	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/fedramp"
+	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
@@ -88,11 +90,11 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 		// Load the configuration file:
 		b.cfg, err = config.Load()
 		if err != nil {
-			err = fmt.Errorf("Failed to load config file: %v", err)
+			err = fmt.Errorf("failed to load config file: %v", err)
 			return nil, err
 		}
 		if b.cfg == nil {
-			err = fmt.Errorf("Not logged in, run the 'rosa login' command")
+			err = fmt.Errorf("not logged in, run the 'rosa login' command")
 			return nil, err
 		}
 	}
@@ -197,12 +199,12 @@ func (c *Client) GetConnectionTokens(expiresIn ...time.Duration) (string, string
 
 func (c *Client) KeepTokensAlive() error {
 	if c.ocm == nil {
-		return fmt.Errorf("Connection is nil")
+		return fmt.Errorf("connection is nil")
 	}
 
 	accessToken, refreshToken, err := c.GetConnectionTokens(10 * time.Minute)
 	if err != nil {
-		return fmt.Errorf("Can't get new tokens: %v", err)
+		return fmt.Errorf("can't get new tokens: %v", err)
 	}
 
 	err = config.PersistTokens(nil, accessToken, refreshToken)
@@ -212,4 +214,65 @@ func (c *Client) KeepTokensAlive() error {
 	}
 
 	return nil
+}
+
+func (c *Client) GetPolicyVersion(userRequestedVersion string, channelInfo ChannelInfo) (string, error) {
+	if userRequestedVersion == "" {
+		version, err := c.GetLatestVersion(channelInfo)
+		if err != nil {
+			return userRequestedVersion, err
+		}
+		return version, nil
+	}
+
+	versionList, err := c.GetVersionsList(channelInfo, false)
+	if err != nil {
+		err := fmt.Errorf("%v", err)
+		return userRequestedVersion, err
+	}
+
+	hasVersion := false
+	for _, vs := range versionList {
+		if vs == userRequestedVersion {
+			hasVersion = true
+			break
+		}
+	}
+
+	if !hasVersion {
+		versionSet := helper.SliceToMap(versionList)
+		err := errors.Errorf(
+			"A valid policy version number must be specified\nValid versions: %v",
+			helper.MapKeysToString(versionSet),
+		)
+		return userRequestedVersion, err
+	}
+
+	return userRequestedVersion, nil
+}
+
+func (c *Client) GetVersionsList(channelInfo ChannelInfo, defaultFirst bool) ([]string, error) {
+	response, err := c.GetVersions(channelInfo, defaultFirst)
+	if err != nil {
+		err := fmt.Errorf("error getting versions: %s", err)
+		return make([]string, 0), err
+	}
+	versionList := make([]string, 0)
+	for _, v := range response {
+		if !HasSTSSupport(v.RawID(), v.ChannelGroup()) {
+			continue
+		}
+		parsedVersion, err := ParseVersion(v.RawID())
+		if err != nil {
+			err = fmt.Errorf("error parsing version")
+			return versionList, err
+		}
+		versionList = append(versionList, parsedVersion)
+	}
+
+	if len(versionList) == 0 {
+		err = fmt.Errorf("could not find versions for the provided channel-group: '%s'", channelInfo)
+		return versionList, err
+	}
+	return versionList, nil
 }

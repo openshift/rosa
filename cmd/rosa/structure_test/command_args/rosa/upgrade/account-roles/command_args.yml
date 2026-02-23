@@ -1,4 +1,5 @@
 - name: channel-group
+- name: channel
 - name: hosted-cp
 - name: interactive
 - name: mode

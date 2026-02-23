@@ -10,6 +10,7 @@ import (
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -185,7 +186,7 @@ var _ = Describe("GetVersionList", func() {
 	It("Expects no version found", func() {
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			test.FormatVersionList([]*v1.Version{})))
-		_, vs, err := GetVersionList(testRuntime.RosaRuntime, "stable",
+		_, vs, err := GetVersionList(testRuntime.RosaRuntime, ocm.NewMockChannelInfo("", "stable"),
 			true, true, true, false)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("could not find versions for the provided channel-group"))
@@ -196,7 +197,7 @@ var _ = Describe("GetVersionList", func() {
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			test.FormatVersionList([]*v1.Version{versionHCPDefault})))
 		defaultVersion, vs, err := GetVersionList(testRuntime.RosaRuntime,
-			"stable", true, true, false, false)
+			ocm.NewMockChannelInfo("", "stable"), true, true, false, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(vs)).To(Equal(1))
 		Expect(defaultVersion).To(Equal("openshift-4.14.1"))
@@ -206,7 +207,7 @@ var _ = Describe("GetVersionList", func() {
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 			test.FormatVersionList([]*v1.Version{versionHCPDefault, versionHCPClassicDefault})))
 		defaultVersion, vs, err := GetVersionList(testRuntime.RosaRuntime,
-			"stable", true, true, false, false)
+			ocm.NewMockChannelInfo("", "stable"), true, true, false, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(vs)).To(Equal(2))
 		Expect(defaultVersion).To(Equal("openshift-4.14.1"))

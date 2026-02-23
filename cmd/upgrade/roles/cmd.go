@@ -49,6 +49,7 @@ var args struct {
 	clusterUpgradeVersion       string
 	policyUpgradeversion        string
 	channelGroup                string
+	channel                     string
 }
 
 var Cmd = &cobra.Command{
@@ -96,10 +97,18 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		channelGroupFlag,
-		ocm.DefaultChannelGroup,
+		"",
 		"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"fast\".",
 	)
 	flags.MarkHidden(channelGroupFlag)
+
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"Channel is the name of the channel where this image belongs, for example \"stable-4.18\" or \"fast-4.20\".",
+	)
+	flags.MarkHidden("channel")
 
 	confirm.AddFlag(flags)
 	interactive.AddFlag(flags)
@@ -196,7 +205,13 @@ func run(cmd *cobra.Command, argv []string) {
 	policyVersion := args.policyUpgradeversion
 	isPolicyVersionChosen := policyVersion != ""
 	channelGroup := args.channelGroup
-	policyVersion, err = ocmClient.GetPolicyVersion(policyVersion, channelGroup)
+	channel := args.channel
+	channelInfo, err := ocm.BuildChannelInfo(channel, channelGroup)
+	if err != nil {
+		r.Reporter.Errorf("Invalid channel + channel_group: %s", err)
+		os.Exit(1)
+	}
+	policyVersion, err = ocmClient.GetPolicyVersion(policyVersion, channelInfo)
 	if err != nil {
 		reporter.Errorf("Error getting version: %s", err)
 		os.Exit(1)

@@ -50,6 +50,7 @@ var args struct {
 	oidcConfigId        string
 	sharedVpcRoleArn    string
 	channelGroup        string
+	channel             string
 	vpcEndpointRoleArn  string
 }
 
@@ -129,10 +130,18 @@ func init() {
 	flags.StringVar(
 		&args.channelGroup,
 		"channel-group",
-		ocm.DefaultChannelGroup,
+		"",
 		"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"fast\".",
 	)
 	flags.MarkHidden("channel-group")
+
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"Channel is the name of the channel where this image belongs, for example \"stable-4.18\" or \"fast-4.20\".",
+	)
+	flags.MarkHidden("channel")
 
 	flags.StringVar(
 		&args.vpcEndpointRoleArn,
@@ -366,7 +375,13 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		channelGroup := args.channelGroup
-		latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelGroup)
+		channel := args.channel
+		channelInfo, err := ocm.BuildChannelInfo(channel, channelGroup)
+		if err != nil {
+			r.Reporter.Errorf("Invalid channel + channel_group: %s", err)
+			os.Exit(1)
+		}
+		latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelInfo)
 		if err != nil {
 			r.Reporter.Errorf("Error getting latest version: %s", err)
 			os.Exit(1)
@@ -379,7 +394,13 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		return
 	}
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
+	channelInfo, err := ocm.BuildChannelInfo(cluster.Channel(), cluster.Version().ChannelGroup())
+	if err != nil {
+		r.Reporter.Errorf("Channel group '%s' is incompatible with channel '%s'",
+			cluster.Channel(), cluster.Version().ChannelGroup())
+		os.Exit(1)
+	}
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelInfo)
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)

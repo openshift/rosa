@@ -78,7 +78,13 @@ func run(cmd *cobra.Command, _ []string) {
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
 
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
+	channelInfo, err := ocm.BuildChannelInfo(cluster.Channel(), cluster.Version().ChannelGroup())
+	if err != nil {
+		r.Reporter.Errorf("Channel group '%s' is incompatible with channel '%s'",
+			cluster.Channel(), cluster.Version().ChannelGroup())
+		os.Exit(1)
+	}
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelInfo)
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)

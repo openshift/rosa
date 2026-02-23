@@ -86,14 +86,14 @@ var _ = Describe("OCM Client", Ordered, func() {
 			ocmClient = NewClientWithConnection(connection)
 			err = ocmClient.KeepTokensAlive()
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Can't get new tokens"))
+			Expect(err.Error()).To(ContainSubstring("can't get new tokens"))
 		})
 
 		It("Fails without a valid connection", func() {
 			ocmClient = NewClientWithConnection(nil)
 			err = ocmClient.KeepTokensAlive()
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Connection is nil"))
+			Expect(err.Error()).To(ContainSubstring("connection is nil"))
 		})
 
 		It("Persists updated tokens", func() {

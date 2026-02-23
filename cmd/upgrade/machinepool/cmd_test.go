@@ -17,7 +17,7 @@ const (
 	invalidScheduleDate = "25h December"
 	validScheduleDate   = "2023-12-25"
 	cronSchedule        = "* * * * *"
-	invalidVersionError = `Expected a valid machine pool version: A valid version number must be specified
+	invalidVersionError = `Expected a valid machine pool version: a valid version number must be specified
 Valid versions: 4.12.26 4.12.25`
 )
 
