@@ -21,7 +21,7 @@ require (
 	github.com/briandowns/spinner v1.11.1
 	github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
 	github.com/dustin/go-humanize v1.0.0
-	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/glog v1.2.5
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
