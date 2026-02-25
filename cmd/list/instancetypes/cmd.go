@@ -60,6 +60,7 @@ var args struct {
 	installerRoleArn     string
 	externalId           string
 	hostedClusterEnabled bool
+	withFeatures         []string
 }
 
 const (
@@ -83,6 +84,14 @@ func initFlags(cmd *cobra.Command) {
 		"An optional unique identifier that might be required when you assume a role in another account.",
 	)
 
+	flags.StringSliceVar(
+		&args.withFeatures,
+		"with-feature",
+		nil,
+		`Filter instance types by enabled features (e.g., '--with-feature win_li'). Can be specified multiple times.
+		Run 'rosa list instancetypes -ojson | "jq .[0].features | keys"' for a full list of instance type features.`,
+	)
+
 	// normalizing installer role argument to support deprecated flag
 	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
@@ -93,6 +102,7 @@ func initFlags(cmd *cobra.Command) {
 	)
 
 	arguments.AddRegionFlag(flags)
+	cmd.MarkFlagsMutuallyExclusive("with-feature", "region")
 	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
 }
@@ -138,19 +148,27 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			return err
 		}
 		if found := helper.Contains(regionList, arguments.GetRegion()); !found {
-			return fmt.Errorf("Region '%s' not found.", arguments.GetRegion())
+			return fmt.Errorf("region '%s' not found", arguments.GetRegion())
 		}
 
 		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypesInRegion(arguments.GetRegion(),
 			availabilityZones, roleArn, r.AWSClient, args.externalId)
 		if err != nil {
-			return fmt.Errorf("Failed to fetch instance types: %v", err)
+			return fmt.Errorf("failed to fetch instance types: %v", err)
 		}
 		machineTypes = availableMachineTypes
 	} else {
-		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypes()
+		filters := make(ocm.FeatureFilters, 0, len(args.withFeatures))
+		for _, feat := range args.withFeatures {
+			filter, err := ocm.ParseFeatureFilter(feat)
+			if err != nil {
+				return fmt.Errorf("failed to parse --with-feature: %w", err)
+			}
+			filters = append(filters, filter)
+		}
+		availableMachineTypes, err := r.OCMClient.GetAvailableMachineTypes(filters)
 		if err != nil {
-			return fmt.Errorf("Failed to fetch instance types: %v", err)
+			return fmt.Errorf("failed to fetch instance types: %v", err)
 		}
 		machineTypes = availableMachineTypes
 	}
@@ -169,7 +187,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	if len(machineTypes.Items) == 0 {
-		return fmt.Errorf("There are no machine types supported for your account. Contact Red Hat support.")
+		return fmt.Errorf("there are no machine types supported for your account. Contact Red Hat support")
 	}
 
 	// Create the writer that will be used to print the tabulated results:
