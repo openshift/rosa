@@ -83,29 +83,34 @@ var args struct {
 
 	// Added for EUS region support
 	channelGroup string
+	channel      string
 }
 
 var clusterRegistryConfigArgs *clusterregistryconfig.ClusterRegistryConfigArgs
 
-var Cmd = &cobra.Command{
-	Use:   "cluster",
-	Short: "Edit cluster",
-	Long:  "Edit cluster.",
-	Example: `  # Edit a cluster named "mycluster" to make it private
+var Cmd = makeCmd()
+
+func makeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "cluster",
+		Short: "Edit cluster",
+		Long:  "Edit cluster.",
+		Example: `  # Edit a cluster named "mycluster" to make it private
   rosa edit cluster -c mycluster --private
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
-	Run:  run,
-	Args: cobra.NoArgs,
+		Run:  run,
+		Args: cobra.NoArgs,
+	}
 }
 
-func init() {
-	flags := Cmd.Flags()
+func initFlags(cmd *cobra.Command) {
+	flags := cmd.Flags()
 	flags.SortFlags = false
 
-	ocm.AddClusterFlag(Cmd)
-	confirm.AddFlag(Cmd.Flags())
+	ocm.AddClusterFlag(cmd)
+	confirm.AddFlag(cmd.Flags())
 
 	// Basic options
 	flags.StringVar(
@@ -204,7 +209,7 @@ func init() {
 			"VPC Endpoint connection requests to be automatically accepted.",
 	)
 
-	clusterRegistryConfigArgs = clusterregistryconfig.AddClusterRegistryConfigFlags(Cmd)
+	clusterRegistryConfigArgs = clusterregistryconfig.AddClusterRegistryConfigFlags(cmd)
 
 	flags.StringVar(
 		&args.billingAccount,
@@ -237,12 +242,33 @@ func init() {
 		"Changes the channel group used for cluster versions. "+
 			"Channel group is the name of the channel where this image belongs, for example \"stable\" or \"eus\".",
 	)
+
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"Changes the channel used for cluster versions. "+
+			"Channel is the name of the channel where this image belongs, for example \"stable-4.20\" or \"eus-4.16\".",
+	)
+
+	cmd.MarkFlagsMutuallyExclusive("channel", "channel-group")
+}
+
+func init() {
+	initFlags(Cmd)
 }
 
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	clusterKey := r.GetClusterKey()
 
 	// Enable interactive mode if no flags have been set
@@ -256,7 +282,7 @@ func run(cmd *cobra.Command, _ []string) {
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
 			"registry-config-allowed-registries-for-import", "enable-delete-protection",
-			"channel-group", "network-type"} {
+			"channel-group", "network-type", "channel"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
@@ -434,7 +460,7 @@ func run(cmd *cobra.Command, _ []string) {
 				"enter a set of double quotes (\"\")",
 		})
 		if err != nil {
-			return
+			return err
 		}
 	}
 
@@ -957,6 +983,10 @@ func run(cmd *cobra.Command, _ []string) {
 		clusterConfig.ChannelGroup = args.channelGroup
 	}
 
+	if args.channel != "" {
+		clusterConfig.Channel = args.channel
+	}
+
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)
 	err = r.OCMClient.UpdateCluster(cluster.ID(), r.Creator, clusterConfig)
 	if err != nil {
@@ -964,6 +994,7 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 	r.Reporter.Infof("Updated cluster '%s'", clusterKey)
+	return nil
 }
 
 // warnUserForOAuthHCPVisibility is a method for HCP only that checks if the user has public ingress and warns them

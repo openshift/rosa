@@ -262,6 +262,7 @@ func run(cmd *cobra.Command, argv []string) {
 		"Control Plane:              %s\n"+
 		"OpenShift Version:          %s\n"+
 		"Channel Group:              %s\n"+
+		"Channel:                    %s\n"+
 		"DNS:                        %s\n"+
 		"AWS Account:                %s\n"+
 		"%s"+
@@ -287,6 +288,7 @@ func run(cmd *cobra.Command, argv []string) {
 		controlPlaneConfig(cluster),
 		cluster.OpenshiftVersion(),
 		cluster.Version().ChannelGroup(),
+		cluster.Channel(),
 		clusterDNS,
 		creatorARN.AccountID,
 		BillingAccount(cluster),
