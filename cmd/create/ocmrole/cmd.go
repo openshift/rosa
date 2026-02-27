@@ -33,6 +33,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/roles"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -127,7 +128,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Determine if Classic ROSA managed policies are enabled
 	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
-	if isManagedSet && env == ocm.Production {
+	if roles.ClassicManagedPoliciesUnsupportedInEnv(isManagedSet, args.managed, env) {
 		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
 		os.Exit(1)
 	}

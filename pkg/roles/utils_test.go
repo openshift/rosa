@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -20,6 +21,14 @@ var _ = Describe("Validate Shared VPC Inputs", func() {
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+		runtime = rosa.NewRuntime()
+		mockClient := aws.NewMockClient(ctrl)
+		mockClient.EXPECT().IsPolicyExists(gomock.Any()).Return(nil, nil).AnyTimes()
+		runtime.AWSClient = mockClient
+		runtime.Creator = &aws.Creator{
+			AccountID: "123456789012",
+			Partition: "aws",
+		}
 	})
 	AfterEach(func() {
 		ctrl.Finish()
