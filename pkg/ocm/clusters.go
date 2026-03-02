@@ -69,6 +69,7 @@ type Spec struct {
 	MultiAZ                   bool
 	Version                   string
 	ChannelGroup              string
+	Channel                   string
 	Expiration                time.Time
 	Flavour                   string
 	DisableWorkloadMonitoring *bool
@@ -609,6 +610,11 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		)
 	}
 
+	// Update channel
+	if config.Channel != "" {
+		clusterBuilder = clusterBuilder.Channel(config.Channel)
+	}
+
 	// Scale cluster
 	clusterNodesBuilder, updateNodes := c.getClusterNodesBuilder(config)
 	if updateNodes {
@@ -900,6 +906,10 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		reporter.Debugf(
 			"Using OpenShift version '%s' on channel group '%s'",
 			config.Version, config.ChannelGroup)
+	}
+
+	if config.Channel != "" {
+		clusterBuilder = clusterBuilder.Channel(config.Channel)
 	}
 
 	if !config.Expiration.IsZero() {
