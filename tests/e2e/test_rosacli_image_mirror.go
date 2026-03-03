@@ -1,9 +1,16 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
+	"strings"
+	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
@@ -144,7 +151,7 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 					"-c", clusterID,
 					"--source", "source/validation",
 					"--mirrors", tMirror,
-					"--type", "deafult",
+					"--type", "invalidtype",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring("type must be 'digest' if specified"))
@@ -164,11 +171,22 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 
 				By("Edit the multiple mirror to single mirror")
 				updatedMirrorVal := "rosa/cli/singemirror"
-				output, err = imageMirrorService.EditImageMirror(
-					"-c", clusterID,
-					"--id", imageMirrorID2,
-					"--mirrors", updatedMirrorVal,
-				)
+				err = wait.PollUntilContextTimeout(
+					context.Background(),
+					3*time.Second, 60*time.Second,
+					true, func(ctx context.Context) (bool, error) {
+						out, e := imageMirrorService.EditImageMirror(
+							"-c", clusterID,
+							"--id", imageMirrorID2,
+							"--mirrors", updatedMirrorVal)
+						if e == nil {
+							return true, nil
+						}
+						if strings.Contains(e.Error(), "409") || strings.Contains(out.String(), "the object has been modified") {
+							return false, nil
+						}
+						return false, e
+					})
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Check the update work")

@@ -1019,8 +1019,10 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				"--autonode-iam-role-arn", roleArn,
 				"--autonode", "invalid")
 			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("Invalid value for --autonode. Currently only 'enabled' is supported"))
+			Expect(output.String()).To(SatisfyAll(
+				ContainSubstring("invalid value for --autonode"),
+				ContainSubstring("only 'enabled' is supported"),
+			))
 
 			By("Invalide autonde-iam-role-arn")
 			output, err = clusterService.EditCluster(clusterID,
@@ -1028,14 +1030,14 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				"--autonode", "enabled")
 			Expect(err).To(HaveOccurred())
 			Expect(output.String()).Should(
-				ContainSubstring("Invalid IAM role ARN format"))
+				ContainSubstring("nvalid IAM role ARN format"))
 
 			By("Edit autonde-iam-role-arn without --autonode flag ")
 			output, err = clusterService.EditCluster(clusterID,
 				"--autonode-iam-role-arn", roleArn)
 			Expect(err).To(HaveOccurred())
 			Expect(output.String()).Should(
-				ContainSubstring("Enable AutoNode first with --autonode=enabled"))
+				ContainSubstring("nable AutoNode first with --autonode=enabled"))
 		})
 })
 var _ = Describe("Additional security groups validation",

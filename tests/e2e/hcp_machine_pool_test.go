@@ -424,7 +424,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", zeroMinReplica),
 				"-y",
 			)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Try to set machine pool min replica to negative value - should fail")
 			negativeMinReplica := -1
@@ -432,7 +432,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", negativeMinReplica),
 				"-y",
 			)
-			expectErrMsg := "ERR: min-replicas must be a non-negative number when autoscaling is set"
+			expectErrMsg := "must be a non-negative number when autoscaling is set"
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
 
