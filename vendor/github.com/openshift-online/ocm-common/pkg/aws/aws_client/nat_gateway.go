@@ -20,10 +20,10 @@ func (client *AWSClient) CreateNatGateway(subnetID string, allocationID string, 
 	}
 	respCreateNat, err := client.Ec2Client.CreateNatGateway(context.TODO(), inputCreateNat)
 	if err != nil {
-		log.LogError("Create nat error " + err.Error())
+		log.LogError("Create nat error %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Create nat success: " + *respCreateNat.NatGateway.NatGatewayId)
+	log.LogInfo("Create nat success: %s", *respCreateNat.NatGateway.NatGatewayId)
 	err = client.WaitForResourceExisting(*respCreateNat.NatGateway.NatGatewayId, 10*60)
 	return respCreateNat, err
 }
@@ -36,7 +36,7 @@ func (client *AWSClient) DeleteNatGateway(natGatewayID string, timeout ...int) (
 	}
 	respDeleteNatGateway, err := client.Ec2Client.DeleteNatGateway(context.TODO(), inputDeleteNatGateway)
 	if err != nil {
-		log.LogError("Delete Nat Gateway error " + err.Error())
+		log.LogError("Delete Nat Gateway error %s", err.Error())
 		return nil, err
 	}
 	timeoutTime := 60
@@ -47,11 +47,11 @@ func (client *AWSClient) DeleteNatGateway(natGatewayID string, timeout ...int) (
 	if err != nil {
 		return respDeleteNatGateway, err
 	}
-	log.LogInfo("Delete Nat Gateway success " + *respDeleteNatGateway.NatGatewayId)
+	log.LogInfo("Delete Nat Gateway success %s", *respDeleteNatGateway.NatGatewayId)
 	return respDeleteNatGateway, err
 }
 
-func (client *AWSClient) ListNatGateWays(vpcID string) ([]types.NatGateway, error) {
+func (client *AWSClient) ListNatGateways(vpcID string) ([]types.NatGateway, error) {
 	vpcFilter := "vpc-id"
 	filter := []types.Filter{
 		types.Filter{

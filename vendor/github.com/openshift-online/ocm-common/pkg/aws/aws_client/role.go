@@ -94,14 +94,18 @@ func (client *AWSClient) DeleteRoleAndPolicy(roleName string, managedPolicy bool
 		return err
 	}
 
-	fmt.Println(output.AttachedPolicies)
 	for _, policy := range output.AttachedPolicies {
-		err = client.DetachIAMPolicy(roleName, *policy.PolicyArn)
+		policyArn := policy.PolicyArn
+		if policyArn == nil {
+			continue
+		}
+		log.LogInfo("Detaching and deleting policy with ARN '%s'", *policyArn)
+		err = client.DetachIAMPolicy(roleName, *policyArn)
 		if err != nil {
 			return err
 		}
 		if !managedPolicy {
-			err = client.DeletePolicy(*policy.PolicyArn)
+			err = client.DeletePolicy(*policyArn)
 			if err != nil {
 				return err
 			}

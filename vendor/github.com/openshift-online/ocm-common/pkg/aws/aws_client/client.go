@@ -25,7 +25,7 @@ import (
 )
 
 type AWSClient struct {
-	Ec2Client            *ec2.Client
+	Ec2Client            EC2ClientAPI
 	Route53Client        *route53.Client
 	StackFormationClient *cloudformation.Client
 	ElbClient            *elb.Client
@@ -58,31 +58,31 @@ func CreateAWSClient(profileName string, region string, awsSharedCredentialFile 
 			config.WithSharedCredentialsFiles([]string{file}),
 		)
 	} else {
-		if envCredential() {
-			log.LogInfo("Got AWS_ACCESS_KEY_ID env settings, going to build the config with the env")
+		if envAwsProfile() {
+			file := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
+			log.LogInfo("Got file path: %s from env variable AWS_SHARED_CREDENTIALS_FILE\n", file)
 			cfg, err = config.LoadDefaultConfig(context.TODO(),
 				config.WithRegion(region),
-				config.WithCredentialsProvider(
-					credentials.NewStaticCredentialsProvider(
-						os.Getenv("AWS_ACCESS_KEY_ID"),
-						os.Getenv("AWS_SECRET_ACCESS_KEY"),
-						"")),
+				config.WithSharedCredentialsFiles([]string{file}),
 			)
 		} else {
-			if envAwsProfile() {
-				file := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
-				log.LogInfo("Got file path: %s from env variable AWS_SHARED_CREDENTIALS_FILE\n", file)
+			if envCredential() {
+				log.LogInfo("Got AWS_ACCESS_KEY_ID env settings, going to build the config with the env")
 				cfg, err = config.LoadDefaultConfig(context.TODO(),
 					config.WithRegion(region),
-					config.WithSharedCredentialsFiles([]string{file}),
+					config.WithCredentialsProvider(
+						credentials.NewStaticCredentialsProvider(
+							os.Getenv("AWS_ACCESS_KEY_ID"),
+							os.Getenv("AWS_SECRET_ACCESS_KEY"),
+							"")),
 				)
 			} else {
+				log.LogInfo("AWS_SHARED_CREDENTIALS_FILE not supplied")
 				cfg, err = config.LoadDefaultConfig(context.TODO(),
 					config.WithRegion(region),
 					config.WithSharedConfigProfile(profileName),
 				)
 			}
-
 		}
 	}
 
@@ -139,7 +139,7 @@ func (client *AWSClient) GetAWSPartition() string {
 	return segments[1]
 }
 
-func (client *AWSClient) EC2() *ec2.Client {
+func (client *AWSClient) EC2() EC2ClientAPI {
 	return client.Ec2Client
 }
 

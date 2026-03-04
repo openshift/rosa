@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/openshift-online/ocm-common/pkg/ocm/consts"
@@ -19,9 +21,9 @@ type FieldDeprecations struct {
 	messages map[string]map[string]string
 }
 
-func (f *FieldDeprecations) Add(field, message string, sunsetDate time.Time) error {
+func (f *FieldDeprecations) Add(field, message string, sunsetDate time.Time, failAfterSunsetDate bool) error {
 	now := time.Now().UTC()
-	if now.After(sunsetDate) {
+	if now.After(sunsetDate) && failAfterSunsetDate {
 		return errors.New(message)
 	}
 
@@ -79,7 +81,11 @@ func (w *FieldDeprecationResponseWriter) Write(data []byte) (int, error) {
 func (w *FieldDeprecationResponseWriter) setFieldDeprecationHeaders() {
 	deprecatedFields := GetFieldDeprecations(w.Request.Context())
 	if !deprecatedFields.IsEmpty() {
-		deprecatedFieldsJSON, _ := deprecatedFields.ToJSON()
+		deprecatedFieldsJSON, err := deprecatedFields.ToJSON()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error setting field deprecation headers: %v\n", err)
+			return
+		}
 		w.ResponseWriter.Header().Set(consts.OcmFieldDeprecation, string(deprecatedFieldsJSON))
 	}
 }

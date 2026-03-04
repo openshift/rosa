@@ -447,8 +447,8 @@ github.com/openshift-online/ocm-api-model/model/service_logs/v1
 github.com/openshift-online/ocm-api-model/model/service_mgmt/v1
 github.com/openshift-online/ocm-api-model/model/status_board/v1
 github.com/openshift-online/ocm-api-model/model/web_rca/v1
-# github.com/openshift-online/ocm-common v0.0.32
-## explicit; go 1.21
+# github.com/openshift-online/ocm-common v0.0.38
+## explicit; go 1.24.7
 github.com/openshift-online/ocm-common/pkg/aws/aws_client
 github.com/openshift-online/ocm-common/pkg/aws/consts
 github.com/openshift-online/ocm-common/pkg/aws/errors
@@ -559,8 +559,8 @@ github.com/zgalor/weberr
 # gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a
 ## explicit
 gitlab.com/c0b/go-ordered-json
-# go.uber.org/mock v0.5.2
-## explicit; go 1.23
+# go.uber.org/mock v0.6.0
+## explicit; go 1.23.0
 go.uber.org/mock/gomock
 # go.yaml.in/yaml/v2 v2.4.3
 ## explicit; go 1.15

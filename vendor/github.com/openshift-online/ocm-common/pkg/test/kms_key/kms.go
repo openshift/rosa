@@ -46,7 +46,7 @@ func CreateOCMTestKMSKey(region string, multiRegion bool, testClient string) (st
 func ScheduleKeyDeletion(keyArn string, region string) error {
 	client, err := aws_client.CreateAWSClient("", region)
 	if err != nil {
-		log.LogError(err.Error())
+		log.LogError("%s", err.Error())
 		return err
 	}
 	_, err = client.ScheduleKeyDeletion(keyArn, 7)
