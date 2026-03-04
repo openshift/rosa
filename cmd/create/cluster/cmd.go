@@ -133,6 +133,7 @@ var args struct {
 	region                    string
 	version                   string
 	channelGroup              string
+	channel                   string
 	flavour                   string
 	disableWorkloadMonitoring bool
 	ec2MetadataHttpTokens     string
@@ -453,6 +454,15 @@ func initFlags(cmd *cobra.Command) {
 		ocm.DefaultChannelGroup,
 		"Channel group is the name of the group where this image belongs, for example \"stable\" or \"fast\".",
 	)
+
+	flags.StringVar(
+		&args.channel,
+		"channel",
+		"",
+		"Channel is the name of the OCP version channel to which this cluster subscribes,"+
+			" for example \"eus-4.16\" or \"stable-4.20\"",
+	)
+	cmd.MarkFlagsMutuallyExclusive("channel", "channel-group")
 
 	flags.StringVar(
 		&args.flavour,
@@ -1418,6 +1428,26 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Warnf("%v", err)
 		if !confirm.Confirm("continue with version '%s'", ocm.GetRawVersionId(version)) {
 			os.Exit(0)
+		}
+	}
+
+	channel := args.channel
+	channels, err := r.OCMClient.GetAvailableChannels(version)
+	if err != nil {
+		r.Reporter.Errorf("Failed to retrieve available channels for version '%s': %s", version, err)
+		os.Exit(1)
+	}
+	if interactive.Enabled() {
+		channel, err = interactive.GetOption(interactive.Input{
+			Question: "OpenShift Channel",
+			Help:     cmd.Flags().Lookup("channel").Usage,
+			Options:  channels,
+			Default:  channel,
+			Required: false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid OpenShift Channel: %s", err)
+			os.Exit(1)
 		}
 	}
 
@@ -3394,6 +3424,7 @@ func run(cmd *cobra.Command, _ []string) {
 		MultiAZ:                      multiAZ,
 		Version:                      version,
 		ChannelGroup:                 channelGroup,
+		Channel:                      channel,
 		Flavour:                      args.flavour,
 		FIPS:                         fips,
 		EtcdEncryption:               etcdEncryption,

@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
@@ -35,6 +36,26 @@ const (
 )
 
 var _ = Describe("Edit cluster", func() {
+	Context("Command", func() {
+		var cmd *cobra.Command
+		BeforeEach(func() {
+			cmd = makeCmd()
+			initFlags(cmd)
+		})
+		When("Both --channel and --channel-group are set", func() {
+			It("should return an immediate error", func() {
+				cmd.SetArgs([]string{
+					"--cluster", "test-cluster",
+					"--channel", "eus-4.20",
+					"--channel-group", "eus",
+				})
+				err := cmd.Execute()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(
+					"if any flags in the group [channel channel-group] are set none of the others can be"))
+			})
+		})
+	})
 	Context("warnUserForOAuthHCPVisibility", func() {
 		var testRuntime test.TestingRuntime
 		mockHypershiftClusterReady := test.MockCluster(func(c *cmv1.ClusterBuilder) {

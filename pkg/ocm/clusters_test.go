@@ -111,3 +111,138 @@ var _ = Context("List Clusters", func() {
 
 	})
 })
+
+var _ = Describe("Helper Functions", func() {
+	Describe("buildVersion", func() {
+		var config Spec
+		var builder *cmv1.ClusterBuilder
+		BeforeEach(func() {
+			builder = cmv1.NewCluster()
+			config = Spec{}
+		})
+		When("Version is specified", func() {
+			BeforeEach(func() {
+				config.Version = "openshift-version"
+			})
+			When("Channel is specified", func() {
+				BeforeEach(func() {
+					config.Channel = "stable-4.20"
+				})
+				When("ChannelGroup is specified", func() {
+					BeforeEach(func() {
+						config.ChannelGroup = "stable"
+					})
+					It("Should populate Channel but not ChannelGroup", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(cluster.Channel()).To(Equal("stable-4.20"))
+						Expect(cluster.Version().ID()).To(Equal("openshift-version"))
+						_, set := cluster.Version().GetChannelGroup()
+						Expect(set).To(BeFalseBecause("ChannelGroup should not be set"))
+					})
+				})
+				When("ChannelGroup is not specified", func() {
+					It("Should populate Channel (and not ChannelGroup)", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(cluster.Channel()).To(Equal("stable-4.20"))
+						Expect(cluster.Version().ID()).To(Equal("openshift-version"))
+						_, set := cluster.Version().GetChannelGroup()
+						Expect(set).To(BeFalseBecause("ChannelGroup should not be set"))
+					})
+				})
+			})
+			When("Channel is not specified", func() {
+				When("ChannelGroup is specified", func() {
+					BeforeEach(func() {
+						config.ChannelGroup = "stable"
+					})
+					It("Should populate ChannelGroup and Channel be empty", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(cluster.Version().ChannelGroup()).To(Equal("stable"))
+						Expect(cluster.Version().ID()).To(Equal("openshift-version"))
+						_, set := cluster.GetChannel()
+						Expect(set).To(BeFalseBecause("cluster Channel should not be set"))
+					})
+				})
+				When("ChannelGroup is not specified", func() {
+					It("Should populate Channel and ChannelGroup as empty", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(cluster.Version().ID()).To(Equal("openshift-version"))
+						_, set := cluster.Version().GetChannelGroup()
+						Expect(set).To(BeFalseBecause("ChannelGroup should not be set"))
+						_, set = cluster.GetChannel()
+						Expect(set).To(BeFalseBecause("Channel should not be set"))
+					})
+				})
+			})
+		})
+		When("Version is not specified", func() {
+			When("Channel is specified", func() {
+				BeforeEach(func() {
+					config.Channel = "stable-4.20"
+				})
+				When("ChannelGroup is specified", func() {
+					BeforeEach(func() {
+						config.ChannelGroup = "stable"
+					})
+					It("Should not populate ChannelGroup, and populate Channel", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(cluster.Channel()).To(Equal("stable-4.20"))
+						_, set := cluster.GetVersion()
+						Expect(set).To(BeFalseBecause("version should be completely unset"))
+					})
+				})
+				When("ChannelGroup is not specified", func() {
+					It("Should not populate ChannelGroup, and populate Channel", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(cluster.Channel()).To(Equal("stable-4.20"))
+						_, set := cluster.GetVersion()
+						Expect(set).To(BeFalseBecause("version should be completely unset"))
+					})
+				})
+			})
+			When("Channel is not specified", func() {
+				When("ChannelGroup is specified", func() {
+					BeforeEach(func() {
+						config.ChannelGroup = "stable"
+					})
+					It("Should populate ChannelGroup, but not Channel", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						version, set := cluster.GetVersion()
+						Expect(set).To(BeTrueBecause("version subobject should be present"))
+						_, set = version.GetID()
+						Expect(set).To(BeFalseBecause("version ID should not be set"))
+						Expect(version.ChannelGroup()).To(Equal("stable"))
+						_, set = cluster.GetChannel()
+						Expect(set).To(BeFalseBecause("cluster Channel should not be set"))
+					})
+				})
+				When("ChannelGroup is not specified", func() {
+					It("Should not populate ChannelGroup or Channel", func() {
+						Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+						cluster, err := builder.Build()
+						Expect(err).NotTo(HaveOccurred())
+						_, set := cluster.GetVersion()
+						Expect(set).To(BeFalseBecause("version should be completely unset"))
+						_, set = cluster.GetChannel()
+						Expect(set).To(BeFalseBecause("cluster Channel should not be set"))
+					})
+				})
+			})
+
+		})
+	})
+})

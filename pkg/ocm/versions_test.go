@@ -58,49 +58,93 @@ const VersionsListResponse = `{
 	}]
 }`
 
-var _ = Describe("Get version list", func() {
+var _ = Describe("OCMClient", func() {
 	var ssoServer, apiServer *ghttp.Server
 	var ocmClient *Client
 
+	BeforeEach(func() {
+		// Create the servers:
+		ssoServer = MakeTCPServer()
+		apiServer = MakeTCPServer()
+		apiServer.SetAllowUnhandledRequests(true)
+		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
+
+		// Create the token:
+		accessToken := MakeTokenString("Bearer", 15*time.Minute)
+
+		// Prepare the server:
+		ssoServer.AppendHandlers(
+			RespondWithAccessToken(accessToken),
+		)
+		// Prepare the logger:
+		logger, err := logging.NewGoLoggerBuilder().
+			Debug(true).
+			Build()
+		Expect(err).To(BeNil())
+		// Set up the connection with the fake config
+		connection, err := sdk.NewConnectionBuilder().
+			Logger(logger).
+			Tokens(accessToken).
+			URL(apiServer.URL()).
+			Build()
+		// Initialize client object
+		Expect(err).To(BeNil())
+		ocmClient = &Client{ocm: connection}
+	})
+
+	AfterEach(func() {
+		// Close the servers:
+		ssoServer.Close()
+		apiServer.Close()
+		Expect(ocmClient.Close()).To(Succeed())
+	})
+
+	Context("GetAvailableChannels", func() {
+		When("OCM returns an error", func() {
+			BeforeEach(func() {
+				apiServer.AppendHandlers(ghttp.RespondWith(http.StatusBadRequest, nil))
+			})
+
+			It("should fail", func() {
+				_, err := ocmClient.GetAvailableChannels("openshift-version")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+		When("The body returned is nil", func() {
+			BeforeEach(func() {
+				apiServer.AppendHandlers(ghttp.RespondWith(http.StatusOK, nil, http.Header{
+					"Content-Type": []string{"application/json"},
+				}))
+			})
+			It("should return an empty set of channels", func() {
+				channels, err := ocmClient.GetAvailableChannels("openshift-version")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channels).To(BeEmpty())
+			})
+		})
+		When("The AvailableChannels field is nil", func() {
+			BeforeEach(func() {
+				apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, "{}"))
+			})
+			It("should return an empty set of channels", func() {
+				channels, err := ocmClient.GetAvailableChannels("openshift-version")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channels).To(BeEmpty())
+			})
+		})
+		When("The AvailableChannels field is populated", func() {
+			BeforeEach(func() {
+				apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{"available_channels": ["stable-4.20", "eus-4.20"]}`))
+			})
+			It("should return that same set of channels", func() {
+				channels, err := ocmClient.GetAvailableChannels("openshift-version")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(channels).To(HaveExactElements("stable-4.20", "eus-4.20"))
+			})
+		})
+	})
+
 	Context("Describe version list", func() {
-
-		BeforeEach(func() {
-			// Create the servers:
-			ssoServer = MakeTCPServer()
-			apiServer = MakeTCPServer()
-			apiServer.SetAllowUnhandledRequests(true)
-			apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
-
-			// Create the token:
-			accessToken := MakeTokenString("Bearer", 15*time.Minute)
-
-			// Prepare the server:
-			ssoServer.AppendHandlers(
-				RespondWithAccessToken(accessToken),
-			)
-			// Prepare the logger:
-			logger, err := logging.NewGoLoggerBuilder().
-				Debug(true).
-				Build()
-			Expect(err).To(BeNil())
-			// Set up the connection with the fake config
-			connection, err := sdk.NewConnectionBuilder().
-				Logger(logger).
-				Tokens(accessToken).
-				URL(apiServer.URL()).
-				Build()
-			// Initialize client object
-			Expect(err).To(BeNil())
-			ocmClient = &Client{ocm: connection}
-		})
-
-		AfterEach(func() {
-			// Close the servers:
-			ssoServer.Close()
-			apiServer.Close()
-			Expect(ocmClient.Close()).To(Succeed())
-		})
-
 		It("Expects a version list", func() {
 			apiServer.AppendHandlers(
 				RespondWithJSON(
