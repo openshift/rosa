@@ -30,7 +30,13 @@ override_rosacli_build () {
     exit 1
   fi
     echo "[CI] rosa is overrided with build $ROSACLI_BUILD"
-  
+
+  # display the rosa version (only for latest build to avoid crashes in older versions)
+  if [[ "$ROSACLI_BUILD" == "latest" ]]; then
+    echo "[CI] rosa version:"
+    rosa version
+  fi
+
   # go back to previous dir
   cd -
 }
