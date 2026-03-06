@@ -8,8 +8,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	r53 "github.com/aws/aws-sdk-go-v2/service/route53"
+	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
@@ -76,7 +79,84 @@ func (rh *resourcesHandler) DeleteHostedZone(hostedZoneID string) error {
 	if err != nil {
 		return err
 	}
-	return awsClient.DeleteHostedZone(hostedZoneID)
+	// Get hosted zone to obtain zone name
+	ghzOut, err := awsClient.Route53().GetHostedZone(context.TODO(), &r53.GetHostedZoneInput{Id: aws.String(hostedZoneID)})
+	if err != nil {
+		return err
+	}
+	zoneName := aws.ToString(ghzOut.HostedZone.Name)
+
+	paginator := r53.NewListResourceRecordSetsPaginator(awsClient.Route53(), &r53.ListResourceRecordSetsInput{
+		HostedZoneId: aws.String(hostedZoneID),
+	})
+
+	var changes []r53types.Change
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.TODO())
+		if err != nil {
+			return err
+		}
+		for _, rr := range page.ResourceRecordSets {
+			name := aws.ToString(rr.Name)
+			// skip SOA and NS records for the hosted zone root
+			if name == zoneName && (rr.Type == r53types.RRTypeNs || rr.Type == r53types.RRTypeSoa) {
+				continue
+			}
+			// prepare delete change
+			changes = append(changes, r53types.Change{
+				Action:            r53types.ChangeActionDelete,
+				ResourceRecordSet: &rr,
+			})
+		}
+	}
+
+	if len(changes) > 0 {
+		// Found records to delete
+		// log them and apply deletions in a single change batch.
+		log.Logger.Infof("found dns records to clean for hosted zone %s: %d records", hostedZoneID, len(changes))
+		for _, ch := range changes {
+			if ch.ResourceRecordSet != nil {
+				log.Logger.Infof("deleting record: %s", aws.ToString(ch.ResourceRecordSet.Name))
+			}
+		}
+
+		changeResp, err := awsClient.Route53().ChangeResourceRecordSets(context.TODO(), &r53.ChangeResourceRecordSetsInput{
+			HostedZoneId: aws.String(hostedZoneID),
+			ChangeBatch: &r53types.ChangeBatch{
+				Changes: changes,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		// Wait until the change is INSYNC before attempting to delete the hosted zone
+		changeID := aws.ToString(changeResp.ChangeInfo.Id)
+		log.Logger.Infof("submitted change %s, waiting for INSYNC before deleting hosted zone", changeID)
+		err = wait.PollUntilContextTimeout(
+			context.TODO(),
+			5*time.Second,
+			5*time.Minute,
+			true,
+			func(ctx context.Context) (bool, error) {
+				getChangeResp, err := awsClient.Route53().GetChange(ctx, &r53.GetChangeInput{Id: aws.String(changeID)})
+				if err != nil {
+					return false, err
+				}
+				status := getChangeResp.ChangeInfo.Status
+				if status == r53types.ChangeStatusInsync {
+					return true, nil
+				}
+				return false, nil
+			})
+		if err != nil {
+			return fmt.Errorf("waiting for change %s to become INSYNC: %w", changeID, err)
+		}
+	}
+
+	// Finally delete the hosted zone
+	_, err = awsClient.Route53().DeleteHostedZone(context.TODO(), &r53.DeleteHostedZoneInput{Id: aws.String(hostedZoneID)})
+	return err
 }
 
 func (rh *resourcesHandler) DeleteDNSDomain() error {
