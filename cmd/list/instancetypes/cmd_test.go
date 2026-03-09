@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/mock/gomock"
 
-	. "github.com/onsi/ginkgo/v2/dsl/core"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	sdk "github.com/openshift-online/ocm-sdk-go"
@@ -304,7 +304,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("Region 'us-east-xyz' not found."))
+			ContainSubstring("region 'us-east-xyz' not found"))
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal("INFO: Using fake_installer_arn for the Installer role\n"))
 	})
@@ -373,8 +373,67 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("There are no machine types supported for your account. Contact Red Hat support."))
+			ContainSubstring("there are no machine types supported for your account. Contact Red Hat support"))
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal(""))
 	})
+
+	It("Fails when both --with-feature and --region are set", func() {
+		cmd.SetArgs([]string{
+			"--with-feature", "win_li=true",
+			"--region", "us-east-1",
+		})
+		err := cmd.Execute()
+		Expect(err).To(MatchError(ContainSubstring(
+			"if any flags in the group [with-feature region] are set none of the others can be")))
+	})
+
+	It("Succeeds with --with-features flag", func() {
+		cmd.Flags().Set("with-feature", "win_li")
+		cmd.Flags().Set("output", "yaml")
+		// GET /api/clusters_mgmt/v1/machine_types
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyFormKV("search", "cloud_provider.id = 'aws' AND features.win_li = 'true'"),
+				RespondWithJSON(
+					http.StatusOK,
+					machinesSuccess,
+				),
+			),
+		)
+
+		// GET /api/accounts_mgmt/v1/current_account
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				currentAccount,
+			),
+		)
+		// GET /api/accounts_mgmt/v1/organizations/123abc/quota_cost
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				orgQuota,
+			),
+		)
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stderr).To(BeZero())
+		Expect(stdout).To(ContainSubstring("d1-gaudi-24x"))
+		Expect(stdout).To(ContainSubstring("t4-gpu-48"))
+	})
+
+	DescribeTable("invalid --with-feature input", func(featuresList []string, errorString string) {
+		for _, feat := range featuresList {
+			cmd.Flags().Set("with-feature", feat)
+		}
+		_, _, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(MatchError(ContainSubstring(errorString)))
+	},
+		Entry("too long feature name", []string{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, "exceed 32 characters"),
+		Entry("feature name is invalid identifier", []string{"inv@lid_identifier"}, "invalid character '@'"),
+		Entry("feature name is whitespace", []string{"      "}, "invalid character ' '"),
+		Entry("tries to use equals syntax", []string{"win_li=true"}, "invalid character '='"),
+	)
 })
