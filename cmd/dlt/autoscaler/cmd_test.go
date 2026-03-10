@@ -68,7 +68,7 @@ var _ = Describe("delete autoscaler", func() {
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(
-				Equal("Hosted Control Plane clusters do not support cluster-autoscaler configuration"))
+				Equal("hosted control plane clusters do not support cluster-autoscaler configuration"))
 		})
 
 		It("Deletes Austoscaler", func() {

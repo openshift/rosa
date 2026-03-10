@@ -266,7 +266,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(
 					ContainSubstring(
-						"Hosted Control Plane clusters do not support cluster-autoscaler configuration"),
+						"hosted control plane clusters do not support cluster-autoscaler configuration"),
 				)
 
 				By("Try to edit the autoscaler in interactive mode")
@@ -575,7 +575,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						Expect(textData).
 							To(
 								ContainSubstring(
-									"ERR: Hosted Control Plane clusters do not support cluster-autoscaler configuration"))
+									"ERR: hosted control plane clusters do not support cluster-autoscaler configuration"))
 					})
 
 				It("for classic non-autoscaler cluster",
@@ -622,7 +622,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						Expect(err).To(HaveOccurred())
 						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).
-							To(ContainSubstring("ERR: Failed to delete autoscaler configuration for cluster '%s", clusterID))
+							To(ContainSubstring("ERR: failed to delete autoscaler configuration for cluster '%s", clusterID))
 						Expect(textData).
 							To(ContainSubstring("Autoscaler for cluster ID '%s' is not found", clusterID))
 
