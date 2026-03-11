@@ -239,7 +239,7 @@ type Hypershift struct {
 func getClusterFilter(creator *aws.Creator) string {
 	filter := "product.id = 'rosa'"
 	if creator != nil {
-		filter = fmt.Sprintf("%s AND (properties.%s LIKE '%%:%s:%%' OR aws.sts.role_arn LIKE '%%:%s:%%')",
+		filter = fmt.Sprintf("%s AND (properties.%s LIKE 'arn:%%:%s:%%' OR aws.sts.role_arn LIKE 'arn:%%:%s:%%')",
 			filter,
 			ocmConsts.CreatorArn,
 			creator.AccountID,
@@ -457,7 +457,7 @@ func (c *Client) GetClusterUsingSubscription(clusterKey string, creator *aws.Cre
 // Gets only pending non-STS clusters that are installed in the same AWS account
 func (c *Client) GetPendingClusterForARN(creator *aws.Creator) (cluster *cmv1.Cluster, err error) {
 	query := fmt.Sprintf(
-		"state = 'pending' AND product.id = 'rosa' AND aws.sts.role_arn = '' AND properties.%s LIKE '%%:%s:%%'",
+		"state = 'pending' AND product.id = 'rosa' AND aws.sts.role_arn = '' AND properties.%s LIKE 'arn:%%:%s:%%'",
 		ocmConsts.CreatorArn,
 		creator.AccountID,
 	)
@@ -527,7 +527,7 @@ func (c *Client) IsSTSClusterExists(creator *aws.Creator, count int, roleARN str
 	}
 	query := fmt.Sprintf(
 		"product.id = 'rosa' AND ("+
-			"properties.%s LIKE '%%:%s:%%' OR "+
+			"properties.%s LIKE 'arn:%%:%s:%%' OR "+
 			"aws.sts.role_arn = '%s' OR "+
 			"aws.sts.support_role_arn = '%s' OR "+
 			"aws.sts.instance_iam_roles.master_role_arn = '%s' OR "+
