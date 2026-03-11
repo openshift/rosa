@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.498 Mar 11 2026
+
+- Update model to 0.0.453
+  - Add `OidcIssuerUrl` field to ARO-HCP Azure type for workload identity federation
+  - Add `Visibility` field and `AzureKmsEncryptionVisibility` type to `AzureKmsEncryption`
+
 ## 0.1.497 Feb 25 2026
 
 - Update model to 0.0.452
