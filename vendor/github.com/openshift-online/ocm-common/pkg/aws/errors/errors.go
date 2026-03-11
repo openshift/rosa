@@ -35,6 +35,7 @@ const (
 	InvalidAllocationID          = "InvalidAllocationID.NotFound"
 	InvalidGroup                 = "InvalidGroup.NotFound"
 	InvalidSubnetID              = "InvalidSubnetId.NotFound"
+	InvalidNatGatewayID          = "InvalidNatGatewayID.NotFound"
 )
 
 func IsErrorCode(err error, code string) bool {

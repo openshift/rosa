@@ -21,7 +21,7 @@ func (client *AWSClient) CreateRouteTable(vpcID string) (*ec2.CreateRouteTableOu
 
 	respCreateRT, err := client.Ec2Client.CreateRouteTable(context.TODO(), inputCreateRouteTable)
 	if err != nil {
-		log.LogError("Create route table failed " + err.Error())
+		log.LogError("Create route table failed %s", err.Error())
 		return nil, err
 	}
 	err = client.WaitForResourceExisting(*respCreateRT.RouteTable.RouteTableId, 20)
@@ -38,10 +38,10 @@ func (client *AWSClient) AssociateRouteTable(routeTableID string, subnetID strin
 
 	respAssociateRouteTable, err := client.Ec2Client.AssociateRouteTable(context.TODO(), inputAssociateRouteTable)
 	if err != nil {
-		log.LogError("Associate route table failed " + err.Error())
+		log.LogError("Associate route table failed %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Associate route table success " + *respAssociateRouteTable.AssociationId)
+	log.LogInfo("Associate route table success %s", *respAssociateRouteTable.AssociationId)
 	return respAssociateRouteTable, err
 }
 
@@ -105,10 +105,10 @@ func (client *AWSClient) DisassociateRouteTableAssociation(associationID string)
 
 	resp, err := client.Ec2Client.DisassociateRouteTable(context.TODO(), input)
 	if err != nil {
-		log.LogError("Disassociate route table failed " + err.Error())
+		log.LogError("Disassociate route table failed %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Disassociate route table success " + associationID)
+	log.LogInfo("Disassociate route table success %s", associationID)
 	return resp, err
 }
 
@@ -165,10 +165,10 @@ func (client *AWSClient) CreateRoute(routeTableID string, targetID string) (*typ
 
 	_, err := client.Ec2Client.CreateRoute(context.TODO(), createRouteInput)
 	if err != nil {
-		log.LogError("Create route failed " + err.Error())
+		log.LogError("Create route failed %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Create route success for route table: " + routeTableID)
+	log.LogInfo("Create route success for route table: %s", routeTableID)
 	return route, err
 }
 

@@ -9,7 +9,7 @@ import (
 func (vpc *VPC) DeleteVPCNatGateways(vpcID string) error {
 
 	var delERR error
-	natGateways, err := vpc.AWSClient.ListNatGateWays(vpcID)
+	natGateways, err := vpc.AWSClient.ListNatGateways(vpcID)
 	if err != nil {
 		return err
 	}

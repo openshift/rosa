@@ -16,10 +16,10 @@ func (client *AWSClient) CreateInternetGateway() (*ec2.CreateInternetGatewayOutp
 	}
 	respCreateInternetGateway, err := client.Ec2Client.CreateInternetGateway(context.TODO(), inputCreateInternetGateway)
 	if err != nil {
-		log.LogError("Create igw error " + err.Error())
+		log.LogError("Create igw error %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Create igw success: " + *respCreateInternetGateway.InternetGateway.InternetGatewayId)
+	log.LogInfo("Create igw success: %s", *respCreateInternetGateway.InternetGateway.InternetGatewayId)
 	return respCreateInternetGateway, err
 }
 
@@ -32,10 +32,10 @@ func (client *AWSClient) AttachInternetGateway(internetGatewayID string, vpcID s
 	}
 	resp, err := client.Ec2Client.AttachInternetGateway(context.TODO(), input)
 	if err != nil {
-		log.LogError("Attach igw error " + err.Error())
+		log.LogError("Attach igw error %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Attach igw success: " + internetGatewayID)
+	log.LogInfo("Attach igw success: %s", internetGatewayID)
 	return resp, err
 }
 
@@ -79,9 +79,9 @@ func (client *AWSClient) DeleteInternetGateway(internetGatewayID string) (*ec2.D
 	}
 	respDeleteInternetGateway, err := client.Ec2Client.DeleteInternetGateway(context.TODO(), inputDeleteInternetGateway)
 	if err != nil {
-		log.LogError("Delete igw error " + err.Error())
+		log.LogError("Delete igw error %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Delete igw success: " + internetGatewayID)
+	log.LogInfo("Delete igw success: %s", internetGatewayID)
 	return respDeleteInternetGateway, err
 }

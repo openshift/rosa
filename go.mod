@@ -1,6 +1,6 @@
 module github.com/openshift/rosa
 
-go 1.24.0
+go 1.24.7
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
@@ -30,7 +30,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.30.0
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.452
-	github.com/openshift-online/ocm-common v0.0.32
+	github.com/openshift-online/ocm-common v0.0.38
 	github.com/openshift-online/ocm-sdk-go v0.1.497
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
@@ -39,7 +39,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/zgalor/weberr v0.6.0
 	gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a
-	go.uber.org/mock v0.5.2
+	go.uber.org/mock v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.2
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b

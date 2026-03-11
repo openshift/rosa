@@ -130,10 +130,10 @@ func (client *AWSClient) AuthorizeSecurityGroupIngress(groupID string, cidr stri
 
 	resp, err := client.Ec2Client.AuthorizeSecurityGroupIngress(context.TODO(), input)
 	if err != nil {
-		log.LogError("Authorize security group failed " + err.Error())
+		log.LogError("Authorize security group failed %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Authorize security group success " + groupID)
+	log.LogInfo("Authorize security group success %s", groupID)
 	return resp, err
 }
 
@@ -148,7 +148,7 @@ func (client *AWSClient) CreateSecurityGroup(vpcID string, groupName string, sgD
 
 	resp, err := client.Ec2Client.CreateSecurityGroup(context.TODO(), input)
 	if err != nil {
-		log.LogError("Create security group failed " + err.Error())
+		log.LogError("Create security group failed %s", err.Error())
 		return nil, err
 	}
 	log.LogInfo("Create security group %s success for %s", *resp.GroupId, vpcID)
