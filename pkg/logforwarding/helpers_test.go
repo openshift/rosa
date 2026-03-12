@@ -14,12 +14,12 @@ cloudwatch:
   cloudwatch_log_role_arn: "arn"
   cloudwatch_log_group_name: "abcd"
   applications: ["test3", "test4"]
-  groups: "group-name"
+  groups: ["group-name"]
 s3:
   s3_config_bucket_name: "foo"
   s3_config_bucket_prefix: "bar"
   applications: ["test3", "test4"]
-  groups: "group-name2"
+  groups: ["group-name2"]
 `
 
 func generateLogForwarderGroupVersions() []*cmv1.LogForwarderGroupVersions {
