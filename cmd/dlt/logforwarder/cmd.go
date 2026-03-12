@@ -99,7 +99,7 @@ func DeleteLogForwarderRunner(userOptions *DeleteLogForwarderUserOptions) rosa.C
 			return fmt.Errorf("log forwarder '%s' not found", options.LogForwarder())
 		}
 
-		if !confirm.Confirm("delete log forwarder '%s'?", options.LogForwarder()) {
+		if !confirm.Confirm("delete log forwarder '%s'", options.LogForwarder()) {
 			return nil
 		}
 
