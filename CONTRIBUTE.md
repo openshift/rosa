@@ -6,6 +6,7 @@ Before you begin, or have more questions reach out to us on [Slack @rosa-cli](ht
 To contribute bug fixes or features to ROSA:
 
 - Communicate your intent.
+- BEFORE YOUR FIRST COMMIT IN A NEW CLONE, YOU MUST RUN `make install-hooks`.
 - Make your changes.
 - Test your changes.
 - Run `make fmt` to align with the project formatting.
@@ -15,12 +16,70 @@ Communicate your intent in the form of a JIRA ticket on the [OCM](https://issues
 To ensure it is picked up by the ROSA team, please set `component = rosa` in the ticket. All JIRA's are refined by the team on a weekly cadence.
 
 Be sure to practice good git commit hygiene as you make your changes. All but the smallest changes should be broken up
-into a few commits that tell a story. Use your git commits to provide context for the folks who will review PR. We strive
+into a few commits that tell a story. Use your git commits to provide context for the folks who will review PRs. We strive
 to follow [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#summary).
+
+REQUIRED BEFORE YOUR FIRST COMMIT IN A CLONE:
+```shell
+make install-hooks
+```
+
+YOU MUST LET THE LOCAL HOOKS RUN ON EVERY COMMIT AND PUSH. DO NOT BYPASS LOCAL HOOKS.
+
+The hooks perform:
+- `pre-commit`: formats staged Go files (imports + gofmt) and re-stages the formatted files
+- `commit-msg`: validates the commit message format
+- `pre-push`: runs format-check, build, lint, changed-files coverage, and unit/integration tests
+- `pre-push` runs against committed content and blocks when staged/unstaged tracked changes are present
+- Prow re-runs these checks as required presubmits, so merges are blocked until they pass
+- check runs are fail-fast: execution stops at the first failing step
+- if you hit any bumps when committing, please let us know
+
+Use this aggregated command before pushing:
+```shell
+make basic-checks                 # format + format-check + build + lint + changed-files coverage + unit/integration tests
+```
+
+`basic-checks` forces fresh test execution (no Go test cache) for test steps.
+Coverage in these check flows evaluates changed Go files only and requires a minimum of 80% of executable changed lines.
+
+Use these stage-specific commands when you want to run what each hook runs:
+```shell
+make pre-commit-checks
+make pre-push-checks
+```
+
+Use these commands for individual checks:
+```shell
+make fmt-check
+make rosa
+make lint
+make coverage-changed-files
+make test
+```
+
+Commit message checks are performed by the `commit-msg` hook during commits.
+
+Formatting helpers:
+```shell
+make fmt         # formats all Go files under cmd/, pkg/, tests/
+make fmt-staged  # formats only staged Go files and re-stages them (used by pre-commit hook)
+make fmt-check   # verifies formatting without rewriting files
+```
+
+If you want to inspect planned execution without running checks:
+```shell
+make run-checks -- pre-push --list-steps
+make run-checks -- pre-push --dry-run
+make run-checks -- basic --list-steps
+make run-checks -- basic --dry-run
+```
+
+Hook scripts are internal and should not be run manually.
 
 The commit message should follow this template:
 ```shell
-<type>[JIRA-TICKET] | [TYPE]: <MESSAGE>
+OCM-XXXXX | <type>[optional scope][!]: <description>
 
 [optional BODY]
 
