@@ -565,8 +565,8 @@ go.uber.org/mock/gomock
 # go.yaml.in/yaml/v2 v2.4.3
 ## explicit; go 1.15
 go.yaml.in/yaml/v2
-# golang.org/x/crypto v0.46.0
-## explicit; go 1.24.0
+# golang.org/x/crypto v0.49.0
+## explicit; go 1.25.0
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
@@ -576,8 +576,8 @@ golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
-# golang.org/x/net v0.48.0
-## explicit; go 1.24.0
+# golang.org/x/net v0.51.0
+## explicit; go 1.25.0
 golang.org/x/net/context
 golang.org/x/net/html
 golang.org/x/net/html/atom
@@ -588,21 +588,22 @@ golang.org/x/net/http2/h2c
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/httpcommon
+golang.org/x/net/internal/httpsfv
 # golang.org/x/oauth2 v0.34.0
 ## explicit; go 1.24.0
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.39.0
-## explicit; go 1.24.0
+# golang.org/x/sys v0.42.0
+## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.38.0
-## explicit; go 1.24.0
+# golang.org/x/term v0.41.0
+## explicit; go 1.25.0
 golang.org/x/term
-# golang.org/x/text v0.32.0
-## explicit; go 1.24.0
+# golang.org/x/text v0.35.0
+## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
@@ -627,7 +628,7 @@ golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
-# golang.org/x/tools v0.39.0
+# golang.org/x/tools v0.42.0
 ## explicit; go 1.24.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/edge
