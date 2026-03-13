@@ -113,6 +113,11 @@ struct Azure {
 	// Creating a cluster with platform managed keys will result in a failure creating the cluster.
 	EtcdEncryption AzureEtcdEncryption
 
+	// The OIDC issuer URL for workload identity federation
+	// This URL is used by Azure managed identities to establish trust with cluster.
+	// Readonly
+	OidcIssuerUrl String
+
     // Vnet Integration Subnet Resource ID is the Azure Resource ID of a pre-existing Azure
     // Subnet used for SWIFT networking (Azure Container Networking Interface).
     // This subnet is delegated to Microsoft.RedHatOpenShift/hcpOpenShiftClusters
