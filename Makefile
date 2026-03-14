@@ -18,6 +18,9 @@ include .bingo/Variables.mk
 
 .DEFAULT_GOAL := rosa
 
+# Wrapper script entry points used by make convenience targets.
+RUN_CHECKS_SCRIPT := ./hack/run-checks.sh
+
 # Ensure go modules are enabled:
 export GO111MODULE=on
 export GOPROXY=https://proxy.golang.org
@@ -34,31 +37,68 @@ rosa:
 
 .PHONY: test
 test:
-	go test $(shell go list ./... | grep -v /tests/)
+	go test $(GO_TEST_FLAGS) $(shell go list ./... | grep -v /tests/)
 
 .PHONY: coverage
 coverage:
-	go test -coverprofile=cover.out -covermode=atomic -p 1 $(shell go list ./... | grep -v /tests/)
+	go test -coverprofile=cover.out -covermode=atomic -p 1 $(GO_TEST_FLAGS) $(shell go list ./... | grep -v /tests/)
+
+.PHONY: coverage-changed-files
+coverage-changed-files:
+	./hack/coverage-changed-files.sh
 
 .PHONY: install
 install:
 	go install ./cmd/rosa
 
 .PHONY: fmt
-fmt: fmt-imports
+fmt: $(GCI)
+	$(GCI) write -s standard -s default -s "prefix(k8s)" -s "prefix(sigs.k8s)" -s "prefix(github.com)" -s "prefix(gitlab)" -s "prefix(github.com/openshift/rosa)" --custom-order --skip-generated --skip-vendor cmd pkg tests
 	gofmt -s -l -w cmd pkg tests
 
-.PHONY: fmt-imports
-fmt-imports: $(GCI)
-	find . -name '*.go' -not -path './vendor/*' | xargs $(GCI) write -s standard -s default -s "prefix(k8s)" -s "prefix(sigs.k8s)" -s "prefix(github.com)" -s "prefix(gitlab)" -s "prefix(github.com/openshift/rosa)" --custom-order --skip-generated
+.PHONY: fmt-staged
+fmt-staged: $(GCI)
+	GCI_BIN="$(GCI)" ./hack/fmt-staged.sh
+
+.PHONY: fmt-check
+fmt-check: $(GCI)
+	@test -z "$$(gofmt -s -l cmd pkg tests)"
+	@test -z "$$($(GCI) list -s standard -s default -s "prefix(k8s)" -s "prefix(sigs.k8s)" -s "prefix(github.com)" -s "prefix(gitlab)" -s "prefix(github.com/openshift/rosa)" --custom-order --skip-generated --skip-vendor cmd pkg tests)"
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --timeout 5m0s ./...
+	$(GOLANGCI_LINT) run --timeout 5m0s $(LINT_OUTPUT_FLAGS) ./...
 
 .PHONY: commits/check
 commits/check:
 	@./hack/commit-msg-verify.sh
+
+.PHONY: install-hooks
+install-hooks:
+	@./hack/install-git-hooks.sh
+
+.PHONY: basic-checks
+basic-checks:
+	@$(RUN_CHECKS_SCRIPT) basic
+
+.PHONY: pre-commit-checks
+pre-commit-checks:
+	@$(MAKE) --no-print-directory fmt-staged
+
+.PHONY: pre-push-checks
+pre-push-checks:
+	@$(RUN_CHECKS_SCRIPT) pre-push
+
+.PHONY: run-checks
+run-checks:
+	@$(RUN_CHECKS_SCRIPT) $(filter-out $@,$(MAKECMDGOALS))
+
+PASSTHROUGH_MAKE_TARGETS := run-checks
+ifneq (,$(filter $(PASSTHROUGH_MAKE_TARGETS),$(MAKECMDGOALS)))
+PASSTHROUGH_ARG_GOALS := $(filter-out $(PASSTHROUGH_MAKE_TARGETS),$(MAKECMDGOALS))
+$(foreach goal,$(PASSTHROUGH_ARG_GOALS),$(eval .PHONY: $(goal)))
+$(foreach goal,$(PASSTHROUGH_ARG_GOALS),$(eval $(goal):;@:))
+endif
 
 .PHONY: diff
 diff:

@@ -11,6 +11,23 @@ Refer to the official ROSA documentation: https://access.redhat.com/products/red
 3. Initialize your AWS account by running `rosa init` and following the instructions.
 4. Create your first ROSA cluster by running `rosa create cluster --interactive`
 
+## Contributor setup
+
+BEFORE MAKING YOUR FIRST COMMIT IN A CLONE, YOU MUST INSTALL LOCAL GIT HOOKS:
+
+```
+make install-hooks
+```
+
+YOU MUST LET THESE HOOKS RUN ON EVERY COMMIT AND PUSH. DO NOT BYPASS LOCAL HOOKS.
+Installed hooks run staged-file formatting at commit time and full verification checks before push.
+Formatting commands:
+- `make fmt` formats all Go files in `cmd/`, `pkg/`, and `tests/`
+- `make fmt-staged` formats only staged Go files and re-stages them
+- `make fmt-check` validates formatting without changing files
+
+See `CONTRIBUTE.md` for the full contribution workflow and commit requirements.
+
 ## Build from source
 
 If you'd like to build this project from source use the following steps:
