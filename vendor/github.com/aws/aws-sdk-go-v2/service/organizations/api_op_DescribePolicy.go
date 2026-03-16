@@ -11,9 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Retrieves information about a policy. This operation can be called only from
-// the organization's management account or by a member account that is a delegated
-// administrator for an Amazon Web Services service.
+// Retrieves information about a policy.
+//
+// You can only call this operation from the management account or a member
+// account that is a delegated administrator.
 func (c *Client) DescribePolicy(ctx context.Context, params *DescribePolicyInput, optFns ...func(*Options)) (*DescribePolicyOutput, error) {
 	if params == nil {
 		params = &DescribePolicyInput{}
@@ -31,11 +32,13 @@ func (c *Client) DescribePolicy(ctx context.Context, params *DescribePolicyInput
 
 type DescribePolicyInput struct {
 
-	// The unique identifier (ID) of the policy that you want details about. You can
-	// get the ID from the ListPolicies or ListPoliciesForTarget operations. The regex
-	// pattern (http://wikipedia.org/wiki/regex) for a policy ID string requires "p-"
-	// followed by from 8 to 128 lowercase or uppercase letters, digits, or the
-	// underscore character (_).
+	// ID for the policy that you want details about. You can get the ID from the ListPolicies or ListPoliciesForTarget
+	// operations.
+	//
+	// The [regex pattern] for a policy ID string requires "p-" followed by from 8 to 128 lowercase
+	// or uppercase letters, digits, or the underscore character (_).
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	PolicyId *string
@@ -97,6 +100,9 @@ func (c *Client) addOperationDescribePolicyMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -107,6 +113,15 @@ func (c *Client) addOperationDescribePolicyMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribePolicyValidationMiddleware(stack); err != nil {
@@ -128,6 +143,15 @@ func (c *Client) addOperationDescribePolicyMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

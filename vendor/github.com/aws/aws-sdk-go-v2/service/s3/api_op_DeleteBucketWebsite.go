@@ -13,20 +13,35 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This operation is not supported by directory buckets. This action removes the
-// website configuration for a bucket. Amazon S3 returns a 200 OK response upon
-// successfully deleting a website configuration on the specified bucket. You will
-// get a 200 OK response if the website configuration you are trying to delete
-// does not exist on the bucket. Amazon S3 returns a 404 response if the bucket
-// specified in the request does not exist. This DELETE action requires the
-// S3:DeleteBucketWebsite permission. By default, only the bucket owner can delete
-// the website configuration attached to a bucket. However, bucket owners can grant
-// other users permission to delete the website configuration by writing a bucket
-// policy granting them the S3:DeleteBucketWebsite permission. For more
-// information about hosting websites, see Hosting Websites on Amazon S3 (https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html)
-// . The following operations are related to DeleteBucketWebsite :
-//   - GetBucketWebsite (https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketWebsite.html)
-//   - PutBucketWebsite (https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketWebsite.html)
+// This operation is not supported for directory buckets.
+//
+// This action removes the website configuration for a bucket. Amazon S3 returns a
+// 200 OK response upon successfully deleting a website configuration on the
+// specified bucket. You will get a 200 OK response if the website configuration
+// you are trying to delete does not exist on the bucket. Amazon S3 returns a 404
+// response if the bucket specified in the request does not exist.
+//
+// This DELETE action requires the S3:DeleteBucketWebsite permission. By default,
+// only the bucket owner can delete the website configuration attached to a bucket.
+// However, bucket owners can grant other users permission to delete the website
+// configuration by writing a bucket policy granting them the
+// S3:DeleteBucketWebsite permission.
+//
+// For more information about hosting websites, see [Hosting Websites on Amazon S3].
+//
+// The following operations are related to DeleteBucketWebsite :
+//
+// [GetBucketWebsite]
+//
+// [PutBucketWebsite]
+//
+// You must URL encode any signed header values that contain spaces. For example,
+// if your header value is my file.txt , containing two spaces after my , you must
+// URL encode this value to my%20%20file.txt .
+//
+// [GetBucketWebsite]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketWebsite.html
+// [PutBucketWebsite]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketWebsite.html
+// [Hosting Websites on Amazon S3]: https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html
 func (c *Client) DeleteBucketWebsite(ctx context.Context, params *DeleteBucketWebsiteInput, optFns ...func(*Options)) (*DeleteBucketWebsiteOutput, error) {
 	if params == nil {
 		params = &DeleteBucketWebsiteInput{}
@@ -58,6 +73,7 @@ type DeleteBucketWebsiteInput struct {
 }
 
 func (in *DeleteBucketWebsiteInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.Bucket = in.Bucket
 	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
@@ -112,6 +128,9 @@ func (c *Client) addOperationDeleteBucketWebsiteMiddlewares(stack *middleware.St
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -125,6 +144,18 @@ func (c *Client) addOperationDeleteBucketWebsiteMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addIsExpressUserAgent(stack); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteBucketWebsiteValidationMiddleware(stack); err != nil {
@@ -158,6 +189,15 @@ func (c *Client) addOperationDeleteBucketWebsiteMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
