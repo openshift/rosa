@@ -12,17 +12,26 @@ import (
 )
 
 // Creates a VPN connection between an existing virtual private gateway or transit
-// gateway and a customer gateway. The supported connection type is ipsec.1 . The
-// response includes information that you need to give to your network
-// administrator to configure your customer gateway. We strongly recommend that you
-// use HTTPS when calling this operation because the response contains sensitive
-// cryptographic information for configuring your customer gateway device. If you
-// decide to shut down your VPN connection for any reason and later create a new
-// VPN connection, you must reconfigure your customer gateway with the new
-// information returned from this call. This is an idempotent operation. If you
-// perform the operation more than once, Amazon EC2 doesn't return an error. For
-// more information, see Amazon Web Services Site-to-Site VPN (https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html)
-// in the Amazon Web Services Site-to-Site VPN User Guide.
+// gateway and a customer gateway. The supported connection type is ipsec.1 .
+//
+// The response includes information that you need to give to your network
+// administrator to configure your customer gateway.
+//
+// We strongly recommend that you use HTTPS when calling this operation because
+// the response contains sensitive cryptographic information for configuring your
+// customer gateway device.
+//
+// If you decide to shut down your VPN connection for any reason and later create
+// a new VPN connection, you must reconfigure your customer gateway with the new
+// information returned from this call.
+//
+// This is an idempotent operation. If you perform the operation more than once,
+// Amazon EC2 doesn't return an error.
+//
+// For more information, see [Amazon Web Services Site-to-Site VPN] in the Amazon Web Services Site-to-Site VPN User
+// Guide.
+//
+// [Amazon Web Services Site-to-Site VPN]: https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html
 func (c *Client) CreateVpnConnection(ctx context.Context, params *CreateVpnConnectionInput, optFns ...func(*Options)) (*CreateVpnConnectionOutput, error) {
 	if params == nil {
 		params = &CreateVpnConnectionInput{}
@@ -60,12 +69,20 @@ type CreateVpnConnectionInput struct {
 	// The options for the VPN connection.
 	Options *types.VpnConnectionOptionsSpecification
 
+	// Specifies the storage mode for the pre-shared key (PSK). Valid values are
+	// Standard " (stored in the Site-to-Site VPN service) or SecretsManager (stored
+	// in Amazon Web Services Secrets Manager).
+	PreSharedKeyStorage *string
+
 	// The tags to apply to the VPN connection.
 	TagSpecifications []types.TagSpecification
 
 	// The ID of the transit gateway. If you specify a transit gateway, you cannot
 	// specify a virtual private gateway.
 	TransitGatewayId *string
+
+	// The ID of the VPN concentrator to associate with the VPN connection.
+	VpnConcentratorId *string
 
 	// The ID of the virtual private gateway. If you specify a virtual private
 	// gateway, you cannot specify a transit gateway.
@@ -129,6 +146,9 @@ func (c *Client) addOperationCreateVpnConnectionMiddlewares(stack *middleware.St
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -139,6 +159,15 @@ func (c *Client) addOperationCreateVpnConnectionMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateVpnConnectionValidationMiddleware(stack); err != nil {
@@ -160,6 +189,15 @@ func (c *Client) addOperationCreateVpnConnectionMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
