@@ -310,8 +310,8 @@ github.com/inconshreveable/mousetrap
 # github.com/itchyny/gojq v0.12.9
 ## explicit; go 1.17
 github.com/itchyny/gojq
-# github.com/itchyny/timefmt-go v0.1.4
-## explicit; go 1.17
+# github.com/itchyny/timefmt-go v0.1.8
+## explicit; go 1.24
 github.com/itchyny/timefmt-go
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
