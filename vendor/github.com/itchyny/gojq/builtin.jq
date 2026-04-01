@@ -1,11 +1,18 @@
-def not: if . then false else true end;
-def in(xs): . as $x | xs | has($x);
 def map(f): [.[] | f];
-def with_entries(f): to_entries | map(f) | from_entries;
+def add(f): [f] | add;
+def map_values(f): .[] |= f;
+def in(xs): . as $x | xs | has($x);
+def not: if . then false else true end;
 def select(f): if f then . else empty end;
+
 def recurse: recurse(.[]?);
 def recurse(f): def r: ., (f | r); r;
 def recurse(f; cond): def r: ., (f | select(cond) | r); r;
+
+def to_entries: [keys[] as $k | {key: $k, value: .[$k]}];
+def from_entries: map({ (.key // .Key // .name // .Name):
+  if has("value") then .value else .Value end }) | add // {};
+def with_entries(f): to_entries | map(f) | from_entries;
 
 def while(cond; update):
   def _while: if cond then ., (update | _while) else empty end;
@@ -37,23 +44,28 @@ def strings: select(type == "string");
 def nulls: select(. == null);
 def values: select(. != null);
 def scalars: select(type | . != "array" and . != "object");
-def leaf_paths: paths(scalars);
 
-def inside(xs): . as $x | xs | contains($x);
-def combinations: if length == 0 then [] else .[0][] as $x | [$x] + (.[1:] | combinations) end;
+def combinations:
+  if length == 0 then
+    []
+  else
+    .[0][] as $x | [$x] + (.[1:] | combinations)
+  end;
 def combinations(n): [limit(n; repeat(.))] | combinations;
-def ascii_downcase:
-  explode | map(if 65 <= . and . <= 90 then . + 32 end) | implode;
-def ascii_upcase:
-  explode | map(if 97 <= . and . <= 122 then . - 32 end) | implode;
+
 def walk(f):
-  def _walk: if type | . == "array" or . == "object" then map_values(_walk) end | f;
+  def _walk:
+    if type == "array" then
+      map(_walk)
+    elif type == "object" then
+      map_values(_walk)
+    end | f;
   _walk;
 
 def first: .[0];
 def first(g): label $out | g | ., break $out;
 def last: .[-1];
-def last(g): reduce g as $item (null; $item);
+def last(g): _last(g);
 def isempty(g): label $out | (g | false, break $out), true;
 def all: all(.);
 def all(y): all(.[]; y);
@@ -61,52 +73,66 @@ def all(g; y): isempty(g | select(y | not));
 def any: any(.);
 def any(y): any(.[]; y);
 def any(g; y): isempty(g | select(y)) | not;
+
 def limit($n; g):
   if $n > 0 then
-    label $out
-      | foreach g as $item
-        ($n; . - 1; $item, if . <= 0 then break $out else empty end)
+    label $out |
+    foreach g as $item (
+      $n;
+      . - 1;
+      $item, if . <= 0 then break $out else empty end
+    )
   elif $n == 0 then
     empty
   else
+    error("limit doesn't support negative count")
+  end;
+def skip($n; g):
+  if $n > 0 then
+    foreach g as $item (
+      $n;
+      . - 1;
+      if . < 0 then $item else empty end
+    )
+  elif $n == 0 then
     g
+  else
+    error("skip doesn't support negative count")
   end;
 def nth($n): .[$n];
 def nth($n; g):
-  if $n < 0 then
-    error("nth doesn't support negative indices")
+  if $n >= 0 then
+    first(skip($n; g))
   else
-    label $out
-      | foreach g as $item
-        ($n + 1; . - 1; if . <= 0 then $item, break $out else empty end)
+    error("nth doesn't support negative index")
   end;
 
 def truncate_stream(f):
-  . as $n | null | f | if .[0] | length > $n then .[0] |= .[$n:] else empty end;
+  . as $n | null | f |
+  if .[0] | length > $n then .[0] |= .[$n:] else empty end;
 def fromstream(f):
-  { x: null, e: false } as $init
-    | foreach f as $i
-      ( $init;
-        if .e then $init else . end
-        | if $i | length == 2
-          then setpath(["e"]; $i[0] | length==0) | setpath(["x"] + $i[0]; $i[1])
-          else setpath(["e"]; $i[0] | length==1) end;
-        if .e then .x else empty end);
+  foreach f as $pv (
+    null;
+    if .e then null end |
+    $pv as [$p, $v] |
+    if $pv | length == 2 then
+      setpath(["v"] + $p; $v) |
+      setpath(["e"]; $p | length == 0)
+    else
+      setpath(["e"]; $p | length == 1)
+    end;
+    if .e then .v else empty end
+  );
 def tostream:
-  path(def r: (.[]? | r), .; r) as $p
-    | getpath($p)
-    | reduce path(.[]?) as $q ([$p, .]; [$p + $q]);
+  path(def r: (.[]? | r), .; r) as $p |
+  getpath($p) |
+  reduce path(.[]?) as $q ([$p, .]; [$p + $q]);
 
-def _assign(ps; $v):
-  reduce path(ps) as $p (.; setpath($p; $v));
-def _modify(ps; f):
-  reduce path(ps) as $p
-    ([., []]; label $out | (([0] + $p) as $q | setpath($q; getpath($q) | f) | ., break $out), setpath([1]; .[1] + [$p]))
-      | . as $x | $x[0] | delpaths($x[1]);
-def map_values(f): .[] |= f;
 def del(f): delpaths([path(f)]);
 def paths: path(..) | select(. != []);
-def paths(f): paths as $p | select(getpath($p) | f) | $p;
+def paths(f): path(.. | select(f)) | select(. != []);
+def pick(f): . as $v |
+  reduce path(f) as $p (null; setpath($p; $v | getpath($p)));
 
 def fromdateiso8601: strptime("%Y-%m-%dT%H:%M:%S%z") | mktime;
 def todateiso8601: strftime("%Y-%m-%dT%H:%M:%SZ");
@@ -114,34 +140,31 @@ def fromdate: fromdateiso8601;
 def todate: todateiso8601;
 
 def match($re): match($re; null);
-def match($re; $flags): _match($re; $flags; false) | .[];
+def match($re; $flags): _match($re; $flags; false)[];
 def test($re): test($re; null);
 def test($re; $flags): _match($re; $flags; true);
 def capture($re): capture($re; null);
-def capture($re; $flags): match($re; $flags) | _capture;
+def capture($re; $flags): match($re; $flags) | .captures | _captures;
 def scan($re): scan($re; null);
 def scan($re; $flags):
-  match($re; $flags + "g")
-    | if .captures|length > 0 then [.captures[].string] else .string end;
+  match($re; $flags + "g") |
+  if .captures == [] then
+    .string
+  else
+    [.captures[].string]
+  end;
+def splits($re; $flags):
+  .[foreach (match($re; $flags + "g"), null) as {$offset, $length}
+      (null; {start: .next, end: $offset, next: $offset + $length})];
 def splits($re): splits($re; null);
-def splits($re; $flags): split($re; $flags) | .[];
+def split($re; $flags): [splits($re; $flags)];
 def sub($re; str): sub($re; str; null);
 def sub($re; str; $flags):
-  . as $str
-    | def _sub:
-        if .matches|length > 0
-        then
-          .matches[-1] as $r
-            | {
-                string: (($r | _capture | str) + $str[$r.offset+$r.length:.offset] + .string),
-                offset: $r.offset,
-                matches: .matches[:-1],
-              }
-            | _sub
-        else
-          $str[:.offset] + .string
-        end;
-  { string: "", matches: [match($re; $flags)] } | _sub;
+  reduce match($re; $flags) as {$offset, $length, $captures}
+    ({s: ., r: []};
+      reduce ($captures | _captures | str) as $s
+        (.i = 0; .r[.i] += .s[.next:$offset] + $s | .i += 1) |
+      .next = $offset + $length) | .r[] + .s[.next:] // .s;
 def gsub($re; str): sub($re; str; "g");
 def gsub($re; str; $flags): sub($re; str; $flags + "g");
 
@@ -152,8 +175,9 @@ def inputs:
     if . == "break" then empty else error end;
 
 def INDEX(stream; idx_expr):
-  reduce stream as $row ({}; .[$row|idx_expr|tostring] = $row);
-def INDEX(idx_expr): INDEX(.[]; idx_expr);
+  reduce stream as $row ({}; .[$row | idx_expr | tostring] = $row);
+def INDEX(idx_expr):
+  INDEX(.[]; idx_expr);
 def JOIN($idx; idx_expr):
   [.[] | [., $idx[idx_expr]]];
 def JOIN($idx; stream; idx_expr):
