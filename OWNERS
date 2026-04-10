@@ -3,12 +3,12 @@ reviewers:
 - jerichokeyne
 - yuwang-RH
 approvers:
-- gdbranco
-- robpblake
-- jerichokeyne
-- davidleerh
 - olucasfreitas
+- jerichokeyne
+- amandahla
 - BraeTroutman
 - marcolan018
-- yuwang-RH
+- gdbranco
+- robpblake
+- davidleerh
 - red-hat-konflux[bot]
