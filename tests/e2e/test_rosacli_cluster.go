@@ -1366,7 +1366,7 @@ var _ = Describe("Classic cluster creation validation",
 							"2":  "Multi AZ cluster requires at least 3 compute nodes",
 							"0":  "Multi AZ cluster requires at least 3 compute nodes",
 							"-3": "must be non-negative",
-							"5":  "multi AZ clusters require that the replicas be a multiple of 3",
+							"5":  "Multi AZ clusters require that the replicas be a multiple of 3",
 						}
 						for k, v := range invalidReplicasErrorMapMultiAZ {
 							rosalCommand.ReplaceFlagValue(map[string]string{
@@ -1402,7 +1402,7 @@ var _ = Describe("Classic cluster creation validation",
 				})
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("Unsupported region"))
+				Expect(stdout.String()).To(ContainSubstring("unsupported region"))
 
 				By("Check the validation for invalid billing-account for classic sts cluster")
 				rosalCommand.ReplaceFlagValue(map[string]string{
