@@ -497,7 +497,7 @@ func initFlags(cmd *cobra.Command) {
 		&args.httpsProxy,
 		"https-proxy",
 		"",
-		"A proxy URL to use for creating HTTPS connections outside the cluster.",
+		"A proxy URL to use for creating HTTPS connections outside the cluster. The URL scheme must be http or https.",
 	)
 
 	flags.StringSliceVar(

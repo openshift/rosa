@@ -134,8 +134,28 @@ func ClusterDomainPrefixValidator(domainPrefix interface{}) error {
 	return fmt.Errorf("can only validate strings, got '%v'", domainPrefix)
 }
 
-// validateProxyURL validates common proxy URL requirements
-func validateProxyURL(proxyURL string, proxyType string, expectedScheme string) error {
+// proxyAllowedURLSchemeErrorFragment lists allowed schemes for error messages, for example
+// 'http://' or 'https://' for two schemes.
+func proxyAllowedURLSchemeErrorFragment(allowedSchemes []string) string {
+	quoted := make([]string, len(allowedSchemes))
+	for i, s := range allowedSchemes {
+		quoted[i] = fmt.Sprintf("'%s://'", s)
+	}
+	switch len(quoted) {
+	case 0:
+		return ""
+	case 1:
+		return quoted[0]
+	case 2:
+		return quoted[0] + " or " + quoted[1]
+	default:
+		return strings.Join(quoted[:len(quoted)-1], ", ") + ", or " + quoted[len(quoted)-1]
+	}
+}
+
+// validateProxyURL validates common proxy URL requirements. allowedSchemes lists
+// acceptable URL schemes without the "://" suffix (for example "http", "https").
+func validateProxyURL(proxyURL string, proxyType string, allowedSchemes []string) error {
 	if strings.Contains(proxyURL, " ") {
 		return fmt.Errorf("invalid %s value: URL cannot contain spaces", proxyType)
 	}
@@ -153,8 +173,20 @@ func validateProxyURL(proxyURL string, proxyType string, expectedScheme string) 
 		return fmt.Errorf("invalid %s value: %v", proxyType, err)
 	}
 
-	if parsedURL.Scheme != expectedScheme {
-		return fmt.Errorf("expected '%s' to have an '%s://' scheme", proxyType, expectedScheme)
+	scheme := strings.ToLower(parsedURL.Scheme)
+	okScheme := false
+	for _, allowed := range allowedSchemes {
+		if scheme == strings.ToLower(allowed) {
+			okScheme = true
+			break
+		}
+	}
+	if !okScheme {
+		if len(allowedSchemes) == 0 {
+			return fmt.Errorf("invalid %s value: URL scheme is not allowed", proxyType)
+		}
+		schemeList := proxyAllowedURLSchemeErrorFragment(allowedSchemes)
+		return fmt.Errorf("invalid %s value: URL scheme must be %s", proxyType, schemeList)
 	}
 
 	if parsedURL.Host == "" {
@@ -174,7 +206,7 @@ func ValidateHTTPProxy(val interface{}) error {
 		if httpProxy == "" {
 			return nil
 		}
-		return validateProxyURL(httpProxy, "http-proxy", "http")
+		return validateProxyURL(httpProxy, "http-proxy", []string{"http"})
 	}
 	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
@@ -184,7 +216,7 @@ func ValidateHTTPSProxy(val interface{}) error {
 		if httpsProxy == "" {
 			return nil
 		}
-		return validateProxyURL(httpsProxy, "https-proxy", "https")
+		return validateProxyURL(httpsProxy, "https-proxy", []string{"http", "https"})
 	}
 	return fmt.Errorf("can only validate strings, got '%v'", val)
 }

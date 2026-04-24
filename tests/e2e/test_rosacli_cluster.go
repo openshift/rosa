@@ -885,10 +885,11 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			}
 			fmt.Println(originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile)
 
-			By("Edit cluster with invalid http_proxy not started with http")
+			By("Edit cluster with invalid http_proxy values")
 			invalidHTTPProxy := map[string]string{
-				"invalidvalue":           "ERR: invalid http-proxy value: URL is missing scheme",
-				"https://test-proxy.com": "ERR: expected 'http-proxy' to have an 'http://' scheme",
+				"invalidvalue":                "ERR: invalid http-proxy value: URL is missing scheme",
+				"https://test-proxy.com":      "ERR: invalid http-proxy value: URL scheme must be 'http://'",
+				"http://test-proxy.com/extra": "ERR: invalid http-proxy value: proxy URL should not contain a path '/extra'",
 			}
 			for illegalHttpProxy, errMessage := range invalidHTTPProxy {
 				output, err := clusterService.EditCluster(clusterID,
@@ -899,14 +900,21 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			}
 
 			By("Edit cluster with invalid https_proxy set")
-			output, err := clusterService.EditCluster(clusterID,
-				"--https-proxy", "invalid",
-			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring("ERR: invalid https-proxy value: URL is missing scheme"))
+			invalidHTTPSProxy := map[string]string{
+				"invalidvalue":                 "ERR: invalid https-proxy value: URL is missing scheme",
+				"ftp://test-proxy.com":         "ERR: invalid https-proxy value: URL scheme must be 'http://' or 'https://'",
+				"https://test-proxy.com/extra": "ERR: invalid https-proxy value: proxy URL should not contain a path '/extra'",
+			}
+			for illegalHTTPSProxy, errMessage := range invalidHTTPSProxy {
+				output, err := clusterService.EditCluster(clusterID,
+					"--https-proxy", illegalHTTPSProxy,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(errMessage))
+			}
 
 			By("Edit cluster with invalid no_proxy ")
-			output, err = clusterService.EditCluster(clusterID,
+			output, err := clusterService.EditCluster(clusterID,
 				"--no-proxy", "*",
 			)
 			Expect(err).To(HaveOccurred())

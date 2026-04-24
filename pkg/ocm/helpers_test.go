@@ -787,7 +787,13 @@ var _ = Describe("ValidateHTTPProxy", func() {
 	It("rejects proxy with https scheme", func() {
 		err := ValidateHTTPProxy("https://proxy.example.com:8080")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("expected 'http-proxy' to have an 'http://' scheme"))
+		Expect(err.Error()).To(Equal("invalid http-proxy value: URL scheme must be 'http://'"))
+	})
+
+	It("rejects proxy with non-http scheme", func() {
+		err := ValidateHTTPProxy("ftp://proxy.example.com:1080")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: URL scheme must be 'http://'"))
 	})
 
 	It("rejects proxy without scheme", func() {
@@ -876,10 +882,15 @@ var _ = Describe("ValidateHTTPSProxy", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("rejects proxy with http scheme", func() {
+	It("accepts proxy with http scheme", func() {
 		err := ValidateHTTPSProxy("http://proxy.example.com:8080")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects proxy with disallowed scheme", func() {
+		err := ValidateHTTPSProxy("ftp://proxy.example.com:1080")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("expected 'https-proxy' to have an 'https://' scheme"))
+		Expect(err.Error()).To(Equal("invalid https-proxy value: URL scheme must be 'http://' or 'https://'"))
 	})
 
 	It("rejects proxy without scheme", func() {
@@ -916,5 +927,40 @@ var _ = Describe("ValidateHTTPSProxy", func() {
 		err := ValidateHTTPSProxy("https://proxy.example.com:8080/path")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("invalid https-proxy value: proxy URL should not contain a path '/path'"))
+	})
+})
+
+var _ = Describe("validateProxyURL", func() {
+	It("rejects URL when allowed scheme list is empty", func() {
+		err := validateProxyURL("http://host.example", "test-proxy", []string{})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid test-proxy value: URL scheme is not allowed"))
+	})
+
+	It("lists three allowed schemes in scheme mismatch errors", func() {
+		err := validateProxyURL("ftp://host.example", "test-proxy", []string{"http", "https", "socks5"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(
+			"invalid test-proxy value: URL scheme must be 'http://', 'https://', or 'socks5://'",
+		))
+	})
+})
+
+var _ = Describe("proxyAllowedURLSchemeErrorFragment", func() {
+	It("returns empty string for no schemes", func() {
+		Expect(proxyAllowedURLSchemeErrorFragment(nil)).To(Equal(""))
+		Expect(proxyAllowedURLSchemeErrorFragment([]string{})).To(Equal(""))
+	})
+
+	It("quotes a single scheme", func() {
+		Expect(proxyAllowedURLSchemeErrorFragment([]string{"http"})).To(Equal("'http://'"))
+	})
+
+	It("joins two schemes with or", func() {
+		Expect(proxyAllowedURLSchemeErrorFragment([]string{"http", "https"})).To(Equal("'http://' or 'https://'"))
+	})
+
+	It("joins three or more schemes with commas and or", func() {
+		Expect(proxyAllowedURLSchemeErrorFragment([]string{"a", "b", "c"})).To(Equal("'a://', 'b://', or 'c://'"))
 	})
 })
