@@ -58,10 +58,10 @@ func (client *AWSClient) CreateVpc(cidr string, name ...string) (*ec2.CreateVpcO
 
 	resp, err := client.Ec2Client.CreateVpc(context.TODO(), input)
 	if err != nil {
-		log.LogError("Create vpc error " + err.Error())
+		log.LogError("Create vpc error %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Create vpc success " + *resp.Vpc.VpcId)
+	log.LogInfo("Create vpc success %s", *resp.Vpc.VpcId)
 	err = client.WaitForResourceExisting(*resp.Vpc.VpcId, 10)
 	if err != nil {
 		return resp, err
@@ -72,7 +72,7 @@ func (client *AWSClient) CreateVpc(cidr string, name ...string) (*ec2.CreateVpcO
 		return resp, err
 	}
 
-	log.LogInfo("Created vpc with ID " + *resp.Vpc.VpcId)
+	log.LogInfo("Created vpc with ID %s", *resp.Vpc.VpcId)
 	return resp, err
 }
 
@@ -95,7 +95,7 @@ func (client *AWSClient) ModifyVpcDnsAttribute(vpcID string, dnsAttribute string
 
 	resp, err := client.Ec2Client.ModifyVpcAttribute(context.TODO(), inputModifyVpc)
 	if err != nil {
-		log.LogError("Modify vpc dns attribute failed " + err.Error())
+		log.LogError("Modify vpc dns attribute failed %s", err.Error())
 		return nil, err
 	}
 	log.LogInfo("Modify vpc dns attribute %s successfully for %s", dnsAttribute, vpcID)

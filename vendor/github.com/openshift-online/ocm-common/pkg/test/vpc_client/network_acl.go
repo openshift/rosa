@@ -13,7 +13,7 @@ func (vpc *VPC) AddNetworkACLRules(egress bool, protocol string, ruleAction stri
 		return err
 	}
 	networkAclId := *acls[0].NetworkAclId
-	log.LogInfo("Find Network ACL" + networkAclId)
+	log.LogInfo("Find Network ACL %s", networkAclId)
 	_, err = vpc.AWSClient.AddNetworkAclEntry(networkAclId, egress, protocol, ruleAction, ruleNumber, fromPort, toPort, cidrBlock)
 	return err
 }
@@ -24,7 +24,7 @@ func (vpc *VPC) DeleteNetworkACLRules(egress bool, ruleNumber int32) error {
 		return err
 	}
 	networkAclId := *acls[0].NetworkAclId
-	log.LogInfo("Find Network ACL" + networkAclId)
+	log.LogInfo("Find Network ACL %s", networkAclId)
 
 	_, err = vpc.AWSClient.DeleteNetworkAclEntry(networkAclId, egress, ruleNumber)
 	return err

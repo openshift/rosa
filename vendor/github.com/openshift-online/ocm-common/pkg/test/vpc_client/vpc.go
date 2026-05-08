@@ -173,7 +173,7 @@ func PrepareVPC(vpcName string, region string, vpcCIDR string, checkExisting boo
 		logMessage = fmt.Sprintf("Going to prepare a vpc with name %s, on region %s, with cidr %s ",
 			vpcName, region, vpcCIDR)
 	}
-	log.LogInfo(logMessage)
+	log.LogInfo("%s", logMessage)
 	if awsSharedCredentialFile == "" {
 		awsclient, err = aws_client.CreateAWSClient("", region)
 	} else {
