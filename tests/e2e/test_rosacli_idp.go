@@ -2,10 +2,13 @@ package e2e
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
@@ -505,112 +508,93 @@ var _ = Describe("Edit IDP",
 					url:  "ldap://myldap.com",
 				}
 
+				var (
+					ERROR_INVALID_IDP_TYPE = "Expected a valid IDP type. Options are [github gitlab google htpasswd ldap openid]"
+					ERROR_INVALID_MAPPING  = fmt.Sprintf(
+						"Failed to create IDP for cluster '%s': Expected a valid mapping method. Options are [add claim generate lookup]",
+						clusterID,
+					)
+					ERROR_INVALID_CERTIFICATE_BUNDLE = fmt.Sprintf(
+						"Failed to create IDP for cluster '%s': Expected a valid certificate bundle: open %s: no such file or directory",
+						clusterID,
+						invalidCaFilePath,
+					)
+				)
+
 				//Htpasswd
 				By("Try creating htpasswd idp with invalid idp type")
 				_, UserName, UserPasswd, err := helper.GenerateHtpasswdPair(UserName, UserPasswd)
 				Expect(err).To(BeNil())
-				output, err := idpService.CreateIDP(
+				_, err = idpService.CreateIDP(
 					clusterID, idp[idpHtpasswd].name,
 					"--type", invalidIdpType,
 					"--username", UserName,
 					"--password", UserPasswd,
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Expected a valid IDP type. Options are [github gitlab google htpasswd ldap openid]"))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_IDP_TYPE)
 
 				//Gitlab
 				By("Try creating gitlab idp with invalid idp type")
-				output, err = idpService.CreateIDP(clusterID, idp[idpGitlab].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpGitlab].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--host-url", idp[idpGitlab].url,
 					"--organizations", idp[idpGitlab].org,
 					"--type", invalidIdpType)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Expected a valid IDP type. Options are [github gitlab google htpasswd ldap openid]"))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_IDP_TYPE)
 
 				By("Try creating gitlab idp with invalid mapping method")
-				output, err = idpService.CreateIDP(clusterID, idp[idpGitlab].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpGitlab].name,
 					"--mapping-method", invalidMappingMethod,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--host-url", idp[idpGitlab].url,
 					"--organizations", idp[idpGitlab].org,
 					"--type", idpGitlab)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Failed to create IDP for cluster '%s': Expected a valid mapping method. Options are [add claim generate lookup]",
-						clusterID))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_MAPPING)
 
 				By("Try creating gitlab idp with invalid ca file path")
-				output, err = idpService.CreateIDP(clusterID, idp[idpGitlab].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpGitlab].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--host-url", idp[idpGitlab].url,
 					"--organizations", idp[idpGitlab].org,
 					"--ca", invalidCaFilePath,
 					"--type", idpGitlab)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Failed to create IDP for cluster '%s': Expected a valid certificate bundle: open %s: no such file or directory",
-						clusterID,
-						invalidCaFilePath))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_CERTIFICATE_BUNDLE)
 
 				//Google --
 				By("Try creating google idp with invalid idp type")
-				output, err = idpService.CreateIDP(clusterID, idp[idpGoogle].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpGoogle].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--hosted-domain", idp[idpGoogle].url,
 					"--organizations", idp[idpGoogle].org,
 					"--type", invalidIdpType)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Expected a valid IDP type. Options are [github gitlab google htpasswd ldap openid]"))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_IDP_TYPE)
 
 				By("Try creating google idp with invalid mapping method")
-				output, err = idpService.CreateIDP(clusterID, idp[idpGoogle].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpGoogle].name,
 					"--mapping-method", invalidMappingMethod,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--hosted-domain", idp[idpGoogle].url,
 					"--organizations", idp[idpGoogle].org,
 					"--type", idpGoogle)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Failed to create IDP for cluster '%s': Expected a valid mapping method. Options are [add claim generate lookup]",
-						clusterID))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_MAPPING)
 
 				//OpenId --
 				By("Try creating openid idp with invalid idp type")
-				output, err = idpService.CreateIDP(clusterID, idp[idpOpenId].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpOpenId].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--issuer-url", idp[idpOpenId].url,
 					"--organizations", idp[idpOpenId].org,
 					"--type", invalidIdpType)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Expected a valid IDP type. Options are [github gitlab google htpasswd ldap openid]"))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_IDP_TYPE)
 
 				By("Try creating openid idp with invalid mapping method")
-				output, err = idpService.CreateIDP(clusterID, idp[idpOpenId].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpOpenId].name,
 					"--mapping-method", invalidMappingMethod,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
@@ -620,15 +604,10 @@ var _ = Describe("Edit IDP",
 					"--email-claims", idp[idpOpenId].emailClaims,
 					"--extra-scopes", idp[idpOpenId].extraScopes,
 					"--type", idpOpenId)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Failed to create IDP for cluster '%s': Expected a valid mapping method. Options are [add claim generate lookup]",
-						clusterID))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_MAPPING)
 
 				By("Try creating openid idp with invalid ca file path")
-				output, err = idpService.CreateIDP(clusterID, idp[idpOpenId].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpOpenId].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--ca", invalidCaFilePath,
@@ -638,95 +617,74 @@ var _ = Describe("Edit IDP",
 					"--email-claims", idp[idpOpenId].emailClaims,
 					"--extra-scopes", idp[idpOpenId].extraScopes,
 					"--type", idpOpenId)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Failed to create IDP for cluster '%s': Expected a valid certificate bundle: open %s: no such file or directory",
-						clusterID,
-						invalidCaFilePath))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_CERTIFICATE_BUNDLE)
 
 				//Github --
 				By("Create Github IDP with invalid team")
-				output, err = idpService.CreateIDP(clusterID, idp[idpGithub].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpGithub].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--hostname", idp[idpGithub].url,
 					"--teams", invalidTeam,
 					"--type", idpGithub)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Failed to add IDP to cluster '%s'",
-						clusterID))
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf("Failed to add IDP to cluster '%s'", clusterID),
+				)
 
 				//LDAP --
 				By("Create LDAP IDP with invalid url format")
-				output, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
 					"--url", invalidLdapUrl,
 					"--insecure",
 					"--type", idpLDAP)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf(
 						"Failed to create IDP for cluster '%s': Expected a valid LDAP URL: parse \"ldap.com\": invalid URI for request",
-						clusterID))
+						clusterID,
+					),
+				)
 
 				By("Create LDAP IDP with ca and insecure at same time")
-				output, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
 					"--url", idp[idpLDAP].url,
 					"--insecure",
 					"--ca", invalidCaFilePath,
 					"--type", idpLDAP)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf(
 						"Failed to create IDP for cluster '%s': Cannot use certificate bundle with an insecure connection",
-						clusterID))
+						clusterID,
+					),
+				)
 
 				By("Try creating LDAP idp with invalid idp type")
-				output, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--url", idp[idpLDAP].url,
 					"--type", invalidIdpType)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Expected a valid IDP type. Options are [github gitlab google htpasswd ldap openid]"))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_IDP_TYPE)
 
 				By("Try creating LDAP idp with invalid mapping method")
-				output, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--mapping-method", invalidMappingMethod,
 					"--url", idp[idpLDAP].url,
 					"--type", idpLDAP)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"Failed to create IDP for cluster '%s': Expected a valid mapping method. Options are [add claim generate lookup]",
-						clusterID))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_MAPPING)
 
 				By("Try creating LDAP idp with invalid ca file path")
-				output, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
+				_, err = idpService.CreateIDP(clusterID, idp[idpLDAP].name,
 					"--client-id", clientID,
 					"--client-secret", clientSecret,
 					"--ca", invalidCaFilePath,
 					"--url", idp[idpLDAP].url,
 					"--type", idpLDAP)
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring("Failed to create IDP for cluster '%s': Expected a valid certificate bundle: "+
-						"open %s: no such file or directory",
-						clusterID,
-						invalidCaFilePath))
+				helper.ExpectErrorWithMessage(err, ERROR_INVALID_CERTIFICATE_BUNDLE)
 			})
 
 		Context("can Create multiple HTPasswd IDPs including creating admin flow - [id:65160]",
