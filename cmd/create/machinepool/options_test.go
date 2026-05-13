@@ -21,7 +21,7 @@ var _ = Describe("CreateMachinepoolOptions", func() {
 
 	Context("NewCreateMachinepoolUserOptions", func() {
 		It("should create default user options", func() {
-			Expect(userOptions.InstanceType).To(Equal(instanceType))
+			Expect(userOptions.InstanceType).To(Equal(mpOpts.DefaultInstanceType))
 			Expect(userOptions.AutoscalingEnabled).To(BeFalse())
 			Expect(userOptions.MultiAvailabilityZone).To(BeTrue())
 			Expect(userOptions.Autorepair).To(BeTrue())

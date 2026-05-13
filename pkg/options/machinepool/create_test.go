@@ -31,7 +31,7 @@ var _ = Describe("BuildMachinePoolCreateCommandWithOptions", func() {
 		Expect(options.AutoscalingEnabled).To(Equal(false))
 		Expect(options.MinReplicas).To(Equal(0))
 		Expect(options.MaxReplicas).To(Equal(0))
-		Expect(options.InstanceType).To(Equal("m5.xlarge"))
+		Expect(options.InstanceType).To(Equal(DefaultInstanceType))
 		Expect(options.Labels).To(Equal(""))
 		Expect(options.Taints).To(Equal(""))
 		Expect(options.UseSpotInstances).To(Equal(false))
@@ -70,7 +70,7 @@ var _ = Describe("BuildMachinePoolCreateCommandWithOptions", func() {
 		Expect(maxReplicas).To(Equal(0))
 
 		instanceType, _ := flags.GetString("instance-type")
-		Expect(instanceType).To(Equal("m5.xlarge"))
+		Expect(instanceType).To(Equal(DefaultInstanceType))
 
 		labels, _ := flags.GetString("labels")
 		Expect(labels).To(Equal(""))
