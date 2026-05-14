@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
-	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
@@ -20,6 +19,8 @@ import (
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
+
+const expectedDefaultMachinePoolInstanceType = "m7i.xlarge"
 
 var _ = Describe("Create machinepool",
 	labels.Feature.Machinepool,
@@ -141,7 +142,7 @@ var _ = Describe("Create machinepool",
 					Expect(err).ToNot(HaveOccurred())
 					if key == "default" {
 						Expect(out.Machinepool(mpID).Replicas).To(Equal("0"))
-						Expect(out.Machinepool(mpID).InstanceType).To(Equal(mpOpts.DefaultInstanceType))
+						Expect(out.Machinepool(mpID).InstanceType).To(Equal(expectedDefaultMachinePoolInstanceType))
 					}
 
 					if key == "advanced" {
@@ -159,7 +160,7 @@ var _ = Describe("Create machinepool",
 						Expect(out.Machinepool(mpID).Replicas).
 							To(
 								Equal(fmt.Sprintf("%s-%s", minReplicas, maxReplicas)))
-						Expect(out.Machinepool(mpID).InstanceType).To(Equal(mpOpts.DefaultInstanceType))
+						Expect(out.Machinepool(mpID).InstanceType).To(Equal(expectedDefaultMachinePoolInstanceType))
 						Expect(out.Machinepool(mpID).Labels).To(
 							Equal(strings.Join(helper.ParseCommaSeparatedStrings(labels_2), ", ")))
 					}
