@@ -40,16 +40,18 @@ type CreateMachinepoolUserOptions struct {
 }
 
 const (
-	use     = "machinepool"
-	short   = "Add machine pool to cluster"
-	long    = "Add a machine pool to the cluster."
-	example = `  # Interactively add a machine pool to a cluster named "mycluster"
+	// DefaultInstanceType is the default AWS instance type for new machine pools.
+	DefaultInstanceType = "m7i.xlarge"
+	use                 = "machinepool"
+	short               = "Add machine pool to cluster"
+	long                = "Add a machine pool to the cluster."
+	example             = `  # Interactively add a machine pool to a cluster named "mycluster"
   rosa create machinepool --cluster=mycluster --interactive
-  # Add a machine pool mp-1 with 3 replicas of m5.xlarge to a cluster
-  rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m5.xlarge
-  # Add a machine pool mp-1 with autoscaling enabled and 3 to 6 replicas of m5.xlarge to a cluster
+  # Add a machine pool mp-1 with 3 replicas of m7i.xlarge to a cluster
+  rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m7i.xlarge
+  # Add a machine pool mp-1 with autoscaling enabled and 3 to 6 replicas of m7i.xlarge to a cluster
   rosa create machinepool --cluster=mycluster --name=mp-1 --enable-autoscaling \
-	--min-replicas=3 --max-replicas=6 --instance-type=m5.xlarge
+	--min-replicas=3 --max-replicas=6 --instance-type=m7i.xlarge
   # Add a machine pool with labels to a cluster
   rosa create machinepool -c mycluster --name=mp-1 --replicas=2 --instance-type=r5.2xlarge --labels=foo=bar,bar=baz,
   # Add a machine pool with spot instances to a cluster
@@ -64,7 +66,9 @@ type CreateMachinepoolOptions struct {
 }
 
 func NewCreateMachinepoolUserOptions() *CreateMachinepoolUserOptions {
-	return &CreateMachinepoolUserOptions{}
+	return &CreateMachinepoolUserOptions{
+		InstanceType: DefaultInstanceType,
+	}
 }
 
 func (m *CreateMachinepoolOptions) Machinepool() *CreateMachinepoolUserOptions {
@@ -130,7 +134,7 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 	flags.StringVar(
 		&options.InstanceType,
 		"instance-type",
-		"m5.xlarge",
+		DefaultInstanceType,
 		"Instance type that should be used.",
 	)
 
