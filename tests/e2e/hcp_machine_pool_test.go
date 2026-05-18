@@ -432,9 +432,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", negativeMinReplica),
 				"-y",
 			)
-			expectErrMsg := "must be a non-negative number when autoscaling is set"
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
+			helper.ExpectErrorWithMessage(err, "min-replicas must be a non-negative number when autoscaling is enabled")
 
 			By("Scale up a machine pool max replica too large")
 			moreMaxReplica := 1000
@@ -442,9 +440,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--max-replicas", fmt.Sprintf("%v", moreMaxReplica),
 				"-y",
 			)
-			expectErrMsg = "exceeds the maximum allowed"
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
+			helper.ExpectErrorWithMessage(err, "exceeds the maximum allowed")
 
 			By("Scale a machine pool min replica > max replica")
 			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
@@ -452,9 +448,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--max-replicas", fmt.Sprintf("%v", "3"),
 				"-y",
 			)
-			expectErrMsg = "min-replicas needs to be less than the number of machine pool max-replicas"
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
+			helper.ExpectErrorWithMessage(err, "the number of machine pool min-replicas must not be greater than max-replicas")
 
 			By("Scale down a machine pool min replica to -1")
 			downMinReplica := -1
@@ -462,9 +456,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--min-replicas", fmt.Sprintf("%v", downMinReplica),
 				"-y",
 			)
-			expectErrMsg = "must be a non-negative number when autoscaling is set"
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
+			helper.ExpectErrorWithMessage(err, "min-replicas must be a non-negative number when autoscaling is enabled")
 
 			By("Scale a machine pool with min replica and max replica a char")
 			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
@@ -472,9 +464,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--max-replicas", fmt.Sprintf("%v", "b"),
 				"-y",
 			)
-			expectErrMsg = "invalid syntax"
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(expectErrMsg))
+			helper.ExpectErrorWithMessage(err, "invalid syntax")
 		})
 	})
 
@@ -610,35 +600,28 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
 			By("with no machinepool id")
 			_, err := machinePoolService.DeleteMachinePool(clusterID, "")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("You need to specify a machine pool name"))
+			helper.ExpectErrorWithMessage(err, "you need to specify a machine pool name")
 
 			By("with non existing machinepool id")
 			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("machine pool 'anything' does not exist"))
+			helper.ExpectErrorWithMessage(err, "machine pool 'anything' does not exist")
 
 			By("with invalid machinepool id")
 			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything%^")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("Expected a valid identifier for the machine pool"))
+			helper.ExpectErrorWithMessage(err, "Expected a valid identifier for the machine pool")
 
 			By("with unknown flag --interactive")
 			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything", "--interactive")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("unknown flag: --interactive"))
+			helper.ExpectErrorWithMessage(err, "unknown flag: --interactive")
 
 			if !profile.ClusterConfig.MultiAZ {
 				By("Delete last remaining machinepool")
 				_, err = machinePoolService.DeleteMachinePool(clusterID, constants.DefaultHostedWorkerPool)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).
-					Should(
-						ContainSubstring(
-							fmt.Sprintf("failed to delete machine pool '%s' on hosted cluster", constants.DefaultHostedWorkerPool)))
-				Expect(err.Error()).
-					Should(
-						ContainSubstring("The last node pool can not be deleted from a cluster"))
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf("failed to delete machine pool '%s' on hosted cluster", constants.DefaultHostedWorkerPool),
+				)
+				helper.ExpectErrorWithMessage(err, "The last node pool can not be deleted from a cluster")
 			}
 		})
 

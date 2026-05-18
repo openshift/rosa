@@ -129,13 +129,20 @@ var _ = Describe("Edit cluster",
 				}
 
 				By("Edit cluster with the channel group which has no available version")
-				out, err = clusterService.EditCluster(
+				_, err = clusterService.EditCluster(
+					clusterID,
+					"--channel-group", "nightly",
+					"-y",
+				)
+				helper.ExpectErrorWithMessage(err, "is not available for the desired channel group")
+
+				By("Edit cluster with the channel group that doesn't exist")
+				_, err = clusterService.EditCluster(
 					clusterID,
 					"--channel-group", "fakecg",
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(out.String()).To(ContainSubstring("is not available for the desired channel group"))
+				helper.ExpectErrorWithMessage(err, "Unsupported channel group")
 			})
 		It("can check the description of the cluster - [id:34102]",
 			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,

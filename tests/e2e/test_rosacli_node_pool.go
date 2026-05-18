@@ -909,16 +909,18 @@ var _ = Describe("Edit nodepool",
 				machinepoolName := helper.GenerateRandomName("mp-73391", 2)
 
 				By("Try to edit machinepool with the name not present in cluster")
-				output, err := machinePoolService.EditMachinePool(clusterID, nonExistingMachinepoolName, "--replicas", "3")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring(
+				_, err := machinePoolService.EditMachinePool(clusterID, nonExistingMachinepoolName, "--replicas", "3")
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf(
 						"machine pool '%s' does not exist for hosted cluster '%s'",
 						nonExistingMachinepoolName,
-						clusterID))
+						clusterID,
+					),
+				)
 
 				By("Create a new machinepool to the cluster")
-				output, err = machinePoolService.CreateMachinePool(clusterID, machinepoolName, "--replicas", "3")
+				output, err := machinePoolService.CreateMachinePool(clusterID, machinepoolName, "--replicas", "3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 					To(ContainSubstring(
@@ -927,29 +929,30 @@ var _ = Describe("Edit nodepool",
 						clusterID))
 
 				By("Try to edit the replicas of the machinepool with negative value")
-				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "-9")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring(
-						"must be a non-negative number"))
+				_, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "-9")
+				helper.ExpectErrorWithMessage(err, "must be a non-negative number")
 
 				By("Try to edit the machinepool with --min-replicas flag when autoscaling is disabled for the machinepool.")
-				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "2")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring(
+				_, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "2")
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf(
 						"failed to get autoscaling or replicas: 'autoscaling is not enabled on machine pool '%s'. "+
 							"can't set min or max replicas'",
-						machinepoolName))
+						machinepoolName,
+					),
+				)
 
 				By("Try to edit the machinepool with --max-replicas flag when autoscaling is disabled for the machinepool.")
-				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--max-replicas", "5")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring(
+				_, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--max-replicas", "5")
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf(
 						"failed to get autoscaling or replicas: 'autoscaling is not enabled on machine pool '%s'. "+
 							"can't set min or max replicas'",
-						machinepoolName))
+						machinepoolName,
+					),
+				)
 
 				By("Edit the machinepool to autoscaling mode.")
 				output, err = machinePoolService.EditMachinePool(
@@ -966,19 +969,18 @@ var _ = Describe("Edit nodepool",
 						clusterID))
 
 				By("Try to edit machinepool with negative min_replicas value.")
-				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "-3")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring(
-						"must be a non-negative number when autoscaling is set"))
+				_, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--min-replicas", "-3")
+				helper.ExpectErrorWithMessage(err, "min-replicas must be a non-negative number when autoscaling is enabled")
 
 				By("Try to edit machinepool with --replicas flag when the autoscaling is enabled for the machinepool.")
-				output, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "3")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring(
+				_, err = machinePoolService.EditMachinePool(clusterID, machinepoolName, "--replicas", "3")
+				helper.ExpectErrorWithMessage(
+					err,
+					fmt.Sprintf(
 						"failed to get autoscaling or replicas: 'autoscaling enabled on machine pool '%s'. can't set replicas'",
-						machinepoolName))
+						machinepoolName,
+					),
+				)
 			})
 
 		It("create/describe machinepool with user tags for HCP - [id:73492]",

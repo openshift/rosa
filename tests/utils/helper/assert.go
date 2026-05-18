@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
+	//nolint:staticcheck
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -48,4 +51,26 @@ func AssertWaitPollWithErr(e error, msg string) {
 	err := fmt.Errorf("case: %v\nexpected error not got because of %v", CurrentSpecReport().FullText(), msg)
 	Expect(err).NotTo(HaveOccurred())
 
+}
+
+// Gingko helper function to:
+// 1. check that an error occurred
+// 2. check that the error message returned contains a substring
+// 3. the error message check is case-insensitive
+func ExpectErrorWithMessage(err error, msg string) {
+	GinkgoHelper()
+	Expect(err).To(HaveOccurred())
+	errMsg := err.Error()
+	Expect(strings.ToLower(errMsg)).Should(ContainSubstring(strings.ToLower(msg)))
+}
+
+// Gingko helper function to:
+// 1. check that an error occurred
+// 2. check that the error message returned matches a regex pattern
+// 3. the error message check is case-insensitive
+func ExpectErrorWithPattern(err error, pattern string) {
+	GinkgoHelper()
+	Expect(err).To(HaveOccurred())
+	errMsg := err.Error()
+	Expect(strings.ToLower(errMsg)).Should(MatchRegexp("(?i)%s", pattern))
 }
