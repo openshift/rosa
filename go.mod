@@ -3,7 +3,7 @@ module github.com/openshift/rosa
 go 1.25.8
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.2.15
+	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/semver v1.5.0
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/aws/aws-sdk-go-v2 v1.30.3
@@ -50,7 +50,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
-	github.com/kr/pty v1.1.8 // indirect
 	github.com/lib/pq v1.10.5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.453 // indirect
