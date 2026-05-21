@@ -120,6 +120,47 @@ Types other than `fix:` and `feat:` are allowed:
 - `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
 - `test`: Adding missing tests or correcting existing tests
 
+## Release Process and Changelog Automation
+
+The changelog is automatically generated using [`git-cliff`](https://git-cliff.org/)
+configured via `cliff.toml`. Only the `CHANGELOG.md` in the default branch
+contains the complete changelog history.
+
+**Workflow:**
+1. Push a stable release tag (`vX.Y.Z`) to trigger the automation.
+2. GitHub Actions automatically generates the changelog from the previous release tag.
+3. A PR is created to `master` with the new changelog entry, labeled `changelog`
+   to be reviewed.
+4. A human reviews and merges that PR.
+
+The changelog follows the existing format with sections for FEATURES,
+ENHANCEMENTS (with Bug fixes, Documentation, and Chores subsections), and other
+categories. Commits are automatically grouped based on their conventional commit
+type.
+
+Contributors do **not** add changelog fragments to feature PRs.
+
+### Manual fallback
+
+To regenerate the entire historical changelog from all stable tags:
+
+```shell
+make changelog-bootstrap
+```
+
+To generate or update the entry for a specific stable tag:
+
+```shell
+make changelog-generate TAG=v1.2.63
+```
+
+The helper script auto-installs a pinned `git-cliff` binary when `git-cliff` is
+not already available locally.
+
+If the automated PR misses a release window, the historical changelog can be
+backfilled manually by regenerating the entry for that stable tag and opening a
+normal PR with the updated `CHANGELOG.md`.
+
 All code should be covered by tests. We use [Ginkgo](https://onsi.github.io/ginkgo/). Other third party testing package
 will be rejected.
 

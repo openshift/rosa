@@ -177,6 +177,19 @@ generate-docs:
 check-release-config:
 	$(GORELEASER) check
 
+.PHONY: changelog-bootstrap
+changelog-bootstrap:
+	./hack/changelog-generate.sh --bootstrap
+
+.PHONY: changelog-generate
+changelog-generate:
+	@test -n "$(TAG)"
+	./hack/changelog-generate.sh --tag "$(TAG)" $(if $(PREVIOUS_TAG),--previous-tag "$(PREVIOUS_TAG)",)
+
+.PHONY: changelog-pr
+changelog-pr:
+	./hack/changelog-pr.sh $(if $(TAG),--tag "$(TAG)",) $(if $(PREVIOUS_TAG),--previous-tag "$(PREVIOUS_TAG)",)
+
 # builds a snap shot release in /dist
 .PHONY: local-release
 local-release:
