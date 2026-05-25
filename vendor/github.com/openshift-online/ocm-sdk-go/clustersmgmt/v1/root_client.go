@@ -261,6 +261,16 @@ func (c *Client) ProvisionShards() *ProvisionShardsClient {
 	)
 }
 
+// RegisterCluster returns the target 'register_cluster' resource.
+//
+// Reference to cluster registration for externally provisioned clusters.
+func (c *Client) RegisterCluster() *RegisterClusterClient {
+	return NewRegisterClusterClient(
+		c.transport,
+		path.Join(c.path, "register_cluster"),
+	)
+}
+
 // RegistryAllowlists returns the target 'registry_allowlists' resource.
 //
 // Reference to the resource that manages the collection of registry allowlists.

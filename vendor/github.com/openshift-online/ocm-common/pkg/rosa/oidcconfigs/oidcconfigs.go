@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	defaultLengthRandomLabel = 4
+	defaultLengthRandomLabel = 8
 
 	prefixForPrivateKeySecret     = "rosa-private-key"
 	defaultPrefixForConfiguration = "oidc"
@@ -85,13 +85,41 @@ const (
 )
 
 func IsValidBucketName(bucketName string) bool {
+	// AWS S3 bucket name length constraint: must be between 3 and 63 characters
+	if len(bucketName) < 3 || len(bucketName) > 63 {
+		return false
+	}
 	if bucketName[0] == '.' || bucketName[len(bucketName)-1] == '.' {
 		return false
 	}
+	// Buckets cannot start with these prefixes:
 	if strings.HasPrefix(bucketName, "xn--") {
 		return false
 	}
+	if strings.HasPrefix(bucketName, "sthree-") {
+		return false
+	}
+	if strings.HasPrefix(bucketName, "amzn-s3-demo-") {
+		return false
+	}
+	// This suffix is reserved for access point alias names
 	if strings.HasSuffix(bucketName, "-s3alias") {
+		return false
+	}
+	// This suffix is reserved for Object Lambda Access Point alias names
+	if strings.HasSuffix(bucketName, "--ol-s3") {
+		return false
+	}
+	// This suffix is reserved for Multi-Region Access Point names
+	if strings.HasSuffix(bucketName, ".mrap") {
+		return false
+	}
+	// This suffix is reserved for directory buckets
+	if strings.HasSuffix(bucketName, "--x-s3") {
+		return false
+	}
+	// This suffix is reserved for S3 Tables buckets
+	if strings.HasSuffix(bucketName, "--table-s3") {
 		return false
 	}
 	if match, _ := regexp.MatchString("\\.\\.", bucketName); match {

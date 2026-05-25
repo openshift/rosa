@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v
 type AWSBackupConfig struct {
 	fieldSet_           []bool
 	s3Bucket            string
+	accessSharedRoleArn string
 	accountId           string
 	identityProviderArn string
 	managementCluster   string
@@ -67,12 +68,35 @@ func (o *AWSBackupConfig) GetS3Bucket() (value string, ok bool) {
 	return
 }
 
+// AccessSharedRoleArn returns the value of the 'access_shared_role_arn' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// ARN of the role used in the Disaster Recovery (DR) account to manipulate backups for deleted clusters
+func (o *AWSBackupConfig) AccessSharedRoleArn() string {
+	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
+		return o.accessSharedRoleArn
+	}
+	return ""
+}
+
+// GetAccessSharedRoleArn returns the value of the 'access_shared_role_arn' attribute and
+// a flag indicating if the attribute has a value.
+//
+// ARN of the role used in the Disaster Recovery (DR) account to manipulate backups for deleted clusters
+func (o *AWSBackupConfig) GetAccessSharedRoleArn() (value string, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
+	if ok {
+		value = o.accessSharedRoleArn
+	}
+	return
+}
+
 // AccountId returns the value of the 'account_id' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // ID of the AWS Disaster Recovery (DR) account
 func (o *AWSBackupConfig) AccountId() string {
-	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
+	if o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2] {
 		return o.accountId
 	}
 	return ""
@@ -83,7 +107,7 @@ func (o *AWSBackupConfig) AccountId() string {
 //
 // ID of the AWS Disaster Recovery (DR) account
 func (o *AWSBackupConfig) GetAccountId() (value string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
+	ok = o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2]
 	if ok {
 		value = o.accountId
 	}
@@ -95,7 +119,7 @@ func (o *AWSBackupConfig) GetAccountId() (value string, ok bool) {
 //
 // ARN of the identity provider created in the Disaster Recovery (DR) account for the Management Cluster
 func (o *AWSBackupConfig) IdentityProviderArn() string {
-	if o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2] {
+	if o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3] {
 		return o.identityProviderArn
 	}
 	return ""
@@ -106,7 +130,7 @@ func (o *AWSBackupConfig) IdentityProviderArn() string {
 //
 // ARN of the identity provider created in the Disaster Recovery (DR) account for the Management Cluster
 func (o *AWSBackupConfig) GetIdentityProviderArn() (value string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2]
+	ok = o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3]
 	if ok {
 		value = o.identityProviderArn
 	}
@@ -118,7 +142,7 @@ func (o *AWSBackupConfig) GetIdentityProviderArn() (value string, ok bool) {
 //
 // Name of the management cluster the backup config refers to
 func (o *AWSBackupConfig) ManagementCluster() string {
-	if o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3] {
+	if o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4] {
 		return o.managementCluster
 	}
 	return ""
@@ -129,7 +153,7 @@ func (o *AWSBackupConfig) ManagementCluster() string {
 //
 // Name of the management cluster the backup config refers to
 func (o *AWSBackupConfig) GetManagementCluster() (value string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3]
+	ok = o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4]
 	if ok {
 		value = o.managementCluster
 	}
@@ -141,7 +165,7 @@ func (o *AWSBackupConfig) GetManagementCluster() (value string, ok bool) {
 //
 // ARN of the role used by the CS Trusted Account to gain access to the Disaster Recovery (DR) account
 func (o *AWSBackupConfig) RoleArn() string {
-	if o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4] {
+	if o != nil && len(o.fieldSet_) > 5 && o.fieldSet_[5] {
 		return o.roleArn
 	}
 	return ""
@@ -152,7 +176,7 @@ func (o *AWSBackupConfig) RoleArn() string {
 //
 // ARN of the role used by the CS Trusted Account to gain access to the Disaster Recovery (DR) account
 func (o *AWSBackupConfig) GetRoleArn() (value string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4]
+	ok = o != nil && len(o.fieldSet_) > 5 && o.fieldSet_[5]
 	if ok {
 		value = o.roleArn
 	}

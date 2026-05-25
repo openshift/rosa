@@ -42,37 +42,43 @@ func (subnet *Subnet) IsNatgatwatEnabled() bool {
 	return false
 }
 
-// PrepareNatGatway will return a NAT gateway if existing no matter which zone set
-// zone only work when create public subnet once no NAT gate way existing
+// PrepareNatGateway will return a NAT gateway if existing no matter which zone set
+// zone only work when create public subnet once no NAT gateway existing
 // Will implement zone supporting for nat gateway in future. But for now, there is no requirement
-func (vpc *VPC) PrepareNatGatway(zone string) (types.NatGateway, error) {
-	var gateWay types.NatGateway
-	natGatways, err := vpc.AWSClient.ListNatGateWays(vpc.VpcID)
+func (vpc *VPC) PrepareNatGateway(zone string) (types.NatGateway, error) {
+	var gateway types.NatGateway
+	natGateways, err := vpc.AWSClient.ListNatGateways(vpc.VpcID)
 	if err != nil {
-		return gateWay, err
+		return gateway, err
 	}
-	if len(natGatways) != 0 {
-		gateWay = natGatways[0]
-		log.LogInfo("Found existing nat gateway: %s", *gateWay.NatGatewayId)
-		err = vpc.AWSClient.WaitForResourceExisting(*gateWay.NatGatewayId, 10*60)
+	if len(natGateways) != 0 {
+		gateway = natGateways[0]
+		if gateway.NatGatewayId == nil {
+			return types.NatGateway{}, fmt.Errorf("gateway with nil id found on VPC '%s'", vpc.VpcID)
+		}
+		log.LogInfo("Found existing nat gateway: %s with state: %s", *gateway.NatGatewayId, gateway.State)
+		// Don't wait if it's already available
+		if gateway.State != types.NatGatewayStateAvailable {
+			err = vpc.AWSClient.WaitForResourceExisting(*gateway.NatGatewayId, 10*60)
+		}
 
 	} else {
 		allocation, err := vpc.AWSClient.AllocateEIPAddress()
 		if err != nil {
-			return gateWay, fmt.Errorf("error happened when allocate EIP Address for NAT gateway: %s", err)
+			return gateway, fmt.Errorf("error happened when allocate EIP Address for NAT gateway: %s", err)
 		}
 		publicSubnet, err := vpc.PreparePublicSubnet(zone)
 		if err != nil {
-			return gateWay, fmt.Errorf("error happened when prepare public subnet for NAT gateway: %s", err)
+			return gateway, fmt.Errorf("error happened when prepare public subnet for NAT gateway: %s", err)
 		}
-		natGatway, err := vpc.AWSClient.CreateNatGateway(publicSubnet.ID, *allocation.AllocationId, vpc.VpcID)
+		natGateway, err := vpc.AWSClient.CreateNatGateway(publicSubnet.ID, *allocation.AllocationId, vpc.VpcID)
 		if err != nil {
-			return gateWay, fmt.Errorf("error happened when prepare NAT gateway: %s", err)
+			return gateway, fmt.Errorf("error happened when prepare NAT gateway: %s", err)
 		}
-		gateWay = *natGatway.NatGateway
+		gateway = *natGateway.NatGateway
 	}
 
-	return gateWay, err
+	return gateway, err
 }
 func (vpc *VPC) PreparePublicSubnet(zone string) (*Subnet, error) {
 	if vpc.SubnetList != nil {
@@ -128,7 +134,7 @@ func (vpc *VPC) CreatePrivateSubnet(zone string, natEnabled bool) (*Subnet, erro
 	subnet.RTable = respRouteTable.RouteTable
 
 	if natEnabled {
-		natGateway, err := vpc.PrepareNatGatway(zone)
+		natGateway, err := vpc.PrepareNatGateway(zone)
 		if err != nil {
 			return nil, fmt.Errorf("prepare nat gateway for private cluster failed. %s", err.Error())
 		}
@@ -215,12 +221,12 @@ func (vpc *VPC) CreatePublicSubnet(zone string) (*Subnet, error) {
 func (vpc *VPC) CreatePairSubnet(zone string) (*VPC, []*Subnet, error) {
 	publicSubnet, err := vpc.CreatePublicSubnet(zone)
 	if err != nil {
-		log.LogError("Create public subnet failed" + err.Error())
+		log.LogError("Create public subnet failed %s", err.Error())
 		return vpc, nil, err
 	}
 	privateSubnet, err := vpc.CreatePrivateSubnet(zone, true)
 	if err != nil {
-		log.LogError("Create private subnet failed" + err.Error())
+		log.LogError("Create private subnet failed %s", err.Error())
 		return vpc, nil, err
 	}
 	return vpc, []*Subnet{publicSubnet, privateSubnet}, err
@@ -314,7 +320,7 @@ func (vpc *VPC) CreateSubnet(zone string) (*Subnet, error) {
 	subnetcidr := vpc.CIDRPool.Allocate().CIDR
 	respCreateSubnet, err := vpc.AWSClient.CreateSubnet(vpc.VpcID, zone, subnetcidr)
 	if err != nil {
-		log.LogError("create subnet error " + err.Error())
+		log.LogError("create subnet error %s", err.Error())
 		return nil, err
 	}
 	err = vpc.AWSClient.WaitForResourceExisting(*respCreateSubnet.SubnetId, 4)
@@ -324,7 +330,7 @@ func (vpc *VPC) CreateSubnet(zone string) (*Subnet, error) {
 		return nil, err
 	}
 
-	log.LogInfo("Created subnet with ID " + *respCreateSubnet.SubnetId)
+	log.LogInfo("Created subnet with ID %s", *respCreateSubnet.SubnetId)
 	subnet := &Subnet{
 		ID:      *respCreateSubnet.SubnetId,
 		Private: true,
@@ -390,7 +396,7 @@ func (vpc *VPC) ListSubnets() ([]*Subnet, error) {
 	subnets := []*Subnet{}
 	awsSubnets, err := vpc.AWSClient.ListSubnetByVpcID(vpc.VpcID)
 	if err != nil {
-		log.LogError(err.Error())
+		log.LogError("%s", err.Error())
 		return subnets, err
 	}
 	log.LogInfo("Got %d subnets", len(awsSubnets))
@@ -406,7 +412,7 @@ func (vpc *VPC) ListSubnets() ([]*Subnet, error) {
 			SetRegion(vpc.Region)
 
 		subnets = append(subnets, subnet)
-		log.LogInfo(*sub.SubnetId + "\t" + *sub.CidrBlock + "\t" + *sub.AvailabilityZone + "\t")
+		log.LogInfo("%s\t%s\t%s\t", *sub.SubnetId, *sub.CidrBlock, *sub.AvailabilityZone)
 
 	}
 	vpc.SubnetList = subnets

@@ -82,4 +82,7 @@ struct AWS {
 
     // AWS specific configuration for AutoNode
 	AutoNode AwsAutoNode
+
+	// Zero egress configuration.
+	ZeroEgress ZeroEgress
 }

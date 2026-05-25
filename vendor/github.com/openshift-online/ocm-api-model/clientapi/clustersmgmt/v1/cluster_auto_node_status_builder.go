@@ -23,12 +23,13 @@ package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v
 type ClusterAutoNodeStatusBuilder struct {
 	fieldSet_ []bool
 	message   string
+	nodeCount int
 }
 
 // NewClusterAutoNodeStatus creates a new builder of 'cluster_auto_node_status' objects.
 func NewClusterAutoNodeStatus() *ClusterAutoNodeStatusBuilder {
 	return &ClusterAutoNodeStatusBuilder{
-		fieldSet_: make([]bool, 1),
+		fieldSet_: make([]bool, 2),
 	}
 }
 
@@ -48,10 +49,20 @@ func (b *ClusterAutoNodeStatusBuilder) Empty() bool {
 // Message sets the value of the 'message' attribute to the given value.
 func (b *ClusterAutoNodeStatusBuilder) Message(value string) *ClusterAutoNodeStatusBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 1)
+		b.fieldSet_ = make([]bool, 2)
 	}
 	b.message = value
 	b.fieldSet_[0] = true
+	return b
+}
+
+// NodeCount sets the value of the 'node_count' attribute to the given value.
+func (b *ClusterAutoNodeStatusBuilder) NodeCount(value int) *ClusterAutoNodeStatusBuilder {
+	if len(b.fieldSet_) == 0 {
+		b.fieldSet_ = make([]bool, 2)
+	}
+	b.nodeCount = value
+	b.fieldSet_[1] = true
 	return b
 }
 
@@ -65,6 +76,7 @@ func (b *ClusterAutoNodeStatusBuilder) Copy(object *ClusterAutoNodeStatus) *Clus
 		copy(b.fieldSet_, object.fieldSet_)
 	}
 	b.message = object.message
+	b.nodeCount = object.nodeCount
 	return b
 }
 
@@ -76,5 +88,6 @@ func (b *ClusterAutoNodeStatusBuilder) Build() (object *ClusterAutoNodeStatus, e
 		copy(object.fieldSet_, b.fieldSet_)
 	}
 	object.message = b.message
+	object.nodeCount = b.nodeCount
 	return
 }

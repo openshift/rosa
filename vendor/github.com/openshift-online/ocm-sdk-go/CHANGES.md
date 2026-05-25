@@ -3,6 +3,17 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.501
+
+- Update model to 0.0.456
+  - Add `access_shared_role_arn` field to AWS Disaster Recovery backup config
+  - Add `node_count` field to `AutoNode` status
+
+## 0.1.500 Apr 01 2026
+
+- Update model to 0.0.454
+  - Add the `ZeroEgress` type and include in the `AWS` as a field.
+
 ## 0.1.499 Mar 31 2026
 
 - OCM-22967 | fix: removing pgx dependency

@@ -29,9 +29,9 @@ require (
 	github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.30.0
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.453
-	github.com/openshift-online/ocm-common v0.0.32
-	github.com/openshift-online/ocm-sdk-go v0.1.499
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.456
+	github.com/openshift-online/ocm-common v0.0.40
+	github.com/openshift-online/ocm-sdk-go v0.1.501
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
@@ -39,7 +39,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/zgalor/weberr v0.6.0
 	gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a
-	go.uber.org/mock v0.5.2
+	go.uber.org/mock v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.29.2
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
@@ -53,7 +53,7 @@ require (
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/lib/pq v1.10.5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.453 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.456 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 )
 

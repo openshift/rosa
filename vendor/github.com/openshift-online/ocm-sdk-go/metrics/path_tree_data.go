@@ -432,6 +432,7 @@ var pathTreeData = `{
         "provision_shards": {
           "-": null
         },
+        "register_cluster": null,
         "registry_allowlists": {
           "-": null
         },

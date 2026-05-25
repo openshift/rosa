@@ -26,4 +26,6 @@ struct ClusterAutoNode {
 struct ClusterAutoNodeStatus {
     // Messages relating to the status of the AutoNode installation on this Cluster
     Message String
+    // The number of Nodes AutoNode has provisioned in the cluster
+    NodeCount Integer
 }

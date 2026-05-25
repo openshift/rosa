@@ -259,6 +259,15 @@ func WriteAWS(object *AWS, stream *jsoniter.Stream) {
 		}
 		stream.WriteObjectField("vpc_endpoint_role_arn")
 		stream.WriteString(object.vpcEndpointRoleArn)
+		count++
+	}
+	present_ = len(object.fieldSet_) > 22 && object.fieldSet_[22] && object.zeroEgress != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("zero_egress")
+		WriteZeroEgress(object.zeroEgress, stream)
 	}
 	stream.WriteObjectEnd()
 }
@@ -278,7 +287,7 @@ func UnmarshalAWS(source interface{}) (object *AWS, err error) {
 // ReadAWS reads a value of the 'AWS' type from the given iterator.
 func ReadAWS(iterator *jsoniter.Iterator) *AWS {
 	object := &AWS{
-		fieldSet_: make([]bool, 22),
+		fieldSet_: make([]bool, 23),
 	}
 	for {
 		field := iterator.ReadObject()
@@ -383,6 +392,10 @@ func ReadAWS(iterator *jsoniter.Iterator) *AWS {
 			value := iterator.ReadString()
 			object.vpcEndpointRoleArn = value
 			object.fieldSet_[21] = true
+		case "zero_egress":
+			value := ReadZeroEgress(iterator)
+			object.zeroEgress = value
+			object.fieldSet_[22] = true
 		default:
 			iterator.ReadAny()
 		}
