@@ -11,8 +11,9 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disassociates an IAM instance profile from a running or stopped instance. Use
-// DescribeIamInstanceProfileAssociations to get the association ID.
+// Disassociates an IAM instance profile from a running or stopped instance.
+//
+// Use DescribeIamInstanceProfileAssociations to get the association ID.
 func (c *Client) DisassociateIamInstanceProfile(ctx context.Context, params *DisassociateIamInstanceProfileInput, optFns ...func(*Options)) (*DisassociateIamInstanceProfileOutput, error) {
 	if params == nil {
 		params = &DisassociateIamInstanceProfileInput{}
@@ -83,13 +84,16 @@ func (c *Client) addOperationDisassociateIamInstanceProfileMiddlewares(stack *mi
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -102,6 +106,12 @@ func (c *Client) addOperationDisassociateIamInstanceProfileMiddlewares(stack *mi
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisassociateIamInstanceProfileValidationMiddleware(stack); err != nil {
@@ -123,6 +133,15 @@ func (c *Client) addOperationDisassociateIamInstanceProfileMiddlewares(stack *mi
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

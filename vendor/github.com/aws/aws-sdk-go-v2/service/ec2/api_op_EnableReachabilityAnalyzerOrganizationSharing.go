@@ -12,9 +12,11 @@ import (
 
 // Establishes a trust relationship between Reachability Analyzer and
 // Organizations. This operation must be performed by the management account for
-// the organization. After you establish a trust relationship, a user in the
-// management account or a delegated administrator account can run a cross-account
-// analysis using resources from the member accounts.
+// the organization.
+//
+// After you establish a trust relationship, a user in the management account or a
+// delegated administrator account can run a cross-account analysis using resources
+// from the member accounts.
 func (c *Client) EnableReachabilityAnalyzerOrganizationSharing(ctx context.Context, params *EnableReachabilityAnalyzerOrganizationSharingInput, optFns ...func(*Options)) (*EnableReachabilityAnalyzerOrganizationSharingOutput, error) {
 	if params == nil {
 		params = &EnableReachabilityAnalyzerOrganizationSharingInput{}
@@ -86,13 +88,16 @@ func (c *Client) addOperationEnableReachabilityAnalyzerOrganizationSharingMiddle
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -105,6 +110,12 @@ func (c *Client) addOperationEnableReachabilityAnalyzerOrganizationSharingMiddle
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opEnableReachabilityAnalyzerOrganizationSharing(options.Region), middleware.Before); err != nil {
@@ -123,6 +134,15 @@ func (c *Client) addOperationEnableReachabilityAnalyzerOrganizationSharingMiddle
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

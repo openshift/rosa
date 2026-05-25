@@ -67,9 +67,10 @@ type CreatePermissionInput struct {
 	// Specifies the name of the resource type that this customer managed permission
 	// applies to.
 	//
-	// The format is  :  and is not case sensitive. For example, to specify an Amazon
-	// EC2 Subnet, you can use the string ec2:subnet . To see the list of valid values
-	// for this parameter, query the ListResourceTypesoperation.
+	// The format is  :  and is case sensitive. For example, to specify an Amazon EC2
+	// Subnet, you can use the string ec2:Subnet . To see the list of valid values for
+	// this parameter, query the ListResourceTypesoperation. This value must match the display name of
+	// the resource (available in ListResourceTypes ).
 	//
 	// This member is required.
 	ResourceType *string
@@ -147,13 +148,16 @@ func (c *Client) addOperationCreatePermissionMiddlewares(stack *middleware.Stack
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -168,10 +172,10 @@ func (c *Client) addOperationCreatePermissionMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreatePermissionValidationMiddleware(stack); err != nil {
@@ -193,6 +197,15 @@ func (c *Client) addOperationCreatePermissionMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

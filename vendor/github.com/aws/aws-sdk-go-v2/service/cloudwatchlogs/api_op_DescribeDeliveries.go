@@ -11,14 +11,18 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Retrieves a list of the deliveries that have been created in the account. A
-// delivery is a connection between a delivery source  (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliverySource.html)
-// and a delivery destination  (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliveryDestination.html)
-// . A delivery source represents an Amazon Web Services resource that sends logs
-// to an logs delivery destination. The destination can be CloudWatch Logs, Amazon
-// S3, or Firehose. Only some Amazon Web Services services support being configured
-// as a delivery source. These services are listed in Enable logging from Amazon
-// Web Services services. (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html)
+// Retrieves a list of the deliveries that have been created in the account.
+//
+// A delivery is a connection between a [delivery source] and a [delivery destination].
+//
+// A delivery source represents an Amazon Web Services resource that sends logs to
+// an logs delivery destination. The destination can be CloudWatch Logs, Amazon S3,
+// Firehose or X-Ray. Only some Amazon Web Services services support being
+// configured as a delivery source. These services are listed in [Enable logging from Amazon Web Services services.]
+//
+// [delivery destination]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliveryDestination.html
+// [delivery source]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliverySource.html
+// [Enable logging from Amazon Web Services services.]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html
 func (c *Client) DescribeDeliveries(ctx context.Context, params *DescribeDeliveriesInput, optFns ...func(*Options)) (*DescribeDeliveriesOutput, error) {
 	if params == nil {
 		params = &DescribeDeliveriesInput{}
@@ -94,13 +98,16 @@ func (c *Client) addOperationDescribeDeliveriesMiddlewares(stack *middleware.Sta
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -113,6 +120,12 @@ func (c *Client) addOperationDescribeDeliveriesMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeDeliveries(options.Region), middleware.Before); err != nil {
@@ -133,16 +146,17 @@ func (c *Client) addOperationDescribeDeliveriesMiddlewares(stack *middleware.Sta
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeDeliveriesAPIClient is a client that implements the DescribeDeliveries
-// operation.
-type DescribeDeliveriesAPIClient interface {
-	DescribeDeliveries(context.Context, *DescribeDeliveriesInput, ...func(*Options)) (*DescribeDeliveriesOutput, error)
-}
-
-var _ DescribeDeliveriesAPIClient = (*Client)(nil)
 
 // DescribeDeliveriesPaginatorOptions is the paginator options for
 // DescribeDeliveries
@@ -208,6 +222,9 @@ func (p *DescribeDeliveriesPaginator) NextPage(ctx context.Context, optFns ...fu
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeDeliveries(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -226,6 +243,14 @@ func (p *DescribeDeliveriesPaginator) NextPage(ctx context.Context, optFns ...fu
 
 	return result, nil
 }
+
+// DescribeDeliveriesAPIClient is a client that implements the DescribeDeliveries
+// operation.
+type DescribeDeliveriesAPIClient interface {
+	DescribeDeliveries(context.Context, *DescribeDeliveriesInput, ...func(*Options)) (*DescribeDeliveriesOutput, error)
+}
+
+var _ DescribeDeliveriesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeDeliveries(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

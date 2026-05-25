@@ -17,11 +17,11 @@ import (
 // If the certificate in already in the certificate list, the call is successful
 // but the certificate is not added again.
 //
-// For more information, see [HTTPS listeners] in the Application Load Balancers Guide or [TLS listeners] in the
+// For more information, see [SSL certificates] in the Application Load Balancers Guide or [Server certificates] in the
 // Network Load Balancers Guide.
 //
-// [TLS listeners]: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/create-tls-listener.html
-// [HTTPS listeners]: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html
+// [Server certificates]: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/tls-listener-certificates.html
+// [SSL certificates]: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/https-listener-certificates.html
 func (c *Client) AddListenerCertificates(ctx context.Context, params *AddListenerCertificatesInput, optFns ...func(*Options)) (*AddListenerCertificatesOutput, error) {
 	if params == nil {
 		params = &AddListenerCertificatesInput{}
@@ -98,13 +98,16 @@ func (c *Client) addOperationAddListenerCertificatesMiddlewares(stack *middlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,10 +122,10 @@ func (c *Client) addOperationAddListenerCertificatesMiddlewares(stack *middlewar
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAddListenerCertificatesValidationMiddleware(stack); err != nil {
@@ -144,6 +147,15 @@ func (c *Client) addOperationAddListenerCertificatesMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

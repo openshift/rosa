@@ -89,13 +89,16 @@ func (c *Client) addOperationDescribeDeliveryDestinationsMiddlewares(stack *midd
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -108,6 +111,12 @@ func (c *Client) addOperationDescribeDeliveryDestinationsMiddlewares(stack *midd
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeDeliveryDestinations(options.Region), middleware.Before); err != nil {
@@ -128,16 +137,17 @@ func (c *Client) addOperationDescribeDeliveryDestinationsMiddlewares(stack *midd
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeDeliveryDestinationsAPIClient is a client that implements the
-// DescribeDeliveryDestinations operation.
-type DescribeDeliveryDestinationsAPIClient interface {
-	DescribeDeliveryDestinations(context.Context, *DescribeDeliveryDestinationsInput, ...func(*Options)) (*DescribeDeliveryDestinationsOutput, error)
-}
-
-var _ DescribeDeliveryDestinationsAPIClient = (*Client)(nil)
 
 // DescribeDeliveryDestinationsPaginatorOptions is the paginator options for
 // DescribeDeliveryDestinations
@@ -206,6 +216,9 @@ func (p *DescribeDeliveryDestinationsPaginator) NextPage(ctx context.Context, op
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeDeliveryDestinations(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -224,6 +237,14 @@ func (p *DescribeDeliveryDestinationsPaginator) NextPage(ctx context.Context, op
 
 	return result, nil
 }
+
+// DescribeDeliveryDestinationsAPIClient is a client that implements the
+// DescribeDeliveryDestinations operation.
+type DescribeDeliveryDestinationsAPIClient interface {
+	DescribeDeliveryDestinations(context.Context, *DescribeDeliveryDestinationsInput, ...func(*Options)) (*DescribeDeliveryDestinationsOutput, error)
+}
+
+var _ DescribeDeliveryDestinationsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeDeliveryDestinations(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

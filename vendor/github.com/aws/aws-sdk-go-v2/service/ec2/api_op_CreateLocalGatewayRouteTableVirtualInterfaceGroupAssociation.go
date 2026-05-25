@@ -29,12 +29,12 @@ func (c *Client) CreateLocalGatewayRouteTableVirtualInterfaceGroupAssociation(ct
 
 type CreateLocalGatewayRouteTableVirtualInterfaceGroupAssociationInput struct {
 
-	// The ID of the local gateway route table.
+	//  The ID of the local gateway route table.
 	//
 	// This member is required.
 	LocalGatewayRouteTableId *string
 
-	// The ID of the local gateway route table virtual interface group association.
+	//  The ID of the local gateway route table virtual interface group association.
 	//
 	// This member is required.
 	LocalGatewayVirtualInterfaceGroupId *string
@@ -45,7 +45,7 @@ type CreateLocalGatewayRouteTableVirtualInterfaceGroupAssociationInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// The tags assigned to the local gateway route table virtual interface group
+	//  The tags assigned to the local gateway route table virtual interface group
 	// association.
 	TagSpecifications []types.TagSpecification
 
@@ -98,13 +98,16 @@ func (c *Client) addOperationCreateLocalGatewayRouteTableVirtualInterfaceGroupAs
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -117,6 +120,12 @@ func (c *Client) addOperationCreateLocalGatewayRouteTableVirtualInterfaceGroupAs
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateLocalGatewayRouteTableVirtualInterfaceGroupAssociationValidationMiddleware(stack); err != nil {
@@ -138,6 +147,15 @@ func (c *Client) addOperationCreateLocalGatewayRouteTableVirtualInterfaceGroupAs
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

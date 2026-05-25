@@ -13,7 +13,9 @@ import (
 
 // Creates a static route for the specified local gateway route table. You must
 // specify one of the following targets:
+//
 //   - LocalGatewayVirtualInterfaceGroupId
+//
 //   - NetworkInterfaceId
 func (c *Client) CreateLocalGatewayRoute(ctx context.Context, params *CreateLocalGatewayRouteInput, optFns ...func(*Options)) (*CreateLocalGatewayRouteOutput, error) {
 	if params == nil {
@@ -41,7 +43,7 @@ type CreateLocalGatewayRouteInput struct {
 	// most specific match.
 	DestinationCidrBlock *string
 
-	// The ID of the prefix list. Use a prefix list in place of DestinationCidrBlock .
+	//  The ID of the prefix list. Use a prefix list in place of DestinationCidrBlock .
 	// You cannot use DestinationPrefixListId and DestinationCidrBlock in the same
 	// request.
 	DestinationPrefixListId *string
@@ -106,13 +108,16 @@ func (c *Client) addOperationCreateLocalGatewayRouteMiddlewares(stack *middlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -125,6 +130,12 @@ func (c *Client) addOperationCreateLocalGatewayRouteMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateLocalGatewayRouteValidationMiddleware(stack); err != nil {
@@ -146,6 +157,15 @@ func (c *Client) addOperationCreateLocalGatewayRouteMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

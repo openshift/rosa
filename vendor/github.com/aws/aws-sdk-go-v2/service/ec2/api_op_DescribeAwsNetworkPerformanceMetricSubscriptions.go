@@ -97,13 +97,16 @@ func (c *Client) addOperationDescribeAwsNetworkPerformanceMetricSubscriptionsMid
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -116,6 +119,12 @@ func (c *Client) addOperationDescribeAwsNetworkPerformanceMetricSubscriptionsMid
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeAwsNetworkPerformanceMetricSubscriptions(options.Region), middleware.Before); err != nil {
@@ -136,16 +145,17 @@ func (c *Client) addOperationDescribeAwsNetworkPerformanceMetricSubscriptionsMid
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeAwsNetworkPerformanceMetricSubscriptionsAPIClient is a client that
-// implements the DescribeAwsNetworkPerformanceMetricSubscriptions operation.
-type DescribeAwsNetworkPerformanceMetricSubscriptionsAPIClient interface {
-	DescribeAwsNetworkPerformanceMetricSubscriptions(context.Context, *DescribeAwsNetworkPerformanceMetricSubscriptionsInput, ...func(*Options)) (*DescribeAwsNetworkPerformanceMetricSubscriptionsOutput, error)
-}
-
-var _ DescribeAwsNetworkPerformanceMetricSubscriptionsAPIClient = (*Client)(nil)
 
 // DescribeAwsNetworkPerformanceMetricSubscriptionsPaginatorOptions is the
 // paginator options for DescribeAwsNetworkPerformanceMetricSubscriptions
@@ -215,6 +225,9 @@ func (p *DescribeAwsNetworkPerformanceMetricSubscriptionsPaginator) NextPage(ctx
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeAwsNetworkPerformanceMetricSubscriptions(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -233,6 +246,14 @@ func (p *DescribeAwsNetworkPerformanceMetricSubscriptionsPaginator) NextPage(ctx
 
 	return result, nil
 }
+
+// DescribeAwsNetworkPerformanceMetricSubscriptionsAPIClient is a client that
+// implements the DescribeAwsNetworkPerformanceMetricSubscriptions operation.
+type DescribeAwsNetworkPerformanceMetricSubscriptionsAPIClient interface {
+	DescribeAwsNetworkPerformanceMetricSubscriptions(context.Context, *DescribeAwsNetworkPerformanceMetricSubscriptionsInput, ...func(*Options)) (*DescribeAwsNetworkPerformanceMetricSubscriptionsOutput, error)
+}
+
+var _ DescribeAwsNetworkPerformanceMetricSubscriptionsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeAwsNetworkPerformanceMetricSubscriptions(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

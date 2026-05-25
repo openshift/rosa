@@ -40,12 +40,18 @@ type DescribeVpcEndpointConnectionNotificationsInput struct {
 	DryRun *bool
 
 	// The filters.
+	//
 	//   - connection-notification-arn - The ARN of the SNS topic for the notification.
+	//
 	//   - connection-notification-id - The ID of the notification.
+	//
 	//   - connection-notification-state - The state of the notification ( Enabled |
 	//   Disabled ).
+	//
 	//   - connection-notification-type - The type of notification ( Topic ).
+	//
 	//   - service-id - The ID of the endpoint service.
+	//
 	//   - vpc-endpoint-id - The ID of the VPC endpoint.
 	Filters []types.Filter
 
@@ -108,13 +114,16 @@ func (c *Client) addOperationDescribeVpcEndpointConnectionNotificationsMiddlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -127,6 +136,12 @@ func (c *Client) addOperationDescribeVpcEndpointConnectionNotificationsMiddlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeVpcEndpointConnectionNotifications(options.Region), middleware.Before); err != nil {
@@ -147,16 +162,17 @@ func (c *Client) addOperationDescribeVpcEndpointConnectionNotificationsMiddlewar
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeVpcEndpointConnectionNotificationsAPIClient is a client that implements
-// the DescribeVpcEndpointConnectionNotifications operation.
-type DescribeVpcEndpointConnectionNotificationsAPIClient interface {
-	DescribeVpcEndpointConnectionNotifications(context.Context, *DescribeVpcEndpointConnectionNotificationsInput, ...func(*Options)) (*DescribeVpcEndpointConnectionNotificationsOutput, error)
-}
-
-var _ DescribeVpcEndpointConnectionNotificationsAPIClient = (*Client)(nil)
 
 // DescribeVpcEndpointConnectionNotificationsPaginatorOptions is the paginator
 // options for DescribeVpcEndpointConnectionNotifications
@@ -225,6 +241,9 @@ func (p *DescribeVpcEndpointConnectionNotificationsPaginator) NextPage(ctx conte
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeVpcEndpointConnectionNotifications(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -243,6 +262,14 @@ func (p *DescribeVpcEndpointConnectionNotificationsPaginator) NextPage(ctx conte
 
 	return result, nil
 }
+
+// DescribeVpcEndpointConnectionNotificationsAPIClient is a client that implements
+// the DescribeVpcEndpointConnectionNotifications operation.
+type DescribeVpcEndpointConnectionNotificationsAPIClient interface {
+	DescribeVpcEndpointConnectionNotifications(context.Context, *DescribeVpcEndpointConnectionNotificationsInput, ...func(*Options)) (*DescribeVpcEndpointConnectionNotificationsOutput, error)
+}
+
+var _ DescribeVpcEndpointConnectionNotificationsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeVpcEndpointConnectionNotifications(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

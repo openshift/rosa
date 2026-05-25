@@ -14,14 +14,28 @@ import (
 	"io"
 )
 
-// This operation is not supported by directory buckets. Returns torrent files
-// from a bucket. BitTorrent can save you bandwidth when you're distributing large
-// files. You can get torrent only for objects that are less than 5 GB in size, and
-// that are not encrypted using server-side encryption with a customer-provided
-// encryption key. To use GET, you must have READ access to the object. This
-// functionality is not supported for Amazon S3 on Outposts. The following action
-// is related to GetObjectTorrent :
-//   - GetObject (https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html)
+// This operation is not supported for directory buckets.
+//
+// Returns torrent files from a bucket. BitTorrent can save you bandwidth when
+// you're distributing large files.
+//
+// You can get torrent only for objects that are less than 5 GB in size, and that
+// are not encrypted using server-side encryption with a customer-provided
+// encryption key.
+//
+// To use GET, you must have READ access to the object.
+//
+// This functionality is not supported for Amazon S3 on Outposts.
+//
+// The following action is related to GetObjectTorrent :
+//
+// [GetObject]
+//
+// You must URL encode any signed header values that contain spaces. For example,
+// if your header value is my file.txt , containing two spaces after my , you must
+// URL encode this value to my%20%20file.txt .
+//
+// [GetObject]: https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 func (c *Client) GetObjectTorrent(ctx context.Context, params *GetObjectTorrentInput, optFns ...func(*Options)) (*GetObjectTorrentOutput, error) {
 	if params == nil {
 		params = &GetObjectTorrentInput{}
@@ -57,17 +71,19 @@ type GetObjectTorrentInput struct {
 	// Confirms that the requester knows that they will be charged for the request.
 	// Bucket owners need not specify this parameter in their requests. If either the
 	// source or destination S3 bucket has Requester Pays enabled, the requester will
-	// pay for corresponding charges to copy the object. For information about
-	// downloading objects from Requester Pays buckets, see Downloading Objects in
-	// Requester Pays Buckets (https://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectsinRequesterPaysBuckets.html)
-	// in the Amazon S3 User Guide. This functionality is not supported for directory
-	// buckets.
+	// pay for the corresponding charges. For information about downloading objects
+	// from Requester Pays buckets, see [Downloading Objects in Requester Pays Buckets]in the Amazon S3 User Guide.
+	//
+	// This functionality is not supported for directory buckets.
+	//
+	// [Downloading Objects in Requester Pays Buckets]: https://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectsinRequesterPaysBuckets.html
 	RequestPayer types.RequestPayer
 
 	noSmithyDocumentSerde
 }
 
 func (in *GetObjectTorrentInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.Bucket = in.Bucket
 
 }
@@ -78,7 +94,12 @@ type GetObjectTorrentOutput struct {
 	Body io.ReadCloser
 
 	// If present, indicates that the requester was successfully charged for the
-	// request. This functionality is not supported for directory buckets.
+	// request. For more information, see [Using Requester Pays buckets for storage transfers and usage]in the Amazon Simple Storage Service user
+	// guide.
+	//
+	// This functionality is not supported for directory buckets.
+	//
+	// [Using Requester Pays buckets for storage transfers and usage]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html
 	RequestCharged types.RequestCharged
 
 	// Metadata pertaining to the operation's result.
@@ -121,13 +142,16 @@ func (c *Client) addOperationGetObjectTorrentMiddlewares(stack *middleware.Stack
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -140,6 +164,15 @@ func (c *Client) addOperationGetObjectTorrentMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addPutBucketContextMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addIsExpressUserAgent(stack); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetObjectTorrentValidationMiddleware(stack); err != nil {
@@ -173,6 +206,15 @@ func (c *Client) addOperationGetObjectTorrentMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

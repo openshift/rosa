@@ -59,8 +59,8 @@ type DescribeIpamResourceDiscoveryAssociationsOutput struct {
 	// The resource discovery associations.
 	IpamResourceDiscoveryAssociations []types.IpamResourceDiscoveryAssociation
 
-	// Specify the pagination token from a previous request to retrieve the next page
-	// of results.
+	// The token to use to retrieve the next page of results. This value is null when
+	// there are no more results to return.
 	NextToken *string
 
 	// Metadata pertaining to the operation's result.
@@ -103,13 +103,16 @@ func (c *Client) addOperationDescribeIpamResourceDiscoveryAssociationsMiddleware
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -122,6 +125,12 @@ func (c *Client) addOperationDescribeIpamResourceDiscoveryAssociationsMiddleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeIpamResourceDiscoveryAssociations(options.Region), middleware.Before); err != nil {
@@ -142,16 +151,17 @@ func (c *Client) addOperationDescribeIpamResourceDiscoveryAssociationsMiddleware
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeIpamResourceDiscoveryAssociationsAPIClient is a client that implements
-// the DescribeIpamResourceDiscoveryAssociations operation.
-type DescribeIpamResourceDiscoveryAssociationsAPIClient interface {
-	DescribeIpamResourceDiscoveryAssociations(context.Context, *DescribeIpamResourceDiscoveryAssociationsInput, ...func(*Options)) (*DescribeIpamResourceDiscoveryAssociationsOutput, error)
-}
-
-var _ DescribeIpamResourceDiscoveryAssociationsAPIClient = (*Client)(nil)
 
 // DescribeIpamResourceDiscoveryAssociationsPaginatorOptions is the paginator
 // options for DescribeIpamResourceDiscoveryAssociations
@@ -220,6 +230,9 @@ func (p *DescribeIpamResourceDiscoveryAssociationsPaginator) NextPage(ctx contex
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeIpamResourceDiscoveryAssociations(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -238,6 +251,14 @@ func (p *DescribeIpamResourceDiscoveryAssociationsPaginator) NextPage(ctx contex
 
 	return result, nil
 }
+
+// DescribeIpamResourceDiscoveryAssociationsAPIClient is a client that implements
+// the DescribeIpamResourceDiscoveryAssociations operation.
+type DescribeIpamResourceDiscoveryAssociationsAPIClient interface {
+	DescribeIpamResourceDiscoveryAssociations(context.Context, *DescribeIpamResourceDiscoveryAssociationsInput, ...func(*Options)) (*DescribeIpamResourceDiscoveryAssociationsOutput, error)
+}
+
+var _ DescribeIpamResourceDiscoveryAssociationsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeIpamResourceDiscoveryAssociations(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

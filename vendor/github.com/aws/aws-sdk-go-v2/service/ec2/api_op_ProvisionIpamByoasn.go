@@ -13,9 +13,10 @@ import (
 
 // Provisions your Autonomous System Number (ASN) for use in your Amazon Web
 // Services account. This action requires authorization context for Amazon to bring
-// the ASN to an Amazon Web Services account. For more information, see Tutorial:
-// Bring your ASN to IPAM (https://docs.aws.amazon.com/vpc/latest/ipam/tutorials-byoasn.html)
-// in the Amazon VPC IPAM guide.
+// the ASN to an Amazon Web Services account. For more information, see [Tutorial: Bring your ASN to IPAM]in the
+// Amazon VPC IPAM guide.
+//
+// [Tutorial: Bring your ASN to IPAM]: https://docs.aws.amazon.com/vpc/latest/ipam/tutorials-byoasn.html
 func (c *Client) ProvisionIpamByoasn(ctx context.Context, params *ProvisionIpamByoasnInput, optFns ...func(*Options)) (*ProvisionIpamByoasnOutput, error) {
 	if params == nil {
 		params = &ProvisionIpamByoasnInput{}
@@ -102,13 +103,16 @@ func (c *Client) addOperationProvisionIpamByoasnMiddlewares(stack *middleware.St
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -121,6 +125,12 @@ func (c *Client) addOperationProvisionIpamByoasnMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpProvisionIpamByoasnValidationMiddleware(stack); err != nil {
@@ -142,6 +152,15 @@ func (c *Client) addOperationProvisionIpamByoasnMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

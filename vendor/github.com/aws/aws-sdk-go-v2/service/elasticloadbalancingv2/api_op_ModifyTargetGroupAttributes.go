@@ -29,7 +29,7 @@ func (c *Client) ModifyTargetGroupAttributes(ctx context.Context, params *Modify
 
 type ModifyTargetGroupAttributesInput struct {
 
-	// The attributes.
+	// The target group attributes.
 	//
 	// This member is required.
 	Attributes []types.TargetGroupAttribute
@@ -44,7 +44,7 @@ type ModifyTargetGroupAttributesInput struct {
 
 type ModifyTargetGroupAttributesOutput struct {
 
-	// Information about the attributes.
+	// Information about the target group attributes.
 	Attributes []types.TargetGroupAttribute
 
 	// Metadata pertaining to the operation's result.
@@ -87,13 +87,16 @@ func (c *Client) addOperationModifyTargetGroupAttributesMiddlewares(stack *middl
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -108,10 +111,10 @@ func (c *Client) addOperationModifyTargetGroupAttributesMiddlewares(stack *middl
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyTargetGroupAttributesValidationMiddleware(stack); err != nil {
@@ -133,6 +136,15 @@ func (c *Client) addOperationModifyTargetGroupAttributesMiddlewares(stack *middl
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -12,6 +12,11 @@ import (
 )
 
 // Lists the available versions of the specified RAM permission.
+//
+// Always check the NextToken response parameter for a null value when calling a
+// paginated operation. These operations can occasionally return an empty set of
+// results even when there are more results available. The NextToken response
+// parameter value is null only when there are no more results to display.
 func (c *Client) ListPermissionVersions(ctx context.Context, params *ListPermissionVersionsInput, optFns ...func(*Options)) (*ListPermissionVersionsOutput, error) {
 	if params == nil {
 		params = &ListPermissionVersionsInput{}
@@ -110,13 +115,16 @@ func (c *Client) addOperationListPermissionVersionsMiddlewares(stack *middleware
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -131,10 +139,10 @@ func (c *Client) addOperationListPermissionVersionsMiddlewares(stack *middleware
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListPermissionVersionsValidationMiddleware(stack); err != nil {
@@ -156,6 +164,15 @@ func (c *Client) addOperationListPermissionVersionsMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -37,8 +37,11 @@ type DescribeScheduledInstancesInput struct {
 	DryRun *bool
 
 	// The filters.
+	//
 	//   - availability-zone - The Availability Zone (for example, us-west-2a ).
+	//
 	//   - instance-type - The instance type (for example, c4.large ).
+	//
 	//   - platform - The platform ( Linux/UNIX or Windows ).
 	Filters []types.Filter
 
@@ -109,13 +112,16 @@ func (c *Client) addOperationDescribeScheduledInstancesMiddlewares(stack *middle
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -128,6 +134,12 @@ func (c *Client) addOperationDescribeScheduledInstancesMiddlewares(stack *middle
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeScheduledInstances(options.Region), middleware.Before); err != nil {
@@ -148,16 +160,17 @@ func (c *Client) addOperationDescribeScheduledInstancesMiddlewares(stack *middle
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeScheduledInstancesAPIClient is a client that implements the
-// DescribeScheduledInstances operation.
-type DescribeScheduledInstancesAPIClient interface {
-	DescribeScheduledInstances(context.Context, *DescribeScheduledInstancesInput, ...func(*Options)) (*DescribeScheduledInstancesOutput, error)
-}
-
-var _ DescribeScheduledInstancesAPIClient = (*Client)(nil)
 
 // DescribeScheduledInstancesPaginatorOptions is the paginator options for
 // DescribeScheduledInstances
@@ -227,6 +240,9 @@ func (p *DescribeScheduledInstancesPaginator) NextPage(ctx context.Context, optF
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeScheduledInstances(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -245,6 +261,14 @@ func (p *DescribeScheduledInstancesPaginator) NextPage(ctx context.Context, optF
 
 	return result, nil
 }
+
+// DescribeScheduledInstancesAPIClient is a client that implements the
+// DescribeScheduledInstances operation.
+type DescribeScheduledInstancesAPIClient interface {
+	DescribeScheduledInstances(context.Context, *DescribeScheduledInstancesInput, ...func(*Options)) (*DescribeScheduledInstancesOutput, error)
+}
+
+var _ DescribeScheduledInstancesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeScheduledInstances(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

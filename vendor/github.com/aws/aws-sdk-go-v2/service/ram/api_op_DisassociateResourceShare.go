@@ -11,8 +11,8 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Removes the specified principals or resources from participating in the
-// specified resource share.
+// Removes the specified principals, resources, or source constraints from
+// participating in the specified resource share.
 func (c *Client) DisassociateResourceShare(ctx context.Context, params *DisassociateResourceShareInput, optFns ...func(*Options)) (*DisassociateResourceShareOutput, error) {
 	if params == nil {
 		params = &DisassociateResourceShareInput{}
@@ -70,6 +70,8 @@ type DisassociateResourceShareInput struct {
 	//
 	//   - An ARN of an IAM user, for example: iam::123456789012user/username
 	//
+	//   - A service principal name, for example: service-id.amazonaws.com
+	//
 	// Not all resource types can be shared with IAM roles and users. For more
 	// information, see [Sharing with IAM roles and users]in the Resource Access Manager User Guide.
 	//
@@ -84,8 +86,10 @@ type DisassociateResourceShareInput struct {
 	// [Amazon Resource Names (ARNs)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
 	ResourceArns []string
 
-	// Specifies from which source accounts the service principal no longer has access
-	// to the resources in this resource share.
+	// Specifies source constraints (accounts, ARNs, organization IDs, or organization
+	// paths) to remove from the resource share. This enables granular management of
+	// source constraints while maintaining service principal associations. At least
+	// one source must remain when service principals are present.
 	Sources []string
 
 	noSmithyDocumentSerde
@@ -143,13 +147,16 @@ func (c *Client) addOperationDisassociateResourceShareMiddlewares(stack *middlew
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -164,10 +171,10 @@ func (c *Client) addOperationDisassociateResourceShareMiddlewares(stack *middlew
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisassociateResourceShareValidationMiddleware(stack); err != nil {
@@ -189,6 +196,15 @@ func (c *Client) addOperationDisassociateResourceShareMiddlewares(stack *middlew
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

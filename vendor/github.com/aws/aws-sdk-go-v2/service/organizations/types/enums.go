@@ -11,8 +11,9 @@ const (
 
 // Values returns all known values for AccessDeniedForDependencyExceptionReason.
 // Note that this can be expanded in the future, and so it is only as up to date as
-// the client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AccessDeniedForDependencyExceptionReason) Values() []AccessDeniedForDependencyExceptionReason {
 	return []AccessDeniedForDependencyExceptionReason{
 		"ACCESS_DENIED_DURING_CREATE_SERVICE_LINKED_ROLE",
@@ -28,12 +29,38 @@ const (
 )
 
 // Values returns all known values for AccountJoinedMethod. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AccountJoinedMethod) Values() []AccountJoinedMethod {
 	return []AccountJoinedMethod{
 		"INVITED",
 		"CREATED",
+	}
+}
+
+type AccountState string
+
+// Enum values for AccountState
+const (
+	AccountStatePendingActivation AccountState = "PENDING_ACTIVATION"
+	AccountStateActive            AccountState = "ACTIVE"
+	AccountStateSuspended         AccountState = "SUSPENDED"
+	AccountStatePendingClosure    AccountState = "PENDING_CLOSURE"
+	AccountStateClosed            AccountState = "CLOSED"
+)
+
+// Values returns all known values for AccountState. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AccountState) Values() []AccountState {
+	return []AccountState{
+		"PENDING_ACTIVATION",
+		"ACTIVE",
+		"SUSPENDED",
+		"PENDING_CLOSURE",
+		"CLOSED",
 	}
 }
 
@@ -47,8 +74,9 @@ const (
 )
 
 // Values returns all known values for AccountStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AccountStatus) Values() []AccountStatus {
 	return []AccountStatus{
 		"ACTIVE",
@@ -65,17 +93,20 @@ const (
 	ActionTypeEnableAllFeatures                 ActionType = "ENABLE_ALL_FEATURES"
 	ActionTypeApproveAllFeatures                ActionType = "APPROVE_ALL_FEATURES"
 	ActionTypeAddOrganizationsServiceLinkedRole ActionType = "ADD_ORGANIZATIONS_SERVICE_LINKED_ROLE"
+	ActionTypeTransferResponsibility            ActionType = "TRANSFER_RESPONSIBILITY"
 )
 
 // Values returns all known values for ActionType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ActionType) Values() []ActionType {
 	return []ActionType{
 		"INVITE",
 		"ENABLE_ALL_FEATURES",
 		"APPROVE_ALL_FEATURES",
 		"ADD_ORGANIZATIONS_SERVICE_LINKED_ROLE",
+		"TRANSFER_RESPONSIBILITY",
 	}
 }
 
@@ -88,8 +119,9 @@ const (
 )
 
 // Values returns all known values for ChildType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ChildType) Values() []ChildType {
 	return []ChildType{
 		"ACCOUNT",
@@ -101,46 +133,58 @@ type ConstraintViolationExceptionReason string
 
 // Enum values for ConstraintViolationExceptionReason
 const (
-	ConstraintViolationExceptionReasonAccountNumberLimitExceeded                        ConstraintViolationExceptionReason = "ACCOUNT_NUMBER_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonHandshakeRateLimitExceeded                        ConstraintViolationExceptionReason = "HANDSHAKE_RATE_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonOuNumberLimitExceeded                             ConstraintViolationExceptionReason = "OU_NUMBER_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonOuDepthLimitExceeded                              ConstraintViolationExceptionReason = "OU_DEPTH_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonPolicyNumberLimitExceeded                         ConstraintViolationExceptionReason = "POLICY_NUMBER_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonPolicyContentLimitExceeded                        ConstraintViolationExceptionReason = "POLICY_CONTENT_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonMaxPolicyTypeAttachmentLimitExceeded              ConstraintViolationExceptionReason = "MAX_POLICY_TYPE_ATTACHMENT_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonMinPolicyTypeAttachmentLimitExceeded              ConstraintViolationExceptionReason = "MIN_POLICY_TYPE_ATTACHMENT_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonAccountCannotLeaveOrganization                    ConstraintViolationExceptionReason = "ACCOUNT_CANNOT_LEAVE_ORGANIZATION"
-	ConstraintViolationExceptionReasonAccountCannotLeaveWithoutEula                     ConstraintViolationExceptionReason = "ACCOUNT_CANNOT_LEAVE_WITHOUT_EULA"
-	ConstraintViolationExceptionReasonAccountCannotLeaveWithoutPhoneVerification        ConstraintViolationExceptionReason = "ACCOUNT_CANNOT_LEAVE_WITHOUT_PHONE_VERIFICATION"
-	ConstraintViolationExceptionReasonMasterAccountPaymentInstrumentRequired            ConstraintViolationExceptionReason = "MASTER_ACCOUNT_PAYMENT_INSTRUMENT_REQUIRED"
-	ConstraintViolationExceptionReasonMemberAccountPaymentInstrumentRequired            ConstraintViolationExceptionReason = "MEMBER_ACCOUNT_PAYMENT_INSTRUMENT_REQUIRED"
-	ConstraintViolationExceptionReasonAccountCreationRateLimitExceeded                  ConstraintViolationExceptionReason = "ACCOUNT_CREATION_RATE_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonMasterAccountAddressDoesNotMatchMarketplace       ConstraintViolationExceptionReason = "MASTER_ACCOUNT_ADDRESS_DOES_NOT_MATCH_MARKETPLACE"
-	ConstraintViolationExceptionReasonMasterAccountMissingContactInfo                   ConstraintViolationExceptionReason = "MASTER_ACCOUNT_MISSING_CONTACT_INFO"
-	ConstraintViolationExceptionReasonMasterAccountNotGovcloudEnabled                   ConstraintViolationExceptionReason = "MASTER_ACCOUNT_NOT_GOVCLOUD_ENABLED"
-	ConstraintViolationExceptionReasonOrganizationNotInAllFeaturesMode                  ConstraintViolationExceptionReason = "ORGANIZATION_NOT_IN_ALL_FEATURES_MODE"
-	ConstraintViolationExceptionReasonCreateOrganizationInBillingModeUnsupportedRegion  ConstraintViolationExceptionReason = "CREATE_ORGANIZATION_IN_BILLING_MODE_UNSUPPORTED_REGION"
-	ConstraintViolationExceptionReasonEmailVerificationCodeExpired                      ConstraintViolationExceptionReason = "EMAIL_VERIFICATION_CODE_EXPIRED"
-	ConstraintViolationExceptionReasonWaitPeriodActive                                  ConstraintViolationExceptionReason = "WAIT_PERIOD_ACTIVE"
-	ConstraintViolationExceptionReasonMaxTagLimitExceeded                               ConstraintViolationExceptionReason = "MAX_TAG_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonTagPolicyViolation                                ConstraintViolationExceptionReason = "TAG_POLICY_VIOLATION"
-	ConstraintViolationExceptionReasonMaxDelegatedAdministratorsForServiceLimitExceeded ConstraintViolationExceptionReason = "MAX_DELEGATED_ADMINISTRATORS_FOR_SERVICE_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonCannotRegisterMasterAsDelegatedAdministrator      ConstraintViolationExceptionReason = "CANNOT_REGISTER_MASTER_AS_DELEGATED_ADMINISTRATOR"
-	ConstraintViolationExceptionReasonCannotRemoveDelegatedAdministratorFromOrg         ConstraintViolationExceptionReason = "CANNOT_REMOVE_DELEGATED_ADMINISTRATOR_FROM_ORG"
-	ConstraintViolationExceptionReasonDelegatedAdministratorExistsForThisService        ConstraintViolationExceptionReason = "DELEGATED_ADMINISTRATOR_EXISTS_FOR_THIS_SERVICE"
-	ConstraintViolationExceptionReasonMasterAccountMissingBusinessLicense               ConstraintViolationExceptionReason = "MASTER_ACCOUNT_MISSING_BUSINESS_LICENSE"
-	ConstraintViolationExceptionReasonCannotCloseManagementAccount                      ConstraintViolationExceptionReason = "CANNOT_CLOSE_MANAGEMENT_ACCOUNT"
-	ConstraintViolationExceptionReasonCloseAccountQuotaExceeded                         ConstraintViolationExceptionReason = "CLOSE_ACCOUNT_QUOTA_EXCEEDED"
-	ConstraintViolationExceptionReasonCloseAccountRequestsLimitExceeded                 ConstraintViolationExceptionReason = "CLOSE_ACCOUNT_REQUESTS_LIMIT_EXCEEDED"
-	ConstraintViolationExceptionReasonServiceAccessNotEnabled                           ConstraintViolationExceptionReason = "SERVICE_ACCESS_NOT_ENABLED"
-	ConstraintViolationExceptionReasonInvalidPaymentInstrument                          ConstraintViolationExceptionReason = "INVALID_PAYMENT_INSTRUMENT"
-	ConstraintViolationExceptionReasonAccountCreationNotComplete                        ConstraintViolationExceptionReason = "ACCOUNT_CREATION_NOT_COMPLETE"
+	ConstraintViolationExceptionReasonAccountNumberLimitExceeded                             ConstraintViolationExceptionReason = "ACCOUNT_NUMBER_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonHandshakeRateLimitExceeded                             ConstraintViolationExceptionReason = "HANDSHAKE_RATE_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonOuNumberLimitExceeded                                  ConstraintViolationExceptionReason = "OU_NUMBER_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonOuDepthLimitExceeded                                   ConstraintViolationExceptionReason = "OU_DEPTH_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonPolicyNumberLimitExceeded                              ConstraintViolationExceptionReason = "POLICY_NUMBER_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonPolicyContentLimitExceeded                             ConstraintViolationExceptionReason = "POLICY_CONTENT_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonMaxPolicyTypeAttachmentLimitExceeded                   ConstraintViolationExceptionReason = "MAX_POLICY_TYPE_ATTACHMENT_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonMinPolicyTypeAttachmentLimitExceeded                   ConstraintViolationExceptionReason = "MIN_POLICY_TYPE_ATTACHMENT_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonAccountCannotLeaveOrganization                         ConstraintViolationExceptionReason = "ACCOUNT_CANNOT_LEAVE_ORGANIZATION"
+	ConstraintViolationExceptionReasonAccountCannotLeaveWithoutEula                          ConstraintViolationExceptionReason = "ACCOUNT_CANNOT_LEAVE_WITHOUT_EULA"
+	ConstraintViolationExceptionReasonAccountCannotLeaveWithoutPhoneVerification             ConstraintViolationExceptionReason = "ACCOUNT_CANNOT_LEAVE_WITHOUT_PHONE_VERIFICATION"
+	ConstraintViolationExceptionReasonMasterAccountPaymentInstrumentRequired                 ConstraintViolationExceptionReason = "MASTER_ACCOUNT_PAYMENT_INSTRUMENT_REQUIRED"
+	ConstraintViolationExceptionReasonMemberAccountPaymentInstrumentRequired                 ConstraintViolationExceptionReason = "MEMBER_ACCOUNT_PAYMENT_INSTRUMENT_REQUIRED"
+	ConstraintViolationExceptionReasonAccountCreationRateLimitExceeded                       ConstraintViolationExceptionReason = "ACCOUNT_CREATION_RATE_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonMasterAccountAddressDoesNotMatchMarketplace            ConstraintViolationExceptionReason = "MASTER_ACCOUNT_ADDRESS_DOES_NOT_MATCH_MARKETPLACE"
+	ConstraintViolationExceptionReasonMasterAccountMissingContactInfo                        ConstraintViolationExceptionReason = "MASTER_ACCOUNT_MISSING_CONTACT_INFO"
+	ConstraintViolationExceptionReasonMasterAccountNotGovcloudEnabled                        ConstraintViolationExceptionReason = "MASTER_ACCOUNT_NOT_GOVCLOUD_ENABLED"
+	ConstraintViolationExceptionReasonOrganizationNotInAllFeaturesMode                       ConstraintViolationExceptionReason = "ORGANIZATION_NOT_IN_ALL_FEATURES_MODE"
+	ConstraintViolationExceptionReasonCreateOrganizationInBillingModeUnsupportedRegion       ConstraintViolationExceptionReason = "CREATE_ORGANIZATION_IN_BILLING_MODE_UNSUPPORTED_REGION"
+	ConstraintViolationExceptionReasonEmailVerificationCodeExpired                           ConstraintViolationExceptionReason = "EMAIL_VERIFICATION_CODE_EXPIRED"
+	ConstraintViolationExceptionReasonWaitPeriodActive                                       ConstraintViolationExceptionReason = "WAIT_PERIOD_ACTIVE"
+	ConstraintViolationExceptionReasonMaxTagLimitExceeded                                    ConstraintViolationExceptionReason = "MAX_TAG_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonTagPolicyViolation                                     ConstraintViolationExceptionReason = "TAG_POLICY_VIOLATION"
+	ConstraintViolationExceptionReasonMaxDelegatedAdministratorsForServiceLimitExceeded      ConstraintViolationExceptionReason = "MAX_DELEGATED_ADMINISTRATORS_FOR_SERVICE_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonCannotRegisterMasterAsDelegatedAdministrator           ConstraintViolationExceptionReason = "CANNOT_REGISTER_MASTER_AS_DELEGATED_ADMINISTRATOR"
+	ConstraintViolationExceptionReasonCannotRemoveDelegatedAdministratorFromOrg              ConstraintViolationExceptionReason = "CANNOT_REMOVE_DELEGATED_ADMINISTRATOR_FROM_ORG"
+	ConstraintViolationExceptionReasonDelegatedAdministratorExistsForThisService             ConstraintViolationExceptionReason = "DELEGATED_ADMINISTRATOR_EXISTS_FOR_THIS_SERVICE"
+	ConstraintViolationExceptionReasonPolicyTypeEnabledForThisService                        ConstraintViolationExceptionReason = "POLICY_TYPE_ENABLED_FOR_THIS_SERVICE"
+	ConstraintViolationExceptionReasonMasterAccountMissingBusinessLicense                    ConstraintViolationExceptionReason = "MASTER_ACCOUNT_MISSING_BUSINESS_LICENSE"
+	ConstraintViolationExceptionReasonCannotCloseManagementAccount                           ConstraintViolationExceptionReason = "CANNOT_CLOSE_MANAGEMENT_ACCOUNT"
+	ConstraintViolationExceptionReasonCloseAccountQuotaExceeded                              ConstraintViolationExceptionReason = "CLOSE_ACCOUNT_QUOTA_EXCEEDED"
+	ConstraintViolationExceptionReasonCloseAccountRequestsLimitExceeded                      ConstraintViolationExceptionReason = "CLOSE_ACCOUNT_REQUESTS_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonServiceAccessNotEnabled                                ConstraintViolationExceptionReason = "SERVICE_ACCESS_NOT_ENABLED"
+	ConstraintViolationExceptionReasonInvalidPaymentInstrument                               ConstraintViolationExceptionReason = "INVALID_PAYMENT_INSTRUMENT"
+	ConstraintViolationExceptionReasonAccountCreationNotComplete                             ConstraintViolationExceptionReason = "ACCOUNT_CREATION_NOT_COMPLETE"
+	ConstraintViolationExceptionReasonCannotRegisterSuspendedAccountAsDelegatedAdministrator ConstraintViolationExceptionReason = "CANNOT_REGISTER_SUSPENDED_ACCOUNT_AS_DELEGATED_ADMINISTRATOR"
+	ConstraintViolationExceptionReasonAllFeaturesMigrationOrganizationSizeLimitExceeded      ConstraintViolationExceptionReason = "ALL_FEATURES_MIGRATION_ORGANIZATION_SIZE_LIMIT_EXCEEDED"
+	ConstraintViolationExceptionReasonResponsibilityTransferMaxLevelViolation                ConstraintViolationExceptionReason = "RESPONSIBILITY_TRANSFER_MAX_LEVEL_VIOLATION"
+	ConstraintViolationExceptionReasonResponsibilityTransferMaxInboundQuotaViolation         ConstraintViolationExceptionReason = "RESPONSIBILITY_TRANSFER_MAX_INBOUND_QUOTA_VIOLATION"
+	ConstraintViolationExceptionReasonResponsibilityTransferMaxOutboundQuotaViolation        ConstraintViolationExceptionReason = "RESPONSIBILITY_TRANSFER_MAX_OUTBOUND_QUOTA_VIOLATION"
+	ConstraintViolationExceptionReasonResponsibilityTransferMaxTransfersQuotaViolation       ConstraintViolationExceptionReason = "RESPONSIBILITY_TRANSFER_MAX_TRANSFERS_QUOTA_VIOLATION"
+	ConstraintViolationExceptionReasonActiveResponsibilityTransferProcess                    ConstraintViolationExceptionReason = "ACTIVE_RESPONSIBILITY_TRANSFER_PROCESS"
+	ConstraintViolationExceptionReasonTransferResponsibilityTargetDeletionInProgress         ConstraintViolationExceptionReason = "TRANSFER_RESPONSIBILITY_TARGET_DELETION_IN_PROGRESS"
+	ConstraintViolationExceptionReasonTransferResponsibilitySourceDeletionInProgress         ConstraintViolationExceptionReason = "TRANSFER_RESPONSIBILITY_SOURCE_DELETION_IN_PROGRESS"
+	ConstraintViolationExceptionReasonUnsupportedPricing                                     ConstraintViolationExceptionReason = "UNSUPPORTED_PRICING"
 )
 
 // Values returns all known values for ConstraintViolationExceptionReason. Note
 // that this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ConstraintViolationExceptionReason) Values() []ConstraintViolationExceptionReason {
 	return []ConstraintViolationExceptionReason{
 		"ACCOUNT_NUMBER_LIMIT_EXCEEDED",
@@ -170,6 +214,7 @@ func (ConstraintViolationExceptionReason) Values() []ConstraintViolationExceptio
 		"CANNOT_REGISTER_MASTER_AS_DELEGATED_ADMINISTRATOR",
 		"CANNOT_REMOVE_DELEGATED_ADMINISTRATOR_FROM_ORG",
 		"DELEGATED_ADMINISTRATOR_EXISTS_FOR_THIS_SERVICE",
+		"POLICY_TYPE_ENABLED_FOR_THIS_SERVICE",
 		"MASTER_ACCOUNT_MISSING_BUSINESS_LICENSE",
 		"CANNOT_CLOSE_MANAGEMENT_ACCOUNT",
 		"CLOSE_ACCOUNT_QUOTA_EXCEEDED",
@@ -177,6 +222,16 @@ func (ConstraintViolationExceptionReason) Values() []ConstraintViolationExceptio
 		"SERVICE_ACCESS_NOT_ENABLED",
 		"INVALID_PAYMENT_INSTRUMENT",
 		"ACCOUNT_CREATION_NOT_COMPLETE",
+		"CANNOT_REGISTER_SUSPENDED_ACCOUNT_AS_DELEGATED_ADMINISTRATOR",
+		"ALL_FEATURES_MIGRATION_ORGANIZATION_SIZE_LIMIT_EXCEEDED",
+		"RESPONSIBILITY_TRANSFER_MAX_LEVEL_VIOLATION",
+		"RESPONSIBILITY_TRANSFER_MAX_INBOUND_QUOTA_VIOLATION",
+		"RESPONSIBILITY_TRANSFER_MAX_OUTBOUND_QUOTA_VIOLATION",
+		"RESPONSIBILITY_TRANSFER_MAX_TRANSFERS_QUOTA_VIOLATION",
+		"ACTIVE_RESPONSIBILITY_TRANSFER_PROCESS",
+		"TRANSFER_RESPONSIBILITY_TARGET_DELETION_IN_PROGRESS",
+		"TRANSFER_RESPONSIBILITY_SOURCE_DELETION_IN_PROGRESS",
+		"UNSUPPORTED_PRICING",
 	}
 }
 
@@ -203,6 +258,7 @@ const (
 
 // Values returns all known values for CreateAccountFailureReason. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (CreateAccountFailureReason) Values() []CreateAccountFailureReason {
 	return []CreateAccountFailureReason{
@@ -234,8 +290,9 @@ const (
 )
 
 // Values returns all known values for CreateAccountState. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (CreateAccountState) Values() []CreateAccountState {
 	return []CreateAccountState{
 		"IN_PROGRESS",
@@ -248,19 +305,36 @@ type EffectivePolicyType string
 
 // Enum values for EffectivePolicyType
 const (
-	EffectivePolicyTypeTagPolicy              EffectivePolicyType = "TAG_POLICY"
-	EffectivePolicyTypeBackupPolicy           EffectivePolicyType = "BACKUP_POLICY"
-	EffectivePolicyTypeAiservicesOptOutPolicy EffectivePolicyType = "AISERVICES_OPT_OUT_POLICY"
+	EffectivePolicyTypeTagPolicy                     EffectivePolicyType = "TAG_POLICY"
+	EffectivePolicyTypeBackupPolicy                  EffectivePolicyType = "BACKUP_POLICY"
+	EffectivePolicyTypeAiservicesOptOutPolicy        EffectivePolicyType = "AISERVICES_OPT_OUT_POLICY"
+	EffectivePolicyTypeChatbotPolicy                 EffectivePolicyType = "CHATBOT_POLICY"
+	EffectivePolicyTypeDeclarativePolicyEc2          EffectivePolicyType = "DECLARATIVE_POLICY_EC2"
+	EffectivePolicyTypeSecurityhubPolicy             EffectivePolicyType = "SECURITYHUB_POLICY"
+	EffectivePolicyTypeInspectorPolicy               EffectivePolicyType = "INSPECTOR_POLICY"
+	EffectivePolicyTypeUpgradeRolloutPolicy          EffectivePolicyType = "UPGRADE_ROLLOUT_POLICY"
+	EffectivePolicyTypeBedrockPolicy                 EffectivePolicyType = "BEDROCK_POLICY"
+	EffectivePolicyTypeS3Policy                      EffectivePolicyType = "S3_POLICY"
+	EffectivePolicyTypeNetworkSecurityDirectorPolicy EffectivePolicyType = "NETWORK_SECURITY_DIRECTOR_POLICY"
 )
 
 // Values returns all known values for EffectivePolicyType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (EffectivePolicyType) Values() []EffectivePolicyType {
 	return []EffectivePolicyType{
 		"TAG_POLICY",
 		"BACKUP_POLICY",
 		"AISERVICES_OPT_OUT_POLICY",
+		"CHATBOT_POLICY",
+		"DECLARATIVE_POLICY_EC2",
+		"SECURITYHUB_POLICY",
+		"INSPECTOR_POLICY",
+		"UPGRADE_ROLLOUT_POLICY",
+		"BEDROCK_POLICY",
+		"S3_POLICY",
+		"NETWORK_SECURITY_DIRECTOR_POLICY",
 	}
 }
 
@@ -278,12 +352,17 @@ const (
 	HandshakeConstraintViolationExceptionReasonOrganizationFromDifferentSellerOfRecord          HandshakeConstraintViolationExceptionReason = "ORGANIZATION_FROM_DIFFERENT_SELLER_OF_RECORD"
 	HandshakeConstraintViolationExceptionReasonOrganizationMembershipChangeRateLimitExceeded    HandshakeConstraintViolationExceptionReason = "ORGANIZATION_MEMBERSHIP_CHANGE_RATE_LIMIT_EXCEEDED"
 	HandshakeConstraintViolationExceptionReasonManagementAccountEmailNotVerified                HandshakeConstraintViolationExceptionReason = "MANAGEMENT_ACCOUNT_EMAIL_NOT_VERIFIED"
+	HandshakeConstraintViolationExceptionReasonResponsibilityTransferAlreadyExists              HandshakeConstraintViolationExceptionReason = "RESPONSIBILITY_TRANSFER_ALREADY_EXISTS"
+	HandshakeConstraintViolationExceptionReasonSourceAndTargetCannotMatch                       HandshakeConstraintViolationExceptionReason = "SOURCE_AND_TARGET_CANNOT_MATCH"
+	HandshakeConstraintViolationExceptionReasonUnusedPrepaymentBalance                          HandshakeConstraintViolationExceptionReason = "UNUSED_PREPAYMENT_BALANCE"
+	HandshakeConstraintViolationExceptionReasonLegacyPermissionsStillInUse                      HandshakeConstraintViolationExceptionReason = "LEGACY_PERMISSIONS_STILL_IN_USE"
 )
 
 // Values returns all known values for
 // HandshakeConstraintViolationExceptionReason. Note that this can be expanded in
-// the future, and so it is only as up to date as the client. The ordering of this
-// slice is not guaranteed to be stable across updates.
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HandshakeConstraintViolationExceptionReason) Values() []HandshakeConstraintViolationExceptionReason {
 	return []HandshakeConstraintViolationExceptionReason{
 		"ACCOUNT_NUMBER_LIMIT_EXCEEDED",
@@ -296,6 +375,10 @@ func (HandshakeConstraintViolationExceptionReason) Values() []HandshakeConstrain
 		"ORGANIZATION_FROM_DIFFERENT_SELLER_OF_RECORD",
 		"ORGANIZATION_MEMBERSHIP_CHANGE_RATE_LIMIT_EXCEEDED",
 		"MANAGEMENT_ACCOUNT_EMAIL_NOT_VERIFIED",
+		"RESPONSIBILITY_TRANSFER_ALREADY_EXISTS",
+		"SOURCE_AND_TARGET_CANNOT_MATCH",
+		"UNUSED_PREPAYMENT_BALANCE",
+		"LEGACY_PERMISSIONS_STILL_IN_USE",
 	}
 }
 
@@ -309,8 +392,9 @@ const (
 )
 
 // Values returns all known values for HandshakePartyType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HandshakePartyType) Values() []HandshakePartyType {
 	return []HandshakePartyType{
 		"ACCOUNT",
@@ -331,11 +415,18 @@ const (
 	HandshakeResourceTypeMasterName             HandshakeResourceType = "MASTER_NAME"
 	HandshakeResourceTypeNotes                  HandshakeResourceType = "NOTES"
 	HandshakeResourceTypeParentHandshake        HandshakeResourceType = "PARENT_HANDSHAKE"
+	HandshakeResourceTypeResponsibilityTransfer HandshakeResourceType = "RESPONSIBILITY_TRANSFER"
+	HandshakeResourceTypeTransferStartTimestamp HandshakeResourceType = "TRANSFER_START_TIMESTAMP"
+	HandshakeResourceTypeTransferType           HandshakeResourceType = "TRANSFER_TYPE"
+	HandshakeResourceTypeManagementAccount      HandshakeResourceType = "MANAGEMENT_ACCOUNT"
+	HandshakeResourceTypeManagementEmail        HandshakeResourceType = "MANAGEMENT_EMAIL"
+	HandshakeResourceTypeManagementName         HandshakeResourceType = "MANAGEMENT_NAME"
 )
 
 // Values returns all known values for HandshakeResourceType. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HandshakeResourceType) Values() []HandshakeResourceType {
 	return []HandshakeResourceType{
 		"ACCOUNT",
@@ -346,6 +437,12 @@ func (HandshakeResourceType) Values() []HandshakeResourceType {
 		"MASTER_NAME",
 		"NOTES",
 		"PARENT_HANDSHAKE",
+		"RESPONSIBILITY_TRANSFER",
+		"TRANSFER_START_TIMESTAMP",
+		"TRANSFER_TYPE",
+		"MANAGEMENT_ACCOUNT",
+		"MANAGEMENT_EMAIL",
+		"MANAGEMENT_NAME",
 	}
 }
 
@@ -362,8 +459,9 @@ const (
 )
 
 // Values returns all known values for HandshakeState. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (HandshakeState) Values() []HandshakeState {
 	return []HandshakeState{
 		"REQUESTED",
@@ -384,8 +482,9 @@ const (
 )
 
 // Values returns all known values for IAMUserAccessToBilling. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (IAMUserAccessToBilling) Values() []IAMUserAccessToBilling {
 	return []IAMUserAccessToBilling{
 		"ALLOW",
@@ -397,38 +496,51 @@ type InvalidInputExceptionReason string
 
 // Enum values for InvalidInputExceptionReason
 const (
-	InvalidInputExceptionReasonInvalidPartyTypeTarget                InvalidInputExceptionReason = "INVALID_PARTY_TYPE_TARGET"
-	InvalidInputExceptionReasonInvalidSyntaxOrganization             InvalidInputExceptionReason = "INVALID_SYNTAX_ORGANIZATION_ARN"
-	InvalidInputExceptionReasonInvalidSyntaxPolicy                   InvalidInputExceptionReason = "INVALID_SYNTAX_POLICY_ID"
-	InvalidInputExceptionReasonInvalidEnum                           InvalidInputExceptionReason = "INVALID_ENUM"
-	InvalidInputExceptionReasonInvalidEnumPolicyType                 InvalidInputExceptionReason = "INVALID_ENUM_POLICY_TYPE"
-	InvalidInputExceptionReasonInvalidListMember                     InvalidInputExceptionReason = "INVALID_LIST_MEMBER"
-	InvalidInputExceptionReasonMaxLengthExceeded                     InvalidInputExceptionReason = "MAX_LENGTH_EXCEEDED"
-	InvalidInputExceptionReasonMaxValueExceeded                      InvalidInputExceptionReason = "MAX_VALUE_EXCEEDED"
-	InvalidInputExceptionReasonMinLengthExceeded                     InvalidInputExceptionReason = "MIN_LENGTH_EXCEEDED"
-	InvalidInputExceptionReasonMinValueExceeded                      InvalidInputExceptionReason = "MIN_VALUE_EXCEEDED"
-	InvalidInputExceptionReasonImmutablePolicy                       InvalidInputExceptionReason = "IMMUTABLE_POLICY"
-	InvalidInputExceptionReasonInvalidPattern                        InvalidInputExceptionReason = "INVALID_PATTERN"
-	InvalidInputExceptionReasonInvalidPatternTargetId                InvalidInputExceptionReason = "INVALID_PATTERN_TARGET_ID"
-	InvalidInputExceptionReasonInputRequired                         InvalidInputExceptionReason = "INPUT_REQUIRED"
-	InvalidInputExceptionReasonInvalidPaginationToken                InvalidInputExceptionReason = "INVALID_NEXT_TOKEN"
-	InvalidInputExceptionReasonMaxFilterLimitExceeded                InvalidInputExceptionReason = "MAX_LIMIT_EXCEEDED_FILTER"
-	InvalidInputExceptionReasonMovingAccountBetweenDifferentRoots    InvalidInputExceptionReason = "MOVING_ACCOUNT_BETWEEN_DIFFERENT_ROOTS"
-	InvalidInputExceptionReasonInvalidFullNameTarget                 InvalidInputExceptionReason = "INVALID_FULL_NAME_TARGET"
-	InvalidInputExceptionReasonUnrecognizedServicePrincipal          InvalidInputExceptionReason = "UNRECOGNIZED_SERVICE_PRINCIPAL"
-	InvalidInputExceptionReasonInvalidRoleName                       InvalidInputExceptionReason = "INVALID_ROLE_NAME"
-	InvalidInputExceptionReasonInvalidSystemTagsParameter            InvalidInputExceptionReason = "INVALID_SYSTEM_TAGS_PARAMETER"
-	InvalidInputExceptionReasonDuplicateTagKey                       InvalidInputExceptionReason = "DUPLICATE_TAG_KEY"
-	InvalidInputExceptionReasonTargetNotSupported                    InvalidInputExceptionReason = "TARGET_NOT_SUPPORTED"
-	InvalidInputExceptionReasonInvalidEmailAddressTarget             InvalidInputExceptionReason = "INVALID_EMAIL_ADDRESS_TARGET"
-	InvalidInputExceptionReasonInvalidResourcePolicyJson             InvalidInputExceptionReason = "INVALID_RESOURCE_POLICY_JSON"
-	InvalidInputExceptionReasonUnsupportedActionInResourcePolicy     InvalidInputExceptionReason = "UNSUPPORTED_ACTION_IN_RESOURCE_POLICY"
-	InvalidInputExceptionReasonUnsupportedPolicyTypeInResourcePolicy InvalidInputExceptionReason = "UNSUPPORTED_POLICY_TYPE_IN_RESOURCE_POLICY"
-	InvalidInputExceptionReasonUnsupportedResourceInResourcePolicy   InvalidInputExceptionReason = "UNSUPPORTED_RESOURCE_IN_RESOURCE_POLICY"
+	InvalidInputExceptionReasonInvalidPartyTypeTarget                    InvalidInputExceptionReason = "INVALID_PARTY_TYPE_TARGET"
+	InvalidInputExceptionReasonInvalidSyntaxOrganization                 InvalidInputExceptionReason = "INVALID_SYNTAX_ORGANIZATION_ARN"
+	InvalidInputExceptionReasonInvalidSyntaxPolicy                       InvalidInputExceptionReason = "INVALID_SYNTAX_POLICY_ID"
+	InvalidInputExceptionReasonInvalidEnum                               InvalidInputExceptionReason = "INVALID_ENUM"
+	InvalidInputExceptionReasonInvalidEnumPolicyType                     InvalidInputExceptionReason = "INVALID_ENUM_POLICY_TYPE"
+	InvalidInputExceptionReasonInvalidListMember                         InvalidInputExceptionReason = "INVALID_LIST_MEMBER"
+	InvalidInputExceptionReasonMaxLengthExceeded                         InvalidInputExceptionReason = "MAX_LENGTH_EXCEEDED"
+	InvalidInputExceptionReasonMaxValueExceeded                          InvalidInputExceptionReason = "MAX_VALUE_EXCEEDED"
+	InvalidInputExceptionReasonMinLengthExceeded                         InvalidInputExceptionReason = "MIN_LENGTH_EXCEEDED"
+	InvalidInputExceptionReasonMinValueExceeded                          InvalidInputExceptionReason = "MIN_VALUE_EXCEEDED"
+	InvalidInputExceptionReasonImmutablePolicy                           InvalidInputExceptionReason = "IMMUTABLE_POLICY"
+	InvalidInputExceptionReasonInvalidPattern                            InvalidInputExceptionReason = "INVALID_PATTERN"
+	InvalidInputExceptionReasonInvalidPatternTargetId                    InvalidInputExceptionReason = "INVALID_PATTERN_TARGET_ID"
+	InvalidInputExceptionReasonInputRequired                             InvalidInputExceptionReason = "INPUT_REQUIRED"
+	InvalidInputExceptionReasonInvalidPaginationToken                    InvalidInputExceptionReason = "INVALID_NEXT_TOKEN"
+	InvalidInputExceptionReasonMaxFilterLimitExceeded                    InvalidInputExceptionReason = "MAX_LIMIT_EXCEEDED_FILTER"
+	InvalidInputExceptionReasonMovingAccountBetweenDifferentRoots        InvalidInputExceptionReason = "MOVING_ACCOUNT_BETWEEN_DIFFERENT_ROOTS"
+	InvalidInputExceptionReasonInvalidFullNameTarget                     InvalidInputExceptionReason = "INVALID_FULL_NAME_TARGET"
+	InvalidInputExceptionReasonUnrecognizedServicePrincipal              InvalidInputExceptionReason = "UNRECOGNIZED_SERVICE_PRINCIPAL"
+	InvalidInputExceptionReasonInvalidRoleName                           InvalidInputExceptionReason = "INVALID_ROLE_NAME"
+	InvalidInputExceptionReasonInvalidSystemTagsParameter                InvalidInputExceptionReason = "INVALID_SYSTEM_TAGS_PARAMETER"
+	InvalidInputExceptionReasonDuplicateTagKey                           InvalidInputExceptionReason = "DUPLICATE_TAG_KEY"
+	InvalidInputExceptionReasonTargetNotSupported                        InvalidInputExceptionReason = "TARGET_NOT_SUPPORTED"
+	InvalidInputExceptionReasonInvalidEmailAddressTarget                 InvalidInputExceptionReason = "INVALID_EMAIL_ADDRESS_TARGET"
+	InvalidInputExceptionReasonInvalidResourcePolicyJson                 InvalidInputExceptionReason = "INVALID_RESOURCE_POLICY_JSON"
+	InvalidInputExceptionReasonInvalidPrincipal                          InvalidInputExceptionReason = "INVALID_PRINCIPAL"
+	InvalidInputExceptionReasonUnsupportedActionInResourcePolicy         InvalidInputExceptionReason = "UNSUPPORTED_ACTION_IN_RESOURCE_POLICY"
+	InvalidInputExceptionReasonUnsupportedPolicyTypeInResourcePolicy     InvalidInputExceptionReason = "UNSUPPORTED_POLICY_TYPE_IN_RESOURCE_POLICY"
+	InvalidInputExceptionReasonUnsupportedResourceInResourcePolicy       InvalidInputExceptionReason = "UNSUPPORTED_RESOURCE_IN_RESOURCE_POLICY"
+	InvalidInputExceptionReasonNonDetachablePolicy                       InvalidInputExceptionReason = "NON_DETACHABLE_POLICY"
+	InvalidInputExceptionReasonCallerRequiredFieldMissing                InvalidInputExceptionReason = "CALLER_REQUIRED_FIELD_MISSING"
+	InvalidInputExceptionReasonUnsupportedActionInResponsibilityTransfer InvalidInputExceptionReason = "UNSUPPORTED_ACTION_IN_RESPONSIBILITY_TRANSFER"
+	InvalidInputExceptionReasonStartDateNotBeginningOfMonth              InvalidInputExceptionReason = "START_DATE_NOT_BEGINNING_OF_MONTH"
+	InvalidInputExceptionReasonStartDateNotBeginningOfDay                InvalidInputExceptionReason = "START_DATE_NOT_BEGINNING_OF_DAY"
+	InvalidInputExceptionReasonStartDateTooEarly                         InvalidInputExceptionReason = "START_DATE_TOO_EARLY"
+	InvalidInputExceptionReasonStartDateTooLate                          InvalidInputExceptionReason = "START_DATE_TOO_LATE"
+	InvalidInputExceptionReasonInvalidStartDate                          InvalidInputExceptionReason = "INVALID_START_DATE"
+	InvalidInputExceptionReasonEndDateNotEndOfMonth                      InvalidInputExceptionReason = "END_DATE_NOT_END_OF_MONTH"
+	InvalidInputExceptionReasonEndDateTooEarly                           InvalidInputExceptionReason = "END_DATE_TOO_EARLY"
+	InvalidInputExceptionReasonInvalidEndDate                            InvalidInputExceptionReason = "INVALID_END_DATE"
 )
 
 // Values returns all known values for InvalidInputExceptionReason. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (InvalidInputExceptionReason) Values() []InvalidInputExceptionReason {
 	return []InvalidInputExceptionReason{
@@ -457,9 +569,21 @@ func (InvalidInputExceptionReason) Values() []InvalidInputExceptionReason {
 		"TARGET_NOT_SUPPORTED",
 		"INVALID_EMAIL_ADDRESS_TARGET",
 		"INVALID_RESOURCE_POLICY_JSON",
+		"INVALID_PRINCIPAL",
 		"UNSUPPORTED_ACTION_IN_RESOURCE_POLICY",
 		"UNSUPPORTED_POLICY_TYPE_IN_RESOURCE_POLICY",
 		"UNSUPPORTED_RESOURCE_IN_RESOURCE_POLICY",
+		"NON_DETACHABLE_POLICY",
+		"CALLER_REQUIRED_FIELD_MISSING",
+		"UNSUPPORTED_ACTION_IN_RESPONSIBILITY_TRANSFER",
+		"START_DATE_NOT_BEGINNING_OF_MONTH",
+		"START_DATE_NOT_BEGINNING_OF_DAY",
+		"START_DATE_TOO_EARLY",
+		"START_DATE_TOO_LATE",
+		"INVALID_START_DATE",
+		"END_DATE_NOT_END_OF_MONTH",
+		"END_DATE_TOO_EARLY",
+		"INVALID_END_DATE",
 	}
 }
 
@@ -472,8 +596,9 @@ const (
 )
 
 // Values returns all known values for OrganizationFeatureSet. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (OrganizationFeatureSet) Values() []OrganizationFeatureSet {
 	return []OrganizationFeatureSet{
 		"ALL",
@@ -490,8 +615,9 @@ const (
 )
 
 // Values returns all known values for ParentType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ParentType) Values() []ParentType {
 	return []ParentType{
 		"ROOT",
@@ -503,21 +629,40 @@ type PolicyType string
 
 // Enum values for PolicyType
 const (
-	PolicyTypeServiceControlPolicy   PolicyType = "SERVICE_CONTROL_POLICY"
-	PolicyTypeTagPolicy              PolicyType = "TAG_POLICY"
-	PolicyTypeBackupPolicy           PolicyType = "BACKUP_POLICY"
-	PolicyTypeAiservicesOptOutPolicy PolicyType = "AISERVICES_OPT_OUT_POLICY"
+	PolicyTypeServiceControlPolicy          PolicyType = "SERVICE_CONTROL_POLICY"
+	PolicyTypeResourceControlPolicy         PolicyType = "RESOURCE_CONTROL_POLICY"
+	PolicyTypeTagPolicy                     PolicyType = "TAG_POLICY"
+	PolicyTypeBackupPolicy                  PolicyType = "BACKUP_POLICY"
+	PolicyTypeAiservicesOptOutPolicy        PolicyType = "AISERVICES_OPT_OUT_POLICY"
+	PolicyTypeChatbotPolicy                 PolicyType = "CHATBOT_POLICY"
+	PolicyTypeDeclarativePolicyEc2          PolicyType = "DECLARATIVE_POLICY_EC2"
+	PolicyTypeSecurityhubPolicy             PolicyType = "SECURITYHUB_POLICY"
+	PolicyTypeInspectorPolicy               PolicyType = "INSPECTOR_POLICY"
+	PolicyTypeUpgradeRolloutPolicy          PolicyType = "UPGRADE_ROLLOUT_POLICY"
+	PolicyTypeBedrockPolicy                 PolicyType = "BEDROCK_POLICY"
+	PolicyTypeS3Policy                      PolicyType = "S3_POLICY"
+	PolicyTypeNetworkSecurityDirectorPolicy PolicyType = "NETWORK_SECURITY_DIRECTOR_POLICY"
 )
 
 // Values returns all known values for PolicyType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PolicyType) Values() []PolicyType {
 	return []PolicyType{
 		"SERVICE_CONTROL_POLICY",
+		"RESOURCE_CONTROL_POLICY",
 		"TAG_POLICY",
 		"BACKUP_POLICY",
 		"AISERVICES_OPT_OUT_POLICY",
+		"CHATBOT_POLICY",
+		"DECLARATIVE_POLICY_EC2",
+		"SECURITYHUB_POLICY",
+		"INSPECTOR_POLICY",
+		"UPGRADE_ROLLOUT_POLICY",
+		"BEDROCK_POLICY",
+		"S3_POLICY",
+		"NETWORK_SECURITY_DIRECTOR_POLICY",
 	}
 }
 
@@ -531,13 +676,59 @@ const (
 )
 
 // Values returns all known values for PolicyTypeStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PolicyTypeStatus) Values() []PolicyTypeStatus {
 	return []PolicyTypeStatus{
 		"ENABLED",
 		"PENDING_ENABLE",
 		"PENDING_DISABLE",
+	}
+}
+
+type ResponsibilityTransferStatus string
+
+// Enum values for ResponsibilityTransferStatus
+const (
+	ResponsibilityTransferStatusRequested ResponsibilityTransferStatus = "REQUESTED"
+	ResponsibilityTransferStatusDeclined  ResponsibilityTransferStatus = "DECLINED"
+	ResponsibilityTransferStatusCanceled  ResponsibilityTransferStatus = "CANCELED"
+	ResponsibilityTransferStatusExpired   ResponsibilityTransferStatus = "EXPIRED"
+	ResponsibilityTransferStatusAccepted  ResponsibilityTransferStatus = "ACCEPTED"
+	ResponsibilityTransferStatusWithdrawn ResponsibilityTransferStatus = "WITHDRAWN"
+)
+
+// Values returns all known values for ResponsibilityTransferStatus. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ResponsibilityTransferStatus) Values() []ResponsibilityTransferStatus {
+	return []ResponsibilityTransferStatus{
+		"REQUESTED",
+		"DECLINED",
+		"CANCELED",
+		"EXPIRED",
+		"ACCEPTED",
+		"WITHDRAWN",
+	}
+}
+
+type ResponsibilityTransferType string
+
+// Enum values for ResponsibilityTransferType
+const (
+	ResponsibilityTransferTypeBilling ResponsibilityTransferType = "BILLING"
+)
+
+// Values returns all known values for ResponsibilityTransferType. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ResponsibilityTransferType) Values() []ResponsibilityTransferType {
+	return []ResponsibilityTransferType{
+		"BILLING",
 	}
 }
 
@@ -551,8 +742,9 @@ const (
 )
 
 // Values returns all known values for TargetType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (TargetType) Values() []TargetType {
 	return []TargetType{
 		"ACCOUNT",

@@ -130,26 +130,6 @@ func (m *validateOpCreateKey) HandleInitialize(ctx context.Context, in middlewar
 	return next.HandleInitialize(ctx, in)
 }
 
-type validateOpDecrypt struct {
-}
-
-func (*validateOpDecrypt) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpDecrypt) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*DecryptInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpDecryptInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
 type validateOpDeleteAlias struct {
 }
 
@@ -205,6 +185,26 @@ func (m *validateOpDeleteImportedKeyMaterial) HandleInitialize(ctx context.Conte
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpDeleteImportedKeyMaterialInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpDeriveSharedSecret struct {
+}
+
+func (*validateOpDeriveSharedSecret) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDeriveSharedSecret) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DeriveSharedSecretInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDeriveSharedSecretInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -450,6 +450,26 @@ func (m *validateOpGenerateMac) HandleInitialize(ctx context.Context, in middlew
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpGetKeyLastUsage struct {
+}
+
+func (*validateOpGetKeyLastUsage) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetKeyLastUsage) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetKeyLastUsageInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetKeyLastUsageInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpGetKeyPolicy struct {
 }
 
@@ -625,26 +645,6 @@ func (m *validateOpListResourceTags) HandleInitialize(ctx context.Context, in mi
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpListResourceTagsInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
-type validateOpListRetirableGrants struct {
-}
-
-func (*validateOpListRetirableGrants) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpListRetirableGrants) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*ListRetirableGrantsInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpListRetirableGrantsInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -974,10 +974,6 @@ func addOpCreateKeyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateKey{}, middleware.After)
 }
 
-func addOpDecryptValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpDecrypt{}, middleware.After)
-}
-
 func addOpDeleteAliasValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteAlias{}, middleware.After)
 }
@@ -988,6 +984,10 @@ func addOpDeleteCustomKeyStoreValidationMiddleware(stack *middleware.Stack) erro
 
 func addOpDeleteImportedKeyMaterialValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteImportedKeyMaterial{}, middleware.After)
+}
+
+func addOpDeriveSharedSecretValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDeriveSharedSecret{}, middleware.After)
 }
 
 func addOpDescribeKeyValidationMiddleware(stack *middleware.Stack) error {
@@ -1038,6 +1038,10 @@ func addOpGenerateMacValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGenerateMac{}, middleware.After)
 }
 
+func addOpGetKeyLastUsageValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetKeyLastUsage{}, middleware.After)
+}
+
 func addOpGetKeyPolicyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetKeyPolicy{}, middleware.After)
 }
@@ -1072,10 +1076,6 @@ func addOpListKeyRotationsValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpListResourceTagsValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListResourceTags{}, middleware.After)
-}
-
-func addOpListRetirableGrantsValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpListRetirableGrants{}, middleware.After)
 }
 
 func addOpPutKeyPolicyValidationMiddleware(stack *middleware.Stack) error {
@@ -1267,9 +1267,6 @@ func validateOpCreateGrantInput(v *CreateGrantInput) error {
 	if v.KeyId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
 	}
-	if v.GranteePrincipal == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("GranteePrincipal"))
-	}
 	if v.Operations == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Operations"))
 	}
@@ -1289,21 +1286,6 @@ func validateOpCreateKeyInput(v *CreateKeyInput) error {
 		if err := validateTagList(v.Tags); err != nil {
 			invalidParams.AddNested("Tags", err.(smithy.InvalidParamsError))
 		}
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
-func validateOpDecryptInput(v *DecryptInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "DecryptInput"}
-	if v.CiphertextBlob == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("CiphertextBlob"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1349,6 +1331,27 @@ func validateOpDeleteImportedKeyMaterialInput(v *DeleteImportedKeyMaterialInput)
 	invalidParams := smithy.InvalidParamsError{Context: "DeleteImportedKeyMaterialInput"}
 	if v.KeyId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpDeriveSharedSecretInput(v *DeriveSharedSecretInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DeriveSharedSecretInput"}
+	if v.KeyId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
+	}
+	if len(v.KeyAgreementAlgorithm) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("KeyAgreementAlgorithm"))
+	}
+	if v.PublicKey == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("PublicKey"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1552,6 +1555,21 @@ func validateOpGenerateMacInput(v *GenerateMacInput) error {
 	}
 }
 
+func validateOpGetKeyLastUsageInput(v *GetKeyLastUsageInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetKeyLastUsageInput"}
+	if v.KeyId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpGetKeyPolicyInput(v *GetKeyPolicyInput) error {
 	if v == nil {
 		return nil
@@ -1699,21 +1717,6 @@ func validateOpListResourceTagsInput(v *ListResourceTagsInput) error {
 	}
 }
 
-func validateOpListRetirableGrantsInput(v *ListRetirableGrantsInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "ListRetirableGrantsInput"}
-	if v.RetiringPrincipal == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("RetiringPrincipal"))
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
 func validateOpPutKeyPolicyInput(v *PutKeyPolicyInput) error {
 	if v == nil {
 		return nil
@@ -1737,9 +1740,6 @@ func validateOpReEncryptInput(v *ReEncryptInput) error {
 		return nil
 	}
 	invalidParams := smithy.InvalidParamsError{Context: "ReEncryptInput"}
-	if v.CiphertextBlob == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("CiphertextBlob"))
-	}
 	if v.DestinationKeyId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("DestinationKeyId"))
 	}

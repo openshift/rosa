@@ -45,6 +45,15 @@ type ModifyRuleInput struct {
 	// The conditions.
 	Conditions []types.RuleCondition
 
+	// Indicates whether to remove all transforms from the rule. If you specify
+	// ResetTransforms , you can't specify Transforms .
+	ResetTransforms *bool
+
+	// The transforms to apply to requests that match this rule. You can add one host
+	// header rewrite transform and one URL rewrite transform. If you specify
+	// Transforms , you can't specify ResetTransforms .
+	Transforms []types.RuleTransform
+
 	noSmithyDocumentSerde
 }
 
@@ -93,13 +102,16 @@ func (c *Client) addOperationModifyRuleMiddlewares(stack *middleware.Stack, opti
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -114,10 +126,10 @@ func (c *Client) addOperationModifyRuleMiddlewares(stack *middleware.Stack, opti
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyRuleValidationMiddleware(stack); err != nil {
@@ -139,6 +151,15 @@ func (c *Client) addOperationModifyRuleMiddlewares(stack *middleware.Stack, opti
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
