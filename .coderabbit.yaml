@@ -26,6 +26,18 @@ reviews:
         - Treat Cobra wiring, flags, command UX, and error handling as high-signal review areas.
         - Flag changes that add commands or flags without matching updates to `cmd/rosa/structure_test/command_structure.yml` or the matching `command_args.yml`.
         - Prefer thin command files and business logic in `pkg/`.
+    - path: "**/*.sh"
+      instructions: |
+        - Review shell scripts for portable bash usage, strict-mode safety, quoting, and robust temporary-file or pipe handling.
+        - Keep script behavior aligned with `Makefile`, `hack/run-checks.sh`, and the git hooks instead of introducing parallel workflows.
+    - path: "**/Dockerfile*"
+      instructions: |
+        - Keep build and runtime image changes aligned with the repo's Go toolchain, release flow, and static-binary expectations.
+        - Flag unpinned downloads, secret-bearing build arguments, or image changes that drift from Tekton/Konflux assumptions without justification.
+    - path: ".tekton/**/*.{yml,yaml}"
+      instructions: |
+        - Treat Konflux/Tekton pipeline steps, required scan stages, and fail-fast behavior as high-signal review areas.
+        - Flag changes that bypass validation gates, artifact flow, or image/security checks without matching workflow updates.
     - path: "pkg/aws/**/*.go"
       instructions: |
         - Cross-check AWS behavior and user-facing wording against the official ROSA and AWS references called out in `AGENTS.md`.
@@ -42,20 +54,42 @@ reviews:
       instructions: |
         - Check commands, workflow steps, and product terminology against `AGENTS.md`, `CONTRIBUTING.md`, `guidelines/ARCHITECTURE.md`, and official ROSA/AWS docs.
         - Flag stale file paths, placeholder Jira links, or wording that conflicts with the real repository workflow.
+    - path: "cmd/rosa/structure_test/**/*.{yml,yaml}"
+      instructions: |
+        - Ensure command structure and flag expectations stay exactly aligned with the CLI tree and supported Cobra flags.
+        - Flag command or flag changes in Go code that are not reflected here, and vice versa.
+    - path: "cmd/create/network/templates/**/*.yaml"
+      instructions: |
+        - Review CloudFormation and network template changes against the ROSA and AWS guidance referenced from `AGENTS.md`.
+        - Flag unsupported AWS assumptions, risky networking defaults, or stale CLI-version/template compatibility notes.
     - path: ".github/**/*"
       instructions: |
         - Keep issue and PR metadata aligned with repo-local agent guidance and contributor workflow.
   tools:
+    checkov:
+      enabled: false
+    gitleaks:
+      enabled: true
     golangci-lint:
       enabled: true
-    gitleaks:
+    hadolint:
+      enabled: true
+    markdownlint:
+      enabled: false
+    shellcheck:
+      enabled: true
+    trivy:
+      enabled: false
+    yamllint:
       enabled: true
 
 knowledge_base:
   code_guidelines:
     enabled: true
     filePatterns:
+      - AGENTS.md
       - CONTRIBUTING.md
+      - .cursor/rules/*.mdc
       - guidelines/ARCHITECTURE.md
       - guidelines/*-guidelines.md
       - .claude/SKILLS.md
