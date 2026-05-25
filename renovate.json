@@ -50,9 +50,13 @@
   },
   "packageRules": [
     {
-      "description": "Enable automerge Konflux tekton task updates",
+      "description": "Enable automerge Konflux .tekton task updates",
       "matchManagers": [
         "tekton"
+      ],
+      "matchFileNames": [
+        ".tekton/**/*.yaml",
+        ".tekton/**/*.yml"
       ],
       "automerge": true
     },
