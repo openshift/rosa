@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:9.8-1779467716 AS builder
 WORKDIR /rosa
 USER root
 COPY . .
