@@ -228,8 +228,8 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/danieljoos/wincred v1.2.0
 ## explicit; go 1.18
 github.com/danieljoos/wincred
-# github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
-## explicit
+# github.com/dchest/validator v1.0.0
+## explicit; go 1.26.1
 github.com/dchest/validator
 # github.com/dustin/go-humanize v1.0.0
 ## explicit
