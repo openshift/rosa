@@ -454,6 +454,14 @@ func GetAdminPolicyARN(partition string, accountID string, name string, path str
 	return getPolicyARN(partition, accountID, GetAdminPolicyName(name), path)
 }
 
+func GetNoConsolePolicyName(name string) string {
+	return fmt.Sprintf("%s-NoConsole-Policy", name)
+}
+
+func GetNoConsolePolicyARN(partition string, accountID string, name string, path string) string {
+	return getPolicyARN(partition, accountID, GetNoConsolePolicyName(name), path)
+}
+
 func GetPolicyArnWithSuffix(partition string, accountID string, name string, path string) string {
 	return getPolicyARN(partition, accountID, GetPolicyName(name), path)
 }

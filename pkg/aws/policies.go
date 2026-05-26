@@ -158,6 +158,7 @@ var HCPAccountRoles = map[string]AccountRole{
 var OCMUserRolePolicyFile = "ocm_user"
 var OCMRolePolicyFile = "ocm"
 var OCMAdminRolePolicyFile = "ocm_admin"
+var OCMNoConsolePolicyFile = "ocm_no_console"
 
 var roleTypeMap = map[string]string{
 	InstallerAccountRole:    InstallerAccountRoleType,
