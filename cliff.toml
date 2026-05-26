@@ -1,0 +1,91 @@
+# git-cliff configuration for the ROSA CLI historical changelog.
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+body = """
+{%- if version -%}
+## {{ version | trim_start_matches(pat="v") }} ({{ timestamp | date(format="%d %b, %Y") }})
+{%- else -%}
+## [unreleased]
+{%- endif -%}
+{%- for group, commits in commits | group_by(attribute="group") %}
+
+{{ group | striptags | trim | upper }}
+{%- for scope, scope_commits in commits | group_by(attribute="scope") %}
+{%- if not (scope is containing("Ignore")) %}
+ * {{ scope | upper_first }}
+   {%- for commit in scope_commits %}
+   * {{ commit.message | upper_first | split(pat="\n") | first }}\
+   {% endfor %}
+{%- else %}
+{%- for commit in scope_commits %}
+   * {{ commit.message | upper_first | split(pat="\n") | first }}\n
+{%- endfor -%}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}\n
+"""
+trim = false
+render_always = false
+postprocessors = []
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+require_conventional = false
+split_commits = false
+
+commit_preprocessors = [
+    { pattern = '^[A-Z]+-\d+\s*\|\s*(feat|fix|docs|style|refactor|perf|test|build|ci|chore)(\([a-z0-9._-]+\))?(!)?:\s*(.+)$', replace = "$1$2$3: $4" },
+    { pattern = '^OCM-0+\s*\|\s*(feat|fix|docs|style|refactor|perf|test|build|ci|chore)(\([a-z0-9._-]+\))?(!)?:\s*(.+)$', replace = "$1$2$3: $4" },
+    { pattern = '^[A-Z]+-\d+:\s*', replace = "" },
+    { pattern = '^[A-Z]+-\d+\s*\|\s*', replace = "" },
+    { pattern = 'Signed-off-by:.*>', replace = "" },
+]
+
+commit_parsers = [
+    { message = "^test", skip = true },
+    { message = "^ci", skip = true },
+    { message = "^build", skip = true },
+    { message = "(?i).*changelog.*", skip = true },
+    { message = "(?i).*set release version.*", skip = true },
+    { message = "(?i).*update release version.*", skip = true },
+    { message = "(?i).*bump (release )?version.*", skip = true },
+    { message = "(?i).*prepare cli .* for release.*", skip = true },
+    { message = "(?i).*release process.*", skip = true },
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore\\(deps", skip = true },
+    { message = "^\\S+$", skip = true },
+    { message = "^Merge pull request", skip = true },
+    { message = "^Merge branch", skip = true },
+    { message = "^Merge remote-tracking branch", skip = true },
+    { message = "Update README.md", skip = true },
+
+    { message = "^feat", group = "<!-- 1 -->FEATURES:", default_scope = "Ignore scope" },
+    { message = "^fix", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Bug fixes" },
+    { message = "^docs", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Documentation" },
+    { message = "^perf", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Performance" },
+    { message = "^refactor", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Chores" },
+    { message = "^style", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Chores" },
+    { message = "^chore", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Chores" },
+    { body = ".*security", group = "<!-- 4 -->SECURITY:", default_scope = "Ignore scope" },
+    { message = "^revert", group = "<!-- 5 -->REVERTS:", default_scope = "Ignore scope" },
+    { message = "(?i).*documentation.*", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Documentation" },
+    { message = "(?i)(^|.*\\s)fix(\\s|:)", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Bug fixes" },
+    { message = ".*", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Other" },
+]
+
+protect_breaking_commits = false
+filter_commits = true
+fail_on_unmatched_commit = false
+link_parsers = [
+    { pattern = "OCM-(\\d+)", href = "https://issues.redhat.com/browse/OCM-$1" },
+]
+use_branch_tags = false
+tag_pattern = "v[0-9].*"
+skip_tags = ""
+ignore_tags = ".*([._-]rc[0-9]*|-prerelease\\.|-test|-testing|-hotfix).*"
+topo_order = false
+topo_order_commits = false
+sort_commits = "newest"
+recurse_submodules = false
