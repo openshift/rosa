@@ -3,6 +3,7 @@
 - name: managed-policies
 - name: mode
 - name: mp
+- name: no-console
 - name: path
 - name: permissions-boundary
 - name: prefix

@@ -19,6 +19,7 @@ package ocmrole
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -43,6 +44,7 @@ var args struct {
 	admin               bool
 	path                string
 	managed             bool
+	noConsole           bool
 }
 
 var Cmd = &cobra.Command{
@@ -82,6 +84,13 @@ func init() {
 		"Enable admin capabilities for the role",
 	)
 
+	flags.BoolVar(
+		&args.noConsole,
+		"no-console",
+		false,
+		"Create OCM role with minimal permissions (cannot be used with console.redhat.com)",
+	)
+
 	flags.StringVar(
 		&args.path,
 		"path",
@@ -103,6 +112,8 @@ func init() {
 		false,
 		"Attach Classic ROSA AWS managed policies to the account roles. This is an alias for --managed-policies")
 	flags.MarkHidden("mp")
+
+	Cmd.MarkFlagsMutuallyExclusive("admin", "no-console")
 
 	interactive.AddModeFlag(Cmd)
 
@@ -169,19 +180,18 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	isAdmin := args.admin
+	profile := determineProfile(args.admin, args.noConsole)
 
-	if interactive.Enabled() && !isAdmin {
-		isAdmin, err = interactive.GetBool(interactive.Input{
-			Question: "Enable admin capabilities for the OCM role",
-			Help:     cmd.Flags().Lookup("admin").Usage,
-			Default:  isAdmin,
-			Required: false,
-		})
+	if interactive.Enabled() && profile == ProfileStandard {
+		profile, err = promptProfile(cmd, profile)
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid --admin value: %s", err)
 			os.Exit(1)
 		}
+	}
+
+	if profile == ProfileNoConsole {
+		r.Reporter.Warnf("This OCM role cannot be used to provision clusters via console.redhat.com")
 	}
 
 	permissionsBoundary := args.permissionsBoundary
@@ -248,7 +258,6 @@ func run(cmd *cobra.Command, _ []string) {
 	roleNameRequested := aws.GetOCMRoleName(prefix, aws.OCMRole, externalID)
 
 	existsOnOCM, _, selectedARN, err := r.OCMClient.CheckRoleExists(orgID, roleNameRequested, r.Creator.AccountID)
-
 	if err != nil {
 		r.Reporter.Errorf("Error checking existing ocm-role: %v", err)
 		os.Exit(1)
@@ -266,11 +275,24 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Validate no-console policy availability before any operations
+	if profile == ProfileNoConsole {
+		filename := fmt.Sprintf("sts_%s_permission_policy", aws.OCMNoConsoleRolePolicyFile)
+		policy, ok := policies[filename]
+		// For managed policies, validate ARN exists
+		// For customer-managed policies, validate Details exists (ARN is constructed later)
+		if !ok || (managedPolicies && policy.ARN() == "") || (!managedPolicies && policy.Details() == "") {
+			r.Reporter.Errorf("There was an error creating the ocm role: " +
+				"the no-console OCM role profile is not yet enabled for your Organization")
+			os.Exit(1)
+		}
+	}
+
 	switch mode {
 	case interactive.ModeAuto:
 		r.Reporter.Infof("Creating role using '%s'", r.Creator.ARN)
 		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary,
-			orgID, env, isAdmin, policies, managedPolicies)
+			orgID, env, profile, policies, managedPolicies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error creating the ocm role: %s", err)
 			r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
@@ -286,11 +308,11 @@ func run(cmd *cobra.Command, _ []string) {
 		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{})
-		_, _, err = checkRoleExists(r, roleNameRequested, isAdmin, interactive.ModeManual)
+		_, _, err = checkRoleExists(r, roleNameRequested, profile, interactive.ModeManual, path)
 		if err != nil {
 			r.Reporter.Warnf("Creating ocm role '%s' should fail: %s", roleNameRequested, err)
 		}
-		err = generateOcmRolePolicyFiles(r, env, orgID, isAdmin, policies)
+		err = generateOcmRolePolicyFiles(r, env, orgID, profile, policies)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{
@@ -310,7 +332,7 @@ func run(cmd *cobra.Command, _ []string) {
 			permissionsBoundary,
 			r.Creator,
 			env,
-			isAdmin,
+			profile,
 			managedPolicies,
 			confirm.Yes(),
 			policies,
@@ -327,11 +349,41 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+func promptProfile(cmd *cobra.Command, curr RoleProfile) (RoleProfile, error) {
+	isAdmin, err := interactive.GetBool(interactive.Input{
+		Question: "Enable admin capabilities for the OCM role",
+		Help:     cmd.Flags().Lookup("admin").Usage,
+		Default:  curr == ProfileAdmin,
+		Required: false,
+	})
+	if err != nil {
+		return ProfileStandard, fmt.Errorf("expected a valid --admin value: %s", err)
+	}
+	if isAdmin {
+		return ProfileAdmin, nil
+	}
+
+	isNoConsole, err := interactive.GetBool(interactive.Input{
+		Question: "Create OCM role with minimal permissions (no console access)",
+		Help:     cmd.Flags().Lookup("no-console").Usage,
+		Default:  curr == ProfileNoConsole,
+		Required: false,
+	})
+	if err != nil {
+		return ProfileStandard, fmt.Errorf("expected a valid --no-console value: %s", err)
+	}
+	if isNoConsole {
+		return ProfileNoConsole, nil
+	}
+
+	return ProfileStandard, nil
+}
+
 func buildCommands(prefix string, roleName string, rolePath string, permissionsBoundary string,
-	creator *aws.Creator, env string, isAdmin bool, managedPolicies bool, autoConfirmLink bool,
-	policies map[string]*cmv1.AWSSTSPolicy) (string, error) {
+	creator *aws.Creator, env string, profile RoleProfile, managedPolicies bool, autoConfirmLink bool,
+	policies map[string]*cmv1.AWSSTSPolicy,
+) (string, error) {
 	commands := []string{}
-	policyName := aws.GetPolicyName(roleName)
 	iamTags := map[string]string{
 		tags.RolePrefix:    prefix,
 		tags.RoleType:      aws.OCMRole,
@@ -346,6 +398,10 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 		tags.AdminRole: tags.True,
 	}
 
+	noConsoleTags := map[string]string{
+		tags.NoConsoleRole: tags.True,
+	}
+
 	builder := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.CreateRole).
 		AddParam(awscb.RoleName, roleName).
@@ -353,9 +409,28 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 		AddParam(awscb.PermissionsBoundary, permissionsBoundary).
 		AddTags(iamTags).
 		AddParam(awscb.Path, rolePath)
-	if isAdmin {
+
+	var policyFile string
+	var policyName string
+
+	switch profile {
+	case ProfileAdmin:
 		builder.AddTags(adminTags)
+
+		policyFile = aws.OCMRolePolicyFile
+		policyName = aws.GetPolicyName(roleName)
+	case ProfileNoConsole:
+		builder.AddTags(noConsoleTags)
+
+		policyFile = aws.OCMNoConsoleRolePolicyFile
+		policyName = aws.GetNoConsolePolicyName(roleName)
+	case ProfileStandard:
+		// No additional tags
+
+		policyFile = aws.OCMRolePolicyFile
+		policyName = aws.GetPolicyName(roleName)
 	}
+
 	createRole := builder.Build()
 
 	var createPolicy string
@@ -363,7 +438,7 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 		createPolicy = awscb.NewIAMCommandBuilder().
 			SetCommand(awscb.CreatePolicy).
 			AddParam(awscb.PolicyName, policyName).
-			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", aws.OCMRolePolicyFile)).
+			AddParam(awscb.PolicyDocument, fmt.Sprintf("file://sts_%s_permission_policy.json", policyFile)).
 			AddTags(iamTags).
 			AddParam(awscb.Path, rolePath).
 			Build()
@@ -371,13 +446,19 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 
 	var policyARN string
 	var err error
+	policyKey := fmt.Sprintf("sts_%s_permission_policy", policyFile)
 	if managedPolicies {
-		policyARN, err = aws.GetManagedPolicyARN(policies, "sts_ocm_permission_policy")
+		policyARN, err = aws.GetManagedPolicyARN(policies, policyKey)
 		if err != nil {
 			return "", err
 		}
 	} else {
-		policyARN = aws.GetPolicyArnWithSuffix(creator.Partition, creator.AccountID, roleName, rolePath)
+		switch profile {
+		case ProfileNoConsole:
+			policyARN = aws.GetNoConsolePolicyARN(creator.Partition, creator.AccountID, roleName, rolePath)
+		case ProfileAdmin, ProfileStandard:
+			policyARN = aws.GetPolicyArnWithSuffix(creator.Partition, creator.AccountID, roleName, rolePath)
+		}
 	}
 	attachRolePolicy := awscb.NewIAMCommandBuilder().
 		SetCommand(awscb.AttachRolePolicy).
@@ -390,7 +471,8 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 	} else {
 		commands = append(commands, createRole, createPolicy, attachRolePolicy)
 	}
-	if isAdmin {
+
+	if profile == ProfileAdmin {
 		policyName := aws.GetAdminPolicyName(roleName)
 
 		var createAdminPolicy string
@@ -438,18 +520,21 @@ func buildCommands(prefix string, roleName string, rolePath string, permissionsB
 }
 
 func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath string,
-	permissionsBoundary string, orgID string, env string, isAdmin bool,
-	policies map[string]*cmv1.AWSSTSPolicy, managedPolicies bool) (string, error) {
+	permissionsBoundary string, orgID string, env string, profile RoleProfile,
+	policies map[string]*cmv1.AWSSTSPolicy, managedPolicies bool,
+) (string, error) {
 	var policyARN string
 	var err error
 
-	if managedPolicies {
-		policyARN, err = aws.GetManagedPolicyARN(policies, "sts_ocm_permission_policy")
-		if err != nil {
-			return "", err
+	if profile != ProfileNoConsole {
+		if managedPolicies {
+			policyARN, err = aws.GetManagedPolicyARN(policies, fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile))
+			if err != nil {
+				return "", err
+			}
+		} else {
+			policyARN = aws.GetPolicyArnWithSuffix(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
 		}
-	} else {
-		policyARN = aws.GetPolicyArnWithSuffix(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
 	}
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
 		os.Exit(0)
@@ -462,7 +547,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		"ocm_organization_id": orgID,
 	})
 
-	roleARN, exists, err := checkRoleExists(r, roleName, isAdmin, interactive.ModeAuto)
+	roleARN, exists, err := checkRoleExists(r, roleName, profile, interactive.ModeAuto, rolePath)
 	if err != nil {
 		return "", err
 	}
@@ -480,28 +565,29 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		iamTags[common.ManagedPolicies] = tags.True
 	}
 
-	if !exists {
-		r.Reporter.Debugf("Creating role '%s'", roleName)
+	r.Reporter.Debugf("Creating role '%s'", roleName)
 
-		roleARN, err = r.AWSClient.EnsureRole(r.Reporter, roleName, policy, permissionsBoundary,
-			"", iamTags, rolePath, false)
-		if err != nil {
-			return "", err
-		}
-		r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
+	roleARN, err = r.AWSClient.EnsureRole(r.Reporter, roleName, policy, permissionsBoundary,
+		"", iamTags, rolePath, false)
+	if err != nil {
+		return "", err
+	}
+	r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 
-		// create and attach the permission policy to the role
+	switch profile {
+	case ProfileStandard:
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = aws.GetPolicyDetails(policies, filename)
 		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
 		if err != nil {
 			return "", err
 		}
-	}
 
-	if isAdmin {
-		// tag role with admin tag
-		err = r.AWSClient.AddRoleTag(roleName, tags.AdminRole, tags.True)
+	case ProfileAdmin:
+		// standard policy first
+		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
+		policyDetail = aws.GetPolicyDetails(policies, filename)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
 		if err != nil {
 			return "", err
 		}
@@ -522,13 +608,46 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 		if err != nil {
 			return "", err
 		}
+
+		// tag role with admin tag
+		err = r.AWSClient.AddRoleTag(roleName, tags.AdminRole, tags.True)
+		if err != nil {
+			return "", err
+		}
+
+	case ProfileNoConsole:
+		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMNoConsoleRolePolicyFile)
+
+		// create and attach the no-console policy to the role
+		if managedPolicies {
+			policyARN, err = aws.GetManagedPolicyARN(policies, filename)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			policyARN = aws.GetNoConsolePolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
+		}
+		iamTags[tags.NoConsoleRole] = tags.True
+		policyDetail = aws.GetPolicyDetails(policies, filename)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
+		if err != nil {
+			return "", err
+		}
+
+		// tag role with no-console tag
+		err = r.AWSClient.AddRoleTag(roleName, tags.NoConsoleRole, tags.True)
+		if err != nil {
+			return "", err
+		}
+
 	}
 
 	return roleARN, nil
 }
 
-func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdmin bool,
-	policies map[string]*cmv1.AWSSTSPolicy) error {
+func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, profile RoleProfile,
+	policies map[string]*cmv1.AWSSTSPolicy,
+) error {
 	filename := fmt.Sprintf("sts_%s_trust_policy", aws.OCMRolePolicyFile)
 
 	policyDetail := aws.GetPolicyDetails(policies, filename)
@@ -543,7 +662,17 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 	if err != nil {
 		return err
 	}
-	filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
+
+	var policyFile string
+	switch profile {
+	case ProfileNoConsole:
+		policyFile = aws.OCMNoConsoleRolePolicyFile
+	case ProfileAdmin, ProfileStandard:
+		policyFile = aws.OCMRolePolicyFile
+	}
+
+	filename = fmt.Sprintf("sts_%s_permission_policy", policyFile)
+
 	policyDetail = aws.GetPolicyDetails(policies, filename)
 	filename = aws.GetFormattedFileName(filename)
 	r.Reporter.Debugf("Saving '%s' to the current directory", filename)
@@ -552,7 +681,7 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 		return err
 	}
 
-	if isAdmin {
+	if profile == ProfileAdmin {
 		filename = fmt.Sprintf("sts_%s_admin_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = aws.GetPolicyDetails(policies, filename)
 		filename = aws.GetFormattedFileName(filename)
@@ -566,8 +695,8 @@ func generateOcmRolePolicyFiles(r *rosa.Runtime, env string, orgID string, isAdm
 }
 
 func createPermissionPolicy(r *rosa.Runtime, policyARN string,
-	iamTags map[string]string, roleName string, rolePath string, policyDetail string, managedPolicies bool) error {
-
+	iamTags map[string]string, roleName string, rolePath string, policyDetail string, managedPolicies bool,
+) error {
 	r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
 	if !managedPolicies {
 		var err error
@@ -586,8 +715,9 @@ func createPermissionPolicy(r *rosa.Runtime, policyARN string,
 	return nil
 }
 
-func checkRoleExists(r *rosa.Runtime, roleName string, isAdmin bool,
-	mode string) (string, bool, error) {
+func checkRoleExists(r *rosa.Runtime, roleName string, profile RoleProfile,
+	mode string, rolePath string,
+) (string, bool, error) {
 	exists, roleARN, err := r.AWSClient.CheckRoleExists(roleName)
 	if err != nil {
 		return "", false, err
@@ -597,23 +727,103 @@ func checkRoleExists(r *rosa.Runtime, roleName string, isAdmin bool,
 		if err != nil {
 			return "", true, err
 		}
+		isExistingRoleNoConsole, err := r.AWSClient.IsNoConsoleRole(roleName)
+		if err != nil {
+			return "", true, err
+		}
+
 		r.Reporter.Warnf("Role '%s' already exists", roleName)
 
-		if !isAdmin {
+		switch profile {
+		case ProfileStandard:
 			if isExistingRoleAdmin {
 				return "", true, fmt.Errorf("the existing role is an admin role."+
 					" To remove admin capabilities please delete the admin policy and the '%s' tag",
 					tags.AdminRole)
 			}
+			if isExistingRoleNoConsole {
+				return "", true, fmt.Errorf("the existing role is a no-console role." +
+					" To use standard permissions please delete the role and recreate it")
+			}
 			return roleARN, true, nil
-		}
 
-		if isExistingRoleAdmin {
-			return roleARN, true, nil
-		}
+		case ProfileAdmin:
+			if isExistingRoleNoConsole {
+				return "", true, fmt.Errorf("the existing role is a no-console role." +
+					" To use admin permissions please delete the role and recreate it")
+			}
 
-		if mode == interactive.ModeAuto && !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
-			return roleARN, true, nil
+			if isExistingRoleAdmin {
+				return roleARN, true, nil
+			}
+
+			// Role appears to be standard - check if admin policy is actually attached (self-healing)
+			attachedPolicies, err := r.AWSClient.ListAttachedRolePolicies(roleName)
+			if err != nil {
+				return "", true, err
+			}
+
+			// Check if admin policy is attached (exact ARN match)
+			expectedAdminPolicyARN := aws.GetAdminPolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, "")
+			if slices.Contains(attachedPolicies, expectedAdminPolicyARN) {
+				// Self-heal: admin policy exists but tag is missing
+				r.Reporter.Debugf("Admin policy found but tag missing - adding tag")
+				err = r.AWSClient.AddRoleTag(roleName, tags.AdminRole, "true")
+				if err != nil {
+					return "", true, fmt.Errorf("failed to add admin role tag: %v", err)
+				}
+				return roleARN, true, nil
+			}
+
+			if mode == interactive.ModeAuto && !confirm.Prompt(true, "Add admin policies to '%s' role?", roleName) {
+				return roleARN, true, nil
+			}
+
+		case ProfileNoConsole:
+			if isExistingRoleAdmin {
+				return "", true, fmt.Errorf("the existing role is an admin role." +
+					" To use no-console permissions please delete the role and recreate it")
+			}
+
+			if isExistingRoleNoConsole {
+				// Verify no-console policy is actually attached
+				attachedPolicies, err := r.AWSClient.ListAttachedRolePolicies(roleName)
+				if err != nil {
+					return "", true, err
+				}
+
+				expectedNoConsolePolicyARN := aws.GetNoConsolePolicyARN(
+					r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
+				if !slices.Contains(attachedPolicies, expectedNoConsolePolicyARN) {
+					// Tag exists but policy is missing - incomplete manual run
+					return "", true, fmt.Errorf("the role has the no-console tag but the no-console policy is not attached." +
+						" Please attach the policy or remove the tag and recreate the role")
+				}
+
+				return roleARN, true, nil
+			}
+
+			// Role appears to be standard - check if no-console policy is actually attached (self-healing)
+			attachedPolicies, err := r.AWSClient.ListAttachedRolePolicies(roleName)
+			if err != nil {
+				return "", true, err
+			}
+
+			// Check if no-console policy is attached (exact ARN match)
+			expectedNoConsolePolicyARN := aws.GetNoConsolePolicyARN(r.Creator.Partition, r.Creator.AccountID, roleName, rolePath)
+			if slices.Contains(attachedPolicies, expectedNoConsolePolicyARN) {
+				// Self-heal: no-console policy exists but tag is missing
+				r.Reporter.Debugf("No-console policy found but tag missing - adding tag")
+				err = r.AWSClient.AddRoleTag(roleName, tags.NoConsoleRole, "true")
+				if err != nil {
+					return "", true, fmt.Errorf("failed to add no-console role tag: %v", err)
+				}
+				return roleARN, true, nil
+			}
+
+			// Existing is standard, cannot convert
+			return "", true, fmt.Errorf("the existing role is a standard role." +
+				" To use no-console permissions please delete the role and recreate it")
 		}
 	}
 
