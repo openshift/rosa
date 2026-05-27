@@ -135,7 +135,8 @@ var _ = Describe("ListOperatorRoles", func() {
 					{
 						Key:   aws.String(common.ManagedPolicies),
 						Value: aws.String("true"),
-					}},
+					},
+				},
 			}, nil)
 		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
 			&iam.ListAttachedRolePoliciesOutput{
@@ -224,7 +225,6 @@ var _ = Describe("mapToAccountRoles", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(roles).To(HaveLen(2))
 	})
-
 })
 
 var _ = Describe("Is Policy Compatible", func() {
@@ -273,6 +273,79 @@ var _ = Describe("Is Policy Compatible", func() {
 			isCompatible, err := client.IsPolicyCompatible("fakearn", "")
 			Expect(err).To(BeNil())
 			Expect(isCompatible).To(BeTrue())
+		})
+	})
+})
+
+var _ = Describe("Test IsNoConsoleRole function", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{
+			iamClient: mockIamAPI,
+		}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role has the no-console tag", func() {
+		It("Should return true", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Tags: []iamtypes.Tag{
+							{
+								Key:   aws.String(tags.NoConsoleRole),
+								Value: aws.String(TrueString),
+							},
+						},
+					},
+				},
+				nil,
+			)
+
+			isNoConsoleRole, err := client.IsNoConsoleRole("test-role")
+			Expect(err).To(BeNil())
+			Expect(isNoConsoleRole).To(BeTrue())
+		})
+	})
+
+	When("Role does not have the no-console tag", func() {
+		It("Should return false", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Tags: []iamtypes.Tag{},
+					},
+				},
+				nil,
+			)
+
+			isNoConsoleRole, err := client.IsNoConsoleRole("test-role")
+			Expect(err).To(BeNil())
+			Expect(isNoConsoleRole).To(BeFalse())
+		})
+	})
+
+	When("GetRole returns an error", func() {
+		It("Should return the error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				nil,
+				fmt.Errorf("IAM error"),
+			)
+
+			isNoConsoleRole, err := client.IsNoConsoleRole("test-role")
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("IAM error"))
+			Expect(isNoConsoleRole).To(BeFalse())
 		})
 	})
 })
@@ -371,7 +444,6 @@ var _ = Describe("Is Account Role Version Compatible", func() {
 })
 
 var _ = Describe("DeleteRole Validation", func() {
-
 	var (
 		client     awsClient
 		mockIamAPI *mocks.MockIamApiClient
@@ -415,7 +487,6 @@ var _ = Describe("DeleteRole Validation", func() {
 })
 
 var _ = Describe("Cluster Roles/Policies", func() {
-
 	var (
 		client     awsClient
 		mockIamAPI *mocks.MockIamApiClient
@@ -632,7 +703,6 @@ var _ = Describe("Validates isAwsManagedPolicy function", func() {
 })
 
 var _ = Describe("CheckIfROSAOperatorRole", func() {
-
 	var (
 		credRequest map[string]*cmv1.STSOperator
 		role        iamtypes.Role
@@ -854,10 +924,12 @@ var _ = Describe("validateManagedPolicy", func() {
 		}
 	},
 		Entry("fails if ECR policy does not exist", map[string]*cmv1.AWSSTSPolicy{
-			"sts_hcp_instance_worker_permission_policy": workerPolicy},
+			"sts_hcp_instance_worker_permission_policy": workerPolicy,
+		},
 			"sts_hcp_ec2_registry_permission_policy", "worker", "failed to find policy ARN for 'sts_hcp_ec2_registry_permission_policy'"),
 		Entry("fails to find worker policy", map[string]*cmv1.AWSSTSPolicy{
-			"sts_hcp_ec2_registry_permission_policy": ec2ContainerPolicy},
+			"sts_hcp_ec2_registry_permission_policy": ec2ContainerPolicy,
+		},
 			"sts_hcp_instance_worker_permission_policy", "worker",
 			"failed to find policy ARN for 'sts_hcp_instance_worker_permission_policy'"),
 	)

@@ -42,13 +42,16 @@ var RoleNameRE = regexp.MustCompile(`^[\w+=,.@-]+$`)
 var RoleArnRE = regexp.MustCompile(
 	`^arn:aws[\w-]*:iam::\d{12}:role(?:\/+[\w+=,.@-]+)+$`,
 )
+
 var PolicyArnRE = regexp.MustCompile(
 	`^arn:aws[\w-]*:iam::(\d{12}|aws):policy(?:\/+[\w+=,.@-]+)+$`,
 )
 
 // UserTagKeyRE , UserTagValueRE - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
-var UserTagKeyRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
-var UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
+var (
+	UserTagKeyRE   = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
+	UserTagValueRE = regexp.MustCompile(`^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
+)
 
 // the following regex defines five different patterns:
 // first pattern is to validate IPv4 address
@@ -220,7 +223,7 @@ func GetAWSClientForUserRegion(reporter rprtr.Logger, logger *logrus.Logger,
 			os.Exit(1)
 		}
 		// Create the AWS client with the region used in the init
-		//So we can check for the stack in that region
+		// So we can check for the stack in that region
 		awsClient, err := NewClient().
 			Logger(logger).
 			Region(regionUsedForInit).
@@ -436,6 +439,10 @@ func GetOperatorPolicyName(prefix string, namespace string, name string) string 
 	return awsCommonUtils.TruncateRoleName(policy)
 }
 
+func GetNoConsolePolicyName(name string) string {
+	return fmt.Sprintf("%s-NoConsole-Policy", name)
+}
+
 func GetAdminPolicyName(name string) string {
 	return fmt.Sprintf("%s-Admin-Policy", name)
 }
@@ -445,8 +452,13 @@ func GetPolicyName(name string) string {
 }
 
 func GetOperatorPolicyARN(partition string, accountID string,
-	prefix string, namespace string, name string, path string) string {
+	prefix string, namespace string, name string, path string,
+) string {
 	return getPolicyARN(partition, accountID, GetOperatorPolicyName(prefix, namespace, name), path)
+}
+
+func GetNoConsolePolicyARN(partition string, accountID string, name string, path string) string {
+	return getPolicyARN(partition, accountID, GetNoConsolePolicyName(name), path)
 }
 
 func GetAdminPolicyARN(partition string, accountID string, name string, path string) string {
@@ -598,7 +610,7 @@ func GetOperatorRolePolicyPrefixFromCluster(cluster *cmv1.Cluster, awsClient Cli
 		return rankedPolicyPrefix[0], nil
 	}
 
-	//If no standard prefix is found, tries to look for the longest common prefix
+	// If no standard prefix is found, tries to look for the longest common prefix
 	// TODO: check if it makes sense to only use this and remove "-openshift" later
 	policyPrefix := helper.LongestCommonPrefixBySorting(policyNames)
 	if policyPrefix != "" {
@@ -645,7 +657,7 @@ func GenerateOperatorRolePolicyFiles(reporter rprtr.Logger, policies map[string]
 				"shared_vpc_role_arn": sharedVpcRoleArn,
 			})
 		}
-		//In case any missing policy we don't want to block the user.This might not happen
+		// In case any missing policy we don't want to block the user.This might not happen
 		if policyDetail == "" {
 			continue
 		}
@@ -661,9 +673,10 @@ func GenerateOperatorRolePolicyFiles(reporter rprtr.Logger, policies map[string]
 }
 
 func GenerateAccountRolePolicyFiles(reporter rprtr.Logger, env string, policies map[string]*cmv1.AWSSTSPolicy,
-	skipPermissionFiles bool, accountRoles map[string]AccountRole, partition string) error {
+	skipPermissionFiles bool, accountRoles map[string]AccountRole, partition string,
+) error {
 	for file := range accountRoles {
-		//Get trust policy
+		// Get trust policy
 		filename := fmt.Sprintf("sts_%s_trust_policy", file)
 		policyDetail := GetPolicyDetails(policies, filename)
 		policy := InterpolatePolicyDocument(partition, policyDetail, map[string]string{
@@ -677,7 +690,7 @@ func GenerateAccountRolePolicyFiles(reporter rprtr.Logger, env string, policies 
 			return err
 		}
 
-		//Get the permission policy
+		// Get the permission policy
 		if !skipPermissionFiles {
 			err = generatePermissionPolicyFile(reporter, file, policies)
 			if err != nil {
@@ -695,7 +708,7 @@ func generatePermissionPolicyFile(reporter rprtr.Logger, file string, policies m
 	if policyDetail == "" {
 		return nil
 	}
-	//Check and save it as json file
+	// Check and save it as json file
 	filename = GetFormattedFileName(filename)
 	reporter.Debugf("Saving '%s' to the current directory", filename)
 
@@ -703,7 +716,7 @@ func generatePermissionPolicyFile(reporter rprtr.Logger, file string, policies m
 }
 
 func GetFormattedFileName(filename string) string {
-	//Check and save it as json file
+	// Check and save it as json file
 	ext := filepath.Ext(filename)
 	if ext != ".json" {
 		filename = fmt.Sprintf("%s.json", filename)
@@ -712,7 +725,8 @@ func GetFormattedFileName(filename string) string {
 }
 
 func BuildOperatorRolePolicies(prefix string, accountID string, partition string, awsClient Client, commands []string,
-	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string) []string {
+	defaultPolicyVersion string, credRequests map[string]*cmv1.STSOperator, path string,
+) []string {
 	for credrequest, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(partition, accountID, prefix, operator.Namespace(), operator.Name(), path)
 		_, err := awsClient.IsPolicyExists(policyARN)
@@ -856,7 +870,6 @@ func ParseOption(option string) string {
 // if resource-id is empty then error is returned
 func GetResourceIdFromARN(stringARN string) (string, error) {
 	parsedARN, err := arn.Parse(stringARN)
-
 	if err != nil {
 		return "", fmt.Errorf("couldn't parse arn '%s': %v", stringARN, err)
 	}
@@ -876,7 +889,6 @@ func GetResourceIdFromARN(stringARN string) (string, error) {
 
 func GetResourceIdFromOidcProviderARN(stringARN string) (string, error) {
 	parsedARN, err := arn.Parse(stringARN)
-
 	if err != nil {
 		return "", fmt.Errorf("couldn't parse arn '%s': %v", stringARN, err)
 	}
@@ -896,7 +908,6 @@ func GetResourceIdFromOidcProviderARN(stringARN string) (string, error) {
 
 func GetResourceIdFromSecretArn(secretArn string) (string, error) {
 	parsedARN, err := arn.Parse(secretArn)
-
 	if err != nil {
 		return "", err
 	}
@@ -1033,7 +1044,6 @@ func waitForStackUpdateComplete(ctx context.Context, cfClient client.CloudFormat
 	return waiter.Wait(ctx, params, maxWaitDur, func(o *cloudformation.StackUpdateCompleteWaiterOptions) {
 		// Optionally set MinDelay, MaxDelay, and other options here
 	})
-
 }
 
 func waitForStackDeleteComplete(ctx context.Context, cfClient client.CloudFormationApiClient, stackName string) error {

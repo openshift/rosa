@@ -155,9 +155,12 @@ var HCPAccountRoles = map[string]AccountRole{
 	HCPWorkerRole:    {Name: fmt.Sprintf("%s-Worker", HCPSuffixPattern), Flag: "worker-iam-role"},
 }
 
-var OCMUserRolePolicyFile = "ocm_user"
-var OCMRolePolicyFile = "ocm"
-var OCMAdminRolePolicyFile = "ocm_admin"
+var (
+	OCMUserRolePolicyFile      = "ocm_user"
+	OCMRolePolicyFile          = "ocm"
+	OCMAdminRolePolicyFile     = "ocm_admin"
+	OCMNoConsoleRolePolicyFile = "ocm_no_console"
+)
 
 var roleTypeMap = map[string]string{
 	InstallerAccountRole:    InstallerAccountRoleType,
@@ -167,7 +170,8 @@ var roleTypeMap = map[string]string{
 }
 
 func (c *awsClient) EnsureRole(reporter reporter.Logger, name string, policy string, permissionsBoundary string,
-	version string, tagList map[string]string, path string, managedPolicies bool) (string, error) {
+	version string, tagList map[string]string, path string, managedPolicies bool,
+) (string, error) {
 	output, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(name),
 	})
@@ -261,7 +265,8 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 }
 
 func (c *awsClient) createRole(reporter reporter.Logger, name string, policy string,
-	permissionsBoundary string, tagList map[string]string, path string) (string, error) {
+	permissionsBoundary string, tagList map[string]string, path string,
+) (string, error) {
 	if !RoleNameRE.MatchString(name) {
 		return "", fmt.Errorf("Role name is invalid")
 	}
@@ -315,17 +320,20 @@ func (c *awsClient) PutRolePolicy(roleName string, policyName string, policy str
 }
 
 func (c *awsClient) ForceEnsurePolicy(policyArn string, document string,
-	version string, tagList map[string]string, path string) (string, error) {
+	version string, tagList map[string]string, path string,
+) (string, error) {
 	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, true, "")
 }
 
 func (c *awsClient) EnsurePolicy(policyArn string, document string,
-	version string, tagList map[string]string, path string) (string, error) {
+	version string, tagList map[string]string, path string,
+) (string, error) {
 	return c.ensurePolicyHelper(policyArn, document, version, tagList, path, false, "")
 }
 
 func (c *awsClient) ensurePolicyHelper(policyArn string, document string,
-	version string, tagList map[string]string, path string, force bool, policyName string) (string, error) {
+	version string, tagList map[string]string, path string, force bool, policyName string,
+) (string, error) {
 	output, err := c.IsPolicyExists(policyArn)
 	if err != nil {
 		var policyArnLocal string
@@ -402,7 +410,8 @@ func (c *awsClient) IsRolePolicyExists(roleName string, policyName string) (*iam
 }
 
 func (c *awsClient) createPolicy(policyArn string, document string, tagList map[string]string,
-	path string, policyName string) (string, error) {
+	path string, policyName string,
+) (string, error) {
 	var err error
 	if policyName == "" {
 		policyName, err = GetResourceIdFromARN(policyArn)
@@ -420,7 +429,6 @@ func (c *awsClient) createPolicy(policyArn string, document string, tagList map[
 	}
 
 	output, err := c.iamClient.CreatePolicy(context.Background(), createPolicyInput)
-
 	if err != nil {
 		return "", err
 	}
@@ -573,7 +581,8 @@ func (c *awsClient) FindRoleARNsHostedCp(roleType string, version string) ([]str
 
 // FIXME: refactor similar calls to use this instead
 func (c *awsClient) ValidateAccountRoleVersionCompatibility(
-	roleName string, roleType string, minVersion string) (bool, error) {
+	roleName string, roleType string, minVersion string,
+) (bool, error) {
 	listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 		RoleName: aws.String(roleName),
 	})
@@ -585,7 +594,8 @@ func (c *awsClient) ValidateAccountRoleVersionCompatibility(
 }
 
 func validateAccountRoleVersionCompatibilityClassic(roleType string, minVersion string,
-	tagList []iamtypes.Tag) (bool, error) {
+	tagList []iamtypes.Tag,
+) (bool, error) {
 	isCompatible, err := isAccountRoleVersionCompatible(tagList, roleType, minVersion)
 	if err != nil {
 		return false, err
@@ -603,7 +613,8 @@ func validateAccountRoleVersionCompatibilityClassic(roleType string, minVersion 
 }
 
 func validateAccountRoleVersionCompatibilityHostedCp(roleType string, minVersion string,
-	tagsList []iamtypes.Tag) (bool, error) {
+	tagsList []iamtypes.Tag,
+) (bool, error) {
 	isCompatible, err := isAccountRoleVersionCompatible(tagsList, roleType, minVersion)
 	if err != nil {
 		return false, err
@@ -617,7 +628,8 @@ func validateAccountRoleVersionCompatibilityHostedCp(roleType string, minVersion
 }
 
 func isAccountRoleVersionCompatible(tagsList []iamtypes.Tag, roleType string,
-	minVersion string) (bool, error) {
+	minVersion string,
+) (bool, error) {
 	skip := false
 	isTagged := false
 
@@ -828,7 +840,6 @@ func (c *awsClient) GetAccountRoleByArn(arn string) (Role, error) {
 	}
 
 	accountRole, err := c.mapToAccountRole("", role)
-
 	if err != nil {
 		return Role{}, err
 	}
@@ -909,8 +920,8 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 }
 
 func (c *awsClient) ListOperatorRoles(targetVersion string,
-	targetClusterId string, targetPrefix string) (map[string][]OperatorRoleDetail, error) {
-
+	targetClusterId string, targetPrefix string,
+) (map[string][]OperatorRoleDetail, error) {
 	operatorMap := map[string][]OperatorRoleDetail{}
 	roles, err := c.ListRoles()
 	if err != nil {
@@ -1033,7 +1044,8 @@ func (c *awsClient) ListOperatorRoles(targetVersion string,
 }
 
 func (c *awsClient) ValidateIfRosaOperatorRole(role iamtypes.Role,
-	credRequest map[string]*cmv1.STSOperator) (bool, error) {
+	credRequest map[string]*cmv1.STSOperator,
+) (bool, error) {
 	listRoleTags, err := c.iamClient.ListRoleTags(context.Background(), &iam.ListRoleTagsInput{
 		RoleName: role.RoleName,
 	})
@@ -1092,7 +1104,8 @@ func (c *awsClient) GetPolicyDetailsFromRole(role *string) ([]*iam.GetPolicyOutp
 }
 
 func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool,
-	deleteHcpSharedVpcPolicies bool) (map[string]bool, error) {
+	deleteHcpSharedVpcPolicies bool,
+) (map[string]bool, error) {
 	role := aws.String(roleName)
 	sharedVpcPoliciesNotDeleted := make(map[string]bool)
 	tagFilter, err := getOperatorRolePolicyTags(c.iamClient, roleName)
@@ -1199,7 +1212,8 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 }
 
 func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPolicies bool,
-	deleteHcpSharedVpcPolicies bool) error {
+	deleteHcpSharedVpcPolicies bool,
+) error {
 	role := aws.String(roleName)
 	err := c.DeleteInlineRolePolicies(aws.ToString(role))
 	if err != nil {
@@ -1420,7 +1434,8 @@ func (c *awsClient) deletePolicyVersions(policyArn string) error {
 }
 
 func (c *awsClient) GetAttachedPolicyWithTags(role *string,
-	tagFilter map[string]string) ([]PolicyDetail, []PolicyDetail, error) {
+	tagFilter map[string]string,
+) ([]PolicyDetail, []PolicyDetail, error) {
 	policies := []PolicyDetail{}
 	excludedPolicies := []PolicyDetail{}
 	attachedPoliciesOutput, err := c.iamClient.ListAttachedRolePolicies(
@@ -1493,7 +1508,8 @@ func (c *awsClient) detachOperatorRolePolicies(role *string) error {
 }
 
 func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
-	credRequest map[string]*cmv1.STSOperator) ([]string, error) {
+	credRequest map[string]*cmv1.STSOperator,
+) ([]string, error) {
 	var roleList []string
 	roles, err := c.ListRoles()
 	if err != nil {
@@ -1533,7 +1549,8 @@ func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 }
 
 func (c *awsClient) GetOperatorRolesFromAccountByPrefix(prefix string,
-	credRequest map[string]*cmv1.STSOperator) ([]string, error) {
+	credRequest map[string]*cmv1.STSOperator,
+) ([]string, error) {
 	var roleList []string
 	roles, err := c.ListRoles()
 	if err != nil {
@@ -1658,8 +1675,8 @@ func (c *awsClient) checkInstallerRoleExists(roleName string) (*iamtypes.Role, e
 	installerRole := fmt.Sprintf("%s%s-Role", rolePrefix, "Installer")
 	installerRoleResponse, err := c.iamClient.GetRole(context.Background(),
 		&iam.GetRoleInput{RoleName: aws.String(installerRole)})
-	//We try our best to determine the environment based on the trust policy in the installer
-	//If the installer role is deleted we can assume that there is no cluster using the role
+	// We try our best to determine the environment based on the trust policy in the installer
+	// If the installer role is deleted we can assume that there is no cluster using the role
 	if err != nil {
 		if awserr.IsNoSuchEntityException(err) {
 			return nil, nil
@@ -1671,7 +1688,8 @@ func (c *awsClient) checkInstallerRoleExists(roleName string) (*iamtypes.Role, e
 }
 
 func (c *awsClient) GetAccountRoleForCurrentEnvWithPrefix(env string, rolePrefix string,
-	accountRolesMap map[string]AccountRole) ([]Role, error) {
+	accountRolesMap map[string]AccountRole,
+) ([]Role, error) {
 	roleList := []Role{}
 	for _, prefix := range accountRolesMap {
 		role, err := c.GetAccountRoleForCurrentEnv(env, fmt.Sprintf("%s-%s-Role", rolePrefix, prefix.Name))
@@ -1713,7 +1731,8 @@ func (c *awsClient) buildRoles(roleName string, accountID string) ([]Role, error
 }
 
 func (c *awsClient) GetAccountRolePolicies(roles []string, prefix string) (map[string][]PolicyDetail,
-	map[string][]PolicyDetail, error) {
+	map[string][]PolicyDetail, error,
+) {
 	rolePolicies := make(map[string][]PolicyDetail)
 	roleExcludedPolicies := make(map[string][]PolicyDetail)
 	for _, role := range roles {
@@ -1832,7 +1851,6 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePolicies(prefix string, versio
 		}
 		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.ToString(role.Role.RoleName),
 			version)
-
 		if err != nil {
 			return false, err
 		}
@@ -1870,7 +1888,8 @@ func (c *awsClient) HasManagedPolicies(roleARN string) (bool, error) {
 }
 
 func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesUsingCluster(
-	cluster *cmv1.Cluster, version string) (bool, error) {
+	cluster *cmv1.Cluster, version string,
+) (bool, error) {
 	for _, role := range AccountRoles {
 		roleName, err := GetAccountRoleName(cluster, role.Name)
 		if err != nil {
@@ -1880,7 +1899,6 @@ func (c *awsClient) IsUpgradedNeededForAccountRolePoliciesUsingCluster(
 			continue
 		}
 		isCompatible, err := c.validateRolePolicyUpgradeVersionCompatibility(aws.ToString(&roleName), version)
-
 		if err != nil {
 			return false, err
 		}
@@ -1971,7 +1989,8 @@ func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingCluster(
 }
 
 func (c *awsClient) validateRolePolicyUpgradeVersionCompatibility(roleName string,
-	version string) (bool, error) {
+	version string,
+) (bool, error) {
 	attachedPolicies, _, err := c.GetAttachedPolicyWithTags(aws.String(roleName),
 		map[string]string{tags.RedHatManaged: TrueString})
 	if err != nil {
@@ -1987,7 +2006,8 @@ func (c *awsClient) validateRolePolicyUpgradeVersionCompatibility(roleName strin
 }
 
 func (c *awsClient) IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix string, partition string,
-	accountID string, version string, credRequests map[string]*cmv1.STSOperator, path string) (bool, error) {
+	accountID string, version string, credRequests map[string]*cmv1.STSOperator, path string,
+) (bool, error) {
 	for _, operator := range credRequests {
 		policyARN := GetOperatorPolicyARN(partition, accountID, prefix, operator.Namespace(), operator.Name(), path)
 		existsAndUpToDate, err := c.checkPolicyExistsAndUpToDate(policyARN, version)
@@ -2062,6 +2082,23 @@ func (c *awsClient) IsAdminRole(roleName string) (bool, error) {
 	return false, nil
 }
 
+func (c *awsClient) IsNoConsoleRole(roleName string) (bool, error) {
+	role, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	for _, tag := range role.Role.Tags {
+		if aws.ToString(tag.Key) == tags.NoConsoleRole && aws.ToString(tag.Value) == TrueString {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, error) {
 	output, err := c.iamClient.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(common.GetRoleName(prefix, roleType)),
@@ -2083,7 +2120,8 @@ func (c *awsClient) GetAccountRoleARN(prefix string, roleType string) (string, e
 
 func (c *awsClient) ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster,
 	operatorRoles map[string]*cmv1.STSOperator, policies map[string]*cmv1.AWSSTSPolicy,
-	hostedCPPolicies bool) error {
+	hostedCPPolicies bool,
+) error {
 	for key, operatorRole := range operatorRoles {
 		roleName, exist := FindOperatorRoleNameBySTSOperator(cluster, operatorRole)
 		if exist {
@@ -2098,7 +2136,8 @@ func (c *awsClient) ValidateOperatorRolesManagedPolicies(cluster *cmv1.Cluster,
 }
 
 func (c *awsClient) ValidateAccountRolesManagedPolicies(prefix string,
-	policies map[string]*cmv1.AWSSTSPolicy) error {
+	policies map[string]*cmv1.AWSSTSPolicy,
+) error {
 	for roleType, accountRole := range AccountRoles {
 		roleName := common.GetRoleName(prefix, accountRole.Name)
 
@@ -2115,7 +2154,8 @@ func (c *awsClient) ValidateAccountRolesManagedPolicies(prefix string,
 }
 
 func (c *awsClient) ValidateHCPAccountRolesManagedPolicies(prefix string,
-	policies map[string]*cmv1.AWSSTSPolicy) error {
+	policies map[string]*cmv1.AWSSTSPolicy,
+) error {
 	for roleType, accountRole := range HCPAccountRoles {
 		roleName := common.GetRoleName(prefix, accountRole.Name)
 
@@ -2180,7 +2220,8 @@ func (c *awsClient) GetOperatorRoleDefaultPolicy(roleName string) (string, error
 }
 
 func (c *awsClient) validateManagedPolicy(policies map[string]*cmv1.AWSSTSPolicy, policyKey string,
-	roleName string) error {
+	roleName string,
+) error {
 	managedPolicyARN, err := GetManagedPolicyARN(policies, policyKey)
 	if err != nil {
 		return err
@@ -2256,7 +2297,8 @@ func doesPolicyHaveTags(c client.IamApiClient, policyArn *string, tagFilter map[
 }
 
 func getAttachedPolicies(c client.IamApiClient, role string,
-	tagFilter map[string]string) ([]string, []string, error) {
+	tagFilter map[string]string,
+) ([]string, []string, error) {
 	policyArr := []string{}
 	excludedPolicyArr := []string{}
 	policiesOutput, err := c.ListAttachedRolePolicies(context.Background(),
