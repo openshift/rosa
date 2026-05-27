@@ -247,11 +247,11 @@ func (c *awsClient) ValidateRoleNameAvailable(name string) (err error) {
 	})
 	if err == nil {
 		// If we found an existing role with this name we want to error
-		return fmt.Errorf("A role named '%s' already exists. "+
-			"Please delete the existing role, or provide a different prefix.\n"+
-			"If you'd like to reuse the operator roles, please provide a "+
+		return fmt.Errorf("a role named '%s' already exists. "+
+			"please delete the existing role, or provide a different prefix.\n"+
+			"if you'd like to reuse the operator roles, please provide a "+
 			"OIDC Configuration ID which has Issuer URL linked as the trusted relationship "+
-			"of the chosen operator roles prefix.", name)
+			"of the chosen operator roles prefix", name)
 	}
 
 	if awserr.IsNoSuchEntityException(err) {
@@ -2154,7 +2154,7 @@ func (c *awsClient) GetAccountRoleDefaultPolicy(roleName string, prefix string) 
 		return "", nil
 	}
 	if len(policies) > 1 {
-		return "", fmt.Errorf("There are more than one Red Hat managed account role policy attached to the role %s",
+		return "", fmt.Errorf("there are more than one Red Hat managed account role policy attached to the role %s",
 			roleName)
 	}
 	return policies[0], nil
@@ -2173,7 +2173,7 @@ func (c *awsClient) GetOperatorRoleDefaultPolicy(roleName string) (string, error
 		return "", nil
 	}
 	if len(policies) > 1 {
-		return "", fmt.Errorf("There are more than one Red Hat managed operator role policy attached to the role %s",
+		return "", fmt.Errorf("there are more than one Red Hat managed operator role policy attached to the role %s",
 			roleName)
 	}
 	return policies[0], nil

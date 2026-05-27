@@ -32,7 +32,6 @@ import (
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/reporter"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
@@ -94,7 +93,7 @@ func ARNValidator(input interface{}) error {
 		}
 		_, err := arn.Parse(str)
 		if err != nil {
-			return fmt.Errorf("Invalid ARN: %s", err)
+			return fmt.Errorf("invalid ARN: %s", err)
 		}
 		return nil
 	}
@@ -110,14 +109,14 @@ func SecretManagerArnValidator(input interface{}) error {
 		return nil
 	}
 	if !arn.IsARN(str) {
-		return fmt.Errorf("Secret ARN '%s' is not a valid ARN", str)
+		return fmt.Errorf("secret ARN '%s' is not a valid ARN", str)
 	}
 	parsedSecretArn, err := arn.Parse(str)
 	if err != nil {
-		return fmt.Errorf("Invalid ARN: %s", err)
+		return fmt.Errorf("invalid ARN: %s", err)
 	}
 	if parsedSecretArn.Service != constants.SecretsManagerService {
-		return fmt.Errorf("Secret ARN '%s' is not a valid secrets manager ARN", str)
+		return fmt.Errorf("secret ARN '%s' is not a valid secrets manager ARN", str)
 	}
 	return nil
 }
@@ -181,7 +180,7 @@ func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool,
 
 // Currently user can rosa init using the region from their config or using --region
 // When checking for cloud formation we need to check in the region used by the user
-func GetAWSClientForUserRegion(reporter reporter.Logger, logger *logrus.Logger,
+func GetAWSClientForUserRegion(reporter rprtr.Logger, logger *logrus.Logger,
 	supportedRegions []string, useLocalCreds bool) Client {
 	// Get AWS region from env
 	awsRegionInUserConfig, err := GetRegion(arguments.GetRegion())
@@ -270,7 +269,7 @@ func resolveSTSRole(ARN arn.ARN) (*string, error) {
 		// Parse it to validate its ok
 		err := ARNValidator(roleARNString)
 		if err != nil {
-			return nil, fmt.Errorf("Unable to parse role ARN %s created from sts role: %v", roleARNString, err)
+			return nil, fmt.Errorf("unable to parse role ARN %s created from sts role: %v", roleARNString, err)
 		}
 		return &roleARNString, nil
 	}
@@ -635,7 +634,7 @@ func GetInstallerAccountRoleName(cluster *cmv1.Cluster) (string, error) {
 	return GetAccountRoleName(cluster, AccountRoles[InstallerAccountRole].Name)
 }
 
-func GenerateOperatorRolePolicyFiles(reporter reporter.Logger, policies map[string]*cmv1.AWSSTSPolicy,
+func GenerateOperatorRolePolicyFiles(reporter rprtr.Logger, policies map[string]*cmv1.AWSSTSPolicy,
 	credRequests map[string]*cmv1.STSOperator, sharedVpcRoleArn string, partition string) error {
 	isSharedVpc := sharedVpcRoleArn != ""
 	for credrequest := range credRequests {
@@ -776,7 +775,7 @@ func FindFirstAttachedPolicy(policiesDetails []PolicyDetail) PolicyDetail {
 }
 
 func UpgradeOperatorRolePolicies(
-	reporter reporter.Logger,
+	reporter rprtr.Logger,
 	awsClient Client,
 	partition string,
 	accountID string,
