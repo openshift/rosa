@@ -144,7 +144,7 @@ func (c *awsClient) deleteOCMRolePolicies(roleName string, managedPolicies bool)
 
 func SortRolesByLinkedRole(roles []Role) {
 	sort.SliceStable(roles, func(i, j int) bool {
-		return roles[i].Linked == "Yes" && roles[j].Linked == "No"
+		return roles[i].Linked == RoleYes && roles[j].Linked == RoleNo
 	})
 }
 
