@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
