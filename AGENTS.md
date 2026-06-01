@@ -135,7 +135,7 @@ Cross-check the docs when the change involves:
 ## Commit And PR Expectations
 
 - Commit subject format:
-  - `OCM-XXXXX | <type>[optional scope][!]: <description>`
+  - `OCM-XXXXX | <type>[optional scope][!]: <description>` or `ROSAENG-XXXX | <type>[optional scope][!]: <description>`
 - Allowed types include:
   - `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`
 - Use `.github/pull_request_template.md` for every PR.
