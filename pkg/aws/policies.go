@@ -76,6 +76,7 @@ type Role struct {
 	Linked        string `json:"Linked,omitempty"`
 	Admin         string `json:"Admin,omitempty"`
 	ManagedPolicy bool   `json:"ManagedPolicy,omitempty"`
+	NoConsole     string `json:"NoConsole,omitempty"`
 	ClusterID     string `json:"ClusterID,omitempty"`
 }
 
@@ -134,6 +135,9 @@ const (
 		"\"Action\": \"sts:AssumeRole\",\n    \"Resource\": [\n    \"%{shared_vpc_role_arn}\"\n    ]\n  }\n}\n"
 
 	TrueString = "true"
+
+	RoleYes = "Yes"
+	RoleNo  = "No"
 )
 
 const (
@@ -806,12 +810,18 @@ func (c *awsClient) ListOCMRoles() ([]Role, error) {
 			}
 			v2Tags := roleTags.Tags
 			if common.IamResourceHasTag(v2Tags, tags.AdminRole, tags.True) {
-				ocmRole.Admin = "Yes"
+				ocmRole.Admin = RoleYes
 			} else {
-				ocmRole.Admin = "No"
+				ocmRole.Admin = RoleNo
 			}
 			if common.IamResourceHasTag(v2Tags, common.ManagedPolicies, tags.True) {
 				ocmRole.ManagedPolicy = true
+			}
+			if common.IamResourceHasTag(v2Tags, tags.NoConsoleRole, tags.True) {
+				ocmRole.NoConsole = RoleYes
+				ocmRole.Admin = RoleNo
+			} else {
+				ocmRole.NoConsole = RoleNo
 			}
 
 			ocmRoles = append(ocmRoles, ocmRole)

@@ -18,6 +18,7 @@ package ocmroles
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -86,18 +87,24 @@ func run(_ *cobra.Command, _ []string) {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\tAWS Managed\n")
-	for _, ocmRole := range ocmRoles {
-		var awsManaged string
-		if ocmRole.ManagedPolicy {
-			awsManaged = "Yes"
-		} else {
-			awsManaged = "No"
-		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", ocmRole.RoleName, ocmRole.RoleARN, ocmRole.Linked, ocmRole.Admin,
-			awsManaged)
-	}
+	printOCMRoles(writer, ocmRoles)
 	writer.Flush()
+}
+
+func printOCMRoles(writer io.Writer, ocmRoles []aws.Role) {
+	fmt.Fprint(writer, "ROLE NAME\tROLE ARN\tLINKED\tADMIN\tAWS Managed\tCONSOLE ACCESS\n")
+	for _, ocmRole := range ocmRoles {
+		awsManaged := output.No
+		if ocmRole.ManagedPolicy {
+			awsManaged = output.Yes
+		}
+		consoleAccess := output.Yes
+		if ocmRole.NoConsole == output.Yes {
+			consoleAccess = output.No
+		}
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n", ocmRole.RoleName, ocmRole.RoleARN, ocmRole.Linked,
+			ocmRole.Admin, awsManaged, consoleAccess)
+	}
 }
 
 func listOCMRoles(r *rosa.Runtime) ([]aws.Role, error) {
@@ -126,9 +133,9 @@ func listOCMRoles(r *rosa.Runtime) ([]aws.Role, error) {
 	for i := range ocmRoles {
 		_, exist := linkedRolesMap[ocmRoles[i].RoleARN]
 		if exist {
-			ocmRoles[i].Linked = "Yes"
+			ocmRoles[i].Linked = output.Yes
 		} else {
-			ocmRoles[i].Linked = "No"
+			ocmRoles[i].Linked = output.No
 		}
 	}
 
