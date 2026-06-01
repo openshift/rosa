@@ -25,6 +25,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/logging"
 )
@@ -96,14 +97,14 @@ func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.
 			Logger(logger).
 			Build()
 		if err != nil {
-			return nil, fmt.Errorf("Error creating AWS client: %v", err)
+			return nil, fmt.Errorf("error creating AWS client: %v", err)
 		}
 
 		// Get AWS region
 		currentAWSCreds, err := awsClient.GetIAMCredentials()
 
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get local AWS credentials: %v", err)
+			return nil, fmt.Errorf("failed to get local AWS credentials: %v", err)
 		}
 
 		awsBuilder = awsBuilder.
@@ -113,7 +114,7 @@ func (c *Client) GetRegions(roleARN string, externalID string) (regions []*cmv1.
 
 	awsCredentials, err := awsBuilder.Build()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to build AWS credentials for user '%s': %v", aws.AdminUserName, err)
+		return nil, fmt.Errorf("failed to build AWS credentials for user '%s': %v", aws.AdminUserName, err)
 	}
 
 	collection := c.ocm.ClustersMgmt().V1().
@@ -151,7 +152,7 @@ func (c *Client) GetRegionList(multiAZ bool, roleARN string,
 	regionAZ map[string]bool, err error) {
 	regions, err := c.GetFilteredRegionsByVersion(roleARN, version, awsClient, externalID)
 	if err != nil {
-		err = fmt.Errorf("Failed to retrieve AWS regions: %s", err)
+		err = fmt.Errorf("failed to retrieve AWS regions: %s", err)
 		return
 	}
 
@@ -176,7 +177,9 @@ func (c *Client) GetRegionList(multiAZ bool, roleARN string,
 }
 
 func (c *Client) GetDatabaseRegionList() ([]string, error) {
-	response, err := c.ocm.ClustersMgmt().V1().CloudProviders().CloudProvider("aws").Regions().List().Send()
+	filter := fmt.Sprintf("govcloud is %t", fedramp.Enabled())
+	response, err :=
+		c.ocm.ClustersMgmt().V1().CloudProviders().CloudProvider("aws").Regions().List().Parameter("search", filter).Send()
 	if err != nil {
 		return []string{}, weberr.Errorf("Failed to get regions listing: %v", err)
 	}
@@ -202,7 +205,7 @@ func (c *Client) ValidateAwsClientRegion() error {
 		return err
 	}
 	if !helper.Contains(supportedRegions, awsRegionInUserConfig) {
-		return fmt.Errorf("Unsupported region '%s', available regions: %s",
+		return fmt.Errorf("unsupported region '%s', available regions: %s",
 			awsRegionInUserConfig, helper.SliceToSortedString(supportedRegions))
 	}
 	return nil
