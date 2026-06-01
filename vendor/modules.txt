@@ -354,8 +354,8 @@ github.com/mtibben/percent
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/nathan-fiscaletti/consolesize-go v0.0.0-20210105204122-a87d9f614b9d
-## explicit
+# github.com/nathan-fiscaletti/consolesize-go v0.0.0-20260406063853-3bac975de715
+## explicit; go 1.21
 github.com/nathan-fiscaletti/consolesize-go
 # github.com/onsi/ginkgo/v2 v2.17.1
 ## explicit; go 1.20
