@@ -193,6 +193,7 @@ type Client interface {
 	IsPolicyExists(policyARN string) (*iam.GetPolicyOutput, error)
 	IsRolePolicyExists(roleName string, policyName string) (*iam.GetRolePolicyOutput, error)
 	IsAdminRole(roleName string) (bool, error)
+	IsNoConsoleRole(roleName string) (bool, error)
 	DeleteInlineRolePolicies(roleName string) error
 	IsUserRole(roleName *string) (bool, error)
 	GetRoleARNPath(prefix string) (string, error)
@@ -296,7 +297,6 @@ func New(
 	iamQuotaClient client.ServiceQuotasApiClient,
 	awsAccessKeys *AccessKey,
 	useLocalCredentials bool,
-
 ) Client {
 	return &awsClient{
 		cfg,
@@ -374,7 +374,8 @@ func (b *ClientBuilder) ExternalConfig(value *aws.Config) *ClientBuilder {
 
 // Create AWS session with a specific set of credentials
 func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
-	logLevel aws.ClientLogMode) (aws.Config, error) {
+	logLevel aws.ClientLogMode,
+) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(value.AccessKeyID,
 			value.SecretAccessKey, "")),
@@ -586,7 +587,6 @@ func (c *awsClient) FetchPublicSubnetMap(subnets []ec2types.Subnet) (map[string]
 }
 
 func (c *awsClient) ListSubnets(subnetIds ...string) ([]ec2types.Subnet, error) {
-
 	if len(subnetIds) == 0 {
 		return c.getSubnetIDs(&ec2.DescribeSubnetsInput{})
 	}
@@ -721,7 +721,8 @@ func (c *awsClient) isPublicSubnet(subnetID *string, routeTables []ec2types.Rout
 }
 
 func (c *awsClient) getSubnetRouteTable(subnetID *string,
-	routeTables []ec2types.RouteTable) (*ec2types.RouteTable, error) {
+	routeTables []ec2types.RouteTable,
+) (*ec2types.RouteTable, error) {
 	// Subnet route table — A route table that's associated with a subnet
 	for _, routeTable := range routeTables {
 		for _, association := range routeTable.Associations {
@@ -1463,7 +1464,8 @@ func (c *awsClient) ListServiceAccountRoles(clusterName string) ([]iamtypes.Role
 
 // GetServiceAccountRoleDetails gets detailed information about a service account role using existing methods
 func (c *awsClient) GetServiceAccountRoleDetails(roleName string) (
-	*iamtypes.Role, []iamtypes.AttachedPolicy, []string, error) {
+	*iamtypes.Role, []iamtypes.AttachedPolicy, []string, error,
+) {
 	// Use existing GetRoleByName method
 	role, err := c.GetRoleByName(roleName)
 	if err != nil {

@@ -43,6 +43,9 @@ const Environment = prefix + "environment"
 // AdminRole tags the role as admin (true/false)
 const AdminRole = prefix + "admin_role"
 
+// NoConsoleRole tags the role as no-console role
+const NoConsoleRole = prefix + "no_console_role"
+
 // RedHatManaged tags the role as red_hat_managed
 const RedHatManaged = "red-hat-managed"
 

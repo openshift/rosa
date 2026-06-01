@@ -1207,6 +1207,21 @@ func (mr *MockClientMockRecorder) IsLocalAvailabilityZone(availabilityZoneName a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLocalAvailabilityZone", reflect.TypeOf((*MockClient)(nil).IsLocalAvailabilityZone), availabilityZoneName)
 }
 
+// IsNoConsoleRole mocks base method.
+func (m *MockClient) IsNoConsoleRole(roleName string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsNoConsoleRole", roleName)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsNoConsoleRole indicates an expected call of IsNoConsoleRole.
+func (mr *MockClientMockRecorder) IsNoConsoleRole(roleName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsNoConsoleRole", reflect.TypeOf((*MockClient)(nil).IsNoConsoleRole), roleName)
+}
+
 // IsPolicyCompatible mocks base method.
 func (m *MockClient) IsPolicyCompatible(policyArn, version string) (bool, error) {
 	m.ctrl.T.Helper()
