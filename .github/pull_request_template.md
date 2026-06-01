@@ -9,6 +9,8 @@ Use N/A when the option is not applicable to your case.
 
 Commit format requirement:
 [JIRA-TICKET] | [TYPE]: <MESSAGE>
+Supported ticket prefixes:
+OCM-XXXXX, ROSAENG-XXXX
 TYPE must be one of:
 feat, fix, docs, style, refactor, test, chore, build, ci, perf
 For contributor workflow, see: ./CONTRIBUTING.md
@@ -23,7 +25,7 @@ For repo-local agent guidance, see: ./AGENTS.md
 
 ## Related Issues and PRs
 <!-- Link all tracking items and related code changes -->
-- Jira: [OCM-XXXXX](https://issues.redhat.com/browse/OCM-XXXXX)
+- Jira: [OCM-XXXXX](https://issues.redhat.com/browse/OCM-XXXXX) or [ROSAENG-XXXX](https://issues.redhat.com/browse/ROSAENG-XXXX)
 - Fixes: `#`
 - Related PR(s):
 - Related design/docs:

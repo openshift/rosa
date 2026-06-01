@@ -4,14 +4,15 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-pattern="^(Revert \")?OCM-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore|build|ci|perf)(\\([a-z0-9._-]+\\))?(!)?: .*$"
+pattern="^(Revert \")?(OCM|ROSAENG)-[0-9]+ \| (feat|fix|docs|style|refactor|test|chore|build|ci|perf)(\\([a-z0-9._-]+\\))?(!)?: .*$"
 
 print_commit_message_error() {
   local message=$1
   cat <<EOF
 $message
-Expected format: OCM-XXXXX | <conventional-commit>
+Expected format: OCM-XXXXX | <conventional-commit> or ROSAENG-XXXX | <conventional-commit>
 Example: OCM-12345 | feat(scope): add support for foo
+Example: ROSAENG-1234 | fix: resolve authentication issue
 Please check CONTRIBUTING.md for more details
 EOF
 }
