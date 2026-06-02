@@ -18,8 +18,8 @@ previous_release="release_$2"
 
 commit_output=$(git log "$previous_release"..HEAD --oneline --no-merges --format="%s" --no-decorate --reverse | tr '[:upper:]' '[:lower:]')
 
-# Regular expression pattern to extract Jira ticket numbers and commit messages
-pattern="^(revert[[:space:]]*\")?([^|]+)\|(.+)$"
+# Regular expression pattern to extract supported Jira ticket numbers and commit messages
+pattern="^(revert[[:space:]]*\")?((ocm|rosaeng)-[0-9]+)[[:space:]]*\|(.+)$"
 
 # Array to store Jira ticket numbers
 jira_tickets=()
@@ -39,8 +39,8 @@ jira_list=$(IFS=, ; echo "${jira_tickets[*]}")
 errata_list=$(IFS=' ' ; echo "${jira_tickets[@]^^}")
 echo -e "List of JIRA's to be used in Errata \n$errata_list"
 
-# Create the JQL query for the list of Jira tickets
-jql="project = \"Openshift Cluster Manager\" AND issue in ($jira_list) AND labels not in (no-qe) AND (fixVersion is EMPTY OR fixVersion = $current_release)"
+# Query the extracted ticket keys directly so release tooling can include all supported commit prefixes.
+jql="issue in ($jira_list) AND labels not in (no-qe) AND (fixVersion is EMPTY OR fixVersion = $current_release)"
 
 
 # Create the jira issue list command

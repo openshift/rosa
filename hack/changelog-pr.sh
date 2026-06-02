@@ -28,7 +28,7 @@ Environment:
   GITHUB_TOKEN                   Token used to push the changelog branch and create/update the PR.
   CHANGELOG_REMOTE               Remote to push to. Defaults to origin.
   CHANGELOG_PR_BRANCH_PREFIX     Prefix for the generated changelog branch. Defaults to "changelog".
-  CHANGELOG_JIRA_KEY             Jira key used in the generated commit/PR title. Defaults to OCM-00000.
+  CHANGELOG_JIRA_KEY             Jira key used in the generated commit/PR title. Defaults to OCM-00000; set this to ROSAENG-XXXX when needed.
   CHANGELOG_COMMIT_TYPE          Commit type used in the generated commit/PR title. Defaults to docs.
 EOF
 }

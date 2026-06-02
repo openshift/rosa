@@ -13,6 +13,9 @@ full details on how to use these scripts in our release process, refer to our
 This script will create a list of Jira issues that have been included in the current release. Using the Jira CLI, it
 will allow you to open each issue and ensure that they have the correct release label.
 
+The issue list is derived from the supported commit subject ticket prefixes, including `OCM-XXXXX` and
+`ROSAENG-XXXX`.
+
 Required parameters:
 
 * `release-version`: The version of ROSA being released
@@ -53,6 +56,9 @@ This helper is the manual fallback for the GitHub Actions changelog automation. 
 4. opens or updates a reviewable PR back to the repository default branch
 
 It requires `GITHUB_TOKEN` to be set.
+
+Set `CHANGELOG_JIRA_KEY=ROSAENG-XXXX` when you want the generated PR to link a ROSAENG ticket instead of the default
+`OCM-00000` placeholder.
 
 Example usage:
 

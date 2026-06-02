@@ -79,7 +79,9 @@ protect_breaking_commits = false
 filter_commits = true
 fail_on_unmatched_commit = false
 link_parsers = [
+    # Supported contributor ticket prefixes
     { pattern = "OCM-(\\d+)", href = "https://issues.redhat.com/browse/OCM-$1" },
+    { pattern = "ROSAENG-(\\d+)", href = "https://issues.redhat.com/browse/ROSAENG-$1" },
 ]
 use_branch_tags = false
 tag_pattern = "v[0-9].*"

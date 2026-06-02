@@ -20,13 +20,15 @@ To contribute bug fixes or features to ROSA:
 - Run `make fmt` to align with the project formatting.
 - Open a Pull Request (PR).
 
-Communicate your intent in the form of a JIRA ticket on the [OCM](https://issues.redhat.com/projects/OCM) project.
-To ensure it is picked up by the ROSA team, please set `component = rosa` in the ticket. All JIRA's are refined by the team on a weekly cadence.
+Communicate your intent in the form of a JIRA ticket for ROSA CLI work. Commit messages and PR references in this
+repository support both `OCM-XXXXX` and `ROSAENG-XXXX` ticket formats. To ensure it is picked up by the ROSA team,
+please set `component = rosa` in the ticket. All JIRA's are refined by the team on a weekly cadence.
 
 Be sure to practice good git commit hygiene as you make your changes. All but the smallest changes should be broken up
 into a few commits that tell a story. Use your git commits to provide context for the folks who will review PRs. We strive
 to follow [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#summary).
-In this repository, the conventional-commit type still lives inside the required `OCM-XXXXX | <type>: <message>` subject format described below.
+In this repository, the conventional-commit type still lives inside the required `OCM-XXXXX | <type>: <message>` or
+`ROSAENG-XXXX | <type>: <message>` subject format described below.
 
 REQUIRED BEFORE YOUR FIRST COMMIT IN A CLONE:
 ```shell
@@ -89,7 +91,7 @@ Hook scripts are internal and should not be run manually.
 
 The commit message should follow this template:
 ```shell
-OCM-XXXXX | <type>[optional scope][!]: <description>
+(OCM-XXXXX or ROSAENG-XXXX) | <type>[optional scope][!]: <description>
 
 [optional BODY]
 
@@ -103,6 +105,10 @@ OCM-6141 | feat: Allow longer cluster names up to 54 chars
 Also allow users to supply an optional domain-prefix to customize the DNS
 
 Signed-off-by: Foo Bar <foo.bar@baz.com>
+```
+
+```shell
+ROSAENG-6531 | fix: support ROSAENG ticket prefixes in commit validation
 ```
 
 The commit contains the following structural types, to communicate your intent:
@@ -165,7 +171,7 @@ All code should be covered by tests. We use [Ginkgo](https://onsi.github.io/gink
 will be rejected.
 
 Once you made and tested your changes, create a pull request (PR). In the PR `overview` please link the
-jira ticket associated with your change. This should follow the format `JIRA: OCM-xxxx`. Note the key word `JIRA`,
+jira ticket associated with your change. This should follow the format `JIRA: OCM-XXXX` or `JIRA: ROSAENG-XXXX`. Note the key word `JIRA`,
 use of any other key word may result in the bot performing unwanted action to the ticket in JIRA. Please also include in the
 `overview` any additional information not in the JIRA that may help set context around your intent. Also include any extra
 validation steps which may help reviews to validate the changes.
