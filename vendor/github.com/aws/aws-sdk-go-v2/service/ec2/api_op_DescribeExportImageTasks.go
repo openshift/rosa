@@ -100,13 +100,16 @@ func (c *Client) addOperationDescribeExportImageTasksMiddlewares(stack *middlewa
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,6 +122,12 @@ func (c *Client) addOperationDescribeExportImageTasksMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeExportImageTasks(options.Region), middleware.Before); err != nil {
@@ -139,16 +148,17 @@ func (c *Client) addOperationDescribeExportImageTasksMiddlewares(stack *middlewa
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeExportImageTasksAPIClient is a client that implements the
-// DescribeExportImageTasks operation.
-type DescribeExportImageTasksAPIClient interface {
-	DescribeExportImageTasks(context.Context, *DescribeExportImageTasksInput, ...func(*Options)) (*DescribeExportImageTasksOutput, error)
-}
-
-var _ DescribeExportImageTasksAPIClient = (*Client)(nil)
 
 // DescribeExportImageTasksPaginatorOptions is the paginator options for
 // DescribeExportImageTasks
@@ -215,6 +225,9 @@ func (p *DescribeExportImageTasksPaginator) NextPage(ctx context.Context, optFns
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeExportImageTasks(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -233,6 +246,14 @@ func (p *DescribeExportImageTasksPaginator) NextPage(ctx context.Context, optFns
 
 	return result, nil
 }
+
+// DescribeExportImageTasksAPIClient is a client that implements the
+// DescribeExportImageTasks operation.
+type DescribeExportImageTasksAPIClient interface {
+	DescribeExportImageTasks(context.Context, *DescribeExportImageTasksInput, ...func(*Options)) (*DescribeExportImageTasksOutput, error)
+}
+
+var _ DescribeExportImageTasksAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeExportImageTasks(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

@@ -40,14 +40,14 @@ type PutServiceQuotaIncreaseRequestIntoTemplateInput struct {
 	DesiredValue *float64
 
 	// Specifies the quota identifier. To find the quota code for a specific quota,
-	// use the ListServiceQuotas operation, and look for the QuotaCode response in the
-	// output for the quota you want.
+	// use the ListServiceQuotasoperation, and look for the QuotaCode response in the output for the
+	// quota you want.
 	//
 	// This member is required.
 	QuotaCode *string
 
 	// Specifies the service identifier. To find the service code value for an Amazon
-	// Web Services service, use the ListServices operation.
+	// Web Services service, use the ListServicesoperation.
 	//
 	// This member is required.
 	ServiceCode *string
@@ -100,13 +100,16 @@ func (c *Client) addOperationPutServiceQuotaIncreaseRequestIntoTemplateMiddlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,6 +122,12 @@ func (c *Client) addOperationPutServiceQuotaIncreaseRequestIntoTemplateMiddlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutServiceQuotaIncreaseRequestIntoTemplateValidationMiddleware(stack); err != nil {
@@ -140,6 +149,15 @@ func (c *Client) addOperationPutServiceQuotaIncreaseRequestIntoTemplateMiddlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -35,15 +35,19 @@ type DescribeIpamScopesInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// One or more filters for the request. For more information about filtering, see
-	// Filtering CLI output (https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html)
-	// .
+	// One or more filters for the request. For more information about filtering, see [Filtering CLI output].
+	//
+	// [Filtering CLI output]: https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html
 	Filters []types.Filter
 
 	// The IDs of the scopes you want information on.
 	IpamScopeIds []string
 
-	// The maximum number of results to return in the request.
+	// The maximum number of items to return for this request. To get the next page of
+	// items, make another request with the token returned in the output. For more
+	// information, see [Pagination].
+	//
+	// [Pagination]: https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html#api-pagination
 	MaxResults *int32
 
 	// The token for the next page of results.
@@ -101,13 +105,16 @@ func (c *Client) addOperationDescribeIpamScopesMiddlewares(stack *middleware.Sta
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -120,6 +127,12 @@ func (c *Client) addOperationDescribeIpamScopesMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeIpamScopes(options.Region), middleware.Before); err != nil {
@@ -140,21 +153,26 @@ func (c *Client) addOperationDescribeIpamScopesMiddlewares(stack *middleware.Sta
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeIpamScopesAPIClient is a client that implements the DescribeIpamScopes
-// operation.
-type DescribeIpamScopesAPIClient interface {
-	DescribeIpamScopes(context.Context, *DescribeIpamScopesInput, ...func(*Options)) (*DescribeIpamScopesOutput, error)
-}
-
-var _ DescribeIpamScopesAPIClient = (*Client)(nil)
 
 // DescribeIpamScopesPaginatorOptions is the paginator options for
 // DescribeIpamScopes
 type DescribeIpamScopesPaginatorOptions struct {
-	// The maximum number of results to return in the request.
+	// The maximum number of items to return for this request. To get the next page of
+	// items, make another request with the token returned in the output. For more
+	// information, see [Pagination].
+	//
+	// [Pagination]: https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html#api-pagination
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -215,6 +233,9 @@ func (p *DescribeIpamScopesPaginator) NextPage(ctx context.Context, optFns ...fu
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeIpamScopes(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -233,6 +254,14 @@ func (p *DescribeIpamScopesPaginator) NextPage(ctx context.Context, optFns ...fu
 
 	return result, nil
 }
+
+// DescribeIpamScopesAPIClient is a client that implements the DescribeIpamScopes
+// operation.
+type DescribeIpamScopesAPIClient interface {
+	DescribeIpamScopes(context.Context, *DescribeIpamScopesInput, ...func(*Options)) (*DescribeIpamScopesOutput, error)
+}
+
+var _ DescribeIpamScopesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeIpamScopes(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

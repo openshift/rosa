@@ -10,9 +10,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Cancels the deprecation of the specified AMI. For more information, see
-// Deprecate an AMI (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ami-deprecate.html)
-// in the Amazon EC2 User Guide.
+// Cancels the deprecation of the specified AMI.
+//
+// For more information, see [Deprecate an Amazon EC2 AMI] in the Amazon EC2 User Guide.
+//
+// [Deprecate an Amazon EC2 AMI]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ami-deprecate.html
 func (c *Client) DisableImageDeprecation(ctx context.Context, params *DisableImageDeprecationInput, optFns ...func(*Options)) (*DisableImageDeprecationOutput, error) {
 	if params == nil {
 		params = &DisableImageDeprecationInput{}
@@ -89,13 +91,16 @@ func (c *Client) addOperationDisableImageDeprecationMiddlewares(stack *middlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -108,6 +113,12 @@ func (c *Client) addOperationDisableImageDeprecationMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisableImageDeprecationValidationMiddleware(stack); err != nil {
@@ -129,6 +140,15 @@ func (c *Client) addOperationDisableImageDeprecationMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

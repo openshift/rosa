@@ -99,13 +99,16 @@ func (c *Client) addOperationDescribeTransitGatewayRouteTableAnnouncementsMiddle
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -118,6 +121,12 @@ func (c *Client) addOperationDescribeTransitGatewayRouteTableAnnouncementsMiddle
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeTransitGatewayRouteTableAnnouncements(options.Region), middleware.Before); err != nil {
@@ -138,16 +147,17 @@ func (c *Client) addOperationDescribeTransitGatewayRouteTableAnnouncementsMiddle
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeTransitGatewayRouteTableAnnouncementsAPIClient is a client that
-// implements the DescribeTransitGatewayRouteTableAnnouncements operation.
-type DescribeTransitGatewayRouteTableAnnouncementsAPIClient interface {
-	DescribeTransitGatewayRouteTableAnnouncements(context.Context, *DescribeTransitGatewayRouteTableAnnouncementsInput, ...func(*Options)) (*DescribeTransitGatewayRouteTableAnnouncementsOutput, error)
-}
-
-var _ DescribeTransitGatewayRouteTableAnnouncementsAPIClient = (*Client)(nil)
 
 // DescribeTransitGatewayRouteTableAnnouncementsPaginatorOptions is the paginator
 // options for DescribeTransitGatewayRouteTableAnnouncements
@@ -216,6 +226,9 @@ func (p *DescribeTransitGatewayRouteTableAnnouncementsPaginator) NextPage(ctx co
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeTransitGatewayRouteTableAnnouncements(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -234,6 +247,14 @@ func (p *DescribeTransitGatewayRouteTableAnnouncementsPaginator) NextPage(ctx co
 
 	return result, nil
 }
+
+// DescribeTransitGatewayRouteTableAnnouncementsAPIClient is a client that
+// implements the DescribeTransitGatewayRouteTableAnnouncements operation.
+type DescribeTransitGatewayRouteTableAnnouncementsAPIClient interface {
+	DescribeTransitGatewayRouteTableAnnouncements(context.Context, *DescribeTransitGatewayRouteTableAnnouncementsInput, ...func(*Options)) (*DescribeTransitGatewayRouteTableAnnouncementsOutput, error)
+}
+
+var _ DescribeTransitGatewayRouteTableAnnouncementsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeTransitGatewayRouteTableAnnouncements(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

@@ -106,13 +106,16 @@ func (c *Client) addOperationGetAwsNetworkPerformanceDataMiddlewares(stack *midd
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -125,6 +128,12 @@ func (c *Client) addOperationGetAwsNetworkPerformanceDataMiddlewares(stack *midd
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetAwsNetworkPerformanceData(options.Region), middleware.Before); err != nil {
@@ -145,16 +154,17 @@ func (c *Client) addOperationGetAwsNetworkPerformanceDataMiddlewares(stack *midd
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// GetAwsNetworkPerformanceDataAPIClient is a client that implements the
-// GetAwsNetworkPerformanceData operation.
-type GetAwsNetworkPerformanceDataAPIClient interface {
-	GetAwsNetworkPerformanceData(context.Context, *GetAwsNetworkPerformanceDataInput, ...func(*Options)) (*GetAwsNetworkPerformanceDataOutput, error)
-}
-
-var _ GetAwsNetworkPerformanceDataAPIClient = (*Client)(nil)
 
 // GetAwsNetworkPerformanceDataPaginatorOptions is the paginator options for
 // GetAwsNetworkPerformanceData
@@ -223,6 +233,9 @@ func (p *GetAwsNetworkPerformanceDataPaginator) NextPage(ctx context.Context, op
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.GetAwsNetworkPerformanceData(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -241,6 +254,14 @@ func (p *GetAwsNetworkPerformanceDataPaginator) NextPage(ctx context.Context, op
 
 	return result, nil
 }
+
+// GetAwsNetworkPerformanceDataAPIClient is a client that implements the
+// GetAwsNetworkPerformanceData operation.
+type GetAwsNetworkPerformanceDataAPIClient interface {
+	GetAwsNetworkPerformanceData(context.Context, *GetAwsNetworkPerformanceDataInput, ...func(*Options)) (*GetAwsNetworkPerformanceDataOutput, error)
+}
+
+var _ GetAwsNetworkPerformanceDataAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opGetAwsNetworkPerformanceData(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

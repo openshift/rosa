@@ -11,10 +11,13 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Gets information about a specified traffic policy instance. Use
-// GetTrafficPolicyInstance with the id of new traffic policy instance to confirm
-// that the CreateTrafficPolicyInstance or an UpdateTrafficPolicyInstance request
-// completed successfully. For more information, see the State response element.
+// Gets information about a specified traffic policy instance.
+//
+// Use GetTrafficPolicyInstance with the id of new traffic policy instance to
+// confirm that the CreateTrafficPolicyInstance or an UpdateTrafficPolicyInstance
+// request completed successfully. For more information, see the State response
+// element.
+//
 // In the Route 53 console, traffic policy instances are known as policy records.
 func (c *Client) GetTrafficPolicyInstance(ctx context.Context, params *GetTrafficPolicyInstanceInput, optFns ...func(*Options)) (*GetTrafficPolicyInstanceOutput, error) {
 	if params == nil {
@@ -91,13 +94,16 @@ func (c *Client) addOperationGetTrafficPolicyInstanceMiddlewares(stack *middlewa
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -110,6 +116,12 @@ func (c *Client) addOperationGetTrafficPolicyInstanceMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetTrafficPolicyInstanceValidationMiddleware(stack); err != nil {
@@ -131,6 +143,15 @@ func (c *Client) addOperationGetTrafficPolicyInstanceMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

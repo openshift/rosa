@@ -42,9 +42,12 @@ type GetTransitGatewayRouteTableAssociationsInput struct {
 	DryRun *bool
 
 	// One or more filters. The possible values are:
+	//
 	//   - resource-id - The ID of the resource.
+	//
 	//   - resource-type - The resource type. Valid values are vpc | vpn |
 	//   direct-connect-gateway | peering | connect .
+	//
 	//   - transit-gateway-attachment-id - The ID of the attachment.
 	Filters []types.Filter
 
@@ -107,13 +110,16 @@ func (c *Client) addOperationGetTransitGatewayRouteTableAssociationsMiddlewares(
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -126,6 +132,12 @@ func (c *Client) addOperationGetTransitGatewayRouteTableAssociationsMiddlewares(
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetTransitGatewayRouteTableAssociationsValidationMiddleware(stack); err != nil {
@@ -149,16 +161,17 @@ func (c *Client) addOperationGetTransitGatewayRouteTableAssociationsMiddlewares(
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// GetTransitGatewayRouteTableAssociationsAPIClient is a client that implements
-// the GetTransitGatewayRouteTableAssociations operation.
-type GetTransitGatewayRouteTableAssociationsAPIClient interface {
-	GetTransitGatewayRouteTableAssociations(context.Context, *GetTransitGatewayRouteTableAssociationsInput, ...func(*Options)) (*GetTransitGatewayRouteTableAssociationsOutput, error)
-}
-
-var _ GetTransitGatewayRouteTableAssociationsAPIClient = (*Client)(nil)
 
 // GetTransitGatewayRouteTableAssociationsPaginatorOptions is the paginator
 // options for GetTransitGatewayRouteTableAssociations
@@ -227,6 +240,9 @@ func (p *GetTransitGatewayRouteTableAssociationsPaginator) NextPage(ctx context.
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.GetTransitGatewayRouteTableAssociations(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -245,6 +261,14 @@ func (p *GetTransitGatewayRouteTableAssociationsPaginator) NextPage(ctx context.
 
 	return result, nil
 }
+
+// GetTransitGatewayRouteTableAssociationsAPIClient is a client that implements
+// the GetTransitGatewayRouteTableAssociations operation.
+type GetTransitGatewayRouteTableAssociationsAPIClient interface {
+	GetTransitGatewayRouteTableAssociations(context.Context, *GetTransitGatewayRouteTableAssociationsInput, ...func(*Options)) (*GetTransitGatewayRouteTableAssociationsOutput, error)
+}
+
+var _ GetTransitGatewayRouteTableAssociationsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opGetTransitGatewayRouteTableAssociations(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
