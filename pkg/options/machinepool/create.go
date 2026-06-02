@@ -42,10 +42,12 @@ type CreateMachinepoolUserOptions struct {
 const (
 	// DefaultInstanceType is the default AWS instance type for new machine pools.
 	DefaultInstanceType = "m7i.xlarge"
-	use                 = "machinepool"
-	short               = "Add machine pool to cluster"
-	long                = "Add a machine pool to the cluster."
-	example             = `  # Interactively add a machine pool to a cluster named "mycluster"
+	// FallbackInstanceType is used when DefaultInstanceType is not available in the cluster's region.
+	FallbackInstanceType = "m5.xlarge"
+	use                  = "machinepool"
+	short                = "Add machine pool to cluster"
+	long                 = "Add a machine pool to the cluster."
+	example              = `  # Interactively add a machine pool to a cluster named "mycluster"
   rosa create machinepool --cluster=mycluster --interactive
   # Add a machine pool mp-1 with 3 replicas of m7i.xlarge to a cluster
   rosa create machinepool --cluster=mycluster --name=mp-1 --replicas=3 --instance-type=m7i.xlarge

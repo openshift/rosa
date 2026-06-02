@@ -302,6 +302,11 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		spin.Stop()
 	}
 
+	instanceType, err = resolveInstanceTypeFallback(cmd, instanceType, instanceTypeList, cluster.Region().ID(), r)
+	if err != nil {
+		return err
+	}
+
 	if interactive.Enabled() {
 		if instanceType == "" {
 			instanceType = instanceTypeList.Items[0].MachineType.ID()
@@ -737,6 +742,11 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 
 	if spin != nil {
 		spin.Stop()
+	}
+
+	instanceType, err = resolveInstanceTypeFallback(cmd, instanceType, instanceTypeList, cluster.Region().ID(), r)
+	if err != nil {
+		return err
 	}
 
 	if interactive.Enabled() {
@@ -2454,4 +2464,28 @@ func manageReplicas(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOption
 		}
 	}
 	return minReplicas, maxReplicas, replicas, autoscaling, nil
+}
+
+func resolveInstanceTypeFallback(
+	cmd *cobra.Command,
+	instanceType string,
+	instanceTypeList ocm.MachineTypeList,
+	region string,
+	r *rosa.Runtime,
+) (string, error) {
+	if cmd.Flags().Changed("instance-type") || instanceTypeList.Find(instanceType) != nil {
+		return instanceType, nil
+	}
+	if instanceTypeList.Find(mpOpts.FallbackInstanceType) != nil {
+		r.Reporter.Warnf(
+			"Default instance type '%s' is not available in region '%s', using '%s'",
+			mpOpts.DefaultInstanceType, region, mpOpts.FallbackInstanceType,
+		)
+		return mpOpts.FallbackInstanceType, nil
+	}
+	return "", fmt.Errorf(
+		"default instance type '%s' is not available in region '%s'"+
+			" and fallback '%s' is also unavailable, please specify --instance-type",
+		mpOpts.DefaultInstanceType, region, mpOpts.FallbackInstanceType,
+	)
 }

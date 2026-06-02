@@ -1425,6 +1425,96 @@ var _ = Describe("MachinePools", func() {
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).ToNot(HaveOccurred())
 		})
+		It("Should fall back to FallbackInstanceType when default is not available in region", func() {
+			machinePool := &machinePool{}
+			args.Subnet = subnet
+			cluster = returnMockCluster(version)
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "mp-1")
+			cmd.Flags().Bool("multi-availability-zone", true, "")
+			cmd.Flags().Set("multi-availability-zone", "true")
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
+			args.AutoscalingEnabled = true
+			// Use the default instance type but do NOT mark the flag as changed
+			args.InstanceType = mpOpts.DefaultInstanceType
+			cmd.Flags().StringVar(new(string), "instance-type", mpOpts.DefaultInstanceType, "")
+			args.UseSpotInstances = true
+			args.SpotMaxPrice = "1.00"
+			// Return only m5.xlarge in the available types — m7i.xlarge is absent
+			mt, err := cmv1.NewMachineType().ID(mpOpts.FallbackInstanceType).
+				Name(mpOpts.FallbackInstanceType).Build()
+			Expect(err).ToNot(HaveOccurred())
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").
+				Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			machinePoolObj, err := cmv1.NewMachinePool().ID("mp-1").
+				InstanceType(mpOpts.FallbackInstanceType).Build()
+			Expect(err).ToNot(HaveOccurred())
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK,
+					test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK,
+					test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK,
+					test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK, FormatResources(machinePoolObj)))
+			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("Should error when both default and fallback instance types are unavailable", func() {
+			machinePool := &machinePool{}
+			args.Subnet = subnet
+			cluster = returnMockCluster(version)
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "mp-1")
+			cmd.Flags().Bool("multi-availability-zone", true, "")
+			cmd.Flags().Set("multi-availability-zone", "true")
+			cmd.Flags().IntVar(&args.Replicas, "replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			args.Replicas = 3
+			args.InstanceType = mpOpts.DefaultInstanceType
+			cmd.Flags().StringVar(new(string), "instance-type", mpOpts.DefaultInstanceType, "")
+			// Return only t3.small — neither m7i.xlarge nor m5.xlarge available
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
+			Expect(err).ToNot(HaveOccurred())
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").OrganizationID("123456789012").
+				Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(region, nil)
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK,
+					test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK,
+					test.FormatMachineTypeList([]*cmv1.MachineType{mt})))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			t.ApiServer.AppendHandlers(
+				RespondWithJSON(http.StatusOK,
+					test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("default instance type"))
+			Expect(err.Error()).To(ContainSubstring("fallback"))
+		})
 	})
 })
 
@@ -1929,6 +2019,137 @@ var _ = Describe("NodePools", func() {
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(ContainSubstring("expected a valid node pool root disk size value"))
+		})
+		It("Should fall back to FallbackInstanceType when default is not available in region", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.AutoscalingEnabled = true
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
+			// Use the default instance type but do NOT mark the flag as changed
+			args.InstanceType = mpOpts.DefaultInstanceType
+			cmd.Flags().StringVar(new(string), "instance-type", mpOpts.DefaultInstanceType, "")
+			args.TuningConfigs = "test"
+			args.KubeletConfigs = "test"
+			args.NodeDrainGracePeriod = "30"
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			// Return only m5.xlarge — m7i.xlarge is absent from this region
+			mt, err := cmv1.NewMachineType().ID(mpOpts.FallbackInstanceType).
+				Name(mpOpts.FallbackInstanceType).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{mt})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			tuningConfig, err := cmv1.NewTuningConfig().ID("test").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatTuningConfigList(
+				[]*cmv1.TuningConfig{tuningConfig})))
+			kubeConfig, err := cmv1.NewKubeletConfig().Name("test").ID("test").PodPidsLimit(5000).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList(
+				[]*cmv1.KubeletConfig{kubeConfig})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
+			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
+			nodePoolResponse := test.FormatNodePoolList([]*cmv1.NodePool{nodePoolObj})
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, nodePoolResponse))
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).To(Not(HaveOccurred()))
+		})
+		It("Should error when both default and fallback instance types are unavailable", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+
+			cmd.Flags().Bool("enable-autoscaling", true, "")
+			cmd.Flags().Set("enable-autoscaling", "true")
+			cmd.Flags().Int32("min-replicas", 1, "Replicas of the machine pool")
+			cmd.Flags().Set("min-replicas", "1")
+			cmd.Flags().Int32("max-replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("max-replicas", "3")
+			args.AutoscalingEnabled = true
+			args.MinReplicas = 1
+			args.MaxReplicas = 3
+			args.InstanceType = mpOpts.DefaultInstanceType
+			cmd.Flags().StringVar(new(string), "instance-type", mpOpts.DefaultInstanceType, "")
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			// Return only t3.small — neither m7i.xlarge nor m5.xlarge available
+			mt, err := cmv1.NewMachineType().ID("t3.small").Name("t3.small").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{mt})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version("4.15.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("default instance type"))
+			Expect(err.Error()).To(ContainSubstring("fallback"))
 		})
 	})
 })
