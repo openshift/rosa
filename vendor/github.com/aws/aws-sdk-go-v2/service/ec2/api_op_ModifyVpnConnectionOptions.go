@@ -11,11 +11,12 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Modifies the connection options for your Site-to-Site VPN connection. When you
-// modify the VPN connection options, the VPN endpoint IP addresses on the Amazon
-// Web Services side do not change, and the tunnel options do not change. Your VPN
-// connection will be temporarily unavailable for a brief period while the VPN
-// connection is updated.
+// Modifies the connection options for your Site-to-Site VPN connection.
+//
+// When you modify the VPN connection options, the VPN endpoint IP addresses on
+// the Amazon Web Services side do not change, and the tunnel options do not
+// change. Your VPN connection will be temporarily unavailable for a brief period
+// while the VPN connection is updated.
 func (c *Client) ModifyVpnConnectionOptions(ctx context.Context, params *ModifyVpnConnectionOptionsInput, optFns ...func(*Options)) (*ModifyVpnConnectionOptionsOutput, error) {
 	if params == nil {
 		params = &ModifyVpnConnectionOptionsInput{}
@@ -45,20 +46,30 @@ type ModifyVpnConnectionOptionsInput struct {
 	DryRun *bool
 
 	// The IPv4 CIDR on the customer gateway (on-premises) side of the VPN connection.
+	//
 	// Default: 0.0.0.0/0
 	LocalIpv4NetworkCidr *string
 
 	// The IPv6 CIDR on the customer gateway (on-premises) side of the VPN connection.
+	//
 	// Default: ::/0
 	LocalIpv6NetworkCidr *string
 
-	// The IPv4 CIDR on the Amazon Web Services side of the VPN connection. Default:
-	// 0.0.0.0/0
+	// The IPv4 CIDR on the Amazon Web Services side of the VPN connection.
+	//
+	// Default: 0.0.0.0/0
 	RemoteIpv4NetworkCidr *string
 
-	// The IPv6 CIDR on the Amazon Web Services side of the VPN connection. Default:
-	// ::/0
+	// The IPv6 CIDR on the Amazon Web Services side of the VPN connection.
+	//
+	// Default: ::/0
 	RemoteIpv6NetworkCidr *string
+
+	// The desired bandwidth specification for the VPN connection. standard supports
+	// up to 1.25 Gbps per tunnel, while large supports up to 5 Gbps per tunnel. Large
+	// bandwidth is only available for VPN connections attached to a transit gateway or
+	// to Cloud WAN. The default value is standard .
+	TunnelBandwidth types.VpnTunnelBandwidth
 
 	noSmithyDocumentSerde
 }
@@ -108,13 +119,16 @@ func (c *Client) addOperationModifyVpnConnectionOptionsMiddlewares(stack *middle
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -127,6 +141,12 @@ func (c *Client) addOperationModifyVpnConnectionOptionsMiddlewares(stack *middle
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyVpnConnectionOptionsValidationMiddleware(stack); err != nil {
@@ -148,6 +168,15 @@ func (c *Client) addOperationModifyVpnConnectionOptionsMiddlewares(stack *middle
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

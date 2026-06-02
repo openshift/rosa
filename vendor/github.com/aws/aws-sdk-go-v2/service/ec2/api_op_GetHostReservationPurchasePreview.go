@@ -13,8 +13,10 @@ import (
 
 // Preview a reservation purchase with configurations that match those of your
 // Dedicated Host. You must have active Dedicated Hosts in your account before you
-// purchase a reservation. This is a preview of the PurchaseHostReservation action
-// and does not result in the offering being purchased.
+// purchase a reservation.
+//
+// This is a preview of the PurchaseHostReservation action and does not result in the offering being
+// purchased.
 func (c *Client) GetHostReservationPurchasePreview(ctx context.Context, params *GetHostReservationPurchasePreviewInput, optFns ...func(*Options)) (*GetHostReservationPurchasePreviewOutput, error) {
 	if params == nil {
 		params = &GetHostReservationPurchasePreviewInput{}
@@ -101,13 +103,16 @@ func (c *Client) addOperationGetHostReservationPurchasePreviewMiddlewares(stack 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -120,6 +125,12 @@ func (c *Client) addOperationGetHostReservationPurchasePreviewMiddlewares(stack 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetHostReservationPurchasePreviewValidationMiddleware(stack); err != nil {
@@ -141,6 +152,15 @@ func (c *Client) addOperationGetHostReservationPurchasePreviewMiddlewares(stack 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

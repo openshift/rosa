@@ -53,10 +53,10 @@ type SignalResourceInput struct {
 	// This member is required.
 	Status types.ResourceSignalStatus
 
-	// A unique ID of the signal. When you signal Amazon EC2 instances or Auto Scaling
-	// groups, specify the instance ID that you are signaling as the unique ID. If you
-	// send multiple signals to a single resource (such as signaling a wait condition),
-	// each signal requires a different unique ID.
+	// A unique ID of the signal. When you signal Amazon EC2 instances or Amazon EC2
+	// Auto Scaling groups, specify the instance ID that you are signaling as the
+	// unique ID. If you send multiple signals to a single resource (such as signaling
+	// a wait condition), each signal requires a different unique ID.
 	//
 	// This member is required.
 	UniqueId *string
@@ -105,13 +105,16 @@ func (c *Client) addOperationSignalResourceMiddlewares(stack *middleware.Stack, 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -124,6 +127,12 @@ func (c *Client) addOperationSignalResourceMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpSignalResourceValidationMiddleware(stack); err != nil {
@@ -145,6 +154,15 @@ func (c *Client) addOperationSignalResourceMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

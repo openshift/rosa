@@ -12,10 +12,12 @@ import (
 )
 
 // Disassociates a CIDR block from a VPC. To disassociate the CIDR block, you must
-// specify its association ID. You can get the association ID by using DescribeVpcs
-// . You must detach or delete all gateways and resources that are associated with
-// the CIDR block before you can disassociate it. You cannot disassociate the CIDR
-// block with which you originally created the VPC (the primary CIDR block).
+// specify its association ID. You can get the association ID by using DescribeVpcs. You must
+// detach or delete all gateways and resources that are associated with the CIDR
+// block before you can disassociate it.
+//
+// You cannot disassociate the CIDR block with which you originally created the
+// VPC (the primary CIDR block).
 func (c *Client) DisassociateVpcCidrBlock(ctx context.Context, params *DisassociateVpcCidrBlockInput, optFns ...func(*Options)) (*DisassociateVpcCidrBlockOutput, error) {
 	if params == nil {
 		params = &DisassociateVpcCidrBlockInput{}
@@ -92,13 +94,16 @@ func (c *Client) addOperationDisassociateVpcCidrBlockMiddlewares(stack *middlewa
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -111,6 +116,12 @@ func (c *Client) addOperationDisassociateVpcCidrBlockMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisassociateVpcCidrBlockValidationMiddleware(stack); err != nil {
@@ -132,6 +143,15 @@ func (c *Client) addOperationDisassociateVpcCidrBlockMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
