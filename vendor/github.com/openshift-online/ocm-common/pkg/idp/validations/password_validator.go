@@ -29,7 +29,7 @@ func PasswordValidator(val interface{}) error {
 				pwdErrors[len(pwdErrors)-1] = "and " + pwdErrors[len(pwdErrors)-1]
 			}
 
-			return fmt.Errorf("Password " + strings.Join(pwdErrors, ", "))
+			return fmt.Errorf("Password %s", strings.Join(pwdErrors, ", "))
 		}
 		hasUppercase, _ := regexp.MatchString(`[A-Z]`, password)
 		hasLowercase, _ := regexp.MatchString(`[a-z]`, password)

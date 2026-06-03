@@ -45,6 +45,7 @@ type AWS struct {
 	subnetIDs                              []string
 	tags                                   map[string]string
 	vpcEndpointRoleArn                     string
+	zeroEgress                             *ZeroEgress
 	privateLink                            bool
 }
 
@@ -563,6 +564,29 @@ func (o *AWS) GetVpcEndpointRoleArn() (value string, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 21 && o.fieldSet_[21]
 	if ok {
 		value = o.vpcEndpointRoleArn
+	}
+	return
+}
+
+// ZeroEgress returns the value of the 'zero_egress' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Zero egress configuration.
+func (o *AWS) ZeroEgress() *ZeroEgress {
+	if o != nil && len(o.fieldSet_) > 22 && o.fieldSet_[22] {
+		return o.zeroEgress
+	}
+	return nil
+}
+
+// GetZeroEgress returns the value of the 'zero_egress' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Zero egress configuration.
+func (o *AWS) GetZeroEgress() (value *ZeroEgress, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 22 && o.fieldSet_[22]
+	if ok {
+		value = o.zeroEgress
 	}
 	return
 }

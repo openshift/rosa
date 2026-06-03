@@ -49,10 +49,10 @@ func (client *AWSClient) AddNetworkAclEntry(networkAclId string, egress bool, pr
 	}
 	resp, err := client.Ec2Client.CreateNetworkAclEntry(context.TODO(), input)
 	if err != nil {
-		log.LogError("Create NetworkAcl rule failed " + err.Error())
+		log.LogError("Create NetworkAcl rule failed %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Create NetworkAcl rule success " + networkAclId)
+	log.LogInfo("Create NetworkAcl rule success %s", networkAclId)
 	return resp, err
 }
 
@@ -64,10 +64,10 @@ func (client *AWSClient) DeleteNetworkAclEntry(networkAclId string, egress bool,
 	}
 	resp, err := client.Ec2Client.DeleteNetworkAclEntry(context.TODO(), input)
 	if err != nil {
-		log.LogError("Delete NetworkAcl rule failed " + err.Error())
+		log.LogError("Delete NetworkAcl rule failed %s", err.Error())
 		return nil, err
 	}
-	log.LogInfo("Delete NetworkAcl rule success " + networkAclId)
+	log.LogInfo("Delete NetworkAcl rule success %s", networkAclId)
 	return resp, err
 
 }

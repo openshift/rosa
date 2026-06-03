@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	con "github.com/openshift-online/ocm-common/pkg/aws/consts"
+	awserrors "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
@@ -73,10 +74,30 @@ func (vpc *VPC) CreateAdditionalSecurityGroups(count int, namePrefix string, des
 	for createdsgNum < count {
 		sgName := fmt.Sprintf("%s-%d", namePrefix, createdsgNum)
 		sg, err := vpc.AWSClient.CreateSecurityGroup(vpc.VpcID, sgName, description)
+		var groupID string
 		if err != nil {
-			panic(err)
+			if !awserrors.IsErrorCode(err, awserrors.InvalidGroupDuplicate) {
+				return preparedSGs, err
+			}
+			log.LogInfo("Security group %s already exists in VPC %s, reusing it", sgName, vpc.VpcID)
+			existingSGs, listErr := vpc.AWSClient.ListSecurityGroups(vpc.VpcID)
+			if listErr != nil {
+				return preparedSGs, listErr
+			}
+			found := false
+			for _, existingSG := range existingSGs {
+				if *existingSG.GroupName == sgName {
+					groupID = *existingSG.GroupId
+					found = true
+					break
+				}
+			}
+			if !found {
+				return preparedSGs, fmt.Errorf("security group %s reported as duplicate but not found in VPC %s", sgName, vpc.VpcID)
+			}
+		} else {
+			groupID = *sg.GroupId
 		}
-		groupID := *sg.GroupId
 		cidrPortsMap := make(map[string][]int32)
 		cidrPortsMap[con.RouteDestinationCidrBlock] = append(cidrPortsMap[con.RouteDestinationCidrBlock], 22)
 		if len(ports) > 0 {
@@ -94,7 +115,7 @@ func (vpc *VPC) CreateAdditionalSecurityGroups(count int, namePrefix string, des
 
 		}
 
-		preparedSGs = append(preparedSGs, *sg.GroupId)
+		preparedSGs = append(preparedSGs, groupID)
 		createdsgNum++
 	}
 	return preparedSGs, nil

@@ -23,6 +23,7 @@ package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v
 type AWSBackupConfigBuilder struct {
 	fieldSet_           []bool
 	s3Bucket            string
+	accessSharedRoleArn string
 	accountId           string
 	identityProviderArn string
 	managementCluster   string
@@ -32,7 +33,7 @@ type AWSBackupConfigBuilder struct {
 // NewAWSBackupConfig creates a new builder of 'AWS_backup_config' objects.
 func NewAWSBackupConfig() *AWSBackupConfigBuilder {
 	return &AWSBackupConfigBuilder{
-		fieldSet_: make([]bool, 5),
+		fieldSet_: make([]bool, 6),
 	}
 }
 
@@ -52,50 +53,60 @@ func (b *AWSBackupConfigBuilder) Empty() bool {
 // S3Bucket sets the value of the 'S3_bucket' attribute to the given value.
 func (b *AWSBackupConfigBuilder) S3Bucket(value string) *AWSBackupConfigBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 5)
+		b.fieldSet_ = make([]bool, 6)
 	}
 	b.s3Bucket = value
 	b.fieldSet_[0] = true
 	return b
 }
 
+// AccessSharedRoleArn sets the value of the 'access_shared_role_arn' attribute to the given value.
+func (b *AWSBackupConfigBuilder) AccessSharedRoleArn(value string) *AWSBackupConfigBuilder {
+	if len(b.fieldSet_) == 0 {
+		b.fieldSet_ = make([]bool, 6)
+	}
+	b.accessSharedRoleArn = value
+	b.fieldSet_[1] = true
+	return b
+}
+
 // AccountId sets the value of the 'account_id' attribute to the given value.
 func (b *AWSBackupConfigBuilder) AccountId(value string) *AWSBackupConfigBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 5)
+		b.fieldSet_ = make([]bool, 6)
 	}
 	b.accountId = value
-	b.fieldSet_[1] = true
+	b.fieldSet_[2] = true
 	return b
 }
 
 // IdentityProviderArn sets the value of the 'identity_provider_arn' attribute to the given value.
 func (b *AWSBackupConfigBuilder) IdentityProviderArn(value string) *AWSBackupConfigBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 5)
+		b.fieldSet_ = make([]bool, 6)
 	}
 	b.identityProviderArn = value
-	b.fieldSet_[2] = true
+	b.fieldSet_[3] = true
 	return b
 }
 
 // ManagementCluster sets the value of the 'management_cluster' attribute to the given value.
 func (b *AWSBackupConfigBuilder) ManagementCluster(value string) *AWSBackupConfigBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 5)
+		b.fieldSet_ = make([]bool, 6)
 	}
 	b.managementCluster = value
-	b.fieldSet_[3] = true
+	b.fieldSet_[4] = true
 	return b
 }
 
 // RoleArn sets the value of the 'role_arn' attribute to the given value.
 func (b *AWSBackupConfigBuilder) RoleArn(value string) *AWSBackupConfigBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 5)
+		b.fieldSet_ = make([]bool, 6)
 	}
 	b.roleArn = value
-	b.fieldSet_[4] = true
+	b.fieldSet_[5] = true
 	return b
 }
 
@@ -109,6 +120,7 @@ func (b *AWSBackupConfigBuilder) Copy(object *AWSBackupConfig) *AWSBackupConfigB
 		copy(b.fieldSet_, object.fieldSet_)
 	}
 	b.s3Bucket = object.s3Bucket
+	b.accessSharedRoleArn = object.accessSharedRoleArn
 	b.accountId = object.accountId
 	b.identityProviderArn = object.identityProviderArn
 	b.managementCluster = object.managementCluster
@@ -124,6 +136,7 @@ func (b *AWSBackupConfigBuilder) Build() (object *AWSBackupConfig, err error) {
 		copy(object.fieldSet_, b.fieldSet_)
 	}
 	object.s3Bucket = b.s3Bucket
+	object.accessSharedRoleArn = b.accessSharedRoleArn
 	object.accountId = b.accountId
 	object.identityProviderArn = b.identityProviderArn
 	object.managementCluster = b.managementCluster

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	awserrors "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift-online/ocm-common/pkg/log"
 )
 
@@ -25,7 +27,7 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -41,7 +43,7 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -57,7 +59,7 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -75,7 +77,7 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -93,7 +95,7 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -111,7 +113,7 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -129,7 +131,7 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -144,18 +146,22 @@ func (client *AWSClient) ResourceExisting(resourceID string) bool {
 		}
 		output, err := client.Ec2Client.DescribeNatGateways(context.TODO(), input)
 		if err != nil {
-			if strings.Contains(err.Error(), "NotFound") {
+			if awserrors.IsErrorCode(err, awserrors.InvalidNatGatewayID) {
 				return false
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
 		if len(output.NatGateways) != 0 {
-			log.LogDebug("Current NAT gateway %s status %s ", resourceID, output.NatGateways[0].State)
-			status := string(output.NatGateways[0].State)
-			if status == "available" {
+			status := output.NatGateways[0].State
+			log.LogInfo("Current NAT gateway '%s' status: %s", resourceID, status)
+			if status == types.NatGatewayStateAvailable {
 				return true
+			}
+			if status == types.NatGatewayStateFailed {
+				log.LogError("NAT gateway %s entered failed state", resourceID)
+				return false
 			}
 
 		}
@@ -187,7 +193,7 @@ func (client *AWSClient) ResourceDeleted(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return true
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -205,7 +211,7 @@ func (client *AWSClient) ResourceDeleted(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return true
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -223,7 +229,7 @@ func (client *AWSClient) ResourceDeleted(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return true
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -241,7 +247,7 @@ func (client *AWSClient) ResourceDeleted(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return true
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -259,7 +265,7 @@ func (client *AWSClient) ResourceDeleted(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return true
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -277,7 +283,7 @@ func (client *AWSClient) ResourceDeleted(resourceID string) bool {
 			if strings.Contains(err.Error(), "NotFound") {
 				return true
 			} else {
-				log.LogError(err.Error())
+				log.LogError("%s", err.Error())
 				return false
 			}
 		}
@@ -292,13 +298,17 @@ func (client *AWSClient) ResourceDeleted(resourceID string) bool {
 		}
 		output, err := client.Ec2Client.DescribeNatGateways(context.TODO(), input)
 		if err != nil {
-			log.LogError(err.Error())
-			return false
+			if awserrors.IsErrorCode(err, awserrors.InvalidNatGatewayID) {
+				return true
+			} else {
+				log.LogError("%s", err.Error())
+				return false
+			}
 		}
 		if len(output.NatGateways) != 0 {
-			log.LogDebug("Current NAT gateway %s status %s", resourceID, output.NatGateways[0].State)
-			status := string(output.NatGateways[0].State)
-			if status != "deleted" {
+			status := output.NatGateways[0].State
+			log.LogInfo("Current NAT gateway '%s' status: %s", resourceID, status)
+			if status != types.NatGatewayStateDeleted {
 				deleted = false
 			}
 

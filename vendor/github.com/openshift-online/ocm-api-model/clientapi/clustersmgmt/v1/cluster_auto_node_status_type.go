@@ -25,6 +25,7 @@ package v1 // github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v
 type ClusterAutoNodeStatus struct {
 	fieldSet_ []bool
 	message   string
+	nodeCount int
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -59,6 +60,29 @@ func (o *ClusterAutoNodeStatus) GetMessage() (value string, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 0 && o.fieldSet_[0]
 	if ok {
 		value = o.message
+	}
+	return
+}
+
+// NodeCount returns the value of the 'node_count' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// The number of Nodes AutoNode has provisioned in the cluster
+func (o *ClusterAutoNodeStatus) NodeCount() int {
+	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
+		return o.nodeCount
+	}
+	return 0
+}
+
+// GetNodeCount returns the value of the 'node_count' attribute and
+// a flag indicating if the attribute has a value.
+//
+// The number of Nodes AutoNode has provisioned in the cluster
+func (o *ClusterAutoNodeStatus) GetNodeCount() (value int, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
+	if ok {
+		value = o.nodeCount
 	}
 	return
 }

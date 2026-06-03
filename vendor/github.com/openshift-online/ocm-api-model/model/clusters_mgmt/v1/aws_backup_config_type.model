@@ -30,4 +30,7 @@ struct AWSBackupConfig {
 
     // Name of the management cluster the backup config refers to
     ManagementCluster String
+
+    // ARN of the role used in the Disaster Recovery (DR) account to manipulate backups for deleted clusters
+    AccessSharedRoleArn string
 }
