@@ -1,5 +1,6 @@
 // Code generated for package assets by go-bindata DO NOT EDIT. (@generated)
 // sources:
+// templates/clibyexample/template
 // templates/cloudformation/iam_user_osdCcsAdmin.json
 package assets
 
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 )
+
 type asset struct {
 	bytes []byte
 	info  os.FileInfo
@@ -51,6 +53,45 @@ func (fi bindataFileInfo) IsDir() bool {
 // Sys return file is sys mode
 func (fi bindataFileInfo) Sys() interface{} {
 	return nil
+}
+
+var _templatesClibyexampleTemplate = []byte(`// NOTE: The contents of this file are auto-generated
+:_mod-docs-content-type: REFERENCE
+[id="rosa-cli-commands_{context}"]
+= ROSA CLI commands
+
+[role="_abstract"]
+This reference provides descriptions and example commands for ROSA CLI (` + "`" + `rosa` + "`" + `) commands.
+
+Run ` + "`" + `rosa -h` + "`" + ` to list all commands or run ` + "`" + `rosa <command> --help` + "`" + ` to get additional details for a specific command.
+
+{{range .Items}}
+
+== {{.FullName}}
+{{.Description}}
+
+.Example usage
+[source,bash,options="nowrap"]
+----
+{{.Examples}}
+----
+
+{{end}}
+`)
+
+func templatesClibyexampleTemplateBytes() ([]byte, error) {
+	return _templatesClibyexampleTemplate, nil
+}
+
+func templatesClibyexampleTemplate() (*asset, error) {
+	bytes, err := templatesClibyexampleTemplateBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/clibyexample/template", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
 }
 
 var _templatesCloudformationIam_user_osdccsadminJson = []byte(`{
@@ -135,6 +176,7 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
+	"templates/clibyexample/template":                    templatesClibyexampleTemplate,
 	"templates/cloudformation/iam_user_osdCcsAdmin.json": templatesCloudformationIam_user_osdccsadminJson,
 }
 
@@ -142,11 +184,13 @@ var _bindata = map[string]func() (*asset, error){
 // directory embedded in the file by go-bindata.
 // For example if you run go-bindata on data/... and data contains the
 // following hierarchy:
-//     data/
-//       foo.txt
-//       img/
-//         a.png
-//         b.png
+//
+//	data/
+//	  foo.txt
+//	  img/
+//	    a.png
+//	    b.png
+//
 // then AssetDir("data") would return []string{"foo.txt", "img"}
 // AssetDir("data/img") would return []string{"a.png", "b.png"}
 // AssetDir("foo.txt") and AssetDir("notexist") would return an error
@@ -179,9 +223,12 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
-	"templates": &bintree{nil, map[string]*bintree{
-		"cloudformation": &bintree{nil, map[string]*bintree{
-			"iam_user_osdCcsAdmin.json": &bintree{templatesCloudformationIam_user_osdccsadminJson, map[string]*bintree{}},
+	"templates": {nil, map[string]*bintree{
+		"clibyexample": {nil, map[string]*bintree{
+			"template": {templatesClibyexampleTemplate, map[string]*bintree{}},
+		}},
+		"cloudformation": {nil, map[string]*bintree{
+			"iam_user_osdCcsAdmin.json": {templatesCloudformationIam_user_osdccsadminJson, map[string]*bintree{}},
 		}},
 	}},
 }}
