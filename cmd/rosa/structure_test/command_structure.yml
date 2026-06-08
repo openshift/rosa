@@ -33,6 +33,7 @@ children:
     - name: managed-service
     - name: tuning-configs
     - name: user-role
+    - name: user-role-bubble
     - name: decision
     - name: network
 - name: delete

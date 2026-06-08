@@ -41,6 +41,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/service"
 	"github.com/openshift/rosa/cmd/create/tuningconfigs"
 	"github.com/openshift/rosa/cmd/create/userrole"
+	"github.com/openshift/rosa/cmd/create/userrolebubble"
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
@@ -65,6 +66,7 @@ func init() {
 	Cmd.AddCommand(oidcprovider.Cmd)
 	Cmd.AddCommand(operatorroles.Cmd)
 	Cmd.AddCommand(userrole.Cmd)
+	Cmd.AddCommand(userrolebubble.Cmd)
 	Cmd.AddCommand(ocmrole.Cmd)
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
