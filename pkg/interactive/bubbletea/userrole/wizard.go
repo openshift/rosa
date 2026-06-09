@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -59,15 +60,21 @@ func (i modeItem) Title() string       { return i.value }
 func (i modeItem) Description() string { return "" }
 func (i modeItem) FilterValue() string { return i.value }
 
+type completedAnswer struct {
+	label string
+	value string
+}
+
 type wizardModel struct {
-	step    wizardStep
-	input   WizardInput
-	result  userrole.Input
-	text    textinput.Model
-	list    list.Model
-	errMsg  string
-	done    bool
-	aborted bool
+	step      wizardStep
+	input     WizardInput
+	result    userrole.Input
+	text      textinput.Model
+	list      list.Model
+	completed []completedAnswer
+	errMsg    string
+	done      bool
+	aborted   bool
 }
 
 // RunWizard collects user role settings using Bubble Tea prompts.
@@ -169,6 +176,10 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 				m.result.Prefix = value
+				m.completed = append(m.completed, completedAnswer{
+					label: "Role prefix",
+					value: value,
+				})
 				m.step = stepPermissionsBoundary
 				m.errMsg = ""
 				m.text.SetValue(m.input.PermissionsBoundary)
@@ -182,6 +193,10 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				m.result.PermissionsBoundary = value
+				m.completed = append(m.completed, completedAnswer{
+					label: "Permissions boundary ARN",
+					value: value,
+				})
 				m.step = stepPath
 				m.errMsg = ""
 				m.text.SetValue(m.input.Path)
@@ -194,6 +209,10 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 				m.result.Path = value
+				m.completed = append(m.completed, completedAnswer{
+					label: "Role Path",
+					value: value,
+				})
 				m.step = stepMode
 				m.errMsg = ""
 			}
@@ -209,6 +228,10 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			}
 			m.result.Mode = selected.value
+			m.completed = append(m.completed, completedAnswer{
+				label: "Role creation mode",
+				value: selected.value,
+			})
 			m.done = true
 			return m, tea.Quit
 		}
@@ -223,13 +246,14 @@ func (m wizardModel) View() string {
 		return ""
 	}
 
+	var current string
 	switch m.step {
 	case stepPrefix:
-		return renderTextStep("Role prefix", m.input.PrefixHelp, m.text.View(), m.errMsg)
+		current = renderTextStep("Role prefix", m.input.PrefixHelp, m.text.View(), m.errMsg)
 	case stepPermissionsBoundary:
-		return renderTextStep("Permissions boundary ARN", m.input.PermissionsBoundaryHelp, m.text.View(), m.errMsg)
+		current = renderTextStep("Permissions boundary ARN", m.input.PermissionsBoundaryHelp, m.text.View(), m.errMsg)
 	case stepPath:
-		return renderTextStep("Role Path", m.input.PathHelp, m.text.View(), m.errMsg)
+		current = renderTextStep("Role Path", m.input.PathHelp, m.text.View(), m.errMsg)
 	case stepMode:
 		help := m.input.ModeHelp
 		if help == "" {
@@ -237,12 +261,28 @@ func (m wizardModel) View() string {
 		}
 		view := m.list.View()
 		if m.errMsg != "" {
-			return fmt.Sprintf("%s\n\n%s\n", view, m.errMsg)
+			current = fmt.Sprintf("%s\n\n%s\n", view, m.errMsg)
+		} else {
+			current = fmt.Sprintf("%s\n\n%s\n", help, view)
 		}
-		return fmt.Sprintf("%s\n\n%s\n", help, view)
 	default:
 		return ""
 	}
+
+	return renderCompletedSummary(m.completed) + current
+}
+
+func renderCompletedSummary(completed []completedAnswer) string {
+	if len(completed) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	for _, answer := range completed {
+		fmt.Fprintf(&b, "%s: %s\n", answer.label, answer.value)
+	}
+	b.WriteString("\n")
+	return b.String()
 }
 
 func renderTextStep(title, help, inputView, errMsg string) string {

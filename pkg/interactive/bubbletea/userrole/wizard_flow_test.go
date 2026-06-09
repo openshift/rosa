@@ -73,17 +73,22 @@ var _ = Describe("User role Bubble Tea interactive flow", func() {
 		m = advanceToPermissionsBoundary(m)
 		Expect(m.step).To(Equal(stepPermissionsBoundary))
 		Expect(m.result.Prefix).To(Equal("ManagedOpenShift"))
+		Expect(m.View()).To(ContainSubstring("Role prefix: ManagedOpenShift"))
 		Expect(m.View()).To(ContainSubstring("Permissions boundary ARN"))
 		Expect(m.View()).To(ContainSubstring("Permissions boundary help"))
 
 		m = pressEnter(m)
 		Expect(m.step).To(Equal(stepPath))
 		Expect(m.result.PermissionsBoundary).To(BeEmpty())
+		Expect(m.View()).To(ContainSubstring("Role prefix: ManagedOpenShift"))
+		Expect(m.View()).To(ContainSubstring("Permissions boundary ARN:"))
 		Expect(m.View()).To(ContainSubstring("Role Path"))
 
 		m = pressEnter(m)
 		Expect(m.step).To(Equal(stepMode))
 		Expect(m.result.Path).To(BeEmpty())
+		Expect(m.View()).To(ContainSubstring("Role prefix: ManagedOpenShift"))
+		Expect(m.View()).To(ContainSubstring("Role Path:"))
 		Expect(m.View()).To(ContainSubstring("Role creation mode help"))
 
 		m = pressEnter(m)
@@ -97,7 +102,18 @@ var _ = Describe("User role Bubble Tea interactive flow", func() {
 		)))
 	})
 
-	// 2. Required prefix empty → error, stay on prefix.
+	// 2. Completed answers stay visible while advancing through the wizard.
+	It("keeps previous answers visible in the view", func() {
+		m := advanceToMode(newWizardModel(defaultWizardInput()))
+
+		Expect(m.View()).To(ContainSubstring("Role prefix: ManagedOpenShift"))
+		Expect(m.View()).To(ContainSubstring("Permissions boundary ARN:"))
+		Expect(m.View()).To(ContainSubstring("Role Path:"))
+		Expect(m.View()).To(ContainSubstring("Role creation mode help"))
+		Expect(m.completed).To(HaveLen(3))
+	})
+
+	// 3. Required prefix empty → error, stay on prefix.
 	It("rejects an empty role prefix and keeps the user on that step", func() {
 		m := newWizardModel(WizardInput{PrefixHelp: "prefix help"})
 		Expect(m.step).To(Equal(stepPrefix))
@@ -109,7 +125,7 @@ var _ = Describe("User role Bubble Tea interactive flow", func() {
 		Expect(m.View()).To(ContainSubstring("role prefix is required"))
 	})
 
-	// 3. Invalid permissions boundary ARN → error, stay on boundary.
+	// 4. Invalid permissions boundary ARN → error, stay on boundary.
 	It("rejects an invalid permissions boundary ARN and keeps the user on that step", func() {
 		m := advanceToPermissionsBoundary(newWizardModel(defaultWizardInput()))
 		m.text.SetValue("not-an-arn")
@@ -121,7 +137,7 @@ var _ = Describe("User role Bubble Tea interactive flow", func() {
 		Expect(m.result.PermissionsBoundary).To(BeEmpty())
 	})
 
-	// 4. Valid empty permissions boundary → advance to path.
+	// 5. Valid empty permissions boundary → advance to path.
 	It("accepts an empty optional permissions boundary and advances to role path", func() {
 		m := advanceToPermissionsBoundary(newWizardModel(defaultWizardInput()))
 		m.text.SetValue("")
@@ -134,7 +150,7 @@ var _ = Describe("User role Bubble Tea interactive flow", func() {
 		Expect(m.View()).To(ContainSubstring("Role Path"))
 	})
 
-	// 5. Mode branching: manual vs auto selection.
+	// 6. Mode branching: manual vs auto selection.
 	Describe("mode branching", func() {
 		It("records auto mode when auto stays selected", func() {
 			m := advanceToMode(newWizardModel(defaultWizardInput()))
@@ -156,7 +172,7 @@ var _ = Describe("User role Bubble Tea interactive flow", func() {
 		})
 	})
 
-	// 6. Confirm step behavior for auto mode role creation (cmd layer uses this after the wizard).
+	// 7. Confirm step behavior for auto mode role creation (cmd layer uses this after the wizard).
 	// The -y flag skips this prompt in the command; these tests cover the Bubble Tea confirm model.
 	Describe("confirm step behavior", func() {
 		It("accepts yes with y", func() {

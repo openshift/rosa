@@ -80,6 +80,12 @@ func TestWizardHappyPathTeatest(t *testing.T) {
 	if wm.result.Mode != interactive.ModeAuto {
 		t.Fatalf("expected mode %q, got %q", interactive.ModeAuto, wm.result.Mode)
 	}
+	if len(wm.completed) != 4 {
+		t.Fatalf("expected 4 completed answers, got %d", len(wm.completed))
+	}
+	if wm.completed[0].label != "Role prefix" || wm.completed[0].value != aws.DefaultPrefix {
+		t.Fatalf("unexpected first completed answer: %+v", wm.completed[0])
+	}
 }
 
 func waitContains(t *testing.T, tm *teatest.TestModel, text string) {

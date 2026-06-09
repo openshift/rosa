@@ -88,7 +88,7 @@ Functional parity (same questions, defaults, validators, outcomes) is achievable
 | **Screen use** | One line at a time; prior CLI output stays visible above the prompt | Redraws a TUI region (title, help, input/list, errors); can use alt-screen |
 | **Prompt shape** | Compact inline: `? Role prefix: [? for help] (ManagedOpenShift)` | Multi-line block: title, help paragraph, styled input, error below |
 | **Library role** | Survey owns prompt rendering via `terminal.NewAnsiStdout` | You own layout in `View()`; widgets are building blocks, not finished prompts |
-| **Between prompts** | Each `AskOne` is independent; scrollback accumulates | One program per wizard step (POC) or one multi-step model; redraw behavior differs |
+| **Between prompts** | Each `AskOne` is independent; scrollback accumulates | One multi-step model; **completed answers rendered in `View()`** above the active prompt (see `wizard.go`) |
 | **Cancellation** | Ctrl+C / interrupt behavior depends on Survey + signal handling | Esc / Ctrl+C handled in model (`user-role-bubble` treats both as abort) |
 
 Survey feels like **answering questions in a shell transcript**. Bubble Tea feels like **a small terminal UI**, even when only one field is on screen.
@@ -197,7 +197,7 @@ Reference POC: dry-run mirror of `rosa create user-role` using Bubble Tea only (
 
 | Survey piece in `create user-role` | `user-role-bubble` implementation |
 |-----------------------------------|-----------------------------------|
-| `GetString` ×3 (prefix, boundary, path) | `bubbles/textinput` wizard steps |
+| `GetString` ×3 (prefix, boundary, path) | `bubbles/textinput` wizard steps; prior answers kept in `completed` slice and shown in `View()` |
 | `GetOptionMode` | `bubbles/list` |
 | `confirm.Prompt` | `pkg/interactive/bubbletea/confirm.go` |
 | Validators | Reused `aws.*` / regex checks on Enter |
@@ -239,12 +239,13 @@ Aligned with interactive complexity in `docs/cli-paths.md` (Table 2).
 When migrating a command from Survey to Bubble Tea:
 
 1. **Keep Cobra in `cmd/`** — put Tea models and step logic in `pkg/interactive/bubbletea/` (or a focused subpackage).
-2. **Reuse validators** from `pkg/interactive/validation.go` where possible; do not reimplement ARN/CIDR/cert rules.
-3. **Preserve flag contracts** — update `cmd/rosa/structure_test/command_args/**` when flags change.
-4. **Preserve non-interactive paths** — flags-only usage must work without a TTY; do not require Tea for CI/scripting.
-5. **Do not weaken tests** — add model tests where behavior is non-trivial.
-6. **Wire `--color`** before claiming parity with existing Survey UX.
-7. **Document UX differences** in PR notes when using list/filter UI for long selects or custom multi-select models.
+2. **Show prior answers in multi-step wizards** — append each accepted answer to a `completed` slice in the model and render it at the top of `View()` so long flows stay reviewable (Survey-like transcript behavior).
+3. **Reuse validators** from `pkg/interactive/validation.go` where possible; do not reimplement ARN/CIDR/cert rules.
+4. **Preserve flag contracts** — update `cmd/rosa/structure_test/command_args/**` when flags change.
+5. **Preserve non-interactive paths** — flags-only usage must work without a TTY; do not require Tea for CI/scripting.
+6. **Do not weaken tests** — add model tests where behavior is non-trivial.
+7. **Wire `--color`** before claiming parity with existing Survey UX.
+8. **Document UX differences** in PR notes when using list/filter UI for long selects or custom multi-select models.
 
 When evaluating a prompt type for Bubble Tea:
 
