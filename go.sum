@@ -107,8 +107,8 @@ github.com/evanphx/json-patch/v5 v5.6.0 h1:b91NhWfaz02IuVxO9faSllyAtNXHMPkC5J8sJ
 github.com/evanphx/json-patch/v5 v5.6.0/go.mod h1:G79N1coSVB93tBe7j6PhzjmR3/2VvlbKOFpnXhI9Bw4=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
-github.com/go-jose/go-jose/v4 v4.0.5 h1:M6T8+mKZl/+fNNuFHvGIzDz7BTLQPIounk/b9dw3AaE=
-github.com/go-jose/go-jose/v4 v4.0.5/go.mod h1:s3P1lRrkT8igV8D9OjyL4WRyHvjB6a4JSllnOrmmBOA=
+github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
+github.com/go-jose/go-jose/v4 v4.1.4/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/go-logr/logr v1.3.0/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/logr v1.4.1 h1:pKouT5E8xu9zeFC39JXRDukb6JFQPXM5p5I91188VAQ=
 github.com/go-logr/logr v1.4.1/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
@@ -207,8 +207,8 @@ github.com/openshift-online/ocm-api-model/clientapi v0.0.456 h1:+zU0fS8xXBcJYMN0
 github.com/openshift-online/ocm-api-model/clientapi v0.0.456/go.mod h1:fZwy5HY2URG9nrExvQeXrDU/08TGqZ16f8oymVEN5lo=
 github.com/openshift-online/ocm-api-model/model v0.0.456 h1:0/WnVL+hnHMJOPDi2pKFnDLw+EI6KSC7JA7b75rk9Zg=
 github.com/openshift-online/ocm-api-model/model v0.0.456/go.mod h1:PQIoq6P8Vlb7goOdRMLK8nJY+B7HH0RTqYAa4kyidTE=
-github.com/openshift-online/ocm-common v0.0.40 h1:KFP8V06ayJ0AUfQVii1x3Db4ueHdiiavmZwp9fjG9zw=
-github.com/openshift-online/ocm-common v0.0.40/go.mod h1:HQ+5CrortrZSngABaFNWH/FRIInoiFXouA1XhEFvsUM=
+github.com/openshift-online/ocm-common v0.0.42 h1:53LjELnUIwyicPX07DHanNR/pP7k1sZew5EA5V715UU=
+github.com/openshift-online/ocm-common v0.0.42/go.mod h1:8+czO01A9gb1KDOwGmgEhZOZ/iTImuLQVo6l54jJc0I=
 github.com/openshift-online/ocm-sdk-go v0.1.501 h1:7hSfgAb8uPXerMawv1OU50GCX2QQrYnaxchLQdKLW90=
 github.com/openshift-online/ocm-sdk-go v0.1.501/go.mod h1:TfPLUn7T9KUoFS7UOoifHMSQ47owhzkkSHmRhK9Swbo=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

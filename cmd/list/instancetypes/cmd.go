@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -126,6 +127,9 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 }
 
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	if err := validateChangedSTSExternalIDFlag(cmd, args.externalId); err != nil {
+		return fmt.Errorf("expected a valid STS external ID: %w", err)
+	}
 	checkInteractiveModeNeeded(cmd)
 	r.Reporter.Debugf("Fetching instance types")
 	var machineTypes ocm.MachineTypeList
@@ -226,4 +230,11 @@ func ByteCountIEC(b int, uValue string) string {
 	}
 	return fmt.Sprintf("%.1f %ciB",
 		float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+func validateChangedSTSExternalIDFlag(cmd *cobra.Command, externalID string) error {
+	if cmd.Flags().Changed("external-id") {
+		return aws.ValidateSTSExternalIDFormat(externalID)
+	}
+	return nil
 }

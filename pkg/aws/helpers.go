@@ -673,19 +673,16 @@ func GenerateOperatorRolePolicyFiles(reporter rprtr.Logger, policies map[string]
 }
 
 func GenerateAccountRolePolicyFiles(reporter rprtr.Logger, env string, policies map[string]*cmv1.AWSSTSPolicy,
-	skipPermissionFiles bool, accountRoles map[string]AccountRole, partition string,
+	skipPermissionFiles bool, accountRoles map[string]AccountRole, partition string, externalID string,
 ) error {
 	for file := range accountRoles {
-		// Get trust policy
-		filename := fmt.Sprintf("sts_%s_trust_policy", file)
-		policyDetail := GetPolicyDetails(policies, filename)
-		policy := InterpolatePolicyDocument(partition, policyDetail, map[string]string{
-			"partition":      partition,
-			"aws_account_id": GetJumpAccount(env),
-		})
-		filename = GetFormattedFileName(filename)
+		policy, err := BuildAccountRoleAssumeRolePolicy(file, partition, policies, env, externalID)
+		if err != nil {
+			return err
+		}
+		filename := GetFormattedFileName(fmt.Sprintf("sts_%s_trust_policy", file))
 		reporter.Debugf("Saving '%s' to the current directory", filename)
-		err := helper.SaveDocument(policy, filename)
+		err = helper.SaveDocument(policy, filename)
 		if err != nil {
 			return err
 		}

@@ -52,6 +52,7 @@ var args struct {
 	classic             bool
 	route53RoleArn      string
 	vpcEndpointRoleArn  string
+	externalID          string
 }
 
 var Cmd = &cobra.Command{
@@ -157,6 +158,13 @@ func init() {
 		"",
 		"Role ARN associated with the shared VPC used for Hosted Control Plane clusters, this role contains "+
 			"policies to be used with the VPC endpoint",
+	)
+
+	flags.StringVar(
+		&args.externalID,
+		"external-id",
+		"",
+		"An optional unique identifier embedded in installer and support role trust policies when assuming those roles.",
 	)
 
 	interactive.AddModeFlag(Cmd)
@@ -374,6 +382,27 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	if interactive.Enabled() && !cmd.Flags().Changed("external-id") {
+		args.externalID, err = interactive.GetString(interactive.Input{
+			Question: "STS external ID",
+			Help:     cmd.Flags().Lookup("external-id").Usage,
+			Default:  args.externalID,
+			Validators: []interactive.Validator{
+				interactive.RegExp(`^[\w+=,.@:\/-]*$`),
+				interactive.MaxLength(1224),
+			},
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid STS external ID: %s", err)
+			os.Exit(1)
+		}
+	}
+
+	if err := validateAccountRolesSTSExternalID(args.externalID); err != nil {
+		r.Reporter.Errorf("Expected a valid STS external ID: %s", err)
+		os.Exit(1)
+	}
+
 	if interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
@@ -507,7 +536,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
-		policyVersion, path, isHcpSharedVpc)
+		policyVersion, path, isHcpSharedVpc, args.externalID)
 
 	switch mode {
 	case interactive.ModeAuto:
@@ -533,7 +562,7 @@ func run(cmd *cobra.Command, argv []string) {
 		})
 	case interactive.ModeManual:
 		err = aws.GenerateAccountRolePolicyFiles(r.Reporter, env, policies, rolesCreator.skipPermissionFiles(),
-			rolesCreator.getAccountRolesMap(), r.Creator.Partition)
+			rolesCreator.getAccountRolesMap(), r.Creator.Partition, args.externalID)
 		if err != nil {
 			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
@@ -556,4 +585,8 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
+}
+
+func validateAccountRolesSTSExternalID(externalID string) error {
+	return aws.ValidateSTSExternalIDFormat(externalID)
 }

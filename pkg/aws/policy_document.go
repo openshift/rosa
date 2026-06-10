@@ -17,6 +17,8 @@ import (
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 )
 
+const policyEffectAllow = "Allow"
+
 // PolicyDocument models an AWS IAM policy document
 type PolicyDocument struct {
 	ID string `json:"Id,omitempty"`
@@ -95,7 +97,7 @@ func (p *PolicyStatement) GetAWSPrincipals() []string {
 // AllowActions adds a statement to a policy allowing the provided actions for all Resources.
 // If you need a more compilex statement it is better to construct it manually.
 func (p *PolicyDocument) AllowActions(actions ...string) {
-	statement := PolicyStatement{Effect: "Allow", Action: actions, Resource: "*"}
+	statement := PolicyStatement{Effect: policyEffectAllow, Action: actions, Resource: "*"}
 	p.Statement = append(p.Statement, statement)
 }
 
@@ -107,7 +109,7 @@ func (p *PolicyDocument) IsActionAllowed(wanted string) bool {
 		return false
 	}
 	for _, statement := range statements {
-		if statement.Effect != "Allow" {
+		if statement.Effect != policyEffectAllow {
 			continue
 		}
 		switch action := statement.Action.(type) {
@@ -129,7 +131,7 @@ func (p *PolicyDocument) IsActionAllowed(wanted string) bool {
 func (p *PolicyDocument) GetAllowedActions() []string {
 	var actions []string
 	for _, statement := range p.Statement {
-		if statement.Effect != "Allow" {
+		if statement.Effect != policyEffectAllow {
 			continue
 		}
 		switch action := statement.Action.(type) {

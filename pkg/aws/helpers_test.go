@@ -407,3 +407,16 @@ var _ = Describe("sortAccountRolesByHCPSuffix", func() {
 		}
 	})
 })
+
+var _ = Describe("PolicyDocument action checks", func() {
+	It("detects allowed actions using the allow effect constant", func() {
+		doc, err := ParsePolicyDocument(`{
+			"Version":"2012-10-17",
+			"Statement":[{"Effect":"Allow","Action":"sts:AssumeRole","Resource":"*"}]
+		}`)
+		Expect(err).NotTo(HaveOccurred(), "policy document should parse")
+		Expect(doc.IsActionAllowed("sts:AssumeRole")).To(BeTrue(), "allow statement should permit sts:AssumeRole")
+		Expect(doc.GetAllowedActions()).To(ConsistOf("sts:AssumeRole"),
+			"allowed actions should include sts:AssumeRole")
+	})
+})
