@@ -1,5 +1,6 @@
 - name: channel-group
 - name: classic
+- name: external-id
 - name: force-policy-creation
 - name: hosted-cp
 - name: interactive

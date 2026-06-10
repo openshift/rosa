@@ -68,6 +68,19 @@ var _ = Describe("Validate build command", func() {
 			})
 		})
 
+		When("--external-id is set", func() {
+			It("prints --external-id", func() {
+				clusterConfig.ExternalID = "223B9588-36A5-ECA4-BE8D-7C673B77CEC1"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name" +
+						" --external-id 223B9588-36A5-ECA4-BE8D-7C673B77CEC1" +
+						" --operator-roles-prefix prefix"))
+			})
+		})
+
 		When("--etcd-encryption is false", func() {
 			It("Does not print --etcd-encryption or --etcd-encryption-kms-arn", func() {
 				clusterConfig.EtcdEncryption = false

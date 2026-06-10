@@ -86,6 +86,11 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	if err := validateChangedSTSExternalIDFlag(cmd, args.externalID); err != nil {
+		r.Reporter.Errorf("Expected a valid STS external ID: %v", err)
+		os.Exit(1)
+	}
+
 	callerIdentity, err := r.AWSClient.GetCallerIdentity()
 	if err != nil {
 		r.Reporter.Errorf("Failed to get caller identity: %v", err)
@@ -168,4 +173,11 @@ func run(cmd *cobra.Command, _ []string) {
 		)
 	}
 	writer.Flush()
+}
+
+func validateChangedSTSExternalIDFlag(cmd *cobra.Command, externalID string) error {
+	if cmd.Flags().Changed("external-id") {
+		return aws.ValidateSTSExternalIDFormat(externalID)
+	}
+	return nil
 }

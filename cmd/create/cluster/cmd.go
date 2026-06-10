@@ -1700,17 +1700,9 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	externalID := args.externalID
-	if isSTS && interactive.Enabled() {
-		externalID, err = interactive.GetString(interactive.Input{
-			Question: "External ID",
-			Help:     cmd.Flags().Lookup("external-id").Usage,
-			Validators: []interactive.Validator{
-				interactive.RegExp(`^[\w+=,.@:\/-]*$`),
-				interactive.MaxLength(1224),
-			},
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid External ID: %s", err)
+	if isSTS && externalIDFlagChanged(cmd) {
+		if err := validateChangedSTSExternalIDFlag(externalID); err != nil {
+			r.Reporter.Errorf("Expected a valid STS external ID: %s", err)
 			os.Exit(1)
 		}
 	}
@@ -1743,6 +1735,48 @@ func run(cmd *cobra.Command, _ []string) {
 	} else if roleARN != "" {
 		r.Reporter.Errorf("Support Role ARN is required: %s", err)
 		os.Exit(1)
+	}
+
+	if isSTS && roleARN != "" && supportRoleARN != "" {
+		externalIDResolution, err := resolveSTSExternalIDForClusterCreate(awsClient, externalID, roleARN, supportRoleARN)
+		if err != nil {
+			r.Reporter.Errorf("%s", err)
+			os.Exit(1)
+		}
+		externalID = externalIDResolution.ExternalID
+		if err := checkSTSExternalIDResolution(externalIDResolution, externalIDFlagChanged(cmd)); err != nil {
+			r.Reporter.Errorf("The installer and support role trust policies define STS external IDs with no " +
+				"value in common. Align the role trust policies or pass --external-id with a value present in " +
+				"both roles before creating the cluster.")
+			os.Exit(1)
+		}
+		if shouldWarnAmbiguousSTSExternalID(externalIDResolution, externalIDFlagChanged(cmd)) {
+			r.Reporter.Warnf("Could not determine a single STS external ID from the installer and support role " +
+				"trust policies. The cluster will be created without an external ID unless you provide one " +
+				"with --external-id.")
+			if interactive.Enabled() {
+				externalID, err = interactive.GetString(interactive.Input{
+					Question: "STS external ID",
+					Help:     cmd.Flags().Lookup("external-id").Usage,
+					Default:  externalID,
+					Validators: []interactive.Validator{
+						interactive.RegExp(`^[\w+=,.@:\/-]*$`),
+						interactive.MaxLength(1224),
+					},
+				})
+				if err != nil {
+					r.Reporter.Errorf("Expected a valid STS external ID: %s", err)
+					os.Exit(1)
+				}
+				if externalID != "" {
+					externalID, err = resolveEnteredSTSExternalIDForCluster(awsClient, externalID, roleARN, supportRoleARN)
+					if err != nil {
+						r.Reporter.Errorf("Failed to resolve STS external ID: %s", err)
+						os.Exit(1)
+					}
+				}
+			}
+		}
 	}
 
 	// Instance IAM Roles

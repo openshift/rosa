@@ -424,6 +424,12 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		Expect(stdout).To(ContainSubstring("t4-gpu-48"))
 	})
 
+	It("rejects an invalid --external-id", func() {
+		Expect(cmd.Flags().Set("external-id", "x")).To(Succeed())
+		_, _, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(MatchError(ContainSubstring("expected a valid STS external ID")))
+	})
+
 	DescribeTable("invalid --with-feature input", func(featuresList []string, errorString string) {
 		for _, feat := range featuresList {
 			cmd.Flags().Set("with-feature", feat)

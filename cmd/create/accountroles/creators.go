@@ -58,11 +58,13 @@ type accountRolesCreationInput struct {
 	defaultPolicyVersion string
 	path                 string
 	isSharedVpc          bool
+	externalID           string
 }
 
+// buildRolesCreationInput assembles the inputs shared by account-role creator implementations.
 func buildRolesCreationInput(prefix, permissionsBoundary, accountID, env string,
 	policies map[string]*cmv1.AWSSTSPolicy, defaultPolicyVersion string,
-	path string, isSharedVpc bool) *accountRolesCreationInput {
+	path string, isSharedVpc bool, externalID string) *accountRolesCreationInput {
 	return &accountRolesCreationInput{
 		prefix:               prefix,
 		permissionsBoundary:  permissionsBoundary,
@@ -72,6 +74,7 @@ func buildRolesCreationInput(prefix, permissionsBoundary, accountID, env string,
 		defaultPolicyVersion: defaultPolicyVersion,
 		path:                 path,
 		isSharedVpc:          isSharedVpc,
+		externalID:           externalID,
 	}
 }
 
@@ -82,7 +85,10 @@ func (mp *managedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountRol
 
 	for file, role := range aws.AccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
-		assumeRolePolicy := getAssumeRolePolicy(r.Creator.Partition, file, input)
+		assumeRolePolicy, err := getAssumeRolePolicy(r, r.Creator.Partition, file, accRoleName, input)
+		if err != nil {
+			return err
+		}
 
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
 		tagsList := mp.getRoleTags(file, input)
@@ -172,11 +178,14 @@ func (up *unmanagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accountR
 
 	for file, role := range aws.AccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
-		assumeRolePolicy := getAssumeRolePolicy(r.Creator.Partition, file, input)
+		assumeRolePolicy, err := getAssumeRolePolicy(r, r.Creator.Partition, file, accRoleName, input)
+		if err != nil {
+			return err
+		}
 		tagsList := up.getRoleTags(file, input)
 		filename := fmt.Sprintf("sts_%s_permission_policy", file)
 
-		err := createRoleUnmanagedPolicy(r, input, accRoleName, assumeRolePolicy, tagsList, filename)
+		err = createRoleUnmanagedPolicy(r, input, accRoleName, assumeRolePolicy, tagsList, filename)
 		if err != nil {
 			return err
 		}
@@ -297,26 +306,58 @@ func createRoleUnmanagedPolicy(r *rosa.Runtime, input *accountRolesCreationInput
 	return r.AWSClient.AttachRolePolicy(r.Reporter, accRoleName, policyARN)
 }
 
-func getAssumeRolePolicy(partition string, file string, input *accountRolesCreationInput) string {
-	filename := fmt.Sprintf("sts_%s_trust_policy", file)
-	policyDetail := aws.GetPolicyDetails(input.policies, filename)
-	return aws.InterpolatePolicyDocument(partition, policyDetail, map[string]string{
-		"partition":      partition,
-		"aws_account_id": aws.GetJumpAccount(input.env),
-	})
+// getAssumeRolePolicy builds the assume-role policy for account-role creation and validates
+// that an existing installer or support role is compatible with --external-id when set.
+func getAssumeRolePolicy(r *rosa.Runtime, partition, roleKey, roleName string,
+	input *accountRolesCreationInput) (string, error) {
+	exists, _, err := r.AWSClient.CheckRoleExists(roleName)
+	if err != nil {
+		return "", err
+	}
+	effectiveExternalID := input.externalID
+	var existingTrustPolicy string
+	if exists {
+		effectiveExternalID, existingTrustPolicy, err = aws.ResolveAccountRoleTrustPolicyExternalID(
+			r.AWSClient, roleName, roleKey, input.externalID,
+		)
+		if err != nil {
+			return "", err
+		}
+	}
+	policy, err := aws.BuildAccountRoleAssumeRolePolicy(
+		roleKey, partition, input.policies, input.env, effectiveExternalID,
+	)
+	if err != nil {
+		return "", err
+	}
+	if exists && existingTrustPolicy != "" {
+		if policy == "" {
+			return existingTrustPolicy, nil
+		}
+		if effectiveExternalID == "" {
+			return aws.PreserveSTSExternalIDsInTrustPolicy(policy, existingTrustPolicy)
+		}
+	}
+	return policy, nil
 }
 
-func CreateHCPRoles(r *rosa.Runtime, prefix string, managedPolicies bool, permissionsBoundary string, env string, policies map[string]*cmv1.AWSSTSPolicy, policyVersion string,
-	path string, isSharedVpc bool, route53RoleArn string, vpcEndpointRoleArn string) error {
+// CreateHCPRoles creates hosted control plane account roles, optionally embedding externalID in
+// installer and support trust policies when those roles do not already exist.
+func CreateHCPRoles(
+	r *rosa.Runtime, prefix string, managedPolicies bool, permissionsBoundary string, env string,
+	policies map[string]*cmv1.AWSSTSPolicy, policyVersion string,
+	path string, isSharedVpc bool, route53RoleArn string, vpcEndpointRoleArn string, externalID string,
+) error {
 	rolesCreator, createRoles := initCreator(r, managedPolicies, false, true, false, true)
 	args.route53RoleArn = route53RoleArn
 	args.vpcEndpointRoleArn = vpcEndpointRoleArn
 
 	if !createRoles {
-		return fmt.Errorf("Can't create new account roles")
+		return fmt.Errorf("can't create new account roles")
 	}
 
-	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies, policyVersion, path, isSharedVpc)
+	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies, policyVersion, path,
+		isSharedVpc, externalID)
 	err := rolesCreator.createRoles(r, input)
 	return err
 }
@@ -328,7 +369,10 @@ func (hcp *hcpManagedPoliciesCreator) createRoles(r *rosa.Runtime, input *accoun
 
 	for file, role := range aws.HCPAccountRoles {
 		accRoleName := common.GetRoleName(input.prefix, role.Name)
-		assumeRolePolicy := getAssumeRolePolicy(r.Creator.Partition, file, input)
+		assumeRolePolicy, err := getAssumeRolePolicy(r, r.Creator.Partition, file, accRoleName, input)
+		if err != nil {
+			return err
+		}
 
 		r.Reporter.Debugf("Creating role '%s'", accRoleName)
 		tagsList := hcp.getRoleTags(file, input)
