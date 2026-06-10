@@ -19,6 +19,7 @@ package ocmrole
 import (
 	"fmt"
 	"os"
+	"testing"
 
 	"go.uber.org/mock/gomock"
 
@@ -26,10 +27,47 @@ import (
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
+	internalocmrole "github.com/openshift/rosa/internal/ocmrole"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
+
+func TestOCMRole(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "OCM Role suite")
+}
+
+var _ = Describe("internalocmrole.RoleProfile constants", func() {
+	It("Should have correct profile values", func() {
+		Expect(internalocmrole.ProfileStandard).To(Equal(internalocmrole.RoleProfile("standard")))
+		Expect(internalocmrole.ProfileAdmin).To(Equal(internalocmrole.RoleProfile("admin")))
+		Expect(internalocmrole.ProfileNoConsole).To(Equal(internalocmrole.RoleProfile("no-console")))
+	})
+})
+
+var _ = Describe("internalocmrole.DetermineProfile", func() {
+	It("should return internalocmrole.ProfileAdmin when isAdmin is true", func() {
+		profile := internalocmrole.DetermineProfile(true, false)
+		Expect(profile).To(Equal(internalocmrole.ProfileAdmin))
+	})
+
+	It("should return internalocmrole.ProfileAdmin when both isAdmin and isNoConsole are true", func() {
+		// Admin takes precedence
+		profile := internalocmrole.DetermineProfile(true, true)
+		Expect(profile).To(Equal(internalocmrole.ProfileAdmin))
+	})
+
+	It("should return internalocmrole.ProfileNoConsole when isNoConsole is true and isAdmin is false", func() {
+		profile := internalocmrole.DetermineProfile(false, true)
+		Expect(profile).To(Equal(internalocmrole.ProfileNoConsole))
+	})
+
+	It("should return internalocmrole.ProfileStandard when both are false", func() {
+		profile := internalocmrole.DetermineProfile(false, false)
+		Expect(profile).To(Equal(internalocmrole.ProfileStandard))
+	})
+})
 
 var _ = Describe("buildCommands", func() {
 	var (
@@ -76,7 +114,7 @@ var _ = Describe("buildCommands", func() {
 				"",
 				creator,
 				"production",
-				ProfileNoConsole,
+				internalocmrole.ProfileNoConsole,
 				true, // managedPolicies
 				false,
 				policies,
@@ -96,7 +134,7 @@ var _ = Describe("buildCommands", func() {
 				"",
 				creator,
 				"production",
-				ProfileNoConsole,
+				internalocmrole.ProfileNoConsole,
 				true, // managedPolicies
 				false,
 				policies,
@@ -115,7 +153,7 @@ var _ = Describe("buildCommands", func() {
 				"",
 				creator,
 				"production",
-				ProfileAdmin,
+				internalocmrole.ProfileAdmin,
 				true, // managedPolicies
 				false,
 				policies,
@@ -135,7 +173,7 @@ var _ = Describe("buildCommands", func() {
 				"",
 				creator,
 				"production",
-				ProfileAdmin,
+				internalocmrole.ProfileAdmin,
 				true, // managedPolicies
 				false,
 				policies,
@@ -154,7 +192,7 @@ var _ = Describe("buildCommands", func() {
 				"",
 				creator,
 				"production",
-				ProfileStandard,
+				internalocmrole.ProfileStandard,
 				true, // managedPolicies
 				false,
 				policies,
@@ -174,7 +212,7 @@ var _ = Describe("buildCommands", func() {
 				"",
 				creator,
 				"production",
-				ProfileNoConsole,
+				internalocmrole.ProfileNoConsole,
 				true, // managedPolicies
 				false,
 				policies,
@@ -252,7 +290,7 @@ var _ = Describe("generateOcmRolePolicyFiles", func() {
 	})
 
 	It("should generate no-console permission policy file when profile is no-console", func() {
-		err := generateOcmRolePolicyFiles(r, env, orgID, ProfileNoConsole, policies)
+		err := generateOcmRolePolicyFiles(r, env, orgID, internalocmrole.ProfileNoConsole, policies)
 		Expect(err).ToNot(HaveOccurred())
 
 		_, err = os.Stat("sts_ocm_no_console_permission_policy.json")
@@ -269,7 +307,7 @@ var _ = Describe("generateOcmRolePolicyFiles", func() {
 	})
 
 	It("should generate standard permission policy file when profile is standard", func() {
-		err := generateOcmRolePolicyFiles(r, env, orgID, ProfileStandard, policies)
+		err := generateOcmRolePolicyFiles(r, env, orgID, internalocmrole.ProfileStandard, policies)
 		Expect(err).ToNot(HaveOccurred())
 
 		_, err = os.Stat("sts_ocm_permission_policy.json")
@@ -286,7 +324,7 @@ var _ = Describe("generateOcmRolePolicyFiles", func() {
 	})
 
 	It("should generate admin policy file when profile is admin", func() {
-		err := generateOcmRolePolicyFiles(r, env, orgID, ProfileAdmin, policies)
+		err := generateOcmRolePolicyFiles(r, env, orgID, internalocmrole.ProfileAdmin, policies)
 		Expect(err).ToNot(HaveOccurred())
 
 		_, err = os.Stat("sts_ocm_admin_permission_policy.json")
@@ -303,7 +341,7 @@ var _ = Describe("generateOcmRolePolicyFiles", func() {
 	})
 
 	It("should generate no-console files successfully when policy is available", func() {
-		err := generateOcmRolePolicyFiles(r, env, orgID, ProfileNoConsole, policies)
+		err := generateOcmRolePolicyFiles(r, env, orgID, internalocmrole.ProfileNoConsole, policies)
 
 		Expect(err).NotTo(HaveOccurred())
 		// Verify no-console permission policy file was created
@@ -345,7 +383,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().IsAdminRole(roleName).Return(false, nil)
 			mockClient.EXPECT().IsNoConsoleRole(roleName).Return(false, nil)
 
-			arn, exists, err := checkRoleExists(r, roleName, ProfileStandard, "auto", "")
+			arn, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileStandard, "auto", "")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -357,7 +395,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().IsAdminRole(roleName).Return(true, nil)
 			mockClient.EXPECT().IsNoConsoleRole(roleName).Return(false, nil)
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileStandard, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileStandard, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -369,7 +407,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().IsAdminRole(roleName).Return(false, nil)
 			mockClient.EXPECT().IsNoConsoleRole(roleName).Return(true, nil)
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileStandard, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileStandard, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -383,7 +421,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().IsAdminRole(roleName).Return(true, nil)
 			mockClient.EXPECT().IsNoConsoleRole(roleName).Return(false, nil)
 
-			arn, exists, err := checkRoleExists(r, roleName, ProfileAdmin, "auto", "")
+			arn, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileAdmin, "auto", "")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -395,7 +433,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().IsAdminRole(roleName).Return(false, nil)
 			mockClient.EXPECT().IsNoConsoleRole(roleName).Return(true, nil)
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileAdmin, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileAdmin, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -415,7 +453,7 @@ var _ = Describe("checkRoleExists", func() {
 				"arn:aws:iam::123456789012:policy/test-role-NoConsole-Policy",
 			}, nil)
 
-			arn, exists, err := checkRoleExists(r, roleName, ProfileNoConsole, "auto", "")
+			arn, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileNoConsole, "auto", "")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -427,7 +465,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().IsAdminRole(roleName).Return(true, nil)
 			mockClient.EXPECT().IsNoConsoleRole(roleName).Return(false, nil)
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileNoConsole, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileNoConsole, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -442,7 +480,7 @@ var _ = Describe("checkRoleExists", func() {
 				"arn:aws:iam::123456789012:policy/ManagedOpenShift-OCM-Role-Policy",
 			}, nil)
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileNoConsole, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileNoConsole, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -459,7 +497,7 @@ var _ = Describe("checkRoleExists", func() {
 			}, nil)
 			mockClient.EXPECT().AddRoleTag(roleName, "rosa_no_console_role", "true").Return(nil)
 
-			arn, exists, err := checkRoleExists(r, roleName, ProfileNoConsole, "auto", "")
+			arn, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileNoConsole, "auto", "")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -477,7 +515,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().AddRoleTag(roleName, "rosa_no_console_role", "true").Return(
 				fmt.Errorf("tag operation failed"))
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileNoConsole, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileNoConsole, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -492,7 +530,7 @@ var _ = Describe("checkRoleExists", func() {
 				"arn:aws:iam::123456789012:policy/test-role-Policy", // standard policy, not no-console
 			}, nil)
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileNoConsole, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileNoConsole, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -512,7 +550,7 @@ var _ = Describe("checkRoleExists", func() {
 			}, nil)
 			mockClient.EXPECT().AddRoleTag(roleName, "rosa_admin_role", "true").Return(nil)
 
-			arn, exists, err := checkRoleExists(r, roleName, ProfileAdmin, "auto", "")
+			arn, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileAdmin, "auto", "")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -531,7 +569,7 @@ var _ = Describe("checkRoleExists", func() {
 			mockClient.EXPECT().AddRoleTag(roleName, "rosa_admin_role", "true").Return(
 				fmt.Errorf("tag operation failed"))
 
-			_, exists, err := checkRoleExists(r, roleName, ProfileAdmin, "auto", "")
+			_, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileAdmin, "auto", "")
 
 			Expect(err).To(HaveOccurred())
 			Expect(exists).To(BeTrue())
@@ -549,7 +587,7 @@ var _ = Describe("checkRoleExists", func() {
 			}, nil)
 			mockClient.EXPECT().AddRoleTag(roleName, "rosa_no_console_role", "true").Return(nil)
 
-			arn, exists, err := checkRoleExists(r, roleName, ProfileNoConsole, "auto", customPath)
+			arn, exists, err := checkRoleExists(r, roleName, internalocmrole.ProfileNoConsole, "auto", customPath)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
