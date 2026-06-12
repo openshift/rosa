@@ -126,6 +126,9 @@ Types other than `fix:` and `feat:` are allowed:
 - `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
 - `test`: Adding missing tests or correcting existing tests
 
+[!IMPORTANT]
+DCO Sign-off Required: Every commit must include a Developer Certificate of Origin (DCO) sign-off line (Signed-off-by: Name <email>). Use git commit -s when committing.
+
 ## Release Process and Changelog Automation
 
 The changelog is automatically generated using [`git-cliff`](https://git-cliff.org/)
