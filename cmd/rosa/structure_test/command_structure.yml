@@ -26,6 +26,9 @@ children:
     - name: kubeletconfig
     - name: log-forwarder
     - name: machinepool
+    - name: machinepool-demo
+    - name: machinepool-bubble
+    - name: machinepool-bubble-new
     - name: ocm-role
     - name: oidc-config
     - name: oidc-provider

@@ -33,6 +33,9 @@ import (
 	"github.com/openshift/rosa/cmd/create/kubeletconfig"
 	"github.com/openshift/rosa/cmd/create/logforwarder"
 	"github.com/openshift/rosa/cmd/create/machinepool"
+	"github.com/openshift/rosa/cmd/create/machinepoolbubble"
+	"github.com/openshift/rosa/cmd/create/machinepoolbubblenew"
+	"github.com/openshift/rosa/cmd/create/machinepooldemo"
 	"github.com/openshift/rosa/cmd/create/network"
 	"github.com/openshift/rosa/cmd/create/ocmrole"
 	"github.com/openshift/rosa/cmd/create/oidcconfig"
@@ -67,6 +70,9 @@ func init() {
 	Cmd.AddCommand(operatorroles.Cmd)
 	Cmd.AddCommand(userrole.Cmd)
 	Cmd.AddCommand(userrolebubble.Cmd)
+	Cmd.AddCommand(machinepooldemo.Cmd)
+	Cmd.AddCommand(machinepoolbubble.Cmd)
+	Cmd.AddCommand(machinepoolbubblenew.Cmd)
 	Cmd.AddCommand(ocmrole.Cmd)
 	Cmd.AddCommand(service.Cmd)
 	Cmd.AddCommand(tuningconfigs.Cmd)
