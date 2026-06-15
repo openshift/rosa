@@ -1,3 +1,16 @@
+## 1.2.64 (15 Jun, 2026)
+
+FEATURES:
+   * Expose CreateOCMRole to CAPA (#3262)
+   * Added support for --no-console to rosa create ocm-role (#3252)
+   * Updated rosa list ocm-role to display console access
+
+ENHANCEMENTS:
+ * Bug fixes
+   * Fixing id:38788,id:56783,id:60278,id:73391,id:81399
+ * Chores
+   * Fix linter issues in pkg/aws/{helpers,policies}
+
 ## 1.2.63 (15 May, 2026)
 
 ENHANCEMENTS:
