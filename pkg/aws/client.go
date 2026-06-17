@@ -80,9 +80,10 @@ const (
 
 	// Since CloudFormation stacks are region-dependent, we hard-code OCM's default region and
 	// then use it to ensure that the user always gets the stack from the same region.
-	DefaultRegion = "us-east-1"
-	Inline        = "inline"
-	Attached      = "attached"
+	DefaultRegion         = "us-east-1"
+	DefaultGovcloudRegion = "us-gov-east-1"
+	Inline                = "inline"
+	Attached              = "attached"
 
 	LocalZone      = "local-zone"
 	WavelengthZone = "wavelength-zone"

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
+	. "github.com/onsi/gomega"    //nolint:staticcheck
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -19,7 +19,7 @@ var _ = Describe("Region",
 		var (
 			rosaClient             *rosacli.Client
 			ocmResourceService     rosacli.OCMResourceService
-			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+			permissionsBoundaryArn = "arn:aws:iam::aws:policy/AdministratorAccess"
 		)
 
 		BeforeEach(func() {
@@ -132,6 +132,6 @@ var _ = Describe("Region",
 				availableMachineTypes, output, err := ocmResourceService.ListInstanceTypes(
 					"--region", "xxx", "--role-arn", classicInstallerRoleArn)
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("ERR: Unsupported region 'xxx', available regions"))
+				Expect(output.String()).Should(ContainSubstring("ERR: unsupported region 'xxx', available regions"))
 			})
 	})
