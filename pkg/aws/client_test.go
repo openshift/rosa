@@ -778,7 +778,7 @@ var _ = Describe("Client", func() {
 			role2 := "test-cluster-ns2-app2-role"
 			role3 := "other-role-without-tags"
 
-			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
 				Roles: []iamtypes.Role{
 					{
 						RoleName: &role1,
@@ -839,7 +839,7 @@ var _ = Describe("Client", func() {
 			role1 := "test-cluster-ns1-app1-role"
 			role2 := "test-cluster-ns1-app2-role"
 
-			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
 				Roles: []iamtypes.Role{
 					{
 						RoleName: &role1,
@@ -886,7 +886,7 @@ var _ = Describe("Client", func() {
 		})
 
 		It("should handle ListRoles errors", func() {
-			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("aws error"))
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("aws error"))
 
 			roles, err := client.ListServiceAccountRoles(clusterName)
 
@@ -899,7 +899,7 @@ var _ = Describe("Client", func() {
 			// Mock ListRoles response
 			role1 := "test-cluster-ns1-app1-role"
 
-			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
 				Roles: []iamtypes.Role{
 					{
 						RoleName: &role1,
@@ -925,7 +925,7 @@ var _ = Describe("Client", func() {
 			// Mock ListRoles response
 			role1 := "test-cluster-ns1-app1-role"
 
-			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(&iam.ListRolesOutput{
 				Roles: []iamtypes.Role{
 					{
 						RoleName: &role1,
