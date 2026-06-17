@@ -29,6 +29,12 @@ linters:
     - staticcheck
     - unconvert
     - unused
+  settings:
+    goconst:
+      ignore-tests: true
+      match-constant: false
+      ignore-calls: true
+      min-occurrences: 5
   exclusions:
     generated: lax
     presets:
@@ -38,12 +44,19 @@ linters:
       - std-error-handling
     paths:
       - '(.+)_test\.go'
+    rules:
+      - path: tests/e2e/
+        linters:
+          - goconst
+      - path: tests/utils/
+        linters:
+          - goconst
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   whole-files: true
   new: true
-  new-from-rev: 920b78d3e582211dcfcc0d7e9f2b227d41fdfc19
+  new-from-rev: 3ab0817ee3c8e06c78a43cc30cf34de40db8b191
 formatters:
   enable:
     - gci
