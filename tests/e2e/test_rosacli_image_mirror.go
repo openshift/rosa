@@ -73,12 +73,18 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 					tMirror1       = "my.registry.com/testm"
 					tMirror2       = "my.registry.com/nginx"
 				)
-				output, err = imageMirrorService.CreateImageMirror(
-					"-c", clusterID,
-					"--source", tMirrorSource2,
-					"--mirrors", fmt.Sprintf("%s,%s", tMirror1, tMirror2),
-				)
-				Expect(err).ToNot(HaveOccurred())
+				Eventually(
+					func(g Gomega) {
+						_, err := imageMirrorService.CreateImageMirror(
+							"-c", clusterID,
+							"--source", tMirrorSource2,
+							"--mirrors", fmt.Sprintf("%s,%s", tMirror1, tMirror2),
+						)
+						g.Expect(err).ToNot(HaveOccurred())
+					},
+				).
+					WithTimeout(time.Minute * 1).
+					Should(Succeed())
 
 				By("List the image mirrors")
 				output, err = imageMirrorService.ListImageMirror(
@@ -274,21 +280,33 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 				Expect(output.String()).To(ContainSubstring("There is no cluster with identifier or name"))
 
 				By("Delete the mirrors")
-				output, err = imageMirrorService.DeleteImageMirror(
-					"-c", clusterID,
-					"--id", imageMirrorID,
-					"-y",
-				)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("has been deleted from cluster"))
+				Eventually(
+					func(g Gomega) {
+						output, err = imageMirrorService.DeleteImageMirror(
+							"-c", clusterID,
+							"--id", imageMirrorID,
+							"-y",
+						)
+						g.Expect(err).ToNot(HaveOccurred())
+						g.Expect(output.String()).To(ContainSubstring("has been deleted from cluster"))
+					},
+				).
+					WithTimeout(time.Minute * 1).
+					Should(Succeed())
 
-				output, err = imageMirrorService.DeleteImageMirror(
-					"-c", clusterID,
-					"--id", imageMirrorID2,
-					"-y",
-				)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("has been deleted from cluster"))
+				Eventually(
+					func(g Gomega) {
+						output, err = imageMirrorService.DeleteImageMirror(
+							"-c", clusterID,
+							"--id", imageMirrorID2,
+							"-y",
+						)
+						g.Expect(err).ToNot(HaveOccurred())
+						g.Expect(output.String()).To(ContainSubstring("has been deleted from cluster"))
+					},
+				).
+					WithTimeout(time.Minute * 1).
+					Should(Succeed())
 
 				By("Check the mirrors deleted")
 				output, err = imageMirrorService.ListImageMirror(

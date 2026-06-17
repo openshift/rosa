@@ -1343,12 +1343,10 @@ var _ = Describe("Classic cluster creation validation",
 					rosalCommand.ReplaceFlagValue(map[string]string{
 						"--cluster-name": cn,
 					})
-					stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-					Expect(err).NotTo(BeNil())
-					Expect(stdout.String()).
-						To(ContainSubstring(
-							"Cluster name must consist of no more than 54 lowercase alphanumeric characters or '-', " +
-								"start with a letter, and end with an alphanumeric character"))
+					_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					helper.ExpectErrorWithMessage(err,
+						"Cluster name must consist of no more than 54 lowercase alphanumeric characters or '-', "+
+							"start with a letter, and end with an alphanumeric character")
 				}
 
 				By("Check the validation for compute-machine-type")
@@ -1357,9 +1355,8 @@ var _ = Describe("Classic cluster creation validation",
 					"--compute-machine-type": invalidMachineType,
 					"--cluster-name":         originalClusterName,
 				})
-				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("is not supported for cloud provider"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "is not supported for cloud provider")
 
 				By("Check the validation for replicas")
 				invalidReplicasTypeErrorMap := map[string]string{
@@ -1371,9 +1368,8 @@ var _ = Describe("Classic cluster creation validation",
 						"--compute-machine-type": originalMachineType,
 						"--replicas":             k,
 					})
-					stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-					Expect(err).NotTo(BeNil())
-					Expect(stdout.String()).To(ContainSubstring(v))
+					_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					helper.ExpectErrorWithMessage(err, v)
 				}
 				if rosalCommand.CheckFlagExist("--multi-az") {
 					if !profile.ClusterConfig.AutoscalerEnabled {
@@ -1381,15 +1377,14 @@ var _ = Describe("Classic cluster creation validation",
 							"2":  "Multi AZ cluster requires at least 3 compute nodes",
 							"0":  "Multi AZ cluster requires at least 3 compute nodes",
 							"-3": "must be non-negative",
-							"5":  "multi AZ clusters require that the replicas be a multiple of 3",
+							"5":  "multi az clusters require that the number of compute nodes be a multiple of 3",
 						}
 						for k, v := range invalidReplicasErrorMapMultiAZ {
 							rosalCommand.ReplaceFlagValue(map[string]string{
 								"--replicas": k,
 							})
-							stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-							Expect(err).NotTo(BeNil())
-							Expect(stdout.String()).To(ContainSubstring(v))
+							_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+							helper.ExpectErrorWithMessage(err, v)
 						}
 					}
 				} else {
@@ -1403,9 +1398,8 @@ var _ = Describe("Classic cluster creation validation",
 							rosalCommand.ReplaceFlagValue(map[string]string{
 								"--replicas": k,
 							})
-							stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-							Expect(err).NotTo(BeNil())
-							Expect(stdout.String()).To(ContainSubstring(v))
+							_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+							helper.ExpectErrorWithMessage(err, v)
 						}
 					}
 				}
@@ -1415,23 +1409,16 @@ var _ = Describe("Classic cluster creation validation",
 					"--region":   invalidRegion,
 					"--replicas": originalReplicas,
 				})
-				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("Unsupported region"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "Unsupported region")
 
 				By("Check the validation for invalid billing-account for classic sts cluster")
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--region": originalRegion,
 				})
 				rosalCommand.AddFlags("--billing-account", "123456789")
-				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(BeNil())
-				Expect(stdout.String()).
-					ToNot(ContainSubstring(
-						"Billing accounts are only supported for"))
-				Expect(stdout.String()).
-					To(ContainSubstring(
-						"is not valid"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "provided billing account number 123456789 is not valid.")
 			})
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
@@ -1990,7 +1977,7 @@ var _ = Describe("Create cluster with invalid options will",
 					"--pod-cidr":     "10111.0.0.0/16",
 				}
 				for flag, invalidValue := range illegalCIDRMap {
-					output, err, _ := clusterService.Create(clusterName,
+					output, _, err := clusterService.Create(clusterName,
 						flag, invalidValue,
 					)
 					Expect(err).To(HaveOccurred())
@@ -1999,7 +1986,7 @@ var _ = Describe("Create cluster with invalid options will",
 							invalidValue, flag, invalidValue))
 				}
 				By("Check the overlapped CIDR block validation")
-				output, err, _ := clusterService.Create(clusterName,
+				output, _, err := clusterService.Create(clusterName,
 					"--service-cidr", "1.0.0.0/16",
 					"--pod-cidr", "1.0.0.0/16",
 				)
@@ -2014,7 +2001,7 @@ var _ = Describe("Create cluster with invalid options will",
 					"--pod-cidr":     "1.0.0.0/28",
 				}
 				for flag, invalidValue := range invalidCIDRMap {
-					output, err, _ := clusterService.Create(clusterName,
+					output, _, err := clusterService.Create(clusterName,
 						flag, invalidValue,
 					)
 					Expect(err).To(HaveOccurred())
@@ -2033,7 +2020,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				}
 				By("Check the invalid machine CIDR for multi az")
-				output, err, _ = clusterService.Create(clusterName,
+				output, _, err = clusterService.Create(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--multi-az",
 				)
@@ -2042,7 +2029,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("The allowed block size must be between a /16 netmask and /24"))
 
 				By("Check illegal host prefix")
-				output, err, _ = clusterService.Create(clusterName,
+				output, _, err = clusterService.Create(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "28",
 				)
@@ -2051,7 +2038,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("Subnet length should be between 23 and 26"))
 
 				By("Check invalid host prefix")
-				output, err, _ = clusterService.Create(clusterName,
+				output, _, err = clusterService.Create(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "invalid",
 				)
@@ -2810,22 +2797,17 @@ var _ = Describe("HCP cluster creation negative testing",
 					rosalCommand.DeleteFlag("--additional-allowed-principals", true)
 				}
 				rosalCommand.AddFlags("--dry-run", "--additional-allowed-principals", "zzzz", "-y")
-				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					To(
-						ContainSubstring(
-							"ERR: Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix"))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(
+					err,
+					"ERR: Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix",
+				)
 
 				By("Create classic cluster with additional allowed principals")
-				output, err := clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--additional-allowed-principals", "zzzz",
 					"-y", "--debug")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(
-						ContainSubstring(
-							"ERR: Additional Allowed Principals is supported only for Hosted Control Planes"))
+				helper.ExpectErrorWithMessage(err, "ERR: Additional Allowed Principals is supported only for Hosted Control Planes")
 			})
 
 		It("Updating default ingress settings is not supported for HCP clusters - [id:71174]",

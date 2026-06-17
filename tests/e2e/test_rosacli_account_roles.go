@@ -13,7 +13,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
@@ -31,7 +33,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		accountRolePrefixesNeedCleanup = make([]string, 0)
 		rosaClient                     *rosacli.Client
 		ocmResourceService             rosacli.OCMResourceService
-		permissionsBoundaryArn         string = "arn:aws:iam::aws:policy/AdministratorAccess"
+		permissionsBoundaryArn         = "arn:aws:iam::aws:policy/AdministratorAccess"
 		defaultDir                     string
 		dirToClean                     string
 	)
@@ -677,90 +679,74 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		labels.Medium, labels.Runtime.OCMResources,
 		func() {
 			var (
-				validRolePrefix                          = "valid"
-				invalidRolePrefix                        = "^^^^"
-				longRolePrefix                           = "accountroleprefixlongerthan32characters"
-				validModeAuto                            = "auto"
-				validModeManual                          = "manual"
-				invalidMode                              = "invalid"
-				invalidPermissionsBoundaryArn     string = "invalid"
-				nonExistingPermissionsBoundaryArn string = "arn:aws:iam::aws:policy/non-existing"
+				validRolePrefix                   = "valid"
+				invalidRolePrefix                 = "^^^^"
+				longRolePrefix                    = "accountroleprefixlongerthan32characters"
+				validModeAuto                     = "auto"
+				validModeManual                   = "manual"
+				invalidMode                       = "invalid"
+				invalidPermissionsBoundaryArn     = "invalid"
+				nonExistingPermissionsBoundaryArn = "arn:aws:iam::aws:policy/non-existing"
 			)
 
 			By("Try to create account-roles with invalid prefix")
-			output, err := ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+			_, err := ocmResourceService.CreateAccountRole("--mode", validModeAuto,
 				"--prefix", invalidRolePrefix,
 				"--permissions-boundary", permissionsBoundaryArn,
 				"-y")
-			Expect(err).NotTo(BeNil())
-
 			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, invalidRolePrefix)
-			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("Expected a valid role prefix matching ^[\\w+=,.@-]+$"))
+			helper.ExpectErrorWithMessage(err, "Expected a valid role prefix matching ^[\\w+=,.@-]+$")
 
 			By("Try to create account-roles with longer than 32 chars prefix")
-			output, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+			_, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
 				"--prefix", longRolePrefix,
 				"--permissions-boundary", permissionsBoundaryArn,
 				"--hosted-cp",
 				"-y")
-			Expect(err).NotTo(BeNil())
-
 			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, longRolePrefix)
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("Expected a prefix with no more than 32 characters"))
+			helper.ExpectErrorWithMessage(err, "Expected a prefix with no more than 32 characters")
 
 			By("Try to create account-roles with invalid mode")
-			output, err = ocmResourceService.CreateAccountRole("--mode", invalidMode,
+			_, err = ocmResourceService.CreateAccountRole("--mode", invalidMode,
 				"--prefix", validRolePrefix,
 				"--permissions-boundary", permissionsBoundaryArn,
 				"-y")
-			Expect(err).NotTo(BeNil())
 
 			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("Invalid mode. Allowed values are [auto manual]"))
+			helper.ExpectErrorWithMessage(err, "Invalid mode. Allowed values are [auto manual]")
 
 			By("Try to create account-roles with force-policy-creation and manual mode")
-			output, err = ocmResourceService.CreateAccountRole("--mode", validModeManual,
+			_, err = ocmResourceService.CreateAccountRole("--mode", validModeManual,
 				"--prefix", validRolePrefix,
 				"-f",
 				"--hosted-cp",
 				"--permissions-boundary", permissionsBoundaryArn,
 			)
-			Expect(err).NotTo(BeNil())
-
 			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("Forcing creation of policies only works in auto mode"))
+			helper.ExpectErrorWithMessage(err, "Forcing creation of policies only works in auto mode")
 
 			By("Try to create account-roles with invalid permission boundary")
-			output, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+			_, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
 				"--prefix", validRolePrefix,
 				"--permissions-boundary", invalidPermissionsBoundaryArn,
 				"-y",
 			)
-			Expect(err).NotTo(BeNil())
-
 			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
-					"Expected a valid policy ARN for permissions boundary: Invalid ARN: arn: invalid prefix"))
+			helper.ExpectErrorWithMessage(
+				err,
+				"Expected a valid policy ARN for permissions boundary: Invalid ARN: arn: invalid prefix",
+			)
 
 			By("Try to create account-roles with non-existing permission boundary")
-			output, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
+			_, err = ocmResourceService.CreateAccountRole("--mode", validModeAuto,
 				"--prefix", validRolePrefix,
 				"--hosted-cp",
 				"--permissions-boundary", nonExistingPermissionsBoundaryArn,
 				"-y",
 			)
-			Expect(err).NotTo(BeNil())
-
 			accountRolePrefixesNeedCleanup = append(accountRolePrefixesNeedCleanup, validRolePrefix)
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("There was an error creating the account roles"))
-			Expect(textData).To(ContainSubstring("policy/non-existing does not exist or is not attachable"))
+			helper.ExpectErrorWithMessage(err, "There was an error creating the account roles")
+			helper.ExpectErrorWithMessage(err, "policy/non-existing does not exist or is not attachable")
 		})
 })
 

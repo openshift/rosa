@@ -908,27 +908,25 @@ var _ = Describe("Create machinepool",
 				labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
 				func() {
 					By("Delete machine pool with no flags")
-					output, err := rosaClient.MachinePool.DeleteMachinePool("", "")
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("required flag(s) \"cluster\" not set"))
+					_, err := rosaClient.MachinePool.DeleteMachinePool("", "")
+					helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
 
 					By("Delete machinepool without specifying machinepool")
-					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, "")
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("You need to specify a machine pool name"))
+					_, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, "")
+					helper.ExpectErrorWithMessage(err, "you need to specify a machine pool name")
 
 					By("Delete a non-existent machinepool")
 					fakeMachinePool := "fakemachinepool"
-					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, fakeMachinePool)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring("failed to get machine pool '%s' for cluster '%s'", fakeMachinePool, clusterID))
+					_, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, fakeMachinePool)
+					helper.ExpectErrorWithMessage(err, fmt.Sprintf(
+						"failed to get machine pool '%s' for cluster '%s'",
+						fakeMachinePool,
+						clusterID,
+					))
 
 					By("Delete machine pool with invalid id")
-					output, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, "%^#@")
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Expected a valid identifier for the machine pool"))
-
+					_, err = rosaClient.MachinePool.DeleteMachinePool(clusterID, "%^#@")
+					helper.ExpectErrorWithMessage(err, "expected a valid identifier for the machine pool")
 				})
 
 			It("will validate root volume size - [id:66874]",
@@ -1517,39 +1515,33 @@ var _ = Describe("Edit machinepool",
 
 				By("Edit with negative replicas number")
 				_, err = machinePoolService.EditMachinePool(clusterID, mpName, "--replicas", "-9")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("replicas must be a non-negative number"))
+				helper.ExpectErrorWithMessage(err, "replicas must be a non-negative number")
 
 				By("Edit with replicas and enable-autoscaling at the same time")
 				_, err = machinePoolService.EditMachinePool(
 					clusterID, mpName, "--replicas", "3",
 					"--enable-autoscaling")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("Autoscaling enabled on machine pool"))
-				Expect(err.Error()).Should(ContainSubstring("can't set replicas"))
+				helper.ExpectErrorWithMessage(err, "replicas can't be set when autoscaling is enabled")
 
 				By("Edit with min-replicas large than max-replicas")
 				_, err = machinePoolService.EditMachinePool(
 					clusterID, mpName, "--min-replicas", "9",
 					"--max-replicas", "3", "--enable-autoscaling",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("Min replicas must be less than max replicas"))
+				helper.ExpectErrorWithMessage(err, "Min replicas must be less than max replicas")
 
 				By("Edit with min-replicas not multiple 3 for multi-az")
 				_, err = machinePoolService.EditMachinePool(
 					clusterID, mpName, "--min-replicas", "4",
 					"--max-replicas", "9", "--enable-autoscaling",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("require that the number of MachinePool replicas be a multiple of 3"))
+				helper.ExpectErrorWithMessage(err, "require that the number of MachinePool replicas be a multiple of 3")
 
 				By("Edit with max-replicas not multiple 3 for multi-az")
 				_, err = machinePoolService.EditMachinePool(
 					clusterID, mpName, "--min-replicas", "3",
 					"--max-replicas", "7", "--enable-autoscaling")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("require that the number of MachinePool replicas be a multiple of 3"))
+				helper.ExpectErrorWithMessage(err, "require that the number of MachinePool replicas be a multiple of 3")
 			})
 		It("will validate replicas on single-az classic cluster - [id:38840]",
 			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
