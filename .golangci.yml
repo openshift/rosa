@@ -43,7 +43,7 @@ issues:
   max-same-issues: 0
   whole-files: true
   new: true
-  new-from-rev: 3ab0817ee3c8e06c78a43cc30cf34de40db8b191
+  new-from-rev: 920b78d3e582211dcfcc0d7e9f2b227d41fdfc19
 formatters:
   enable:
     - gci
