@@ -11,8 +11,9 @@ import (
 )
 
 // Deletes a delivery destination policy. For more information about these
-// policies, see PutDeliveryDestinationPolicy (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliveryDestinationPolicy.html)
-// .
+// policies, see [PutDeliveryDestinationPolicy].
+//
+// [PutDeliveryDestinationPolicy]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliveryDestinationPolicy.html
 func (c *Client) DeleteDeliveryDestinationPolicy(ctx context.Context, params *DeleteDeliveryDestinationPolicyInput, optFns ...func(*Options)) (*DeleteDeliveryDestinationPolicyOutput, error) {
 	if params == nil {
 		params = &DeleteDeliveryDestinationPolicyInput{}
@@ -79,13 +80,16 @@ func (c *Client) addOperationDeleteDeliveryDestinationPolicyMiddlewares(stack *m
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -98,6 +102,12 @@ func (c *Client) addOperationDeleteDeliveryDestinationPolicyMiddlewares(stack *m
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteDeliveryDestinationPolicyValidationMiddleware(stack); err != nil {
@@ -119,6 +129,15 @@ func (c *Client) addOperationDeleteDeliveryDestinationPolicyMiddlewares(stack *m
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

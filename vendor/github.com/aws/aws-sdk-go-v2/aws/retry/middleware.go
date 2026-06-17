@@ -6,16 +6,19 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws/middleware/private/metrics"
 	internalcontext "github.com/aws/aws-sdk-go-v2/internal/context"
+	"github.com/aws/smithy-go"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddle "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/internal/sdk"
 	"github.com/aws/smithy-go/logging"
+	"github.com/aws/smithy-go/metrics"
 	smithymiddle "github.com/aws/smithy-go/middleware"
+	"github.com/aws/smithy-go/tracing"
 	"github.com/aws/smithy-go/transport/http"
 )
 
@@ -38,6 +41,13 @@ type Attempt struct {
 	// attempts are reached.
 	LogAttempts bool
 
+	// A Meter instance for recording retry-related metrics.
+	OperationMeter metrics.Meter
+
+	// Initial clock skew that would have been saved from a previous operation
+	// call.
+	ClientSkew *atomic.Int64
+
 	retryer       aws.RetryerV2
 	requestCloner RequestCloner
 }
@@ -55,6 +65,10 @@ func NewAttemptMiddleware(retryer aws.Retryer, requestCloner RequestCloner, optF
 	for _, fn := range optFns {
 		fn(m)
 	}
+	if m.OperationMeter == nil {
+		m.OperationMeter = metrics.NopMeterProvider{}.Meter("")
+	}
+
 	return m
 }
 
@@ -73,17 +87,28 @@ func (r Attempt) logf(logger logging.Logger, classification logging.Classificati
 func (r *Attempt) HandleFinalize(ctx context.Context, in smithymiddle.FinalizeInput, next smithymiddle.FinalizeHandler) (
 	out smithymiddle.FinalizeOutput, metadata smithymiddle.Metadata, err error,
 ) {
-	var attemptNum int
 	var attemptClockSkew time.Duration
+	if r.ClientSkew != nil {
+		attemptClockSkew = time.Duration(r.ClientSkew.Load())
+	}
+
+	var attemptNum int
 	var attemptResults AttemptResults
 
 	maxAttempts := r.retryer.MaxAttempts()
 	releaseRetryToken := nopRelease
 
+	retryMetrics, err := newAttemptMetrics(r.OperationMeter)
+	if err != nil {
+		return out, metadata, err
+	}
+
 	for {
 		attemptNum++
 		attemptInput := in
 		attemptInput.Request = r.requestCloner(attemptInput.Request)
+
+		ctx = internalcontext.SetAttemptSkewContext(ctx, attemptClockSkew)
 
 		// Record the metadata for the for attempt being started.
 		attemptCtx := setRetryMetadata(ctx, retryMetadata{
@@ -93,11 +118,26 @@ func (r *Attempt) HandleFinalize(ctx context.Context, in smithymiddle.FinalizeIn
 			AttemptClockSkew: attemptClockSkew,
 		})
 
-		// Setting clock skew to be used on other context (like signing)
-		ctx = internalcontext.SetAttemptSkewContext(ctx, attemptClockSkew)
-
 		var attemptResult AttemptResult
+
+		attemptCtx, span := tracing.StartSpan(attemptCtx, "Attempt", func(o *tracing.SpanOptions) {
+			o.Properties.Set("operation.attempt", attemptNum)
+		})
+		retryMetrics.Attempts.Add(ctx, 1, withOperationMetadata(ctx))
+
+		start := sdk.NowTime()
 		out, attemptResult, releaseRetryToken, err = r.handleAttempt(attemptCtx, attemptInput, releaseRetryToken, next)
+		elapsed := sdk.NowTime().Sub(start)
+
+		retryMetrics.AttemptDuration.Record(ctx, float64(elapsed)/1e9, withOperationMetadata(ctx))
+		if err != nil {
+			retryMetrics.Errors.Add(ctx, 1, withOperationMetadata(ctx), func(o *metrics.RecordMetricOptions) {
+				o.Properties.Set("exception.type", errorType(err))
+			})
+		}
+
+		span.End()
+
 		attemptClockSkew, _ = awsmiddle.GetAttemptSkew(attemptResult.ResponseMetadata)
 
 		// AttemptResult Retried states that the attempt was not successful, and
@@ -114,6 +154,14 @@ func (r *Attempt) HandleFinalize(ctx context.Context, in smithymiddle.FinalizeIn
 			metadata = attemptResult.ResponseMetadata.Clone()
 
 			break
+		}
+	}
+
+	// this guarantees we are staying on top of the persistent skew value
+	// (either to apply it or to heal it back if the clocks realign)
+	if r.ClientSkew != nil {
+		if resultSkew, ok := awsmiddle.GetAttemptSkew(metadata); ok {
+			r.ClientSkew.Store(resultSkew.Nanoseconds())
 		}
 	}
 
@@ -185,9 +233,11 @@ func (r *Attempt) handleAttempt(
 			"failed to release retry token after request error, %w", err)
 	}
 	// Release the attempt token based on the state of the attempt's error (if any).
-	if releaseError := releaseAttemptToken(err); releaseError != nil && err != nil {
-		return out, attemptResult, nopRelease, fmt.Errorf(
-			"failed to release initial token after request error, %w", err)
+	if !newRetries2026() || attemptNum == 1 {
+		if releaseError := releaseAttemptToken(err); releaseError != nil && err != nil {
+			return out, attemptResult, nopRelease, fmt.Errorf(
+				"failed to release initial token after request error, %w", err)
+		}
 	}
 	// If there was no error making the attempt, nothing further to do. There
 	// will be nothing to retry.
@@ -228,7 +278,14 @@ func (r *Attempt) handleAttempt(
 	// Get a retry token that will be released after the
 	releaseRetryToken, retryTokenErr := r.retryer.GetRetryToken(ctx, err)
 	if retryTokenErr != nil {
-		return out, attemptResult, nopRelease, retryTokenErr
+		// Long-polling operations must still back off when quota is exceeded.
+		if newRetries2026() && internalcontext.GetIsLongPolling(ctx) {
+			if retryDelay, delayErr := r.retryer.RetryDelay(attemptNum-1, err); delayErr == nil {
+				retryDelay = adjustForRetryAfterHeader(retryDelay, err, logger, r.LogAttempts)
+				_ = sdk.SleepWithContext(ctx, retryDelay)
+			}
+		}
+		return out, attemptResult, nopRelease, errors.Join(err, retryTokenErr)
 	}
 
 	//------------------------------
@@ -237,16 +294,16 @@ func (r *Attempt) handleAttempt(
 	// Get the retry delay before another attempt can be made, and sleep for
 	// that time. Potentially early exist if the sleep is canceled via the
 	// context.
-	retryDelay, reqErr := r.retryer.RetryDelay(attemptNum, err)
-	mctx := metrics.Context(ctx)
-	if mctx != nil {
-		attempt, err := mctx.Data().LatestAttempt()
-		if err != nil {
-			attempt.RetryDelay = retryDelay
-		}
+	attempt := attemptNum
+	if newRetries2026() {
+		attempt = attemptNum - 1
 	}
+	retryDelay, reqErr := r.retryer.RetryDelay(attempt, err)
 	if reqErr != nil {
 		return out, attemptResult, releaseRetryToken, reqErr
+	}
+	if newRetries2026() {
+		retryDelay = adjustForRetryAfterHeader(retryDelay, err, logger, r.LogAttempts)
 	}
 	if reqErr = sdk.SleepWithContext(ctx, retryDelay); reqErr != nil {
 		err = &aws.RequestCanceledError{Err: reqErr}
@@ -380,4 +437,51 @@ func AddRetryMiddlewares(stack *smithymiddle.Stack, options AddRetryMiddlewaresO
 		return err
 	}
 	return nil
+}
+
+// adjustForRetryAfterHeader checks for the x-amz-retry-after response header
+// and clamps the backoff duration accordingly. The header value is an integer
+// representing milliseconds. The result is clamped to [t_i, 5s + t_i] where
+// t_i is the jittered exponential backoff duration. Invalid header values are
+// ignored.
+func adjustForRetryAfterHeader(backoff time.Duration, err error, logger logging.Logger, logAttempts bool) time.Duration {
+	var re *http.ResponseError
+	if !errors.As(err, &re) || re.Response == nil || re.Response.Response == nil {
+		return backoff
+	}
+
+	headerVal := re.Response.Header.Get("X-Amz-Retry-After")
+	if headerVal == "" {
+		return backoff
+	}
+
+	ms, parseErr := strconv.ParseInt(headerVal, 10, 64)
+	if parseErr != nil || ms < 0 {
+		if logAttempts {
+			logger.Logf(logging.Debug, "ignoring invalid x-amz-retry-after header value %q", headerVal)
+		}
+		return backoff
+	}
+
+	retryAfter := time.Duration(ms) * time.Millisecond
+	minDuration := backoff
+	maxDuration := 5*time.Second + backoff
+
+	if retryAfter < minDuration {
+		return minDuration
+	}
+	if retryAfter > maxDuration {
+		return maxDuration
+	}
+	return retryAfter
+}
+
+// Determines the value of exception.type for metrics purposes. We prefer an
+// API-specific error code, otherwise it's just the Go type for the value.
+func errorType(err error) string {
+	var terr smithy.APIError
+	if errors.As(err, &terr) {
+		return terr.ErrorCode()
+	}
+	return fmt.Sprintf("%T", err)
 }

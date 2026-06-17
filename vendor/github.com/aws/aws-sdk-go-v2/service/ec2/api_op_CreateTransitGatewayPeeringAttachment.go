@@ -13,9 +13,10 @@ import (
 
 // Requests a transit gateway peering attachment between the specified transit
 // gateway (requester) and a peer transit gateway (accepter). The peer transit
-// gateway can be in your account or a different Amazon Web Services account. After
-// you create the peering attachment, the owner of the accepter transit gateway
-// must accept the attachment request.
+// gateway can be in your account or a different Amazon Web Services account.
+//
+// After you create the peering attachment, the owner of the accepter transit
+// gateway must accept the attachment request.
 func (c *Client) CreateTransitGatewayPeeringAttachment(ctx context.Context, params *CreateTransitGatewayPeeringAttachmentInput, optFns ...func(*Options)) (*CreateTransitGatewayPeeringAttachmentOutput, error) {
 	if params == nil {
 		params = &CreateTransitGatewayPeeringAttachmentInput{}
@@ -113,13 +114,16 @@ func (c *Client) addOperationCreateTransitGatewayPeeringAttachmentMiddlewares(st
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -132,6 +136,12 @@ func (c *Client) addOperationCreateTransitGatewayPeeringAttachmentMiddlewares(st
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTransitGatewayPeeringAttachmentValidationMiddleware(stack); err != nil {
@@ -153,6 +163,15 @@ func (c *Client) addOperationCreateTransitGatewayPeeringAttachmentMiddlewares(st
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

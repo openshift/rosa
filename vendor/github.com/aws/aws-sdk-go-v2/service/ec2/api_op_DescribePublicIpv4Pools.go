@@ -30,10 +30,12 @@ func (c *Client) DescribePublicIpv4Pools(ctx context.Context, params *DescribePu
 type DescribePublicIpv4PoolsInput struct {
 
 	// One or more filters.
+	//
 	//   - tag : - The key/value combination of a tag assigned to the resource. Use the
 	//   tag key in the filter name and the tag value as the filter value. For example,
 	//   to find all resources that have a tag with the key Owner and the value TeamA ,
 	//   specify tag:Owner for the filter name and TeamA for the filter value.
+	//
 	//   - tag-key - The key of a tag assigned to the resource. Use this filter to find
 	//   all resources assigned a tag with a specific key, regardless of the tag value.
 	Filters []types.Filter
@@ -100,13 +102,16 @@ func (c *Client) addOperationDescribePublicIpv4PoolsMiddlewares(stack *middlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,6 +124,12 @@ func (c *Client) addOperationDescribePublicIpv4PoolsMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribePublicIpv4Pools(options.Region), middleware.Before); err != nil {
@@ -139,16 +150,17 @@ func (c *Client) addOperationDescribePublicIpv4PoolsMiddlewares(stack *middlewar
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribePublicIpv4PoolsAPIClient is a client that implements the
-// DescribePublicIpv4Pools operation.
-type DescribePublicIpv4PoolsAPIClient interface {
-	DescribePublicIpv4Pools(context.Context, *DescribePublicIpv4PoolsInput, ...func(*Options)) (*DescribePublicIpv4PoolsOutput, error)
-}
-
-var _ DescribePublicIpv4PoolsAPIClient = (*Client)(nil)
 
 // DescribePublicIpv4PoolsPaginatorOptions is the paginator options for
 // DescribePublicIpv4Pools
@@ -216,6 +228,9 @@ func (p *DescribePublicIpv4PoolsPaginator) NextPage(ctx context.Context, optFns 
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribePublicIpv4Pools(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -234,6 +249,14 @@ func (p *DescribePublicIpv4PoolsPaginator) NextPage(ctx context.Context, optFns 
 
 	return result, nil
 }
+
+// DescribePublicIpv4PoolsAPIClient is a client that implements the
+// DescribePublicIpv4Pools operation.
+type DescribePublicIpv4PoolsAPIClient interface {
+	DescribePublicIpv4Pools(context.Context, *DescribePublicIpv4PoolsInput, ...func(*Options)) (*DescribePublicIpv4PoolsOutput, error)
+}
+
+var _ DescribePublicIpv4PoolsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribePublicIpv4Pools(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

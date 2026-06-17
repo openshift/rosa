@@ -10,10 +10,13 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes the permissions boundary for the specified IAM role. You cannot set the
-// boundary for a service-linked role. Deleting the permissions boundary for a role
-// might increase its permissions. For example, it might allow anyone who assumes
-// the role to perform all the actions granted in its permissions policies.
+// Deletes the permissions boundary for the specified IAM role.
+//
+// You cannot set the boundary for a service-linked role.
+//
+// Deleting the permissions boundary for a role might increase its permissions.
+// For example, it might allow anyone who assumes the role to perform all the
+// actions granted in its permissions policies.
 func (c *Client) DeleteRolePermissionsBoundary(ctx context.Context, params *DeleteRolePermissionsBoundaryInput, optFns ...func(*Options)) (*DeleteRolePermissionsBoundaryOutput, error) {
 	if params == nil {
 		params = &DeleteRolePermissionsBoundaryInput{}
@@ -81,13 +84,16 @@ func (c *Client) addOperationDeleteRolePermissionsBoundaryMiddlewares(stack *mid
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -100,6 +106,12 @@ func (c *Client) addOperationDeleteRolePermissionsBoundaryMiddlewares(stack *mid
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteRolePermissionsBoundaryValidationMiddleware(stack); err != nil {
@@ -121,6 +133,15 @@ func (c *Client) addOperationDeleteRolePermissionsBoundaryMiddlewares(stack *mid
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

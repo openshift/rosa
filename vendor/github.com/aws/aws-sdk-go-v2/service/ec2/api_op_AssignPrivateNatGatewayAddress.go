@@ -11,9 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Assigns one or more private IPv4 addresses to a private NAT gateway. For more
-// information, see Work with NAT gateways (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html#nat-gateway-working-with)
-// in the Amazon VPC User Guide.
+// Assigns private IPv4 addresses to a private NAT gateway. For more information,
+// see [Work with NAT gateways]in the Amazon VPC User Guide.
+//
+// [Work with NAT gateways]: https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-working-with.html
 func (c *Client) AssignPrivateNatGatewayAddress(ctx context.Context, params *AssignPrivateNatGatewayAddressInput, optFns ...func(*Options)) (*AssignPrivateNatGatewayAddressOutput, error) {
 	if params == nil {
 		params = &AssignPrivateNatGatewayAddressInput{}
@@ -100,13 +101,16 @@ func (c *Client) addOperationAssignPrivateNatGatewayAddressMiddlewares(stack *mi
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,6 +123,12 @@ func (c *Client) addOperationAssignPrivateNatGatewayAddressMiddlewares(stack *mi
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAssignPrivateNatGatewayAddressValidationMiddleware(stack); err != nil {
@@ -140,6 +150,15 @@ func (c *Client) addOperationAssignPrivateNatGatewayAddressMiddlewares(stack *mi
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

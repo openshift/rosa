@@ -11,8 +11,19 @@ import (
 )
 
 // Disassociates an Elastic IP address from the instance or network interface it's
-// associated with. This is an idempotent operation. If you perform the operation
-// more than once, Amazon EC2 doesn't return an error.
+// associated with.
+//
+// This is an idempotent operation. If you perform the operation more than once,
+// Amazon EC2 doesn't return an error.
+//
+// An address cannot be disassociated if the all of the following conditions are
+// met:
+//
+//   - Network interface has a publicDualStackDnsName publicDnsName
+//
+//   - Public IPv4 address is the primary public IPv4 address
+//
+//   - Network interface only has one remaining public IPv4 address
 func (c *Client) DisassociateAddress(ctx context.Context, params *DisassociateAddressInput, optFns ...func(*Options)) (*DisassociateAddressOutput, error) {
 	if params == nil {
 		params = &DisassociateAddressInput{}
@@ -86,13 +97,16 @@ func (c *Client) addOperationDisassociateAddressMiddlewares(stack *middleware.St
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -105,6 +119,12 @@ func (c *Client) addOperationDisassociateAddressMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDisassociateAddress(options.Region), middleware.Before); err != nil {
@@ -123,6 +143,15 @@ func (c *Client) addOperationDisassociateAddressMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

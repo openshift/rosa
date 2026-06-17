@@ -11,9 +11,10 @@ import (
 )
 
 // Attaches an internet gateway or a virtual private gateway to a VPC, enabling
-// connectivity between the internet and the VPC. For more information, see
-// Internet gateways (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html)
-// in the Amazon VPC User Guide.
+// connectivity between the internet and the VPC. For more information, see [Internet gateways]in the
+// Amazon VPC User Guide.
+//
+// [Internet gateways]: https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html
 func (c *Client) AttachInternetGateway(ctx context.Context, params *AttachInternetGatewayInput, optFns ...func(*Options)) (*AttachInternetGatewayOutput, error) {
 	if params == nil {
 		params = &AttachInternetGatewayInput{}
@@ -91,13 +92,16 @@ func (c *Client) addOperationAttachInternetGatewayMiddlewares(stack *middleware.
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -110,6 +114,12 @@ func (c *Client) addOperationAttachInternetGatewayMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAttachInternetGatewayValidationMiddleware(stack); err != nil {
@@ -131,6 +141,15 @@ func (c *Client) addOperationAttachInternetGatewayMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

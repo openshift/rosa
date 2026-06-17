@@ -16,11 +16,16 @@ import (
 // create volume permissions, but you cannot do both in a single operation. If you
 // need to both add and remove account IDs for a snapshot, you must use multiple
 // operations. You can make up to 500 modifications to a snapshot in a single
-// operation. Encrypted snapshots and snapshots with Amazon Web Services
-// Marketplace product codes cannot be made public. Snapshots encrypted with your
-// default KMS key cannot be shared with other accounts. For more information about
-// modifying snapshot permissions, see Share a snapshot (https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modifying-snapshot-permissions.html)
-// in the Amazon EBS User Guide.
+// operation.
+//
+// Encrypted snapshots and snapshots with Amazon Web Services Marketplace product
+// codes cannot be made public. Snapshots encrypted with your default KMS key
+// cannot be shared with other accounts.
+//
+// For more information about modifying snapshot permissions, see [Share a snapshot] in the Amazon
+// EBS User Guide.
+//
+// [Share a snapshot]: https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modifying-snapshot-permissions.html
 func (c *Client) ModifySnapshotAttribute(ctx context.Context, params *ModifySnapshotAttributeInput, optFns ...func(*Options)) (*ModifySnapshotAttributeOutput, error) {
 	if params == nil {
 		params = &ModifySnapshotAttributeInput{}
@@ -109,13 +114,16 @@ func (c *Client) addOperationModifySnapshotAttributeMiddlewares(stack *middlewar
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -128,6 +136,12 @@ func (c *Client) addOperationModifySnapshotAttributeMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifySnapshotAttributeValidationMiddleware(stack); err != nil {
@@ -149,6 +163,15 @@ func (c *Client) addOperationModifySnapshotAttributeMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

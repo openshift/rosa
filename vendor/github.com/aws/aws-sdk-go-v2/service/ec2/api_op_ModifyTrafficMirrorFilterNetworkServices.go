@@ -11,13 +11,14 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Allows or restricts mirroring network services. By default, Amazon DNS network
-// services are not eligible for Traffic Mirror. Use AddNetworkServices to add
-// network services to a Traffic Mirror filter. When a network service is added to
-// the Traffic Mirror filter, all traffic related to that network service will be
-// mirrored. When you no longer want to mirror network services, use
-// RemoveNetworkServices to remove the network services from the Traffic Mirror
-// filter.
+// Allows or restricts mirroring network services.
+//
+// By default, Amazon DNS network services are not eligible for Traffic Mirror.
+// Use AddNetworkServices to add network services to a Traffic Mirror filter. When
+// a network service is added to the Traffic Mirror filter, all traffic related to
+// that network service will be mirrored. When you no longer want to mirror network
+// services, use RemoveNetworkServices to remove the network services from the
+// Traffic Mirror filter.
 func (c *Client) ModifyTrafficMirrorFilterNetworkServices(ctx context.Context, params *ModifyTrafficMirrorFilterNetworkServicesInput, optFns ...func(*Options)) (*ModifyTrafficMirrorFilterNetworkServicesOutput, error) {
 	if params == nil {
 		params = &ModifyTrafficMirrorFilterNetworkServicesInput{}
@@ -100,13 +101,16 @@ func (c *Client) addOperationModifyTrafficMirrorFilterNetworkServicesMiddlewares
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,6 +123,12 @@ func (c *Client) addOperationModifyTrafficMirrorFilterNetworkServicesMiddlewares
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyTrafficMirrorFilterNetworkServicesValidationMiddleware(stack); err != nil {
@@ -140,6 +150,15 @@ func (c *Client) addOperationModifyTrafficMirrorFilterNetworkServicesMiddlewares
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

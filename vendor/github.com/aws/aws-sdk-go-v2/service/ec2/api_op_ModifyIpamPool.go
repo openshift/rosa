@@ -11,9 +11,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Modify the configurations of an IPAM pool. For more information, see Modify a
-// pool (https://docs.aws.amazon.com/vpc/latest/ipam/mod-pool-ipam.html) in the
-// Amazon VPC IPAM User Guide.
+// Modify the configurations of an IPAM pool.
+//
+// For more information, see [Modify a pool] in the Amazon VPC IPAM User Guide.
+//
+// [Modify a pool]: https://docs.aws.amazon.com/vpc/latest/ipam/mod-pool-ipam.html
 func (c *Client) ModifyIpamPool(ctx context.Context, params *ModifyIpamPoolInput, optFns ...func(*Options)) (*ModifyIpamPoolOutput, error) {
 	if params == nil {
 		params = &ModifyIpamPoolInput{}
@@ -37,8 +39,9 @@ type ModifyIpamPoolInput struct {
 	IpamPoolId *string
 
 	// Add tag allocation rules to a pool. For more information about allocation
-	// rules, see Create a top-level pool (https://docs.aws.amazon.com/vpc/latest/ipam/create-top-ipam.html)
-	// in the Amazon VPC IPAM User Guide.
+	// rules, see [Create a top-level pool]in the Amazon VPC IPAM User Guide.
+	//
+	// [Create a top-level pool]: https://docs.aws.amazon.com/vpc/latest/ipam/create-top-ipam.html
 	AddAllocationResourceTags []types.RequestIpamResourceTag
 
 	// The default netmask length for allocations added to this pool. If, for example,
@@ -66,7 +69,9 @@ type ModifyIpamPoolInput struct {
 	// might be imported and subsequently marked as noncompliant. If IPAM discovers
 	// multiple CIDRs that overlap, IPAM will import the largest CIDR only. If IPAM
 	// discovers multiple CIDRs with matching CIDRs, IPAM will randomly import one of
-	// them only. A locale must be set on the pool for this feature to work.
+	// them only.
+	//
+	// A locale must be set on the pool for this feature to work.
 	AutoImport *bool
 
 	// Clear the default netmask length allocation rule for this pool.
@@ -132,13 +137,16 @@ func (c *Client) addOperationModifyIpamPoolMiddlewares(stack *middleware.Stack, 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -151,6 +159,12 @@ func (c *Client) addOperationModifyIpamPoolMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyIpamPoolValidationMiddleware(stack); err != nil {
@@ -172,6 +186,15 @@ func (c *Client) addOperationModifyIpamPoolMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
