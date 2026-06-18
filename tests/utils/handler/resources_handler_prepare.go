@@ -542,10 +542,14 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	}
 	for _, role := range roles {
 		if role != "" {
-			output, err := ocmResourceService.UnlinkOCMRole("--role-arn", role, "-y")
-			if err != nil {
-				err = fmt.Errorf("error happens when unlinking existing OCM role: %s", output.String())
-				return nil, err
+			// Only unlink the OCM role if the AWS Account ID in the ARN matches the current AWS Account ID
+			if r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(role) == nil {
+				log.Logger.Warnf("Found existing OCM role '%s' that doesn't exist in AWS anymore, unlinking it", role)
+				output, err := ocmResourceService.UnlinkOCMRole("--role-arn", role, "-y")
+				if err != nil {
+					err = fmt.Errorf("error happens when unlinking existing OCM role: %s", output.String())
+					return nil, err
+				}
 			}
 		}
 	}
@@ -628,10 +632,14 @@ func (rh *resourcesHandler) PrepareUserRole(
 	}
 	for _, role := range roles {
 		if role != "" {
-			output, err := ocmResourceService.UnlinkUserRole("--role-arn", role, "-y")
-			if err != nil {
-				err = fmt.Errorf("error happens when unlinking existing user role: %s", output.String())
-				return nil, err
+			// Only unlink the user role if the AWS Account ID in the ARN matches the current AWS Account ID
+			if r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(role) == nil {
+				log.Logger.Warnf("Found existing user role '%s' that doesn't exist in AWS anymore, unlinking it", role)
+				output, err := ocmResourceService.UnlinkUserRole("--role-arn", role, "-y")
+				if err != nil {
+					err = fmt.Errorf("error happens when unlinking existing user role: %s", output.String())
+					return nil, err
+				}
 			}
 		}
 	}
