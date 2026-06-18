@@ -273,4 +273,161 @@ var _ = Describe("STS", func() {
 			Expect(roles[4].RoleName).To(Equal("unlinked-3"))
 		})
 	})
+
+	Context("DeleteUserRole", func() {
+		It("succeeds when no attached policies and no boundary", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListAttachedRolePoliciesOutput{AttachedPolicies: []iamtypes.AttachedPolicy{}}, nil,
+			)
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{Role: &iamtypes.Role{RoleName: awsSdk.String("test-role")}}, nil,
+			)
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), gomock.Any()).Return(&iam.DeleteRoleOutput{}, nil)
+
+			err := client.DeleteUserRole("test-role")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when role has attached policies and a permissions boundary", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListAttachedRolePoliciesOutput{
+					AttachedPolicies: []iamtypes.AttachedPolicy{
+						{PolicyArn: awsSdk.String("arn:aws:iam::123:policy/Policy1"), PolicyName: awsSdk.String("Policy1")},
+						{PolicyArn: awsSdk.String("arn:aws:iam::123:policy/Policy2"), PolicyName: awsSdk.String("Policy2")},
+					},
+				}, nil,
+			)
+			mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), gomock.Any()).Return(&iam.DetachRolePolicyOutput{}, nil).Times(2)
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: awsSdk.String("test-role"),
+						PermissionsBoundary: &iamtypes.AttachedPermissionsBoundary{
+							PermissionsBoundaryArn: awsSdk.String("arn:aws:iam::123:policy/boundary"),
+						},
+					},
+				}, nil,
+			)
+			mockIamAPI.EXPECT().DeleteRolePermissionsBoundary(gomock.Any(), gomock.Any()).Return(
+				&iam.DeleteRolePermissionsBoundaryOutput{}, nil,
+			)
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), gomock.Any()).Return(&iam.DeleteRoleOutput{}, nil)
+
+			err := client.DeleteUserRole("test-role")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns error when ListAttachedRolePolicies fails", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("list policies failed"),
+			)
+
+			err := client.DeleteUserRole("test-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("list policies failed"))
+		})
+
+		It("returns error when DetachRolePolicy fails", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListAttachedRolePoliciesOutput{
+					AttachedPolicies: []iamtypes.AttachedPolicy{
+						{PolicyArn: awsSdk.String("arn:aws:iam::123:policy/Policy1"), PolicyName: awsSdk.String("Policy1")},
+					},
+				}, nil,
+			)
+			mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("detach failed"),
+			)
+
+			err := client.DeleteUserRole("test-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("detach failed"))
+		})
+
+		It("returns error when DeleteRole fails", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListAttachedRolePoliciesOutput{AttachedPolicies: []iamtypes.AttachedPolicy{}}, nil,
+			)
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{Role: &iamtypes.Role{RoleName: awsSdk.String("test-role")}}, nil,
+			)
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("delete role failed"),
+			)
+
+			err := client.DeleteUserRole("test-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("delete role failed"))
+		})
+	})
+
+	Context("DeleteOCMRole", func() {
+		It("detaches but does not delete policies when managedPolicies is true", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListAttachedRolePoliciesOutput{
+					AttachedPolicies: []iamtypes.AttachedPolicy{
+						{PolicyArn: awsSdk.String("arn:aws:iam::123:policy/TestPolicy"), PolicyName: awsSdk.String("TestPolicy")},
+					},
+				}, nil,
+			)
+			mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), gomock.Any()).Return(&iam.DetachRolePolicyOutput{}, nil)
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{Role: &iamtypes.Role{RoleName: awsSdk.String("ocm-role")}}, nil,
+			)
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), gomock.Any()).Return(&iam.DeleteRoleOutput{}, nil)
+
+			err := client.DeleteOCMRole("ocm-role", true)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("detaches and deletes policies when managedPolicies is false", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListAttachedRolePoliciesOutput{
+					AttachedPolicies: []iamtypes.AttachedPolicy{
+						{PolicyArn: awsSdk.String("arn:aws:iam::123:policy/TestPolicy"), PolicyName: awsSdk.String("TestPolicy")},
+					},
+				}, nil,
+			)
+			mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), gomock.Any()).Return(&iam.DetachRolePolicyOutput{}, nil)
+			mockIamAPI.EXPECT().DeletePolicy(gomock.Any(), gomock.Any()).Return(&iam.DeletePolicyOutput{}, nil)
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{Role: &iamtypes.Role{RoleName: awsSdk.String("ocm-role")}}, nil,
+			)
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), gomock.Any()).Return(&iam.DeleteRoleOutput{}, nil)
+
+			err := client.DeleteOCMRole("ocm-role", false)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("continues when DeletePolicy returns DeleteConflictException", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListAttachedRolePoliciesOutput{
+					AttachedPolicies: []iamtypes.AttachedPolicy{
+						{PolicyArn: awsSdk.String("arn:aws:iam::123:policy/TestPolicy"), PolicyName: awsSdk.String("TestPolicy")},
+					},
+				}, nil,
+			)
+			mockIamAPI.EXPECT().DetachRolePolicy(gomock.Any(), gomock.Any()).Return(&iam.DetachRolePolicyOutput{}, nil)
+			mockIamAPI.EXPECT().DeletePolicy(gomock.Any(), gomock.Any()).Return(
+				nil, &iamtypes.DeleteConflictException{Message: awsSdk.String("conflict")},
+			)
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{Role: &iamtypes.Role{RoleName: awsSdk.String("ocm-role")}}, nil,
+			)
+			mockIamAPI.EXPECT().DeleteRole(gomock.Any(), gomock.Any()).Return(&iam.DeleteRoleOutput{}, nil)
+
+			err := client.DeleteOCMRole("ocm-role", false)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns error when ListAttachedRolePolicies fails", func() {
+			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("list attached policies failed"),
+			)
+
+			err := client.DeleteOCMRole("ocm-role", true)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("list attached policies failed"))
+		})
+	})
 })

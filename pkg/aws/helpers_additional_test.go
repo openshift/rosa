@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -374,6 +375,246 @@ var _ = Describe("TrimRoleSuffix", func() {
 		It("should return the original string", func() {
 			result := TrimRoleSuffix("my-role", "")
 			Expect(result).To(Equal("my-role"))
+		})
+	})
+})
+
+var _ = Describe("ARNPathValidator", func() {
+	When("input is a valid path", func() {
+		It("should return nil", func() {
+			err := ARNPathValidator("/my/path/")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input is an empty string", func() {
+		It("should return nil", func() {
+			err := ARNPathValidator("")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input is an invalid path", func() {
+		It("should return an error for a path without slashes", func() {
+			err := ARNPathValidator("noslash")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("must begin and end with /"))
+		})
+	})
+
+	When("input is not a string", func() {
+		It("should return an error", func() {
+			err := ARNPathValidator(42)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+		})
+	})
+})
+
+var _ = Describe("UserNoProxyValidator", func() {
+	When("input is a valid single IP", func() {
+		It("should return nil", func() {
+			err := UserNoProxyValidator("10.0.0.1")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input is a valid CIDR", func() {
+		It("should return nil", func() {
+			err := UserNoProxyValidator("10.0.0.0/16")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input is a valid domain", func() {
+		It("should return nil", func() {
+			err := UserNoProxyValidator(".example.com")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input is an empty string", func() {
+		It("should return nil", func() {
+			err := UserNoProxyValidator("")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input is invalid", func() {
+		It("should return an error", func() {
+			err := UserNoProxyValidator("not a valid proxy")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a valid user no-proxy value"))
+		})
+	})
+
+	When("input has multiple comma-separated valid values", func() {
+		It("should return nil", func() {
+			err := UserNoProxyValidator("10.0.0.1,10.0.0.2")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input has one invalid value in comma-separated list", func() {
+		It("should return an error", func() {
+			err := UserNoProxyValidator("10.0.0.1,not valid")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a valid user no-proxy value"))
+		})
+	})
+
+	When("input is not a string", func() {
+		It("should return an error", func() {
+			err := UserNoProxyValidator(42)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+		})
+	})
+})
+
+var _ = Describe("UserNoProxyDuplicateValidator", func() {
+	When("values are unique", func() {
+		It("should return nil", func() {
+			err := UserNoProxyDuplicateValidator("a.com,b.com")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("values have duplicates", func() {
+		It("should return an error", func() {
+			err := UserNoProxyDuplicateValidator("a.com,b.com,a.com")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("duplicate key"))
+		})
+	})
+
+	When("input is an empty string", func() {
+		It("should return nil", func() {
+			err := UserNoProxyDuplicateValidator("")
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("input is not a string", func() {
+		It("should return an error", func() {
+			err := UserNoProxyDuplicateValidator(42)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+		})
+	})
+})
+
+var _ = Describe("GetOCMRoleName", func() {
+	It("should build the correct OCM role name", func() {
+		result := GetOCMRoleName("ManagedOpenShift", "OCM", "12345")
+		Expect(result).To(Equal("ManagedOpenShift-OCM-Role-12345"))
+	})
+})
+
+var _ = Describe("GetUserRoleName", func() {
+	It("should build the correct user role name", func() {
+		result := GetUserRoleName("ManagedOpenShift", "User", "testuser")
+		Expect(result).To(Equal("ManagedOpenShift-User-testuser-Role"))
+	})
+})
+
+var _ = Describe("GetOperatorPolicyName", func() {
+	It("should build the correct operator policy name", func() {
+		result := GetOperatorPolicyName("my-prefix", "openshift-ingress", "cloud-credentials")
+		Expect(result).To(Equal("my-prefix-openshift-ingress-cloud-credentials"))
+	})
+})
+
+var _ = Describe("GetPolicyArn", func() {
+	It("should build a policy ARN without path", func() {
+		result := GetPolicyArn("aws", "123456789012", "MyPolicy", "")
+		Expect(result).To(Equal("arn:aws:iam::123456789012:policy/MyPolicy"))
+	})
+
+	It("should build a policy ARN with path", func() {
+		result := GetPolicyArn("aws", "123456789012", "MyPolicy", "/my/path/")
+		Expect(result).To(Equal("arn:aws:iam::123456789012:policy/my/path/MyPolicy"))
+	})
+})
+
+var _ = Describe("GetOperatorPolicyARN", func() {
+	It("should build an operator policy ARN without path", func() {
+		result := GetOperatorPolicyARN(
+			"aws", "123456789012", "my-prefix", "openshift-ingress", "cloud-credentials", "")
+		Expect(result).To(Equal(
+			"arn:aws:iam::123456789012:policy/my-prefix-openshift-ingress-cloud-credentials"))
+	})
+})
+
+var _ = Describe("IsStandardNamedAccountRole", func() {
+	When("the role name follows the standard pattern", func() {
+		It("should return true and the prefix", func() {
+			isStandard, prefix := IsStandardNamedAccountRole("my-prefix-Installer-Role", "Installer")
+			Expect(isStandard).To(BeTrue())
+			Expect(prefix).To(Equal("my-prefix"))
+		})
+	})
+
+	When("the role name does not follow the standard pattern", func() {
+		It("should return false and the original name", func() {
+			isStandard, prefix := IsStandardNamedAccountRole("some-other-name", "Installer")
+			Expect(isStandard).To(BeFalse())
+			Expect(prefix).To(Equal("some-other-name"))
+		})
+	})
+})
+
+var _ = Describe("isSTS", func() {
+	When("the ARN is an STS assumed-role", func() {
+		It("should return true", func() {
+			stsARN := arn.ARN{
+				Partition: "aws",
+				Service:   "sts",
+				AccountID: "123456789012",
+				Resource:  "assumed-role/MyRole/session",
+			}
+			Expect(isSTS(stsARN)).To(BeTrue())
+		})
+	})
+
+	When("the ARN is an IAM user", func() {
+		It("should return false", func() {
+			iamARN := arn.ARN{
+				Partition: "aws",
+				Service:   "iam",
+				AccountID: "123456789012",
+				Resource:  "user/MyUser",
+			}
+			Expect(isSTS(iamARN)).To(BeFalse())
+		})
+	})
+})
+
+var _ = Describe("resolveSTSRole", func() {
+	When("the ARN is a valid STS assumed-role", func() {
+		It("should return the corresponding IAM role ARN", func() {
+			stsARN := arn.ARN{
+				Partition: "aws",
+				Service:   "sts",
+				AccountID: "123456789012",
+				Resource:  "assumed-role/MyRole/session",
+			}
+			result, err := resolveSTSRole(stsARN)
+			Expect(err).To(BeNil())
+			Expect(*result).To(Equal("arn:aws:iam::123456789012:role/MyRole"))
+		})
+	})
+
+	When("the ARN is not an STS ARN", func() {
+		It("should return an error", func() {
+			iamARN := arn.ARN{
+				Partition: "aws",
+				Service:   "iam",
+				AccountID: "123456789012",
+				Resource:  "user/MyUser",
+			}
+			_, err := resolveSTSRole(iamARN)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
