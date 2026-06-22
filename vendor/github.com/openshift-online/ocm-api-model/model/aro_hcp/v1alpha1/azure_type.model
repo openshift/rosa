@@ -118,6 +118,31 @@ struct Azure {
 	// Readonly
 	OidcIssuerUrl String
 
+	// Configures authentication for container image pulls from Azure
+	// Container Registry (ACR) on Data Plane worker nodes. Only ACR
+	// registries (*.azurecr.io, *.azurecr.cn, *.azurecr.de, *.azurecr.us) are
+	// supported; non-ACR registries are not affected by this
+	// configuration. The identity is not bound to a specific ACR
+	// instance — it authenticates to any ACR the identity has the
+	// AcrPull role assigned on. The customer controls which ACR
+	// instances the identity can pull from via Azure RBAC.
+	// When set, the managed identity is attached to worker virtual
+	// machines and its resource ID is written into the worker cloud
+	// provider config so kubelet's ACR credential provider can
+	// authenticate without image pull secrets.
+	// When not set, no managed identity is attached to worker virtual
+	// machines for ACR and no identity is written into the worker
+	// cloud provider config. The ACR credential provider on worker
+	// nodes has no identity to authenticate with, so image pulls from
+	// private ACR registries will fail unless the workload provides
+	// image pull secrets or another authentication mechanism. Public
+	// ACR images (anonymous pull enabled) are not affected.
+	// Changing this value will trigger a rollout for all existing
+	// NodePools in the cluster.
+	// Optional.
+	// Mutable.
+	ContainerRegistry AzureContainerRegistry
+
     // Vnet Integration Subnet Resource ID is the Azure Resource ID of a pre-existing Azure
     // Subnet used for SWIFT networking (Azure Container Networking Interface).
     // This subnet is delegated to Microsoft.RedHatOpenShift/hcpOpenShiftClusters

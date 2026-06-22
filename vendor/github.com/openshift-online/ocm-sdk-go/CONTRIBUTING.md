@@ -2,12 +2,28 @@
 
 ## Releasing a new OCM API Model version
 
-First, all changes to the [ocm-api-model](https://github.com/openshift-online/ocm-api-model) have been defined and reviewed. Then, the client types for the model need to be generated via `make update` target in the `ocm-api-model` project.
+This section describes the release process in the [ocm-api-model](https://github.com/openshift-online/ocm-api-model) repository. Once a model release is published, it triggers the SDK update process described in the next section.
 
-Once the client types and api description are merged in [ocm-api-model](https://github.com/openshift-online/ocm-api-model), the version of the ocm-api-model
-must be incremented for consumption in ocm-sdk-go generation. The version is defined by the latest git tag.
+First, all changes to the model have been defined and reviewed. Then, the client types for the model need to be generated via `make update` target in the `ocm-api-model` project.
 
-Once all changes to the OCM API Model have been committed to the main branch and a new tag is pused a new release will be created automatically.Then, you will need to update these changes in the SDK. (See "Updating the OCM SDK" section)
+Once all changes have been committed to the main branch, the automated release pipeline in **ocm-api-model** handles the rest:
+
+1. **Auto-tag** (runs in ocm-api-model) — a GitHub Action automatically bumps the patch version, regenerates `clientapi/` and `openapi/`, updates `CHANGES.md`, and pushes all sub-module tags.
+2. **Release** (runs in ocm-api-model) — the tag push triggers a GitHub Release.
+3. **SDK sync** (runs in ocm-api-model) — the release sends a `repository_dispatch` event to this repository (ocm-sdk-go), triggering the SDK update below.
+
+If the automation is not available, you can manually tag and release in ocm-api-model:
+
+```shell
+make update
+git add -A
+git commit -m "Release vX.Y.Z"
+git tag vX.Y.Z
+git tag clientapi/vX.Y.Z
+git tag model/vX.Y.Z
+git tag metamodel_generator/vX.Y.Z
+git push origin main --tags
+```
 
 ### Validating model updates
 
@@ -26,6 +42,19 @@ make update
 
 ## Updating the OCM SDK
 
+### Automated (recommended)
+
+When a new ocm-api-model release is published, a GitHub Action automatically:
+
+1. Receives a `repository_dispatch` event from ocm-api-model
+2. Bumps the ocm-api-model dependency using `./hack/update-model.sh`
+3. Regenerates the SDK using `make update`
+4. Opens a PR with the changes
+
+Review and merge the auto-generated PR. On merge, a new SDK version tag is created automatically.
+
+### Manual
+
 The OCM SDK can be generated simply by running the following after all changes have been made:
 
 ```shell
@@ -42,6 +71,12 @@ Whenever an update is made, ensure that the corresponding example in [examples](
 necessary. It is *highly recommended* that new endpoints have a new example created.
 
 ## Releasing a new OCM SDK Version
+
+### Automated (recommended)
+
+On merge to main, a GitHub Action automatically bumps the patch version and pushes a new tag. The existing `publish-release` workflow then creates the GitHub Release.
+
+### Manual
 
 Releasing a new version requires submitting an MR for review/merge with an update to the `Version` constant in
 [version.go](version.go). Additionally, update the [CHANGES.md](CHANGES.md) file to include the new version and
