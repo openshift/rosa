@@ -11,9 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Replaces an entry (rule) in a network ACL. For more information, see Network
-// ACLs (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html) in
-// the Amazon VPC User Guide.
+// Replaces an entry (rule) in a network ACL. For more information, see [Network ACLs] in the
+// Amazon VPC User Guide.
+//
+// [Network ACLs]: https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html
 func (c *Client) ReplaceNetworkAclEntry(ctx context.Context, params *ReplaceNetworkAclEntryInput, optFns ...func(*Options)) (*ReplaceNetworkAclEntryOutput, error) {
 	if params == nil {
 		params = &ReplaceNetworkAclEntryInput{}
@@ -31,8 +32,9 @@ func (c *Client) ReplaceNetworkAclEntry(ctx context.Context, params *ReplaceNetw
 
 type ReplaceNetworkAclEntryInput struct {
 
-	// Indicates whether to replace the egress rule. Default: If no value is
-	// specified, we replace the ingress rule.
+	// Indicates whether to replace the egress rule.
+	//
+	// Default: If no value is specified, we replace the ingress rule.
 	//
 	// This member is required.
 	Egress *bool
@@ -129,13 +131,16 @@ func (c *Client) addOperationReplaceNetworkAclEntryMiddlewares(stack *middleware
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -148,6 +153,12 @@ func (c *Client) addOperationReplaceNetworkAclEntryMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpReplaceNetworkAclEntryValidationMiddleware(stack); err != nil {
@@ -169,6 +180,15 @@ func (c *Client) addOperationReplaceNetworkAclEntryMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

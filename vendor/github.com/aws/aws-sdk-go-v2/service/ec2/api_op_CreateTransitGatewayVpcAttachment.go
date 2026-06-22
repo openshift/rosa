@@ -11,11 +11,14 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Attaches the specified VPC to the specified transit gateway. If you attach a
-// VPC with a CIDR range that overlaps the CIDR range of a VPC that is already
-// attached, the new VPC CIDR range is not propagated to the default propagation
-// route table. To send VPC traffic to an attached transit gateway, add a route to
-// the VPC route table using CreateRoute .
+// Attaches the specified VPC to the specified transit gateway.
+//
+// If you attach a VPC with a CIDR range that overlaps the CIDR range of a VPC
+// that is already attached, the new VPC CIDR range is not propagated to the
+// default propagation route table.
+//
+// To send VPC traffic to an attached transit gateway, add a route to the VPC
+// route table using CreateRoute.
 func (c *Client) CreateTransitGatewayVpcAttachment(ctx context.Context, params *CreateTransitGatewayVpcAttachmentInput, optFns ...func(*Options)) (*CreateTransitGatewayVpcAttachmentOutput, error) {
 	if params == nil {
 		params = &CreateTransitGatewayVpcAttachmentInput{}
@@ -111,13 +114,16 @@ func (c *Client) addOperationCreateTransitGatewayVpcAttachmentMiddlewares(stack 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -130,6 +136,12 @@ func (c *Client) addOperationCreateTransitGatewayVpcAttachmentMiddlewares(stack 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTransitGatewayVpcAttachmentValidationMiddleware(stack); err != nil {
@@ -151,6 +163,15 @@ func (c *Client) addOperationCreateTransitGatewayVpcAttachmentMiddlewares(stack 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

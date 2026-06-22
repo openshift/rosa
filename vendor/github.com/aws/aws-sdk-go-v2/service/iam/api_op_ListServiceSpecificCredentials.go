@@ -16,8 +16,20 @@ import (
 // service-specific credentials returned by this operation are used only for
 // authenticating the IAM user to a specific service. For more information about
 // using service-specific credentials to authenticate to an Amazon Web Services
-// service, see Set up service-specific credentials (https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html)
-// in the CodeCommit User Guide.
+// service, refer to the following docs:
+//
+//   - For service-specific credentials with CodeCommit, refer to [IAM credentials for CodeCommit: Git credentials, SSH keys, and Amazon Web Services access keys]in the IAM User
+//     Guide.
+//
+//   - For service-specific credentials with Amazon Keyspaces (for Apache
+//     Cassandra), refer to [Use IAM with Amazon Keyspaces (for Apache Cassandra)]in the IAM User Guide.
+//
+//   - For services that support long-term API keys, refer to [API keys for Amazon Web Services services]in the IAM User
+//     Guide.
+//
+// [IAM credentials for CodeCommit: Git credentials, SSH keys, and Amazon Web Services access keys]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_ssh-keys.html
+// [Use IAM with Amazon Keyspaces (for Apache Cassandra)]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_keyspaces.html
+// [API keys for Amazon Web Services services]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_api_keys_for_aws_services.html
 func (c *Client) ListServiceSpecificCredentials(ctx context.Context, params *ListServiceSpecificCredentialsInput, optFns ...func(*Options)) (*ListServiceSpecificCredentialsOutput, error) {
 	if params == nil {
 		params = &ListServiceSpecificCredentialsInput{}
@@ -35,6 +47,22 @@ func (c *Client) ListServiceSpecificCredentials(ctx context.Context, params *Lis
 
 type ListServiceSpecificCredentialsInput struct {
 
+	// A flag indicating whether to list service specific credentials for all users.
+	// This parameter cannot be specified together with UserName. When true, returns
+	// all credentials associated with the specified service.
+	AllUsers *bool
+
+	// Use this parameter only when paginating results and only after you receive a
+	// response indicating that the results are truncated. Set it to the value of the
+	// Marker from the response that you received to indicate where the next call
+	// should start.
+	Marker *string
+
+	// Use this only when paginating results to indicate the maximum number of items
+	// you want in the response. If additional items exist beyond the maximum you
+	// specify, the IsTruncated response element is true.
+	MaxItems *int32
+
 	// Filters the returned results to only those for the specified Amazon Web
 	// Services service. If not specified, then Amazon Web Services returns
 	// service-specific credentials for all services.
@@ -42,16 +70,28 @@ type ListServiceSpecificCredentialsInput struct {
 
 	// The name of the user whose service-specific credentials you want information
 	// about. If this value is not specified, then the operation assumes the user whose
-	// credentials are used to call the operation. This parameter allows (through its
-	// regex pattern (http://wikipedia.org/wiki/regex) ) a string of characters
-	// consisting of upper and lowercase alphanumeric characters with no spaces. You
-	// can also include any of the following characters: _+=,.@-
+	// credentials are used to call the operation.
+	//
+	// This parameter allows (through its [regex pattern]) a string of characters consisting of upper
+	// and lowercase alphanumeric characters with no spaces. You can also include any
+	// of the following characters: _+=,.@-
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	UserName *string
 
 	noSmithyDocumentSerde
 }
 
 type ListServiceSpecificCredentialsOutput struct {
+
+	// A flag that indicates whether there are more items to return. If your results
+	// were truncated, you can make a subsequent pagination request using the Marker
+	// request parameter to retrieve more items.
+	IsTruncated bool
+
+	// When IsTruncated is true, this element is present and contains the value to use
+	// for the Marker parameter in a subsequent pagination request.
+	Marker *string
 
 	// A list of structures that each contain details about a service-specific
 	// credential.
@@ -97,13 +137,16 @@ func (c *Client) addOperationListServiceSpecificCredentialsMiddlewares(stack *mi
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -116,6 +159,12 @@ func (c *Client) addOperationListServiceSpecificCredentialsMiddlewares(stack *mi
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListServiceSpecificCredentials(options.Region), middleware.Before); err != nil {
@@ -134,6 +183,15 @@ func (c *Client) addOperationListServiceSpecificCredentialsMiddlewares(stack *mi
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

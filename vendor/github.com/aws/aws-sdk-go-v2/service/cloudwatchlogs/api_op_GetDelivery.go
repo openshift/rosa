@@ -12,16 +12,20 @@ import (
 )
 
 // Returns complete information about one logical delivery. A delivery is a
-// connection between a delivery source  (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliverySource.html)
-// and a delivery destination  (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliveryDestination.html)
-// . A delivery source represents an Amazon Web Services resource that sends logs
-// to an logs delivery destination. The destination can be CloudWatch Logs, Amazon
-// S3, or Firehose. Only some Amazon Web Services services support being configured
-// as a delivery source. These services are listed in Enable logging from Amazon
-// Web Services services. (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html)
+// connection between a [delivery source]and a [delivery destination].
+//
+// A delivery source represents an Amazon Web Services resource that sends logs to
+// an logs delivery destination. The destination can be CloudWatch Logs, Amazon S3,
+// or Firehose. Only some Amazon Web Services services support being configured as
+// a delivery source. These services are listed in [Enable logging from Amazon Web Services services.]
+//
 // You need to specify the delivery id in this operation. You can find the IDs of
-// the deliveries in your account with the DescribeDeliveries (https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeDeliveries.html)
-// operation.
+// the deliveries in your account with the [DescribeDeliveries]operation.
+//
+// [delivery destination]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliveryDestination.html
+// [delivery source]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutDeliverySource.html
+// [Enable logging from Amazon Web Services services.]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html
+// [DescribeDeliveries]: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeDeliveries.html
 func (c *Client) GetDelivery(ctx context.Context, params *GetDeliveryInput, optFns ...func(*Options)) (*GetDeliveryOutput, error) {
 	if params == nil {
 		params = &GetDeliveryInput{}
@@ -92,13 +96,16 @@ func (c *Client) addOperationGetDeliveryMiddlewares(stack *middleware.Stack, opt
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -111,6 +118,12 @@ func (c *Client) addOperationGetDeliveryMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetDeliveryValidationMiddleware(stack); err != nil {
@@ -132,6 +145,15 @@ func (c *Client) addOperationGetDeliveryMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

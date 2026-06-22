@@ -14,12 +14,15 @@ import (
 // and include every character type that the system you are generating a password
 // for can support. By default, Secrets Manager uses uppercase and lowercase
 // letters, numbers, and the following characters in passwords:
-// !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ Secrets Manager generates a CloudTrail log
-// entry when you call this action. Required permissions:
-// secretsmanager:GetRandomPassword . For more information, see  IAM policy
-// actions for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions)
-// and Authentication and access control in Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)
-// .
+// !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~
+//
+// Secrets Manager generates a CloudTrail log entry when you call this action.
+//
+// Required permissions: secretsmanager:GetRandomPassword . For more information,
+// see [IAM policy actions for Secrets Manager]and [Authentication and access control in Secrets Manager].
+//
+// [Authentication and access control in Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html
+// [IAM policy actions for Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions
 func (c *Client) GetRandomPassword(ctx context.Context, params *GetRandomPasswordInput, optFns ...func(*Options)) (*GetRandomPasswordOutput, error) {
 	if params == nil {
 		params = &GetRandomPasswordInput{}
@@ -118,13 +121,16 @@ func (c *Client) addOperationGetRandomPasswordMiddlewares(stack *middleware.Stac
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -137,6 +143,12 @@ func (c *Client) addOperationGetRandomPasswordMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetRandomPassword(options.Region), middleware.Before); err != nil {
@@ -155,6 +167,15 @@ func (c *Client) addOperationGetRandomPasswordMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

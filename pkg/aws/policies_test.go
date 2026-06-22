@@ -37,7 +37,7 @@ var _ = Describe("ListOperatorRoles", func() {
 	})
 
 	It("Retrieves by target version", func() {
-		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(
+		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 			&iam.ListRolesOutput{
 				IsTruncated: false,
 				Roles: []iamtypes.Role{
@@ -75,7 +75,7 @@ var _ = Describe("ListOperatorRoles", func() {
 	})
 
 	It("Retrieves by target cluster ID", func() {
-		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(
+		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 			&iam.ListRolesOutput{
 				IsTruncated: false,
 				Roles: []iamtypes.Role{
@@ -119,7 +119,7 @@ var _ = Describe("ListOperatorRoles", func() {
 	})
 
 	It("Retrieves by target prefix", func() {
-		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any()).Return(
+		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 			&iam.ListRolesOutput{
 				IsTruncated: false,
 				Roles: []iamtypes.Role{

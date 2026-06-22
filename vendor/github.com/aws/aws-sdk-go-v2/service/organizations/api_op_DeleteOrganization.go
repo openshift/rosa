@@ -13,6 +13,11 @@ import (
 // Deletes the organization. You can delete an organization only by using
 // credentials from the management account. The organization must be empty of
 // member accounts.
+//
+// When an organization is deleted, Organizations logs a membership event in
+// CloudTrail. The event is an AccountDepartedOrganization event with
+// departedMethod:Left and departedTime . This event is available only in the
+// management account's event history.
 func (c *Client) DeleteOrganization(ctx context.Context, params *DeleteOrganizationInput, optFns ...func(*Options)) (*DeleteOrganizationOutput, error) {
 	if params == nil {
 		params = &DeleteOrganizationInput{}
@@ -73,13 +78,16 @@ func (c *Client) addOperationDeleteOrganizationMiddlewares(stack *middleware.Sta
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -92,6 +100,12 @@ func (c *Client) addOperationDeleteOrganizationMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteOrganization(options.Region), middleware.Before); err != nil {
@@ -110,6 +124,15 @@ func (c *Client) addOperationDeleteOrganizationMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

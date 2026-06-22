@@ -12,8 +12,9 @@ import (
 )
 
 // Modifies an attribute of the specified Elastic IP address. For requirements,
-// see Using reverse DNS for email applications (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html#Using_Elastic_Addressing_Reverse_DNS)
-// .
+// see [Using reverse DNS for email applications].
+//
+// [Using reverse DNS for email applications]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html#Using_Elastic_Addressing_Reverse_DNS
 func (c *Client) ModifyAddressAttribute(ctx context.Context, params *ModifyAddressAttributeInput, optFns ...func(*Options)) (*ModifyAddressAttributeOutput, error) {
 	if params == nil {
 		params = &ModifyAddressAttributeInput{}
@@ -93,13 +94,16 @@ func (c *Client) addOperationModifyAddressAttributeMiddlewares(stack *middleware
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -112,6 +116,12 @@ func (c *Client) addOperationModifyAddressAttributeMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyAddressAttributeValidationMiddleware(stack); err != nil {
@@ -133,6 +143,15 @@ func (c *Client) addOperationModifyAddressAttributeMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

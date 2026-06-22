@@ -11,12 +11,14 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Move a BYOIPv4 CIDR to IPAM from a public IPv4 pool. If you already have a
-// BYOIPv4 CIDR with Amazon Web Services, you can move the CIDR to IPAM from a
-// public IPv4 pool. You cannot move an IPv6 CIDR to IPAM. If you are bringing a
-// new IP address to Amazon Web Services for the first time, complete the steps in
-// Tutorial: BYOIP address CIDRs to IPAM (https://docs.aws.amazon.com/vpc/latest/ipam/tutorials-byoip-ipam.html)
-// .
+// Move a BYOIPv4 CIDR to IPAM from a public IPv4 pool.
+//
+// If you already have a BYOIPv4 CIDR with Amazon Web Services, you can move the
+// CIDR to IPAM from a public IPv4 pool. You cannot move an IPv6 CIDR to IPAM. If
+// you are bringing a new IP address to Amazon Web Services for the first time,
+// complete the steps in [Tutorial: BYOIP address CIDRs to IPAM].
+//
+// [Tutorial: BYOIP address CIDRs to IPAM]: https://docs.aws.amazon.com/vpc/latest/ipam/tutorials-byoip-ipam.html
 func (c *Client) MoveByoipCidrToIpam(ctx context.Context, params *MoveByoipCidrToIpamInput, optFns ...func(*Options)) (*MoveByoipCidrToIpamOutput, error) {
 	if params == nil {
 		params = &MoveByoipCidrToIpamInput{}
@@ -103,13 +105,16 @@ func (c *Client) addOperationMoveByoipCidrToIpamMiddlewares(stack *middleware.St
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -122,6 +127,12 @@ func (c *Client) addOperationMoveByoipCidrToIpamMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpMoveByoipCidrToIpamValidationMiddleware(stack); err != nil {
@@ -143,6 +154,15 @@ func (c *Client) addOperationMoveByoipCidrToIpamMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

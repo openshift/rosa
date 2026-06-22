@@ -35,8 +35,13 @@ type ListResourceScansInput struct {
 	// set of results. The default value is 10. The maximum value is 100.
 	MaxResults *int32
 
-	// A string that identifies the next page of resource scan results.
+	// The token for the next set of items to return. (You received this token from a
+	// previous call.)
 	NextToken *string
+
+	// The scan type that you want to get summary information about. The default is
+	// FULL .
+	ScanTypeFilter types.ScanType
 
 	noSmithyDocumentSerde
 }
@@ -92,13 +97,16 @@ func (c *Client) addOperationListResourceScansMiddlewares(stack *middleware.Stac
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -111,6 +119,12 @@ func (c *Client) addOperationListResourceScansMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListResourceScans(options.Region), middleware.Before); err != nil {
@@ -131,16 +145,17 @@ func (c *Client) addOperationListResourceScansMiddlewares(stack *middleware.Stac
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListResourceScansAPIClient is a client that implements the ListResourceScans
-// operation.
-type ListResourceScansAPIClient interface {
-	ListResourceScans(context.Context, *ListResourceScansInput, ...func(*Options)) (*ListResourceScansOutput, error)
-}
-
-var _ ListResourceScansAPIClient = (*Client)(nil)
 
 // ListResourceScansPaginatorOptions is the paginator options for ListResourceScans
 type ListResourceScansPaginatorOptions struct {
@@ -207,6 +222,9 @@ func (p *ListResourceScansPaginator) NextPage(ctx context.Context, optFns ...fun
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListResourceScans(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -225,6 +243,14 @@ func (p *ListResourceScansPaginator) NextPage(ctx context.Context, optFns ...fun
 
 	return result, nil
 }
+
+// ListResourceScansAPIClient is a client that implements the ListResourceScans
+// operation.
+type ListResourceScansAPIClient interface {
+	ListResourceScans(context.Context, *ListResourceScansInput, ...func(*Options)) (*ListResourceScansOutput, error)
+}
+
+var _ ListResourceScansAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListResourceScans(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

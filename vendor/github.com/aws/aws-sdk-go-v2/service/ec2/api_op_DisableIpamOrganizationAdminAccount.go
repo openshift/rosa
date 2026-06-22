@@ -10,9 +10,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disable the IPAM account. For more information, see Enable integration with
-// Organizations (https://docs.aws.amazon.com/vpc/latest/ipam/enable-integ-ipam.html)
-// in the Amazon VPC IPAM User Guide.
+// Disable the IPAM account. For more information, see [Enable integration with Organizations] in the Amazon VPC IPAM
+// User Guide.
+//
+// [Enable integration with Organizations]: https://docs.aws.amazon.com/vpc/latest/ipam/enable-integ-ipam.html
 func (c *Client) DisableIpamOrganizationAdminAccount(ctx context.Context, params *DisableIpamOrganizationAdminAccountInput, optFns ...func(*Options)) (*DisableIpamOrganizationAdminAccountOutput, error) {
 	if params == nil {
 		params = &DisableIpamOrganizationAdminAccountInput{}
@@ -89,13 +90,16 @@ func (c *Client) addOperationDisableIpamOrganizationAdminAccountMiddlewares(stac
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -108,6 +112,12 @@ func (c *Client) addOperationDisableIpamOrganizationAdminAccountMiddlewares(stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisableIpamOrganizationAdminAccountValidationMiddleware(stack); err != nil {
@@ -129,6 +139,15 @@ func (c *Client) addOperationDisableIpamOrganizationAdminAccountMiddlewares(stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

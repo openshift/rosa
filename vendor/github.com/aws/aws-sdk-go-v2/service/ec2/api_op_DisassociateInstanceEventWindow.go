@@ -11,9 +11,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disassociates one or more targets from an event window. For more information,
-// see Define event windows for scheduled events (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/event-windows.html)
-// in the Amazon EC2 User Guide.
+// Disassociates one or more targets from an event window.
+//
+// For more information, see [Define event windows for scheduled events] in the Amazon EC2 User Guide.
+//
+// [Define event windows for scheduled events]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/event-windows.html
 func (c *Client) DisassociateInstanceEventWindow(ctx context.Context, params *DisassociateInstanceEventWindowInput, optFns ...func(*Options)) (*DisassociateInstanceEventWindowOutput, error) {
 	if params == nil {
 		params = &DisassociateInstanceEventWindowInput{}
@@ -95,13 +97,16 @@ func (c *Client) addOperationDisassociateInstanceEventWindowMiddlewares(stack *m
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -114,6 +119,12 @@ func (c *Client) addOperationDisassociateInstanceEventWindowMiddlewares(stack *m
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisassociateInstanceEventWindowValidationMiddleware(stack); err != nil {
@@ -135,6 +146,15 @@ func (c *Client) addOperationDisassociateInstanceEventWindowMiddlewares(stack *m
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

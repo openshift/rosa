@@ -11,8 +11,9 @@ import (
 )
 
 // Adds a new client ID (also known as audience) to the list of client IDs already
-// registered for the specified IAM OpenID Connect (OIDC) provider resource. This
-// operation is idempotent; it does not fail or return an error if you add an
+// registered for the specified IAM OpenID Connect (OIDC) provider resource.
+//
+// This operation is idempotent; it does not fail or return an error if you add an
 // existing client ID to the provider.
 func (c *Client) AddClientIDToOpenIDConnectProvider(ctx context.Context, params *AddClientIDToOpenIDConnectProviderInput, optFns ...func(*Options)) (*AddClientIDToOpenIDConnectProviderOutput, error) {
 	if params == nil {
@@ -39,7 +40,9 @@ type AddClientIDToOpenIDConnectProviderInput struct {
 
 	// The Amazon Resource Name (ARN) of the IAM OpenID Connect (OIDC) provider
 	// resource to add the client ID to. You can get a list of OIDC provider ARNs by
-	// using the ListOpenIDConnectProviders operation.
+	// using the [ListOpenIDConnectProviders]operation.
+	//
+	// [ListOpenIDConnectProviders]: https://docs.aws.amazon.com/IAM/latest/APIReference/API_ListOpenIDConnectProviders.html
 	//
 	// This member is required.
 	OpenIDConnectProviderArn *string
@@ -88,13 +91,16 @@ func (c *Client) addOperationAddClientIDToOpenIDConnectProviderMiddlewares(stack
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -107,6 +113,12 @@ func (c *Client) addOperationAddClientIDToOpenIDConnectProviderMiddlewares(stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAddClientIDToOpenIDConnectProviderValidationMiddleware(stack); err != nil {
@@ -128,6 +140,15 @@ func (c *Client) addOperationAddClientIDToOpenIDConnectProviderMiddlewares(stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

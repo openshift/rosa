@@ -30,9 +30,10 @@ func (c *Client) GetRoleCredentials(ctx context.Context, params *GetRoleCredenti
 
 type GetRoleCredentialsInput struct {
 
-	// The token issued by the CreateToken API call. For more information, see
-	// CreateToken (https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/API_CreateToken.html)
-	// in the IAM Identity Center OIDC API Reference Guide.
+	// The token issued by the CreateToken API call. For more information, see [CreateToken] in the
+	// IAM Identity Center OIDC API Reference Guide.
+	//
+	// [CreateToken]: https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/API_CreateToken.html
 	//
 	// This member is required.
 	AccessToken *string
@@ -92,13 +93,16 @@ func (c *Client) addOperationGetRoleCredentialsMiddlewares(stack *middleware.Sta
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -111,6 +115,12 @@ func (c *Client) addOperationGetRoleCredentialsMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetRoleCredentialsValidationMiddleware(stack); err != nil {
@@ -132,6 +142,15 @@ func (c *Client) addOperationGetRoleCredentialsMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

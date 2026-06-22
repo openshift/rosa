@@ -11,12 +11,15 @@ import (
 )
 
 // Deletes the specified change set. Deleting change sets ensures that no one
-// executes the wrong change set. If the call successfully completes,
-// CloudFormation successfully deleted the change set. If IncludeNestedStacks
-// specifies True during the creation of the nested change set, then
-// DeleteChangeSet will delete all change sets that belong to the stacks hierarchy
-// and will also delete all change sets for nested stacks with the status of
-// REVIEW_IN_PROGRESS .
+// executes the wrong change set.
+//
+// If the call successfully completes, CloudFormation successfully deleted the
+// change set.
+//
+// If IncludeNestedStacks specifies True during the creation of the nested change
+// set, then DeleteChangeSet will delete all change sets that belong to the stacks
+// hierarchy and will also delete all change sets for nested stacks with the status
+// of REVIEW_IN_PROGRESS .
 func (c *Client) DeleteChangeSet(ctx context.Context, params *DeleteChangeSetInput, optFns ...func(*Options)) (*DeleteChangeSetOutput, error) {
 	if params == nil {
 		params = &DeleteChangeSetInput{}
@@ -90,13 +93,16 @@ func (c *Client) addOperationDeleteChangeSetMiddlewares(stack *middleware.Stack,
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -109,6 +115,12 @@ func (c *Client) addOperationDeleteChangeSetMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteChangeSetValidationMiddleware(stack); err != nil {
@@ -130,6 +142,15 @@ func (c *Client) addOperationDeleteChangeSetMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

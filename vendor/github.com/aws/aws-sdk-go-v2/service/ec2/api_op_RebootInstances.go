@@ -13,10 +13,14 @@ import (
 // Requests a reboot of the specified instances. This operation is asynchronous;
 // it only queues a request to reboot the specified instances. The operation
 // succeeds if the instances are valid and belong to you. Requests to reboot
-// terminated instances are ignored. If an instance does not cleanly shut down
-// within a few minutes, Amazon EC2 performs a hard reboot. For more information
-// about troubleshooting, see Troubleshoot an unreachable instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-console.html)
-// in the Amazon EC2 User Guide.
+// terminated instances are ignored.
+//
+// If an instance does not cleanly shut down within a few minutes, Amazon EC2
+// performs a hard reboot.
+//
+// For more information about troubleshooting, see [Troubleshoot an unreachable instance] in the Amazon EC2 User Guide.
+//
+// [Troubleshoot an unreachable instance]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-console.html
 func (c *Client) RebootInstances(ctx context.Context, params *RebootInstancesInput, optFns ...func(*Options)) (*RebootInstancesOutput, error) {
 	if params == nil {
 		params = &RebootInstancesInput{}
@@ -39,7 +43,7 @@ type RebootInstancesInput struct {
 	// This member is required.
 	InstanceIds []string
 
-	// Checks whether you have the required permissions for the action, without
+	// Checks whether you have the required permissions for the operation, without
 	// actually making the request, and provides an error response. If you have the
 	// required permissions, the error response is DryRunOperation . Otherwise, it is
 	// UnauthorizedOperation .
@@ -89,13 +93,16 @@ func (c *Client) addOperationRebootInstancesMiddlewares(stack *middleware.Stack,
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -108,6 +115,12 @@ func (c *Client) addOperationRebootInstancesMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRebootInstancesValidationMiddleware(stack); err != nil {
@@ -129,6 +142,15 @@ func (c *Client) addOperationRebootInstancesMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

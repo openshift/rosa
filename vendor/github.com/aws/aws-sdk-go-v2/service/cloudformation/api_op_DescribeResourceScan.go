@@ -58,20 +58,39 @@ type DescribeResourceScanOutput struct {
 	ResourceTypes []string
 
 	// The number of resources that were read. This is only available for scans with a
-	// Status set to COMPLETE , EXPIRED , or FAILED . This field may be 0 if the
-	// resource scan failed with a ResourceScanLimitExceededException .
+	// Status set to COMPLETE , EXPIRED , or FAILED .
+	//
+	// This field may be 0 if the resource scan failed with a
+	// ResourceScanLimitExceededException .
 	ResourcesRead *int32
 
 	// The number of resources that were listed. This is only available for scans with
 	// a Status set to COMPLETE , EXPIRED , or FAILED .
 	ResourcesScanned *int32
 
+	// The scan filters that were used.
+	ScanFilters []types.ScanFilter
+
 	// The time that the resource scan was started.
 	StartTime *time.Time
 
-	// Status of the resource scan. INPROGRESS The resource scan is still in progress.
-	// COMPLETE The resource scan is complete. EXPIRED The resource scan has expired.
-	// FAILED The resource scan has failed.
+	// Status of the resource scan.
+	//
+	// IN_PROGRESS
+	//
+	// The resource scan is still in progress.
+	//
+	// COMPLETE
+	//
+	// The resource scan is complete.
+	//
+	// EXPIRED
+	//
+	// The resource scan has expired.
+	//
+	// FAILED
+	//
+	// The resource scan has failed.
 	Status types.ResourceScanStatus
 
 	// The reason for the resource scan status, providing more information if a
@@ -118,13 +137,16 @@ func (c *Client) addOperationDescribeResourceScanMiddlewares(stack *middleware.S
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -137,6 +159,12 @@ func (c *Client) addOperationDescribeResourceScanMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeResourceScanValidationMiddleware(stack); err != nil {
@@ -158,6 +186,15 @@ func (c *Client) addOperationDescribeResourceScanMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
