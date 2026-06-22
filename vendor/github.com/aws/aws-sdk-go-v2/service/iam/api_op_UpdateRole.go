@@ -39,17 +39,22 @@ type UpdateRoleInput struct {
 	// The maximum session duration (in seconds) that you want to set for the
 	// specified role. If you do not specify a value for this setting, the default
 	// value of one hour is applied. This setting can have a value from 1 hour to 12
-	// hours. Anyone who assumes the role from the CLI or API can use the
-	// DurationSeconds API parameter or the duration-seconds CLI parameter to request
-	// a longer session. The MaxSessionDuration setting determines the maximum
-	// duration that can be requested using the DurationSeconds parameter. If users
-	// don't specify a value for the DurationSeconds parameter, their security
-	// credentials are valid for one hour by default. This applies when you use the
-	// AssumeRole* API operations or the assume-role* CLI operations but does not
-	// apply when you use those operations to create a console URL. For more
-	// information, see Using IAM roles (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use.html)
-	// in the IAM User Guide. IAM role credentials provided by Amazon EC2 instances
-	// assigned to the role are not subject to the specified maximum session duration.
+	// hours.
+	//
+	// Anyone who assumes the role from the CLI or API can use the DurationSeconds API
+	// parameter or the duration-seconds CLI parameter to request a longer session.
+	// The MaxSessionDuration setting determines the maximum duration that can be
+	// requested using the DurationSeconds parameter. If users don't specify a value
+	// for the DurationSeconds parameter, their security credentials are valid for one
+	// hour by default. This applies when you use the AssumeRole* API operations or
+	// the assume-role* CLI operations but does not apply when you use those
+	// operations to create a console URL. For more information, see [Using IAM roles]in the IAM User
+	// Guide.
+	//
+	// IAM role credentials provided by Amazon EC2 instances assigned to the role are
+	// not subject to the specified maximum session duration.
+	//
+	// [Using IAM roles]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use.html
 	MaxSessionDuration *int32
 
 	noSmithyDocumentSerde
@@ -96,13 +101,16 @@ func (c *Client) addOperationUpdateRoleMiddlewares(stack *middleware.Stack, opti
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -115,6 +123,12 @@ func (c *Client) addOperationUpdateRoleMiddlewares(stack *middleware.Stack, opti
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateRoleValidationMiddleware(stack); err != nil {
@@ -136,6 +150,15 @@ func (c *Client) addOperationUpdateRoleMiddlewares(stack *middleware.Stack, opti
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -15,9 +15,12 @@ import (
 // between scopes and ignore resource CIDRs that you do not want to manage. If set
 // to false, the resource will not be tracked for overlap, it cannot be
 // auto-imported into a pool, and it will be removed from any pool it has an
-// allocation in. For more information, see Move resource CIDRs between scopes (https://docs.aws.amazon.com/vpc/latest/ipam/move-resource-ipam.html)
-// and Change the monitoring state of resource CIDRs (https://docs.aws.amazon.com/vpc/latest/ipam/change-monitoring-state-ipam.html)
-// in the Amazon VPC IPAM User Guide.
+// allocation in.
+//
+// For more information, see [Move resource CIDRs between scopes] and [Change the monitoring state of resource CIDRs] in the Amazon VPC IPAM User Guide.
+//
+// [Change the monitoring state of resource CIDRs]: https://docs.aws.amazon.com/vpc/latest/ipam/change-monitoring-state-ipam.html
+// [Move resource CIDRs between scopes]: https://docs.aws.amazon.com/vpc/latest/ipam/move-resource-ipam.html
 func (c *Client) ModifyIpamResourceCidr(ctx context.Context, params *ModifyIpamResourceCidrInput, optFns ...func(*Options)) (*ModifyIpamResourceCidrOutput, error) {
 	if params == nil {
 		params = &ModifyIpamResourceCidrInput{}
@@ -119,13 +122,16 @@ func (c *Client) addOperationModifyIpamResourceCidrMiddlewares(stack *middleware
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -138,6 +144,12 @@ func (c *Client) addOperationModifyIpamResourceCidrMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyIpamResourceCidrValidationMiddleware(stack); err != nil {
@@ -159,6 +171,15 @@ func (c *Client) addOperationModifyIpamResourceCidrMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

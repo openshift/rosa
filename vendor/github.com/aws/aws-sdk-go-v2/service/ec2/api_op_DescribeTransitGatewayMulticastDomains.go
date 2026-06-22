@@ -36,9 +36,12 @@ type DescribeTransitGatewayMulticastDomainsInput struct {
 	DryRun *bool
 
 	// One or more filters. The possible values are:
+	//
 	//   - state - The state of the transit gateway multicast domain. Valid values are
 	//   pending | available | deleting | deleted .
+	//
 	//   - transit-gateway-id - The ID of the transit gateway.
+	//
 	//   - transit-gateway-multicast-domain-id - The ID of the transit gateway
 	//   multicast domain.
 	Filters []types.Filter
@@ -105,13 +108,16 @@ func (c *Client) addOperationDescribeTransitGatewayMulticastDomainsMiddlewares(s
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -124,6 +130,12 @@ func (c *Client) addOperationDescribeTransitGatewayMulticastDomainsMiddlewares(s
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeTransitGatewayMulticastDomains(options.Region), middleware.Before); err != nil {
@@ -144,16 +156,17 @@ func (c *Client) addOperationDescribeTransitGatewayMulticastDomainsMiddlewares(s
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeTransitGatewayMulticastDomainsAPIClient is a client that implements the
-// DescribeTransitGatewayMulticastDomains operation.
-type DescribeTransitGatewayMulticastDomainsAPIClient interface {
-	DescribeTransitGatewayMulticastDomains(context.Context, *DescribeTransitGatewayMulticastDomainsInput, ...func(*Options)) (*DescribeTransitGatewayMulticastDomainsOutput, error)
-}
-
-var _ DescribeTransitGatewayMulticastDomainsAPIClient = (*Client)(nil)
 
 // DescribeTransitGatewayMulticastDomainsPaginatorOptions is the paginator options
 // for DescribeTransitGatewayMulticastDomains
@@ -222,6 +235,9 @@ func (p *DescribeTransitGatewayMulticastDomainsPaginator) NextPage(ctx context.C
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeTransitGatewayMulticastDomains(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -240,6 +256,14 @@ func (p *DescribeTransitGatewayMulticastDomainsPaginator) NextPage(ctx context.C
 
 	return result, nil
 }
+
+// DescribeTransitGatewayMulticastDomainsAPIClient is a client that implements the
+// DescribeTransitGatewayMulticastDomains operation.
+type DescribeTransitGatewayMulticastDomainsAPIClient interface {
+	DescribeTransitGatewayMulticastDomains(context.Context, *DescribeTransitGatewayMulticastDomainsInput, ...func(*Options)) (*DescribeTransitGatewayMulticastDomainsOutput, error)
+}
+
+var _ DescribeTransitGatewayMulticastDomainsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeTransitGatewayMulticastDomains(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

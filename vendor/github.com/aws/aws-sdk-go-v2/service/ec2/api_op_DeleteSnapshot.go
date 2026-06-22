@@ -10,16 +10,22 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes the specified snapshot. When you make periodic snapshots of a volume,
-// the snapshots are incremental, and only the blocks on the device that have
-// changed since your last snapshot are saved in the new snapshot. When you delete
-// a snapshot, only the data not needed for any other snapshot is removed. So
-// regardless of which prior snapshots have been deleted, all active snapshots will
-// have access to all the information needed to restore the volume. You cannot
-// delete a snapshot of the root device of an EBS volume used by a registered AMI.
-// You must first de-register the AMI before you can delete the snapshot. For more
-// information, see Delete an Amazon EBS snapshot (https://docs.aws.amazon.com/ebs/latest/userguide/ebs-deleting-snapshot.html)
-// in the Amazon EBS User Guide.
+// Deletes the specified snapshot.
+//
+// When you make periodic snapshots of a volume, the snapshots are incremental,
+// and only the blocks on the device that have changed since your last snapshot are
+// saved in the new snapshot. When you delete a snapshot, only the data not needed
+// for any other snapshot is removed. So regardless of which prior snapshots have
+// been deleted, all active snapshots will have access to all the information
+// needed to restore the volume.
+//
+// You cannot delete a snapshot of the root device of an EBS volume used by a
+// registered AMI. You must first deregister the AMI before you can delete the
+// snapshot.
+//
+// For more information, see [Delete an Amazon EBS snapshot] in the Amazon EBS User Guide.
+//
+// [Delete an Amazon EBS snapshot]: https://docs.aws.amazon.com/ebs/latest/userguide/ebs-deleting-snapshot.html
 func (c *Client) DeleteSnapshot(ctx context.Context, params *DeleteSnapshotInput, optFns ...func(*Options)) (*DeleteSnapshotOutput, error) {
 	if params == nil {
 		params = &DeleteSnapshotInput{}
@@ -92,13 +98,16 @@ func (c *Client) addOperationDeleteSnapshotMiddlewares(stack *middleware.Stack, 
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -111,6 +120,12 @@ func (c *Client) addOperationDeleteSnapshotMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteSnapshotValidationMiddleware(stack); err != nil {
@@ -132,6 +147,15 @@ func (c *Client) addOperationDeleteSnapshotMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

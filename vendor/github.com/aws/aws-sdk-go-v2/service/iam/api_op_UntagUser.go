@@ -11,8 +11,9 @@ import (
 )
 
 // Removes the specified tags from the user. For more information about tagging,
-// see Tagging IAM resources (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_tags.html)
-// in the IAM User Guide.
+// see [Tagging IAM resources]in the IAM User Guide.
+//
+// [Tagging IAM resources]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_tags.html
 func (c *Client) UntagUser(ctx context.Context, params *UntagUserInput, optFns ...func(*Options)) (*UntagUserOutput, error) {
 	if params == nil {
 		params = &UntagUserInput{}
@@ -36,10 +37,13 @@ type UntagUserInput struct {
 	// This member is required.
 	TagKeys []string
 
-	// The name of the IAM user from which you want to remove tags. This parameter
-	// allows (through its regex pattern (http://wikipedia.org/wiki/regex) ) a string
-	// of characters consisting of upper and lowercase alphanumeric characters with no
-	// spaces. You can also include any of the following characters: _+=,.@-
+	// The name of the IAM user from which you want to remove tags.
+	//
+	// This parameter allows (through its [regex pattern]) a string of characters consisting of upper
+	// and lowercase alphanumeric characters with no spaces. You can also include any
+	// of the following characters: _+=,.@-
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	UserName *string
@@ -88,13 +92,16 @@ func (c *Client) addOperationUntagUserMiddlewares(stack *middleware.Stack, optio
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -107,6 +114,12 @@ func (c *Client) addOperationUntagUserMiddlewares(stack *middleware.Stack, optio
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUntagUserValidationMiddleware(stack); err != nil {
@@ -128,6 +141,15 @@ func (c *Client) addOperationUntagUserMiddlewares(stack *middleware.Stack, optio
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

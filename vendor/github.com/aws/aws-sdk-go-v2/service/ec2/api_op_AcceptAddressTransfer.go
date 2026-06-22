@@ -11,9 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Accepts an Elastic IP address transfer. For more information, see Accept a
-// transferred Elastic IP address (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-eips.html#using-instance-addressing-eips-transfer-accept)
-// in the Amazon Virtual Private Cloud User Guide.
+// Accepts an Elastic IP address transfer. For more information, see [Accept a transferred Elastic IP address] in the
+// Amazon VPC User Guide.
+//
+// [Accept a transferred Elastic IP address]: https://docs.aws.amazon.com/vpc/latest/userguide/vpc-eips.html#using-instance-addressing-eips-transfer-accept
 func (c *Client) AcceptAddressTransfer(ctx context.Context, params *AcceptAddressTransferInput, optFns ...func(*Options)) (*AcceptAddressTransferOutput, error) {
 	if params == nil {
 		params = &AcceptAddressTransferInput{}
@@ -96,13 +97,16 @@ func (c *Client) addOperationAcceptAddressTransferMiddlewares(stack *middleware.
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -115,6 +119,12 @@ func (c *Client) addOperationAcceptAddressTransferMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpAcceptAddressTransferValidationMiddleware(stack); err != nil {
@@ -136,6 +146,15 @@ func (c *Client) addOperationAcceptAddressTransferMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

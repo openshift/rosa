@@ -15,9 +15,10 @@ import (
 // Discontinue Windows fast launch for a Windows AMI, and clean up existing
 // pre-provisioned snapshots. After you disable Windows fast launch, the AMI uses
 // the standard launch process for each new instance. Amazon EC2 must remove all
-// pre-provisioned snapshots before you can enable Windows fast launch again. You
-// can only change these settings for Windows AMIs that you own or that have been
-// shared with you.
+// pre-provisioned snapshots before you can enable Windows fast launch again.
+//
+// You can only change these settings for Windows AMIs that you own or that have
+// been shared with you.
 func (c *Client) DisableFastLaunch(ctx context.Context, params *DisableFastLaunchInput, optFns ...func(*Options)) (*DisableFastLaunchOutput, error) {
 	if params == nil {
 		params = &DisableFastLaunchInput{}
@@ -127,13 +128,16 @@ func (c *Client) addOperationDisableFastLaunchMiddlewares(stack *middleware.Stac
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -146,6 +150,12 @@ func (c *Client) addOperationDisableFastLaunchMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisableFastLaunchValidationMiddleware(stack); err != nil {
@@ -167,6 +177,15 @@ func (c *Client) addOperationDisableFastLaunchMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

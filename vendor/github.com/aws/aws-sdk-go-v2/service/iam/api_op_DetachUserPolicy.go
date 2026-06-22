@@ -10,11 +10,13 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Removes the specified managed policy from the specified user. A user can also
-// have inline policies embedded with it. To delete an inline policy, use
-// DeleteUserPolicy . For information about policies, see Managed policies and
-// inline policies (https://docs.aws.amazon.com/IAM/latest/UserGuide/policies-managed-vs-inline.html)
-// in the IAM User Guide.
+// Removes the specified managed policy from the specified user.
+//
+// A user can also have inline policies embedded with it. To delete an inline
+// policy, use [DeleteUserPolicy]. For information about policies, see [Managed policies and inline policies] in the IAM User Guide.
+//
+// [DeleteUserPolicy]: https://docs.aws.amazon.com/IAM/latest/APIReference/API_DeleteUserPolicy.html
+// [Managed policies and inline policies]: https://docs.aws.amazon.com/IAM/latest/UserGuide/policies-managed-vs-inline.html
 func (c *Client) DetachUserPolicy(ctx context.Context, params *DetachUserPolicyInput, optFns ...func(*Options)) (*DetachUserPolicyOutput, error) {
 	if params == nil {
 		params = &DetachUserPolicyInput{}
@@ -32,18 +34,23 @@ func (c *Client) DetachUserPolicy(ctx context.Context, params *DetachUserPolicyI
 
 type DetachUserPolicyInput struct {
 
-	// The Amazon Resource Name (ARN) of the IAM policy you want to detach. For more
-	// information about ARNs, see Amazon Resource Names (ARNs) (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)
-	// in the Amazon Web Services General Reference.
+	// The Amazon Resource Name (ARN) of the IAM policy you want to detach.
+	//
+	// For more information about ARNs, see [Amazon Resource Names (ARNs)] in the Amazon Web Services General
+	// Reference.
+	//
+	// [Amazon Resource Names (ARNs)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
 	//
 	// This member is required.
 	PolicyArn *string
 
 	// The name (friendly name, not ARN) of the IAM user to detach the policy from.
-	// This parameter allows (through its regex pattern (http://wikipedia.org/wiki/regex)
-	// ) a string of characters consisting of upper and lowercase alphanumeric
-	// characters with no spaces. You can also include any of the following characters:
-	// _+=,.@-
+	//
+	// This parameter allows (through its [regex pattern]) a string of characters consisting of upper
+	// and lowercase alphanumeric characters with no spaces. You can also include any
+	// of the following characters: _+=,.@-
+	//
+	// [regex pattern]: http://wikipedia.org/wiki/regex
 	//
 	// This member is required.
 	UserName *string
@@ -92,13 +99,16 @@ func (c *Client) addOperationDetachUserPolicyMiddlewares(stack *middleware.Stack
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -111,6 +121,12 @@ func (c *Client) addOperationDetachUserPolicyMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDetachUserPolicyValidationMiddleware(stack); err != nil {
@@ -132,6 +148,15 @@ func (c *Client) addOperationDetachUserPolicyMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

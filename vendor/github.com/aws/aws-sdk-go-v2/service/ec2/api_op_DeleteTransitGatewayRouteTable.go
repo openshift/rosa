@@ -11,8 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes the specified transit gateway route table. You must disassociate the
-// route table from any transit gateway route tables before you can delete it.
+// Deletes the specified transit gateway route table. If there are any route
+// tables associated with the transit gateway route table, you must first run DisassociateRouteTable
+// before you can delete the transit gateway route table. This removes any route
+// tables associated with the transit gateway route table.
 func (c *Client) DeleteTransitGatewayRouteTable(ctx context.Context, params *DeleteTransitGatewayRouteTableInput, optFns ...func(*Options)) (*DeleteTransitGatewayRouteTableOutput, error) {
 	if params == nil {
 		params = &DeleteTransitGatewayRouteTableInput{}
@@ -89,13 +91,16 @@ func (c *Client) addOperationDeleteTransitGatewayRouteTableMiddlewares(stack *mi
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -108,6 +113,12 @@ func (c *Client) addOperationDeleteTransitGatewayRouteTableMiddlewares(stack *mi
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteTransitGatewayRouteTableValidationMiddleware(stack); err != nil {
@@ -129,6 +140,15 @@ func (c *Client) addOperationDeleteTransitGatewayRouteTableMiddlewares(stack *mi
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

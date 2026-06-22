@@ -43,6 +43,20 @@ type ModifyIpamScopeInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
+	// The configuration that links an Amazon VPC IPAM scope to an external authority
+	// system. It specifies the type of external system and the external resource
+	// identifier that identifies your account or instance in that system.
+	//
+	// In IPAM, an external authority is a third-party IP address management system
+	// that provides CIDR blocks when you provision address space for top-level IPAM
+	// pools. This allows you to use your existing IP management system to control
+	// which address ranges are allocated to Amazon Web Services while using Amazon VPC
+	// IPAM to manage subnets within those ranges.
+	ExternalAuthorityConfiguration *types.ExternalAuthorityConfiguration
+
+	// Remove the external authority configuration. true to remove.
+	RemoveExternalAuthorityConfiguration *bool
+
 	noSmithyDocumentSerde
 }
 
@@ -91,13 +105,16 @@ func (c *Client) addOperationModifyIpamScopeMiddlewares(stack *middleware.Stack,
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -110,6 +127,12 @@ func (c *Client) addOperationModifyIpamScopeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpModifyIpamScopeValidationMiddleware(stack); err != nil {
@@ -131,6 +154,15 @@ func (c *Client) addOperationModifyIpamScopeMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

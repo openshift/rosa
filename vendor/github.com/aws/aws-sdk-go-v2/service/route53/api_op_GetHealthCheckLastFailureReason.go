@@ -32,10 +32,11 @@ type GetHealthCheckLastFailureReasonInput struct {
 
 	// The ID for the health check for which you want the last failure reason. When
 	// you created the health check, CreateHealthCheck returned the ID in the
-	// response, in the HealthCheckId element. If you want to get the last failure
-	// reason for a calculated health check, you must use the Amazon Route 53 console
-	// or the CloudWatch console. You can't use GetHealthCheckLastFailureReason for a
-	// calculated health check.
+	// response, in the HealthCheckId element.
+	//
+	// If you want to get the last failure reason for a calculated health check, you
+	// must use the Amazon Route 53 console or the CloudWatch console. You can't use
+	// GetHealthCheckLastFailureReason for a calculated health check.
 	//
 	// This member is required.
 	HealthCheckId *string
@@ -93,13 +94,16 @@ func (c *Client) addOperationGetHealthCheckLastFailureReasonMiddlewares(stack *m
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -112,6 +116,12 @@ func (c *Client) addOperationGetHealthCheckLastFailureReasonMiddlewares(stack *m
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetHealthCheckLastFailureReasonValidationMiddleware(stack); err != nil {
@@ -133,6 +143,15 @@ func (c *Client) addOperationGetHealthCheckLastFailureReasonMiddlewares(stack *m
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
