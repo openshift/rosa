@@ -782,14 +782,35 @@ var _ = Describe("HCP cluster testing",
 		It("edit ROSA HCP with autonode configuration via rosa cli  - [id:84981]",
 			labels.High, labels.Runtime.Day2,
 			func() {
-				By("Get the installer role arn")
+				By("Create the autonode IAM role")
+
 				rosaClient.Runner.JsonFormat()
 				jsonOutput, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
 				rosaClient.Runner.UnsetFormat()
+				Expect(err).To(BeNil())
 				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
-				installRoleArn := jsonData.DigString("aws", "sts", "role_arn")
-				supportRoleArn := jsonData.DigString("aws", "sts", "support_role_arn")
+
+				autonodeEnabled := jsonData.DigString("auto_node", "mode")
+				if autonodeEnabled == "enabled" {
+					Skip("Autonode is already enabled on this cluster (and currently can't be disabled)")
+				}
+
+				oidcProviderURL := jsonData.DigString("aws", "sts", "oidc_config", "issuer_url")
+				autonodePrefix1 := clusterID + "-1"
+				autonodePrefix2 := clusterID + "-2"
+				autonodeRoleARN, err := config.PrepareAutonodeRoleAndPolicy(autonodePrefix1, oidcProviderURL, profile.Region)
+				defer func() {
+					err := config.DeleteAutonodeRoleAndPolicy(autonodePrefix1, profile.Region)
+					Expect(err).ToNot(HaveOccurred())
+				}()
+				Expect(err).ToNot(HaveOccurred())
+
+				autonodeRoleARN2, err := config.PrepareAutonodeRoleAndPolicy(autonodePrefix2, oidcProviderURL, profile.Region)
+				defer func() {
+					err := config.DeleteAutonodeRoleAndPolicy(autonodePrefix2, profile.Region)
+					Expect(err).ToNot(HaveOccurred())
+				}()
+				Expect(err).ToNot(HaveOccurred())
 
 				By("Edit cluster autonode configuration with invalid flag value")
 				out, err := clusterService.EditCluster(
@@ -811,7 +832,7 @@ var _ = Describe("HCP cluster testing",
 				By("Edit role arn when autonode configuration is not enabled")
 				out, err = clusterService.EditCluster(
 					clusterID,
-					"--autonode-iam-role-arn", installRoleArn,
+					"--autonode-iam-role-arn", autonodeRoleARN,
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(out.String()).To(ContainSubstring("cannot update IAM role ARN when AutoNode is not enabled"))
@@ -820,7 +841,7 @@ var _ = Describe("HCP cluster testing",
 				out, err = clusterService.EditCluster(
 					clusterID,
 					"--autonode=enabled",
-					"--autonode-iam-role-arn", installRoleArn,
+					"--autonode-iam-role-arn", autonodeRoleARN,
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(out.String()).To(ContainSubstring("Updated cluster"))
@@ -828,12 +849,12 @@ var _ = Describe("HCP cluster testing",
 				jsonData, err = clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
 				Expect(jsonData.DigString("auto_node", "mode")).To(Equal("enabled"))
-				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(installRoleArn))
+				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(autonodeRoleARN))
 
 				By("Update the autonode configuration on cluster")
 				out, err = clusterService.EditCluster(
 					clusterID,
-					"--autonode-iam-role-arn", supportRoleArn,
+					"--autonode-iam-role-arn", autonodeRoleARN2,
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(out.String()).To(ContainSubstring("Updated cluster"))
@@ -841,7 +862,7 @@ var _ = Describe("HCP cluster testing",
 				jsonData, err = clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
 				Expect(jsonData.DigString("auto_node", "mode")).To(Equal("enabled"))
-				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(supportRoleArn))
+				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(autonodeRoleARN2))
 			})
 	})
 var _ = Describe("hosted-cp cluster creation",
