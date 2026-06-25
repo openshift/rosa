@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
-
-	"k8s.io/utils/strings/slices"
 
 	"github.com/Masterminds/semver"
 	//nolint:staticcheck
