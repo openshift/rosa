@@ -10,7 +10,7 @@
     "dockerfile"
   ],
   "commitMessagePrefix": "OCM-00000 | ci: ",
-  "prConcurrentLimit": 2,
+  "prConcurrentLimit": 10,
   "prHourlyLimit": 0,
   "dependencyDashboard": true,
   "minimumReleaseAge": "3 days",
