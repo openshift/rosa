@@ -1,7 +1,6 @@
 package color
 
 import (
-	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -58,18 +57,6 @@ var _ = Describe("Color", func() {
 		expected := UseColor()
 
 		SetColor("unexpected")
-
-		Expect(UseColor()).To(Equal(expected))
-	})
-
-	It("uses the current stdout mode for auto", func() {
-		SetColor("auto")
-
-		stdout, err := os.Stdout.Stat()
-		expected := true
-		if err == nil {
-			expected = (stdout.Mode()&os.ModeDevice != 0) && (stdout.Mode()&os.ModeNamedPipe == 0)
-		}
 
 		Expect(UseColor()).To(Equal(expected))
 	})

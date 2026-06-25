@@ -54,6 +54,28 @@ var _ = Describe("Fedramp", func() {
 		})
 	})
 
+	Describe("Flag independence", func() {
+		It("setting govcloud does not make HasAdminFlag report as changed", func() {
+			cmd := &cobra.Command{Use: "test"}
+			AddFlag(cmd.Flags())
+
+			Expect(cmd.Flags().Set("govcloud", "true")).To(Succeed())
+
+			Expect(HasFlag(cmd)).To(BeTrue())
+			Expect(HasAdminFlag(cmd)).To(BeFalse())
+		})
+
+		It("setting admin does not make HasFlag report as changed", func() {
+			cmd := &cobra.Command{Use: "test"}
+			AddFlag(cmd.Flags())
+
+			Expect(cmd.Flags().Set("admin", "true")).To(Succeed())
+
+			Expect(HasAdminFlag(cmd)).To(BeTrue())
+			Expect(HasFlag(cmd)).To(BeFalse())
+		})
+	})
+
 	Describe("Enabled", func() {
 		It("returns true when the in-memory flag is already enabled", func() {
 			Enable()
@@ -92,6 +114,20 @@ var _ = Describe("Fedramp", func() {
 
 			Expect(Enabled()).To(BeFalse())
 		})
+
+		It("returns false when the config is valid but FedRAMP is false", func() {
+			tempDir := GinkgoT().TempDir()
+			Expect(os.Setenv("OCM_CONFIG", filepath.Join(tempDir, "ocm.json"))).To(Succeed())
+			Expect(config.Save(&config.Config{
+				AccessToken: "token",
+				ClientID:    "client",
+				TokenURL:    "https://sso.example.com/token",
+				URL:         "https://api.example.com",
+				FedRAMP:     false,
+			})).To(Succeed())
+
+			Expect(Enabled()).To(BeFalse())
+		})
 	})
 
 	Describe("Disable", func() {
@@ -117,6 +153,29 @@ var _ = Describe("Fedramp", func() {
 		})
 	})
 
+	Describe("Disable edge cases", func() {
+		It("does not panic when the config file is missing", func() {
+			tempDir := GinkgoT().TempDir()
+			Expect(os.Setenv("OCM_CONFIG", filepath.Join(tempDir, "missing.json"))).To(Succeed())
+			Enable()
+
+			Expect(func() { Disable() }).NotTo(Panic())
+			Expect(enabled).To(BeFalse())
+		})
+
+		It("does not panic when the config is invalid", func() {
+			tempDir := GinkgoT().TempDir()
+			Expect(os.Setenv("OCM_CONFIG", filepath.Join(tempDir, "ocm.json"))).To(Succeed())
+			Expect(config.Save(&config.Config{
+				FedRAMP: true,
+			})).To(Succeed())
+			Enable()
+
+			Expect(func() { Disable() }).NotTo(Panic())
+			Expect(enabled).To(BeFalse())
+		})
+	})
+
 	Describe("IsGovRegion", func() {
 		It("recognizes the GovCloud regions", func() {
 			Expect(IsGovRegion("us-gov-west-1")).To(BeTrue())
@@ -133,6 +192,7 @@ var _ = Describe("Fedramp", func() {
 		It("recognizes known environments", func() {
 			Expect(IsValidEnv("production")).To(BeTrue())
 			Expect(IsValidEnv("staging")).To(BeTrue())
+			Expect(IsValidEnv("staging01")).To(BeTrue())
 			Expect(IsValidEnv("integration")).To(BeTrue())
 		})
 

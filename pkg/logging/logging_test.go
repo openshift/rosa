@@ -25,6 +25,14 @@ func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) 
 	return f(request)
 }
 
+func newDebugLogger(out *bytes.Buffer) *logrus.Logger {
+	logger := logrus.New()
+	logger.SetOutput(out)
+	logger.SetLevel(logrus.DebugLevel)
+	logger.SetFormatter(&logrus.TextFormatter{DisableColors: true, DisableQuote: true})
+	return logger
+}
+
 var _ = Describe("Logging", func() {
 	var previousDebug bool
 
@@ -137,21 +145,44 @@ var _ = Describe("Logging", func() {
 	})
 
 	Describe("RoundTripper", func() {
-		It("preserves request and response bodies and redacts JSON fields in logs", func() {
-			logBuffer := &bytes.Buffer{}
-			logger := logrus.New()
-			logger.SetOutput(logBuffer)
-			logger.SetLevel(logrus.DebugLevel)
-			logger.SetFormatter(&logrus.TextFormatter{DisableColors: true, DisableQuote: true})
-
+		It("preserves request and response bodies through the round trip", func() {
 			var capturedRequestBody string
 			roundTripper, err := NewRoundTripper().
-				Logger(logger).
+				Logger(newDebugLogger(&bytes.Buffer{})).
 				Redact("token").
 				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
 					body, readErr := io.ReadAll(request.Body)
 					Expect(readErr).NotTo(HaveOccurred())
 					capturedRequestBody = string(body)
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{"Content-Type": []string{"application/json"}},
+						Body:       io.NopCloser(strings.NewReader(`{"visible":"response-value"}`)),
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodPost, "https://example.com", strings.NewReader(`{"visible":"request-value"}`))
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set("Content-Type", "application/json")
+
+			response, err := roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedRequestBody).To(Equal(`{"visible":"request-value"}`))
+
+			responseBody, err := io.ReadAll(response.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(responseBody)).To(Equal(`{"visible":"response-value"}`))
+		})
+
+		It("redacts configured JSON fields in logs", func() {
+			logBuffer := &bytes.Buffer{}
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(logBuffer)).
+				Redact("token").
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
 						Status:     "200 OK",
@@ -164,36 +195,50 @@ var _ = Describe("Logging", func() {
 
 			request, err := http.NewRequest(http.MethodPost, "https://example.com", strings.NewReader(`{"token":"request-secret","visible":"request-visible"}`))
 			Expect(err).NotTo(HaveOccurred())
-			request.Header.Set("Authorization", "Bearer super-secret")
 			request.Header.Set("Content-Type", "application/json")
 
-			response, err := roundTripper.RoundTrip(request)
+			_, err = roundTripper.RoundTrip(request)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(capturedRequestBody).To(Equal(`{"token":"request-secret","visible":"request-visible"}`))
-
-			responseBody, err := io.ReadAll(response.Body)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(string(responseBody)).To(Equal(`{"token":"response-secret","visible":"response-visible"}`))
 
 			logOutput := logBuffer.String()
-			Expect(logOutput).To(ContainSubstring("Request header 'Authorization' is omitted"))
 			Expect(logOutput).To(ContainSubstring("***"))
 			Expect(logOutput).To(ContainSubstring("request-visible"))
 			Expect(logOutput).To(ContainSubstring("response-visible"))
 			Expect(logOutput).NotTo(ContainSubstring("request-secret"))
 			Expect(logOutput).NotTo(ContainSubstring("response-secret"))
+		})
+
+		It("omits the Authorization header from logs", func() {
+			logBuffer := &bytes.Buffer{}
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(logBuffer)).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{},
+						Body:       io.NopCloser(strings.NewReader("ok")),
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set("Authorization", "Bearer super-secret")
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			logOutput := logBuffer.String()
+			Expect(logOutput).To(ContainSubstring("Request header 'Authorization' is omitted"))
 			Expect(logOutput).NotTo(ContainSubstring("super-secret"))
 		})
 
 		It("redacts configured form fields in logs", func() {
 			logBuffer := &bytes.Buffer{}
-			logger := logrus.New()
-			logger.SetOutput(logBuffer)
-			logger.SetLevel(logrus.DebugLevel)
-			logger.SetFormatter(&logrus.TextFormatter{DisableColors: true, DisableQuote: true})
-
 			roundTripper, err := NewRoundTripper().
-				Logger(logger).
+				Logger(newDebugLogger(logBuffer)).
 				Redact("token").
 				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
 					return &http.Response{

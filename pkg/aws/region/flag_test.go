@@ -55,6 +55,10 @@ var _ = Describe("Region", func() {
 		Expect(Region()).To(Equal("eu-west-1"))
 	})
 
+	It("returns an empty string when neither flag nor environment is set", func() {
+		Expect(Region()).To(Equal(""))
+	})
+
 	It("treats an escaped empty flag value as unset", func() {
 		region = "\"\""
 		Expect(os.Setenv("AWS_REGION", "sa-east-1")).To(Succeed())
