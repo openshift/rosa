@@ -318,7 +318,7 @@ var _ = Describe("ParseVersion", func() {
 	It("fails with malformed version", func() {
 		output, err := ParseVersion("3$%TRD")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("Malformed version: 3$%TRD"))
+		Expect(err.Error()).To(Equal("malformed version: 3$%TRD"))
 		Expect(output).To(Equal(""))
 	})
 })

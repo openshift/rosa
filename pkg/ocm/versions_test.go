@@ -301,7 +301,7 @@ var _ = Describe("Minimal http tokens required version", Ordered, func() {
 			),
 			Entry("bad version",
 				"bad version", cmv1.Ec2MetadataHttpTokensRequired, fmt.Errorf("version '%s' "+
-					"is not supported: %v", "bad version", "Malformed version: bad version"),
+					"is not supported: %v", "bad version", "malformed version: bad version"),
 			),
 		)
 	})

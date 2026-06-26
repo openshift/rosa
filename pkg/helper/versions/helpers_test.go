@@ -224,6 +224,6 @@ var _ = DescribeTable("IsGreaterThanOrEqual", func(version1, version2 string, ex
 	Entry("Not greater", "openshift-v4.14.1", "openshift-v4.14.2", false, ""),
 	Entry("Equal", "openshift-v4.14.1", "openshift-v4.14.1", true, ""),
 	Entry("Greater", "openshift-v4.14.2", "openshift-v4.14.1", true, ""),
-	Entry("Invalid arg 1", "invalid", "openshift-v4.14.1", false, "Malformed version: invalid"),
-	Entry("Invalid arg 2", "openshift-v4.14.2", "invalid2", false, "Malformed version: invalid2"),
+	Entry("Invalid arg 1", "invalid", "openshift-v4.14.1", false, "malformed version: invalid"),
+	Entry("Invalid arg 2", "openshift-v4.14.2", "invalid2", false, "malformed version: invalid2"),
 )
