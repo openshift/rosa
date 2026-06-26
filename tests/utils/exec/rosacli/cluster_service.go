@@ -73,6 +73,22 @@ type ClusterList struct {
 	Clusters []ClusterListItem `yaml:"Clusters,omitempty"`
 }
 
+type AutoNodeDescription struct {
+	Mode string `yaml:"Mode,omitempty"`
+	ARN  string `yaml:"IAM Role ARN,omitempty"`
+}
+
+func (an *AutoNodeDescription) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		return value.Decode(&an.Mode)
+	}
+	if value.Kind == yaml.MappingNode {
+		type plain AutoNodeDescription
+		return value.Decode((*plain)(an))
+	}
+	return fmt.Errorf("unexpected YAML node kind %d for AutoNode", value.Kind)
+}
+
 // Struct for the 'rosa describe cluster' output
 type ClusterDescription struct {
 	Name                  string                   `yaml:"Name,omitempty"`
@@ -123,7 +139,7 @@ type ClusterDescription struct {
 	EnableEtcdEncryption     string                   `yaml:"Etcd Encryption,omitempty"`
 	EtcdKmsKeyARN            string                   `yaml:"Etcd KMS key ARN,omitempty"`
 	RegistryConfiguration    []map[string]interface{} `yaml:"Registry Configuration,omitempty"`
-	AutoNode                 string                   `yaml:"AutoNode,omitempty"`
+	AutoNode                 AutoNodeDescription      `yaml:"AutoNode,omitempty"`
 	ZeroEgress               string                   `yaml:"Zero Egress,omitempty"`
 	SharedVPCConfig          []map[string]string      `yaml:"Shared VPC Config,omitempty"`
 }

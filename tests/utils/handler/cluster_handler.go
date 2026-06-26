@@ -970,7 +970,11 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		if err != nil {
 			return flags, err
 		}
-		oidcProvider := strings.TrimPrefix(oidcConfig.IssuerUrl, "https://")
+
+		oidcProvider, err := helper.ExtractOIDCProviderFromOidcUrl(oidcConfig.IssuerUrl)
+		if err != nil {
+			return flags, err
+		}
 		_, err = resourcesHandler.PrepareLogForwardRole(oidcProvider, "log_forward")
 		if err != nil {
 			return flags, err
