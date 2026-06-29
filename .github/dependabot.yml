@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    labels:
+      - "area/dependency"
+      - "ok-to-test"
+      - "lgtm"
+      - "approved"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "ubi9/go-toolset"
