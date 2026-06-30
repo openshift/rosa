@@ -1,5 +1,5 @@
 # The image is for Prow CI steps to manage the ROSA cluster lifecycle and testing
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.4-1782736563 as builder
 WORKDIR /rosa
 USER root
 ENV GOBIN=/go/bin
@@ -13,13 +13,13 @@ RUN go test -c -o /go/bin/rosatest ./tests/e2e
 RUN rosa verify openshift-client
 RUN rosatest --ginkgo.no-color --ginkgo.label-filter "e2e-commit"
 
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8 AS rosa-support
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.4-1782736563 AS rosa-support
 WORKDIR /opt/app-root/src/rosa-support
 RUN go install github.com/openshift-online/rosa-support@latest
 
 FROM registry.ci.openshift.org/ci/cli-ocm:latest as ocmcli
 
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.4-1782736563
 USER root
 COPY --from=builder /go/bin/rosa* /usr/bin
 COPY --from=builder /rosa/tests/ci/data /rosa/tests/ci/data
