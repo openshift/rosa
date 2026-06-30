@@ -139,6 +139,16 @@ func (c *ClusterClient) ProvisionShard() *ClusterProvisionShardSubresourceClient
 	)
 }
 
+// Resources returns the target 'resources' resource.
+//
+// Reference to cluster resources.
+func (c *ClusterClient) Resources() *ResourcesClient {
+	return NewResourcesClient(
+		c.transport,
+		path.Join(c.path, "resources"),
+	)
+}
+
 // Status returns the target 'cluster_status' resource.
 //
 // Reference to the resource that manages the detailed status of the cluster.

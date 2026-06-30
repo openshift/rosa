@@ -74,4 +74,9 @@ resource Cluster {
 	locator ControlPlaneUpgradePolicies {
 		target ControlPlaneUpgradePolicies
 	}
+
+	// Reference to cluster resources.
+	locator Resources {
+	    target Resources
+	}
 }

@@ -2,7 +2,6 @@ package aws_client
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -39,7 +38,7 @@ func (client *AWSClient) LaunchInstance(subnetID string, imageID string, count i
 		log.LogInfo("Waiting for below instances ready: %s", strings.Join(instanceIDs, "，"))
 		// Wait 2 seconds for the asynchronous bastion instance to be created
 		time.Sleep(2 * time.Second)
-		_, err = client.WaitForInstancesRunning(instanceIDs, 10)
+		_, err = client.WaitForInstancesRunning(context.TODO(), instanceIDs, 10)
 		if err != nil {
 			log.LogError("Error happened for instance running: %s", err)
 		} else {
@@ -80,85 +79,51 @@ func (client *AWSClient) ListInstances(instanceIDs []string, filters ...map[stri
 	return instances, err
 }
 
-func (client *AWSClient) WaitForInstanceReady(instanceID string, timeout time.Duration) error {
-	instanceIDs := []string{
-		instanceID,
-	}
-	log.LogInfo("Waiting for below instances ready: %s ", strings.Join(instanceIDs, "|"))
-	time.Sleep(2 * time.Second)
-	_, err := client.WaitForInstancesRunning(instanceIDs, 10)
+func (client *AWSClient) WaitForInstanceReady(ctx context.Context, instanceID string, timeout time.Duration) error {
+	log.LogInfo("Waiting for instance ready: %s", instanceID)
+	_, err := client.WaitForInstancesRunning(ctx, []string{instanceID}, timeout)
 	return err
 }
 
-func (client *AWSClient) CheckInstanceState(instanceIDs ...string) (*ec2.DescribeInstanceStatusOutput, error) {
+func (client *AWSClient) CheckInstanceState(ctx context.Context, instanceIDs ...string) (*ec2.DescribeInstanceStatusOutput, error) {
 	log.LogInfo("Check instances status of %s", strings.Join(instanceIDs, ","))
 	includeAll := true
 	input := &ec2.DescribeInstanceStatusInput{
 		InstanceIds:         instanceIDs,
 		IncludeAllInstances: &includeAll,
 	}
-	output, err := client.Ec2Client.DescribeInstanceStatus(context.TODO(), input)
+	output, err := client.Ec2Client.DescribeInstanceStatus(ctx, input)
 	return output, err
 }
 
-// timeout indicates the minutes
-func (client *AWSClient) WaitForInstancesRunning(instanceIDs []string, timeout time.Duration) (allRunning bool, err error) {
-	startTime := time.Now()
-
-	for time.Now().Before(startTime.Add(timeout * time.Minute)) {
-		allRunning = true
-		output, err := client.CheckInstanceState(instanceIDs...)
-		if err != nil {
-			log.LogError("Error happened when describe instant status: %s", strings.Join(instanceIDs, ","))
-			return false, err
-		}
-		if len(output.InstanceStatuses) == 0 {
-			log.LogWarning("Instance status description for %s is 0", strings.Join(instanceIDs, ","))
-		}
-		for _, ins := range output.InstanceStatuses {
-			log.LogInfo("Instance ID %s is in status of %s", *ins.InstanceId, ins.InstanceStatus.Status)
-			log.LogInfo("Instance ID %s is in state of %s", *ins.InstanceId, ins.InstanceState.Name)
-			if ins.InstanceState.Name != types.InstanceStateNameRunning && ins.InstanceStatus.Status != types.SummaryStatusOk {
-				allRunning = false
-			}
-
-		}
-		if allRunning {
-			return true, nil
-		}
-		time.Sleep(time.Minute)
+// WaitForInstancesRunning uses the EC2 InstanceStatusOk waiter to block until
+// all instances have InstanceState=running and both status checks pass (ok).
+// This is stricter than InstanceRunningWaiter and ensures SSH is reachable.
+// timeout is in minutes.
+func (client *AWSClient) WaitForInstancesRunning(ctx context.Context, instanceIDs []string, timeout time.Duration) (bool, error) {
+	log.LogInfo("Waiting for instances to reach running+ok status: %s", strings.Join(instanceIDs, ","))
+	waiter := ec2.NewInstanceStatusOkWaiter(client.Ec2Client)
+	err := waiter.Wait(ctx, &ec2.DescribeInstanceStatusInput{
+		InstanceIds: instanceIDs,
+	}, timeout*time.Minute)
+	if err != nil {
+		return false, err
 	}
-	err = fmt.Errorf("timeout for waiting instances running")
-	return
+	return true, nil
 }
-func (client *AWSClient) WaitForInstancesTerminated(instanceIDs []string, timeout time.Duration) (allTerminated bool, err error) {
-	startTime := time.Now()
-	for time.Now().Before(startTime.Add(timeout * time.Minute)) {
-		allTerminated = true
-		output, err := client.CheckInstanceState(instanceIDs...)
-		if err != nil {
-			log.LogError("Error happened when describe instant status: %s", strings.Join(instanceIDs, ","))
-			return false, err
-		}
-		if len(output.InstanceStatuses) == 0 {
-			log.LogWarning("Instance status description for %s is 0", strings.Join(instanceIDs, ","))
-		}
-		for _, ins := range output.InstanceStatuses {
-			log.LogInfo("Instance ID %s is in status of %s", *ins.InstanceId, ins.InstanceStatus.Status)
-			log.LogInfo("Instance ID %s is in state of %s", *ins.InstanceId, ins.InstanceState.Name)
-			if ins.InstanceState.Name != types.InstanceStateNameTerminated {
-				allTerminated = false
-			}
 
-		}
-		if allTerminated {
-			return true, nil
-		}
-		time.Sleep(time.Minute)
+// WaitForInstancesTerminated uses the EC2 InstanceTerminated waiter to block
+// until all instances reach the terminated state. timeout is in minutes.
+func (client *AWSClient) WaitForInstancesTerminated(ctx context.Context, instanceIDs []string, timeout time.Duration) (bool, error) {
+	log.LogInfo("Waiting for instances to be terminated: %s", strings.Join(instanceIDs, ","))
+	waiter := ec2.NewInstanceTerminatedWaiter(client.Ec2Client)
+	err := waiter.Wait(ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: instanceIDs,
+	}, timeout*time.Minute)
+	if err != nil {
+		return false, err
 	}
-	err = fmt.Errorf("timeout for waiting instances terminated")
-	return
-
+	return true, nil
 }
 
 // Search instance types for specified region/availability zones
@@ -235,7 +200,7 @@ func (client *AWSClient) TerminateInstances(instanceIDs []string, wait bool, tim
 		log.LogInfo("Terminate instances %s successfully", strings.Join(instanceIDs, ","))
 	}
 	if wait {
-		err = client.WaitForInstanceTerminated(instanceIDs, timeout)
+		err = client.WaitForInstanceTerminated(context.TODO(), instanceIDs, timeout)
 		if err != nil {
 			log.LogError("Waiting for  instances %s termination timeout %s ", strings.Join(instanceIDs, ","), err)
 			return err
@@ -245,9 +210,9 @@ func (client *AWSClient) TerminateInstances(instanceIDs []string, wait bool, tim
 	return nil
 }
 
-func (client *AWSClient) WaitForInstanceTerminated(instanceIDs []string, timeout time.Duration) error {
+func (client *AWSClient) WaitForInstanceTerminated(ctx context.Context, instanceIDs []string, timeout time.Duration) error {
 	log.LogInfo("Waiting for below instances terminated: %s ", strings.Join(instanceIDs, ","))
-	_, err := client.WaitForInstancesTerminated(instanceIDs, timeout)
+	_, err := client.WaitForInstancesTerminated(ctx, instanceIDs, timeout)
 	return err
 }
 

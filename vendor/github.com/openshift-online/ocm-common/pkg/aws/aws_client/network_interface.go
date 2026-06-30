@@ -68,6 +68,20 @@ func (client *AWSClient) GetNetworkInterfacesByInstanceID(instanceID string) ([]
 	return output.NetworkInterfaces, nil
 }
 
+func (client *AWSClient) DetachNetworkInterface(attachmentID string, force bool) error {
+	input := &ec2.DetachNetworkInterfaceInput{
+		AttachmentId: aws.String(attachmentID),
+		Force:        aws.Bool(force),
+	}
+	_, err := client.Ec2Client.DetachNetworkInterface(context.TODO(), input)
+	if err != nil {
+		log.LogError("Detach network interface attachment %s failed: %s", attachmentID, err)
+		return err
+	}
+	log.LogInfo("Detached network interface attachment %s", attachmentID)
+	return nil
+}
+
 func (client *AWSClient) DeleteNetworkInterface(networkinterface types.NetworkInterface) error {
 	association := networkinterface.Association
 	if association != nil {

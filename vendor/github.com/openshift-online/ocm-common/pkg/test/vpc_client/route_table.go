@@ -1,5 +1,9 @@
 package vpc_client
 
+import (
+	awserrors "github.com/openshift-online/ocm-common/pkg/aws/errors"
+)
+
 func (vpc *VPC) DescribeSubnetRTMappings(subnets ...*Subnet) error {
 	rts, err := vpc.AWSClient.ListCustomerRouteTables(vpc.VpcID)
 	if err != nil {
@@ -21,12 +25,12 @@ func (vpc *VPC) DeleteVPCRouteTables(vpcID string) error {
 	for _, rt := range rts {
 		for _, asso := range rt.Associations {
 			_, err = vpc.AWSClient.DisassociateRouteTableAssociation(*asso.RouteTableAssociationId)
-			if err != nil {
+			if err != nil && !awserrors.IsErrorCode(err, awserrors.InvalidAssociationID) {
 				return err
 			}
 		}
 		err = vpc.AWSClient.DeleteRouteTable(*rt.RouteTableId)
-		if err != nil {
+		if err != nil && !awserrors.IsErrorCode(err, awserrors.InvalidRouteTableID) {
 			return err
 		}
 	}
