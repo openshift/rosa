@@ -245,7 +245,7 @@ func (c *clusterService) List() (bytes.Buffer, error) {
 }
 
 func (c *clusterService) CreateDryRun(clusterName string, flags ...string) (bytes.Buffer, error) {
-	combflags := append([]string{"-c", clusterName, "--dry-run"}, flags...)
+	combflags := append([]string{"-c", clusterName, "--dry-run", "--mode=auto", "--yes"}, flags...)
 	createDryRun := c.client.Runner.
 		Cmd("create", "cluster").
 		CmdFlags(combflags...)
