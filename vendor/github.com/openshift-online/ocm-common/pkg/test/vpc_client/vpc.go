@@ -1,6 +1,7 @@
 package vpc_client
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -68,89 +69,85 @@ func (vpc *VPC) DeleteVPCChain(totalClean ...bool) error {
 		return fmt.Errorf("got empty vpc ID to clean. Make sure you loaded it from AWS")
 	}
 	log.LogInfo("Going to delete the vpc and follow resources by ID: %s", vpcID)
+
+	var errs []error
+
 	log.LogInfo("Going to terminate proxy instances if exists")
-	err := vpc.TerminateVPCInstances(true)
-	if err != nil {
+	if err := vpc.TerminateVPCInstances(true); err != nil {
 		log.LogError("Delete vpc instances meets error: %s", err.Error())
-		return err
+		errs = append(errs, fmt.Errorf("terminate proxy instances: %w", err))
+	} else {
+		log.LogInfo("Delete vpc instances successfully")
 	}
-	log.LogInfo("Delete vpc instances successfully")
 
 	log.LogInfo("Going to delete proxy security group")
-	err = vpc.DeleteVPCSecurityGroups(true)
-	if err != nil {
+	if err := vpc.DeleteVPCSecurityGroups(true); err != nil {
 		log.LogError("Delete vpc proxy security group meets error: %s", err.Error())
-		return err
+		errs = append(errs, fmt.Errorf("delete proxy security groups: %w", err))
+	} else {
+		log.LogInfo("Delete vpc proxy security group successfully")
 	}
-	log.LogInfo("Delete vpc proxy security group successfully")
 
-	err = vpc.DeleteVPCRouteTables(vpcID)
-	if err != nil {
+	if err := vpc.DeleteVPCRouteTables(vpcID); err != nil {
 		log.LogError("Delete vpc route tables meets error: %s", err.Error())
-		return err
-	}
-	log.LogInfo("Delete vpc route tables successfully")
-
-	err = vpc.DeleteVPCNatGateways(vpcID)
-	if err != nil {
-		log.LogError("Delete vpc nat gatways meets error: %s", err.Error())
-		return err
+		errs = append(errs, fmt.Errorf("delete route tables: %w", err))
+	} else {
+		log.LogInfo("Delete vpc route tables successfully")
 	}
 
-	log.LogInfo("Delete vpc nat gateways successfully")
-	err = vpc.AWSClient.DeleteVPCEndpoints(vpc.VpcID)
-	if err != nil {
+	if err := vpc.DeleteVPCNatGateways(vpcID); err != nil {
+		log.LogError("Delete vpc nat gateways meets error: %s", err.Error())
+		errs = append(errs, fmt.Errorf("delete nat gateways: %w", err))
+	} else {
+		log.LogInfo("Delete vpc nat gateways successfully")
+	}
+
+	if err := vpc.AWSClient.DeleteVPCEndpoints(vpc.VpcID); err != nil {
 		log.LogError("Delete vpc endpoints meets error: %s", err.Error())
-		return err
+		errs = append(errs, fmt.Errorf("delete vpc endpoints: %w", err))
 	}
+
 	if len(totalClean) == 1 && totalClean[0] {
 		log.LogInfo("Got total clean set, going to delete other possible resource leak")
-		// Delete leak instances
+
 		log.LogInfo("Going to terminate the leak instances if exist")
-		err = vpc.TerminateVPCInstances(false)
-		if err != nil {
+		if err := vpc.TerminateVPCInstances(false); err != nil {
 			log.LogError("Terminate vpc instances meets error: %s", err.Error())
-			return err
+			errs = append(errs, fmt.Errorf("terminate leak instances: %w", err))
 		}
 
-		// Delete leak ELBs
-		err = vpc.DeleteVPCELBs()
-		if err != nil {
+		if err := vpc.DeleteVPCELBs(); err != nil {
 			log.LogError("Delete vpc load balancers meets error: %s", err.Error())
-			return err
+			errs = append(errs, fmt.Errorf("delete load balancers: %w", err))
 		}
 
-		// Delete leak security groups
-		err = vpc.DeleteVPCSecurityGroups(false)
-		if err != nil {
+		if err := vpc.DeleteVPCSecurityGroups(false); err != nil {
 			log.LogError("Delete vpc security groups meets error: %s", err.Error())
-			return err
+			errs = append(errs, fmt.Errorf("delete security groups: %w", err))
 		}
 	}
-	err = vpc.DeleteVPCNetworkInterfaces()
-	if err != nil {
+
+	if err := vpc.DeleteVPCNetworkInterfaces(); err != nil {
 		log.LogError("Delete vpc network interfaces meets error: %s", err.Error())
-		return err
+		errs = append(errs, fmt.Errorf("delete network interfaces: %w", err))
 	}
 
-	err = vpc.DeleteVPCInternetGateWays()
-	if err != nil {
-		log.LogError("Delete vpc internet gatways meets error: %s", err.Error())
-		return err
+	if err := vpc.DeleteVPCInternetGateWays(); err != nil {
+		log.LogError("Delete vpc internet gateways meets error: %s", err.Error())
+		errs = append(errs, fmt.Errorf("delete internet gateways: %w", err))
 	}
 
-	err = vpc.DeleteVPCSubnets()
-	if err != nil {
+	if err := vpc.DeleteVPCSubnets(); err != nil {
 		log.LogError("Delete vpc subnets meets error: %s", err.Error())
-		return err
+		errs = append(errs, fmt.Errorf("delete subnets: %w", err))
 	}
 
-	_, err = vpc.AWSClient.DeleteVpc(vpc.VpcID)
-	if err != nil {
+	if _, err := vpc.AWSClient.DeleteVpc(vpc.VpcID); err != nil {
 		log.LogError("Delete vpc %s meets error: %s", vpc.VpcID, err.Error())
-		return err
+		errs = append(errs, fmt.Errorf("delete vpc: %w", err))
 	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
 // PrepareVPC will find a vpc named <vpcName>

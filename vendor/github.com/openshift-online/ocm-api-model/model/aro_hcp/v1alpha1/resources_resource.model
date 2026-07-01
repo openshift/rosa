@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Identifies a user-assigned managed identity by its ARM resource ID.
-struct AzureUserAssignedManagedIdentity {
-	// The Azure Resource ID of the Azure User-Assigned Managed Identity.
-	// The managed identity represented must exist before creating or
-	// updating the cluster.
-	// Required.
-	ResourceID String
+// Manages a collection of resources for a cluster
+resource Resources {
+    // Retrieves a list of resources for a cluster in error state
+    method Get {
+        // List of cluster resources
+        out Body ClusterResources
+    }
 }

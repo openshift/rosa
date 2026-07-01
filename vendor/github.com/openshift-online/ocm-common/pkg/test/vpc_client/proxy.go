@@ -1,9 +1,10 @@
 package vpc_client
 
 import (
+	"context"
 	"fmt"
 	"regexp"
-	"time"
+	"unicode"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
@@ -12,6 +13,37 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/log"
 	"github.com/openshift-online/ocm-common/pkg/utils"
 )
+
+// proxyInstanceReadyTimeoutMinutes is the maximum time to wait for a proxy
+// EC2 instance to pass its status checks before attempting SSH setup.
+const proxyInstanceReadyTimeoutMinutes = 10
+
+// namedCmd pairs a shell command with a safe description for logging.
+// When logLabel is set it is logged instead of the raw command, preventing
+// sensitive values (e.g. credentials) from appearing in log output.
+type namedCmd struct {
+	cmd      string
+	logLabel string
+}
+
+func (c namedCmd) safeLabel() string {
+	if c.logLabel != "" {
+		return c.logLabel
+	}
+	return c.cmd
+}
+
+// validateProxyCredential rejects values that contain characters capable of
+// escaping a Python double-quoted string literal. Only letters, digits,
+// hyphens, underscores, and dots are allowed.
+func validateProxyCredential(fieldName, value string) error {
+	for _, r := range value {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '_' && r != '.' {
+			return fmt.Errorf("proxy %s contains invalid character %q: only letters, digits, hyphens, underscores, and dots are allowed", fieldName, r)
+		}
+	}
+	return nil
+}
 
 /*
 MITM Proxy Authentication Support
@@ -168,7 +200,12 @@ func (vpc *VPC) LaunchProxyInstanceWithAuth(zone string, keypairName string, pri
 	}
 	log.LogInfo("Prepare EIP successfully for the proxy preparation. Launch with IP: %s", publicIP)
 
-	time.Sleep(2 * time.Minute)
+	log.LogInfo("Waiting for proxy instance %s to pass EC2 status checks before attempting SSH...", instID)
+	if _, err = vpc.AWSClient.WaitForInstancesRunning(context.Background(), []string{instID}, proxyInstanceReadyTimeoutMinutes); err != nil {
+		log.LogError("Proxy instance %s did not become ready within timeout: %s", instID, err)
+		return inst, "", "", err
+	}
+
 	hostname := fmt.Sprintf("%s:22", publicIP)
 	err = setupMITMProxyServer(sshKey, hostname, username, password)
 	if err != nil {
@@ -186,16 +223,27 @@ func (vpc *VPC) LaunchProxyInstanceWithAuth(zone string, keypairName string, pri
 }
 
 func setupMITMProxyServer(sshKey string, hostname string, username string, password string) (err error) {
-	setupProxyCMDs := []string{
-		"sudo yum install -y wget",
-		"wget https://snapshots.mitmproxy.org/7.0.2/mitmproxy-7.0.2-linux.tar.gz",
-		"mkdir mitm",
-		"tar zxvf mitmproxy-7.0.2-linux.tar.gz -C mitm",
+	cmds := []namedCmd{
+		{cmd: "sudo yum install -y wget"},
+		{cmd: "wget https://snapshots.mitmproxy.org/7.0.2/mitmproxy-7.0.2-linux.tar.gz"},
+		{cmd: "mkdir mitm"},
+		{cmd: "tar zxvf mitmproxy-7.0.2-linux.tar.gz -C mitm"},
 	}
 
-	// If username and password are provided, set up authentication
+	// Reject partial credentials: supplying only one would silently launch an
+	// unauthenticated proxy, which is never the intended behaviour.
+	if (username == "") != (password == "") {
+		return fmt.Errorf("proxy credentials must be provided together: username provided=%t password provided=%t",
+			username != "", password != "")
+	}
+
 	if username != "" && password != "" {
-		// Create a simple authentication script
+		if err := validateProxyCredential("username", username); err != nil {
+			return err
+		}
+		if err := validateProxyCredential("password", password); err != nil {
+			return err
+		}
 		authScript := fmt.Sprintf(`cat > ~/proxy_auth.py << 'EOF'
 import mitmproxy.http
 import mitmproxy.addons.core
@@ -220,24 +268,27 @@ addons = [
 ]
 EOF`, username, password)
 
-		setupProxyCMDs = append(setupProxyCMDs, authScript)
-		setupProxyCMDs = append(setupProxyCMDs,
-			"nohup ./mitm/mitmdump --showhost --ssl-insecure --script ~/proxy_auth.py > mitm.log 2>&1 &")
+		cmds = append(cmds,
+			namedCmd{cmd: authScript, logLabel: "[proxy auth configuration — redacted]"},
+			namedCmd{cmd: "nohup ./mitm/mitmdump --showhost --ssl-insecure --script ~/proxy_auth.py > mitm.log 2>&1 &"},
+		)
 	} else {
-		// No authentication - use standard setup
-		setupProxyCMDs = append(setupProxyCMDs,
-			"nohup ./mitm/mitmdump --showhost --ssl-insecure > mitm.log 2>&1 &")
+		cmds = append(cmds,
+			namedCmd{cmd: "nohup ./mitm/mitmdump --showhost --ssl-insecure > mitm.log 2>&1 &"},
+		)
 	}
 
-	setupProxyCMDs = append(setupProxyCMDs, "sleep 5")
-	setupProxyCMDs = append(setupProxyCMDs, "http_proxy=127.0.0.1:8080 curl http://mitm.it/cert/pem -s > ~/mitm-ca.pem")
+	cmds = append(cmds,
+		namedCmd{cmd: "sleep 5"},
+		namedCmd{cmd: "http_proxy=127.0.0.1:8080 curl http://mitm.it/cert/pem -s > ~/mitm-ca.pem"},
+	)
 
-	for _, cmd := range setupProxyCMDs {
-		_, err = Exec_CMD(CON.AWSInstanceUser, sshKey, hostname, cmd)
+	for _, c := range cmds {
+		_, err = Exec_CMD(CON.AWSInstanceUser, sshKey, hostname, c.cmd)
 		if err != nil {
 			return err
 		}
-		log.LogDebug("Run the cmd successfully: %s", cmd)
+		log.LogDebug("Run the cmd successfully: %s", c.safeLabel())
 	}
 	return
 }

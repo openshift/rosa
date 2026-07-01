@@ -30,6 +30,7 @@ const (
 	DependencyViolation          = "DependencyViolation"
 	NoSuchEntity                 = "NoSuchEntity"
 	InvalidRouteTableID          = "InvalidRouteTableID.NotFound"
+	InvalidAssociationID         = "InvalidAssociationID.NotFound"
 	InvalidInternetGatewayID     = "InvalidInternetGatewayID.NotFound"
 	InvalidVpcID                 = "InvalidVpcID.NotFound"
 	InvalidAllocationID          = "InvalidAllocationID.NotFound"

@@ -519,6 +519,26 @@ func (mr *MockEC2ClientAPIMockRecorder) DeleteNetworkAclEntry(ctx, params any, o
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNetworkAclEntry", reflect.TypeOf((*MockEC2ClientAPI)(nil).DeleteNetworkAclEntry), varargs...)
 }
 
+// DetachNetworkInterface mocks base method.
+func (m *MockEC2ClientAPI) DetachNetworkInterface(ctx context.Context, params *ec2.DetachNetworkInterfaceInput, optFns ...func(*ec2.Options)) (*ec2.DetachNetworkInterfaceOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DetachNetworkInterface", varargs...)
+	ret0, _ := ret[0].(*ec2.DetachNetworkInterfaceOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DetachNetworkInterface indicates an expected call of DetachNetworkInterface.
+func (mr *MockEC2ClientAPIMockRecorder) DetachNetworkInterface(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DetachNetworkInterface", reflect.TypeOf((*MockEC2ClientAPI)(nil).DetachNetworkInterface), varargs...)
+}
+
 // DeleteNetworkInterface mocks base method.
 func (m *MockEC2ClientAPI) DeleteNetworkInterface(ctx context.Context, params *ec2.DeleteNetworkInterfaceInput, optFns ...func(*ec2.Options)) (*ec2.DeleteNetworkInterfaceOutput, error) {
 	m.ctrl.T.Helper()

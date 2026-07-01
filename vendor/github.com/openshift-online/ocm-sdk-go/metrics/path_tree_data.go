@@ -182,6 +182,7 @@ var pathTreeData = `{
               }
             },
             "provision_shard": null,
+            "resources": null,
             "status": null
           }
         },
