@@ -1748,7 +1748,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(output.String()).
 					To(
 						ContainSubstring(
-							"invalid label key '%s': name part must be no more than 63 characters", longLabelKey))
+							"invalid label key '%s': name part must be no more than 63 bytes", longLabelKey))
 
 				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label value")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
@@ -1760,7 +1760,7 @@ var _ = Describe("Classic cluster creation validation",
 				key = longValue[:index]
 				Expect(output.String()).
 					To(
-						ContainSubstring("invalid label value '%s': at key: '%s': must be no more than 63 characters",
+						ContainSubstring("invalid label value '%s': at key: '%s': must be no more than 63 bytes",
 							longLabelValue,
 							key))
 
@@ -1831,12 +1831,10 @@ var _ = Describe("Classic cluster creation validation",
 				By("Create cluster with use-local-credentials flag but with sts")
 				out, err := clusterService.CreateDryRun(
 					clusterName, "--sts",
-					"--mode", "auto",
 					"--role-arn", ar.InstallerRole,
 					"--support-role-arn", ar.SupportRole,
 					"--controlplane-iam-role", ar.ControlPlaneRole,
 					"--worker-iam-role", ar.WorkerRole,
-					"-y", "--dry-run",
 					"--use-local-credentials",
 				)
 				Expect(err).NotTo(BeNil())
@@ -2486,35 +2484,48 @@ var _ = Describe("HCP cluster creation negative testing",
 		var (
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
-			profilesMap    map[string]*handler.Profile
-			profile        *handler.Profile
+			customProfile  *handler.Profile
 			command        string
 			rosalCommand   config.Command
 			clusterHandler handler.ClusterHandler
 			err            error
 		)
 		BeforeEach(func() {
-
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 
-			// Get a random profile
-			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
-			profilesNames := make([]string, 0, len(profilesMap))
-			for k := range profilesMap {
-				profilesNames = append(profilesNames, k)
+			By("Prepare custom profile")
+			customProfile = &handler.Profile{
+				ClusterConfig: &handler.ClusterConfig{
+					HCP:                   true,
+					MultiAZ:               true,
+					STS:                   true,
+					OIDCConfig:            "managed",
+					NetworkingSet:         true,
+					BYOVPC:                true,
+					Zones:                 "",
+					Autoscale:             false,
+					PrivateLink:           false,
+					DefaultIngressPrivate: false,
+				},
+				AccountRoleConfig: &handler.AccountRoleConfig{
+					Path:               "",
+					PermissionBoundary: "",
+				},
+				Version:      "y-1",
+				ChannelGroup: "stable",
+				Region:       constants.CommonAWSRegion,
 			}
-			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
-			profile.NamePrefix = constants.DefaultNamePrefix
-			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
+			customProfile.NamePrefix = constants.DefaultNamePrefix
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
 			Expect(err).To(BeNil())
 
 			By("Prepare creation command")
 			flags, err := clusterHandler.GenerateClusterCreateFlags()
 			Expect(err).To(BeNil())
 
-			command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
+			command = "rosa create cluster --cluster-name " + customProfile.ClusterConfig.Name + " " + strings.Join(flags, " ")
 			rosalCommand = config.GenerateCommand(command)
 		})
 
@@ -2714,28 +2725,26 @@ var _ = Describe("HCP cluster creation negative testing",
 							"ERR: External authentication configuration is only supported for a Hosted Control Plane cluster."))
 
 				By("Create HCP cluster with --external-auth-providers-enabled and cluster version lower than 4.15")
-				cg := rosalCommand.GetFlagValue("--channel-group", true)
-				if cg == "" {
-					cg = rosacli.VersionChannelGroupStable
-				}
+				cg := rosacli.VersionChannelGroupStable
 				versionList, err := rosaClient.Version.ListAndReflectVersions(cg, rosalCommand.CheckFlagExist("--hosted-cp"))
 				Expect(err).To(BeNil())
 				Expect(versionList).ToNot(BeNil())
 				previousVersionsList, err := versionList.FindNearestBackwardMinorVersion("4.14", 0, true)
 				Expect(err).ToNot(HaveOccurred())
 				foundVersion := previousVersionsList.Version
+
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
 					"--domain-prefix": clusterName,
 					"--version":       foundVersion,
+					"--channel-group": cg,
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				if !rosalCommand.CheckFlagExist("--external-auth-providers-enabled") {
-					rosalCommand.AddFlags("--dry-run", "--external-auth-providers-enabled", "-y")
-				} else {
-					rosalCommand.AddFlags("--dry-run", "-y")
+					rosalCommand.AddFlags("--external-auth-providers-enabled")
 				}
+				rosalCommand.AddFlags("--dry-run")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).
@@ -2804,9 +2813,11 @@ var _ = Describe("HCP cluster creation negative testing",
 				)
 
 				By("Create classic cluster with additional allowed principals")
-				_, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(
+					clusterName,
 					"--additional-allowed-principals", "zzzz",
-					"-y", "--debug")
+					"--debug",
+				)
 				helper.ExpectErrorWithMessage(err, "ERR: Additional Allowed Principals is supported only for Hosted Control Planes")
 			})
 
@@ -2840,7 +2851,6 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "-y")
-				log.Logger.Debug(profile.Name)
 				log.Logger.Debug(strings.Split(rosalCommand.GetFullCommand(), " "))
 
 				By("Create classic cluster with  audit log arn")
@@ -2848,7 +2858,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					rosalCommand.DeleteFlag("--audit-log-arn", true)
 				}
 
-				output, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "-y")
+				output, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "dummy-arn")
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).
 					To(
@@ -2958,7 +2968,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					if rosalCommand.CheckFlagExist(flag) {
 						rosalCommand.DeleteFlag(flag, true)
 					}
-					output, err := clusterService.CreateDryRun(clusterName, flag, "-y")
+					output, err := clusterService.CreateDryRun(clusterName, flag, "dummy-value")
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).
 						To(
@@ -2974,7 +2984,6 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "-y")
-				log.Logger.Debug(profile.Name)
 				log.Logger.Debug(strings.Split(rosalCommand.GetFullCommand(), " "))
 
 				rosalCommand.AddFlags("--registry-config-allowed-registries-for-import", "test.com:invalid")

@@ -504,9 +504,12 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 			Expect(textData).To(ContainSubstring("WARN: There are no hosted CP account roles to be deleted"))
 		})
 	It("create/delete classic account roles with managed policies - [id:57408]",
-		labels.Critical, labels.Runtime.OCMResources,
+		labels.Critical,
+		labels.Runtime.OCMResources,
+		// Classic account roles with managed policies is a feature that was never fully implemented (never made it prod),
+		// and is being planned to be removed
+		labels.Exclude,
 		func() {
-
 			var (
 				rolePrefixAuto      = helper.GenerateRandomName("ar57408a", 2)
 				rolePrefixManual    = helper.GenerateRandomName("ar57408m", 2)
