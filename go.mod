@@ -1,6 +1,6 @@
 module github.com/openshift/rosa
 
-go 1.25.8
+go 1.26.1
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.15
@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/smithy-go v1.27.2
 	github.com/briandowns/spinner v1.23.2
-	github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
+	github.com/dchest/validator v1.0.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang/glog v1.2.5
