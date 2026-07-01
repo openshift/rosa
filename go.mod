@@ -18,7 +18,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/servicequotas v1.35.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/smithy-go v1.27.2
-	github.com/briandowns/spinner v1.11.1
+	github.com/briandowns/spinner v1.23.2
 	github.com/dchest/validator v0.0.0-20191217151620-8e45250f2371
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
