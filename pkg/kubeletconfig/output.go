@@ -2,6 +2,7 @@ package kubeletconfig
 
 import (
 	"fmt"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
@@ -9,12 +10,13 @@ import (
 const emptyName = "-"
 
 func PrintKubeletConfigsForTabularOutput(configs []*cmv1.KubeletConfig) string {
-	output := "ID\tNAME\tPOD PIDS LIMIT\n"
+	var output strings.Builder
+	output.WriteString("ID\tNAME\tPOD PIDS LIMIT\n")
 	for _, config := range configs {
-		output += fmt.Sprintf("%s\t%s\t%d\n", config.ID(), getName(config), config.PodPidsLimit())
+		fmt.Fprintf(&output, "%s\t%s\t%d\n", config.ID(), getName(config), config.PodPidsLimit())
 	}
 
-	return output
+	return output.String()
 }
 
 func getName(config *cmv1.KubeletConfig) string {
@@ -25,15 +27,16 @@ func getName(config *cmv1.KubeletConfig) string {
 }
 
 func PrintKubeletConfigForHcp(config *cmv1.KubeletConfig, nodePools []*cmv1.NodePool) string {
-	output := PrintKubeletConfigForClassic(config)
+	var output strings.Builder
+	output.WriteString(PrintKubeletConfigForClassic(config))
 	if len(nodePools) != 0 {
-		output += "MachinePools Using This KubeletConfig:\n"
+		output.WriteString("MachinePools Using This KubeletConfig:\n")
 		for _, n := range nodePools {
-			output += fmt.Sprintf(" - %s\n", n.ID())
+			fmt.Fprintf(&output, " - %s\n", n.ID())
 		}
 	}
 
-	return output
+	return output.String()
 }
 
 func PrintKubeletConfigForClassic(config *cmv1.KubeletConfig) string {

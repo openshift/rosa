@@ -27,7 +27,7 @@
   },
   "gomod": {
     "constraints": {
-      "go": "1.25.8"
+      "go": "1.26.4"
     },
     "managerFilePatterns": [
       "/(^|/)\\.bingo/[^/]+\\.mod$/"
@@ -127,16 +127,6 @@
         "k8s.io/{/,}**",
         "sigs.k8s.io/{/,}**"
       ]
-    },
-    {
-      "description": "Pin k8s.io/apimachinery below the Go 1.26-only line",
-      "matchManagers": [
-        "gomod"
-      ],
-      "matchPackageNames": [
-        "k8s.io/apimachinery"
-      ],
-      "allowedVersions": "< 0.36.0"
     },
     {
       "description": "Test and generator stack",

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -71,7 +72,7 @@ func ListImageMirrorsRunner(options *ListImageMirrorsOptions) rosa.CommandRunner
 		}
 		imageMirrors, err := runtime.OCMClient.ListImageMirrors(cluster.ID())
 		if err != nil {
-			return fmt.Errorf("Failed to list image mirrors: %v", err)
+			return fmt.Errorf("failed to list image mirrors: %v", err)
 		}
 
 		if output.HasFlag() {
@@ -88,13 +89,13 @@ func ListImageMirrorsRunner(options *ListImageMirrorsOptions) rosa.CommandRunner
 		fmt.Fprintf(writer, "ID\tTYPE\tSOURCE\tMIRRORS\n")
 
 		for _, mirror := range imageMirrors {
-			mirrors := ""
+			var mirrors strings.Builder
 			if len(mirror.Mirrors()) > 0 {
 				for i, m := range mirror.Mirrors() {
 					if i > 0 {
-						mirrors += ", "
+						mirrors.WriteString(", ")
 					}
-					mirrors += m
+					mirrors.WriteString(m)
 				}
 			}
 
@@ -102,7 +103,7 @@ func ListImageMirrorsRunner(options *ListImageMirrorsOptions) rosa.CommandRunner
 				mirror.ID(),
 				mirror.Type(),
 				mirror.Source(),
-				mirrors,
+				mirrors.String(),
 			)
 		}
 

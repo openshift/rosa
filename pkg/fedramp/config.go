@@ -19,17 +19,15 @@ limitations under the License.
 
 package fedramp
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 var regions = []string{"us-gov-west-1", "us-gov-east-1"}
 
 func IsGovRegion(region string) bool {
-	for _, r := range regions {
-		if r == region {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(regions, region)
 }
 
 func IsValidEnv(env string) bool {
@@ -43,61 +41,68 @@ func IsValidEnv(env string) bool {
 
 // JumpAccounts are the various of AWS accounts used for the installer jump role in the various OCM environments
 var JumpAccounts = map[string]string{
-	"production":  "448648337690",
-	"staging":     "448870092490",
-	"staging01":   "448870092490",
-	"integration": "449053620653",
+	envProduction:  "448648337690",
+	envStaging:     "448870092490",
+	envStaging01:   "448870092490",
+	envIntegration: "449053620653",
 }
 
 // LoginURLs allows the value of the `--env` option to map to the various login URLs.
 var LoginURLs = map[string]string{
-	"production":  "https://api.openshiftusgov.com/auth",
-	"staging":     "https://api.stage.openshiftusgov.com/auth",
-	"staging01":   "https://api01.stage.openshiftusgov.com/auth",
-	"integration": "https://api.int.openshiftusgov.com/auth",
+	envProduction:  "https://api.openshiftusgov.com/auth",
+	envStaging:     "https://api.stage.openshiftusgov.com/auth",
+	envStaging01:   "https://api01.stage.openshiftusgov.com/auth",
+	envIntegration: "https://api.int.openshiftusgov.com/auth",
 }
 
 // AdminLoginURLs allows the value of the `--env` option to map to the various Admin login URLs.
 var AdminLoginURLs = map[string]string{
-	"production":  "https://api-admin.openshiftusgov.com/auth",
-	"staging":     "https://api-admin.stage.openshiftusgov.com/auth",
-	"staging01":   "https://api.stage.openshiftusgov.com/auth",
-	"integration": "https://api-admin.int.openshiftusgov.com/auth",
+	envProduction:  "https://api-admin.openshiftusgov.com/auth",
+	envStaging:     "https://api-admin.stage.openshiftusgov.com/auth",
+	envStaging01:   "https://api.stage.openshiftusgov.com/auth",
+	envIntegration: "https://api-admin.int.openshiftusgov.com/auth",
 }
 
 // URLAliases allows the value of the `--env` option to map to the various API URLs.
 var URLAliases = map[string]string{
-	"production":  "https://api.openshiftusgov.com",
-	"staging":     "https://api.stage.openshiftusgov.com",
-	"staging01":   "https://api01.stage.openshiftusgov.com",
-	"integration": "https://api.int.openshiftusgov.com",
+	envProduction:  "https://api.openshiftusgov.com",
+	envStaging:     "https://api.stage.openshiftusgov.com",
+	envStaging01:   "https://api01.stage.openshiftusgov.com",
+	envIntegration: "https://api.int.openshiftusgov.com",
 }
 
 // AdminURLAliases allows the value of the `--env` option to map to the various Admin API URLs.
 var AdminURLAliases = map[string]string{
-	"production":  "https://api-admin.openshiftusgov.com",
-	"staging":     "https://api-admin.stage.openshiftusgov.com",
-	"staging01":   "https://api01.stage.openshiftusgov.com",
-	"integration": "https://api-admin.int.openshiftusgov.com",
+	envProduction:  "https://api-admin.openshiftusgov.com",
+	envStaging:     "https://api-admin.stage.openshiftusgov.com",
+	envStaging01:   "https://api01.stage.openshiftusgov.com",
+	envIntegration: "https://api-admin.int.openshiftusgov.com",
 }
 
 const cognitoURL = "auth-fips.us-gov-west-1.amazoncognito.com/oauth2/token"
 const keycloakURL = "realms/redhat-external/protocol/openid-connect/token"
 
+const (
+	envProduction  = "production"
+	envStaging     = "staging"
+	envStaging01   = "staging01"
+	envIntegration = "integration"
+)
+
 // TokenURLs allows the value of the `--env` option to map to the various AWS Cognito token URLs.
 var TokenURLs = map[string]string{
-	"production":  fmt.Sprintf("https://sso.openshiftusgov.com/%s", keycloakURL),
-	"staging":     fmt.Sprintf("https://sso.stage.openshiftusgov.com/%s", keycloakURL),
-	"staging01":   fmt.Sprintf("https://sso01.stage.openshiftusgov.com/%s", keycloakURL),
-	"integration": fmt.Sprintf("https://sso.int.openshiftusgov.com/%s", keycloakURL),
+	envProduction:  fmt.Sprintf("https://sso.openshiftusgov.com/%s", keycloakURL),
+	envStaging:     fmt.Sprintf("https://sso.stage.openshiftusgov.com/%s", keycloakURL),
+	envStaging01:   fmt.Sprintf("https://sso01.stage.openshiftusgov.com/%s", keycloakURL),
+	envIntegration: fmt.Sprintf("https://sso.int.openshiftusgov.com/%s", keycloakURL),
 }
 
 // AdminTokenURLs allows the value of the `--env` option to map to the various Admin AWS Cognito token URLs.
 var AdminTokenURLs = map[string]string{
-	"production":  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
-	"staging":     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
-	"staging01":   fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
-	"integration": fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
+	envProduction:  fmt.Sprintf("https://ocm-ra-production-domain.%s", cognitoURL),
+	envStaging:     fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
+	envStaging01:   fmt.Sprintf("https://ocm-ra-stage-domain.%s", cognitoURL),
+	envIntegration: fmt.Sprintf("https://rh-ocm-appsre-integration.%s", cognitoURL),
 }
 
 // ClientID stores the client id for use with all `--env` options for Keycloak authentication flow.
@@ -106,8 +111,8 @@ var ClientID = "console-dot"
 
 // AdminClientIDs allows the value of the `--env` option to map to the various Admin AWS Cognito user pool clients.
 var AdminClientIDs = map[string]string{
-	"production":  "72ekjh5laouap6qcfis521jlgi",
-	"staging":     "1lb687dlpsmsfuj53r3je06vpp",
-	"staging01":   "1lb687dlpsmsfuj53r3je06vpp",
-	"integration": "20fbrpgl28f8oehp6709mk3nnr",
+	envProduction:  "72ekjh5laouap6qcfis521jlgi",
+	envStaging:     "1lb687dlpsmsfuj53r3je06vpp",
+	envStaging01:   "1lb687dlpsmsfuj53r3je06vpp",
+	envIntegration: "20fbrpgl28f8oehp6709mk3nnr",
 }

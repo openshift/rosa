@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
 	"net/url"
@@ -99,9 +100,7 @@ func (b *RoundTripperBuilder) Build() (result *RoundTripper, err error) {
 
 	// Copy the set of redactedReplacement fields:
 	redact := make(map[string]bool)
-	for key, value := range b.redact {
-		redact[key] = value
-	}
+	maps.Copy(redact, b.redact)
 
 	// Create and populate the object:
 	result = &RoundTripper{

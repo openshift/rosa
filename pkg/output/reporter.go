@@ -36,7 +36,7 @@ func NewStructuredReporter(r reporter.Logger) reporter.Logger {
 	return &StructuredReporter{inner: r}
 }
 
-func (r *StructuredReporter) Errorf(format string, args ...interface{}) error {
+func (r *StructuredReporter) Errorf(format string, args ...any) error {
 	err := fmt.Errorf(format, args...)
 	if !PrintError(err) {
 		return r.inner.Errorf(format, args...)
@@ -44,17 +44,17 @@ func (r *StructuredReporter) Errorf(format string, args ...interface{}) error {
 	return err
 }
 
-func (r *StructuredReporter) Warnf(format string, args ...interface{}) {
+func (r *StructuredReporter) Warnf(format string, args ...any) {
 	if !PrintWarn(fmt.Errorf(format, args...)) {
 		r.inner.Warnf(format, args...)
 	}
 }
 
-func (r *StructuredReporter) Debugf(format string, args ...interface{}) {
+func (r *StructuredReporter) Debugf(format string, args ...any) {
 	r.inner.Debugf(format, args...)
 }
 
-func (r *StructuredReporter) Infof(format string, args ...interface{}) {
+func (r *StructuredReporter) Infof(format string, args ...any) {
 	r.inner.Infof(format, args...)
 }
 

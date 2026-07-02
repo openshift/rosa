@@ -99,12 +99,12 @@ func validateIPv6LiteralHost(rawURL string) error {
 }
 
 func getAuthority(rawURL string) (string, bool) {
-	schemeIdx := strings.Index(rawURL, "://")
-	if schemeIdx == -1 {
+	_, after, ok := strings.Cut(rawURL, "://")
+	if !ok {
 		return "", false
 	}
 
-	authority := rawURL[schemeIdx+len("://"):]
+	authority := after
 	if endIdx := strings.IndexAny(authority, "/?#"); endIdx != -1 {
 		authority = authority[:endIdx]
 	}

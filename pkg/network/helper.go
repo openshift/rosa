@@ -82,8 +82,8 @@ func ParseParams(params []string) (map[string]string, map[string]string, error) 
 			return nil, nil, errors.New("invalid parameter format")
 		}
 		if parts[0] == "Tags" {
-			tagEntries := strings.Split(parts[1], ",")
-			for _, entry := range tagEntries {
+			tagEntries := strings.SplitSeq(parts[1], ",")
+			for entry := range tagEntries {
 				tagParts := strings.SplitN(strings.TrimSpace(entry), "=", 2)
 				if len(tagParts) != 2 {
 					return nil, nil, errors.New("invalid tag format")
@@ -110,29 +110,29 @@ func SelectTemplate(templateDir, command string) string {
 }
 
 func formatParams(params map[string]string) string {
-	var paramStr string
+	var paramStr strings.Builder
 	keys := make([]string, 0, len(params))
 	for k := range params {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		paramStr += fmt.Sprintf("ParameterKey=%s,ParameterValue=%s ", k, params[k])
+		fmt.Fprintf(&paramStr, "ParameterKey=%s,ParameterValue=%s ", k, params[k])
 	}
-	return paramStr
+	return paramStr.String()
 }
 
 func formatTags(tags map[string]string) string {
-	var tagStr string
+	var tagStr strings.Builder
 	keys := make([]string, 0, len(tags))
 	for k := range tags {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		tagStr += fmt.Sprintf("Key=%s,Value=%s ", k, tags[k])
+		fmt.Fprintf(&tagStr, "Key=%s,Value=%s ", k, tags[k])
 	}
-	return tagStr
+	return tagStr.String()
 }
 
 func deleteHelperMessage(logger *logrus.Logger, params map[string]string, err error) {

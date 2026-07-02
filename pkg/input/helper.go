@@ -8,8 +8,8 @@ import (
 )
 
 // UnmarshalInputFile is a generic unmarshaller from an input path
-func UnmarshalInputFile(specPath string) (map[string]interface{}, error) {
-	var result map[string]interface{}
+func UnmarshalInputFile(specPath string) (map[string]any, error) {
+	var result map[string]any
 	specFile, err := os.Open(specPath)
 	if err != nil {
 		return result, err
