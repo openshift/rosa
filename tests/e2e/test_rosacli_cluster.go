@@ -3979,7 +3979,7 @@ var _ = Describe("Sts cluster creation with external id",
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).ToNot(BeNil())
 				Expect(stdout.String()).To(ContainSubstring(
-					"An error occurred while trying to create an AWS client: Failed to assume role with ARN"))
+					"does not match trust policy for installer role"))
 
 				By("Create cluster with external id")
 				rosalCommand.ReplaceFlagValue(map[string]string{
