@@ -373,12 +373,12 @@ func (c *clusterService) GetClusterName(clusterID string) (clusterName string, e
 
 func (c *clusterService) GetJSONClusterDescription(clusterID string) (*jsonData, error) {
 	c.client.Runner.JsonFormat()
+	defer c.client.Runner.UnsetFormat()
 	output, err := c.DescribeCluster(clusterID)
 	if err != nil {
 		log.Logger.Errorf("it met error when describeCluster in IsUsingReusableOIDCConfig is %v", err)
 		return nil, err
 	}
-	c.client.Runner.UnsetFormat()
 	return c.client.Parser.JsonData.Input(output).Parse(), nil
 }
 
@@ -453,10 +453,42 @@ func (c *clusterService) ResumeCluster(clusterID string, flags ...string) (bytes
 
 // Wait cluster to some status, the inerval and duration are using minute
 func (c *clusterService) WaitClusterStatus(clusterID string, status string, interval int, duration int) error {
+	if strings.TrimSpace(clusterID) == "" {
+		return fmt.Errorf("cluster ID is required when waiting for cluster status %s", status)
+	}
+
+	waitInterval := time.Duration(interval) * time.Minute
+	if waitInterval <= 0 {
+		waitInterval = time.Millisecond
+	}
+	waitTimeout := time.Duration(duration) * time.Minute
+	if waitTimeout <= 0 {
+		waitTimeout = 200 * time.Millisecond
+	}
+
+	if status == constants.Ready {
+		return waitForClusterReadyStatus(
+			clusterID,
+			waitInterval,
+			waitTimeout,
+			func() (string, error) {
+				clusterJSONData, err := c.GetJSONClusterDescription(clusterID)
+				if err != nil {
+					return "", err
+				}
+				return clusterJSONData.DigString("state"), nil
+			},
+			func() (*ClusterDescription, error) {
+				return c.DescribeClusterAndReflect(clusterID)
+			},
+			time.Sleep,
+		)
+	}
+
 	err := wait.PollUntilContextTimeout(
 		context.Background(),
-		time.Duration(interval)*time.Minute,
-		time.Duration(duration)*time.Minute,
+		waitInterval,
+		waitTimeout,
 		false,
 		func(context.Context) (bool, error) {
 			clusterListB, err := c.List()
@@ -477,6 +509,108 @@ func (c *clusterService) WaitClusterStatus(clusterID string, status string, inte
 			return false, err
 		})
 	return err
+}
+
+func waitForClusterReadyStatus(
+	clusterID string,
+	interval time.Duration,
+	timeout time.Duration,
+	getState func() (string, error),
+	getDescription func() (*ClusterDescription, error),
+	sleepFn func(time.Duration),
+) error {
+	endTime := time.Now().Add(timeout)
+	var lastDescription *ClusterDescription
+
+	for time.Now().Before(endTime) {
+		state, err := getState()
+		if err == nil && state == constants.Ready {
+			return nil
+		}
+
+		description, err := getDescription()
+		if err != nil {
+			return err
+		}
+		lastDescription = description
+
+		ready, err := evaluateReadyClusterState(clusterID, description)
+		if err != nil {
+			return err
+		}
+		if ready {
+			return nil
+		}
+
+		sleepFn(interval)
+	}
+
+	return formatReadyClusterTimeout(clusterID, timeout, lastDescription)
+}
+
+func evaluateReadyClusterState(clusterID string, description *ClusterDescription) (bool, error) {
+	if description == nil {
+		return false, fmt.Errorf("no cluster description found for %s", clusterID)
+	}
+
+	if description.State == constants.Ready {
+		return true, nil
+	}
+
+	if strings.Contains(description.State, constants.Uninstalling) {
+		return false, fmt.Errorf("cluster %s is %s now. Cannot wait for it ready",
+			clusterID, constants.Uninstalling)
+	}
+
+	if strings.Contains(description.State, constants.Error) {
+		return false, formatReadyClusterError(clusterID, description)
+	}
+
+	if strings.TrimSpace(description.State) == "" {
+		return false, fmt.Errorf("cluster %s returned an empty state", clusterID)
+	}
+
+	return false, nil
+}
+
+func formatReadyClusterError(clusterID string, description *ClusterDescription) error {
+	details := []string{}
+	if description.ProvisioningErrorCode != "" {
+		details = append(details, fmt.Sprintf("provisioning error code: %s", description.ProvisioningErrorCode))
+	}
+	if description.ProvisioningErrorMessage != "" {
+		details = append(details, fmt.Sprintf("provisioning error message: %s", description.ProvisioningErrorMessage))
+	}
+	if description.FailedInflightChecks != "" {
+		details = append(details, fmt.Sprintf("failed inflight checks: %s", description.FailedInflightChecks))
+	}
+	if len(details) == 0 {
+		return fmt.Errorf("cluster %s is in %s state", clusterID, description.State)
+	}
+
+	return fmt.Errorf("cluster %s is in %s state (%s)",
+		clusterID, description.State, strings.Join(details, "; "))
+}
+
+func formatReadyClusterTimeout(clusterID string, timeout time.Duration, description *ClusterDescription) error {
+	timeoutMinutes := int(timeout / time.Minute)
+	if description == nil {
+		return fmt.Errorf("timeout for cluster ready waiting after %d mins", timeoutMinutes)
+	}
+
+	details := []string{fmt.Sprintf("last state: %s", description.State)}
+	if description.ProvisioningErrorCode != "" {
+		details = append(details, fmt.Sprintf("provisioning error code: %s", description.ProvisioningErrorCode))
+	}
+	if description.ProvisioningErrorMessage != "" {
+		details = append(details, fmt.Sprintf("provisioning error message: %s", description.ProvisioningErrorMessage))
+	}
+	if description.FailedInflightChecks != "" {
+		details = append(details, fmt.Sprintf("failed inflight checks: %s", description.FailedInflightChecks))
+	}
+
+	return fmt.Errorf("timeout for cluster ready waiting after %d mins (%s)",
+		timeoutMinutes, strings.Join(details, "; "))
 }
 
 // Wait for cluster deleted
