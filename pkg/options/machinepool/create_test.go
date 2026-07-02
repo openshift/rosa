@@ -18,6 +18,15 @@ var _ = Describe("BuildMachinePoolCreateCommandWithOptions", func() {
 		cmd, options = BuildMachinePoolCreateCommandWithOptions()
 	})
 
+	It("describes the image type flag for hosted control plane machine pools", func() {
+		flag := cmd.Flags().Lookup("type")
+		Expect(flag).ToNot(BeNil())
+		Expect(flag.Usage).To(Equal(
+			"Specifies the image type used by Hosted Control Plane machine pools. " +
+				"Use '--type Windows' to create a machine pool that uses a Windows image.",
+		))
+	})
+
 	It("should create a command with the expected use, short, long, and example descriptions", func() {
 		Expect(cmd.Use).To(Equal(use))
 		Expect(cmd.Short).To(Equal(short))

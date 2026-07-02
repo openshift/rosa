@@ -73,6 +73,23 @@ func NewMachinePoolService() MachinePoolService {
 	return &machinePool{}
 }
 
+func buildMachinePoolImageTypeInput(cmd *cobra.Command) interactive.Input {
+	help := ""
+	if cmd != nil {
+		if flag := cmd.Flags().Lookup("type"); flag != nil {
+			help = flag.Usage
+		}
+	}
+
+	return interactive.Input{
+		Question: "Machine pool image type",
+		Help:     help,
+		Default:  cmv1.ImageTypeDefault,
+		Required: false,
+		Options:  mpHelpers.ImageTypes,
+	}
+}
+
 // Create machine pool based on cluster type
 func (m machinePool) CreateMachinePoolBasedOnClusterType(r *rosa.Runtime,
 	cmd *cobra.Command, clusterKey string, cluster *cmv1.Cluster, clusterAutoscaler *cmv1.ClusterAutoscaler,
@@ -550,14 +567,9 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		imageType = args.Type
 	}
 
-	// Image type (supports things such as WinLI // Windows VMs)
+	// Machine pool image type
 	if interactive.Enabled() && cluster.Hypershift().Enabled() && !fedramp.Enabled() {
-		imageType, err = interactive.GetOption(interactive.Input{
-			Question: "Image Type",
-			Default:  cmv1.ImageTypeDefault,
-			Required: false,
-			Options:  mpHelpers.ImageTypes,
-		})
+		imageType, err = interactive.GetOption(buildMachinePoolImageTypeInput(cmd))
 		if err != nil {
 			return fmt.Errorf("expected a valid image type: '%s'", err)
 		}

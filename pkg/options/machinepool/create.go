@@ -283,8 +283,8 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 	flags.StringVar(&options.Type,
 		"type",
 		"",
-		"Specifies the type of AMI this machinepool uses. You may supply '--type Windows' for example if you want "+
-			"support for Windows VMs.")
+		"Specifies the image type used by Hosted Control Plane machine pools. "+
+			"Use '--type Windows' to create a machine pool that uses a Windows image.")
 
 	flags.StringVar(&options.CapacityReservationPreference,
 		"capacity-reservation-preference",
