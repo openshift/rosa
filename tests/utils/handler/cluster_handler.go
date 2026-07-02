@@ -1059,12 +1059,51 @@ func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
 				time.Sleep(2 * time.Minute)
 				continue
 			}
+			if description.State == constants.Ready {
+				log.Logger.Infof("Cluster %s is ready now.", clusterID)
+				return nil
+			}
 			return fmt.Errorf("unknown cluster state %s", description.State)
 		}
 
 	}
 
 	return fmt.Errorf("timeout for cluster ready waiting after %d mins", timeoutMin)
+}
+
+type clusterStateAction string
+
+const (
+	clusterStateReady     clusterStateAction = "ready"
+	clusterStateTerminal  clusterStateAction = "terminal"
+	clusterStateWaiting   clusterStateAction = "waiting"
+	clusterStateTransient clusterStateAction = "transient"
+	clusterStateUnknown   clusterStateAction = "unknown"
+)
+
+func classifyClusterState(state string) clusterStateAction {
+	if strings.TrimSpace(state) == "" {
+		return clusterStateUnknown
+	}
+
+	switch {
+	case state == constants.Ready:
+		return clusterStateReady
+	case state == constants.Uninstalling:
+		return clusterStateTerminal
+	case strings.Contains(state, constants.Error):
+		return clusterStateTerminal
+	case strings.Contains(state, constants.Waiting):
+		return clusterStateWaiting
+	case strings.Contains(state, constants.Pending):
+		return clusterStateTransient
+	case strings.Contains(state, constants.Installing):
+		return clusterStateTransient
+	case strings.Contains(state, constants.Validating):
+		return clusterStateTransient
+	default:
+		return clusterStateUnknown
+	}
 }
 
 func (ch *clusterHandler) reverifyClusterNetwork() error {
