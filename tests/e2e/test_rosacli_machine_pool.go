@@ -1528,7 +1528,7 @@ var _ = Describe("Edit machinepool",
 					clusterID, mpName, "--min-replicas", "9",
 					"--max-replicas", "3", "--enable-autoscaling",
 				)
-				helper.ExpectErrorWithMessage(err, "Min replicas must be less than max replicas")
+				helper.ExpectErrorWithMessage(err, "max-replicas must be greater or equal to min-replicas")
 
 				By("Edit with min-replicas not multiple 3 for multi-az")
 				_, err = machinePoolService.EditMachinePool(
