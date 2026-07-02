@@ -147,7 +147,7 @@ var _ = Describe("List image mirrors", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Failed to list image mirrors"))
+				Expect(err.Error()).To(ContainSubstring("failed to list image mirrors"))
 			})
 		})
 

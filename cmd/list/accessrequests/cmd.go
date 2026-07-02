@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -85,7 +86,8 @@ func ListAccessRequestsRunner() rosa.CommandRunner {
 }
 
 func getAccessRequestsOutput(clusterId string, accessRequests []*v1.AccessRequest) (string, bool, string) {
-	output := "STATE\tID\tCLUSTER ID\tUPDATED AT\n"
+	var output strings.Builder
+	output.WriteString("STATE\tID\tCLUSTER ID\tUPDATED AT\n")
 	hasPending := false
 	id := "<ID>"
 	for _, accessRequest := range accessRequests {
@@ -95,12 +97,12 @@ func getAccessRequestsOutput(clusterId string, accessRequests []*v1.AccessReques
 				id = accessRequest.ID()
 			}
 		}
-		output += fmt.Sprintf("%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(&output, "%s\t%s\t%s\t%s\n",
 			accessRequest.Status().State(),
 			accessRequest.ID(),
 			accessRequest.ClusterId(),
 			accessRequest.UpdatedAt().Format(time.UnixDate))
 	}
 
-	return output, hasPending, id
+	return output.String(), hasPending, id
 }

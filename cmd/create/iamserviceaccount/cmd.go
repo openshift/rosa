@@ -37,7 +37,9 @@ func NewCreateIamServiceAccountCommand() *cobra.Command {
 
 var Cmd = NewCreateIamServiceAccountCommand()
 
-func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamServiceAccountUserOptions) rosa.CommandRunner {
+func CreateIamServiceAccountRunner(
+	userOptions *iamServiceAccountOpts.CreateIamServiceAccountUserOptions,
+) rosa.CommandRunner {
 	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		cluster := r.FetchCluster()
 
@@ -75,7 +77,11 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 			if len(userOptions.ServiceAccountNames) > 1 {
 				return fmt.Errorf("role name is required when specifying multiple service accounts")
 			}
-			roleName = iamserviceaccount.GenerateRoleName(cluster.Name(), userOptions.Namespace, userOptions.ServiceAccountNames[0])
+			roleName = iamserviceaccount.GenerateRoleName(
+				cluster.Name(),
+				userOptions.Namespace,
+				userOptions.ServiceAccountNames[0],
+			)
 		}
 
 		serviceAccounts := make([]iamserviceaccount.ServiceAccountIdentifier, len(userOptions.ServiceAccountNames))
@@ -92,10 +98,23 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 		}
 
 		trustPolicy := iamserviceaccount.GenerateTrustPolicyMultiple(oidcProviderARN, serviceAccounts)
-		tags := iamserviceaccount.GenerateDefaultTags(cluster.Name(), userOptions.Namespace, userOptions.ServiceAccountNames[0])
+		tags := iamserviceaccount.GenerateDefaultTags(
+			cluster.Name(),
+			userOptions.Namespace,
+			userOptions.ServiceAccountNames[0],
+		)
 
 		managedPolicies := false
-		roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, trustPolicy, userOptions.PermissionsBoundary, "", tags, userOptions.Path, managedPolicies)
+		roleARN, err := r.AWSClient.EnsureRole(
+			r.Reporter,
+			roleName,
+			trustPolicy,
+			userOptions.PermissionsBoundary,
+			"",
+			tags,
+			userOptions.Path,
+			managedPolicies,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create role: %s", err)
 		}
@@ -120,8 +139,8 @@ func CreateIamServiceAccountRunner(userOptions *iamServiceAccountOpts.CreateIamS
 			inlinePolicy := userOptions.InlinePolicy
 
 			// Process inline policy if it's a file reference
-			if strings.HasPrefix(inlinePolicy, "file://") {
-				policyPath := strings.TrimPrefix(inlinePolicy, "file://")
+			if after, ok := strings.CutPrefix(inlinePolicy, "file://"); ok {
+				policyPath := after
 				policyBytes, err := os.ReadFile(policyPath)
 				if err != nil {
 					return fmt.Errorf("failed to read policy file '%s': %s", policyPath, err)

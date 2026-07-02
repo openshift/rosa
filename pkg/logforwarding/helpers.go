@@ -2,6 +2,7 @@ package logforwarding
 
 import (
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -48,14 +49,14 @@ type LogForwarderYaml struct {
 func ConstructPodGroupsHelpMessage(options []*cmv1.LogForwarderGroupVersions) (s string) {
 	s = ""
 	for _, option := range options {
-		apps := ""
+		var apps strings.Builder
 		for i, application := range option.Versions()[len(option.Versions())-1].Applications() {
 			if i != 0 {
-				apps += ","
+				apps.WriteString(",")
 			}
-			apps += application
+			apps.WriteString(application)
 		}
-		s = s + option.Name() + ": " + apps + "\n"
+		s = s + option.Name() + ": " + apps.String() + "\n"
 	}
 	return
 }

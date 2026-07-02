@@ -27,19 +27,19 @@ import (
 
 type Logger interface {
 	// Debugf logs a debug message with formatted arguments.
-	Debugf(format string, args ...interface{})
+	Debugf(format string, args ...any)
 
 	// Errorf logs an error message with formatted arguments and returns an error.
-	Errorf(format string, args ...interface{}) error
+	Errorf(format string, args ...any) error
 
 	// Infof logs an info message with formatted arguments.
-	Infof(format string, args ...interface{})
+	Infof(format string, args ...any)
 
 	// IsTerminal checks if the output is a terminal.
 	IsTerminal() bool
 
 	// Warnf logs a warning message with formatted arguments.
-	Warnf(format string, args ...interface{})
+	Warnf(format string, args ...any)
 }
 
 // Object is the reported object used by the tool. It prints the messages to the standard output or
@@ -48,7 +48,7 @@ type Object struct {
 }
 
 // Debugf prints a debug message with the given format and arguments.
-func (r *Object) Debugf(format string, args ...interface{}) {
+func (r *Object) Debugf(format string, args ...any) {
 	if !debug.Enabled() {
 		return
 	}
@@ -56,7 +56,7 @@ func (r *Object) Debugf(format string, args ...interface{}) {
 }
 
 // Infof prints an informative message with the given format and arguments.
-func (r *Object) Infof(format string, args ...interface{}) {
+func (r *Object) Infof(format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
 	if color.UseColor() {
 		_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", infoColorPrefix, message)
@@ -66,7 +66,7 @@ func (r *Object) Infof(format string, args ...interface{}) {
 }
 
 // Warnf prints an warning message with the given format and arguments.
-func (r *Object) Warnf(format string, args ...interface{}) {
+func (r *Object) Warnf(format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
 	if color.UseColor() {
 		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", warnColorPrefix, message)
@@ -80,7 +80,7 @@ func (r *Object) Warnf(format string, args ...interface{}) {
 // report the error and also return it.
 //
 //nolint:errcheck
-func (r *Object) Errorf(format string, args ...interface{}) error {
+func (r *Object) Errorf(format string, args ...any) error {
 	message := fmt.Sprintf(format, args...)
 	if color.UseColor() {
 		_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", errorColorPrefix, message)

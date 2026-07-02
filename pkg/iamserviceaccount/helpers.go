@@ -17,6 +17,7 @@ package iamserviceaccount
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -140,14 +141,15 @@ func GenerateTrustPolicyMultiple(oidcProviderARN string, serviceAccounts []Servi
 }`, oidcProviderARN, oidcProviderURL, subjects[0])
 	} else {
 		// Multiple subjects - use array format
-		subjectsJSON := `[`
+		var subjectsJSON strings.Builder
+		subjectsJSON.WriteString(`[`)
 		for i, subject := range subjects {
 			if i > 0 {
-				subjectsJSON += ", "
+				subjectsJSON.WriteString(", ")
 			}
-			subjectsJSON += fmt.Sprintf(`"%s"`, subject)
+			fmt.Fprintf(&subjectsJSON, `"%s"`, subject)
 		}
-		subjectsJSON += `]`
+		subjectsJSON.WriteString(`]`)
 
 		trustPolicy = fmt.Sprintf(`{
   "Version": "2012-10-17",
@@ -165,7 +167,7 @@ func GenerateTrustPolicyMultiple(oidcProviderARN string, serviceAccounts []Servi
       }
     }
   ]
-}`, oidcProviderARN, oidcProviderURL, subjectsJSON)
+}`, oidcProviderARN, oidcProviderURL, subjectsJSON.String())
 	}
 
 	return trustPolicy
@@ -182,7 +184,10 @@ func ValidateServiceAccountName(name string) error {
 	}
 
 	if !ServiceAccountNameRE.MatchString(name) {
-		return fmt.Errorf("service account name must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character")
+		return fmt.Errorf(
+			"service account name must consist of lower case alphanumeric characters, '-' or '.', " +
+				"and must start and end with an alphanumeric character",
+		)
 	}
 
 	return nil
@@ -199,15 +204,16 @@ func ValidateNamespaceName(name string) error {
 	}
 
 	if !NamespaceNameRE.MatchString(name) {
-		return fmt.Errorf("namespace name must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character")
+		return fmt.Errorf(
+			"namespace name must consist of lower case alphanumeric characters or '-', " +
+				"and must start and end with an alphanumeric character",
+		)
 	}
 
 	// Reserved namespaces (only system namespaces)
 	reserved := []string{"kube-system", "kube-public", "kube-node-lease"}
-	for _, r := range reserved {
-		if name == r {
-			return fmt.Errorf("namespace '%s' is reserved and cannot be used", name)
-		}
+	if slices.Contains(reserved, name) {
+		return fmt.Errorf("namespace '%s' is reserved and cannot be used", name)
 	}
 
 	return nil
@@ -233,11 +239,11 @@ func GetRoleARN(accountID, roleName, path, partition string) string {
 }
 
 // ServiceAccountNameValidator is an interactive validator for service account names
-func ServiceAccountNameValidator(val interface{}) error {
+func ServiceAccountNameValidator(val any) error {
 	return ValidateServiceAccountName(val.(string))
 }
 
 // NamespaceNameValidator is an interactive validator for namespace names
-func NamespaceNameValidator(val interface{}) error {
+func NamespaceNameValidator(val any) error {
 	return ValidateNamespaceName(val.(string))
 }
