@@ -61,6 +61,6 @@ func (b *AWSLoggerBuilder) Build() (result *AWSLogger, err error) {
 	return
 }
 
-func (l *AWSLogger) Log(args ...interface{}) {
+func (l *AWSLogger) Log(args ...any) {
 	l.logger.Info(args...)
 }

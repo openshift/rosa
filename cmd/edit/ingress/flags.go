@@ -2,13 +2,14 @@ package ingress
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/pflag"
 
 	"github.com/openshift/rosa/pkg/helper"
-	. "github.com/openshift/rosa/pkg/ingress"
+	pkgingress "github.com/openshift/rosa/pkg/ingress"
 )
 
 type stringTransformation func(source string) string
@@ -47,13 +48,7 @@ var expectedParameters = []string{
 }
 
 func IsIngressV2SetViaCLI(flags *pflag.FlagSet) bool {
-	for _, parameter := range exclusivelyIngressV2Flags {
-		if flags.Changed(parameter) {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(exclusivelyIngressV2Flags, flags.Changed)
 }
 
 func addIngressV2Flags(flags *pflag.FlagSet) {
@@ -70,7 +65,7 @@ func addIngressV2Flags(flags *pflag.FlagSet) {
 		wildcardPolicyFlag,
 		"",
 		fmt.Sprintf("Wildcard Policy for ingress. Options are %s. Default is '%s'.",
-			strings.Join(ValidWildcardPolicies, ","), DefaultWildcardPolicy),
+			strings.Join(pkgingress.ValidWildcardPolicies, ","), pkgingress.DefaultWildcardPolicy),
 	)
 
 	flags.StringVar(
@@ -78,7 +73,7 @@ func addIngressV2Flags(flags *pflag.FlagSet) {
 		namespaceOwnershipPolicyFlag,
 		"",
 		fmt.Sprintf("Namespace Ownership Policy for ingress. Options are %s. Default is '%s'.",
-			strings.Join(ValidNamespaceOwnershipPolicies, ","), DefaultNamespaceOwnershipPolicy),
+			strings.Join(pkgingress.ValidNamespaceOwnershipPolicies, ","), pkgingress.DefaultNamespaceOwnershipPolicy),
 	)
 
 	flags.StringVar(
@@ -158,9 +153,10 @@ func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder,
 				parameterValue = t(parameterValue)
 			}
 			// TODO: use reflection, couldn't get it to work
-			if parameterName == hostnameParameter {
+			switch parameterName {
+			case hostnameParameter:
 				componentRouteBuilder.Hostname(parameterValue)
-			} else if parameterName == tlsSecretRefParameter {
+			case tlsSecretRefParameter:
 				componentRouteBuilder.TlsSecretRef(parameterValue)
 			}
 		}

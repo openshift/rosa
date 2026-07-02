@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.4-1782852234 AS builder
 COPY --chown=1001:0 . .
 
 ENV GOFLAGS=-buildvcs=false

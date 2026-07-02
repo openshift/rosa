@@ -256,7 +256,7 @@ func exitHTPasswdCreate(format, clusterKey string, err error, r *rosa.Runtime) {
 	os.Exit(1)
 }
 
-func UsernameValidator(val interface{}) error {
+func UsernameValidator(val any) error {
 	if username, ok := val.(string); ok {
 		if strings.ContainsAny(username, "/:%") {
 			return fmt.Errorf("invalid username '%s': "+
@@ -267,7 +267,7 @@ func UsernameValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got '%v'", val)
 }
 
-func clusterAdminValidator(val interface{}) error {
+func clusterAdminValidator(val any) error {
 	if username, ok := val.(string); ok {
 		if username == ClusterAdminUsername {
 			return fmt.Errorf("username '%s' is not allowed. It is preserved for cluster admin creation. "+
@@ -302,7 +302,7 @@ func parseHtpasswordFile(usersList *map[string]string, filePath string) error {
 		// split "user:password" at colon
 		username, password, found := strings.Cut(line, ":")
 		if !found || username == "" || password == "" {
-			return fmt.Errorf("Malformed line, Expected: validUsername:validPassword, Got: %s", line)
+			return fmt.Errorf("malformed line, expected validUsername:validPassword, got: %s", line)
 		}
 
 		(*usersList)[username] = password

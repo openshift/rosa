@@ -2,6 +2,7 @@ package logforwarding
 
 import (
 	"fmt"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
@@ -20,25 +21,25 @@ func LogForwarderObjectAsString(logForwarder *cmv1.LogForwarder) string {
 	}
 
 	if logForwarder.Applications() != nil && len(logForwarder.Applications()) > 0 {
-		applicationsStr := ""
+		var applicationsStr strings.Builder
 		for i, app := range logForwarder.Applications() {
 			if i > 0 {
-				applicationsStr += " "
+				applicationsStr.WriteString(" ")
 			}
-			applicationsStr += app
+			applicationsStr.WriteString(app)
 		}
-		out += fmt.Sprintf("Applications:                        %s\n", applicationsStr)
+		out += fmt.Sprintf("Applications:                        %s\n", applicationsStr.String())
 	}
 
 	if logForwarder.Groups() != nil && len(logForwarder.Groups()) > 0 {
-		groupsStr := ""
+		var groupsStr strings.Builder
 		for i, group := range logForwarder.Groups() {
 			if i > 0 {
-				groupsStr += " "
+				groupsStr.WriteString(" ")
 			}
-			groupsStr += fmt.Sprintf("(%s,v%s)", group.ID(), group.Version())
+			fmt.Fprintf(&groupsStr, "(%s,v%s)", group.ID(), group.Version())
 		}
-		out += fmt.Sprintf("Groups:                              %s\n", groupsStr)
+		out += fmt.Sprintf("Groups:                              %s\n", groupsStr.String())
 	}
 
 	if logForwarder.Status() != nil {
@@ -47,14 +48,14 @@ func LogForwarderObjectAsString(logForwarder *cmv1.LogForwarder) string {
 		}
 
 		if logForwarder.Status().ResolvedApplications() != nil && len(logForwarder.Status().ResolvedApplications()) > 0 {
-			resolvedAppsStr := ""
+			var resolvedAppsStr strings.Builder
 			for i, app := range logForwarder.Status().ResolvedApplications() {
 				if i > 0 {
-					resolvedAppsStr += " "
+					resolvedAppsStr.WriteString(" ")
 				}
-				resolvedAppsStr += app
+				resolvedAppsStr.WriteString(app)
 			}
-			out += fmt.Sprintf("Resolved Applications:               %s\n", resolvedAppsStr)
+			out += fmt.Sprintf("Resolved Applications:               %s\n", resolvedAppsStr.String())
 		}
 	}
 
