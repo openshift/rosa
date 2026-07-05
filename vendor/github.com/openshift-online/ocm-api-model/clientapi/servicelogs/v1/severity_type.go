@@ -24,13 +24,23 @@ type Severity string
 
 const (
 	//
+	SeverityCritical Severity = "Critical"
+	//
 	SeverityDebug Severity = "Debug"
 	//
 	SeverityError Severity = "Error"
 	//
 	SeverityFatal Severity = "Fatal"
 	//
+	SeverityImportant Severity = "Important"
+	//
 	SeverityInfo Severity = "Info"
+	//
+	SeverityLow Severity = "Low"
+	//
+	SeverityMajor Severity = "Major"
+	//
+	SeverityModerate Severity = "Moderate"
 	//
 	SeverityWarning Severity = "Warning"
 )
