@@ -511,7 +511,7 @@ var _ = Describe("Edit IDP",
 				var (
 					ERROR_INVALID_IDP_TYPE = "Expected a valid IDP type. Options are [github gitlab google htpasswd ldap openid]"
 					ERROR_INVALID_MAPPING  = fmt.Sprintf(
-						"Failed to create IDP for cluster '%s': Expected a valid mapping method. Options are [add claim generate lookup]",
+						"Failed to create IDP for cluster '%s': expected a valid mapping method; options are [add claim generate lookup]",
 						clusterID,
 					)
 					ERROR_INVALID_CERTIFICATE_BUNDLE = fmt.Sprintf(
@@ -812,7 +812,7 @@ var _ = Describe("Edit IDP",
 							"-y")
 						Expect(err).NotTo(BeNil())
 						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-						Expect(textData).Should(ContainSubstring("The name \"cluster-admin\" is reserved for admin user IDP"))
+						Expect(textData).Should(ContainSubstring("the name \"cluster-admin\" is reserved for admin user IDP"))
 
 						By("List IDPs")
 						idpTab, _, err := idpService.ListIDP(clusterID)
