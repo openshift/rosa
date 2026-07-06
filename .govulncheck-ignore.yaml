@@ -1,0 +1,21 @@
+# govulncheck ignore configuration
+#
+# This file specifies vulnerabilities that should be ignored when running
+# govulncheck. Prefer fixing or bumping dependencies/toolchain over ignoring.
+# Remove entries once the fix is adopted (for example after a Go toolchain bump).
+#
+# Each entry must specify:
+# - id: The vulnerability ID (GO-XXXX-XXXX format)
+# - module: The exact module path where the vulnerability exists
+# - reason: Why this vulnerability is accepted
+
+ignored_vulnerabilities:
+  - id: GO-2026-5037
+    module: stdlib
+    reason: "Deferred until Go 1.26.4 toolchain is available (fix in v1.26.4; current go.mod: 1.25.8)"
+  - id: GO-2026-5038
+    module: stdlib
+    reason: "Deferred until Go 1.26.4 toolchain is available (fix in v1.26.4; current go.mod: 1.25.8)"
+  - id: GO-2026-5039
+    module: stdlib
+    reason: "Deferred until Go 1.26.4 toolchain is available (fix in v1.26.4; current go.mod: 1.25.8)"

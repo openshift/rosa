@@ -74,6 +74,10 @@ fmt-check: $(GCI)
 lint: $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run --timeout 5m0s $(LINT_OUTPUT_FLAGS) ./...
 
+.PHONY: govulncheck
+govulncheck: $(GOVULNCHECK) rosa
+	GOVULNCHECK_BIN="$(GOVULNCHECK)" ./hack/govulncheck.sh
+
 .PHONY: commits/check
 commits/check:
 	@./hack/commit-msg-verify.sh
