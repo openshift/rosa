@@ -1163,7 +1163,7 @@ func run(cmd *cobra.Command, _ []string) {
 		isClusterAdmin = true
 		// user supplies create-admin-user flag without cluster-admin-password will generate random password
 		if clusterAdminPassword == "" {
-			r.Reporter.Debugf(admin.GeneratingRandomPasswordString)
+			r.Reporter.Debugf(admin.AdminCredentialGenerationMessage)
 			clusterAdminPassword, err = idputils.GenerateRandomPassword()
 			if err != nil {
 				r.Reporter.Errorf("Failed to generate a random password")

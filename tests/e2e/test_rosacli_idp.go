@@ -387,7 +387,7 @@ var _ = Describe("Edit IDP",
 					idpType         = "htpasswd"
 					idpNames        = []string{"htpasswdn1", "htpasswdn2", "htpasswd3"}
 					validUserName   = "user1"
-					validUserPasswd = "Pass1@htpasswd"
+					validUserPasswd = helper.GenerateRandomStringWithSymbols(12)
 					invalidUserName = "user:2"
 				)
 
@@ -456,8 +456,8 @@ var _ = Describe("Edit IDP",
 					idpGithub            = "github"
 					idpLDAP              = "ldap"
 					invalidIdpType       = "invalidIdp"
-					UserName             = "user1"
-					UserPasswd           = "Pass1@htpasswd"
+					UserName             string
+					UserPasswd           string
 					invalidMappingMethod = "invalidmappingmethod"
 					invalidCaFilePath    = "invalidCaPath"
 					invalidTeam          = "invalidTeam"
@@ -523,7 +523,8 @@ var _ = Describe("Edit IDP",
 
 				//Htpasswd
 				By("Try creating htpasswd idp with invalid idp type")
-				_, UserName, UserPasswd, err := helper.GenerateHtpasswdPair(UserName, UserPasswd)
+				_, UserName, UserPasswd, err := helper.GenerateHtpasswdPair(
+					helper.GenerateRandomString(6), helper.GenerateRandomStringWithSymbols(12))
 				Expect(err).To(BeNil())
 				_, err = idpService.CreateIDP(
 					clusterID, idp[idpHtpasswd].name,

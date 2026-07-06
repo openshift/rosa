@@ -35,7 +35,7 @@ const ClusterAdminUsername = "cluster-admin"
 const ClusterAdminGroupname = "cluster-admins"
 const DedicatedAdminGroupname = "dedicated-admins"
 const ClusterAdminIDPname = "cluster-admin"
-const GeneratingRandomPasswordString = "Generating random password"
+const AdminCredentialGenerationMessage = "Generating random password"
 const MaxPasswordLength = 23
 
 var Cmd = &cobra.Command{
@@ -98,7 +98,7 @@ func run(_ *cobra.Command, _ []string) {
 	var password string
 	passwordArg := args.passwordArg
 	if len(passwordArg) == 0 {
-		r.Reporter.Debugf(GeneratingRandomPasswordString)
+		r.Reporter.Debugf(AdminCredentialGenerationMessage)
 		password, err = idputils.GenerateRandomPassword()
 		if err != nil {
 			r.Reporter.Errorf("Failed to generate a random password")
@@ -215,7 +215,7 @@ func run(_ *cobra.Command, _ []string) {
 func FindClusterAdminIDP(cluster *cmv1.Cluster, r *rosa.Runtime) (*cmv1.IdentityProvider, error) {
 	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get identity providers for cluster '%s': %v", r.ClusterKey, err)
+		return nil, fmt.Errorf("failed to get identity providers for cluster '%s': %v", r.ClusterKey, err)
 	}
 	for _, item := range idps {
 		if ocm.IdentityProviderType(item) == ocm.HTPasswdIDPType &&
@@ -238,7 +238,7 @@ func FindIDPWithAdmin(cluster *cmv1.Cluster, r *rosa.Runtime) (
 	r.Reporter.Debugf("Loading cluster's identity providers")
 	idps, err := r.OCMClient.GetIdentityProviders(cluster.ID())
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get identity providers for cluster '%s': %v", r.ClusterKey, err)
+		return nil, nil, fmt.Errorf("failed to get identity providers for cluster '%s': %v", r.ClusterKey, err)
 	}
 
 	for _, item := range idps {

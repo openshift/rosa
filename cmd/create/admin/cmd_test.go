@@ -52,7 +52,7 @@ var _ = Describe("Idps", Ordered, func() {
 			Expect(existingIdp).To(BeNil())
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(ContainSubstring(
-				fmt.Sprintf("Failed to get identity providers for cluster '%s'", clusterKey)))
+				fmt.Sprintf("failed to get identity providers for cluster '%s'", clusterKey)))
 		})
 	})
 
@@ -87,7 +87,7 @@ var _ = Describe("Idps", Ordered, func() {
 			Expect(userList).To(BeNil())
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(ContainSubstring(
-				fmt.Sprintf("Failed to get identity providers for cluster '%s'", clusterKey)))
+				fmt.Sprintf("failed to get identity providers for cluster '%s'", clusterKey)))
 		})
 	})
 })

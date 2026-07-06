@@ -1,0 +1,56 @@
+# Snyk policy — openshift/rosa
+# https://docs.snyk.io/manage-risk/policies/the-.snyk-file
+# https://docs.ci.openshift.org/how-tos/add-security-scanning/
+#
+# Code (SAST): exclude test-only paths from Snyk Code. Complements Prow:
+#   SNYK_CODE_ADDITIONAL_ARGS: --severity-threshold=high --policy-path=.snyk
+#
+# Open Source (deps): .snyk at repo root is auto-loaded by `snyk test`.
+# Do not set SNYK_DEPS_ADDITIONAL_ARGS to --policy-path alone (replaces default
+# CLI args in openshift-ci-security). Add ignore entries only after fix attempts.
+
+version: v1.25.1
+
+exclude:
+  global:
+    - "**/*_test.go"
+    - "tests/**"
+    - "pkg/ocm/idps.go"
+    - "cmd/create/idp/cmd.go"
+    - "vendor/github.com/openshift-online/ocm-common/**"
+    - "vendor/github.com/onsi/ginkgo/v2/internal/**"
+    - "vendor/github.com/openshift-online/ocm-api-model/**"
+    - "vendor/github.com/lib/pq/**"
+    - "vendor/github.com/openshift-online/ocm-sdk-go/authentication/**"
+    - "vendor/github.com/openshift-online/ocm-sdk-go/testing/**"
+    - "vendor/github.com/aws/**"
+    - "vendor/github.com/go-jose/**"
+    - "vendor/github.com/google/uuid/**"
+    - "vendor/github.com/go-task/slim-sprig/**"
+    - "vendor/github.com/godbus/**"
+    - "vendor/github.com/dvsekhvalnov/**"
+    - "vendor/golang.org/x/crypto/ssh/**"
+    - "vendor/golang.org/x/tools/**"
+    - "vendor/k8s.io/klog/**"
+
+ignore:
+  SNYK-GOLANG-STDNETTEXTPROTO-17135843:
+    - "*":
+        reason: >-
+          Go stdlib fix requires 1.26.4; CI builder is still 1.26.3.
+          Remove when CI runs Go >= 1.26.4.
+        expires: 2026-08-01T00:00:00.000Z
+
+  SNYK-GOLANG-STDMIME-17135844:
+    - "*":
+        reason: >-
+          Go stdlib fix requires 1.26.4; CI builder is still 1.26.3.
+          Remove when CI runs Go >= 1.26.4.
+        expires: 2026-08-01T00:00:00.000Z
+
+  SNYK-GOLANG-STDCRYPTOX509-17135840:
+    - "*":
+        reason: >-
+          Go stdlib fix requires 1.26.4; CI builder is still 1.26.3.
+          Remove when CI runs Go >= 1.26.4.
+        expires: 2026-08-01T00:00:00.000Z
