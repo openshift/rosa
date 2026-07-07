@@ -151,7 +151,11 @@ generate_label_filter_switch () {
     label_filter="$label_filter&&$2" 
     echo "[CI] Got IMPORTANCE specified to $2"
   fi
-  LABEL_FILTER_SWITCH="--ginkgo.label-filter '${label_filter}'"
+  if [ -z "$label_filter" ]; then
+    LABEL_FILTER_SWITCH="--ginkgo.label-filter '!Exclude'"
+  else
+    LABEL_FILTER_SWITCH="--ginkgo.label-filter '${label_filter}&&!Exclude'"
+  fi
 }
 
 # generate_junit is used to generate junit file path
