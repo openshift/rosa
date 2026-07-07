@@ -84,10 +84,13 @@ When a vulnerability has no fix available, or a fix cannot be adopted yet (for e
 a stdlib fix that requires a newer Go toolchain), add an entry to `.govulncheck-ignore.yaml`
 with the GO ID, exact module path, and reason. Remove entries once the fix is adopted.
 
-The ignore wrapper requires `jq` to parse govulncheck JSON output. ROSA Prow jobs use the
-same OCP builder image as `lint` (`container: from: src`), which includes `jq` as a system
-package. For local runs, install `jq` if it is not already available. `yq` is optional; the
-wrapper falls back to awk when `yq` is not installed.
+The ignore wrapper requires `jq` to parse govulncheck JSON output. The OCP builder image
+used by ROSA Prow jobs (`container: from: src`) does not include `jq`; `make govulncheck`
+downloads a static `jq` binary (currently pinned in `hack/govulncheck.sh`, monitored by
+Renovate) to a versioned temp directory when it is not already on `PATH`, and verifies the
+download against the upstream `sha256sum.txt` for that release. For local runs, install `jq`
+or rely on that bootstrap. `yq` is optional; the wrapper falls back to awk when `yq` is not
+installed.
 
 Commit message checks are performed by the `commit-msg` hook during commits.
 

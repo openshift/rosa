@@ -5,6 +5,7 @@
     ":gitSignOff"
   ],
   "enabledManagers": [
+    "custom.regex",
     "gomod",
     "tekton",
     "dockerfile"
@@ -48,7 +49,32 @@
       }
     ]
   },
+  "customManagers": [
+    {
+      "description": "Update jq bootstrap in hack/govulncheck.sh",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^hack/govulncheck\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>jqlang/jq)(?: extractVersion=(?<extractVersion>[^\\s]+))?\\s+readonly jq_version=\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "{{datasource}}",
+      "depNameTemplate": "{{depName}}",
+      "extractVersionTemplate": "{{extractVersion}}"
+    }
+  ],
   "packageRules": [
+    {
+      "description": "govulncheck jq bootstrap",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "jqlang/jq"
+      ],
+      "groupName": "govulncheck-jq"
+    },
     {
       "description": "Enable automerge Konflux .tekton task updates",
       "matchManagers": [
