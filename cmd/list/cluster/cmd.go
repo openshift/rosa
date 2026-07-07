@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -111,13 +112,7 @@ func run(_ *cobra.Command, _ []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTOPOLOGY\n")
 	for _, cluster := range clusters {
-		typeOutput := "Classic"
-		if cluster.AWS() != nil && cluster.AWS().STS() != nil && cluster.AWS().STS().Enabled() {
-			typeOutput = "Classic (STS)"
-		}
-		if cluster.Hypershift().Enabled() {
-			typeOutput = "Hosted CP"
-		}
+		typeOutput := clusterTopology(cluster)
 		fmt.Fprintf(
 			writer,
 			"%s\t%s\t%s\t%s\n",
@@ -128,4 +123,14 @@ func run(_ *cobra.Command, _ []string) {
 		)
 	}
 	writer.Flush()
+}
+
+func clusterTopology(cluster *v1.Cluster) string {
+	if ocm.IsHyperShiftCluster(cluster) {
+		return "Hosted CP"
+	}
+	if cluster.AWS() != nil && cluster.AWS().STS() != nil && cluster.AWS().STS().Enabled() {
+		return "Classic (STS)"
+	}
+	return "Classic"
 }
