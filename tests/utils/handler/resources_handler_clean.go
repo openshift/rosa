@@ -394,13 +394,16 @@ func (rh *resourcesHandler) CleanupProxyResources(instID string, sharedVPC bool)
 	}
 	log.Logger.Infof("Instance %s is terminated", instID)
 
-	// Delete secrity group
 	_, err = awsClient.DeleteSecurityGroup(SGID)
-	if err != nil {
+	if err != nil && !isAWSAuthorizationError(err) {
 		log.Logger.Errorf("Delete security group failed: %s", err)
 		return err
 	}
-	log.Logger.Infof("Deleted security group: %s", SGID)
+	if err != nil {
+		log.Logger.Warnf("Security group %s deletion skipped (auth error, will be cleaned with VPC): %s", SGID, err)
+	} else {
+		log.Logger.Infof("Deleted security group: %s", SGID)
+	}
 
 	// Delete key pair
 	_, err = awsClient.DeleteKeyPair(keyName)
@@ -411,4 +414,21 @@ func (rh *resourcesHandler) CleanupProxyResources(instID string, sharedVPC bool)
 	log.Logger.Infof("Deleted key pair: %s", keyName)
 
 	return nil
+}
+
+// isAWSAuthorizationError returns true when the error message indicates an
+// AWS authorization failure that should be treated as non-fatal during teardown.
+func isAWSAuthorizationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UnauthorizedOperation") ||
+		strings.Contains(msg, "AccessDenied")
+}
+
+// hostedZoneIsHCPInternal returns true when the zone name represents an HCP
+// internal communication zone (suffix: hypershift.local) vs an ingress zone.
+func hostedZoneIsHCPInternal(hostedZoneName string) bool {
+	return strings.HasSuffix(hostedZoneName, "hypershift.local")
 }

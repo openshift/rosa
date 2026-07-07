@@ -710,6 +710,12 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				return flags, err
 			}
 
+			if subnetIDs := extractSubnetIDsFromArns(sharedResourceArns); len(subnetIDs) > 0 {
+				if waitErr := waitForSubnetsVisibleFromAccount(resourcesHandler, subnetIDs); waitErr != nil {
+					return flags, waitErr
+				}
+			}
+
 			dnsDomain, err := resourcesHandler.PrepareDNSDomain(ch.profile.ClusterConfig.HCP)
 			if err != nil {
 				return flags, err

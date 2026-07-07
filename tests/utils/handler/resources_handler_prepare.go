@@ -1170,15 +1170,15 @@ func (rh *resourcesHandler) PrepareHostedZone(hostedZoneName string,
 		return "", err
 	}
 	hostedZoneID := strings.Split(*hostedZoneOutput.HostedZone.Id, "/")[2]
-	if strings.HasSuffix(hostedZoneName, "hypershift.local") {
+	if hostedZoneIsHCPInternal(hostedZoneName) {
+		err = rh.registerHostedCPInternalHostedZoneID(hostedZoneID)
+		if err != nil {
+			log.Logger.Errorf("Error happened when record HCP Internal Hosted Zone ID: %s", err.Error())
+		}
+	} else {
 		err = rh.registerIngressHostedZoneID(hostedZoneID)
 		if err != nil {
 			log.Logger.Errorf("Error happened when record Ingress Hosted Zone ID: %s", err.Error())
-		}
-	} else {
-		err = rh.registerHostedCPInternalHostedZoneID(hostedZoneID)
-		if err != nil {
-			log.Logger.Errorf("Error happened when record Hosted Zone ID: %s", err.Error())
 		}
 	}
 
@@ -1203,6 +1203,66 @@ func (rh *resourcesHandler) PrepareSubnetArns(subnetIDs string) ([]string, error
 		subnetArns = append(subnetArns, *subnet.SubnetArn)
 	}
 	return subnetArns, err
+}
+
+// waitForSubnetsVisibleFromAccount creates a subnet checker using the primary
+// (non-shared) account from the resources handler and delegates to
+// waitForSubnetsVisible.
+func waitForSubnetsVisibleFromAccount(rh *resourcesHandler, subnetIDs []string) error {
+	awsClient, err := rh.GetAWSClient(false)
+	if err != nil {
+		return fmt.Errorf("creating primary AWS client for subnet validation: %w", err)
+	}
+	checker := func(ctx context.Context, ids []string) (int, error) {
+		output, descErr := awsClient.Ec2Client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+			SubnetIds: ids,
+		})
+		if descErr != nil {
+			return 0, descErr
+		}
+		return len(output.Subnets), nil
+	}
+	return waitForSubnetsVisible(subnetIDs, checker)
+}
+
+// subnetChecker abstracts the DescribeSubnets call so the polling loop can be
+// tested without an AWS client.
+type subnetChecker func(ctx context.Context, ids []string) (found int, err error)
+
+// waitForSubnetsVisible polls until checker reports all expected subnets are
+// visible or returns a non-retryable error. InvalidSubnetID.NotFound is treated
+// as a retryable condition (RAM propagation delay).
+func waitForSubnetsVisible(subnetIDs []string, checker subnetChecker) error {
+	if len(subnetIDs) == 0 {
+		return nil
+	}
+
+	log.Logger.Infof(
+		"Waiting for %d shared subnets to become visible from the primary account (RAM propagation)...",
+		len(subnetIDs))
+
+	return wait.PollUntilContextTimeout(
+		context.TODO(),
+		10*time.Second,
+		5*time.Minute,
+		true,
+		func(ctx context.Context) (bool, error) {
+			found, descErr := checker(ctx, subnetIDs)
+			if descErr != nil {
+				if strings.Contains(descErr.Error(), "InvalidSubnetID.NotFound") {
+					log.Logger.Debugf("Subnets not yet visible from primary account, retrying...")
+					return false, nil
+				}
+				return false, fmt.Errorf("describing shared subnets: %w", descErr)
+			}
+			if found == len(subnetIDs) {
+				log.Logger.Infof("All %d shared subnets are now visible from the primary account", len(subnetIDs))
+				return true, nil
+			}
+			log.Logger.Debugf("Only %d/%d subnets visible, retrying...", found, len(subnetIDs))
+			return false, nil
+		},
+	)
 }
 func (rh *resourcesHandler) PrepareSecurityGroupArns(sgIDs []string, useSharedVpcAcc bool) ([]string, error) {
 	var (
@@ -1258,6 +1318,19 @@ func (rh *resourcesHandler) PrepareResourceShare(resourceShareName string, resou
 		log.Logger.Errorf("Error happened when record resource share: %s", err.Error())
 	}
 	return resourceShareArn, err
+}
+
+// extractSubnetIDsFromArns parses subnet IDs from a list of AWS resource ARNs.
+// Non-subnet ARNs are silently skipped.
+func extractSubnetIDsFromArns(arns []string) []string {
+	var ids []string
+	for _, arn := range arns {
+		parts := strings.Split(arn, "/")
+		if len(parts) == 2 && strings.Contains(parts[0], ":subnet") {
+			ids = append(ids, parts[1])
+		}
+	}
+	return ids
 }
 
 // generateAccountRoleCreationFlag will generate account role creation flags
