@@ -355,8 +355,9 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).To(BeNil())
 			upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 			Expect(err).To(BeNil())
-			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-				"Expected at least one upgrade version to be available")
+			if len(upgradeVersionList.UpgradeVersions) == 0 {
+				Skip("Skip this case as no upgrade version available for non-STS cluster")
+			}
 			upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 			if upgradingVersion == "" {
@@ -825,8 +826,9 @@ var _ = Describe("Describe/List rosa upgrade",
 					Expect(err).To(BeNil())
 					upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 					Expect(err).To(BeNil())
-					Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-						"Expected at least one upgrade version to be available")
+					if len(upgradeVersionList.UpgradeVersions) == 0 {
+						Skip("Skip this case as no upgrade version available")
+					}
 					upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 					By("Upgrade cluster")
@@ -1286,8 +1288,9 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 			Expect(err).To(BeNil())
 			upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
 			Expect(err).To(BeNil())
-			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-				"Expected at least one upgrade version to be available")
+			if len(upgradeVersionList.UpgradeVersions) == 0 {
+				Skip("Skip this case as no upgrade version available")
+			}
 			upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
 
 			if profile.ClusterConfig.STS {
