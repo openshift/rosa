@@ -19,6 +19,7 @@ import (
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	awserr "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	awsCommonUtils "github.com/openshift-online/ocm-common/pkg/aws/utils"
 	awsCommonValidations "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -159,13 +160,14 @@ func GetRegion(region string) (string, error) {
 func getClientDetails(awsClient *awsClient) (*sts.GetCallerIdentityOutput, bool, error) {
 	rootUser := false
 
-	_, err := awsClient.ValidateCredentials()
+	user, err := awsClient.GetCallerIdentity()
 	if err != nil {
-		return nil, rootUser, err
-	}
-
-	user, err := awsClient.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
-	if err != nil {
+		if awserr.IsInvalidTokenException(err) {
+			return nil, rootUser, fmt.Errorf("invalid AWS Credentials: %w.\n For help configuring your credentials, see %s",
+				err,
+				"https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/"+
+					"rosa-config-aws-account.html#rosa-configuring-aws-account_rosa-config-aws-account")
+		}
 		return nil, rootUser, err
 	}
 

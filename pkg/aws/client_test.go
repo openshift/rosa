@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"fmt"
+	"time"
 
 	gomock "go.uber.org/mock/gomock"
 
@@ -952,5 +953,210 @@ var _ = Describe("Client", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(roles).To(HaveLen(0))
 		})
+	})
+})
+
+var _ = Describe("newBackoffWithMinDelay", func() {
+	var backoff func(int, error) (time.Duration, error)
+
+	BeforeEach(func() {
+		backoff = newBackoffWithMinDelay(1*time.Second, 5*time.Second, 5*time.Second)
+	})
+
+	It("enforces minDelay floor for non-throttle errors", func() {
+		genericErr := fmt.Errorf("some transient error")
+		delay, err := backoff(0, genericErr)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(delay).To(BeNumerically(">=", 1*time.Second))
+	})
+
+	It("enforces minThrottle floor for InvalidClientTokenId errors", func() {
+		tokenErr := &smithy.GenericAPIError{Code: "InvalidClientTokenId", Message: "token invalid"}
+		delay, err := backoff(0, tokenErr)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(delay).To(BeNumerically(">=", 5*time.Second))
+	})
+
+	It("does not exceed maxDelay", func() {
+		genericErr := fmt.Errorf("some error")
+		for attempt := 0; attempt < 20; attempt++ {
+			delay, err := backoff(attempt, genericErr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(delay).To(BeNumerically("<=", 5*time.Second))
+		}
+	})
+
+	It("returns base delay when it exceeds minDelay", func() {
+		genericErr := fmt.Errorf("some error")
+		// At high attempts the base exponential should reach maxDelay (5s) which exceeds minDelay (1s)
+		delay, err := backoff(10, genericErr)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(delay).To(BeNumerically(">=", 1*time.Second))
+		Expect(delay).To(BeNumerically("<=", 5*time.Second))
+	})
+
+	It("uses minDelay floor when error is nil", func() {
+		delay, err := backoff(0, nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(delay).To(BeNumerically(">=", 1*time.Second))
+	})
+})
+
+var _ = Describe("GetCallerIdentity caching", func() {
+	var (
+		mockCtrl   *gomock.Controller
+		mockSTS    *mocks.MockStsApiClient
+		awsClient  Client
+		testOutput *sts.GetCallerIdentityOutput
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockSTS = mocks.NewMockStsApiClient(mockCtrl)
+		testOutput = &sts.GetCallerIdentityOutput{
+			Arn:     awsSdk.String("arn:aws:iam::123456789012:user/TestUser"),
+			UserId:  awsSdk.String("AIDAJQABLZS4A3QDU576Q"),
+			Account: awsSdk.String("123456789012"),
+		}
+		awsClient = New(
+			awsSdk.Config{},
+			NewLoggerWrapper(logrus.New(), nil),
+			mocks.NewMockIamApiClient(mockCtrl),
+			mocks.NewMockEc2ApiClient(mockCtrl),
+			mocks.NewMockOrganizationsApiClient(mockCtrl),
+			mocks.NewMockS3ApiClient(mockCtrl),
+			mocks.NewMockSecretsManagerApiClient(mockCtrl),
+			mockSTS,
+			mocks.NewMockCloudFormationApiClient(mockCtrl),
+			mocks.NewMockServiceQuotasApiClient(mockCtrl),
+			mocks.NewMockServiceQuotasApiClient(mockCtrl),
+			&AccessKey{},
+			false,
+		)
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	It("caches the result after the first successful call", func() {
+		mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+			Return(testOutput, nil).Times(1)
+
+		out1, err := awsClient.GetCallerIdentity()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out1.Arn).To(Equal(testOutput.Arn))
+
+		out2, err := awsClient.GetCallerIdentity()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out2).To(BeIdenticalTo(out1))
+	})
+
+	It("does not cache errors", func() {
+		gomock.InOrder(
+			mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("transient failure")),
+			mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+				Return(testOutput, nil),
+		)
+
+		_, err := awsClient.GetCallerIdentity()
+		Expect(err).To(HaveOccurred())
+
+		out, err := awsClient.GetCallerIdentity()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out.Arn).To(Equal(testOutput.Arn))
+	})
+
+	It("GetCreator uses the cached identity without additional STS calls", func() {
+		mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+			Return(testOutput, nil).Times(1)
+
+		_, err := awsClient.GetCallerIdentity()
+		Expect(err).ToNot(HaveOccurred())
+
+		creator, err := awsClient.GetCreator()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(creator.ARN).To(Equal("arn:aws:iam::123456789012:user/TestUser"))
+		Expect(creator.AccountID).To(Equal("123456789012"))
+		Expect(creator.IsSTS).To(BeFalse())
+	})
+
+	It("GetCreator propagates errors from GetCallerIdentity", func() {
+		mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+			Return(nil, fmt.Errorf("STS unavailable"))
+
+		_, err := awsClient.GetCreator()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("STS unavailable"))
+	})
+})
+
+var _ = Describe("getClientDetails", func() {
+	var (
+		mockCtrl   *gomock.Controller
+		mockSTS    *mocks.MockStsApiClient
+		testClient *awsClient
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockSTS = mocks.NewMockStsApiClient(mockCtrl)
+		testClient = &awsClient{
+			logger:    NewLoggerWrapper(logrus.New(), nil),
+			stsClient: mockSTS,
+		}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	It("returns caller identity and rootUser=false for IAM user", func() {
+		mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+			Return(&sts.GetCallerIdentityOutput{
+				Arn:     awsSdk.String("arn:aws:iam::123456789012:user/David"),
+				UserId:  awsSdk.String("AIDAJQABLZS4A3QDU576Q"),
+				Account: awsSdk.String("123456789012"),
+			}, nil)
+
+		user, rootUser, err := getClientDetails(testClient)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rootUser).To(BeFalse())
+		Expect(*user.Arn).To(Equal("arn:aws:iam::123456789012:user/David"))
+	})
+
+	It("detects root user when AccountID equals UserId", func() {
+		mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+			Return(&sts.GetCallerIdentityOutput{
+				Arn:     awsSdk.String("arn:aws:iam::123456789012:root"),
+				UserId:  awsSdk.String("123456789012"),
+				Account: awsSdk.String("123456789012"),
+			}, nil)
+
+		_, rootUser, err := getClientDetails(testClient)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rootUser).To(BeTrue())
+	})
+
+	It("wraps InvalidClientTokenId with credential help text", func() {
+		tokenErr := &smithy.GenericAPIError{Code: "InvalidClientTokenId", Message: "token invalid"}
+		mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+			Return(nil, tokenErr)
+
+		_, _, err := getClientDetails(testClient)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid AWS Credentials"))
+		Expect(err.Error()).To(ContainSubstring("rosa-config-aws-account"))
+	})
+
+	It("passes through other errors unwrapped", func() {
+		otherErr := fmt.Errorf("network timeout")
+		mockSTS.EXPECT().GetCallerIdentity(gomock.Any(), gomock.Any()).
+			Return(nil, otherErr)
+
+		_, _, err := getClientDetails(testClient)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("network timeout"))
 	})
 })

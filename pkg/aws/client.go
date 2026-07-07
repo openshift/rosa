@@ -70,6 +70,29 @@ var (
 	throttleErrorCodes []string
 )
 
+// newBackoffWithMinDelay wraps ExponentialJitterBackoff to enforce minimum
+// delays between retries. For throttle-like errors (identified by the
+// allErrorCodes list including InvalidClientTokenId), it uses
+// minThrottleDelay as the floor. For other retryable errors, it uses
+// minDelay. This gives transient STS issues more time to recover.
+func newBackoffWithMinDelay(minDelay, minThrottle, maxDelay time.Duration) retry.BackoffDelayerFunc {
+	base := retry.NewExponentialJitterBackoff(maxDelay)
+	return func(attempt int, err error) (time.Duration, error) {
+		delay, e := base.BackoffDelay(attempt, err)
+		if e != nil {
+			return delay, e
+		}
+		floor := minDelay
+		if err != nil && awserr.IsInvalidTokenException(err) {
+			floor = minThrottle
+		}
+		if delay < floor {
+			return floor, nil
+		}
+		return delay, nil
+	}
+}
+
 // Name of the AWS user that will be used to create all the resources of the cluster:
 const (
 	AdminUserName        = "osdCcsAdmin"
@@ -264,6 +287,7 @@ type awsClient struct {
 	iamQuotaClient      client.ServiceQuotasApiClient
 	awsAccessKeys       *AccessKey
 	useLocalCredentials bool
+	callerIdentity      *sts.GetCallerIdentityOutput
 }
 
 func CreateNewClientOrExit(logger *logrus.Logger, reporter reporter.Logger) Client {
@@ -312,6 +336,7 @@ func New(
 		iamQuotaClient,
 		awsAccessKeys,
 		useLocalCredentials,
+		nil,
 	}
 }
 
@@ -389,8 +414,10 @@ func (b *ClientBuilder) BuildSessionWithOptionsCredentials(value *AccessKey,
 				strings.Join([]string{info.DefaultUserAgent, info.DefaultVersion}, ";")),
 		}),
 		config.WithRetryer(func() aws.Retryer {
-			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
-			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(func(o *retry.StandardOptions) {
+				o.MaxBackoff = maxThrottleDelay
+				o.Backoff = newBackoffWithMinDelay(minRetryDelay, minThrottleDelay, maxThrottleDelay)
+			}), numMaxRetries)
 
 			for _, code := range allErrorCodes {
 				retryer = retry.AddWithErrorCodes(retryer, code)
@@ -417,8 +444,10 @@ func (b *ClientBuilder) BuildSessionWithOptions(logLevel aws.ClientLogMode) (aws
 				strings.Join([]string{info.DefaultUserAgent, info.DefaultVersion}, ";")),
 		}),
 		config.WithRetryer(func() aws.Retryer {
-			retryer := retry.AddWithMaxAttempts(retry.NewStandard(), numMaxRetries)
-			retryer = retry.AddWithMaxBackoffDelay(retryer, time.Second)
+			retryer := retry.AddWithMaxAttempts(retry.NewStandard(func(o *retry.StandardOptions) {
+				o.MaxBackoff = maxThrottleDelay
+				o.Backoff = newBackoffWithMinDelay(minRetryDelay, minThrottleDelay, maxThrottleDelay)
+			}), numMaxRetries)
 
 			for _, code := range allErrorCodes {
 				retryer = retry.AddWithErrorCodes(retryer, code)
@@ -766,20 +795,23 @@ type Creator struct {
 }
 
 func (c *awsClient) GetCallerIdentity() (*sts.GetCallerIdentityOutput, error) {
+	if c.callerIdentity != nil {
+		return c.callerIdentity, nil
+	}
 	getCallerIdentityOutput, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, err
 	}
+	c.callerIdentity = getCallerIdentityOutput
 	return getCallerIdentityOutput, nil
 }
 
 func (c *awsClient) GetCreator() (*Creator, error) {
-	getCallerIdentityOutput, err := c.stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+	identity, err := c.GetCallerIdentity()
 	if err != nil {
 		return nil, err
 	}
-
-	return CreatorForCallerIdentity(getCallerIdentityOutput)
+	return CreatorForCallerIdentity(identity)
 }
 
 // CreatorForCallerIdentity adapts an STS CallerIdentity to the ROSA *Creator
@@ -959,14 +991,14 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 			if awserr.IsInvalidTokenException(err) {
 				wait := time.Duration((i * 200)) * time.Millisecond
 				waited := time.Since(start)
-				logger.Debug(fmt.Printf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
+				logger.Debug(fmt.Sprintf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
 				time.Sleep(wait)
 			}
 
 			if awserr.IsAccessDeniedException(err) {
 				wait := time.Duration((i * 200)) * time.Millisecond
 				waited := time.Since(start)
-				logger.Debug(fmt.Printf("AccessDenied, waited %.2f\n", waited.Seconds()))
+				logger.Debug(fmt.Sprintf("AccessDenied, waited %.2f\n", waited.Seconds()))
 				time.Sleep(wait)
 			}
 
