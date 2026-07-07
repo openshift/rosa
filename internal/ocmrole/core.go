@@ -243,7 +243,7 @@ func CreateRolesInternal(r *rosa.Runtime, prefix string, roleName string, rolePa
 	case ProfileStandard:
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = aws.GetPolicyDetails(policies, filename)
-		err = CreatePermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
 		if err != nil {
 			return "", err
 		}
@@ -252,7 +252,7 @@ func CreateRolesInternal(r *rosa.Runtime, prefix string, roleName string, rolePa
 		// standard policy first
 		filename = fmt.Sprintf("sts_%s_permission_policy", aws.OCMRolePolicyFile)
 		policyDetail = aws.GetPolicyDetails(policies, filename)
-		err = CreatePermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
 		if err != nil {
 			return "", err
 		}
@@ -269,7 +269,7 @@ func CreateRolesInternal(r *rosa.Runtime, prefix string, roleName string, rolePa
 		}
 		iamTags[tags.AdminRole] = tags.True
 		policyDetail = aws.GetPolicyDetails(policies, filename)
-		err = CreatePermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
 		if err != nil {
 			return "", err
 		}
@@ -294,7 +294,7 @@ func CreateRolesInternal(r *rosa.Runtime, prefix string, roleName string, rolePa
 		}
 		iamTags[tags.NoConsoleRole] = tags.True
 		policyDetail = aws.GetPolicyDetails(policies, filename)
-		err = CreatePermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
+		err = createPermissionPolicy(r, policyARN, iamTags, roleName, rolePath, policyDetail, managedPolicies)
 		if err != nil {
 			return "", err
 		}
@@ -314,8 +314,8 @@ func CreateRolesInternal(r *rosa.Runtime, prefix string, roleName string, rolePa
 	return roleARN, nil
 }
 
-// CreatePermissionPolicy creates and attaches a permission policy to an IAM role
-func CreatePermissionPolicy(r *rosa.Runtime, policyARN string,
+// createPermissionPolicy creates and attaches a permission policy to an IAM role
+func createPermissionPolicy(r *rosa.Runtime, policyARN string,
 	iamTags map[string]string, roleName string, rolePath string, policyDetail string, managedPolicies bool,
 ) error {
 	r.Reporter.Debugf("Creating permission policy '%s'", policyARN)
