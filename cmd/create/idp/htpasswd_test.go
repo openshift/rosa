@@ -101,6 +101,25 @@ var _ = Describe("IDP Tests", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
+
+	Describe("validateHtUsernameAndPassword", func() {
+		It("accepts a valid username and password", func() {
+			err := validateHtUsernameAndPassword("testuser", "SecureP@ssword123")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects a username containing a colon", func() {
+			err := validateHtUsernameAndPassword("bad:user", "SecureP@ssword123")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("username must not contain"))
+		})
+
+		It("rejects the reserved cluster-admin username", func() {
+			err := validateHtUsernameAndPassword("cluster-admin", "SecureP@ssword123")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("cluster-admin"))
+		})
+	})
 })
 
 func CreateTmpFile(content string) (*os.File, error) {
