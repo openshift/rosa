@@ -3,23 +3,24 @@ package handler
 import (
 	"fmt"
 
+	"github.com/aws/smithy-go"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("isAWSAuthorizationError", func() {
 	It("returns true for UnauthorizedOperation", func() {
-		err := fmt.Errorf("UnauthorizedOperation: You are not authorized to perform this operation")
+		err := &smithy.GenericAPIError{Code: "UnauthorizedOperation", Message: "not authorized"}
 		Expect(isAWSAuthorizationError(err)).To(BeTrue())
 	})
 
 	It("returns true for AccessDenied", func() {
-		err := fmt.Errorf("AccessDenied: User is not authorized")
+		err := &smithy.GenericAPIError{Code: "AccessDenied", Message: "access denied"}
 		Expect(isAWSAuthorizationError(err)).To(BeTrue())
 	})
 
-	It("returns false for other errors", func() {
-		err := fmt.Errorf("DependencyViolation: resource has a dependent object")
+	It("returns false for other API errors", func() {
+		err := &smithy.GenericAPIError{Code: "DependencyViolation", Message: "has dependent object"}
 		Expect(isAWSAuthorizationError(err)).To(BeFalse())
 	})
 
@@ -28,9 +29,14 @@ var _ = Describe("isAWSAuthorizationError", func() {
 	})
 
 	It("returns true for wrapped UnauthorizedOperation", func() {
-		inner := fmt.Errorf("UnauthorizedOperation: ec2:DeleteSecurityGroup")
+		inner := &smithy.GenericAPIError{Code: "UnauthorizedOperation", Message: "ec2:DeleteSecurityGroup"}
 		err := fmt.Errorf("delete security group sg-123: %w", inner)
 		Expect(isAWSAuthorizationError(err)).To(BeTrue())
+	})
+
+	It("returns false for non-API errors containing auth keywords", func() {
+		err := fmt.Errorf("UnauthorizedOperation: plain string, not smithy")
+		Expect(isAWSAuthorizationError(err)).To(BeFalse())
 	})
 })
 

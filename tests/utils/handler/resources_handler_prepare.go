@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+	awserrors "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
@@ -1205,6 +1206,11 @@ func (rh *resourcesHandler) PrepareSubnetArns(subnetIDs string) ([]string, error
 	return subnetArns, err
 }
 
+const (
+	subnetVisibilityPollInterval = 10 * time.Second
+	subnetVisibilityPollTimeout  = 5 * time.Minute
+)
+
 // waitForSubnetsVisibleFromAccount creates a subnet checker using the primary
 // (non-shared) account from the resources handler and delegates to
 // waitForSubnetsVisible.
@@ -1222,7 +1228,7 @@ func waitForSubnetsVisibleFromAccount(rh *resourcesHandler, subnetIDs []string) 
 		}
 		return len(output.Subnets), nil
 	}
-	return waitForSubnetsVisible(subnetIDs, checker)
+	return waitForSubnetsVisible(context.TODO(), subnetIDs, checker)
 }
 
 // subnetChecker abstracts the DescribeSubnets call so the polling loop can be
@@ -1232,7 +1238,7 @@ type subnetChecker func(ctx context.Context, ids []string) (found int, err error
 // waitForSubnetsVisible polls until checker reports all expected subnets are
 // visible or returns a non-retryable error. InvalidSubnetID.NotFound is treated
 // as a retryable condition (RAM propagation delay).
-func waitForSubnetsVisible(subnetIDs []string, checker subnetChecker) error {
+func waitForSubnetsVisible(ctx context.Context, subnetIDs []string, checker subnetChecker) error {
 	if len(subnetIDs) == 0 {
 		return nil
 	}
@@ -1242,14 +1248,14 @@ func waitForSubnetsVisible(subnetIDs []string, checker subnetChecker) error {
 		len(subnetIDs))
 
 	return wait.PollUntilContextTimeout(
-		context.TODO(),
-		10*time.Second,
-		5*time.Minute,
+		ctx,
+		subnetVisibilityPollInterval,
+		subnetVisibilityPollTimeout,
 		true,
 		func(ctx context.Context) (bool, error) {
 			found, descErr := checker(ctx, subnetIDs)
 			if descErr != nil {
-				if strings.Contains(descErr.Error(), "InvalidSubnetID.NotFound") {
+				if awserrors.IsSubnetNotFoundError(descErr) {
 					log.Logger.Debugf("Subnets not yet visible from primary account, retrying...")
 					return false, nil
 				}
@@ -1318,19 +1324,6 @@ func (rh *resourcesHandler) PrepareResourceShare(resourceShareName string, resou
 		log.Logger.Errorf("Error happened when record resource share: %s", err.Error())
 	}
 	return resourceShareArn, err
-}
-
-// extractSubnetIDsFromArns parses subnet IDs from a list of AWS resource ARNs.
-// Non-subnet ARNs are silently skipped.
-func extractSubnetIDsFromArns(arns []string) []string {
-	var ids []string
-	for _, arn := range arns {
-		parts := strings.Split(arn, "/")
-		if len(parts) == 2 && strings.Contains(parts[0], ":subnet") {
-			ids = append(ids, parts[1])
-		}
-	}
-	return ids
 }
 
 // generateAccountRoleCreationFlag will generate account role creation flags

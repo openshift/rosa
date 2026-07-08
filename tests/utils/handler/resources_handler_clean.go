@@ -14,11 +14,14 @@ import (
 	r53 "github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+	awserrors "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	"github.com/openshift/rosa/tests/utils/log"
 )
+
+const hcpInternalHostedZoneSuffix = "hypershift.local"
 
 func (rh *resourcesHandler) DeleteVPCChain(withSharedAccount bool) error {
 	var err error
@@ -416,19 +419,20 @@ func (rh *resourcesHandler) CleanupProxyResources(instID string, sharedVPC bool)
 	return nil
 }
 
-// isAWSAuthorizationError returns true when the error message indicates an
-// AWS authorization failure that should be treated as non-fatal during teardown.
+// isAWSAuthorizationError returns true when the error represents an AWS
+// authorization failure that should be treated as non-fatal during teardown.
+// It uses smithy.APIError (via ocm-common) to match on the AWS error code
+// rather than brittle substring matching.
 func isAWSAuthorizationError(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := err.Error()
-	return strings.Contains(msg, "UnauthorizedOperation") ||
-		strings.Contains(msg, "AccessDenied")
+	return awserrors.IsErrorCode(err, awserrors.UnauthorizedOperation) ||
+		awserrors.IsAccessDeniedException(err)
 }
 
 // hostedZoneIsHCPInternal returns true when the zone name represents an HCP
 // internal communication zone (suffix: hypershift.local) vs an ingress zone.
 func hostedZoneIsHCPInternal(hostedZoneName string) bool {
-	return strings.HasSuffix(hostedZoneName, "hypershift.local")
+	return strings.HasSuffix(hostedZoneName, hcpInternalHostedZoneSuffix)
 }

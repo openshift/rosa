@@ -710,8 +710,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 				return flags, err
 			}
 
-			if subnetIDs := extractSubnetIDsFromArns(sharedResourceArns); len(subnetIDs) > 0 {
-				if waitErr := waitForSubnetsVisibleFromAccount(resourcesHandler, subnetIDs); waitErr != nil {
+			if waitSubnetIDs := helper.RemoveFromStringSlice(
+				strings.Split(subnetsFlagValue, ","), ""); len(waitSubnetIDs) > 0 {
+				if waitErr := waitForSubnetsVisibleFromAccount(resourcesHandler, waitSubnetIDs); waitErr != nil {
 					return flags, waitErr
 				}
 			}
