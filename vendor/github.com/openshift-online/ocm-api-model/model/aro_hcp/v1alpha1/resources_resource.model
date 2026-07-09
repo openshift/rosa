@@ -16,7 +16,7 @@ limitations under the License.
 
 // Manages a collection of resources for a cluster
 resource Resources {
-    // Retrieves a list of resources for a cluster in error state
+    // Retrieves a list of resources for a cluster
     method Get {
         // List of cluster resources
         out Body ClusterResources

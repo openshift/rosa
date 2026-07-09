@@ -29,6 +29,21 @@ enum Severity {
 
 	@json(name = "Fatal")
 	Fatal
+
+	@json(name = "Major")
+	Major
+
+	@json(name = "Critical")
+	Critical
+
+	@json(name = "Important")
+	Important
+
+	@json(name = "Moderate")
+	Moderate
+
+	@json(name = "Low")
+	Low
 }
 
 class LogEntry {

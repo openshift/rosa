@@ -51,7 +51,7 @@ func NewResourcesClient(transport http.RoundTripper, path string) *ResourcesClie
 
 // Get creates a request for the 'get' method.
 //
-// Retrieves a list of resources for a cluster in error state
+// Retrieves a list of resources for a cluster
 func (c *ResourcesClient) Get() *ResourcesGetRequest {
 	return &ResourcesGetRequest{
 		transport: c.transport,
