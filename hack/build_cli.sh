@@ -7,20 +7,20 @@ oses=(darwin linux windows)
 mkdir -p releases
 
 build_release() {
-for os in ${oses[@]}
+for os in "${oses[@]}"
 do
-  for arch in ${archs[@]}
+  for arch in "${archs[@]}"
   do
-    if [[ $os == "windows" ]]; then
+    extension=""
+    if [[ "$os" == "windows" ]]; then
         extension=".exe"
     fi
-    GOOS=${os} GOARCH=${arch} go build -o /tmp/rosa_${os}_${arch} ./cmd/rosa
-    mv /tmp/rosa_${os}_${arch} rosa${extension}
-    zip releases/rosa_${os}_${arch}.zip rosa${extension}
-    rm rosa${extension}
+    tmpdir=$(mktemp -d)
+    GOOS="${os}" GOARCH="${arch}" go build -o "${tmpdir}/rosa${extension}" ./cmd/rosa
+    tar -czf "releases/rosa_${os}_${arch}.tar.gz" -C "${tmpdir}" "rosa${extension}"
+    rm -rf "${tmpdir}"
   done
 done
-cd releases
 }
 
 build_release
