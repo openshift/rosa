@@ -15,6 +15,7 @@ import (
 
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -49,10 +50,21 @@ type ClusterService interface {
 	WaitForClusterPassUninstalled(clusterID string, interval int, timeoutMin int) error
 	WaitForClusterPassWaiting(clusterID string, interval int, timeoutMin int) error
 	GetClusterName(clusterID string) (clusterName string, err error)
+	// PrepareClusterForYStreamUpgrade ensures the cluster points at the next-minor
+	// channel and returns the version/channel context needed for y-stream tests.
+	PrepareClusterForYStreamUpgrade(clusterID string, channelGroup string) (*YStreamUpgradePreparation, error)
 }
 
 type clusterService struct {
 	ResourcesService
+}
+
+// YStreamUpgradePreparation captures the cluster version and channel state used
+// to prepare and diagnose y-stream upgrade discovery in tests.
+type YStreamUpgradePreparation struct {
+	ClusterVersion string
+	CurrentChannel string
+	DesiredChannel string
 }
 
 func NewClusterService(client *Client) ClusterService {
@@ -370,6 +382,87 @@ func (c *clusterService) GetClusterName(clusterID string) (clusterName string, e
 	var clusterConfig *config.ClusterConfig
 	clusterConfig, err = config.ParseClusterProfile()
 	return clusterConfig.Name, err
+}
+
+func computeNextMinorChannel(channelGroup string, clusterVersion string) (string, error) {
+	group := strings.TrimSpace(channelGroup)
+	if group == "" {
+		return "", fmt.Errorf("channel group is required to compute the next-minor channel")
+	}
+
+	major, minor, _, err := helper.ParseVersion(clusterVersion)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse cluster version %q: %w", clusterVersion, err)
+	}
+
+	return fmt.Sprintf("%s-%d.%d", group, major, minor+1), nil
+}
+
+func prepareYStreamUpgradeChannel(
+	clusterID string,
+	currentChannel string,
+	clusterVersion string,
+	channelGroup string,
+	editCluster func(clusterID string, flags ...string) (bytes.Buffer, error),
+) (*YStreamUpgradePreparation, error) {
+	preparation := &YStreamUpgradePreparation{
+		ClusterVersion: clusterVersion,
+		CurrentChannel: strings.TrimSpace(currentChannel),
+	}
+
+	desiredChannel, err := computeNextMinorChannel(channelGroup, clusterVersion)
+	if err != nil {
+		return nil, err
+	}
+	preparation.DesiredChannel = desiredChannel
+
+	if preparation.CurrentChannel == desiredChannel {
+		return preparation, nil
+	}
+	if editCluster == nil {
+		return nil, fmt.Errorf("edit cluster function is required to set desired channel %q", desiredChannel)
+	}
+
+	if _, err := editCluster(clusterID, "--channel", desiredChannel, "-y"); err != nil {
+		return nil, fmt.Errorf(
+			"failed to update cluster %s channel from %q to %q: %w",
+			clusterID,
+			preparation.CurrentChannel,
+			desiredChannel,
+			err,
+		)
+	}
+
+	preparation.CurrentChannel = desiredChannel
+	return preparation, nil
+}
+
+func (c *clusterService) PrepareClusterForYStreamUpgrade(
+	clusterID string,
+	channelGroup string,
+) (*YStreamUpgradePreparation, error) {
+	jsonData, err := c.GetJSONClusterDescription(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterVersion := strings.TrimSpace(jsonData.DigString("version", "raw_id"))
+	if clusterVersion == "" {
+		return nil, fmt.Errorf("cluster %s returned an empty raw version while preparing y-stream upgrade", clusterID)
+	}
+
+	clusterDescription, err := c.DescribeClusterAndReflect(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	return prepareYStreamUpgradeChannel(
+		clusterID,
+		clusterDescription.Channel,
+		clusterVersion,
+		channelGroup,
+		c.EditCluster,
+	)
 }
 
 func (c *clusterService) GetJSONClusterDescription(clusterID string) (*jsonData, error) {

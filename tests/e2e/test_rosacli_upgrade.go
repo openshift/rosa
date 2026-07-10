@@ -21,6 +21,31 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
+const (
+	yStreamUpgradeWaitInterval = 10 * time.Second
+	yStreamUpgradeWaitTimeout  = 3 * time.Minute
+)
+
+func prepareYStreamUpgradeVersion(
+	clusterID string,
+	channelGroup string,
+	clusterService rosacli.ClusterService,
+	upgradeService rosacli.UpgradeService,
+) (string, error) {
+	preparation, err := clusterService.PrepareClusterForYStreamUpgrade(clusterID, channelGroup)
+	if err != nil {
+		return "", err
+	}
+
+	upgradingVersion, _, err := upgradeService.WaitForAvailableYStreamUpgrade(
+		clusterID,
+		preparation,
+		yStreamUpgradeWaitInterval,
+		yStreamUpgradeWaitTimeout,
+	)
+	return upgradingVersion, err
+}
+
 var _ = Describe("Cluster Upgrade testing",
 	labels.Feature.Policy,
 	func() {
@@ -221,42 +246,14 @@ var _ = Describe("Cluster Upgrade testing",
 				}
 
 			}
-			By("Check and change channel before upgrade")
-			clusterService := rosaClient.Cluster
-			output, err = clusterService.DescribeCluster(clusterID)
-			Expect(err).To(BeNil())
-			CD, err := clusterService.ReflectClusterDescription(output)
-			Expect(err).To(BeNil())
-			currentChannel := CD.Channel
-			if currentChannel != "" {
-				// Before channel feature enabled on Prod, channel field is empty on prod env
-				channelName, _, minorC, _ := helper.ParseChannel(currentChannel)
-				majorV, minorV, _, _ := helper.ParseVersion(clusterVersion)
-
-				if minorC <= minorV {
-					By("Change channel")
-					updatingChannel := fmt.Sprintf("%s-%d.%d", channelName, majorV, minorV+1)
-					output, err := clusterService.EditCluster(clusterID,
-						"--channel", updatingChannel,
-						"-y",
-					)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(output.String()).Should(ContainSubstring("Updated cluster"))
-				}
-			}
-
-			By("Find updating version")
-			versionService := rosaClient.Version
-			clusterVersionList, err := versionService.ListAndReflectVersions("stable", false)
+			By("Prepare cluster for y-stream upgrade target discovery")
+			upgradingVersion, err := prepareYStreamUpgradeVersion(
+				clusterID,
+				profile.ChannelGroup,
+				clusterService,
+				upgradeService,
+			)
 			Expect(err).ToNot(HaveOccurred())
-
-			versions, err := clusterVersionList.FindYStreamUpgradeVersions(clusterVersion)
-			Expect(err).To(BeNil())
-			Expect(len(versions)).
-				To(
-					BeNumerically(">", 0),
-					fmt.Sprintf("No available upgrade version is found for the cluster version %s", clusterVersion))
-			upgradingVersion := versions[0]
 
 			By("Upgrade roles in auto mode")
 			ocmResourceService := rosaClient.OCMResource
@@ -349,24 +346,19 @@ var _ = Describe("Cluster Upgrade testing",
 				Skip("Skip this case as the version defined in profile is not y-1 for non-sts cluster upgrading testing")
 			}
 
-			By("Check the cluster upgrade version to decide if skip this case")
-
-			output, err := upgradeService.ListUpgrades("-c", clusterID)
-			Expect(err).To(BeNil())
-			upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
-			Expect(err).To(BeNil())
-			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-				"Expected at least one upgrade version to be available")
-			upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
-
-			if upgradingVersion == "" {
-				Skip("Skip this case as the cluster is being upgraded.")
-			}
+			By("Prepare cluster for y-stream upgrade target discovery")
+			upgradingVersion, err := prepareYStreamUpgradeVersion(
+				clusterID,
+				profile.ChannelGroup,
+				clusterService,
+				upgradeService,
+			)
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Upgrade cluster")
 			scheduledDate := time.Now().Format("2006-01-02")
 			scheduledTime := time.Now().Add(200 * time.Minute).UTC().Format("15:04")
-			output, err = upgradeService.Upgrade(
+			output, err := upgradeService.Upgrade(
 				"-c", clusterID,
 				"--version", upgradingVersion,
 				"--schedule-date", scheduledDate,
@@ -384,21 +376,17 @@ var _ = Describe("Cluster Upgrade testing",
 		It("to upgrade shared VPC cluster across Y stream - [id:67168]", labels.High, labels.Runtime.Upgrade, func() {
 			By("Check the cluster version and whether it is a shared VPC cluster to decide if skip this case")
 			if profile.Version == constants.YStreamPreviousVersion && profile.ClusterConfig.SharedVPC {
-				By("Check the cluster upgrade version to decide if skip this case")
-				output, err := upgradeService.ListUpgrades("-c", clusterID)
-				Expect(err).To(BeNil())
-				upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
-				Expect(err).To(BeNil())
-				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-					"Expected at least one upgrade version to be available")
-				upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
-
-				if upgradingVersion == "" {
-					Skip("Skip this case as no available upgrade version.")
-				}
+				By("Prepare cluster for y-stream upgrade target discovery")
+				upgradingVersion, err := prepareYStreamUpgradeVersion(
+					clusterID,
+					profile.ChannelGroup,
+					clusterService,
+					upgradeService,
+				)
+				Expect(err).ToNot(HaveOccurred())
 
 				By("Update cluster with --dry-run")
-				output, err = upgradeService.Upgrade(
+				output, err := upgradeService.Upgrade(
 					"-c", clusterID,
 					"--version", upgradingVersion,
 					"--mode", "auto",
@@ -446,50 +434,22 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(err).To(BeNil())
 				resourcesHandler := clusterHandler.GetResourcesHandler()
 
-				By("Check and change channel before upgrade")
-				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
-				Expect(err).To(BeNil())
-				clusterVersion := jsonData.DigString("version", "raw_id")
-				clusterService := rosaClient.Cluster
-				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
-				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
-				currentChannel := CD.Channel
-				if currentChannel != "" {
-					// Before channel feature enabled on Prod, channel field is empty on prod env
-					channelName, _, minorC, _ := helper.ParseChannel(currentChannel)
-					majorV, minorV, _, _ := helper.ParseVersion(clusterVersion)
-
-					if minorC <= minorV {
-						By("Change channel")
-						updatingChannel := fmt.Sprintf("%s-%d.%d", channelName, majorV, minorV+1)
-						output, err := clusterService.EditCluster(clusterID,
-							"--channel", updatingChannel,
-							"-y",
-						)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(output.String()).Should(ContainSubstring("Updated cluster"))
-					}
-				}
+				By("Prepare cluster for y-stream upgrade target discovery")
+				upgradingVersion, err := prepareYStreamUpgradeVersion(
+					clusterID,
+					profile.ChannelGroup,
+					clusterService,
+					upgradeService,
+				)
+				Expect(err).ToNot(HaveOccurred())
 
 				By("Upgrade wide AMI roles in auto mode")
-				clusterVersionList, err := versionService.ListAndReflectVersions(profile.ChannelGroup, false)
-				Expect(err).To(BeNil())
 
 				if profile.ClusterConfig.HCP {
-					By("Find HCP cluster upgrade version")
-					hcpUpgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
-						profile.ChannelGroup, clusterVersion)
-					Expect(err).To(BeNil())
-					if hcpUpgradingVersion == "" {
-						Skip("Skip this case as no version available for upgrade")
-					}
-
 					By("upgrade HCP cluster wide AMI roles in auto mode")
 					output1, err := ocmResourceService.UpgradeRoles(
 						"-c", clusterID,
-						"--cluster-version", hcpUpgradingVersion,
+						"--cluster-version", upgradingVersion,
 						"--mode", "auto",
 						"-y",
 					)
@@ -499,14 +459,7 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(output1.String()).To(ContainSubstring("Cluster '%s' operator roles have attached managed "+
 						"policies. An upgrade isn't needed", resourcesHandler.GetOperatorRolesPrefix()))
 				} else {
-					By("Find STS Classic cluster upgrade version")
-					classicUpgradingVersion, classicUpgradingMajorVersion, err := clusterVersionList.FindUpperYStreamVersion(
-						profile.ChannelGroup, clusterVersion)
-					Expect(err).To(BeNil())
-
-					if classicUpgradingVersion == "" || classicUpgradingMajorVersion == "" {
-						Skip("Skip this case as no version available for upgrade")
-					}
+					classicUpgradingMajorVersion := helper.SplitMajorVersion(upgradingVersion)
 
 					By("get account roles and operator roles from cluster description")
 					description, err := clusterService.DescribeClusterAndReflect(clusterID)
@@ -540,7 +493,7 @@ var _ = Describe("Cluster Upgrade testing",
 					By("upgrade STS Classic cluster wide AMI roles in auto mode")
 					output, err := ocmResourceService.UpgradeRoles(
 						"-c", clusterID,
-						"--cluster-version", classicUpgradingVersion,
+						"--cluster-version", upgradingVersion,
 						"--mode", "auto",
 						"-y",
 					)
@@ -581,49 +534,21 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(err).To(BeNil())
 				resourcesHandler := clusterHandler.GetResourcesHandler()
 
-				By("Check and change channel before upgrade")
-				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
-				Expect(err).To(BeNil())
-				clusterVersion := jsonData.DigString("version", "raw_id")
-				clusterService := rosaClient.Cluster
-				output, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
-				CD, err := clusterService.ReflectClusterDescription(output)
-				Expect(err).To(BeNil())
-				currentChannel := CD.Channel
-				if currentChannel != "" {
-					// Before channel feature enabled on Prod, channel field is empty on prod env
-					channelName, _, minorC, _ := helper.ParseChannel(currentChannel)
-					majorV, minorV, _, _ := helper.ParseVersion(clusterVersion)
-
-					if minorC <= minorV {
-						By("Change channel")
-						updatingChannel := fmt.Sprintf("%s-%d.%d", channelName, majorV, minorV+1)
-						output, err := clusterService.EditCluster(clusterID,
-							"--channel", updatingChannel,
-							"-y",
-						)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(output.String()).Should(ContainSubstring("Updated cluster"))
-					}
-				}
+				By("Prepare cluster for y-stream upgrade target discovery")
+				upgradingVersion, err := prepareYStreamUpgradeVersion(
+					clusterID,
+					profile.ChannelGroup,
+					clusterService,
+					upgradeService,
+				)
+				Expect(err).ToNot(HaveOccurred())
 
 				By("Upgrade wide AMI roles in manual mode")
-				clusterVersionList, err := versionService.ListAndReflectVersions(profile.ChannelGroup, false)
-				Expect(err).To(BeNil())
 				if profile.ClusterConfig.HCP {
-					By("Find HCP cluster upgrade version")
-					hcpUpgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(profile.ChannelGroup,
-						clusterVersion)
-					Expect(err).To(BeNil())
-					if hcpUpgradingVersion == "" {
-						Skip("Skip this case as no version available for upgrade")
-					}
-
 					By("upgrade HCP cluster wide AMI roles in manual mode")
 					output1, err := ocmResourceService.UpgradeRoles(
 						"-c", clusterID,
-						"--cluster-version", hcpUpgradingVersion,
+						"--cluster-version", upgradingVersion,
 						"--mode", "manual",
 						"-y",
 					)
@@ -633,18 +558,10 @@ var _ = Describe("Cluster Upgrade testing",
 					Expect(output1.String()).To(ContainSubstring("Cluster '%s' operator roles have attached managed "+
 						"policies. An upgrade isn't needed", resourcesHandler.GetOperatorRolesPrefix()))
 				} else {
-					By("Find STS Classic cluster upgrade version")
-					classicUpgradingVersion, _, err := clusterVersionList.FindUpperYStreamVersion(
-						profile.ChannelGroup, clusterVersion)
-					Expect(err).To(BeNil())
-					if classicUpgradingVersion == "" {
-						Skip("Skip this case as no version available for upgrade")
-					}
-
 					By("upgrade STS Classic cluster wide AMI roles in manual mode")
 					output2, err := ocmResourceService.UpgradeRoles(
 						"-c", clusterID,
-						"--cluster-version", classicUpgradingVersion,
+						"--cluster-version", upgradingVersion,
 						"--mode", "manual",
 						"-y",
 					)
@@ -738,6 +655,7 @@ var _ = Describe("Describe/List rosa upgrade",
 		defer GinkgoRecover()
 		var (
 			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
 			upgradeService rosacli.UpgradeService
 			clusterID      string
 			clusterConfig  *config.ClusterConfig
@@ -751,6 +669,7 @@ var _ = Describe("Describe/List rosa upgrade",
 
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
 			upgradeService = rosaClient.Upgrade
 
 			By("Load the profile")
@@ -791,49 +710,24 @@ var _ = Describe("Describe/List rosa upgrade",
 				}
 
 				if clusterConfig.Version.VersionRequirement == constants.YStreamPreviousVersion {
-					By("Check and change channel before upgrade")
-					clusterService := rosaClient.Cluster
-					output, err = clusterService.DescribeCluster(clusterID)
-					Expect(err).To(BeNil())
-					CD, err := clusterService.ReflectClusterDescription(output)
-					Expect(err).To(BeNil())
-					currentChannel := CD.Channel
-					clusterVersion := clusterConfig.Version.RawID
-					if currentChannel != "" {
-						// Before channel feature enabled on Prod, channel field is empty on prod env
-						channelName, _, minorC, _ := helper.ParseChannel(currentChannel)
-						majorV, minorV, _, _ := helper.ParseVersion(clusterVersion)
-
-						if minorC <= minorV {
-							By("Change channel")
-							updatingChannel := fmt.Sprintf("%s-%d.%d", channelName, majorV, minorV+1)
-							output, err := clusterService.EditCluster(clusterID,
-								"--channel", updatingChannel,
-								"-y",
-							)
-							Expect(err).ToNot(HaveOccurred())
-							Expect(output.String()).Should(ContainSubstring("Updated cluster"))
-						}
-					}
+					By("Prepare cluster for y-stream upgrade target discovery")
+					upgradingVersion, err := prepareYStreamUpgradeVersion(
+						clusterID,
+						clusterConfig.Version.ChannelGroup,
+						clusterService,
+						upgradeService,
+					)
+					Expect(err).ToNot(HaveOccurred())
 
 					By("Upgrade cluster and check list/describe upgrade")
 					scheduledDate := time.Now().Format("2006-01-02")
 					scheduledTime := time.Now().Add(20 * time.Minute).UTC().Format("15:04")
 
-					By("Find upper Y stream version")
-					output, err := upgradeService.ListUpgrades("-c", clusterID)
-					Expect(err).To(BeNil())
-					upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
-					Expect(err).To(BeNil())
-					Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-						"Expected at least one upgrade version to be available")
-					upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
-
 					By("Upgrade cluster")
 					if clusterConfig.Sts {
 
 						By("Update cluster with --dry-run")
-						output, err = upgradeService.Upgrade(
+						output, err := upgradeService.Upgrade(
 							"-c", clusterID,
 							"--version", upgradingVersion,
 							"--mode", "auto",
@@ -893,17 +787,17 @@ var _ = Describe("Describe/List rosa upgrade",
 						"testing")
 				}
 
-				By("Find upper Y stream version")
-				output, err := upgradeService.ListUpgrades("-c", clusterID)
-				Expect(err).To(BeNil())
-				upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
-				Expect(err).To(BeNil())
-				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-					"Expected at least one upgrade version to be available")
-				upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
+				By("Prepare cluster for y-stream upgrade target discovery")
+				upgradingVersion, err := prepareYStreamUpgradeVersion(
+					clusterID,
+					clusterConfig.Version.ChannelGroup,
+					clusterService,
+					upgradeService,
+				)
+				Expect(err).ToNot(HaveOccurred())
 
 				By("Check the help message of 'rosa describe upgrade -h'")
-				output, err = upgradeService.ListUpgrades("-c", clusterID, "-h")
+				output, err := upgradeService.ListUpgrades("-c", clusterID, "-h")
 				Expect(err).To(BeNil())
 				Expect(output.String()).To(ContainSubstring("rosa list upgrades [flags]"))
 				Expect(output.String()).To(ContainSubstring("-c, --cluster"))
@@ -1242,6 +1136,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 	var (
 		clusterID      string
 		rosaClient     *rosacli.Client
+		clusterService rosacli.ClusterService
 		upgradeService rosacli.UpgradeService
 		profile        *handler.Profile
 	)
@@ -1253,6 +1148,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 
 		By("Init the client")
 		rosaClient = rosacli.NewClient()
+		clusterService = rosaClient.Cluster
 		upgradeService = rosaClient.Upgrade
 
 		By("Load the profile")
@@ -1281,14 +1177,14 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 			scheduledDate := time.Now().Format("2006-01-02")
 			scheduledTime := time.Now().Add(50 * time.Minute).UTC().Format("15:04")
 
-			By("Find upper Y stream version")
-			output, err := upgradeService.ListUpgrades("-c", clusterID)
-			Expect(err).To(BeNil())
-			upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
-			Expect(err).To(BeNil())
-			Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-				"Expected at least one upgrade version to be available")
-			upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
+			By("Prepare cluster for y-stream upgrade target discovery")
+			upgradingVersion, err := prepareYStreamUpgradeVersion(
+				clusterID,
+				profile.ChannelGroup,
+				clusterService,
+				upgradeService,
+			)
+			Expect(err).ToNot(HaveOccurred())
 
 			if profile.ClusterConfig.STS {
 				By("Upgrade cluster with invalid version")

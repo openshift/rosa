@@ -2,12 +2,22 @@ package rosacli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
+)
+
+const (
+	defaultYStreamPollInterval = time.Second
+	defaultYStreamPollTimeout  = time.Second
 )
 
 type UpgradeService interface {
@@ -21,6 +31,12 @@ type UpgradeService interface {
 	Upgrade(flags ...string) (bytes.Buffer, error)
 
 	WaitForUpgradeToState(clusterID string, state string, timeout int) error
+	WaitForAvailableYStreamUpgrade(
+		clusterID string,
+		preparation *YStreamUpgradePreparation,
+		waitInterval time.Duration,
+		waitTimeout time.Duration,
+	) (string, UpgradeVersionList, error)
 }
 
 type upgradeService struct {
@@ -57,6 +73,39 @@ type UpgradeVersionList struct {
 	UpgradeVersions []UpgradeVersion `json:"UpgradeVersions,omitempty"`
 }
 
+func (u UpgradeVersionList) FindNextMinorUpgrade(clusterVersion string) (string, error) {
+	_, clusterMinor, _, err := helper.ParseVersion(clusterVersion)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse cluster version %q: %w", clusterVersion, err)
+	}
+
+	var fallback string
+	for _, upgradeVersion := range u.UpgradeVersions {
+		version := strings.TrimSpace(upgradeVersion.Version)
+		if version == "" {
+			continue
+		}
+
+		_, upgradeMinor, _, err := helper.ParseVersion(version)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse upgrade version %q: %w", version, err)
+		}
+
+		if upgradeMinor != clusterMinor+1 {
+			continue
+		}
+
+		if strings.Contains(strings.ToLower(upgradeVersion.Notes), "recommended") {
+			return version, nil
+		}
+		if fallback == "" {
+			fallback = version
+		}
+	}
+
+	return fallback, nil
+}
+
 func (u *upgradeService) ListUpgrades(flags ...string) (bytes.Buffer, error) {
 	describe := u.client.Runner.
 		Cmd("list", "upgrade").
@@ -64,7 +113,9 @@ func (u *upgradeService) ListUpgrades(flags ...string) (bytes.Buffer, error) {
 	return describe.Run()
 }
 
-func (u *upgradeService) ReflectUpgradeVersionList(result bytes.Buffer) (upgradeVersionList UpgradeVersionList, err error) {
+func (u *upgradeService) ReflectUpgradeVersionList(
+	result bytes.Buffer,
+) (upgradeVersionList UpgradeVersionList, err error) {
 	upgradeVersionList = UpgradeVersionList{}
 	theMap := u.client.Parser.TableData.Input(result).Parse().Output()
 	for _, upgradeVersionItem := range theMap {
@@ -125,6 +176,114 @@ func (u *upgradeService) Upgrade(flags ...string) (bytes.Buffer, error) {
 		Cmd("upgrade", "cluster").
 		CmdFlags(flags...)
 	return upgrade.Run()
+}
+
+func waitForAvailableYStreamUpgrade(
+	clusterID string,
+	preparation *YStreamUpgradePreparation,
+	waitInterval time.Duration,
+	waitTimeout time.Duration,
+	fetch func() (bytes.Buffer, UpgradeVersionList, error),
+) (string, UpgradeVersionList, error) {
+	if strings.TrimSpace(clusterID) == "" {
+		return "", UpgradeVersionList{}, fmt.Errorf(
+			"cluster ID is required when waiting for y-stream upgrade targets")
+	}
+	if preparation == nil {
+		return "", UpgradeVersionList{}, fmt.Errorf(
+			"y-stream upgrade preparation is required for cluster %s", clusterID)
+	}
+
+	if waitInterval <= 0 {
+		waitInterval = defaultYStreamPollInterval
+	}
+	if waitTimeout <= 0 {
+		waitTimeout = defaultYStreamPollTimeout
+	}
+
+	var lastOutput bytes.Buffer
+	var lastList UpgradeVersionList
+	var lastErr error
+	var result string
+
+	ctx, cancel := context.WithTimeout(context.Background(), waitTimeout)
+	defer cancel()
+
+	pollErr := wait.PollUntilContextCancel(ctx, waitInterval, true,
+		func(ctx context.Context) (bool, error) {
+			output, upgradeVersionList, err := fetch()
+			lastOutput = output
+			lastList = upgradeVersionList
+			if err != nil {
+				lastErr = err
+				return false, nil
+			}
+			upgradingVersion, findErr := upgradeVersionList.FindNextMinorUpgrade(
+				preparation.ClusterVersion)
+			if findErr != nil {
+				lastErr = findErr
+				return false, nil
+			}
+			lastErr = nil
+			result = upgradingVersion
+			return upgradingVersion != "", nil
+		},
+	)
+
+	if pollErr == nil {
+		return result, lastList, nil
+	}
+
+	timeoutErr := fmt.Errorf(
+		"timeout after %s waiting for y-stream upgrade target for cluster %s "+
+			"(version=%s, current channel=%q, desired channel=%q)",
+		waitTimeout,
+		clusterID,
+		preparation.ClusterVersion,
+		preparation.CurrentChannel,
+		preparation.DesiredChannel,
+	)
+	if lastErr != nil {
+		return "", lastList, fmt.Errorf(
+			"%w: last error: %v; last list output:\n%s",
+			timeoutErr,
+			lastErr,
+			lastOutput.String(),
+		)
+	}
+
+	return "", lastList, fmt.Errorf(
+		"%w: no next-minor upgrade target found; last list output:\n%s",
+		timeoutErr,
+		lastOutput.String(),
+	)
+}
+
+func (u *upgradeService) WaitForAvailableYStreamUpgrade(
+	clusterID string,
+	preparation *YStreamUpgradePreparation,
+	waitInterval time.Duration,
+	waitTimeout time.Duration,
+) (string, UpgradeVersionList, error) {
+	return waitForAvailableYStreamUpgrade(
+		clusterID,
+		preparation,
+		waitInterval,
+		waitTimeout,
+		func() (bytes.Buffer, UpgradeVersionList, error) {
+			output, err := u.ListUpgrades("-c", clusterID)
+			if err != nil {
+				return output, UpgradeVersionList{}, err
+			}
+
+			upgradeVersionList, err := u.ReflectUpgradeVersionList(output)
+			if err != nil {
+				return output, UpgradeVersionList{}, err
+			}
+
+			return output, upgradeVersionList, nil
+		},
+	)
 }
 
 func (u *upgradeService) CleanResources(clusterID string) (errors []error) {

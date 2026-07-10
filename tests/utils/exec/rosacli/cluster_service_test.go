@@ -1,6 +1,7 @@
 package rosacli
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,8 +14,101 @@ import (
 	"github.com/openshift/rosa/tests/utils/constants"
 )
 
+const testClusterID = "1234abcd"
+
+var _ = Describe("Y-stream channel helpers", func() {
+	It("computes the next-minor channel from the profile channel group", func() {
+		channel, err := computeNextMinorChannel("stable", "4.19.12")
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(channel).To(Equal("stable-4.20"))
+	})
+
+	It("fails when the cluster version cannot be parsed", func() {
+		_, err := computeNextMinorChannel("stable", "y-1")
+
+		Expect(err).To(MatchError(ContainSubstring("failed to parse cluster version")))
+	})
+
+	It("fails when the channel group is empty", func() {
+		_, err := computeNextMinorChannel("", "4.19.12")
+
+		Expect(err).To(MatchError(ContainSubstring("channel group is required")))
+	})
+
+	It("updates the channel when the current channel is empty", func() {
+		var capturedClusterID string
+		var capturedFlags []string
+
+		preparation, err := prepareYStreamUpgradeChannel(
+			testClusterID,
+			"",
+			"4.19.12",
+			"stable",
+			func(clusterID string, flags ...string) (bytes.Buffer, error) {
+				capturedClusterID = clusterID
+				capturedFlags = append([]string{}, flags...)
+				return bytes.Buffer{}, nil
+			},
+		)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(preparation.ClusterVersion).To(Equal("4.19.12"))
+		Expect(preparation.CurrentChannel).To(Equal("stable-4.20"))
+		Expect(preparation.DesiredChannel).To(Equal("stable-4.20"))
+		Expect(capturedClusterID).To(Equal(testClusterID))
+		Expect(capturedFlags).To(Equal([]string{"--channel", "stable-4.20", "-y"}))
+	})
+
+	It("does not update the channel when the desired channel is already set", func() {
+		edited := false
+
+		preparation, err := prepareYStreamUpgradeChannel(
+			testClusterID,
+			"stable-4.20",
+			"4.19.12",
+			"stable",
+			func(clusterID string, flags ...string) (bytes.Buffer, error) {
+				edited = true
+				return bytes.Buffer{}, nil
+			},
+		)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(preparation.DesiredChannel).To(Equal("stable-4.20"))
+		Expect(edited).To(BeFalse())
+	})
+
+	It("fails when it needs to edit but no edit function is provided", func() {
+		_, err := prepareYStreamUpgradeChannel(
+			testClusterID,
+			"",
+			"4.19.12",
+			"stable",
+			nil,
+		)
+
+		Expect(err).To(MatchError(ContainSubstring("edit cluster function is required")))
+	})
+
+	It("wraps the editCluster error when channel update fails", func() {
+		_, err := prepareYStreamUpgradeChannel(
+			testClusterID,
+			"stable-4.19",
+			"4.19.12",
+			"stable",
+			func(clusterID string, flags ...string) (bytes.Buffer, error) {
+				return bytes.Buffer{}, fmt.Errorf("boom")
+			},
+		)
+
+		Expect(err).To(MatchError(ContainSubstring("failed to update cluster 1234abcd channel")))
+		Expect(err).To(MatchError(ContainSubstring("boom")))
+	})
+})
+
 var _ = Describe("Cluster wait helpers", func() {
-	const clusterID = "1234abcd"
+	const clusterID = testClusterID
 
 	It("fails fast when waiting without a cluster ID", func() {
 		service := &clusterService{}
