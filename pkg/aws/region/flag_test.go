@@ -42,6 +42,15 @@ var _ = Describe("Region", func() {
 		Expect(flag.DefValue).To(Equal(""))
 	})
 
+	It("reads the parsed region flag value", func() {
+		flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		AddFlag(flags)
+
+		Expect(flags.Parse([]string{"--region", "us-west-2"})).To(Succeed())
+
+		Expect(Region()).To(Equal("us-west-2"))
+	})
+
 	It("prefers the flag value over the environment variable", func() {
 		region = "us-east-1"
 		Expect(os.Setenv("AWS_REGION", "eu-west-1")).To(Succeed())

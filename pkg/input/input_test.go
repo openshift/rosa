@@ -10,6 +10,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 func TestInput(t *testing.T) {
@@ -76,9 +77,46 @@ var _ = Describe("Input", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(BeNil())
 		})
+
+		It("returns an error when the file can't be read due to permissions", func() {
+			if os.Geteuid() == 0 {
+				Skip("permission checks are not reliable when running as root")
+			}
+
+			tempDir, err := os.MkdirTemp("", "input-perms-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.RemoveAll(tempDir)
+
+			path := filepath.Join(tempDir, "unreadable.yaml")
+			Expect(os.WriteFile(path, []byte("name: demo\n"), 0o600)).To(Succeed())
+			Expect(os.Chmod(path, 0o000)).To(Succeed())
+
+			_, err = UnmarshalInputFile(path)
+			Expect(err).To(HaveOccurred())
+			Expect(os.IsPermission(err)).To(BeTrue())
+		})
+
+		It("returns an error when the path is a directory", func() {
+			tempDir, err := os.MkdirTemp("", "input-directory-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.RemoveAll(tempDir)
+
+			_, err = UnmarshalInputFile(tempDir)
+			Expect(err).To(HaveOccurred())
+		})
 	})
 
 	Describe("CheckIfHypershiftClusterOrExit", func() {
+		var previousExitFunc func(int)
+
+		BeforeEach(func() {
+			previousExitFunc = exitFunc
+		})
+
+		AfterEach(func() {
+			exitFunc = previousExitFunc
+		})
+
 		It("returns without exiting for a hypershift cluster", func() {
 			cluster, err := cmv1.NewCluster().
 				Hypershift(cmv1.NewHypershift().Enabled(true)).
@@ -88,6 +126,22 @@ var _ = Describe("Input", func() {
 			Expect(func() {
 				CheckIfHypershiftClusterOrExit(&rosa.Runtime{}, cluster)
 			}).NotTo(Panic())
+		})
+
+		It("exits when the cluster isn't a hypershift cluster", func() {
+			t := test.NewTestRuntime()
+			cluster, err := cmv1.NewCluster().
+				Hypershift(cmv1.NewHypershift().Enabled(false)).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			exitFunc = func(code int) {
+				panic(code)
+			}
+
+			Expect(func() {
+				CheckIfHypershiftClusterOrExit(t.RosaRuntime, cluster)
+			}).To(PanicWith(1))
 		})
 	})
 })
