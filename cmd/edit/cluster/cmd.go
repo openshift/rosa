@@ -129,7 +129,8 @@ func initFlags(cmd *cobra.Command) {
 		&args.enableDeleteProtection,
 		enableDeleteProtectionFlagName,
 		false,
-		"Toggle cluster deletion protection against accidental cluster deletion.",
+		"Enable or disable cluster delete protection against accidental deletion. "+
+			"Use '--enable-delete-protection=false' to disable.",
 	)
 	// Cluster expiration is not supported in production
 	flags.MarkHidden("expiration-time")
@@ -800,7 +801,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		}
 	}
 
-	// Deletion Protection
+	// Delete Protection
 	var deleteProtection bool
 	if !cmd.Flags().Changed(enableDeleteProtectionFlagName) {
 		deleteProtection = cluster.DeleteProtection().Enabled()
@@ -810,7 +811,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	if interactive.Enabled() {
 		deleteProtection, err = interactive.GetBool(interactive.Input{
-			Question: "Enable cluster deletion protection",
+			Question: "Enable cluster delete protection",
 			Help:     cmd.Flags().Lookup(enableDeleteProtectionFlagName).Usage,
 			Default:  deleteProtection,
 		})
@@ -821,14 +822,14 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	if cluster.DeleteProtection().Enabled() != deleteProtection {
-		r.Reporter.Debugf("Updating cluster deletion protection to : %t", deleteProtection)
+		r.Reporter.Debugf("Updating cluster delete protection to : %t", deleteProtection)
 		newDeleteProtection, err := cmv1.NewDeleteProtection().Enabled(deleteProtection).Build()
 		if err != nil {
 			r.Reporter.Errorf("Failed to build delete protection: %v", err)
 			os.Exit(1)
 		}
 
-		if err := r.OCMClient.UpdateClusterDeletionProtection(cluster.ID(), newDeleteProtection); err != nil {
+		if err := r.OCMClient.UpdateClusterDeleteProtection(cluster.ID(), newDeleteProtection); err != nil {
 			r.Reporter.Errorf("Failed to update cluster delete protection: %v", err)
 			os.Exit(1)
 		}

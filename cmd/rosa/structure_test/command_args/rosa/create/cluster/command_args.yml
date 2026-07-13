@@ -80,6 +80,7 @@
 - name: private
 - name: disable-scp-checks
 - name: disable-workload-monitoring
+- name: enable-delete-protection
 - name: watch
 - name: dry-run
 - name: fake-cluster

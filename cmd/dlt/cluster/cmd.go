@@ -81,6 +81,12 @@ func run(_ *cobra.Command, _ []string) {
 	defer r.Cleanup()
 
 	clusterKey := r.GetClusterKey()
+	cluster := r.FetchCluster()
+
+	if err := ensureDeleteProtectionDisabled(cluster, clusterKey); err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 
 	if args.bestEffort {
 		r.Reporter.Warnf("Deleting cluster '%s' with 'best effort' means that certain resources may be left behind"+
@@ -90,8 +96,6 @@ func run(_ *cobra.Command, _ []string) {
 	if !confirm.Confirm("delete cluster %s", clusterKey) {
 		os.Exit(0)
 	}
-
-	cluster := r.FetchCluster()
 
 	err := handleClusterDelete(r, cluster, clusterKey, args.bestEffort)
 	if err != nil {
@@ -129,6 +133,19 @@ func run(_ *cobra.Command, _ []string) {
 			clusterKey,
 		)
 	}
+}
+
+// ensureDeleteProtectionDisabled returns an error if delete protection is enabled on the cluster.
+func ensureDeleteProtectionDisabled(cluster *cmv1.Cluster, clusterKey string) error {
+	if cluster.DeleteProtection().Enabled() {
+		return fmt.Errorf(
+			"delete protection is active on cluster '%s', "+
+				"to disable it run 'rosa edit cluster -c %s --enable-delete-protection=false'",
+			clusterKey,
+			clusterKey,
+		)
+	}
+	return nil
 }
 
 func handleClusterDelete(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, bestEffort bool) error {

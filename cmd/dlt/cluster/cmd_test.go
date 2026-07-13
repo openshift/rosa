@@ -136,6 +136,39 @@ var _ = Describe("Delete cluster", func() {
 		})
 	})
 
+	Context("ensureDeleteProtectionDisabled", func() {
+		It("returns an error when delete protection is enabled", func() {
+			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+				c.DeleteProtection(cmv1.NewDeleteProtection().Enabled(true))
+			})
+
+			err := ensureDeleteProtectionDisabled(cluster, clusterId)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("delete protection is active on cluster"))
+			Expect(err.Error()).To(ContainSubstring("--enable-delete-protection=false"))
+		})
+
+		It("returns nil when delete protection is disabled", func() {
+			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+				c.DeleteProtection(cmv1.NewDeleteProtection().Enabled(false))
+			})
+
+			err := ensureDeleteProtectionDisabled(cluster, clusterId)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns nil when delete protection is not set", func() {
+			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+			})
+
+			err := ensureDeleteProtectionDisabled(cluster, clusterId)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
 	Context("buildCommands", func() {
 		It("uses cluster ID flags when OIDC config is not reusable", func() {
 			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {

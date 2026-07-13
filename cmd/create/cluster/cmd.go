@@ -101,8 +101,9 @@ const (
 
 	billingAccountFlag = "billing-account"
 
-	privateLinkFlagName = "private-link"
-	privateFlagName     = "private"
+	privateLinkFlagName            = "private-link"
+	privateFlagName                = "private"
+	enableDeleteProtectionFlagName = "enable-delete-protection"
 )
 
 var args struct {
@@ -136,6 +137,7 @@ var args struct {
 	channel                   string
 	flavour                   string
 	disableWorkloadMonitoring bool
+	enableDeleteProtection    bool
 	ec2MetadataHttpTokens     string
 
 	//Encryption
@@ -718,6 +720,12 @@ func initFlags(cmd *cobra.Command) {
 		"Enables you to monitor your own projects in isolation from Red Hat Site "+
 			"Reliability Engineer (SRE) platform metrics. "+
 			"Not supported for Hosted Control Plane clusters.",
+	)
+	flags.BoolVar(
+		&args.enableDeleteProtection,
+		enableDeleteProtectionFlagName,
+		false,
+		"Enable cluster delete protection against accidental deletion after the cluster is created.",
 	)
 
 	flags.BoolVarP(
@@ -3101,6 +3109,20 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
+	enableDeleteProtection := args.enableDeleteProtection
+	if interactive.Enabled() {
+		enableDeleteProtection, err = interactive.GetBool(interactive.Input{
+			Question: "Enable cluster delete protection",
+			Help:     cmd.Flags().Lookup(enableDeleteProtectionFlagName).Usage,
+			Default:  enableDeleteProtection,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid enable-delete-protection value: %v", err)
+			os.Exit(1)
+		}
+		args.enableDeleteProtection = enableDeleteProtection
+	}
+
 	// Cluster-wide proxy configuration
 	if (subnetsProvided || (useExistingVPC && !enableProxy)) && interactive.Enabled() {
 		enableProxy, err = interactive.GetBool(interactive.Input{
@@ -3659,6 +3681,22 @@ func run(cmd *cobra.Command, _ []string) {
 			"Creating cluster '%s' should succeed. Run without the '--dry-run' flag to create the cluster.",
 			clusterName)
 		os.Exit(0)
+	}
+
+	if enableDeleteProtection {
+		deleteProtection, err := v1.NewDeleteProtection().Enabled(true).Build()
+		if err != nil {
+			r.Reporter.Errorf("Failed to build delete protection request: %v", err)
+			os.Exit(1)
+		}
+		if err := r.OCMClient.UpdateClusterDeleteProtection(cluster.ID(), deleteProtection); err != nil {
+			r.Reporter.Errorf(
+				"Cluster '%s' was created but delete protection could not be enabled: %v",
+				cluster.ID(),
+				err,
+			)
+			os.Exit(1)
+		}
 	}
 
 	if !output.HasFlag() || r.Reporter.IsTerminal() {
@@ -4276,6 +4314,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if spec.DisableWorkloadMonitoring != nil && *spec.DisableWorkloadMonitoring {
 		command += " --disable-workload-monitoring"
+	}
+	if args.enableDeleteProtection {
+		command += " --enable-delete-protection"
 	}
 	if userSelectedAvailabilityZones {
 		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))

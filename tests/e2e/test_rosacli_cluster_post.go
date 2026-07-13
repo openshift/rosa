@@ -296,6 +296,15 @@ var _ = Describe("Healthy check",
 					Expect(etcdEncryption).To(BeTrue())
 				})
 
+			It("delete protection flag is available on cluster creation - [id:73163]",
+				labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP,
+				func() {
+					By("Check the help message of 'rosa create cluster -h'")
+					output, err := clusterService.CreateDryRun(clusterID, "-h")
+					Expect(err).To(BeNil())
+					Expect(output.String()).To(ContainSubstring("--enable-delete-protection"))
+				})
+
 			It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				func() {
 					private := constants.No

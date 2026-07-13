@@ -787,7 +787,8 @@ func (c *Client) DeleteCluster(clusterKey string, bestEffort bool,
 	return cluster, nil
 }
 
-func (c *Client) UpdateClusterDeletionProtection(clusterId string, deleteProtection *cmv1.DeleteProtection) error {
+// UpdateClusterDeleteProtection sets the delete protection state for the given cluster.
+func (c *Client) UpdateClusterDeleteProtection(clusterId string, deleteProtection *cmv1.DeleteProtection) error {
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(clusterId).
 		DeleteProtection().

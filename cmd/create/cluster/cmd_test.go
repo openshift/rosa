@@ -199,6 +199,16 @@ var _ = Describe("Validate build command", func() {
 				Expect(command).NotTo(ContainSubstring("--hosted-cp"))
 			})
 		})
+
+		When("--enable-delete-protection is true", func() {
+			It("prints --enable-delete-protection", func() {
+				args.enableDeleteProtection = true
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(ContainSubstring("--enable-delete-protection"))
+			})
+		})
 	})
 	Context("build tags command", func() {
 		When("tag key or values DO contain a colon", func() {

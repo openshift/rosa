@@ -460,9 +460,8 @@ var _ = Describe("Edit cluster",
 				out, err := clusterService.DeleteCluster(clusterID, "-y")
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(
-					`Delete-protection has been activated on this cluster and 
-				it cannot be deleted until delete-protection is disabled`))
+				Expect(textData).Should(ContainSubstring("delete protection is active on cluster"))
+				Expect(textData).Should(ContainSubstring("--enable-delete-protection=false"))
 
 				By("Disable delete protection on the cluster")
 				deleteProtection = constants.DeleteProtectionDisabled
@@ -1842,6 +1841,146 @@ var _ = Describe("Classic cluster creation validation",
 			})
 	})
 
+var _ = Describe("Create cluster delete protection",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+			customProfile  *handler.Profile
+			clusterHandler handler.ClusterHandler
+			clusterID      string
+			err            error
+		)
+
+		verifyDeleteProtection := func() {
+			By("Check help message contains enable-delete-protection flag")
+			output, _, err := clusterService.Create("", "-h")
+			Expect(err).To(BeNil())
+			Expect(output.String()).To(ContainSubstring("--enable-delete-protection"))
+
+			By("Create cluster with delete protection enabled")
+			flags, err := clusterHandler.GenerateClusterCreateFlags()
+			Expect(err).To(BeNil())
+			flags = append(flags, "--enable-delete-protection")
+			_, _, err = clusterService.Create(customProfile.ClusterConfig.Name, flags...)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verify delete protection is enabled")
+			clusterDescription, err := clusterService.DescribeClusterAndReflect(customProfile.ClusterConfig.Name)
+			Expect(err).ToNot(HaveOccurred())
+			clusterID = clusterDescription.ID
+			Expect(clusterDescription.EnableDeleteProtection).To(Equal(constants.DeleteProtectionEnabled))
+
+			By("Attempt to delete cluster with delete protection enabled")
+			out, err := clusterService.DeleteCluster(clusterID, "-y")
+			Expect(err).To(HaveOccurred())
+			textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+			Expect(textData).Should(ContainSubstring("delete protection is active on cluster"))
+			Expect(textData).Should(ContainSubstring("--enable-delete-protection=false"))
+
+			By("Disable delete protection on the cluster")
+			_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=false", "-y")
+			Expect(err).ToNot(HaveOccurred())
+
+			clusterDescription, err = clusterService.DescribeClusterAndReflect(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(clusterDescription.EnableDeleteProtection).To(Equal(constants.DeleteProtectionDisabled))
+		}
+
+		setupAndTeardown := func() {
+			BeforeEach(func() {
+				By("Init the client")
+				rosaClient = rosacli.NewClient()
+				clusterService = rosaClient.Cluster
+				customProfile.NamePrefix = helper.GenerateRandomName("ci73162", 2)
+				clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
+				Expect(err).To(BeNil())
+			})
+
+			AfterEach(func() {
+				if clusterID != "" {
+					By("Disable delete protection")
+					_, _ = clusterService.EditCluster(clusterID, "--enable-delete-protection=false", "-y")
+
+					By("Delete cluster")
+					_, err := clusterService.DeleteCluster(clusterID, "-y")
+					Expect(err).To(BeNil())
+
+					By("Wait for cluster to be uninstalled")
+					err = clusterService.WaitForClusterPassUninstalled(
+						clusterID, 2, ciConfig.Test.GlobalENV.ClusterWaitingTime)
+					Expect(err).To(BeNil())
+				}
+				errs := clusterHandler.Destroy()
+				Expect(len(errs)).To(Equal(0))
+			})
+		}
+
+		Context("HCP", func() {
+			BeforeEach(func() {
+				customProfile = &handler.Profile{
+					ClusterConfig: &handler.ClusterConfig{
+						HCP:                   true,
+						MultiAZ:               true,
+						STS:                   true,
+						OIDCConfig:            "managed",
+						NetworkingSet:         true,
+						BYOVPC:                true,
+						Zones:                 "",
+						Autoscale:             false,
+						PrivateLink:           false,
+						DefaultIngressPrivate: false,
+					},
+					AccountRoleConfig: &handler.AccountRoleConfig{
+						Path:               "",
+						PermissionBoundary: "",
+					},
+					Version:      "latest",
+					ChannelGroup: "stable",
+					Region:       constants.CommonAWSRegion,
+				}
+			})
+
+			setupAndTeardown()
+
+			It("can verify delete protection on HCP cluster creation - [id:73162]",
+				labels.High, labels.Runtime.Day1,
+				verifyDeleteProtection,
+			)
+		})
+
+		Context("Classic", func() {
+			BeforeEach(func() {
+				customProfile = &handler.Profile{
+					ClusterConfig: &handler.ClusterConfig{
+						HCP:           false,
+						MultiAZ:       false,
+						STS:           true,
+						NetworkingSet: false,
+						BYOVPC:        false,
+					},
+					AccountRoleConfig: &handler.AccountRoleConfig{
+						Path:               "",
+						PermissionBoundary: "",
+					},
+					Version:      "latest",
+					ChannelGroup: "stable",
+					Region:       constants.CommonAWSRegion,
+				}
+			})
+
+			setupAndTeardown()
+
+			It("can verify delete protection on classic cluster creation - [id:73162]",
+				labels.High, labels.Runtime.Day1,
+				verifyDeleteProtection,
+			)
+		})
+	})
+
 var _ = Describe("Create cluster with invalid options will",
 	labels.Feature.Cluster,
 	func() {
@@ -1857,6 +1996,27 @@ var _ = Describe("Create cluster with invalid options will",
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 		})
+
+		It("validate enable-delete-protection flag when create cluster - [id:74657]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				By("Create cluster with invalid enable-delete-protection value")
+				resp, _, err := clusterService.Create("test-cluster-dp",
+					"--enable-delete-protection=aaa",
+					"--dry-run",
+				)
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+				Expect(textData).Should(ContainSubstring(`Error: invalid argument "aaa" for "--enable-delete-protection"`))
+
+				resp, _, err = clusterService.Create("test-cluster-dp",
+					"--enable-delete-protection=",
+					"--dry-run",
+				)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
+			})
 
 		It("to validate subnet well when create cluster - [id:37177]", labels.Medium, labels.Runtime.Day1Negative,
 			func() {
