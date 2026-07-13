@@ -58,8 +58,8 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "account-roles",
 	Aliases: []string{"accountroles", "roles", "policies"},
-	Short:   "Create account-wide IAM roles before creating your cluster.",
-	Long:    "Create account-wide IAM roles before creating your cluster.",
+	Short:   "Create account-wide Identity and Access Management (IAM) roles before creating your cluster.",
+	Long:    "Create account-wide Identity and Access Management (IAM) roles before creating your cluster.",
 	Example: `  # Create default account roles for ROSA clusters using STS
   rosa create account-roles
 

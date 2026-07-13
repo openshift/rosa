@@ -32,7 +32,7 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "idps",
 	Aliases: []string{"idp"},
-	Short:   "List cluster IDPs",
+	Short:   "List cluster identity providers (IDPs)",
 	Long:    "List identity providers for a cluster.",
 	Example: `  # List all identity providers on a cluster named "mycluster"
   rosa list idps --cluster=mycluster`,

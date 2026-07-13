@@ -36,7 +36,8 @@ var Cmd = &cobra.Command{
 	Use:     "external-auth-provider",
 	Aliases: []string{"externalauthproviders", "externalauthprovider", "external-auth-providers"},
 	Short:   "Create an external authentication provider for a cluster.",
-	Long:    "Configure a cluster to use an external authentication provider instead of an internal oidc provider.",
+	Long: "Configure a cluster to use an external authentication provider instead of " +
+		"an internal OpenID Connect (OIDC) provider.",
 	Example: `  # Interactively create an external authentication provider to a cluster named "mycluster"
   rosa create external-auth-provider --cluster=mycluster --interactive`,
 	Run:  run,

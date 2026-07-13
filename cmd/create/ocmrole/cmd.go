@@ -51,12 +51,12 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "ocm-role",
 	Aliases: []string{"ocmrole"},
-	Short:   "Create role used by OCM",
-	Long:    "Create role used by OCM to verify necessary roles and OIDC providers are in place.",
-	Example: `  # Create default ocm role for ROSA clusters using STS
+	Short:   "Create role used by Red Hat Hybrid Cloud Console",
+	Long:    "Create role used by Red Hat Hybrid Cloud Console to verify necessary roles and OIDC providers are in place.",
+	Example: `  # Create default ocm-role for ROSA clusters using STS
   rosa create ocm-role
 
-  # Create ocm role with a specific permissions boundary
+  # Create ocm-role with a specific permissions boundary
   rosa create ocm-role --permissions-boundary arn:aws:iam::123456789012:policy/perm-boundary`,
 	Run:  run,
 	Args: cobra.NoArgs,

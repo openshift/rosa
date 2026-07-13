@@ -46,7 +46,7 @@ var Cmd = &cobra.Command{
 	Use:     "user-role",
 	Aliases: []string{"userrole"},
 	Short:   "Create user role to verify account association",
-	Long: "Create user role that allows OCM to verify that users creating a cluster " +
+	Long: "Create user role that allows Red Hat Hybrid Cloud Console to verify that users creating a cluster " +
 		"have access to the current AWS account.",
 	Example: `  # Create user roles
   rosa create user-role

@@ -36,8 +36,8 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "oidc-provider",
 	Aliases: []string{"oidcprovider"},
-	Short:   "Delete OIDC Provider",
-	Long:    "Cleans up OIDC provider of deleted STS cluster.",
+	Short:   "Delete OpenID Connect (OIDC) provider",
+	Long:    "Cleans up OpenID Connect (OIDC) provider of deleted AWS Security Token Service (STS) cluster.",
 	Example: `  # Delete OIDC provider for cluster named "mycluster"
   rosa delete oidc-provider --cluster=mycluster`,
 	Run:  run,

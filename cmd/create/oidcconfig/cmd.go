@@ -54,8 +54,8 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "oidc-config",
 	Aliases: []string{"oidcconfig"},
-	Short:   "Create OIDC config compliant with OIDC protocol.",
-	Long: "Create OIDC config in a S3 bucket for the " +
+	Short:   "Create OpenID Connect (OIDC) config compliant with OIDC protocol.",
+	Long: "Create OpenID Connect (OIDC) config in an S3 bucket for the " +
 		"client AWS account and populates it to be compliant with OIDC protocol. " +
 		"It also creates a Secret in Secrets Manager containing the private key.",
 	Example: `  # Create OIDC config

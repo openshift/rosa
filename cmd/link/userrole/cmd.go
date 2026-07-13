@@ -38,7 +38,7 @@ var Cmd = &cobra.Command{
 	Use:     "user-role",
 	Aliases: []string{"userrole"},
 	Short:   "Link user role to specific OCM account.",
-	Long:    "Link user role to specific OCM account before create your cluster.",
+	Long:    "Link user role to specific OCM account before you create your cluster.",
 	Example: ` # Link user roles
   rosa link user-role --role-arn arn:aws:iam::{accountid}:role/{prefix}-User-{username}-Role`,
 	Run:  run,

@@ -35,8 +35,8 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "ocm-roles",
 	Aliases: []string{"ocmrole", "ocm-role", "ocmroles", "ocm-roles"},
-	Short:   "List ocm roles",
-	Long:    "List ocm roles for the current AWS account.",
+	Short:   "List the OCM roles",
+	Long:    "List the OCM roles for the current AWS account.",
 	Example: ` # List all ocm roles
 rosa list ocm-roles`,
 	Run:  run,

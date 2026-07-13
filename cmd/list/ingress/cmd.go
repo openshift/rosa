@@ -34,7 +34,7 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "ingresses",
 	Aliases: []string{"route", "routes", "ingress"},
-	Short:   "List cluster Ingresses",
+	Short:   "List cluster ingresses",
 	Long:    "List API and ingress endpoints for a cluster.",
 	Example: `  # List all routes on a cluster named "mycluster"
   rosa list ingresses --cluster=mycluster`,

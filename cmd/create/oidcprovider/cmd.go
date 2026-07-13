@@ -38,9 +38,10 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "oidc-provider",
 	Aliases: []string{"oidcprovider"},
-	Short:   "Create OIDC provider for an STS cluster.",
-	Long:    "Create OIDC provider for operators to authenticate against in an STS cluster.",
-	Example: `  # Create OIDC provider for cluster named "mycluster"
+	Short:   "Create OpenID Connect (OIDC) provider for an AWS Security Token Service (STS) cluster.",
+	Long: "Create OpenID Connect (OIDC) provider for operators to authenticate against in an " +
+		"AWS Security Token Service (STS) cluster.",
+	Example: ` # Create OIDC provider for cluster named "mycluster"
   rosa create oidc-provider --cluster=mycluster`,
 	Run:  run,
 	Args: cobra.MaximumNArgs(3),

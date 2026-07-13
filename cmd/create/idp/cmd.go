@@ -89,8 +89,8 @@ var idRE = regexp.MustCompile(`(?i)^[0-9a-z]+([-_][0-9a-z]+)*$`)
 
 var Cmd = &cobra.Command{
 	Use:   "idp",
-	Short: "Add IDP for cluster",
-	Long:  "Add an Identity providers to determine how users log into the cluster.",
+	Short: "Add an identity provider (IDP) for a cluster",
+	Long:  "Add an identity provider to determine how users log into the cluster.",
 	Example: `  # Add a GitHub identity provider to a cluster named "mycluster"
   rosa create idp --type=github --cluster=mycluster
 

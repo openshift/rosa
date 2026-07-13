@@ -34,8 +34,8 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "ocm-role",
 	Aliases: []string{"ocmrole"},
-	Short:   "Unlink ocm role from a specific OCM organization",
-	Long:    "Unlink ocm role from a specific OCM organization",
+	Short:   "Unlink the OCM role from a specific OCM organization",
+	Long:    "Unlink the OCM role from a specific OCM organization",
 	Example: ` #Unlink ocm role
 rosa unlink ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
 	Args: cobra.MaximumNArgs(1),

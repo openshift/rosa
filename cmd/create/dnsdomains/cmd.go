@@ -33,8 +33,8 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "dns-domain",
 	Aliases: []string{"dnsdomain"},
-	Short:   "Create DNS Domain.",
-	Long:    "Create DNS Domain.",
+	Short:   "Create Domain Name System (DNS) domain.",
+	Long:    "Create a Domain Name System (DNS) domain for your cluster.",
 	Example: `  # Create DNS Domain
 	rosa create dns-domain`,
 	Run:  run,

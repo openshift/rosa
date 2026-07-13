@@ -40,8 +40,8 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "oidc-config",
 	Aliases: []string{"oidcconfig"},
-	Short:   "Delete OIDC Config",
-	Long:    "Cleans up OIDC config based on registered OIDC Config ID.",
+	Short:   "Delete an OpenID Connect (OIDC) configuration",
+	Long:    "Cleans up OpenID Connect (OIDC) configuration based on registered OIDC configuration ID.",
 	Example: `  # Delete OIDC config based on registered OIDC Config ID that has been supplied
 	rosa delete oidc-config --oidc-config-id <oidc_config_id>`,
 	Run:  run,

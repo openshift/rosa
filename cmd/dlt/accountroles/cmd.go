@@ -51,7 +51,7 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "account-roles",
 	Aliases: []string{"accountroles", "accountrole", "account-role"},
-	Short:   "Delete Account Roles",
+	Short:   "Delete account roles",
 	Long:    "Cleans up account roles from the current AWS account.",
 	Example: `  # Delete Account roles"
   rosa delete account-roles -p prefix`,

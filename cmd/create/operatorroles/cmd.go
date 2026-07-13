@@ -56,8 +56,9 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "operator-roles",
 	Aliases: []string{"operatorroles"},
-	Short:   "Create operator IAM roles for a cluster.",
-	Long:    "Create cluster-specific operator IAM roles based on your cluster configuration.",
+	Short:   "Create Operator Identity and Access Management (IAM) roles for a cluster.",
+	Long: "Create cluster-specific Operator Identity and Access Management (IAM) roles " +
+		"based on your cluster configuration.",
 	Example: `  # Create default operator roles for cluster named "mycluster"
   rosa create operator-roles --cluster=mycluster
 

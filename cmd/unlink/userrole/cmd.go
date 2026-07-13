@@ -34,8 +34,8 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "user-role",
 	Aliases: []string{"userrole"},
-	Short:   "Unlink user role from a specific OCM account",
-	Long:    "Unlink user role from a specific OCM account",
+	Short:   "Unlink the user role from a specific OCM account",
+	Long:    "Unlink the user role from a specific OCM account",
 	Example: ` # Unlink user role
 rosa unlink user-role --role-arn arn:aws:iam::{accountid}:role/{prefix}-User-{username}-Role`,
 	Run:  run,

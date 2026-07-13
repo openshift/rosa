@@ -35,8 +35,8 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "oidc-providers",
 	Aliases: []string{"oidcprovider", "oidc-provider", "oidcproviders"},
-	Short:   "List OIDC providers",
-	Long:    "List OIDC providers for the current AWS account.",
+	Short:   "List OpenID Connect (OIDC) providers",
+	Long:    "List OpenID Connect (OIDC) providers for the current AWS account.",
 	Example: `  # List all oidc providers
   rosa list oidc-providers`,
 	Run:  run,

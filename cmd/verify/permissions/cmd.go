@@ -31,8 +31,9 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "permissions",
 	Aliases: []string{"scp"},
-	Short:   "Verify AWS permissions are ok for non-STS cluster install",
-	Long:    "Verify AWS permissions needed to create a non-STS cluster are configured as expected",
+	Short:   "Verify AWS permissions are ok for non-AWS Security Token Service (STS) cluster install",
+	Long: "Verify AWS permissions needed to create a non-AWS Security Token Service (STS) cluster " +
+		"are configured as expected",
 	Example: `  # Verify AWS permissions are configured correctly
   rosa verify permissions
 

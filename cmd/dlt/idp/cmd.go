@@ -32,7 +32,7 @@ import (
 var Cmd = &cobra.Command{
 	Use:     "idp ID",
 	Aliases: []string{"idps"},
-	Short:   "Delete cluster IDPs",
+	Short:   "Delete cluster identity providers (IDPs)",
 	Long:    "Delete a specific identity provider for a cluster.",
 	Example: `  # Delete an identity provider named github-1
   rosa delete idp github-1 --cluster=mycluster`,

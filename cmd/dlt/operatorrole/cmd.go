@@ -52,7 +52,7 @@ var Cmd = &cobra.Command{
 	Use:     "operator-roles",
 	Aliases: []string{"operatorrole", "operatorroles"},
 	Short:   "Delete Operator Roles",
-	Long:    "Cleans up operator roles of deleted STS cluster.",
+	Long:    "Cleans up Operator roles of deleted AWS Security Token Service (STS) cluster.",
 	Example: `  # Delete Operator roles for cluster named "mycluster"
   rosa delete operator-roles --cluster=mycluster`,
 	Run:  run,

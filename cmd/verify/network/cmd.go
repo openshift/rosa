@@ -50,8 +50,8 @@ var Cmd = makeCmd()
 func makeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "network",
-		Short: "Verify VPC subnets are configured correctly",
-		Long:  "Verify that the VPC subnets are configured correctly.",
+		Short: "Verify Virtual Private Cloud (VPC) subnets are configured correctly",
+		Long:  "Verify that the Virtual Private Cloud (VPC) subnets are configured correctly.",
 		Example: `  # Verify two subnets
 	rosa verify network --subnet-ids subnet-03046a9b92b5014fb,subnet-03046a9c92b5014fb`,
 		Run:  run,
