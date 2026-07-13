@@ -33,10 +33,7 @@
     "managerFilePatterns": [
       "/(^|/)\\.bingo/[^/]+\\.mod$/"
     ],
-    "postUpdateOptions": [
-      "gomodUpdateImportPaths",
-      "gomodTidy"
-    ],
+    "postUpdateOptions": ["gomodUpdateImportPaths"],
     "packageRules": [
       {
         "matchManagers": [
