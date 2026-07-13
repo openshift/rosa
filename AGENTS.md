@@ -65,6 +65,35 @@ Use this file as the starting point for repository context. When this file point
 - `vendor/`
   - Vendored dependencies. Do not edit directly.
 
+## CI Container Images
+
+ROSA uses **OpenShift ci-operator** (config in `openshift/release`) and **Konflux** (`.tekton/`). Each Dockerfile serves a different job type.
+
+| Dockerfile | Built by | Used for |
+|------------|----------|----------|
+| `Dockerfile` | Konflux | Shipping CLI zips (product) |
+| `Dockerfile.clients` | Prow (main config) | Presubmits: lint, build, test, commits, coverage |
+| `images/Dockerfile.e2e` | Prow (e2e/images variants) | E2E runner; promoted as `ci/rosa-aws-cli:latest` |
+| `images/Dockerfile.release` | Prow (images-release) | E2E against latest GitHub release (`ci/rosa-aws-cli:release`) |
+| `images/Dockerfile.konflux` | Konflux | Konflux E2E only |
+
+- Presubmit jobs run inside **`rosa-clients`** (from `Dockerfile.clients`), not `ocp/builder` directly. `Dockerfile.clients` **COPY**s the repo at image build; ci-operator does not re-clone into custom images unless `clone: true`.
+- Prow E2E runs inside **`rosa-aws-cli`** (from `images/Dockerfile.e2e`).
+- **`.ci-operator.yaml`** pins ci-operator `build_root` (`ocp/builder`) for pipeline plumbing (clone and image builds), not presubmit execution.
+
+### Bumping the Go version
+
+Update these together so compile, presubmits, E2E builds, and product images stay aligned:
+
+- `go.mod` (`go` directive)
+- `Dockerfile`, `Dockerfile.clients`, `images/Dockerfile.e2e`, `images/Dockerfile.konflux` — `ubi9/go-toolset` tag
+- `.ci-operator.yaml` — `build_root_image.tag` (match an available `ocp/builder:rhel-9-golang-*` for pipeline plumbing; presubmit compile uses `Dockerfile.clients`)
+- Regenerate `vendor/` when required by `CONTRIBUTING.md`
+
+Not tied to source Go version: `images/Dockerfile.release` (downloads a released CLI binary from GitHub).
+
+Release-side ci-operator configs live under `openshift/release` in `ci-operator/config/openshift/rosa/`. When adding `.ci-operator.yaml`, set `build_root: from_repository: true` in those files instead of duplicating the builder tag.
+
 ## Working Rules
 
 - Keep Cobra-specific logic in `cmd/`; keep non-Cobra logic in `pkg/`.

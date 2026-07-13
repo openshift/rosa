@@ -1,0 +1,17 @@
+# Prow presubmit client image: lint, build, test, commits, coverage.
+# Source is copied at image build (ci-operator builds this image from the PR tree).
+# Custom images with from: rosa-clients do not clone again unless clone: true.
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.5-1783931515
+USER root
+WORKDIR /opt/app-root/src
+RUN dnf install -y --setopt=install_weak_deps=False --nodocs jq && \
+    dnf clean all
+RUN git config --global --add safe.directory /opt/app-root/src
+COPY --chown=1001:0 . .
+# OpenShift Prow: arbitrary UID runs with GID 0; group-writable workdir and Go caches.
+RUN mkdir -p /opt/app-root/src /tmp/gomodcache /tmp/.cache && \
+    chgrp -R 0 /opt/app-root/src /tmp/gomodcache /tmp/.cache && \
+    chmod -R g+rwX /opt/app-root/src /tmp/gomodcache /tmp/.cache
+ENV HOME="/opt/app-root/src" \
+    GOMODCACHE="/tmp/gomodcache" \
+    GOLANGCI_LINT_CACHE="/tmp/.cache"

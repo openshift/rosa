@@ -26,6 +26,15 @@
       "at any time"
     ]
   },
+  "dockerfile": {
+    "managerFilePatterns": [
+      "/^Dockerfile$/",
+      "/^Dockerfile\\.clients$/",
+      "/^images/Dockerfile\\.e2e$/",
+      "/^images/Dockerfile\\.release$/",
+      "/^images/Dockerfile\\.konflux$/"
+    ]
+  },
   "gomod": {
     "constraints": {
       "go": "1.26.3"
