@@ -1,6 +1,13 @@
 # Contributing to ROSA
 Welcome, and thank you for considering to contribute to ROSA.
-Before you begin, or have more questions reach out to us on [Slack @rosa-cli](https://redhat.enterprise.slack.com/archives/CB53T9ZHQ)
+
+## Communication
+
+For internal Red Hat contributors: post your PR link and Jira story in `#forum-rosa-service-engineering` and ping `@rosa-cli-tf-devs` on Red Hat Slack.
+
+## Design source of truth
+
+The ROSA CLI is the design source of truth for all downstream projects (terraform-provider-rhcs, terraform-rhcs-rosa-classic, terraform-rhcs-rosa-hcp). New features and API changes should land here first.
 
 ## AI-Assisted Contributions
 
