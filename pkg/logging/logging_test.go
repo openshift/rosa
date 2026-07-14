@@ -2,6 +2,8 @@ package logging
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -25,10 +27,43 @@ func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) 
 	return f(request)
 }
 
+type stubReadCloser struct {
+	data     []byte
+	readErr  error
+	closeErr error
+}
+
+func (s *stubReadCloser) Read(p []byte) (int, error) {
+	if s.readErr != nil {
+		return 0, s.readErr
+	}
+	if len(s.data) == 0 {
+		return 0, io.EOF
+	}
+	n := copy(p, s.data)
+	s.data = s.data[n:]
+	if len(s.data) == 0 {
+		return n, io.EOF
+	}
+	return n, nil
+}
+
+func (s *stubReadCloser) Close() error {
+	return s.closeErr
+}
+
 func newDebugLogger(out *bytes.Buffer) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetOutput(out)
 	logger.SetLevel(logrus.DebugLevel)
+	logger.SetFormatter(&logrus.TextFormatter{DisableColors: true, DisableQuote: true})
+	return logger
+}
+
+func newLoggerWithLevel(out *bytes.Buffer, level logrus.Level) *logrus.Logger {
+	logger := logrus.New()
+	logger.SetOutput(out)
+	logger.SetLevel(level)
 	logger.SetFormatter(&logrus.TextFormatter{DisableColors: true, DisableQuote: true})
 	return logger
 }
@@ -103,6 +138,56 @@ var _ = Describe("Logging", func() {
 			Expect(result.WarnEnabled()).To(BeTrue())
 			Expect(result.ErrorEnabled()).To(BeTrue())
 		})
+
+		It("routes info messages through debug logging", func() {
+			logBuffer := &bytes.Buffer{}
+			result, err := NewOCMLogger().Logger(newLoggerWithLevel(logBuffer, logrus.InfoLevel)).Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			result.Info(context.Background(), "info message %s", "value")
+
+			Expect(logBuffer.String()).To(BeEmpty())
+		})
+
+		It("routes warn messages through debug logging", func() {
+			logBuffer := &bytes.Buffer{}
+			result, err := NewOCMLogger().Logger(newLoggerWithLevel(logBuffer, logrus.WarnLevel)).Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			result.Warn(context.Background(), "warn message %s", "value")
+
+			Expect(logBuffer.String()).To(BeEmpty())
+		})
+
+		It("routes debug messages through debug logging", func() {
+			logBuffer := &bytes.Buffer{}
+			result, err := NewOCMLogger().Logger(newLoggerWithLevel(logBuffer, logrus.DebugLevel)).Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			result.Debug(context.Background(), "debug message %s", "value")
+
+			Expect(logBuffer.String()).To(ContainSubstring("debug message value"))
+		})
+
+		It("routes error messages through error logging", func() {
+			logBuffer := &bytes.Buffer{}
+			result, err := NewOCMLogger().Logger(newLoggerWithLevel(logBuffer, logrus.ErrorLevel)).Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			result.Error(context.Background(), "error message %s", "value")
+
+			Expect(logBuffer.String()).To(ContainSubstring("error message value"))
+		})
+
+		It("routes fatal messages through error logging without exiting", func() {
+			logBuffer := &bytes.Buffer{}
+			result, err := NewOCMLogger().Logger(newLoggerWithLevel(logBuffer, logrus.ErrorLevel)).Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			result.Fatal(context.Background(), "fatal message %s", "value")
+
+			Expect(logBuffer.String()).To(ContainSubstring("fatal message value"))
+		})
 	})
 
 	Describe("RoundTripperBuilder", func() {
@@ -145,6 +230,132 @@ var _ = Describe("Logging", func() {
 	})
 
 	Describe("RoundTripper", func() {
+		It("returns request body read errors without calling the next handler", func() {
+			nextCalled := false
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(&bytes.Buffer{})).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					nextCalled = true
+					return nil, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodPost, "https://example.com", nil)
+			Expect(err).NotTo(HaveOccurred())
+			request.Body = &stubReadCloser{readErr: errors.New("request read failed")}
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).To(MatchError("request read failed"))
+			Expect(nextCalled).To(BeFalse())
+		})
+
+		It("returns request body close errors without calling the next handler", func() {
+			nextCalled := false
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(&bytes.Buffer{})).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					nextCalled = true
+					return nil, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodPost, "https://example.com", nil)
+			Expect(err).NotTo(HaveOccurred())
+			request.Body = &stubReadCloser{
+				data:     []byte("request-body"),
+				closeErr: errors.New("request close failed"),
+			}
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).To(MatchError("request close failed"))
+			Expect(nextCalled).To(BeFalse())
+		})
+
+		It("returns errors from the next handler when the request has no body", func() {
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(&bytes.Buffer{})).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					Expect(request.Body).To(BeNil())
+					return nil, errors.New("next failed")
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).To(MatchError("next failed"))
+		})
+
+		It("returns response body read errors", func() {
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(&bytes.Buffer{})).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{"Content-Type": []string{"application/json"}},
+						Body:       &stubReadCloser{readErr: errors.New("response read failed")},
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).To(MatchError("response read failed"))
+		})
+
+		It("returns response body close errors", func() {
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(&bytes.Buffer{})).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{"Content-Type": []string{"application/json"}},
+						Body: &stubReadCloser{
+							data:     []byte(`{"visible":"response-value"}`),
+							closeErr: errors.New("response close failed"),
+						},
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).To(MatchError("response close failed"))
+		})
+
+		It("handles responses without a body", func() {
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(&bytes.Buffer{})).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusNoContent,
+						Status:     "204 No Content",
+						Header:     http.Header{},
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			response, err := roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response.Body).To(BeNil())
+		})
+
 		It("preserves request and response bodies through the round trip", func() {
 			var capturedRequestBody string
 			roundTripper, err := NewRoundTripper().
@@ -208,6 +419,63 @@ var _ = Describe("Logging", func() {
 			Expect(logOutput).NotTo(ContainSubstring("response-secret"))
 		})
 
+		It("pretty prints JSON bodies in logs", func() {
+			logBuffer := &bytes.Buffer{}
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(logBuffer)).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{"Content-Type": []string{"application/json"}},
+						Body: io.NopCloser(strings.NewReader(
+							`{"visible":"response-value","nested":{"name":"response-child"}}`,
+						)),
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(
+				http.MethodPost,
+				"https://example.com",
+				strings.NewReader(`{"visible":"request-value","nested":{"name":"request-child"}}`),
+			)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set("Content-Type", "application/json")
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			logOutput := logBuffer.String()
+			Expect(logOutput).To(ContainSubstring("{\n  \"visible\": \"request-value\",\n  \"nested\": {\n    \"name\": \"request-child\"\n  }\n}"))
+			Expect(logOutput).To(ContainSubstring("{\n  \"visible\": \"response-value\",\n  \"nested\": {\n    \"name\": \"response-child\"\n  }\n}"))
+		})
+
+		It("falls back to raw bytes for invalid JSON bodies", func() {
+			logBuffer := &bytes.Buffer{}
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(logBuffer)).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{},
+						Body:       io.NopCloser(strings.NewReader("ok")),
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodPost, "https://example.com", strings.NewReader("{invalid-json"))
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set("Content-Type", "application/json")
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(logBuffer.String()).To(ContainSubstring("{invalid-json"))
+		})
+
 		It("omits the Authorization header from logs", func() {
 			logBuffer := &bytes.Buffer{}
 			roundTripper, err := NewRoundTripper().
@@ -262,6 +530,57 @@ var _ = Describe("Logging", func() {
 			Expect(logOutput).To(ContainSubstring("***"))
 			Expect(logOutput).To(ContainSubstring("name=value"))
 			Expect(logOutput).NotTo(ContainSubstring("secret"))
+		})
+
+		It("omits malformed form bodies instead of logging raw secret values", func() {
+			logBuffer := &bytes.Buffer{}
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(logBuffer)).
+				Redact("token").
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{},
+						Body:       io.NopCloser(strings.NewReader("ok")),
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodPost, "https://example.com", strings.NewReader("token=%zz"))
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(logBuffer.String()).To(ContainSubstring("Request body omitted due to invalid form encoding"))
+			Expect(logBuffer.String()).NotTo(ContainSubstring("token=%zz"))
+		})
+
+		It("falls back to raw bytes when the content type is malformed", func() {
+			logBuffer := &bytes.Buffer{}
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(logBuffer)).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{},
+						Body:       io.NopCloser(strings.NewReader("ok")),
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(http.MethodPost, "https://example.com", strings.NewReader("raw-body"))
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set("Content-Type", "invalid;=")
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(logBuffer.String()).To(ContainSubstring("Failed to parse content type"))
+			Expect(logBuffer.String()).To(ContainSubstring("raw-body"))
 		})
 	})
 })

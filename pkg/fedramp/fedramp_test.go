@@ -43,6 +43,7 @@ var _ = Describe("Fedramp", func() {
 
 			Expect(cmd.Flags().Lookup("govcloud")).NotTo(BeNil())
 			Expect(cmd.Flags().Lookup("admin")).NotTo(BeNil())
+			Expect(cmd.Flags().Lookup("admin").Hidden).To(BeTrue())
 			Expect(HasFlag(cmd)).To(BeFalse())
 			Expect(HasAdminFlag(cmd)).To(BeFalse())
 
@@ -51,6 +52,13 @@ var _ = Describe("Fedramp", func() {
 
 			Expect(cmd.Flags().Set("admin", "true")).To(Succeed())
 			Expect(HasAdminFlag(cmd)).To(BeTrue())
+		})
+
+		It("returns false when the command doesn't define the FedRAMP flags", func() {
+			cmd := &cobra.Command{Use: "test"}
+
+			Expect(HasFlag(cmd)).To(BeFalse())
+			Expect(HasAdminFlag(cmd)).To(BeFalse())
 		})
 	})
 
@@ -111,6 +119,15 @@ var _ = Describe("Fedramp", func() {
 		It("returns false when the config file does not exist", func() {
 			tempDir := GinkgoT().TempDir()
 			Expect(os.Setenv("OCM_CONFIG", filepath.Join(tempDir, "missing.json"))).To(Succeed())
+
+			Expect(Enabled()).To(BeFalse())
+		})
+
+		It("returns false when the config file can't be parsed", func() {
+			tempDir := GinkgoT().TempDir()
+			path := filepath.Join(tempDir, "ocm.json")
+			Expect(os.Setenv("OCM_CONFIG", path)).To(Succeed())
+			Expect(os.WriteFile(path, []byte("{not-json"), 0o600)).To(Succeed())
 
 			Expect(Enabled()).To(BeFalse())
 		})
@@ -199,6 +216,35 @@ var _ = Describe("Fedramp", func() {
 		It("rejects unknown environments", func() {
 			Expect(IsValidEnv("dev")).To(BeFalse())
 			Expect(IsValidEnv("")).To(BeFalse())
+		})
+	})
+
+	Describe("FedRAMP endpoint maps", func() {
+		It("exposes the expected URL aliases for each environment", func() {
+			Expect(URLAliases).To(Equal(map[string]string{
+				"production":  "https://api.openshiftusgov.com",
+				"staging":     "https://api.stage.openshiftusgov.com",
+				"staging01":   "https://api01.stage.openshiftusgov.com",
+				"integration": "https://api.int.openshiftusgov.com",
+			}))
+		})
+
+		It("exposes the expected login URLs for each environment", func() {
+			Expect(LoginURLs).To(Equal(map[string]string{
+				"production":  "https://api.openshiftusgov.com/auth",
+				"staging":     "https://api.stage.openshiftusgov.com/auth",
+				"staging01":   "https://api01.stage.openshiftusgov.com/auth",
+				"integration": "https://api.int.openshiftusgov.com/auth",
+			}))
+		})
+
+		It("exposes the expected token URLs for each environment", func() {
+			Expect(TokenURLs).To(Equal(map[string]string{
+				"production":  "https://sso.openshiftusgov.com/realms/redhat-external/protocol/openid-connect/token",
+				"staging":     "https://sso.stage.openshiftusgov.com/realms/redhat-external/protocol/openid-connect/token",
+				"staging01":   "https://sso01.stage.openshiftusgov.com/realms/redhat-external/protocol/openid-connect/token",
+				"integration": "https://sso.int.openshiftusgov.com/realms/redhat-external/protocol/openid-connect/token",
+			}))
 		})
 	})
 })

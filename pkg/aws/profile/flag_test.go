@@ -42,6 +42,15 @@ var _ = Describe("Profile", func() {
 		Expect(flag.DefValue).To(Equal(""))
 	})
 
+	It("reads the parsed profile flag value", func() {
+		flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		AddFlag(flags)
+
+		Expect(flags.Parse([]string{"--profile", "dev-profile"})).To(Succeed())
+
+		Expect(Profile()).To(Equal("dev-profile"))
+	})
+
 	It("prefers the flag value over the environment variable", func() {
 		profile = "flag-profile"
 		Expect(os.Setenv("AWS_PROFILE", "env-profile")).To(Succeed())

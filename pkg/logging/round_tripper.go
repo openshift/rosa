@@ -241,7 +241,7 @@ func (d *RoundTripper) dumpForm(what string, data []byte) {
 	// Parse the form:
 	form, err := url.ParseQuery(string(data))
 	if err != nil {
-		d.dumpBytes(what, data)
+		d.logger.Debugf("%s body omitted due to invalid form encoding", what)
 		return
 	}
 
