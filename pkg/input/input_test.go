@@ -85,7 +85,9 @@ var _ = Describe("Input", func() {
 
 			tempDir, err := os.MkdirTemp("", "input-perms-*")
 			Expect(err).NotTo(HaveOccurred())
-			defer os.RemoveAll(tempDir)
+			defer func() {
+				Expect(os.RemoveAll(tempDir)).To(Succeed())
+			}()
 
 			path := filepath.Join(tempDir, "unreadable.yaml")
 			Expect(os.WriteFile(path, []byte("name: demo\n"), 0o600)).To(Succeed())
@@ -99,7 +101,9 @@ var _ = Describe("Input", func() {
 		It("returns an error when the path is a directory", func() {
 			tempDir, err := os.MkdirTemp("", "input-directory-*")
 			Expect(err).NotTo(HaveOccurred())
-			defer os.RemoveAll(tempDir)
+			defer func() {
+				Expect(os.RemoveAll(tempDir)).To(Succeed())
+			}()
 
 			_, err = UnmarshalInputFile(tempDir)
 			Expect(err).To(HaveOccurred())
