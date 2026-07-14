@@ -62,7 +62,7 @@ var Cmd = &cobra.Command{
 	Args: func(_ *cobra.Command, argv []string) error {
 		if len(argv) != 1 {
 			return fmt.Errorf(
-				"Expected exactly one command line parameter containing the id of the ingress",
+				"expected exactly one command line parameter containing the id of the ingress",
 			)
 		}
 		return nil
@@ -369,48 +369,48 @@ func run(cmd *cobra.Command, argv []string) {
 			namespaceOwnershipPolicy = &namespaceOwnershipPolicyArg
 		}
 
-		if cmd.Flags().Changed(componentRoutesFlag) {
-			if ocm.IsHyperShiftCluster(cluster) {
-				r.Reporter.Errorf(
-					"Updating Cluster Component Routes is not supported for Hosted Control Plane clusters",
-				)
-				os.Exit(1)
-			}
-			componentRoutes, err = parseComponentRoutes(args.componentRoutes)
-			if err != nil {
-				r.Reporter.Errorf("An error occurred whilst parsing the supplied component routes: %s", err)
-				os.Exit(1)
-			}
-		} else if isInteractiveEnabledAndNotHcp {
-			componentRoutes = map[string]*cmv1.ComponentRouteBuilder{}
-			if confirm.Prompt(false, "Would you like to edit the component routes?") {
-				for _, componentRoute := range expectedComponentRoutes {
-					componentRouteBuilder := cmv1.NewComponentRoute()
-					for _, parameterName := range expectedParameters {
-						defaultValue := ""
-						// TODO: use reflection, couldn't get it to work
-						if parameterName == hostnameParameter {
-							defaultValue = ingress.ComponentRoutes()[componentRoute].Hostname()
-						} else if parameterName == tlsSecretRefParameter {
-							defaultValue = ingress.ComponentRoutes()[componentRoute].TlsSecretRef()
-						}
-						parameterValue, err := interactive.GetString(interactive.Input{
-							Question: fmt.Sprintf("%s route %s", componentRoute, parameterName),
-							Default:  defaultValue,
-						})
-						if err != nil {
-							r.Reporter.Errorf("Expected a valid component route '%s': %s", parameterName, err)
-							os.Exit(1)
-						}
-						// TODO: use reflection, couldn't get it to work
-						if parameterName == hostnameParameter {
-							componentRouteBuilder.Hostname(parameterValue)
-						} else if parameterName == tlsSecretRefParameter {
-							componentRouteBuilder.TlsSecretRef(parameterValue)
-						}
+	}
+
+	canEditComponentRoutes := !hasLegacyIngressSupport || isHypershift
+	if cmd.Flags().Changed(componentRoutesFlag) {
+		if !canEditComponentRoutes {
+			r.Reporter.Errorf("Updating component routes is not supported for legacy ingress clusters")
+			os.Exit(1)
+		}
+		componentRoutes, err = parseComponentRoutesForAllowed(args.componentRoutes, allowedComponentRoutes(isHypershift))
+		if err != nil {
+			r.Reporter.Errorf("An error occurred whilst parsing the supplied component routes: %s", err)
+			os.Exit(1)
+		}
+	} else if interactive.Enabled() && canEditComponentRoutes {
+		componentRoutes = map[string]*cmv1.ComponentRouteBuilder{}
+		if confirm.Prompt(false, "Would you like to edit the component routes?") {
+			for _, componentRoute := range allowedComponentRoutes(isHypershift) {
+				componentRouteBuilder := cmv1.NewComponentRoute()
+				for _, parameterName := range expectedParameters {
+					defaultValue := ""
+					switch parameterName {
+					case hostnameParameter:
+						defaultValue = ingress.ComponentRoutes()[componentRoute].Hostname()
+					case tlsSecretRefParameter:
+						defaultValue = ingress.ComponentRoutes()[componentRoute].TlsSecretRef()
 					}
-					componentRoutes[componentRoute] = componentRouteBuilder
+					parameterValue, err := interactive.GetString(interactive.Input{
+						Question: fmt.Sprintf("%s route %s", componentRoute, parameterName),
+						Default:  defaultValue,
+					})
+					if err != nil {
+						r.Reporter.Errorf("Expected a valid component route '%s': %s", parameterName, err)
+						os.Exit(1)
+					}
+					switch parameterName {
+					case hostnameParameter:
+						componentRouteBuilder.Hostname(parameterValue)
+					case tlsSecretRefParameter:
+						componentRouteBuilder.TlsSecretRef(parameterValue)
+					}
 				}
+				componentRoutes[componentRoute] = componentRouteBuilder
 			}
 		}
 	}

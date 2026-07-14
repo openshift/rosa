@@ -49,6 +49,63 @@ var _ = Describe("Parse component routes", func() {
 			"oauth: hostname=\"oauth-host\";tlsSecretRef=\"oauth-secret\",downloads: hostname=\"downloads-host\";tlsSecretRef=\"downloads-secret\",console: hostname=\"console-host\";tlsSecretRef=\"console-secret\"",
 		),
 	)
+	DescribeTable(
+		"When parsing HCP component routes it should only allow console and downloads",
+		func(input string) {
+			componentRouteBuilder, err := parseComponentRoutesForAllowed(input, expectedHcpComponentRoutes)
+			Expect(err).To(BeNil())
+			Expect(componentRouteBuilder).To(HaveLen(2))
+			Expect(componentRouteBuilder).To(HaveKey("console"))
+			Expect(componentRouteBuilder).To(HaveKey("downloads"))
+			for key, builder := range componentRouteBuilder {
+				expectedHostname := fmt.Sprintf("%s-host", key)
+				expectedTlsRef := fmt.Sprintf("%s-secret", key)
+				componentRoute, err := builder.Build()
+				Expect(err).To(BeNil())
+				Expect(componentRoute.Hostname()).To(Equal(expectedHostname))
+				Expect(componentRoute.TlsSecretRef()).To(Equal(expectedTlsRef))
+			}
+		},
+		//nolint:lll
+		Entry(
+			"base",
+			"console: hostname=console-host;tlsSecretRef=console-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret",
+		),
+	)
+	Context("When parsing HCP component routes it should reject invalid input", func() {
+		It("When oauth is provided it should be rejected", func() {
+			_, err := parseComponentRoutesForAllowed(
+				//nolint:lll
+				"oauth: hostname=oauth-host;tlsSecretRef=oauth-secret,console: hostname=console-host;tlsSecretRef=console-secret",
+				expectedHcpComponentRoutes,
+			)
+			Expect(err).ToNot(BeNil())
+			Expect(
+				err.Error(),
+			).To(Equal("'oauth' is not a valid component name. Expected include [console, downloads]"))
+		})
+		It("When a duplicate component route is provided it should be rejected", func() {
+			_, err := parseComponentRoutesForAllowed(
+				//nolint:lll
+				"console: hostname=console-host;tlsSecretRef=console-secret,console: hostname=console-host2;tlsSecretRef=console-secret2",
+				expectedHcpComponentRoutes,
+			)
+			Expect(err).ToNot(BeNil())
+			Expect(
+				err.Error(),
+			).To(Equal("component route \"console\" was supplied more than once"))
+		})
+		It("When only one route is provided it should fail with wrong count", func() {
+			_, err := parseComponentRoutesForAllowed(
+				"console: hostname=console-host;tlsSecretRef=console-secret",
+				expectedHcpComponentRoutes,
+			)
+			Expect(err).ToNot(BeNil())
+			Expect(
+				err.Error(),
+			).To(Equal("the expected amount of component routes is 2, but 1 have been supplied"))
+		})
+	})
 	Context("Fails to parse input string for component routes", func() {
 		It("fails due to invalid component route", func() {
 			_, err := parseComponentRoutes(

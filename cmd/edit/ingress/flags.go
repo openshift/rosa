@@ -34,12 +34,24 @@ const (
 )
 
 var exclusivelyIngressV2Flags = []string{excludedNamespacesFlag, wildcardPolicyFlag,
-	namespaceOwnershipPolicyFlag, clusterRoutesHostnameFlag, clusterRoutesTlsSecretRefFlag, componentRoutesFlag}
+	namespaceOwnershipPolicyFlag, clusterRoutesHostnameFlag, clusterRoutesTlsSecretRefFlag}
 
 var expectedComponentRoutes = []string{
 	string(cmv1.ComponentRouteTypeOauth),
 	string(cmv1.ComponentRouteTypeConsole),
 	string(cmv1.ComponentRouteTypeDownloads),
+}
+
+var expectedHcpComponentRoutes = []string{
+	string(cmv1.ComponentRouteTypeConsole),
+	string(cmv1.ComponentRouteTypeDownloads),
+}
+
+func allowedComponentRoutes(isHypershift bool) []string {
+	if isHypershift {
+		return expectedHcpComponentRoutes
+	}
+	return expectedComponentRoutes
 }
 
 var expectedParameters = []string{
@@ -81,19 +93,24 @@ func addIngressV2Flags(flags *pflag.FlagSet) {
 		componentRoutesFlag,
 		"",
 		//nolint:lll
-		"Component routes settings. Available keys [oauth, console, downloads]. For each key a pair of hostname and tlsSecretRef is expected to be supplied. "+
+		"Component routes settings. Available keys [oauth, console, downloads] (HCP clusters support console and downloads only). For each key a pair of hostname and tlsSecretRef is expected to be supplied. "+
 			"Format should be a comma separate list 'oauth: hostname=example-hostname;tlsSecretRef=example-secret-ref,downloads:...",
 	)
 }
 
 func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder, error) {
+	return parseComponentRoutesForAllowed(input, expectedComponentRoutes)
+}
+
+//nolint:lll
+func parseComponentRoutesForAllowed(input string, allowedRoutes []string) (map[string]*cmv1.ComponentRouteBuilder, error) {
 	result := map[string]*cmv1.ComponentRouteBuilder{}
 	input = strings.TrimSpace(input)
 	components := strings.Split(input, ",")
-	if len(components) != len(expectedComponentRoutes) {
+	if len(components) != len(allowedRoutes) {
 		return nil, fmt.Errorf(
 			"the expected amount of component routes is %d, but %d have been supplied",
-			len(expectedComponentRoutes),
+			len(allowedRoutes),
 			len(components),
 		)
 	}
@@ -115,11 +132,15 @@ func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder,
 			)
 		}
 		componentName := strings.TrimSpace(parsedComponent[0])
-		if !helper.Contains(expectedComponentRoutes, componentName) {
+		if _, exists := result[componentName]; exists {
+			return nil, fmt.Errorf(
+				"component route %q was supplied more than once", componentName)
+		}
+		if !helper.Contains(allowedRoutes, componentName) {
 			return nil, fmt.Errorf(
 				"'%s' is not a valid component name. Expected include %s",
 				componentName,
-				helper.SliceToSortedString(expectedComponentRoutes),
+				helper.SliceToSortedString(allowedRoutes),
 			)
 		}
 		parameters := strings.TrimSpace(parsedComponent[1])
@@ -152,7 +173,6 @@ func parseComponentRoutes(input string) (map[string]*cmv1.ComponentRouteBuilder,
 			for _, t := range transformations {
 				parameterValue = t(parameterValue)
 			}
-			// TODO: use reflection, couldn't get it to work
 			switch parameterName {
 			case hostnameParameter:
 				componentRouteBuilder.Hostname(parameterValue)
