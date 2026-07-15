@@ -10,7 +10,7 @@ var _ = Describe("Delete IDP", func() {
 		It("rejects zero arguments", func() {
 			err := Cmd.Args(nil, []string{})
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected exactly one"))
+			Expect(err.Error()).To(ContainSubstring("expected exactly one"))
 		})
 
 		It("accepts exactly one argument", func() {
@@ -21,7 +21,7 @@ var _ = Describe("Delete IDP", func() {
 		It("rejects two arguments", func() {
 			err := Cmd.Args(nil, []string{"github-1", "extra"})
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected exactly one"))
+			Expect(err.Error()).To(ContainSubstring("expected exactly one"))
 		})
 	})
 })

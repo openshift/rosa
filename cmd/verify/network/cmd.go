@@ -161,12 +161,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		if cluster != nil {
 			if !helper.IsBYOVPC(cluster) {
 				return fmt.Errorf(
-					"Running the network verifier is only supported for BYO VPC clusters")
+					"running the network verifier is only supported for BYO VPC clusters")
 			}
 
 			args.subnetIDs = cluster.AWS().SubnetIDs()
 		} else {
-			return fmt.Errorf("At least one subnet IDs is required")
+			return fmt.Errorf("at least one subnet IDs is required")
 		}
 	}
 
@@ -177,7 +177,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	if cmd.Flags().Changed(roleArnFlag) {
 		err := aws.ARNValidator(args.roleArn)
 		if err != nil {
-			return fmt.Errorf("Expected a valid ARN: %s", err)
+			return fmt.Errorf("expected a valid ARN: %s", err)
 		}
 	} else if !cmd.Flags().Changed(statusOnlyFlag) {
 		if cmd.Flags().Changed(clusterFlag) {
@@ -223,7 +223,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			}
 			_, err := r.OCMClient.VerifyNetworkSubnetsByCluster(cluster.ID(), tagsList)
 			if err != nil {
-				return fmt.Errorf("Error verifying subnets by cluster: %s", err)
+				return fmt.Errorf("error verifying subnets by cluster: %s", err)
 			}
 		} else {
 			// Default platform type set to 'aws-classic'
@@ -233,7 +233,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			}
 			_, err := r.OCMClient.VerifyNetworkSubnets(args.roleArn, args.region, args.subnetIDs, tagsList, platform)
 			if err != nil {
-				return fmt.Errorf("Error verifying subnets: %s", err)
+				return fmt.Errorf("error verifying subnets: %s", err)
 			}
 		}
 	}
@@ -271,7 +271,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			spin.Stop()
 		}
 	} else {
-		var pending bool = false
+		pending := false
 		for i := 0; i < len(args.subnetIDs); i++ {
 			subnet := args.subnetIDs[i]
 			status, err := r.OCMClient.GetVerifyNetworkSubnet(subnet)
@@ -331,7 +331,7 @@ func getRegion(cmd *cobra.Command, cluster *cmv1.Cluster) (region string, err er
 	if cmd.Flags().Changed("region") {
 		region, err = aws.GetRegion(arguments.GetRegion())
 		if err != nil {
-			return "", fmt.Errorf("Error getting region: %v", err)
+			return "", fmt.Errorf("error getting region: %v", err)
 		}
 		return region, nil
 	}
@@ -339,5 +339,5 @@ func getRegion(cmd *cobra.Command, cluster *cmv1.Cluster) (region string, err er
 		return cluster.Region().ID(), nil
 	}
 
-	return "", fmt.Errorf("Region is required")
+	return "", fmt.Errorf("region is required")
 }

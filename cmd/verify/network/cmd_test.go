@@ -178,14 +178,14 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 		err := runWithRuntime(r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("At least one subnet IDs is required"))
+			ContainSubstring("at least one subnet IDs is required"))
 	})
 	It("Fails if no --region without --cluster", func() {
 		cmd.Flags().Set(subnetIDsFlag, "abc,def")
 		err := runWithRuntime(r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("Region is required"))
+			ContainSubstring("region is required"))
 	})
 	It("Fails if no --role-arn without --cluster", func() {
 		cmd.Flags().Set(subnetIDsFlag, "abc,def")
@@ -427,6 +427,6 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring(
-				"Running the network verifier is only supported for BYO VPC clusters"))
+				"running the network verifier is only supported for BYO VPC clusters"))
 	})
 })

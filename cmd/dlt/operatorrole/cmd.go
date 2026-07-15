@@ -377,9 +377,10 @@ func buildCommand(r *rosa.Runtime, roleNames []string, policyMap map[string][]st
 			hasRhManagedTag := false
 			hasHcpSharedVpcTag := false
 			for _, tag := range hcpSharedVpcPolicy.Policy.Tags {
-				if *tag.Key == tags.RedHatManaged {
+				switch *tag.Key {
+				case tags.RedHatManaged:
 					hasRhManagedTag = true
-				} else if *tag.Key == tags.HcpSharedVpc {
+				case tags.HcpSharedVpc:
 					hasHcpSharedVpcTag = true
 				}
 			}

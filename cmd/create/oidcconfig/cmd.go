@@ -34,7 +34,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
-	. "github.com/openshift/rosa/pkg/constants"
+	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -101,7 +101,7 @@ func init() {
 	flags.SetNormalizeFunc(arguments.NormalizeFlags)
 	flags.StringVar(
 		&args.installerRoleArn,
-		InstallerRoleArnFlag,
+		constants.InstallerRoleArnFlag,
 		"",
 		"STS Role ARN with get secrets permission.",
 	)
@@ -126,7 +126,7 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 		return
 	}
 	modeIsAuto := cmd.Flag("mode").Value.String() == interactive.ModeAuto
-	installerRoleArnNotSet := (!cmd.Flags().Changed(InstallerRoleArnFlag) || args.installerRoleArn == "") &&
+	installerRoleArnNotSet := (!cmd.Flags().Changed(constants.InstallerRoleArnFlag) || args.installerRoleArn == "") &&
 		!confirm.Yes()
 	if !args.managed && (modeNotChanged || (modeIsAuto && installerRoleArnNotSet)) {
 		interactive.Enable()
@@ -164,7 +164,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if args.rawFiles && args.installerRoleArn != "" {
-		r.Reporter.Warnf("--%s param is not supported alongside --%s param", rawFilesFlag, InstallerRoleArnFlag)
+		r.Reporter.Warnf("--%s param is not supported alongside --%s param", rawFilesFlag, constants.InstallerRoleArnFlag)
 		os.Exit(1)
 	}
 
@@ -198,7 +198,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if args.managed && args.installerRoleArn != "" {
-		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", InstallerRoleArnFlag)
+		r.Reporter.Warnf("--%s param is not supported for managed OIDC config", constants.InstallerRoleArnFlag)
 		os.Exit(1)
 	}
 
@@ -214,7 +214,7 @@ func run(cmd *cobra.Command, _ []string) {
 						r,
 						cmd,
 						args.installerRoleArn,
-						MinorVersionForGetSecret,
+						constants.MinorVersionForGetSecret,
 						r.AWSClient.FindRoleARNs,
 					)
 			}
@@ -255,7 +255,7 @@ func run(cmd *cobra.Command, _ []string) {
 					os.Exit(1)
 				}
 				isValid, err := r.AWSClient.ValidateAccountRoleVersionCompatibility(
-					roleName, aws.InstallerAccountRole, MinorVersionForGetSecret)
+					roleName, aws.InstallerAccountRole, constants.MinorVersionForGetSecret)
 				if err != nil {
 					r.Reporter.Errorf("There was a problem listing role tags: %v", err)
 					os.Exit(1)
@@ -264,7 +264,7 @@ func run(cmd *cobra.Command, _ []string) {
 					r.Reporter.Errorf(
 						"Role '%s' is not of minimum version '%s'",
 						args.installerRoleArn,
-						MinorVersionForGetSecret,
+						constants.MinorVersionForGetSecret,
 					)
 					os.Exit(1)
 				}
@@ -389,21 +389,21 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) executeNoExit(r *rosa.Runtime) (
 	installerRoleArn := args.installerRoleArn
 	err := r.AWSClient.CreateS3Bucket(bucketName, args.region)
 	if err != nil {
-		return "", fmt.Errorf("There was a problem creating S3 bucket '%s': %s", bucketName, err)
+		return "", fmt.Errorf("there was a problem creating S3 bucket '%s': %s", bucketName, err)
 	}
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, strings.NewReader(discoveryDocument), discoveryDocumentKey)
 	if err != nil {
-		return "", fmt.Errorf("There was a problem populating discovery "+
+		return "", fmt.Errorf("there was a problem populating discovery "+
 			"document to S3 bucket '%s': %s", bucketName, err)
 	}
 	err = r.AWSClient.PutPublicReadObjectInS3Bucket(bucketName, bytes.NewReader(jwks), jwksKey)
 	if err != nil {
-		return "", fmt.Errorf("There was a problem populating JWKS "+
+		return "", fmt.Errorf("there was a problem populating JWKS "+
 			"to S3 bucket '%s': %s", bucketName, err)
 	}
 	secretARN, err := r.AWSClient.CreateSecretInSecretsManager(privateKeySecretName, string(privateKey[:]))
 	if err != nil {
-		return "", fmt.Errorf("There was a problem saving private key to secrets manager: %s", err)
+		return "", fmt.Errorf("there was a problem saving private key to secrets manager: %s", err)
 	}
 	oidcConfig, err := v1.NewOidcConfig().
 		Managed(false).
@@ -415,7 +415,7 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) executeNoExit(r *rosa.Runtime) (
 		oidcConfig, err = r.OCMClient.CreateOidcConfig(oidcConfig)
 	}
 	if err != nil {
-		return "", fmt.Errorf("There was a problem building your unmanaged OIDC Configuration: %v.\n"+
+		return "", fmt.Errorf("there was a problem building your unmanaged OIDC Configuration: %v.\n"+
 			"Please refer to documentation and try again through:\n"+
 			"\trosa register oidc-config --issuer-url %s --secret-arn %s --role-arn %s",
 			err, bucketUrl, secretARN, installerRoleArn)
@@ -496,7 +496,7 @@ func (s *CreateUnmanagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) string 
 		if spin != nil {
 			spin.Stop()
 		}
-		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
+		output := fmt.Sprintf(constants.InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 	return oidcConfig.ID()
@@ -651,7 +651,7 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) string {
 		if spin != nil {
 			spin.Stop()
 		}
-		output := fmt.Sprintf(InformOperatorRolesOutput, oidcConfig.ID())
+		output := fmt.Sprintf(constants.InformOperatorRolesOutput, oidcConfig.ID())
 		r.Reporter.Infof(output)
 	}
 	return oidcConfig.ID()
@@ -660,11 +660,11 @@ func (s *CreateManagedOidcConfigAutoStrategy) execute(r *rosa.Runtime) string {
 func (s *CreateManagedOidcConfigAutoStrategy) executeNoExit(r *rosa.Runtime) (string, error) {
 	oidcConfig, err := v1.NewOidcConfig().Managed(true).Build()
 	if err != nil {
-		return "", fmt.Errorf("There was a problem building the managed OIDC Configuration: %v", err)
+		return "", fmt.Errorf("there was a problem building the managed OIDC Configuration: %v", err)
 	}
 	oidcConfig, err = r.OCMClient.CreateOidcConfig(oidcConfig)
 	if err != nil {
-		return "", fmt.Errorf("There was a problem building the managed OIDC Configuration: %v", err)
+		return "", fmt.Errorf("there was a problem building the managed OIDC Configuration: %v", err)
 	}
 	s.oidcConfigInput.IssuerUrl = oidcConfig.IssuerUrl()
 	return oidcConfig.ID(), nil

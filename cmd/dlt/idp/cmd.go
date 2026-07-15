@@ -40,7 +40,7 @@ var Cmd = &cobra.Command{
 	Args: func(_ *cobra.Command, argv []string) error {
 		if len(argv) != 1 {
 			return fmt.Errorf(
-				"Expected exactly one command line parameter containing the name of the identity provider",
+				"expected exactly one command line parameter containing the name of the identity provider",
 			)
 		}
 		return nil
