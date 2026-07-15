@@ -88861,6 +88861,32 @@ func awsEc2query_deserializeDocumentCreateFleetInstance(v **types.CreateFleetIns
 		originalDecoder := decoder
 		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
 		switch {
+		case strings.EqualFold("availabilityZone", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv := string(val)
+				sv.AvailabilityZone = ptr.String(xtv)
+			}
+
+		case strings.EqualFold("availabilityZoneId", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv := string(val)
+				sv.AvailabilityZoneId = ptr.String(xtv)
+			}
+
 		case strings.EqualFold("instanceIds", t.Name.Local):
 			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
 			if err := awsEc2query_deserializeDocumentInstanceIdsSet(&sv.InstanceIds, nodeDecoder); err != nil {
@@ -88910,6 +88936,19 @@ func awsEc2query_deserializeDocumentCreateFleetInstance(v **types.CreateFleetIns
 			{
 				xtv := string(val)
 				sv.Platform = types.PlatformValues(xtv)
+			}
+
+		case strings.EqualFold("subnetId", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv := string(val)
+				sv.SubnetId = ptr.String(xtv)
 			}
 
 		default:
@@ -103965,6 +104004,19 @@ func awsEc2query_deserializeDocumentImage(v **types.Image, decoder smithyxml.Nod
 					return fmt.Errorf("expected Boolean to be of type *bool, got %T instead", val)
 				}
 				sv.Public = ptr.Bool(xtv)
+			}
+
+		case strings.EqualFold("publicSsmParameterName", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv := string(val)
+				sv.PublicSsmParameterName = ptr.String(xtv)
 			}
 
 		case strings.EqualFold("ramdiskId", t.Name.Local):
