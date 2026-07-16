@@ -1947,7 +1947,7 @@ var _ = Describe("Create cluster delete protection",
 			setupAndTeardown()
 
 			It("can verify delete protection on HCP cluster creation - [id:73162]",
-				labels.High, labels.Runtime.Day1,
+				labels.High, labels.Runtime.Day1Supplemental,
 				verifyDeleteProtection,
 			)
 		})
@@ -1975,7 +1975,7 @@ var _ = Describe("Create cluster delete protection",
 			setupAndTeardown()
 
 			It("can verify delete protection on classic cluster creation - [id:73162]",
-				labels.High, labels.Runtime.Day1,
+				labels.High, labels.Runtime.Day1Supplemental,
 				verifyDeleteProtection,
 			)
 		})
