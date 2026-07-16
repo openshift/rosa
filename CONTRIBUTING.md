@@ -94,7 +94,7 @@ with the GO ID, exact module path, and reason. Remove entries once the fix is ad
 The ignore wrapper requires `jq` to parse govulncheck JSON output. The OCP builder image
 used by ROSA Prow jobs (`container: from: src`) does not include `jq`; `make govulncheck`
 downloads a static `jq` binary (currently pinned in `hack/govulncheck.sh`, monitored by
-Renovate) to a versioned temp directory when it is not already on `PATH`, and verifies the
+Renovate) into a private `mktemp` directory when it is not already on `PATH`, and verifies the
 download against the upstream `sha256sum.txt` for that release. For local runs, install `jq`
 or rely on that bootstrap. `yq` is optional; the wrapper falls back to awk when `yq` is not
 installed.

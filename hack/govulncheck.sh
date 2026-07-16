@@ -51,9 +51,12 @@ ensure_jq() {
 	fi
 
 	local jq_dir jq_bin jq_asset arch
-	jq_dir="${TMPDIR:-/tmp}/rosa-govulncheck-jq/${jq_version}"
+	# Use a private temp dir so a pre-seeded predictable /tmp path cannot
+	# supply an untrusted jq binary that skips checksum verification.
+	jq_dir=$(mktemp -d "${TMPDIR:-/tmp}/rosa-govulncheck-jq.XXXXXX") || return 1
+	# shellcheck disable=SC2064
+	trap 'rm -rf -- "'"$jq_dir"'"' EXIT
 	jq_bin="${jq_dir}/jq"
-	mkdir -p "$jq_dir"
 
 	case "$(uname -m)" in
 	x86_64 | amd64) arch=amd64 ;;
@@ -68,14 +71,12 @@ ensure_jq() {
 
 	jq_asset="jq-linux-${arch}"
 
-	if [[ ! -x "$jq_bin" ]]; then
-		echo "jq not found; downloading jq ${jq_version} for ${arch}..."
-		curl -fsSL --retry 5 --retry-delay 2 \
-			-o "$jq_bin" \
-			"https://github.com/jqlang/jq/releases/download/jq-${jq_version}/${jq_asset}"
-		chmod +x "$jq_bin"
-		verify_jq_checksum "$jq_dir" "$jq_asset" "$jq_bin"
-	fi
+	echo "jq not found; downloading jq ${jq_version} for ${arch}..."
+	curl -fsSL --retry 5 --retry-delay 2 \
+		-o "$jq_bin" \
+		"https://github.com/jqlang/jq/releases/download/jq-${jq_version}/${jq_asset}" || return 1
+	chmod +x "$jq_bin"
+	verify_jq_checksum "$jq_dir" "$jq_asset" "$jq_bin" || return 1
 
 	export PATH="${jq_dir}:${PATH}"
 }
