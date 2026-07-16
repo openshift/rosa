@@ -17,6 +17,7 @@ limitations under the License.
 package whoami
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -43,6 +44,8 @@ var Cmd = &cobra.Command{
 	Args: cobra.NoArgs,
 }
 
+var errNotLoggedIn = errors.New("user is not logged in to OCM")
+
 func init() {
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)
@@ -52,59 +55,71 @@ func init() {
 
 func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS()
+	err := runWithRuntime(r)
+	r.Cleanup()
+	if err != nil {
+		if errors.Is(err, errNotLoggedIn) {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
+}
 
-	// Get default AWS region:
+func runWithRuntime(r *rosa.Runtime) error {
 	awsRegion, err := aws.GetRegion("")
 	if err != nil {
 		r.Reporter.Errorf("Error getting AWS region: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting AWS region: %w", err)
 	}
 
-	// Load the configuration file:
 	cfg, err := config.Load()
 	if err != nil {
 		r.Reporter.Errorf("Failed to load config file: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("loading config file: %w", err)
 	}
 	if cfg == nil || config.IsNotValid(cfg) {
 		r.Reporter.Errorf("User is not logged in to OCM")
-		os.Exit(0)
+		return errNotLoggedIn
 	}
 
-	// Verify configuration file:
 	loggedIn, err := cfg.Armed()
 	if err != nil {
 		r.Reporter.Errorf("Failed to verify configuration: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("verifying configuration: %w", err)
 	}
 	if !loggedIn {
 		r.Reporter.Errorf("User is not logged in to OCM")
-		os.Exit(0)
+		return errNotLoggedIn
 	}
 
-	// Create a connection to OCM:
+	if r.OCMClient != nil {
+		err = r.OCMClient.Close()
+		if err != nil {
+			r.Reporter.Errorf("Failed to close existing OCM connection: %v", err)
+			return fmt.Errorf("closing existing OCM connection: %w", err)
+		}
+	}
+
 	r.OCMClient, err = ocm.NewClient().
 		Config(cfg).
 		Logger(r.Logger).
 		Build()
 	if err != nil {
 		r.Reporter.Errorf("Failed to create OCM connection: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("creating OCM connection: %w", err)
 	}
-	defer r.Cleanup()
 
-	// Get current OCM account:
 	account, err := r.OCMClient.GetCurrentAccount()
 	if err != nil {
 		r.Reporter.Errorf("Failed to get current account: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("getting current account: %w", err)
 	}
 
 	if account == nil {
 		account, err = getAccountDataFromToken(cfg)
 		if err != nil {
 			r.Reporter.Errorf("Failed to get account data from token: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("getting account data from token: %w", err)
 		}
 	}
 	outputObject := object.Object{
@@ -127,9 +142,9 @@ func run(_ *cobra.Command, _ []string) {
 		err = output.Print(outputObject)
 		if err != nil {
 			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return fmt.Errorf("printing whoami output: %w", err)
 		}
-		return
+		return nil
 	}
 	keys := make([]string, 0, len(outputObject))
 	for key := range outputObject {
@@ -140,6 +155,7 @@ func run(_ *cobra.Command, _ []string) {
 		fmt.Printf("%-30s%v\n", key+":", outputObject[key])
 	}
 	fmt.Println()
+	return nil
 }
 
 func getAccountDataFromToken(cfg *config.Config) (*amsv1.Account, error) {

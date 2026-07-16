@@ -17,6 +17,7 @@ limitations under the License.
 package oc
 
 import (
+	"context"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -25,6 +26,10 @@ import (
 
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
+
+var ocVersionOutput = func(ctx context.Context) ([]byte, error) {
+	return exec.CommandContext(ctx, "oc", "version", "--client").Output()
+}
 
 var Cmd = &cobra.Command{
 	Use:     "openshift-client",
@@ -37,22 +42,31 @@ var Cmd = &cobra.Command{
 	Args: cobra.NoArgs,
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporter()
+	ctx := context.Background()
+	if cmd != nil {
+		ctx = cmd.Context()
+	}
+	runVerifyOC(ctx, reporter, ocVersionOutput)
+}
 
-	// Verify whether `oc` is installed
+func runVerifyOC(ctx context.Context, reporter rprtr.Logger, getVersion func(context.Context) ([]byte, error)) {
 	if reporter.IsTerminal() {
 		reporter.Infof("Verifying whether OpenShift command-line tool is available...")
 	}
 
-	output, err := exec.Command("oc", "version", "--client").Output()
+	output, err := getVersion(ctx)
 	if output == nil && err != nil {
 		reporter.Warnf("OpenShift command-line tool is not installed.\n" +
 			"Run 'rosa download oc' to download the latest version, then add it to your PATH.")
 		return
 	}
+	if err != nil {
+		reporter.Errorf("Failed to verify OpenShift command-line tool: %v", err)
+		return
+	}
 
-	// Parse the version for the OpenShift Client
 	version := strings.Replace(strings.Split(string(output), "\n")[0], "\n", "", 1)
 	isCorrectVersion, err := regexp.Match(`\W4.\d*`, output)
 	if err != nil {

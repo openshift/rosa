@@ -50,42 +50,54 @@ func init() {
 
 func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
-	defer r.Cleanup()
+	err := runWithRuntime(r)
+	r.Cleanup()
+	if err != nil {
+		os.Exit(1)
+	}
+}
 
-	// Get AWS region
+func runWithRuntime(r *rosa.Runtime) error {
 	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
 		r.Reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("getting AWS region for quota verification: %w", err)
 	}
 
-	// Create the AWS client:
-	r.AWSClient, err = aws.NewClient().
-		Logger(r.Logger).
-		Region(region).
-		Build()
-	if err != nil {
-		// FIXME Hack to capture errors due to using STS accounts
-		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
+	if r.AWSClient == nil {
+		r.AWSClient, err = aws.NewClient().
+			Logger(r.Logger).
+			Region(region).
+			Build()
+		if err != nil {
+			// FIXME Hack to capture errors due to using STS accounts
+			if strings.Contains(fmt.Sprintf("%s", err), "STS") {
+				r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
+			}
+			r.Reporter.Errorf("Error creating AWS client: %v", err)
+			return fmt.Errorf("building AWS client for quota verification: %w", err)
 		}
-		r.Reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
 	}
 
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("Validating AWS quota...")
 	}
-	_, err = r.AWSClient.ValidateQuota()
+	ok, err := r.AWSClient.ValidateQuota()
 	if err != nil {
 		r.OCMClient.LogEvent("ROSAVerifyQuotaInsufficient", nil)
 		r.Reporter.Errorf("Insufficient AWS quotas")
 		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
+		return fmt.Errorf("validating AWS quotas: %w", err)
+	}
+	if !ok {
+		r.OCMClient.LogEvent("ROSAVerifyQuotaInsufficient", nil)
+		r.Reporter.Errorf("Insufficient AWS quotas")
+		return fmt.Errorf("validating AWS quotas: insufficient AWS quotas")
 	}
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("AWS quota ok. " +
 			"If cluster installation fails, validate actual AWS resource usage against " +
 			"https://docs.openshift.com/rosa/rosa_getting_started/rosa-required-aws-service-quotas.html")
 	}
+	return nil
 }

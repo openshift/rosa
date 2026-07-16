@@ -52,26 +52,32 @@ func init() {
 func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r)
+	if err != nil {
+		os.Exit(1)
+	}
+}
 
-	// Get AWS region
+func runWithRuntime(r *rosa.Runtime) error {
 	region, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
 		r.Reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
+		return err
 	}
 
-	// Create the AWS client:
-	r.AWSClient, err = aws.NewClient().
-		Logger(r.Logger).
-		Region(region).
-		Build()
-	if err != nil {
-		// FIXME Hack to capture errors due to using STS accounts
-		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
-			r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
+	if r.AWSClient == nil {
+		r.AWSClient, err = aws.NewClient().
+			Logger(r.Logger).
+			Region(region).
+			Build()
+		if err != nil {
+			// FIXME Hack to capture errors due to using STS accounts
+			if strings.Contains(fmt.Sprintf("%s", err), "STS") {
+				r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
+			}
+			r.Reporter.Errorf("Error creating AWS client: %v", err)
+			return err
 		}
-		r.Reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
 	}
 
 	r.Reporter.Infof("Verifying permissions for non-STS clusters")
@@ -79,7 +85,7 @@ func run(_ *cobra.Command, _ []string) {
 	policies, err := r.OCMClient.GetPolicies("OSDSCPPolicy")
 	if err != nil {
 		r.Reporter.Errorf("Failed to get 'osdscppolicy' for '%s': %v", aws.AdminUserName, err)
-		os.Exit(1)
+		return err
 	}
 	ok, err := r.AWSClient.ValidateSCP(nil, policies)
 	if err != nil {
@@ -88,14 +94,15 @@ func run(_ *cobra.Command, _ []string) {
 			"SCP is not preventing this account from performing the required checks")
 		if strings.Contains(err.Error(), "Throttling: Rate exceeded") {
 			r.Reporter.Errorf("Throttling: Rate exceeded. Please wait 3-5 minutes before retrying.")
-			os.Exit(1)
+			return err
 		}
 		r.Reporter.Errorf("%v", err)
-		os.Exit(1)
+		return err
 	}
 	if !ok {
 		r.OCMClient.LogEvent("ROSAVerifyPermissionsSCPInvalid", nil)
 		r.Reporter.Warnf("Failed to validate SCP policies. Will try to continue anyway...")
 	}
 	r.Reporter.Infof("AWS SCP policies ok")
+	return nil
 }

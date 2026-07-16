@@ -28,6 +28,8 @@ import (
 	"github.com/openshift/rosa/pkg/version"
 )
 
+var downloadFn = helper.Download
+
 var Cmd = &cobra.Command{
 	Use:     "rosa-client",
 	Aliases: []string{"rosa"},
@@ -41,29 +43,41 @@ var Cmd = &cobra.Command{
 
 func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporter()
+	err := runDownloadRosa(reporter, downloadFn, runtime.GOOS)
+	if err != nil {
+		os.Exit(1)
+	}
+}
 
-	platform := getPlatform()
-	extension := helper.GetExtension()
+func runDownloadRosa(reporter rprtr.Logger, download func(string, string) error, goos string) error {
+	platform := platformForGOOS(goos)
+	extension := extensionForGOOS(goos)
 
 	filename := fmt.Sprintf("rosa-%s.%s", platform, extension)
-
 	downloadURL := fmt.Sprintf("%s%s", version.DownloadLatestMirrorFolder, filename)
 
 	reporter.Infof("Downloading %s to your current directory", downloadURL)
 
-	err := helper.Download(downloadURL, filename)
+	err := download(downloadURL, filename)
 	if err != nil {
 		reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	reporter.Infof("Successfully downloaded %s", filename)
+	return nil
 }
 
-// Get the platform name used on the oc tarball filename
-func getPlatform() string {
-	if runtime.GOOS == "darwin" {
+func platformForGOOS(goos string) string {
+	if goos == "darwin" {
 		return "macosx"
 	}
-	return runtime.GOOS
+	return goos
+}
+
+func extensionForGOOS(goos string) string {
+	if goos == "windows" {
+		return "zip"
+	}
+	return "tar.gz"
 }

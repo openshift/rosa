@@ -23,10 +23,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/verify/oc"
+	verifyOC "github.com/openshift/rosa/cmd/verify/oc"
 	helper "github.com/openshift/rosa/pkg/helper/download"
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
+
+var downloadFn = helper.Download
+var verifyOCRun = verifyOC.Cmd.Run
 
 var Cmd = &cobra.Command{
 	Use:     "openshift-client",
@@ -41,31 +44,50 @@ var Cmd = &cobra.Command{
 
 func run(cmd *cobra.Command, argv []string) {
 	reporter := rprtr.CreateReporter()
+	err := runDownloadOC(reporter, verifyOCRun, downloadFn, runtime.GOOS, cmd, argv)
+	if err != nil {
+		os.Exit(1)
+	}
+}
 
-	// Verify whether `oc` is installed
-	oc.Cmd.Run(cmd, argv)
+func runDownloadOC(
+	reporter rprtr.Logger,
+	verify func(*cobra.Command, []string),
+	download func(string, string) error,
+	goos string,
+	cmd *cobra.Command,
+	argv []string,
+) error {
+	verify(cmd, argv)
 
-	platform := getPlatform()
-	extension := helper.GetExtension()
+	platform := platformForGOOS(goos)
+	extension := extensionForGOOS(goos)
 
 	filename := fmt.Sprintf("openshift-client-%s.%s", platform, extension)
 	downloadURL := fmt.Sprintf("https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/%s", filename)
 
 	reporter.Infof("Downloading %s", downloadURL)
 
-	err := helper.Download(downloadURL, filename)
+	err := download(downloadURL, filename)
 	if err != nil {
 		reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	reporter.Infof("Successfully downloaded %s", filename)
+	return nil
 }
 
-// Get the platform name used on the oc tarball filename
-func getPlatform() string {
-	if runtime.GOOS == "darwin" {
+func platformForGOOS(goos string) string {
+	if goos == "darwin" {
 		return "mac"
 	}
-	return runtime.GOOS
+	return goos
+}
+
+func extensionForGOOS(goos string) string {
+	if goos == "windows" {
+		return "zip"
+	}
+	return "tar.gz"
 }

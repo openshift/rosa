@@ -17,10 +17,12 @@ limitations under the License.
 package initialize
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/login"
@@ -33,6 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -57,6 +60,36 @@ var Cmd = &cobra.Command{
   rosa init --token=$OFFLINE_ACCESS_TOKEN`,
 	Run:  run,
 	Args: cobra.NoArgs,
+}
+
+var errInitExitZero = errors.New("initialize exit zero")
+
+type initDeps struct {
+	loginCall      func(*cobra.Command, []string, reporter.Logger) error
+	buildAWSClient func(*logrus.Logger, string, bool) (aws.Client, error)
+	buildCFClient  func(reporter.Logger, *logrus.Logger, []string, bool) aws.Client
+	confirmPrompt  func(string, ...interface{}) bool
+	runPermissions func(*cobra.Command, []string)
+	runQuota       func(*cobra.Command, []string)
+	runVerifyOC    func(*cobra.Command, []string)
+}
+
+func defaultInitDeps() initDeps {
+	return initDeps{
+		loginCall: login.Call,
+		buildAWSClient: func(logger *logrus.Logger, region string, useLocalCredentials bool) (aws.Client, error) {
+			return aws.NewClient().
+				Logger(logger).
+				Region(region).
+				UseLocalCredentials(useLocalCredentials).
+				Build()
+		},
+		buildCFClient:  aws.GetAWSClientForUserRegion,
+		confirmPrompt:  confirm.Confirm,
+		runPermissions: permissions.Cmd.Run,
+		runQuota:       quota.Cmd.Run,
+		runVerifyOC:    oc.Cmd.Run,
+	}
 }
 
 func init() {
@@ -103,46 +136,51 @@ func init() {
 
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithOCM()
-	defer r.Cleanup()
+	err := runWithRuntime(r, cmd, argv, defaultInitDeps())
+	r.Cleanup()
+	if err != nil {
+		if errors.Is(err, errInitExitZero) {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string, deps initDeps) error {
 	// If necessary, call `login` as part of `init`. We do this before
 	// other validations to get the prompt out of the way before performing
 	// longer checks.
-	err := login.Call(cmd, argv, r.Reporter)
+	err := deps.loginCall(cmd, argv, r.Reporter)
 	if err != nil {
 		r.Reporter.Errorf("Failed to login to OCM: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to login to OCM: %w", err)
 	}
 
 	// Get AWS region
 	awsRegion, err := aws.GetRegion(arguments.GetRegion())
 	if err != nil {
 		r.Reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting region: %w", err)
 	}
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
 		r.Reporter.Errorf("Unable to retrieve supported regions: %v", err)
+		return fmt.Errorf("retrieving supported regions: %w", err)
 	}
 	if !helper.Contains(supportedRegions, awsRegion) {
 		r.Reporter.Errorf("Unsupported region '%s', available regions: %s",
 			awsRegion, helper.SliceToSortedString(supportedRegions))
-		os.Exit(1)
+		return fmt.Errorf("unsupported region '%s'", awsRegion)
 	}
 	// Create the AWS client:
-	client, err := aws.NewClient().
-		Logger(r.Logger).
-		Region(awsRegion).
-		UseLocalCredentials(args.useLocalCredentials).
-		Build()
-
+	client, err := deps.buildAWSClient(r.Logger, awsRegion, args.useLocalCredentials)
 	if err != nil {
 		// FIXME Hack to capture errors due to using STS accounts
 		if strings.Contains(fmt.Sprintf("%s", err), "STS") {
 			r.OCMClient.LogEvent("ROSAInitCredentialsSTS", nil)
 		}
 		r.Reporter.Errorf("Error creating AWS client: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("creating AWS client: %w", err)
 	}
 
 	// Validate AWS credentials for current user
@@ -151,48 +189,44 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		r.OCMClient.LogEvent("ROSAInitCredentialsFailed", nil)
 		r.Reporter.Errorf("Error validating AWS credentials: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("validating AWS credentials: %w", err)
 	}
 	if !ok {
 		r.OCMClient.LogEvent("ROSAInitCredentialsInvalid", nil)
 		r.Reporter.Errorf("AWS credentials are invalid")
-		os.Exit(1)
+		return fmt.Errorf("AWS credentials are invalid")
 	}
 	r.Reporter.Infof("AWS credentials are valid!")
 
-	cfClient := aws.GetAWSClientForUserRegion(r.Reporter, r.Logger, supportedRegions, args.useLocalCredentials)
+	cfClient := deps.buildCFClient(r.Reporter, r.Logger, supportedRegions, args.useLocalCredentials)
 
 	// Delete CloudFormation stack and exit
 	if args.dlt {
-		if !confirm.Confirm("delete cluster administrator user '%s'", aws.AdminUserName) {
-			os.Exit(0)
+		if !deps.confirmPrompt("delete cluster administrator user '%s'", aws.AdminUserName) {
+			return errInitExitZero
 		}
 		r.Reporter.Infof("Deleting cluster administrator user '%s'...", aws.AdminUserName)
 		err = deleteStack(cfClient, r.OCMClient)
 		if err != nil {
 			r.Reporter.Errorf("%v", err)
-			os.Exit(1)
+			return fmt.Errorf("deleting cluster administrator user: %w", err)
 		}
 
 		r.Reporter.Infof("Admin user '%s' deleted successfully!", aws.AdminUserName)
-		os.Exit(0)
+		return errInitExitZero
 	}
 
 	// Validate AWS SCP/IAM Permissions
 	// Call `verify permissions` as part of init
 	// Skip this check if --disable-scp-checks is true
-	// If SCP policies conditions restrict an AWS accounts permissions by region
-	// AWS will fail all policy simulation checks
-	// Validate AWS credentials for current user
 	if !args.disableSCPChecks {
-		permissions.Cmd.Run(cmd, argv)
+		deps.runPermissions(cmd, argv)
 	} else {
 		r.Reporter.Infof("Skipping AWS SCP policies check")
 	}
 
 	// Validate AWS quota
-	// Call `verify quota` as part of init
-	quota.Cmd.Run(cmd, argv)
+	deps.runQuota(cmd, argv)
 
 	// Ensure that there is an AWS user to create all the resources needed by the cluster:
 	r.Reporter.Infof("Ensuring cluster administrator user '%s'...", aws.AdminUserName)
@@ -200,7 +234,7 @@ func run(cmd *cobra.Command, argv []string) {
 	if err != nil {
 		r.OCMClient.LogEvent("ROSAInitCreateStackFailed", nil)
 		r.Reporter.Errorf("Failed to create user '%s': %v", aws.AdminUserName, err)
-		os.Exit(1)
+		return fmt.Errorf("creating cluster administrator user '%s': %w", aws.AdminUserName, err)
 	}
 	if created {
 		r.Reporter.Infof("Admin user '%s' created successfully!", aws.AdminUserName)
@@ -209,7 +243,6 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Check if osdCcsAdmin has right permissions
-	// Skip this check if --disable-scp-checks is true
 	if !args.disableSCPChecks {
 		r.Reporter.Infof("Validating SCP policies for '%s'...", aws.AdminUserName)
 		target := aws.AdminUserName
@@ -217,13 +250,18 @@ func run(cmd *cobra.Command, argv []string) {
 		policies, err := r.OCMClient.GetPolicies("OSDSCPPolicy")
 		if err != nil {
 			r.Reporter.Errorf("Failed to get 'osdscppolicy' for '%s': %v", aws.AdminUserName, err)
-			os.Exit(1)
+			return fmt.Errorf("getting SCP policies for '%s': %w", aws.AdminUserName, err)
 		}
 		isValid, err := client.ValidateSCP(&target, policies)
-		if !isValid {
+		if err != nil {
 			r.OCMClient.LogEvent("ROSAInitSCPPoliciesFailed", nil)
 			r.Reporter.Errorf("Failed to verify permissions for user '%s': %v", target, err)
-			os.Exit(1)
+			return fmt.Errorf("failed to verify permissions for user '%s': %w", target, err)
+		}
+		if !isValid {
+			r.OCMClient.LogEvent("ROSAInitSCPPoliciesFailed", nil)
+			r.Reporter.Errorf("Failed to verify permissions for user '%s'", target)
+			return fmt.Errorf("failed to verify permissions for user '%s'", target)
 		}
 		r.Reporter.Infof("AWS SCP policies ok")
 	} else {
@@ -242,7 +280,8 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	// Verify version of `oc`
-	oc.Cmd.Run(cmd, argv)
+	deps.runVerifyOC(cmd, argv)
+	return nil
 }
 
 func deleteStack(awsClient aws.Client, ocmClient *ocm.Client) error {
@@ -250,24 +289,24 @@ func deleteStack(awsClient aws.Client, ocmClient *ocm.Client) error {
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
 		ocmClient.LogEvent("ROSAInitGetCreatorFailed", nil)
-		return fmt.Errorf("Failed to get AWS creator: %v", err)
+		return fmt.Errorf("failed to get AWS creator: %w", err)
 	}
 
 	// Check whether the account has clusters:
 	hasClusters, err := ocmClient.HasClusters(awsCreator)
 	if err != nil {
-		return fmt.Errorf("Failed to check for clusters: %v", err)
+		return fmt.Errorf("failed to check for clusters: %w", err)
 	}
 
 	if hasClusters {
-		return fmt.Errorf("Failed to delete '%s': User still has clusters", aws.AdminUserName)
+		return fmt.Errorf("failed to delete '%s': user still has clusters", aws.AdminUserName)
 	}
 
 	// Delete the CloudFormation stack
 	err = awsClient.DeleteOsdCcsAdminUser(aws.OsdCcsAdminStackName)
 	if err != nil {
 		ocmClient.LogEvent("ROSAInitDeleteStackFailed", nil)
-		return fmt.Errorf("Failed to delete user '%s': %v", aws.AdminUserName, err)
+		return fmt.Errorf("failed to delete user '%s': %w", aws.AdminUserName, err)
 	}
 
 	return nil
@@ -282,13 +321,13 @@ func simulateCluster(awsClient aws.Client, ocmClient *ocm.Client, region string)
 	awsCreator, err := awsClient.GetCreator()
 	if err != nil {
 		ocmClient.LogEvent("ROSAInitGetCreatorFailed", nil)
-		return fmt.Errorf("Failed to get AWS creator: %v", err)
+		return fmt.Errorf("failed to get AWS creator: %w", err)
 	}
 
 	awsAccessKey, err := awsClient.GetLocalAWSAccessKeys()
 	if err != nil {
 		ocmClient.LogEvent("ROSAInitGetLocalAWSAccessKeysFailed", nil)
-		return fmt.Errorf("Failed to get AWS Access Key: %v", err)
+		return fmt.Errorf("failed to get AWS access key: %w", err)
 	}
 	spec := ocm.Spec{
 		Name:           "rosa-init",

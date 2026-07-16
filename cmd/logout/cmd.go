@@ -35,10 +35,13 @@ var Cmd = &cobra.Command{
 
 func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporter()
-	// Remove the configuration file:
-	err := config.Remove()
+	err := runLogout()
 	if err != nil {
 		reporter.Errorf("Failed to remove config file: %v", err)
 		os.Exit(1)
 	}
+}
+
+func runLogout() error {
+	return config.Remove()
 }
