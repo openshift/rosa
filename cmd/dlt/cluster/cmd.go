@@ -80,6 +80,20 @@ func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	err := runWithRuntime(r, confirm.Confirm, func(clusterKey string) {
+		uninstallLogs.Cmd.Run(uninstallLogs.Cmd, []string{clusterKey})
+	})
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+}
+
+func runWithRuntime(
+	r *rosa.Runtime,
+	confirmFn func(string, ...interface{}) bool,
+	uninstallLogsFn func(string),
+) error {
 	clusterKey := r.GetClusterKey()
 
 	if args.bestEffort {
@@ -87,16 +101,15 @@ func run(_ *cobra.Command, _ []string) {
 			" in AWS account '%s'. These resources will need to be deleted manually.", clusterKey, r.Creator.AccountID)
 	}
 
-	if !confirm.Confirm("delete cluster %s", clusterKey) {
-		os.Exit(0)
+	if !confirmFn("delete cluster %s", clusterKey) {
+		return nil
 	}
 
 	cluster := r.FetchCluster()
 
 	err := handleClusterDelete(r, cluster, clusterKey, args.bestEffort)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to delete cluster '%s': %w", clusterKey, err)
 	}
 
 	if cluster.AWS().STS().RoleARN() != "" {
@@ -122,13 +135,15 @@ func run(_ *cobra.Command, _ []string) {
 	}
 	if args.watch {
 		arguments.DisableRegionDeprecationWarning = true // disable region deprecation warning
-		uninstallLogs.Cmd.Run(uninstallLogs.Cmd, []string{clusterKey})
+		uninstallLogsFn(clusterKey)
 		arguments.DisableRegionDeprecationWarning = false // enable region deprecation again
 	} else {
 		r.Reporter.Infof("To watch your cluster uninstallation logs, run 'rosa logs uninstall -c %s --watch'",
 			clusterKey,
 		)
 	}
+
+	return nil
 }
 
 func handleClusterDelete(r *rosa.Runtime, cluster *cmv1.Cluster, clusterKey string, bestEffort bool) error {
