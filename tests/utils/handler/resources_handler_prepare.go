@@ -32,6 +32,23 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
+// minSupportedMinor is the oldest OCP minor version that CI should consider
+// when dynamically selecting a version for upgrade testing. Versions from
+// minor streams older than this are skipped because their upgrade channels
+// may no longer be available in non-production (staging) environments,
+// causing cluster creation to fail.
+const minSupportedMinor = 16 // 4.16 — the oldest minor with active support
+
+// isBelowMinSupportedVersion returns true if the given version string
+// belongs to a minor stream older than minSupportedMinor (e.g. 4.14.x).
+func isBelowMinSupportedVersion(version string) bool {
+	_, minor, _, err := helper.ParseVersion(version)
+	if err != nil {
+		return false // don't filter versions we can't parse
+	}
+	return minor < minSupportedMinor
+}
+
 func (rh *resourcesHandler) PrepareVersion(versionRequirement string,
 	channelGroup string,
 	hcp bool, env string,
@@ -77,6 +94,10 @@ func (rh *resourcesHandler) PrepareVersion(versionRequirement string,
 					return nil, err
 				}
 				for _, v := range sortedVersions.OpenShiftVersions {
+					if isBelowMinSupportedVersion(v.Version) {
+						log.Logger.Debugf("Skipping version %s: below minimum supported minor %d", v.Version, minSupportedMinor)
+						continue
+					}
 					yStream, _, err := rh.CheckAvailableUpgrade(v.Version, hcp)
 					if err != nil {
 						return nil, err
@@ -98,6 +119,10 @@ func (rh *resourcesHandler) PrepareVersion(versionRequirement string,
 					return nil, err
 				}
 				for _, v := range sortedVersions.OpenShiftVersions {
+					if isBelowMinSupportedVersion(v.Version) {
+						log.Logger.Debugf("Skipping version %s: below minimum supported minor %d", v.Version, minSupportedMinor)
+						continue
+					}
 					_, zStream, err := rh.CheckAvailableUpgrade(v.Version, hcp)
 					if err != nil {
 						return nil, err
