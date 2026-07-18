@@ -173,7 +173,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				By("Check Validation for max-node-provision-time")
 				mnptValidationMap := map[string]string{
 					"16":   "missing unit in duration",
-					"-17m": "Only positive durations are allowed",
+					"-17m": "only positive durations are allowed",
 					"50o":  "unknown unit",
 					"10m":  "value should be between 15m and 60m",
 					"70m":  "value should be between 15m and 60m",
@@ -224,7 +224,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 
 				By("Check Validation for max-nodes-total")
 				mntValidationMap := map[string]string{
-					"-1":  "Number must be greater or equal to zero",
+					"-1":  "number must be greater or equal to zero",
 					"499": "exceeds the maximum allowed '500'",
 				}
 				for mnt, expectedMsg := range mntValidationMap {
@@ -388,7 +388,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"--min-memory", "0",
 						"--max-memory", "4096",
 						"--scale-down-enabled",
-						"--scale-down-utilization-threshold", "1",
+						"--scale-down-utilization-threshold", "0.5",
 						"--scale-down-delay-after-delete", "10s",
 						"--scale-down-delay-after-failure", "10s",
 						"--gpu-limit", "nvidia.com/gpu,0,10",
@@ -440,7 +440,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					Expect(autoscaler.ScaleDown.DelayAfterFailure).To(Equal("10s"))
 					Expect(autoscaler.ScaleDown.Enabled).To(Equal(true))
 					Expect(autoscaler.ScaleDown.UnneededTime).To(Equal("10s"))
-					Expect(autoscaler.ScaleDown.UtilizationThreshold).To(Equal("1.000000"))
+					Expect(autoscaler.ScaleDown.UtilizationThreshold).To(Equal("0.500000"))
 
 				}
 
@@ -540,7 +540,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 							"--min-memory", "0",
 							"--max-memory", "4096",
 							"--scale-down-enabled",
-							"--scale-down-utilization-threshold", "1",
+							"--scale-down-utilization-threshold", "0.5",
 							"--scale-down-delay-after-delete", "10s",
 							"--scale-down-delay-after-failure", "10s",
 							"--gpu-limit", "nvidia.com/gpu,0,10",
@@ -643,12 +643,12 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								": strconv.ParseBool: parsing \"ty\": " +
 								"invalid syntax": {"--skip-nodes-with-local-storage=ty"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s'"+
-								": Error validating log-verbosity: "+
-								"Number must be greater or "+
-								"equal to zero.", clusterID): {"--log-verbosity", "-1"},
+								": error validating log-verbosity: "+
+								"number must be greater or "+
+								"equal to zero", clusterID): {"--log-verbosity", "-1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s'"+
-								": Error validating max-pod-grace-period: "+
-								"Number must be greater or equal to zero.",
+								": error validating max-pod-grace-period: "+
+								"number must be greater or equal to zero",
 								clusterID): {"--max-pod-grace-period", "-1"},
 							"Error: invalid argument \"ss\" for \"--pod-priority-threshold\" " +
 								"flag: strconv.ParseInt: parsing \"ss\": " +
@@ -660,8 +660,8 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"time: unknown unit \"-\" in duration \"9-\"",
 								clusterID): {"--max-node-provision-time", "9-"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating max-nodes-total: "+
-								"Number must be greater or equal to zero",
+								"error validating max-nodes-total: "+
+								"number must be greater or equal to zero",
 								clusterID): {"--max-nodes-total", "-1"},
 							"Error: if any flags in the group [min-cores max-cores] " +
 								"are set they must all be set; " +
@@ -670,13 +670,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"are set they must all be set; " +
 								"missing [min-cores]": {"--max-cores", "1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating min-cores: Number must be greater or equal to zero.",
+								"error validating min-cores: number must be greater or equal to zero",
 								clusterID): {"--min-cores", "-1", "--max-cores", "1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating max-cores: Number must be greater or equal to zero.",
+								"error validating max-cores: number must be greater or equal to zero",
 								clusterID): {"--min-cores", "1", "--max-cores", "-1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating cores range: max value must be greater or equal than min value 10.",
+								"error validating cores range: max value must be greater or equal than min value 10.",
 								clusterID): {"--min-cores", "10", "--max-cores", "8"},
 							"Error: if any flags in the group [min-memory max-memory] " +
 								"are set they must all be set; " +
@@ -685,51 +685,51 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"are set they must all be set; " +
 								"missing [min-memory]": {"--max-memory", "1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating min-memory: Number must be greater or equal to zero.",
+								"error validating min-memory: number must be greater or equal to zero",
 								clusterID): {"--min-memory", "-1", "--max-memory", "1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating max-memory: Number must be greater or equal to zero.",
+								"error validating max-memory: number must be greater or equal to zero",
 								clusterID): {"--min-memory", "1", "--max-memory", "-1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating memory range: max value must be greater or equal than min value 10.",
+								"error validating memory range: max value must be greater or equal than min value 10.",
 								clusterID): {"--min-memory", "10", "--max-memory", "8"},
 							"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
 								"strconv.ParseBool: parsing \"ty\": " +
 								"invalid syntax": {"--scale-down-enabled=ty"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating delay-after-add: time: "+
+								"error validating delay-after-add: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-add", "20-"},
 							"Error: invalid argument \"ss\" for \"--scale-down-utilization-threshold\" " +
 								"flag: strconv.ParseFloat: parsing \"ss\": " +
 								"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating utilization-threshold: "+
-								"Expecting a floating-point number between 0 and 1.",
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1",
 								clusterID): {"--scale-down-utilization-threshold", "-1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating utilization-threshold: "+
-								"Expecting a floating-point number between 0 and 1.",
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1",
 								clusterID): {"--scale-down-utilization-threshold", "2"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating delay-after-delete: time: "+
+								"error validating delay-after-delete: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-delete", "20-"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating delay-after-failure: time: "+
+								"error validating delay-after-failure: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-failure", "20-"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating unneeded-time: time: "+
+								"error validating unneeded-time: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-unneeded-time", "20-"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating GPU range: "+
-								"max value must be greater or equal than min value 10.",
+								"error validating GPU range: "+
+								"max value must be greater or equal than min value 10",
 								clusterID): {"--gpu-limit", "nvidia.com/gpu,10,0"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"Error validating GPU range: "+
-								"max value must be greater or equal than min value 5.",
+								"error validating GPU range: "+
+								"max value must be greater or equal than min value 5",
 								clusterID): {"--gpu-limit", "amd.com/gpu,5,1"},
 							"Error: invalid argument \"100000000000000000000000\" for " +
 								"\"--max-cores\" flag: " +
@@ -765,7 +765,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 							"--min-memory", "0",
 							"--max-memory", "4096",
 							"--scale-down-enabled",
-							"--scale-down-utilization-threshold", "1",
+							"--scale-down-utilization-threshold", "0.5",
 							"--scale-down-delay-after-delete", "10s",
 							"--scale-down-delay-after-failure", "10s",
 							"--gpu-limit", "nvidia.com/gpu,0,10",
@@ -802,12 +802,12 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								": strconv.ParseBool: parsing \"ty\": " +
 								"invalid syntax": {"--skip-nodes-with-local-storage=ty"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s'"+
-								": Error validating log-verbosity: "+
-								"Number must be greater or "+
-								"equal to zero.", clusterID): {"--log-verbosity", "-1"},
+								": error validating log-verbosity: "+
+								"number must be greater or "+
+								"equal to zero", clusterID): {"--log-verbosity", "-1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s'"+
-								": Error validating max-pod-grace-period: "+
-								"Number must be greater or equal to zero.",
+								": error validating max-pod-grace-period: "+
+								"number must be greater or equal to zero",
 								clusterID): {"--max-pod-grace-period", "-1"},
 							"Error: invalid argument \"ss\" for \"--pod-priority-threshold\" " +
 								"flag: strconv.ParseInt: parsing \"ss\": " +
@@ -819,8 +819,8 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"time: unknown unit \"-\" in duration \"9-\"",
 								clusterID): {"--max-node-provision-time", "9-"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating max-nodes-total: "+
-								"Number must be greater or equal to zero",
+								"error validating max-nodes-total: "+
+								"number must be greater or equal to zero",
 								clusterID): {"--max-nodes-total", "-1"},
 							"Error: if any flags in the group [min-cores max-cores] " +
 								"are set they must all be set; " +
@@ -829,13 +829,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"are set they must all be set; " +
 								"missing [min-cores]": {"--max-cores", "1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating min-cores: Number must be greater or equal to zero.",
+								"error validating min-cores: number must be greater or equal to zero",
 								clusterID): {"--min-cores", "-1", "--max-cores", "1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating max-cores: Number must be greater or equal to zero.",
+								"error validating max-cores: number must be greater or equal to zero",
 								clusterID): {"--min-cores", "1", "--max-cores", "-1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating cores range: max value must be greater or equal than min value 10.",
+								"error validating cores range: max value must be greater or equal than min value 10.",
 								clusterID): {"--min-cores", "10", "--max-cores", "8"},
 							"Error: if any flags in the group [min-memory max-memory] " +
 								"are set they must all be set; " +
@@ -844,51 +844,51 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"are set they must all be set; " +
 								"missing [min-memory]": {"--max-memory", "1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating min-memory: Number must be greater or equal to zero.",
+								"error validating min-memory: number must be greater or equal to zero",
 								clusterID): {"--min-memory", "-1", "--max-memory", "1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating max-memory: Number must be greater or equal to zero.",
+								"error validating max-memory: number must be greater or equal to zero",
 								clusterID): {"--min-memory", "1", "--max-memory", "-1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating memory range: max value must be greater or equal than min value 10.",
+								"error validating memory range: max value must be greater or equal than min value 10.",
 								clusterID): {"--min-memory", "10", "--max-memory", "8"},
 							"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
 								"strconv.ParseBool: parsing \"ty\": " +
 								"invalid syntax": {"--scale-down-enabled=ty"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating delay-after-add: time: "+
+								"error validating delay-after-add: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-add", "20-"},
 							"Error: invalid argument \"ss\" for \"--scale-down-utilization-threshold\" " +
 								"flag: strconv.ParseFloat: parsing \"ss\": " +
 								"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating utilization-threshold: "+
-								"Expecting a floating-point number between 0 and 1.",
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1",
 								clusterID): {"--scale-down-utilization-threshold", "-1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating utilization-threshold: "+
-								"Expecting a floating-point number between 0 and 1.",
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1",
 								clusterID): {"--scale-down-utilization-threshold", "2"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating delay-after-delete: time: "+
+								"error validating delay-after-delete: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-delete", "20-"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating delay-after-failure: time: "+
+								"error validating delay-after-failure: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-failure", "20-"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating unneeded-time: time: "+
+								"error validating unneeded-time: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-unneeded-time", "20-"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating GPU range: "+
-								"max value must be greater or equal than min value 10.",
+								"error validating GPU range: "+
+								"max value must be greater or equal than min value 10",
 								clusterID): {"--gpu-limit", "nvidia.com/gpu,10,0"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"Error validating GPU range: "+
-								"max value must be greater or equal than min value 5.",
+								"error validating GPU range: "+
+								"max value must be greater or equal than min value 5",
 								clusterID): {"--gpu-limit", "amd.com/gpu,5,1"},
 							"Error: invalid argument \"100000000000000000000000\" for " +
 								"\"--max-cores\" flag: " +
@@ -937,7 +937,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					"--min-memory", "0",
 					"--max-memory", "4096",
 					"--scale-down-enabled",
-					"--scale-down-utilization-threshold", "1",
+					"--scale-down-utilization-threshold", "0.5",
 					"--scale-down-delay-after-delete", "10s",
 					"--scale-down-delay-after-failure", "10s",
 					"--gpu-limit", "nvidia.com/gpu,0,10",
@@ -969,12 +969,12 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						": strconv.ParseBool: parsing \"ty\": " +
 						"invalid syntax": {"--skip-nodes-with-local-storage=ty"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s'"+
-						": Error validating log-verbosity: "+
-						"Number must be greater or "+
-						"equal to zero.", clusterID): {"--log-verbosity", "-1"},
+						": error validating log-verbosity: "+
+						"number must be greater or "+
+						"equal to zero", clusterID): {"--log-verbosity", "-1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s'"+
-						": Error validating max-pod-grace-period: "+
-						"Number must be greater or equal to zero.",
+						": error validating max-pod-grace-period: "+
+						"number must be greater or equal to zero",
 						clusterID): {"--max-pod-grace-period", "-1"},
 					"Error: invalid argument \"ss\" for \"--pod-priority-threshold\" " +
 						"flag: strconv.ParseInt: parsing \"ss\": " +
@@ -986,8 +986,8 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"time: unknown unit \"-\" in duration \"9-\"",
 						clusterID): {"--max-node-provision-time", "9-"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating max-nodes-total: "+
-						"Number must be greater or equal to zero",
+						"error validating max-nodes-total: "+
+						"number must be greater or equal to zero",
 						clusterID): {"--max-nodes-total", "-1"},
 					"Error: if any flags in the group [min-cores max-cores] " +
 						"are set they must all be set; " +
@@ -996,13 +996,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"are set they must all be set; " +
 						"missing [min-cores]": {"--max-cores", "1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating min-cores: Number must be greater or equal to zero.",
+						"error validating min-cores: number must be greater or equal to zero",
 						clusterID): {"--min-cores", "-1", "--max-cores", "1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating max-cores: Number must be greater or equal to zero.",
+						"error validating max-cores: number must be greater or equal to zero",
 						clusterID): {"--min-cores", "1", "--max-cores", "-1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating cores range: max value must be greater or equal than min value 10.",
+						"error validating cores range: max value must be greater or equal than min value 10.",
 						clusterID): {"--min-cores", "10", "--max-cores", "8"},
 					"Error: if any flags in the group [min-memory max-memory] " +
 						"are set they must all be set; " +
@@ -1011,51 +1011,51 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"are set they must all be set; " +
 						"missing [min-memory]": {"--max-memory", "1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating min-memory: Number must be greater or equal to zero.",
+						"error validating min-memory: number must be greater or equal to zero",
 						clusterID): {"--min-memory", "-1", "--max-memory", "1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating max-memory: Number must be greater or equal to zero.",
+						"error validating max-memory: number must be greater or equal to zero",
 						clusterID): {"--min-memory", "1", "--max-memory", "-1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating memory range: max value must be greater or equal than min value 10.",
+						"error validating memory range: max value must be greater or equal than min value 10.",
 						clusterID): {"--min-memory", "10", "--max-memory", "8"},
 					"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
 						"strconv.ParseBool: parsing \"ty\": " +
 						"invalid syntax": {"--scale-down-enabled=ty"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating delay-after-add: time: "+
+						"error validating delay-after-add: time: "+
 						"unknown unit \"-\" in duration \"20-\"",
 						clusterID): {"--scale-down-delay-after-add", "20-"},
 					"Error: invalid argument \"ss\" for \"--scale-down-utilization-threshold\" " +
 						"flag: strconv.ParseFloat: parsing \"ss\": " +
 						"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating utilization-threshold: "+
-						"Expecting a floating-point number between 0 and 1.",
+						"error validating utilization-threshold: "+
+						"expecting a floating-point number greater than 0 and less than 1",
 						clusterID): {"--scale-down-utilization-threshold", "-1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating utilization-threshold: "+
-						"Expecting a floating-point number between 0 and 1.",
+						"error validating utilization-threshold: "+
+						"expecting a floating-point number greater than 0 and less than 1",
 						clusterID): {"--scale-down-utilization-threshold", "2"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating delay-after-delete: time: "+
+						"error validating delay-after-delete: time: "+
 						"unknown unit \"-\" in duration \"20-\"",
 						clusterID): {"--scale-down-delay-after-delete", "20-"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating delay-after-failure: time: "+
+						"error validating delay-after-failure: time: "+
 						"unknown unit \"-\" in duration \"20-\"",
 						clusterID): {"--scale-down-delay-after-failure", "20-"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating unneeded-time: time: "+
+						"error validating unneeded-time: time: "+
 						"unknown unit \"-\" in duration \"20-\"",
 						clusterID): {"--scale-down-unneeded-time", "20-"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating GPU range: "+
-						"max value must be greater or equal than min value 10.",
+						"error validating GPU range: "+
+						"max value must be greater or equal than min value 10",
 						clusterID): {"--gpu-limit", "nvidia.com/gpu,10,0"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"Error validating GPU range: "+
-						"max value must be greater or equal than min value 5.",
+						"error validating GPU range: "+
+						"max value must be greater or equal than min value 5",
 						clusterID): {"--gpu-limit", "amd.com/gpu,5,1"},
 					"Error: invalid argument \"100000000000000000000000\" for " +
 						"\"--max-cores\" flag: " +
