@@ -244,7 +244,7 @@ func AddClusterAutoscalerFlags(cmd *cobra.Command, prefix string) *AutoscalerArg
 		fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag),
 		0.5,
 		fmt.Sprintf("Node utilization level, defined as sum of requested resources divided by capacity, "+
-			"below which a node can be considered for scale down. Value should be between 0 and 1. %s",
+			"below which a node can be considered for scale down. Value must be greater than 0 and less than 1. %s",
 			classicOnlyHelpMsg),
 	)
 
@@ -365,7 +365,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.NonNegativeInt32Validator(result.LogVerbosity); err != nil {
-			return nil, fmt.Errorf("Error validating log-verbosity: %s", err)
+			return nil, fmt.Errorf("error validating log-verbosity: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, balancingIgnoredLabelsFlag)) {
@@ -387,7 +387,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.ValidateBalancingIgnoredLabels(strings.Join(result.BalancingIgnoredLabels, ",")); err != nil {
-			return nil, fmt.Errorf("Error validating balancing-ignored-labels: %s", err)
+			return nil, fmt.Errorf("error validating balancing-ignored-labels: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, ignoreDaemonsetsUtilizationFlag)) {
@@ -436,7 +436,7 @@ func GetAutoscalerOptions(
 		}
 	}
 	if err := ocm.NonNegativeInt32Validator(result.MaxPodGracePeriod); err != nil {
-		return nil, fmt.Errorf("Error validating max-pod-grace-period: %s", err)
+		return nil, fmt.Errorf("error validating max-pod-grace-period: %s", err)
 	}
 
 	if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, podPriorityThresholdFlag)) {
@@ -470,7 +470,7 @@ func GetAutoscalerOptions(
 		}
 	}
 	if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.MaxNodesTotal); err != nil {
-		return nil, fmt.Errorf("Error validating max-nodes-total: %s", err)
+		return nil, fmt.Errorf("error validating max-nodes-total: %s", err)
 	}
 
 	if autoscalerValidationArgs != nil && !autoscalerValidationArgs.IsHostedCp {
@@ -489,7 +489,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err = ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Min); err != nil {
-			return nil, fmt.Errorf("Error validating min-cores: %s", err)
+			return nil, fmt.Errorf("error validating min-cores: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxCoresFlag)) {
@@ -508,11 +508,11 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Cores.Max); err != nil {
-			return nil, fmt.Errorf("Error validating max-cores: %s", err)
+			return nil, fmt.Errorf("error validating max-cores: %s", err)
 		}
 
 		if err := getValidMaxRangeValidator(result.ResourceLimits.Cores.Min)(result.ResourceLimits.Cores.Max); err != nil {
-			return nil, fmt.Errorf("Error validating cores range: %s", err)
+			return nil, fmt.Errorf("error validating cores range: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, minMemoryFlag)) {
@@ -530,7 +530,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Min); err != nil {
-			return nil, fmt.Errorf("Error validating min-memory: %s", err)
+			return nil, fmt.Errorf("error validating min-memory: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, maxMemoryFlag)) {
@@ -549,11 +549,11 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.NonNegativeInt32Validator(result.ResourceLimits.Memory.Max); err != nil {
-			return nil, fmt.Errorf("Error validating max-memory: %s", err)
+			return nil, fmt.Errorf("error validating max-memory: %s", err)
 		}
 
 		if err := getValidMaxRangeValidator(result.ResourceLimits.Memory.Min)(result.ResourceLimits.Memory.Max); err != nil {
-			return nil, fmt.Errorf("Error validating memory range: %s", err)
+			return nil, fmt.Errorf("error validating memory range: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, gpuLimitFlag)) {
@@ -622,7 +622,7 @@ func GetAutoscalerOptions(
 			}
 
 			if err := getValidMaxRangeValidator(gpuLimit.Range.Min)(gpuLimit.Range.Max); err != nil {
-				return nil, fmt.Errorf("Error validating GPU range: %s", err)
+				return nil, fmt.Errorf("error validating GPU range: %s", err)
 			}
 		}
 
@@ -656,7 +656,7 @@ func GetAutoscalerOptions(
 		}
 
 		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.UnneededTime); err != nil {
-			return nil, fmt.Errorf("Error validating unneeded-time: %s", err)
+			return nil, fmt.Errorf("error validating unneeded-time: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownUtilizationThresholdFlag)) {
@@ -674,7 +674,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.PercentageValidator(result.ScaleDown.UtilizationThreshold); err != nil {
-			return nil, fmt.Errorf("Error validating utilization-threshold: %s", err)
+			return nil, fmt.Errorf("error validating utilization-threshold: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterAddFlag)) {
@@ -692,7 +692,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterAdd); err != nil {
-			return nil, fmt.Errorf("Error validating delay-after-add: %s", err)
+			return nil, fmt.Errorf("error validating delay-after-add: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterDeleteFlag)) {
@@ -710,7 +710,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterDelete); err != nil {
-			return nil, fmt.Errorf("Error validating delay-after-delete: %s", err)
+			return nil, fmt.Errorf("error validating delay-after-delete: %s", err)
 		}
 
 		if interactive.Enabled() && !cmd.Changed(fmt.Sprintf("%s%s", prefix, scaleDownDelayAfterFailureFlag)) {
@@ -728,7 +728,7 @@ func GetAutoscalerOptions(
 			}
 		}
 		if err := ocm.PositiveDurationStringValidator(result.ScaleDown.DelayAfterFailure); err != nil {
-			return nil, fmt.Errorf("Error validating delay-after-failure: %s", err)
+			return nil, fmt.Errorf("error validating delay-after-failure: %s", err)
 		}
 	}
 
@@ -867,12 +867,12 @@ func parseGPULimit(s string) (ocm.GPULimit, error) {
 
 	gpuLimitMin, err := strconv.Atoi(parameters[1])
 	if err != nil {
-		return ocm.GPULimit{}, fmt.Errorf("Failed parsing '%s' into an integer: %s", parameters[1], err)
+		return ocm.GPULimit{}, fmt.Errorf("failed parsing '%s' into an integer: %s", parameters[1], err)
 	}
 
 	gpuLimitMax, err := strconv.Atoi(parameters[2])
 	if err != nil {
-		return ocm.GPULimit{}, fmt.Errorf("Failed parsing '%s' into an integer: %s", parameters[2], err)
+		return ocm.GPULimit{}, fmt.Errorf("failed parsing '%s' into an integer: %s", parameters[2], err)
 	}
 
 	return ocm.GPULimit{Type: parameters[0], Range: ocm.ResourceRange{Min: gpuLimitMin, Max: gpuLimitMax}}, nil
@@ -888,11 +888,11 @@ func getValidMaxRangeValidator(min int) func(interface{}) error {
 
 		max, err := strconv.Atoi(fmt.Sprintf("%v", val))
 		if err != nil {
-			return fmt.Errorf("Failed parsing '%v' to an integer number.", val)
+			return fmt.Errorf("failed parsing '%v' to an integer number", val)
 		}
 
 		if max < min {
-			return fmt.Errorf("max value must be greater or equal than min value %d.", min)
+			return fmt.Errorf("max value must be greater or equal than min value %d", min)
 		}
 
 		return nil

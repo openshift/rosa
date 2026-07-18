@@ -89,6 +89,18 @@ var _ = Describe("Input Validators", Ordered, func() {
 			Expect(PercentageValidator("-0.1")).ToNot(BeNil())
 		})
 
+		It("raises an error if got exactly 0", func() {
+			Expect(PercentageValidator("0")).ToNot(BeNil())
+		})
+
+		It("raises an error if got exactly 1", func() {
+			Expect(PercentageValidator("1")).ToNot(BeNil())
+		})
+
+		It("raises an error if got NaN", func() {
+			Expect(PercentageValidator("NaN")).ToNot(BeNil())
+		})
+
 		It("successfully parses a valid percentage value", func() {
 			Expect(PercentageValidator("0.4")).To(BeNil())
 		})

@@ -2,6 +2,7 @@ package ocm
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -14,7 +15,7 @@ func Int32Validator(val interface{}) error {
 	}
 	_, err := strconv.ParseInt(fmt.Sprintf("%v", val), 10, 32)
 	if err != nil {
-		return fmt.Errorf("Should provide an integer number between -2147483648 to 2147483647.")
+		return fmt.Errorf("should provide an integer number between -2147483648 to 2147483647")
 	}
 	return nil
 }
@@ -25,11 +26,11 @@ func NonNegativeInt32Validator(val interface{}) error {
 	}
 	number, err := strconv.ParseInt(fmt.Sprintf("%v", val), 10, 32)
 	if err != nil {
-		return fmt.Errorf("Should provide an integer number between 0 to 2147483647.")
+		return fmt.Errorf("should provide an integer number between 0 to 2147483647")
 	}
 
 	if number < 0 {
-		return fmt.Errorf("Number must be greater or equal to zero.")
+		return fmt.Errorf("number must be greater or equal to zero")
 	}
 
 	return nil
@@ -42,7 +43,7 @@ func PositiveDurationStringValidator(val interface{}) error {
 	input, ok := val.(string)
 
 	if !ok {
-		return fmt.Errorf("Can only validate strings, got %v", val)
+		return fmt.Errorf("can only validate strings, got %v", val)
 	}
 
 	duration, err := time.ParseDuration(input)
@@ -52,7 +53,7 @@ func PositiveDurationStringValidator(val interface{}) error {
 	}
 
 	if duration < 0 {
-		return fmt.Errorf("Only positive durations are allowed, got '%v'", val)
+		return fmt.Errorf("only positive durations are allowed, got '%v'", val)
 	}
 
 	return nil
@@ -65,11 +66,11 @@ func PercentageValidator(val interface{}) error {
 
 	number, err := strconv.ParseFloat(fmt.Sprintf("%v", val), commonUtils.MaxByteSize)
 	if err != nil {
-		return fmt.Errorf("Failed parsing '%v' into a floating-point number.", val)
+		return fmt.Errorf("failed parsing '%v' into a floating-point number", val)
 	}
 
-	if number > 1 || number < 0 {
-		return fmt.Errorf("Expecting a floating-point number between 0 and 1.")
+	if number >= 1 || number <= 0 || math.IsNaN(number) {
+		return fmt.Errorf("expecting a floating-point number greater than 0 and less than 1")
 	}
 
 	return nil
