@@ -182,6 +182,7 @@ var _ = Describe("create autoscaler", func() {
 					VerifyJQ(`.resource_limits.cores.max`, 0.0),
 				))
 			args := &clusterautoscaler.AutoscalerArgs{}
+			args.ScaleDown.UtilizationThreshold = 0.5
 			args.LogVerbosity = 3
 			args.ResourceLimits.MaxNodesTotal = 20
 			runner := CreateAutoscalerRunner(args)

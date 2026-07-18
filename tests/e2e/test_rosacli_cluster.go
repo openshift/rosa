@@ -2567,53 +2567,53 @@ var _ = Describe("Classic cluster creation negative testing",
 				basicFlags := []string{"--enable-autoscaling", "--min-replicas", "3", "--max-replicas", "3"}
 
 				errAndFlagMap := map[string][]string{
-					"Error validating log-verbosity: " +
-						"Number must be greater or equal " +
+					"error validating log-verbosity: " +
+						"number must be greater or equal" +
 						"to zero": {"--autoscaler-log-verbosity", "-2"},
 
-					"Error validating utilization-threshold: Expecting" +
-						" a floating-point number between " +
-						"0 and 1": {"--autoscaler-scale-down-utilization-threshold", "1.3"},
+					"error validating utilization-threshold: expecting" +
+						" a floating-point number greater than 0 and less" +
+						" than 1": {"--autoscaler-scale-down-utilization-threshold", "1.3"},
 
-					"Error validating delay-after-add: " +
+					"error validating delay-after-add: " +
 						"time: invalid duration \"e\"": {"--autoscaler-scale-down-delay-after-add", "e"},
 
-					"Error validating delay-after-delete: " +
+					"error validating delay-after-delete: " +
 						"time: missing unit in duration \"3.3\"": {
 						"--autoscaler-scale-down-delay-after-delete",
 						"3.3",
 					},
-					"Error validating min-cores: Number " +
+					"error validating min-cores: number " +
 						"must be greater or equal to zero": {
 						"--autoscaler-min-cores", "-5",
 						"--autoscaler-max-cores", "0",
 					},
 
-					"Error validating max-cores: Number" +
+					"error validating max-cores: number" +
 						" must be greater or equal to zero": {
 						"--autoscaler-min-cores", "0",
 						"--autoscaler-max-cores", "-5",
 					},
 
-					"Error validating cores range: max" +
+					"error validating cores range: max" +
 						" value must be greater or equal than min value 100": {
 						"--autoscaler-min-cores", "100",
 						"--autoscaler-max-cores", "5",
 					},
 
-					"Error validating max-cores: Should" +
+					"error validating max-cores: should" +
 						" provide an integer number between 0 to 2147483647": {
 						"--autoscaler-min-cores", "5",
 						"--autoscaler-max-cores", "1152000000000",
 					},
 
-					"Error validating memory range: max value" +
+					"error validating memory range: max value" +
 						" must be greater or equal than min value 1000": {
 						"--autoscaler-min-memory", "1000",
 						"--autoscaler-max-memory", "100",
 					},
 
-					"Error validating GPU range: max value " +
+					"error validating GPU range: max value " +
 						"must be greater or equal than min value 15": {
 						"--autoscaler-gpu-limit", "nvidia.com/gpu,0,10",
 						"--autoscaler-gpu-limit", "amd.com/gpu,15,5",
