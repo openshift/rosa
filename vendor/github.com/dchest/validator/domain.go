@@ -7,7 +7,9 @@ import (
 	"strings"
 )
 
-var domainRegexp = regexp.MustCompile(`^(?i)[a-z0-9-]+(\.[a-z0-9-]+)+\.?$`)
+const label = `[a-z\d]([a-z\d-]*[a-z\d])?`
+
+var domainRegexp = regexp.MustCompile(`^(?i)` + label + `(\.` + label + `)+\.?$`)
 
 // IsValidDomain returns true if the domain is valid.
 //
