@@ -1,7 +1,7 @@
 # Prow presubmit client image: lint, build, test, commits, coverage.
 # Source is copied at image build (ci-operator builds this image from the PR tree).
 # Custom images with from: rosa-clients do not clone again unless clone: true.
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.5-1783931515
+FROM registry.access.redhat.com/ubi9/go-toolset:9.8-1784190466
 USER root
 WORKDIR /opt/app-root/src
 RUN dnf install -y --setopt=install_weak_deps=False --nodocs jq && \
