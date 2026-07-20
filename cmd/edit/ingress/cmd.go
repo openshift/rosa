@@ -489,8 +489,7 @@ func run(cmd *cobra.Command, argv []string) {
 	sameNamespaceOwnershipPolicy := (namespaceOwnershipPolicy == nil) ||
 		(curNamespaceOwnershipPolicy == ingress.RouteNamespaceOwnershipPolicy())
 
-	sameComponentRoutes := (componentRoutes == nil) ||
-		(reflect.DeepEqual(curComponentRoutes, ingress.ComponentRoutes()))
+	sameComponentRoutes := componentRoutes == nil || sparseComponentRoutesEqual(curComponentRoutes, componentRoutes)
 
 	if sameListeningMethod && sameRouteSelectors && sameLbType &&
 		sameExcludedNamespaces && sameWildcardPolicy && sameNamespaceOwnershipPolicy &&
@@ -507,4 +506,27 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 	r.Reporter.Infof("Updated ingress '%s' on cluster '%s'", ingress.ID(), clusterKey)
+}
+
+func sparseComponentRoutesEqual(
+	current map[string]*cmv1.ComponentRoute,
+	patch map[string]*cmv1.ComponentRouteBuilder,
+) bool {
+	for key, builder := range patch {
+		route, err := builder.Build()
+		if err != nil {
+			return false
+		}
+		cur, exists := current[key]
+		if !exists {
+			if route.Hostname() != "" || route.TlsSecretRef() != "" {
+				return false
+			}
+			continue
+		}
+		if cur.Hostname() != route.Hostname() || cur.TlsSecretRef() != route.TlsSecretRef() {
+			return false
+		}
+	}
+	return true
 }

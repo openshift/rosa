@@ -93,8 +93,10 @@ func addIngressV2Flags(flags *pflag.FlagSet) {
 		componentRoutesFlag,
 		"",
 		//nolint:lll
-		"Component routes settings. Available keys [oauth, console, downloads] (HCP clusters support console and downloads only). For each key a pair of hostname and tlsSecretRef is expected to be supplied. "+
-			"Format should be a comma separate list 'oauth: hostname=example-hostname;tlsSecretRef=example-secret-ref,downloads:...",
+		"Component route settings. Specify one or more routes to update; routes not specified remain unchanged. "+
+			"Available keys are [oauth, console, downloads] (HCP clusters support console and downloads only). "+
+			"Each route requires a hostname and tlsSecretRef. To clear a route, set both to empty values. "+
+			"Format: 'console: hostname=example-hostname;tlsSecretRef=example-secret-ref,downloads:...'",
 	)
 }
 
@@ -107,13 +109,6 @@ func parseComponentRoutesForAllowed(input string, allowedRoutes []string) (map[s
 	result := map[string]*cmv1.ComponentRouteBuilder{}
 	input = strings.TrimSpace(input)
 	components := strings.Split(input, ",")
-	if len(components) != len(allowedRoutes) {
-		return nil, fmt.Errorf(
-			"the expected amount of component routes is %d, but %d have been supplied",
-			len(allowedRoutes),
-			len(components),
-		)
-	}
 	transformations := []stringTransformation{
 		func(source string) string {
 			return strings.TrimSpace(source)
