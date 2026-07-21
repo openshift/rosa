@@ -142,7 +142,7 @@ github.com/aws/aws-sdk-go-v2/service/organizations/types
 github.com/aws/aws-sdk-go-v2/service/ram
 github.com/aws/aws-sdk-go-v2/service/ram/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ram/types
-# github.com/aws/aws-sdk-go-v2/service/route53 v1.64.0
+# github.com/aws/aws-sdk-go-v2/service/route53 v1.64.1
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/service/route53
 github.com/aws/aws-sdk-go-v2/service/route53/internal/customizations
@@ -160,7 +160,7 @@ github.com/aws/aws-sdk-go-v2/service/s3/types
 github.com/aws/aws-sdk-go-v2/service/secretsmanager
 github.com/aws/aws-sdk-go-v2/service/secretsmanager/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/secretsmanager/types
-# github.com/aws/aws-sdk-go-v2/service/servicequotas v1.36.0
+# github.com/aws/aws-sdk-go-v2/service/servicequotas v1.36.1
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/service/servicequotas
 github.com/aws/aws-sdk-go-v2/service/servicequotas/internal/endpoints
