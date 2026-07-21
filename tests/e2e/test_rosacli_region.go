@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
@@ -19,7 +21,7 @@ var _ = Describe("Region",
 		var (
 			rosaClient             *rosacli.Client
 			ocmResourceService     rosacli.OCMResourceService
-			permissionsBoundaryArn string = "arn:aws:iam::aws:policy/AdministratorAccess"
+			permissionsBoundaryArn = "arn:aws:iam::aws:policy/AdministratorAccess"
 		)
 
 		BeforeEach(func() {
@@ -97,7 +99,7 @@ var _ = Describe("Region",
 			labels.Low, labels.Runtime.OCMResources,
 			func() {
 				By("List the available instance-types with the region flag")
-				typesList := []string{"dl1.24xlarge", "g4ad.16xlarge", "c5.xlarge"}
+				typesList := []string{"m7i.xlarge", "g4ad.16xlarge", "c5.xlarge"}
 				region := "us-west-2"
 				accountRolePrefix := fmt.Sprintf("QEAuto-accr72174-%s", time.Now().UTC().Format("20060102"))
 				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
