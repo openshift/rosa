@@ -35,6 +35,15 @@ var _ = Describe("Debug", func() {
 		Expect(flag.DefValue).To(Equal("false"))
 	})
 
+	It("enables debug mode when the parsed debug flag is true", func() {
+		flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		AddFlag(flags)
+
+		Expect(flags.Parse([]string{"--debug"})).To(Succeed())
+
+		Expect(Enabled()).To(BeTrue())
+	})
+
 	It("tracks debug mode through SetEnabled and Enabled", func() {
 		Expect(Enabled()).To(BeFalse())
 

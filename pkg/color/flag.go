@@ -29,6 +29,10 @@ import (
 var color string
 
 var options = []string{"auto", "never", "always"}
+var runtimeGOOS = runtime.GOOS
+var stdoutStat = func() (os.FileInfo, error) {
+	return os.Stdout.Stat()
+}
 
 // AddFlag adds the interactive flag to the given set of command line flags.
 func AddFlag(cmd *cobra.Command) {
@@ -57,10 +61,10 @@ func UseColor() bool {
 	case "auto":
 		fallthrough
 	default:
-		if runtime.GOOS == "windows" {
+		if runtimeGOOS == "windows" {
 			return false
 		}
-		stdout, err := os.Stdout.Stat()
+		stdout, err := stdoutStat()
 		if err != nil {
 			return true
 		}
