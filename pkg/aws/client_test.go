@@ -13,6 +13,10 @@ import (
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 	. "github.com/onsi/ginkgo/v2"
@@ -951,6 +955,561 @@ var _ = Describe("Client", func() {
 			// Should succeed but with empty results (role doesn't match cluster)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(roles).To(HaveLen(0))
+		})
+	})
+
+	Context("CreateS3Bucket", func() {
+		bucketName := "test-oidc-bucket"
+
+		It("Returns error when bucket already exists", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.HeadBucketOutput{}, nil)
+
+			err := client.CreateS3Bucket(bucketName, DefaultRegion)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("already exists"))
+		})
+
+		It("Creates bucket in default region without LocationConstraint", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("not found"))
+
+			mockS3API.EXPECT().CreateBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *s3.CreateBucketInput,
+					_ ...func(*s3.Options)) (*s3.CreateBucketOutput, error) {
+					Expect(*input.Bucket).To(Equal(bucketName))
+					Expect(input.CreateBucketConfiguration).To(BeNil())
+					return &s3.CreateBucketOutput{}, nil
+				})
+
+			mockS3API.EXPECT().PutPublicAccessBlock(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutPublicAccessBlockOutput{}, nil)
+
+			mockS3API.EXPECT().PutBucketPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutBucketPolicyOutput{}, nil)
+
+			mockS3API.EXPECT().PutBucketTagging(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutBucketTaggingOutput{}, nil)
+
+			err := client.CreateS3Bucket(bucketName, DefaultRegion)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Creates bucket in non-default region with LocationConstraint", func() {
+			nonDefaultRegion := "eu-west-1"
+
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("not found"))
+
+			mockS3API.EXPECT().CreateBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *s3.CreateBucketInput,
+					_ ...func(*s3.Options)) (*s3.CreateBucketOutput, error) {
+					Expect(*input.Bucket).To(Equal(bucketName))
+					Expect(input.CreateBucketConfiguration).NotTo(BeNil())
+					Expect(input.CreateBucketConfiguration.LocationConstraint).To(
+						Equal(s3types.BucketLocationConstraint(nonDefaultRegion)))
+					return &s3.CreateBucketOutput{}, nil
+				})
+
+			mockS3API.EXPECT().PutPublicAccessBlock(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutPublicAccessBlockOutput{}, nil)
+
+			mockS3API.EXPECT().PutBucketPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutBucketPolicyOutput{}, nil)
+
+			mockS3API.EXPECT().PutBucketTagging(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutBucketTaggingOutput{}, nil)
+
+			err := client.CreateS3Bucket(bucketName, nonDefaultRegion)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Returns error when CreateBucket fails", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("not found"))
+
+			mockS3API.EXPECT().CreateBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("bucket creation failed"))
+
+			err := client.CreateS3Bucket(bucketName, DefaultRegion)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("bucket creation failed"))
+		})
+
+		It("Returns error when PutPublicAccessBlock fails", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("not found"))
+
+			mockS3API.EXPECT().CreateBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.CreateBucketOutput{}, nil)
+
+			mockS3API.EXPECT().PutPublicAccessBlock(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("access block error"))
+
+			err := client.CreateS3Bucket(bucketName, DefaultRegion)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("access block error"))
+		})
+
+		It("Returns error when PutBucketPolicy fails", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("not found"))
+
+			mockS3API.EXPECT().CreateBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.CreateBucketOutput{}, nil)
+
+			mockS3API.EXPECT().PutPublicAccessBlock(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutPublicAccessBlockOutput{}, nil)
+
+			mockS3API.EXPECT().PutBucketPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("policy error"))
+
+			err := client.CreateS3Bucket(bucketName, DefaultRegion)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("policy error"))
+		})
+
+		It("Returns error when PutBucketTagging fails", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("not found"))
+
+			mockS3API.EXPECT().CreateBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.CreateBucketOutput{}, nil)
+
+			mockS3API.EXPECT().PutPublicAccessBlock(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutPublicAccessBlockOutput{}, nil)
+
+			mockS3API.EXPECT().PutBucketPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.PutBucketPolicyOutput{}, nil)
+
+			mockS3API.EXPECT().PutBucketTagging(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("tagging error"))
+
+			err := client.CreateS3Bucket(bucketName, DefaultRegion)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("tagging error"))
+		})
+	})
+
+	Context("DeleteS3Bucket", func() {
+		bucketName := "test-oidc-bucket"
+
+		It("Returns nil when bucket is not found", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, &s3types.NotFound{})
+
+			err := client.DeleteS3Bucket(bucketName)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Empties bucket and deletes it successfully", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.HeadBucketOutput{}, nil)
+
+			mockS3API.EXPECT().ListObjects(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.ListObjectsOutput{
+					Contents: []s3types.Object{
+						{Key: awsSdk.String("file1.json")},
+						{Key: awsSdk.String("file2.json")},
+					},
+				}, nil)
+
+			mockS3API.EXPECT().DeleteObject(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.DeleteObjectOutput{}, nil).Times(2)
+
+			mockS3API.EXPECT().DeleteBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.DeleteBucketOutput{}, nil)
+
+			err := client.DeleteS3Bucket(bucketName)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Returns error when ListObjects fails", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.HeadBucketOutput{}, nil)
+
+			mockS3API.EXPECT().ListObjects(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("list objects error"))
+
+			err := client.DeleteS3Bucket(bucketName)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("list objects error"))
+		})
+
+		It("Returns error when DeleteBucket fails", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.HeadBucketOutput{}, nil)
+
+			mockS3API.EXPECT().ListObjects(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.ListObjectsOutput{Contents: []s3types.Object{}}, nil)
+
+			mockS3API.EXPECT().DeleteBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("delete bucket error"))
+
+			err := client.DeleteS3Bucket(bucketName)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("delete bucket error"))
+		})
+	})
+
+	Context("CreateSecretInSecretsManager", func() {
+		It("Returns ARN on success", func() {
+			expectedArn := "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-abc123"
+
+			mockSecretsManagerAPI.EXPECT().CreateSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *secretsmanager.CreateSecretInput,
+					_ ...func(*secretsmanager.Options)) (*secretsmanager.CreateSecretOutput, error) {
+					Expect(*input.Name).To(Equal("my-secret"))
+					Expect(*input.SecretString).To(Equal("secret-value"))
+					return &secretsmanager.CreateSecretOutput{
+						ARN: awsSdk.String(expectedArn),
+					}, nil
+				})
+
+			arn, err := client.CreateSecretInSecretsManager("my-secret", "secret-value")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(arn).To(Equal(expectedArn))
+		})
+
+		It("Returns error when CreateSecret fails", func() {
+			mockSecretsManagerAPI.EXPECT().CreateSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("permission denied"))
+
+			arn, err := client.CreateSecretInSecretsManager("my-secret", "secret-value")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("permission denied"))
+			Expect(arn).To(BeEmpty())
+		})
+	})
+
+	Context("DeleteSecretInSecretsManager", func() {
+		secretArn := "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-abc123"
+
+		It("Returns nil when secret is not found", func() {
+			mockSecretsManagerAPI.EXPECT().DescribeSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, &secretsmanagertypes.ResourceNotFoundException{
+					Message: awsSdk.String("not found"),
+				})
+
+			err := client.DeleteSecretInSecretsManager(secretArn)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Deletes secret successfully when it exists", func() {
+			mockSecretsManagerAPI.EXPECT().DescribeSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *secretsmanager.DescribeSecretInput,
+					_ ...func(*secretsmanager.Options)) (*secretsmanager.DescribeSecretOutput, error) {
+					Expect(*input.SecretId).To(Equal(secretArn))
+					return &secretsmanager.DescribeSecretOutput{
+						ARN:  awsSdk.String(secretArn),
+						Name: awsSdk.String("my-secret"),
+					}, nil
+				})
+
+			mockSecretsManagerAPI.EXPECT().DeleteSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *secretsmanager.DeleteSecretInput,
+					_ ...func(*secretsmanager.Options)) (*secretsmanager.DeleteSecretOutput, error) {
+					Expect(*input.SecretId).To(Equal(secretArn))
+					Expect(*input.ForceDeleteWithoutRecovery).To(BeTrue())
+					return &secretsmanager.DeleteSecretOutput{}, nil
+				})
+
+			err := client.DeleteSecretInSecretsManager(secretArn)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Returns error when DeleteSecret fails", func() {
+			mockSecretsManagerAPI.EXPECT().DescribeSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&secretsmanager.DescribeSecretOutput{
+					ARN: awsSdk.String(secretArn),
+				}, nil)
+
+			mockSecretsManagerAPI.EXPECT().DeleteSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("internal service error"))
+
+			err := client.DeleteSecretInSecretsManager(secretArn)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("internal service error"))
+		})
+	})
+
+	Context("DescribeAvailabilityZones", func() {
+		It("Returns zone names on success", func() {
+			mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any(), gomock.Any()).
+				Return(&ec2.DescribeAvailabilityZonesOutput{
+					AvailabilityZones: []ec2types.AvailabilityZone{
+						{ZoneName: awsSdk.String("us-east-1a")},
+						{ZoneName: awsSdk.String("us-east-1b")},
+						{ZoneName: awsSdk.String("us-east-1c")},
+					},
+				}, nil)
+
+			zones, err := client.DescribeAvailabilityZones()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(zones).To(HaveLen(3))
+			Expect(zones).To(ContainElements("us-east-1a", "us-east-1b", "us-east-1c"))
+		})
+
+		It("Propagates API error", func() {
+			mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("ec2 error"))
+
+			zones, err := client.DescribeAvailabilityZones()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ec2 error"))
+			Expect(zones).To(BeNil())
+		})
+	})
+
+	Context("IsLocalAvailabilityZone", func() {
+		It("Returns true for a local zone", func() {
+			mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *ec2.DescribeAvailabilityZonesInput,
+					_ ...func(*ec2.Options)) (*ec2.DescribeAvailabilityZonesOutput, error) {
+					Expect(input.ZoneNames).To(ContainElement("us-east-1-bos-1a"))
+					return &ec2.DescribeAvailabilityZonesOutput{
+						AvailabilityZones: []ec2types.AvailabilityZone{
+							{ZoneType: awsSdk.String(LocalZone)},
+						},
+					}, nil
+				})
+
+			isLocal, err := client.IsLocalAvailabilityZone("us-east-1-bos-1a")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(isLocal).To(BeTrue())
+		})
+
+		It("Returns false for a non-local zone", func() {
+			mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any(), gomock.Any()).
+				Return(&ec2.DescribeAvailabilityZonesOutput{
+					AvailabilityZones: []ec2types.AvailabilityZone{
+						{ZoneType: awsSdk.String("availability-zone")},
+					},
+				}, nil)
+
+			isLocal, err := client.IsLocalAvailabilityZone("us-east-1a")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(isLocal).To(BeFalse())
+		})
+
+		It("Returns error when zone is not found", func() {
+			mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any(), gomock.Any()).
+				Return(&ec2.DescribeAvailabilityZonesOutput{
+					AvailabilityZones: []ec2types.AvailabilityZone{},
+				}, nil)
+
+			_, err := client.IsLocalAvailabilityZone("nonexistent-zone")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to find availability zone"))
+		})
+
+		It("Propagates API error", func() {
+			mockEC2API.EXPECT().DescribeAvailabilityZones(gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("api failure"))
+
+			_, err := client.IsLocalAvailabilityZone("us-east-1a")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("api failure"))
+		})
+	})
+
+	Context("GetSubnetAvailabilityZone", func() {
+		It("Returns availability zone on success", func() {
+			subnetID := "subnet-12345"
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *ec2.DescribeSubnetsInput,
+					_ ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error) {
+					Expect(input.SubnetIds).To(ContainElement(subnetID))
+					return &ec2.DescribeSubnetsOutput{
+						Subnets: []ec2types.Subnet{
+							{
+								SubnetId:         awsSdk.String(subnetID),
+								AvailabilityZone: awsSdk.String("us-east-1a"),
+							},
+						},
+					}, nil
+				})
+
+			az, err := client.GetSubnetAvailabilityZone(subnetID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(az).To(Equal("us-east-1a"))
+		})
+
+		It("Propagates API error", func() {
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("subnet error"))
+
+			_, err := client.GetSubnetAvailabilityZone("subnet-12345")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("subnet error"))
+		})
+	})
+
+	Context("GetVPCSubnets", func() {
+		It("Returns filtered subnets for a VPC", func() {
+			subnetID := "subnet-aaa"
+			vpcID := "vpc-12345"
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *ec2.DescribeSubnetsInput,
+					_ ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error) {
+					for _, f := range input.Filters {
+						if *f.Name == "subnet-id" {
+							return &ec2.DescribeSubnetsOutput{
+								Subnets: []ec2types.Subnet{
+									{
+										SubnetId: awsSdk.String(subnetID),
+										VpcId:    awsSdk.String(vpcID),
+									},
+								},
+							}, nil
+						}
+					}
+					return &ec2.DescribeSubnetsOutput{
+						Subnets: []ec2types.Subnet{
+							{SubnetId: awsSdk.String(subnetID), VpcId: awsSdk.String(vpcID)},
+							{SubnetId: awsSdk.String("subnet-bbb"), VpcId: awsSdk.String(vpcID)},
+							{SubnetId: awsSdk.String("subnet-ccc"), VpcId: awsSdk.String(vpcID)},
+						},
+					}, nil
+				}).Times(2)
+
+			subnets, err := client.GetVPCSubnets(subnetID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(subnets).To(HaveLen(3))
+		})
+
+		It("Propagates error from first DescribeSubnets call", func() {
+			mockEC2API.EXPECT().DescribeSubnets(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("describe subnets error"))
+
+			subnets, err := client.GetVPCSubnets("subnet-aaa")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("describe subnets error"))
+			Expect(subnets).To(BeNil())
+		})
+	})
+
+	Context("CheckRoleExists", func() {
+		When("the role exists", func() {
+			It("returns true and the ARN", func() {
+				mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+					&iam.GetRoleOutput{
+						Role: &iamtypes.Role{
+							RoleName: awsSdk.String("my-role"),
+							Arn:      awsSdk.String("arn:aws:iam::123456789012:role/my-role"),
+						},
+					}, nil)
+
+				exists, roleArn, err := client.CheckRoleExists("my-role")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(exists).To(BeTrue())
+				Expect(roleArn).To(Equal("arn:aws:iam::123456789012:role/my-role"))
+			})
+		})
+
+		When("the role does not exist", func() {
+			It("returns false with empty ARN and nil error", func() {
+				mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+					nil, &iamtypes.NoSuchEntityException{})
+
+				exists, roleArn, err := client.CheckRoleExists("nonexistent-role")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(exists).To(BeFalse())
+				Expect(roleArn).To(BeEmpty())
+			})
+		})
+
+		When("GetRole returns another error", func() {
+			It("propagates the error", func() {
+				mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+					nil, fmt.Errorf("access denied"))
+
+				exists, roleArn, err := client.CheckRoleExists("my-role")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("access denied"))
+				Expect(exists).To(BeFalse())
+				Expect(roleArn).To(BeEmpty())
+			})
+		})
+	})
+
+	Context("GetRoleByARN", func() {
+		When("given a valid role ARN", func() {
+			It("returns the role", func() {
+				testArn := "arn:aws:iam::123456789012:role/my-role"
+				mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+					&iam.GetRoleOutput{
+						Role: &iamtypes.Role{
+							RoleName: awsSdk.String("my-role"),
+							Arn:      awsSdk.String(testArn),
+						},
+					}, nil)
+
+				role, err := client.GetRoleByARN(testArn)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(awsSdk.ToString(role.RoleName)).To(Equal("my-role"))
+				Expect(awsSdk.ToString(role.Arn)).To(Equal(testArn))
+			})
+		})
+
+		When("given an invalid ARN string", func() {
+			It("returns an error", func() {
+				role, err := client.GetRoleByARN("not-a-valid-arn")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("valid IAM role ARN"))
+				Expect(role).To(Equal(iamtypes.Role{}))
+			})
+		})
+
+		When("the ARN is not for a role resource", func() {
+			It("returns an error", func() {
+				role, err := client.GetRoleByARN("arn:aws:iam::123456789012:user/my-user")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("IAM role resource"))
+				Expect(role).To(Equal(iamtypes.Role{}))
+			})
+		})
+
+		When("GetRole fails", func() {
+			It("propagates the error", func() {
+				mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+					nil, fmt.Errorf("iam service error"))
+
+				role, err := client.GetRoleByARN("arn:aws:iam::123456789012:role/missing-role")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("iam service error"))
+				Expect(role).To(Equal(iamtypes.Role{}))
+			})
+		})
+	})
+
+	Context("GetRoleByName", func() {
+		When("the role is found", func() {
+			It("returns the role", func() {
+				mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+					&iam.GetRoleOutput{
+						Role: &iamtypes.Role{
+							RoleName: awsSdk.String("my-role"),
+							Arn:      awsSdk.String("arn:aws:iam::123456789012:role/my-role"),
+						},
+					}, nil)
+
+				role, err := client.GetRoleByName("my-role")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(awsSdk.ToString(role.RoleName)).To(Equal("my-role"))
+			})
+		})
+
+		When("GetRole returns an error", func() {
+			It("propagates the error", func() {
+				mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+					nil, fmt.Errorf("role not found"))
+
+				role, err := client.GetRoleByName("missing-role")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("role not found"))
+				Expect(role).To(Equal(iamtypes.Role{}))
+			})
 		})
 	})
 })

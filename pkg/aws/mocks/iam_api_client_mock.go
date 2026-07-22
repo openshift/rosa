@@ -760,6 +760,26 @@ func (mr *MockIamApiClientMockRecorder) PutRolePolicy(ctx, params any, optFns ..
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutRolePolicy", reflect.TypeOf((*MockIamApiClient)(nil).PutRolePolicy), varargs...)
 }
 
+// SimulatePrincipalPolicy mocks base method.
+func (m *MockIamApiClient) SimulatePrincipalPolicy(ctx context.Context, params *iam.SimulatePrincipalPolicyInput, optFns ...func(*iam.Options)) (*iam.SimulatePrincipalPolicyOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SimulatePrincipalPolicy", varargs...)
+	ret0, _ := ret[0].(*iam.SimulatePrincipalPolicyOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SimulatePrincipalPolicy indicates an expected call of SimulatePrincipalPolicy.
+func (mr *MockIamApiClientMockRecorder) SimulatePrincipalPolicy(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimulatePrincipalPolicy", reflect.TypeOf((*MockIamApiClient)(nil).SimulatePrincipalPolicy), varargs...)
+}
+
 // TagPolicy mocks base method.
 func (m *MockIamApiClient) TagPolicy(ctx context.Context, params *iam.TagPolicyInput, optFns ...func(*iam.Options)) (*iam.TagPolicyOutput, error) {
 	m.ctrl.T.Helper()

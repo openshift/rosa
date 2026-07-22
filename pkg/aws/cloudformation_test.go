@@ -302,4 +302,95 @@ var _ = Describe("CloudFormation", func() {
 			))
 		})
 	})
+
+	Context("GetCFStack", func() {
+		stackName := "my-stack"
+
+		It("Returns the stack when DescribeStacks succeeds", func() {
+			expectedStack := cloudformationtypes.Stack{
+				StackName:   awsSdk.String(stackName),
+				StackStatus: cloudformationtypes.StackStatusCreateComplete,
+			}
+			mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *cloudformation.DescribeStacksInput,
+					_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
+					Expect(*input.StackName).To(Equal(stackName))
+					return &cloudformation.DescribeStacksOutput{
+						Stacks: []cloudformationtypes.Stack{expectedStack},
+					}, nil
+				})
+
+			result, err := client.GetCFStack(context.Background(), stackName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*result.StackName).To(Equal(stackName))
+			Expect(result.StackStatus).To(Equal(cloudformationtypes.StackStatusCreateComplete))
+		})
+
+		It("Propagates DescribeStacks API error", func() {
+			mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("throttling exception"))
+
+			result, err := client.GetCFStack(context.Background(), stackName)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("throttling exception"))
+			Expect(result).To(BeNil())
+		})
+
+		It("Returns error when stack list is empty", func() {
+			mockCfAPI.EXPECT().DescribeStacks(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&cloudformation.DescribeStacksOutput{
+					Stacks: []cloudformationtypes.Stack{},
+				}, nil)
+
+			result, err := client.GetCFStack(context.Background(), stackName)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("No CF stacks with name"))
+			Expect(result).To(BeNil())
+		})
+	})
+
+	Context("DescribeCFStackResources", func() {
+		stackName := "my-stack"
+
+		It("Returns stack resources on success", func() {
+			expectedResources := []cloudformationtypes.StackResource{
+				{
+					LogicalResourceId:  awsSdk.String("MyBucket"),
+					ResourceType:       awsSdk.String("AWS::S3::Bucket"),
+					ResourceStatus:     cloudformationtypes.ResourceStatusCreateComplete,
+					PhysicalResourceId: awsSdk.String("my-bucket-123"),
+				},
+				{
+					LogicalResourceId:  awsSdk.String("MyRole"),
+					ResourceType:       awsSdk.String("AWS::IAM::Role"),
+					ResourceStatus:     cloudformationtypes.ResourceStatusCreateComplete,
+					PhysicalResourceId: awsSdk.String("my-role-456"),
+				},
+			}
+			mockCfAPI.EXPECT().DescribeStackResources(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *cloudformation.DescribeStackResourcesInput,
+					_ ...func(*cloudformation.Options)) (*cloudformation.DescribeStackResourcesOutput, error) {
+					Expect(*input.StackName).To(Equal(stackName))
+					return &cloudformation.DescribeStackResourcesOutput{
+						StackResources: expectedResources,
+					}, nil
+				})
+
+			result, err := client.DescribeCFStackResources(context.Background(), stackName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*result).To(HaveLen(2))
+			Expect(*(*result)[0].LogicalResourceId).To(Equal("MyBucket"))
+			Expect(*(*result)[1].LogicalResourceId).To(Equal("MyRole"))
+		})
+
+		It("Propagates DescribeStackResources API error", func() {
+			mockCfAPI.EXPECT().DescribeStackResources(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("stack not found"))
+
+			result, err := client.DescribeCFStackResources(context.Background(), stackName)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("stack not found"))
+			Expect(result).To(BeNil())
+		})
+	})
 })

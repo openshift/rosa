@@ -167,6 +167,10 @@ type IamApiClient interface {
 	UpdateAssumeRolePolicy(ctx context.Context,
 		params *iam.UpdateAssumeRolePolicyInput, optFns ...func(*iam.Options),
 	) (*iam.UpdateAssumeRolePolicyOutput, error)
+
+	SimulatePrincipalPolicy(ctx context.Context,
+		params *iam.SimulatePrincipalPolicyInput, optFns ...func(*iam.Options),
+	) (*iam.SimulatePrincipalPolicyOutput, error)
 }
 
 // interface guard to ensure that all methods defined in the IamApiClient

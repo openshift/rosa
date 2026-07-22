@@ -169,11 +169,9 @@ func (p *PolicyDocument) checkPermissionsUsingQueryClient(queryClient *awsClient
 		})
 	}
 
-	client := iam.NewFromConfig(queryClient.cfg)
-
 	// Collect all failed actions
 	var failedActions []string
-	paginator := iam.NewSimulatePrincipalPolicyPaginator(client, input)
+	paginator := iam.NewSimulatePrincipalPolicyPaginator(queryClient.iamClient, input)
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(context.TODO())
 		if err != nil {
