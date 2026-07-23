@@ -77,7 +77,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
-			ContainSubstring("The '--schedule' option is only supported for Hosted Control Planes"))
+			ContainSubstring("the '--schedule' option is only supported for Hosted Control Planes"))
 	})
 	It("Fails if we are using minor version flag for manual upgrades", func() {
 		args.schedule = ""
@@ -85,7 +85,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("The '--allow-minor-version-upgrades' " +
+		Expect(err.Error()).To(ContainSubstring("the '--allow-minor-version-updates' " +
 			"option needs to be used with --schedule"))
 	})
 	It("Fails if we are mixing scheduling type flags", func() {
@@ -94,7 +94,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("The '--schedule-date' and '--schedule-time' " +
+		Expect(err.Error()).To(ContainSubstring("the '--schedule-date' and '--schedule-time' " +
 			"options are mutually exclusive with '--schedule'"))
 	})
 	It("Fails if we are mixing automatic scheduling and version flags", func() {
@@ -104,7 +104,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("The '--schedule' " +
+		Expect(err.Error()).To(ContainSubstring("the '--schedule' " +
 			"option is mutually exclusive with '--version'"))
 	})
 	It("Fails if cluster is not ready", func() {
@@ -120,7 +120,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		)
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("Cluster 'cluster1' is not yet ready"))
+		Expect(err.Error()).To(ContainSubstring("cluster 'cluster1' is not yet ready"))
 	})
 	It("Cluster is ready but existing upgrade scheduled", func() {
 		args.schedule = cronSchedule

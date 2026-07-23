@@ -17,7 +17,7 @@ const (
 	invalidScheduleDate = "25h December"
 	validScheduleDate   = "2023-12-25"
 	cronSchedule        = "* * * * *"
-	invalidVersionError = `Expected a valid machine pool version: a valid version number must be specified
+	invalidVersionError = `expected a valid machine pool version: a valid version number must be specified
 Valid versions: 4.12.26 4.12.25`
 )
 
@@ -63,7 +63,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("The '--allow-minor-version-upgrades' " +
+			Expect(err.Error()).To(ContainSubstring("the '--allow-minor-version-updates' " +
 				"option needs to be used with --schedule"))
 		})
 		It("Fails if we are mixing scheduling type flags", func() {
@@ -73,7 +73,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("The '--schedule-date' and '--schedule-time' " +
+			Expect(err.Error()).To(ContainSubstring("the '--schedule-date' and '--schedule-time' " +
 				"options are mutually exclusive with '--schedule'"))
 		})
 		It("Fails if we are mixing automatic scheduling and version flags", func() {
@@ -83,7 +83,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("The '--schedule' " +
+			Expect(err.Error()).To(ContainSubstring("the '--schedule' " +
 				"option is mutually exclusive with '--version'"))
 		})
 		It("Fails if cluster is not ready", func() {
@@ -92,7 +92,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterNotReady))
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("Cluster 'cluster1' is not yet ready"))
+			Expect(err.Error()).To(ContainSubstring("cluster 'cluster1' is not yet ready"))
 		})
 		It("Cluster is ready but node pool not found", func() {
 			args.scheduleTime = scheduleTime
@@ -103,7 +103,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd, []string{nodePoolName})
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(ContainSubstring(
-				"Machine pool 'nodepool85' does not exist for hosted cluster 'cluster1'"))
+				"machine pool 'nodepool85' does not exist for hosted cluster 'cluster1'"))
 		})
 		It("Cluster is ready and there is a scheduled upgraded", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
@@ -206,7 +206,7 @@ var _ = Describe("Upgrade machine pool", func() {
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{nodePoolName})
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("Failed to schedule upgrade for machine pool"))
+			Expect(err.Error()).To(ContainSubstring("failed to schedule upgrade for machine pool"))
 			Expect(stderr).To(BeEmpty())
 			Expect(stdout).To(BeEmpty())
 		})

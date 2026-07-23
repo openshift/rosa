@@ -814,7 +814,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).
 				To(ContainSubstring(
-					"ERR: The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+					"ERR: the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
 			By("Upgrade cluster using --schedule and --version flags at the same time")
 			output, err = upgradeService.Upgrade(
@@ -827,7 +827,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).
 				To(ContainSubstring(
-					"ERR: The '--schedule' option is mutually exclusive with '--version'"))
+					"ERR: the '--schedule' option is mutually exclusive with '--version'"))
 
 			By("Upgrade cluster with value not match the cron epression")
 			output, err = upgradeService.Upgrade(

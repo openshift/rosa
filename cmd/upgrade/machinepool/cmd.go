@@ -21,7 +21,6 @@ import (
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/input"
@@ -130,34 +129,34 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 
 	// Check parameters preconditions
 	if currentUpgradeScheduling.Schedule == "" && currentUpgradeScheduling.AllowMinorVersionUpdates {
-		return fmt.Errorf("The '--allow-minor-version-upgrades' option needs to be used with --schedule")
+		return fmt.Errorf("the '--allow-minor-version-updates' option needs to be used with --schedule")
 	}
 
 	if (currentUpgradeScheduling.ScheduleDate != "" || currentUpgradeScheduling.ScheduleTime != "") &&
 		currentUpgradeScheduling.Schedule != "" {
-		return fmt.Errorf("The '--schedule-date' and '--schedule-time' options are mutually exclusive with" +
+		return fmt.Errorf("the '--schedule-date' and '--schedule-time' options are mutually exclusive with" +
 			" '--schedule'")
 	}
 
 	if currentUpgradeScheduling.Schedule != "" && args.version != "" {
-		return fmt.Errorf("The '--schedule' option is mutually exclusive with '--version'")
+		return fmt.Errorf("the '--schedule' option is mutually exclusive with '--version'")
 	}
 
 	// Validate cluster state
 	input.CheckIfHypershiftClusterOrExit(r, cluster)
 	if cluster.State() != cmv1.ClusterStateReady {
-		return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+		return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 	}
 
 	if !machinepool.MachinePoolKeyRE.MatchString(machinePoolID) {
-		return fmt.Errorf("Expected a valid identifier for the machine pool")
+		return fmt.Errorf("expected a valid identifier for the machine pool")
 	}
 	_, exists, err := r.OCMClient.GetNodePool(cluster.ID(), machinePoolID)
 	if err != nil {
-		return fmt.Errorf("Failed to get machine pools for hosted cluster '%s': %v", clusterKey, err)
+		return fmt.Errorf("failed to get machine pools for hosted cluster '%s': %w", clusterKey, err)
 	}
 	if !exists {
-		return fmt.Errorf("Machine pool '%s' does not exist for hosted cluster '%s'", machinePoolID, clusterKey)
+		return fmt.Errorf("machine pool '%s' does not exist for hosted cluster '%s'", machinePoolID, clusterKey)
 	}
 
 	// Enable interactive mode if needed
@@ -184,7 +183,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 			Required: true,
 		})
 		if err != nil {
-			return fmt.Errorf("Expected an upgrade type: %s", err)
+			return fmt.Errorf("expected an upgrade type: %s", err)
 		}
 
 		if currentUpgradeScheduling.AutomaticUpgrades {
@@ -195,7 +194,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 				Required: false,
 			})
 			if err != nil {
-				return fmt.Errorf("Expected an choice on the versions to target: %s", err)
+				return fmt.Errorf("expected a choice on the versions to target: %s", err)
 			}
 		}
 	}
@@ -230,8 +229,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	r.Reporter.Debugf("Scheduling the upgrade policy")
 	_, err = r.OCMClient.ScheduleNodePoolUpgrade(cluster.ID(), machinePoolID, upgradePolicy)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to schedule upgrade for machine pool '%s' in cluster '%s'",
-			machinePoolID, clusterKey)
+		return fmt.Errorf("failed to schedule upgrade for machine pool '%s' in cluster '%s': %w",
+			machinePoolID, clusterKey, err)
 	}
 
 	r.Reporter.Infof("Upgrade successfully scheduled for the machine pool '%s' on cluster '%s'", machinePoolID,
@@ -272,8 +271,8 @@ func buildManualUpgradePolicy(r *rosa.Runtime, cmd *cobra.Command, currentUpgrad
 	var upgradePolicy *cmv1.NodePoolUpgradePolicy
 	upgradePolicy, err = r.OCMClient.BuildNodeUpgradePolicy(version, nodePool.ID(), currentUpgradeScheduling)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to build manual schedule upgrade for machine pool '%s' in cluster '%s'",
-			nodePool.ID(), clusterKey)
+		return nil, fmt.Errorf("failed to build manual schedule upgrade for machine pool '%s' in cluster '%s': %w",
+			nodePool.ID(), clusterKey, err)
 	}
 
 	// Ask for confirmation
@@ -301,8 +300,8 @@ func buildAutomaticUpgradePolicy(r *rosa.Runtime, cmd *cobra.Command, currentUpg
 
 	upgradePolicy, err = r.OCMClient.BuildNodeUpgradePolicy("", nodePool.ID(), currentUpgradeScheduling)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to build automatic schedule upgrade for machine pool %s in cluster '%s'",
-			nodePool.ID(), clusterKey)
+		return nil, fmt.Errorf("failed to build automatic schedule upgrade for machine pool %s in cluster '%s': %w",
+			nodePool.ID(), clusterKey, err)
 	}
 
 	// Ask for confirmation
@@ -360,14 +359,14 @@ func ComputeNodePoolVersion(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.C
 			Required: true,
 		})
 		if err != nil {
-			return "", fmt.Errorf("Expected a valid machine pool version from interactive prompt: %s", err)
+			return "", fmt.Errorf("expected a valid machine pool version from interactive prompt: %s", err)
 		}
 	}
 	// This is called in HyperShift, but we don't want to exclude version which are HCP disabled for node pools
 	// so we pass the relative parameter as false
 	version, err = r.OCMClient.ValidateVersion(version, filteredVersionList, channelGroup, true, false)
 	if err != nil {
-		return "", fmt.Errorf("Expected a valid machine pool version: %s", err)
+		return "", fmt.Errorf("expected a valid machine pool version: %s", err)
 	}
 	return version, nil
 }
