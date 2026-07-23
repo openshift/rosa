@@ -448,8 +448,8 @@ var _ = Describe("Logging", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			logOutput := logBuffer.String()
-			Expect(logOutput).To(ContainSubstring("{\n  \"visible\": \"request-value\",\n  \"nested\": {\n    \"name\": \"request-child\"\n  }\n}"))
-			Expect(logOutput).To(ContainSubstring("{\n  \"visible\": \"response-value\",\n  \"nested\": {\n    \"name\": \"response-child\"\n  }\n}"))
+			Expect(logOutput).To(ContainSubstring("{\n  \"nested\": {\n    \"name\": \"request-child\"\n  },\n  \"visible\": \"request-value\"\n}"))
+			Expect(logOutput).To(ContainSubstring("{\n  \"nested\": {\n    \"name\": \"response-child\"\n  },\n  \"visible\": \"response-value\"\n}"))
 		})
 
 		It("falls back to raw bytes for invalid JSON bodies", func() {
@@ -474,6 +474,36 @@ var _ = Describe("Logging", func() {
 			_, err = roundTripper.RoundTrip(request)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(logBuffer.String()).To(ContainSubstring("{invalid-json"))
+		})
+
+		It("falls back to raw bytes when JSON body contains multiple top-level values", func() {
+			logBuffer := &bytes.Buffer{}
+			roundTripper, err := NewRoundTripper().
+				Logger(newDebugLogger(logBuffer)).
+				Next(roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     "200 OK",
+						Header:     http.Header{},
+						Body:       io.NopCloser(strings.NewReader("ok")),
+					}, nil
+				})).
+				Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest(
+				http.MethodPost,
+				"https://example.com",
+				strings.NewReader(`{"a":"1"}{"b":"2"}`),
+			)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set("Content-Type", "application/json")
+
+			_, err = roundTripper.RoundTrip(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			logOutput := logBuffer.String()
+			Expect(logOutput).To(ContainSubstring(`{"a":"1"}{"b":"2"}`))
 		})
 
 		It("omits the Authorization header from logs", func() {

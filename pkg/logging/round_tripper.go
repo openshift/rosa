@@ -32,8 +32,6 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-
-	ordered "gitlab.com/c0b/go-ordered-json"
 )
 
 // RoundTripperBuilder contains the information an logic needed to build a new round tripper that
@@ -292,20 +290,25 @@ func (d *RoundTripper) dumpForm(what string, data []byte) {
 // dumpJSON tries to parse the given data as a JSON document. If that works, then it dumps it
 // indented, otherwise dumps it as is.
 func (d *RoundTripper) dumpJSON(what string, data []byte) {
-	parsed := ordered.NewOrderedMap()
-	err := json.Unmarshal(data, parsed)
-	if err != nil {
+	var parsed map[string]any
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&parsed); err != nil {
 		d.logger.Debugf("%s", data)
-	} else {
-		// remove sensitive information
-		d.redactSensitive(parsed)
+		return
+	}
+	if dec.More() {
+		d.dumpBytes(what, data)
+		return
+	}
 
-		indented, err := json.MarshalIndent(parsed, "", "  ")
-		if err != nil {
-			d.dumpBytes(what, data)
-		} else {
-			d.dumpBytes(what, indented)
-		}
+	d.redactSensitive(parsed)
+
+	indented, err := json.MarshalIndent(parsed, "", "  ")
+	if err != nil {
+		d.dumpBytes(what, data)
+	} else {
+		d.dumpBytes(what, indented)
 	}
 }
 
@@ -323,15 +326,10 @@ func (d *RoundTripper) dumpBytes(what string, data []byte) {
 }
 
 // redactSensitive replaces sensitive fields within a response with redactionStr.
-func (d *RoundTripper) redactSensitive(body *ordered.OrderedMap) {
-	iterator := body.EntriesIter()
-	for {
-		pair, ok := iterator()
-		if !ok {
-			break
-		}
-		if d.redact[pair.Key] {
-			body.Set(pair.Key, redactedReplacement)
+func (d *RoundTripper) redactSensitive(body map[string]any) {
+	for key := range body {
+		if d.redact[key] {
+			body[key] = redactedReplacement
 		}
 	}
 }
