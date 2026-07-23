@@ -32,7 +32,8 @@ declare -a changed_packages=()
 for file_path in "${candidate_files[@]}"; do
   [ -z "$file_path" ] && continue
   case "$file_path" in
-    vendor/*|.tmp/*|*_test.go)
+    vendor/*|.tmp/*|*_test.go|tests/e2e/*)
+      # e2e sources are not *_test.go and are not runnable as unit coverage locally
       continue
       ;;
   esac
@@ -54,7 +55,7 @@ go test -count=1 -covermode=atomic -coverprofile="$coverage_profile" "${changed_
 GOFLAGS='-mod=mod' go run "${gocovdiff_module}@${gocovdiff_version}" \
   -diff "$diff_file" \
   -cov "$coverage_profile" \
-  -exclude "vendor/,.tmp/" \
+  -exclude "vendor/,.tmp/,tests/e2e/" \
   -target-delta-cov "$required_coverage_percent" \
   -delta-cov-file "$delta_file"
 

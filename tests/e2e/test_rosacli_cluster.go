@@ -1272,6 +1272,8 @@ var _ = Describe("Classic cluster creation validation",
 		BeforeEach(func() {
 			var err error
 
+			helper.SkipIfAWSCredentialsInvalid()
+
 			// Init the client
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
@@ -1289,7 +1291,9 @@ var _ = Describe("Classic cluster creation validation",
 		})
 
 		AfterEach(func() {
-			clusterHandler.Destroy()
+			if clusterHandler != nil {
+				clusterHandler.Destroy()
+			}
 		})
 
 		It("to check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]",
@@ -1992,6 +1996,8 @@ var _ = Describe("Create cluster with invalid options will",
 		)
 
 		BeforeEach(func() {
+			helper.SkipIfAWSCredentialsInvalid()
+
 			// Init the client
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
@@ -2218,7 +2224,7 @@ var _ = Describe("Create cluster with invalid options will",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring(
-					"number of subnets for a 'single AZ' 'cluster' should be '2', instead received: '0'"),
+					"cluster_wide_proxy is only supported if subnetIDs exist"),
 				)
 
 				By("Prepare vpc with subnets")
@@ -2379,6 +2385,7 @@ var _ = Describe("Classic cluster creation negative testing",
 			ocmResourceService       rosacli.OCMResourceService
 		)
 		BeforeEach(func() {
+			helper.SkipIfAWSCredentialsInvalid()
 
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
@@ -2387,14 +2394,17 @@ var _ = Describe("Classic cluster creation negative testing",
 		})
 		AfterEach(func() {
 			By("Delete the resources for testing")
-			if accountRolePrefixToClean != "" {
-				By("Delete the account-roles")
-				rosaClient.Runner.UnsetArgs()
-				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
-					"--prefix", accountRolePrefixToClean,
-					"-y")
-				Expect(err).To(BeNil())
+			prefix := accountRolePrefixToClean
+			accountRolePrefixToClean = ""
+			if prefix == "" || rosaClient == nil {
+				return
 			}
+			By("Delete the account-roles")
+			rosaClient.Runner.UnsetArgs()
+			_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
+				"--prefix", prefix,
+				"-y")
+			Expect(err).To(BeNil())
 		})
 
 		It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]",
@@ -2651,6 +2661,8 @@ var _ = Describe("HCP cluster creation negative testing",
 			err            error
 		)
 		BeforeEach(func() {
+			helper.SkipIfAWSCredentialsInvalid()
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
@@ -2690,6 +2702,9 @@ var _ = Describe("HCP cluster creation negative testing",
 		})
 
 		AfterEach(func() {
+			if clusterHandler == nil {
+				return
+			}
 			errs := clusterHandler.Destroy()
 			Expect(len(errs)).To(Equal(0))
 		})
@@ -3181,6 +3196,8 @@ var _ = Describe("HCP cluster creation subnets validation",
 			command            string
 		)
 		BeforeEach(func() {
+			helper.SkipIfAWSCredentialsInvalid()
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
@@ -3224,9 +3241,14 @@ var _ = Describe("HCP cluster creation subnets validation",
 		AfterEach(func() {
 			defer func() {
 				By("Clean resources")
-				clusterHandler.Destroy()
+				if clusterHandler != nil {
+					clusterHandler.Destroy()
+				}
 			}()
 
+			if rosaClient == nil {
+				return
+			}
 			if clusterID != "" {
 				By("Delete cluster by id")
 				rosaClient.Runner.UnsetArgs()
