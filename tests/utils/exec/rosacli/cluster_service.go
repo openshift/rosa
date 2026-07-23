@@ -40,6 +40,7 @@ type ClusterService interface {
 	GetClusterVersion(clusterID string) (config.Version, error)
 	IsBYOVPCCluster(clusterID string) (bool, error)
 	IsExternalAuthenticationEnabled(clusterID string) (bool, error)
+	IsLimitedSupport(clusterID string) (bool, error)
 	DetectProxy(clusterDescription *ClusterDescription) (string, string, string)
 	GetJSONClusterDescription(clusterID string) (*jsonData, error)
 	HibernateCluster(clusterID string, flags ...string) (bytes.Buffer, error)
@@ -235,7 +236,7 @@ func (c *clusterService) ReflectClusterDescription(result bytes.Buffer) (res *Cl
 			newStr = strings.Replace(str, "Failed Inflight Checks:", "Failed Inflight Checks: |", 1)
 			newStr = strings.ReplaceAll(newStr, "\t", "  ")
 			newStr = strings.ReplaceAll(newStr, "not found: Role name", "not found:Role name")
-			//Until https://issues.redhat.com/browse/OCM-11830 fixed
+			// Until https://issues.redhat.com/browse/OCM-11830 fixed
 			newStr = strings.Replace(newStr, "Platform Allowlist:", "Platform Allowlist: \n    - ID:", 1)
 			newStr = strings.Replace(newStr, "[DEPRECATED] User Workload Monitoring:", "User Workload Monitoring:", 1)
 			return
@@ -296,6 +297,7 @@ func (c *clusterService) InstallLog(clusterID string, flags ...string) (bytes.Bu
 		CmdFlags(flags...)
 	return installLog.Run()
 }
+
 func (c *clusterService) UnInstallLog(clusterID string, flags ...string) (bytes.Buffer, error) {
 	UnInstallLog := c.client.Runner.
 		Cmd("logs", "uninstall", "-c", clusterID).
@@ -449,6 +451,16 @@ func (c *clusterService) PrepareClusterForYStreamUpgrade(
 	clusterVersion := strings.TrimSpace(jsonData.DigString("version", "raw_id"))
 	if clusterVersion == "" {
 		return nil, fmt.Errorf("cluster %s returned an empty raw version while preparing y-stream upgrade", clusterID)
+	}
+
+	if strings.TrimSpace(channelGroup) == "" {
+		channelGroup = jsonData.DigString("version", "channel_group")
+		if strings.TrimSpace(channelGroup) == "" {
+			return nil, fmt.Errorf(
+				"cluster %s has no channel group in profile or cluster description",
+				clusterID,
+			)
+		}
 	}
 
 	clusterDescription, err := c.DescribeClusterAndReflect(clusterID)
@@ -776,4 +788,13 @@ func (c *clusterService) WaitForClusterPassWaiting(clusterID string, interval in
 		time.Sleep(time.Duration(interval) * time.Minute)
 	}
 	return fmt.Errorf("timeout for cluster stuck waiting after %d mins", timeoutMin)
+}
+
+func (c *clusterService) IsLimitedSupport(clusterID string) (bool, error) {
+	description, err := c.DescribeClusterAndReflect(clusterID)
+	if err != nil {
+		return false, err
+	}
+	limitedSupport := len(description.LimitedSupport) != 0
+	return limitedSupport, nil
 }

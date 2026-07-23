@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"path"
@@ -148,10 +149,37 @@ func PrepareAutonodeRoleAndPolicy(prefix string, oidcProviderURL string, region 
 		return "", err
 	}
 
-	log.Logger.Info("Waiting 3 seconds for AWS consistency...")
-	time.Sleep(3 * time.Second)
+	log.Logger.Info("Waiting 15 seconds for IAM trust policy propagation...")
+	time.Sleep(15 * time.Second)
 
 	return *role.Arn, nil
+}
+
+// RetryOnIAMPropagationError retries fn when the error indicates that
+// an IAM role's trust policy has not yet propagated ("cannot be assumed").
+// AWS IAM eventual consistency can delay trust-policy visibility for the
+// OCM backend even after the role itself is confirmed to exist.
+func RetryOnIAMPropagationError(
+	fn func() (bytes.Buffer, error),
+	maxRetries int,
+	delay time.Duration,
+) (bytes.Buffer, error) {
+	var out bytes.Buffer
+	var err error
+	for i := 0; i <= maxRetries; i++ {
+		out, err = fn()
+		if err == nil || !strings.Contains(err.Error(), "cannot be assumed") {
+			return out, err
+		}
+		if i < maxRetries {
+			log.Logger.Infof(
+				"IAM trust policy not yet propagated (attempt %d/%d), retrying in %s...",
+				i+1, maxRetries+1, delay,
+			)
+			time.Sleep(delay)
+		}
+	}
+	return out, err
 }
 
 func DeleteAutonodeRoleAndPolicy(prefix string, region string) error {

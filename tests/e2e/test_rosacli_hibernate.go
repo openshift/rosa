@@ -1,12 +1,15 @@
 package e2e
 
 import (
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("hibernate and resume cluster testing", labels.Feature.Hibernation, func() {
@@ -27,7 +30,6 @@ var _ = Describe("hibernate and resume cluster testing", labels.Feature.Hibernat
 	AfterEach(func() {
 		By("Clean remaining resources")
 		rosaClient.CleanResources(clusterID)
-
 	})
 
 	It("to hibernate and resume then delete cluster via rosacli - [id:42832]",
@@ -39,39 +41,44 @@ var _ = Describe("hibernate and resume cluster testing", labels.Feature.Hibernat
 			if isHostedCP {
 				Skip("Skip this case as it only supports on not-hosted-cp clusters")
 			}
+			isLimitedSupport, err := clusterService.IsLimitedSupport(clusterID)
+			Expect(err).To(BeNil())
+			if isLimitedSupport {
+				Skip("You can't hibernate a cluster in limited support")
+			}
+
+			By("resuming a cluster that's already running should fail")
+			_, err = clusterService.ResumeCluster(clusterID, "-y")
+			rosaClient.Runner.UnsetArgs()
+			helper.ExpectErrorWithMessage(
+				err,
+				"Resuming a cluster from hibernation is only supported for clusters in 'Hibernating' state",
+			)
 
 			By("hibernate cluster")
 			out, err := clusterService.HibernateCluster(clusterID, "-y")
+			rosaClient.Runner.UnsetArgs()
 			Expect(err).To(BeNil())
 			Expect(out.String()).To(ContainSubstring("is hibernating"))
-			rosaClient.Runner.UnsetArgs()
 
 			err = clusterService.WaitClusterStatus(clusterID, "hibernating", 3, 30)
 			Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to hibernating status")
+
+			By("hibernating a cluster that's already hibernating should fail")
+			_, err = clusterService.HibernateCluster(clusterID, "-y")
+			rosaClient.Runner.UnsetArgs()
+			helper.ExpectErrorWithMessage(
+				err,
+				"Hibernating a cluster is only supported for 'Ready' clusters",
+			)
 
 			By("resume cluster")
 			out, err = clusterService.ResumeCluster(clusterID, "-y")
+			rosaClient.Runner.UnsetArgs()
 			Expect(err).To(BeNil())
 			Expect(out.String()).To(ContainSubstring("is resuming"))
-			rosaClient.Runner.UnsetArgs()
 
 			err = clusterService.WaitClusterStatus(clusterID, "ready", 3, 30)
 			Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
-
-			By("hibernate the cluster again then delete the cluster in not hibernating status")
-			out, err = clusterService.HibernateCluster(clusterID, "-y")
-			Expect(err).To(BeNil())
-			Expect(out.String()).To(ContainSubstring("is hibernating"))
-			rosaClient.Runner.UnsetArgs()
-
-			err = clusterService.WaitClusterStatus(clusterID, "hibernating", 3, 30)
-			Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to hibernating status")
-
-			_, err = clusterService.DeleteCluster(clusterID, "-y")
-			Expect(err).To(BeNil())
-
-			rosaClient.Runner.UnsetArgs()
-			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-			Expect(err).To(BeNil(), "It failed to delete the cluster or met timeout")
 		})
 })

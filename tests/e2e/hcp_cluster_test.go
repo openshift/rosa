@@ -1,11 +1,13 @@
 package e2e
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -838,11 +840,13 @@ var _ = Describe("HCP cluster testing",
 				Expect(out.String()).To(ContainSubstring("cannot update IAM role ARN when AutoNode is not enabled"))
 
 				By("Edit then describe cluster with autonode configuration")
-				out, err = clusterService.EditCluster(
-					clusterID,
-					"--autonode=enabled",
-					"--autonode-iam-role-arn", autonodeRoleARN,
-				)
+				out, err = config.RetryOnIAMPropagationError(func() (bytes.Buffer, error) {
+					return clusterService.EditCluster(
+						clusterID,
+						"--autonode=enabled",
+						"--autonode-iam-role-arn", autonodeRoleARN,
+					)
+				}, 3, 10*time.Second)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(out.String()).To(ContainSubstring("Updated cluster"))
 
@@ -852,10 +856,12 @@ var _ = Describe("HCP cluster testing",
 				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(autonodeRoleARN))
 
 				By("Update the autonode configuration on cluster")
-				out, err = clusterService.EditCluster(
-					clusterID,
-					"--autonode-iam-role-arn", autonodeRoleARN2,
-				)
+				out, err = config.RetryOnIAMPropagationError(func() (bytes.Buffer, error) {
+					return clusterService.EditCluster(
+						clusterID,
+						"--autonode-iam-role-arn", autonodeRoleARN2,
+					)
+				}, 3, 10*time.Second)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(out.String()).To(ContainSubstring("Updated cluster"))
 
