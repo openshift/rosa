@@ -165,6 +165,7 @@ profiles:
       permission_boundary: ""
   - as: rosa-upgrade-y-stream
     version: "y-1"
+    channel_group: stable
     region: "us-east-1"
     cluster:
       multi_az: false

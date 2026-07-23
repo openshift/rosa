@@ -99,6 +99,7 @@ profiles:
       permission_boundary: ""
   - as: rosa-hcp-upgrade-y-stream
     version: "y-1"
+    channel_group: stable
     region: "us-west-2"
     cluster:
       multi_az: true
