@@ -2,10 +2,12 @@ package version
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/html"
+
 	goVer "github.com/hashicorp/go-version"
 	"github.com/sirupsen/logrus"
 
@@ -96,26 +98,83 @@ func (r retriever) RetrievePossibleVersionsFromMirror() ([]string, error) {
 		return []string{},
 			fmt.Errorf("error while requesting latest released rosa cli: %d %s", resp.StatusCode, resp.Status)
 	}
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	possibleVersions, err = parseVersionLinksFromHTML(resp.Body)
 	if err != nil {
-		return []string{}, fmt.Errorf("error parsing response body: %v", err)
+		return []string{}, fmt.Errorf("error parsing response body: %w", err)
 	}
-	doc.Find(".file").Each(func(i int, s *goquery.Selection) {
-		s.Find("a").Each(func(j int, ss *goquery.Selection) {
-			if ver, ok := ss.Attr("href"); ok {
-				ver = strings.TrimSpace(ver)
-				ver = strings.TrimRight(ver, "/")
-				if ver != "latest" {
-					possibleVersions = append(possibleVersions, ver)
-				}
-			}
-		})
-	})
 	if err := r.cache.Set(cache.VersionCacheKey, possibleVersions); err != nil {
 		r.logger.Debugf("Failed to set possible versions in cache : %v", err)
 	}
 	r.logger.Debugf("Versions available for download: %v", possibleVersions)
 	return possibleVersions, nil
+}
+
+// parseVersionLinksFromHTML extracts version hrefs from the mirror's HTML
+// directory listing. It looks for <a> tags inside <tr class="file"> rows.
+func parseVersionLinksFromHTML(r io.Reader) ([]string, error) {
+	var versions []string
+	tokenizer := html.NewTokenizer(r)
+	inFileRow := false
+	for {
+		tt := tokenizer.Next()
+		if tt == html.ErrorToken {
+			if tokenizer.Err() == io.EOF {
+				break
+			}
+			return nil, tokenizer.Err()
+		}
+		if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
+			tn, hasAttr := tokenizer.TagName()
+			tag := string(tn)
+			if tag == "tr" && hasAttr {
+				inFileRow = hasClass(tokenizer, "file")
+			}
+			if tag == "a" && inFileRow && hasAttr {
+				if href := getAttr(tokenizer, "href"); href != "" {
+					ver := strings.TrimSpace(href)
+					ver = strings.TrimRight(ver, "/")
+					if ver != "latest" {
+						versions = append(versions, ver)
+					}
+				}
+			}
+		}
+		if tt == html.EndTagToken {
+			tn, _ := tokenizer.TagName()
+			if string(tn) == "tr" {
+				inFileRow = false
+			}
+		}
+	}
+	return versions, nil
+}
+
+func hasClass(z *html.Tokenizer, class string) bool {
+	for {
+		key, val, more := z.TagAttr()
+		if string(key) == "class" {
+			for _, tok := range strings.Fields(string(val)) {
+				if tok == class {
+					return true
+				}
+			}
+		}
+		if !more {
+			return false
+		}
+	}
+}
+
+func getAttr(z *html.Tokenizer, name string) string {
+	for {
+		key, val, more := z.TagAttr()
+		if string(key) == name {
+			return string(val)
+		}
+		if !more {
+			return ""
+		}
+	}
 }
 
 func parseVersionURIsToVersionStreams(uriList []string) []string {
