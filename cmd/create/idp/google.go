@@ -19,8 +19,10 @@ package idp
 import (
 	"errors"
 	"fmt"
+	"strings"
 
-	"github.com/dchest/validator"
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -43,7 +45,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 		instructionsURL := "https://console.developers.google.com/projectcreate"
 		oauthURL, err := ocm.BuildOAuthURL(cluster, idpType)
 		if err != nil {
-			return idpBuilder, fmt.Errorf("Error building OAuth URL: %v", err)
+			return idpBuilder, fmt.Errorf("error building OAuth URL: %v", err)
 		}
 		err = interactive.PrintHelp(interactive.Help{
 			Message: "To use Google as an identity provider, you must first register the application:",
@@ -66,7 +68,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 			Required: true,
 		})
 		if err != nil {
-			return idpBuilder, errors.New("Expected a Google application Client ID")
+			return idpBuilder, errors.New("expected a Google application Client ID")
 		}
 
 		if clientSecret == "" {
@@ -76,7 +78,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 				Required: true,
 			})
 			if err != nil {
-				return idpBuilder, errors.New("Expected a Google application Client Secret")
+				return idpBuilder, errors.New("expected a Google application Client Secret")
 			}
 		}
 	}
@@ -109,7 +111,7 @@ func buildGoogleIdp(cmd *cobra.Command,
 			},
 		})
 		if err != nil {
-			return idpBuilder, errors.New("Expected a valid Hosted Domain")
+			return idpBuilder, errors.New("expected a valid Hosted Domain")
 		}
 	}
 
@@ -133,10 +135,10 @@ func buildGoogleIdp(cmd *cobra.Command,
 }
 
 func validateGoogleHostedDomain(val interface{}) error {
-	hostedDomain := fmt.Sprintf("%v", val)
-	isValidHostedDomain := validator.IsValidDomain(hostedDomain)
+	hostedDomain := strings.ToLower(fmt.Sprintf("%v", val))
+	isValidHostedDomain := len(validation.IsDNS1123Subdomain(hostedDomain)) == 0
 	if !isValidHostedDomain {
-		return errors.New("Hosted Domain is not valid")
+		return errors.New("hosted Domain is not valid")
 	}
 	return nil
 }

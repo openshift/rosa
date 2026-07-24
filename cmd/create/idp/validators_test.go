@@ -1,6 +1,8 @@
 package idp
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -41,6 +43,47 @@ var _ = Describe("IDP Validators", func() {
 		It("accepts a valid domain", func() {
 			err := validateGoogleHostedDomain("example.com")
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts an uppercase domain via normalization", func() {
+			err := validateGoogleHostedDomain("Example.COM")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts a max-length domain (253 chars)", func() {
+			label := "a" + strings.Repeat("b", 61) + "c"
+			domain := label + "." + label + "." + label + "." + label[:61]
+			Expect(len(domain)).To(Equal(253))
+			err := validateGoogleHostedDomain(domain)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects a domain exceeding 253 chars", func() {
+			label := strings.Repeat("a", 63)
+			domain := label + "." + label + "." + label + "." + label + ".a"
+			Expect(len(domain)).To(BeNumerically(">", 253))
+			err := validateGoogleHostedDomain(domain)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("rejects a domain with a leading hyphen", func() {
+			err := validateGoogleHostedDomain("-example.com")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("rejects a domain with a trailing hyphen", func() {
+			err := validateGoogleHostedDomain("example-.com")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("rejects a domain with underscores", func() {
+			err := validateGoogleHostedDomain("ex_ample.com")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("rejects a domain with a trailing dot", func() {
+			err := validateGoogleHostedDomain("example.com.")
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("rejects an invalid domain", func() {
