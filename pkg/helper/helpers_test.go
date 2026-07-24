@@ -165,5 +165,32 @@ var _ = Describe("Helper", func() {
 				Expect(filteredSubnets).To(Equal([]string{"test1", "test2"}))
 			})
 		})
+
+		var _ = Context("ShellQuote()", func() {
+			It("returns quoted empty string for empty input", func() {
+				Expect(ShellQuote("")).To(Equal("''"))
+			})
+
+			It("returns safe strings unquoted", func() {
+				Expect(ShellQuote("simple")).To(Equal("simple"))
+				Expect(ShellQuote("path/to/file.txt")).To(Equal("path/to/file.txt"))
+				Expect(ShellQuote("key=value,other")).To(Equal("key=value,other"))
+			})
+
+			It("quotes strings with shell metacharacters", func() {
+				Expect(ShellQuote("hello world")).To(Equal("'hello world'"))
+				Expect(ShellQuote("a;b")).To(Equal("'a;b'"))
+				Expect(ShellQuote("$(cmd)")).To(Equal("'$(cmd)'"))
+			})
+
+			It("quotes strings with whitespace", func() {
+				Expect(ShellQuote("has\ttab")).To(Equal("'has\ttab'"))
+				Expect(ShellQuote("has\nnewline")).To(Equal("'has\nnewline'"))
+			})
+
+			It("escapes embedded single quotes", func() {
+				Expect(ShellQuote("it's")).To(Equal("'it'\"'\"'s'"))
+			})
+		})
 	})
 })

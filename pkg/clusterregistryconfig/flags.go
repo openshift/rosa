@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alessio/shellescape"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -102,7 +101,7 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 
 	if !isHostedCP {
 		if IsClusterRegistryConfigSetViaCLI(cmd) {
-			return nil, fmt.Errorf("Setting the registry config is only supported for hosted clusters")
+			return nil, fmt.Errorf("setting the registry config is only supported for hosted clusters")
 		}
 		return nil, nil
 	}
@@ -155,7 +154,7 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 			Default:  enableRegistriesConfig,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Expected a valid registries config value: %s", err)
+			return nil, fmt.Errorf("expected a valid registries config value: %s", err)
 		}
 		enableRegistriesConfig = updateRegistriesConfigValue
 	}
@@ -172,7 +171,7 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 				Default:  strings.Join(defaultAllowedRegistries, ","),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("Expected a comma-separated list of allowed registries: %s", err)
+				return nil, fmt.Errorf("expected a comma-separated list of allowed registries: %s", err)
 			}
 			allowedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(allowedRegistriesInputs, ","))
 
@@ -196,7 +195,7 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 				Default:  strings.Join(defaultBlockedRegistries, ","),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("Expected a comma-separated list of blocked registries: %s", err)
+				return nil, fmt.Errorf("expected a comma-separated list of blocked registries: %s", err)
 			}
 			result.blockedRegistries = helper.HandleEmptyStringOnSlice(strings.Split(blockedRegistriesInputs, ","))
 			isBlockedRegistryNotSet = result.blockedRegistries == nil || strings.Join(result.blockedRegistries, ",") == ""
@@ -211,7 +210,7 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 			Default:  strings.Join(defaultInsecureRegistries, ","),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Expected a comma-separated list of insecure registries: %s", err)
+			return nil, fmt.Errorf("expected a comma-separated list of insecure registries: %s", err)
 		}
 		result.insecureRegistries = helper.HandleEmptyStringOnSlice(strings.Split(insecureRegistriesInputs, ","))
 
@@ -224,7 +223,7 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Expected a comma-separated list of allowed registries for import: %s", err)
+			return nil, fmt.Errorf("expected a comma-separated list of allowed registries for import: %s", err)
 		}
 
 		result.additionalTrustedCa, err = interactive.GetString(interactive.Input{
@@ -233,15 +232,15 @@ func GetClusterRegistryConfigOptions(cmd *pflag.FlagSet,
 			Default:  args.additionalTrustedCa,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Expected a valid certificate: %s", err)
+			return nil, fmt.Errorf("expected a valid certificate: %s", err)
 		}
 	}
 	if err := ocm.ValidateAllowedRegistriesForImport(result.allowedRegistriesForImport); err != nil {
-		return nil, fmt.Errorf("Expected valid allowed registries for import values: %v", err)
+		return nil, fmt.Errorf("expected valid allowed registries for import values: %v", err)
 	}
 
 	if !isBlockedRegistryNotSet && !isAllowedRegistryNotSet {
-		return nil, fmt.Errorf("Allowed registries and blocked registries are mutually exclusive fields")
+		return nil, fmt.Errorf("allowed registries and blocked registries are mutually exclusive fields")
 	}
 
 	return result, nil
@@ -273,37 +272,37 @@ func BuildRegistryConfigOptions(spec ocm.Spec) string {
 	if len(spec.AllowedRegistries) > 0 {
 		command += fmt.Sprintf(" --%s %s",
 			allowedRegistriesFlag,
-			shellescape.Quote(strings.Join(spec.AllowedRegistries, ",")))
+			helper.ShellQuote(strings.Join(spec.AllowedRegistries, ",")))
 	}
 
 	if len(spec.BlockedRegistries) > 0 {
 		command += fmt.Sprintf(" --%s %s",
 			blockedRegistriesFlag,
-			shellescape.Quote(strings.Join(spec.BlockedRegistries, ",")))
+			helper.ShellQuote(strings.Join(spec.BlockedRegistries, ",")))
 	}
 
 	if len(spec.InsecureRegistries) > 0 {
 		command += fmt.Sprintf(" --%s %s",
 			insecureRegistriesFlag,
-			shellescape.Quote(strings.Join(spec.InsecureRegistries, ",")))
+			helper.ShellQuote(strings.Join(spec.InsecureRegistries, ",")))
 	}
 
 	if spec.AdditionalTrustedCaFile != "" {
 		command += fmt.Sprintf(" --%s %s",
 			additionalTrustedCaPathFlag,
-			shellescape.Quote(spec.AdditionalTrustedCaFile))
+			helper.ShellQuote(spec.AdditionalTrustedCaFile))
 	}
 
 	if spec.PlatformAllowlist != "" {
 		command += fmt.Sprintf(" --%s %s",
 			platformAllowlistFlag,
-			shellescape.Quote(spec.PlatformAllowlist))
+			helper.ShellQuote(spec.PlatformAllowlist))
 	}
 
 	if spec.AllowedRegistriesForImport != "" {
 		command += fmt.Sprintf(" --%s %s",
 			allowedRegistriesForImportFlag,
-			shellescape.Quote(spec.AllowedRegistriesForImport))
+			helper.ShellQuote(spec.AllowedRegistriesForImport))
 	}
 
 	return command
@@ -320,7 +319,7 @@ func BuildAdditionalTrustedCAFromInputFile(specPath string) (map[string]string, 
 		form[k], ok = v.(string)
 		if !ok {
 			return nil, fmt.Errorf("expected a valid value for 'additional_trusted_ca'. " +
-				"Should be in a <registry>:<boolean> format.")
+				"Should be in a <registry>:<boolean> format")
 		}
 	}
 

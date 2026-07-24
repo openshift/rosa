@@ -48,7 +48,7 @@ var _ = Describe("Cluster Registry Config tests", func() {
 			_, err := BuildAdditionalTrustedCAFromInputFile(caPath)
 			Expect(
 				err,
-			).To(MatchError("expected a valid value for 'additional_trusted_ca'. Should be in a <registry>:<boolean> format."))
+			).To(MatchError("expected a valid value for 'additional_trusted_ca'. Should be in a <registry>:<boolean> format"))
 
 		})
 	})
@@ -106,7 +106,7 @@ var _ = Describe("Cluster Registry Config tests", func() {
 		It("KO: throw error for classic clusters when flag set via cli", func() {
 			flags.Set(allowedRegistriesFlag, "test.com")
 			_, err := GetClusterRegistryConfigOptions(flags, args, false, nil)
-			Expect(err).To(MatchError("Setting the registry config is only supported for hosted clusters"))
+			Expect(err).To(MatchError("setting the registry config is only supported for hosted clusters"))
 		})
 		It("OK: returns the correct output", func() {
 			flags.Set(allowedRegistriesFlag, "test.com")

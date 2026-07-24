@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -267,4 +268,17 @@ func FilterEmptyStrings(strings []string) []string {
 		}
 	}
 	return filteredResult
+}
+
+var shellUnsafe = regexp.MustCompile(`[^\w@%+=:,./-]`)
+
+// ShellQuote returns s escaped as a single POSIX shell argument.
+func ShellQuote(s string) string {
+	if len(s) == 0 {
+		return "''"
+	}
+	if shellUnsafe.MatchString(s) {
+		return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	}
+	return s
 }
