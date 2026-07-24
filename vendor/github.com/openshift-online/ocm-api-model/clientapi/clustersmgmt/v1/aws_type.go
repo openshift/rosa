@@ -44,6 +44,7 @@ type AWS struct {
 	secretAccessKey                        string
 	subnetIDs                              []string
 	tags                                   map[string]string
+	terminationHandlerQueueUrl             string
 	vpcEndpointRoleArn                     string
 	zeroEgress                             *ZeroEgress
 	privateLink                            bool
@@ -545,12 +546,39 @@ func (o *AWS) GetTags() (value map[string]string, ok bool) {
 	return
 }
 
+// TerminationHandlerQueueUrl returns the value of the 'termination_handler_queue_url' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// URL of the SQS queue used for graceful Spot instance interruption handling.
+// When set, HyperShift deploys the AWS Node Termination Handler in the hosted
+// control plane. Queue must be in the same region as the cluster.
+func (o *AWS) TerminationHandlerQueueUrl() string {
+	if o != nil && len(o.fieldSet_) > 21 && o.fieldSet_[21] {
+		return o.terminationHandlerQueueUrl
+	}
+	return ""
+}
+
+// GetTerminationHandlerQueueUrl returns the value of the 'termination_handler_queue_url' attribute and
+// a flag indicating if the attribute has a value.
+//
+// URL of the SQS queue used for graceful Spot instance interruption handling.
+// When set, HyperShift deploys the AWS Node Termination Handler in the hosted
+// control plane. Queue must be in the same region as the cluster.
+func (o *AWS) GetTerminationHandlerQueueUrl() (value string, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 21 && o.fieldSet_[21]
+	if ok {
+		value = o.terminationHandlerQueueUrl
+	}
+	return
+}
+
 // VpcEndpointRoleArn returns the value of the 'vpc_endpoint_role_arn' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Role ARN for VPC Endpoint Service cross account role.
 func (o *AWS) VpcEndpointRoleArn() string {
-	if o != nil && len(o.fieldSet_) > 21 && o.fieldSet_[21] {
+	if o != nil && len(o.fieldSet_) > 22 && o.fieldSet_[22] {
 		return o.vpcEndpointRoleArn
 	}
 	return ""
@@ -561,7 +589,7 @@ func (o *AWS) VpcEndpointRoleArn() string {
 //
 // Role ARN for VPC Endpoint Service cross account role.
 func (o *AWS) GetVpcEndpointRoleArn() (value string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 21 && o.fieldSet_[21]
+	ok = o != nil && len(o.fieldSet_) > 22 && o.fieldSet_[22]
 	if ok {
 		value = o.vpcEndpointRoleArn
 	}
@@ -573,7 +601,7 @@ func (o *AWS) GetVpcEndpointRoleArn() (value string, ok bool) {
 //
 // Zero egress configuration.
 func (o *AWS) ZeroEgress() *ZeroEgress {
-	if o != nil && len(o.fieldSet_) > 22 && o.fieldSet_[22] {
+	if o != nil && len(o.fieldSet_) > 23 && o.fieldSet_[23] {
 		return o.zeroEgress
 	}
 	return nil
@@ -584,7 +612,7 @@ func (o *AWS) ZeroEgress() *ZeroEgress {
 //
 // Zero egress configuration.
 func (o *AWS) GetZeroEgress() (value *ZeroEgress, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 22 && o.fieldSet_[22]
+	ok = o != nil && len(o.fieldSet_) > 23 && o.fieldSet_[23]
 	if ok {
 		value = o.zeroEgress
 	}
