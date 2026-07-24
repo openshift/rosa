@@ -22,8 +22,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"golang.org/x/term"
+
 	semver "github.com/hashicorp/go-version"
-	consolesize "github.com/nathan-fiscaletti/consolesize-go"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
@@ -184,7 +185,10 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// Create the writer that will be used to print the tabulated results:
-	cols, _ := consolesize.GetConsoleSize()
+	cols, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || cols <= 0 {
+		cols = 80
+	}
 	descriptionSize := float64(cols) * 0.30
 	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 	fmt.Fprintln(writer, "Gate Description\tSTS\tOCP Version\tDocumentation URL\t")
