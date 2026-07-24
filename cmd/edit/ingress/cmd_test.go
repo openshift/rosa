@@ -17,10 +17,13 @@ limitations under the License.
 package ingress
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 var _ = Describe("Parse component routes", func() {
@@ -95,15 +98,61 @@ var _ = Describe("Parse component routes", func() {
 				err.Error(),
 			).To(Equal("component route \"console\" was supplied more than once"))
 		})
-		It("When only one route is provided it should fail with wrong count", func() {
-			_, err := parseComponentRoutesForAllowed(
+		It("When only one route is provided it should succeed", func() {
+			result, err := parseComponentRoutesForAllowed(
 				"console: hostname=console-host;tlsSecretRef=console-secret",
 				expectedHcpComponentRoutes,
 			)
-			Expect(err).ToNot(BeNil())
-			Expect(
-				err.Error(),
-			).To(Equal("the expected amount of component routes is 2, but 1 have been supplied"))
+			Expect(err).To(BeNil())
+			Expect(result).To(HaveLen(1))
+			Expect(result).To(HaveKey("console"))
+		})
+		It("When a partial update is provided it should only include the specified route in the serialized payload", func() {
+			result, err := parseComponentRoutesForAllowed(
+				"console: hostname=console-host;tlsSecretRef=console-secret",
+				expectedHcpComponentRoutes,
+			)
+			Expect(err).To(BeNil())
+			ingress, err := cmv1.NewIngress().ComponentRoutes(result).Build()
+			Expect(err).To(BeNil())
+
+			var buf bytes.Buffer
+			err = cmv1.MarshalIngress(ingress, &buf)
+			Expect(err).To(BeNil())
+			var body map[string]interface{}
+			err = json.Unmarshal(buf.Bytes(), &body)
+			Expect(err).To(BeNil())
+
+			cr := body["component_routes"].(map[string]interface{})
+			Expect(cr).To(HaveLen(1))
+			Expect(cr).To(HaveKey("console"))
+			Expect(cr).ToNot(HaveKey("downloads"))
+			console := cr["console"].(map[string]interface{})
+			Expect(console["hostname"]).To(Equal("console-host"))
+			Expect(console["tls_secret_ref"]).To(Equal("console-secret"))
+		})
+		It("When empty values are provided it should serialize as a clear", func() {
+			result, err := parseComponentRoutesForAllowed(
+				"downloads: hostname=;tlsSecretRef=",
+				expectedHcpComponentRoutes,
+			)
+			Expect(err).To(BeNil())
+			ingress, err := cmv1.NewIngress().ComponentRoutes(result).Build()
+			Expect(err).To(BeNil())
+
+			var buf bytes.Buffer
+			err = cmv1.MarshalIngress(ingress, &buf)
+			Expect(err).To(BeNil())
+			var body map[string]interface{}
+			err = json.Unmarshal(buf.Bytes(), &body)
+			Expect(err).To(BeNil())
+
+			cr := body["component_routes"].(map[string]interface{})
+			Expect(cr).To(HaveLen(1))
+			Expect(cr).To(HaveKey("downloads"))
+			downloads := cr["downloads"].(map[string]interface{})
+			Expect(downloads["hostname"]).To(Equal(""))
+			Expect(downloads["tls_secret_ref"]).To(Equal(""))
 		})
 	})
 	Context("Fails to parse input string for component routes", func() {
@@ -117,15 +166,15 @@ var _ = Describe("Parse component routes", func() {
 				err.Error(),
 			).To(Equal("'unknown' is not a valid component name. Expected include [oauth, console, downloads]"))
 		})
-		It("fails due to wrong amount of component routes", func() {
-			_, err := parseComponentRoutes(
+		It("When partial classic routes are provided it should succeed", func() {
+			result, err := parseComponentRoutes(
 				//nolint:lll
 				"oauth: hostname=oauth-host;tlsSecretRef=oauth-secret,downloads: hostname=downloads-host;tlsSecretRef=downloads-secret",
 			)
-			Expect(err).ToNot(BeNil())
-			Expect(
-				err.Error(),
-			).To(Equal("the expected amount of component routes is 3, but 2 have been supplied"))
+			Expect(err).To(BeNil())
+			Expect(result).To(HaveLen(2))
+			Expect(result).To(HaveKey("oauth"))
+			Expect(result).To(HaveKey("downloads"))
 		})
 		It("fails if it can split ':' in more than one key separation", func() {
 			_, err := parseComponentRoutes(
