@@ -1237,6 +1237,22 @@ var _ = Describe("Client", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("Falls through to DeleteSecret when DescribeSecret fails with a non-not-found error", func() {
+			mockSecretsManagerAPI.EXPECT().DescribeSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("access denied"))
+
+			mockSecretsManagerAPI.EXPECT().DeleteSecret(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *secretsmanager.DeleteSecretInput,
+					_ ...func(*secretsmanager.Options)) (*secretsmanager.DeleteSecretOutput, error) {
+					Expect(*input.SecretId).To(Equal(secretArn))
+					Expect(*input.ForceDeleteWithoutRecovery).To(BeTrue())
+					return &secretsmanager.DeleteSecretOutput{}, nil
+				})
+
+			err := client.DeleteSecretInSecretsManager(secretArn)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("Returns error when DeleteSecret fails", func() {
 			mockSecretsManagerAPI.EXPECT().DescribeSecret(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&secretsmanager.DescribeSecretOutput{

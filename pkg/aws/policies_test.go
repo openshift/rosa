@@ -2116,8 +2116,12 @@ var _ = Describe("EnsurePolicy", func() {
 						{VersionId: aws.String("v2"), IsDefaultVersion: false},
 					},
 				}, nil)
-			mockIamAPI.EXPECT().DeletePolicyVersion(gomock.Any(), gomock.Any()).Return(
-				&iam.DeletePolicyVersionOutput{}, nil)
+			mockIamAPI.EXPECT().DeletePolicyVersion(
+				gomock.Any(),
+				gomock.Cond(func(input *iam.DeletePolicyVersionInput) bool {
+					return aws.ToString(input.VersionId) == "v2"
+				}),
+			).Return(&iam.DeletePolicyVersionOutput{}, nil)
 			mockIamAPI.EXPECT().CreatePolicyVersion(gomock.Any(), gomock.Any()).Return(
 				&iam.CreatePolicyVersionOutput{}, nil)
 			mockIamAPI.EXPECT().TagPolicy(gomock.Any(), gomock.Any()).Return(
