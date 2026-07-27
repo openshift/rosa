@@ -1136,6 +1136,25 @@ var _ = Describe("Client", func() {
 			Expect(err.Error()).To(ContainSubstring("list objects error"))
 		})
 
+		It("Returns error when DeleteObject fails and does not delete the bucket", func() {
+			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.HeadBucketOutput{}, nil)
+
+			mockS3API.EXPECT().ListObjects(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&s3.ListObjectsOutput{
+					Contents: []s3types.Object{
+						{Key: awsSdk.String("file1.json")},
+					},
+				}, nil)
+
+			mockS3API.EXPECT().DeleteObject(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("delete object error"))
+
+			err := client.DeleteS3Bucket(bucketName)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("delete object error"))
+		})
+
 		It("Returns error when DeleteBucket fails", func() {
 			mockS3API.EXPECT().HeadBucket(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&s3.HeadBucketOutput{}, nil)

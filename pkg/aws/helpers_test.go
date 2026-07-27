@@ -11,6 +11,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	"github.com/openshift/rosa/pkg/fedramp"
 )
 
 var _ = Describe("UserTagValidator", func() {
@@ -1048,34 +1050,28 @@ var _ = Describe("resolveSTSRole", func() {
 })
 
 var _ = Describe("GetJumpAccount", func() {
-	When("env is production", func() {
-		It("Should return the production jump account", func() {
-			Expect(GetJumpAccount("production")).To(Equal("710019948333"))
-		})
+	BeforeEach(func() {
+		fedramp.Disable()
 	})
 
-	When("env is staging", func() {
-		It("Should return the staging jump account", func() {
-			Expect(GetJumpAccount("staging")).To(Equal("644306948063"))
-		})
+	AfterEach(func() {
+		fedramp.Disable()
 	})
 
-	When("env is integration", func() {
-		It("Should return the integration jump account", func() {
-			Expect(GetJumpAccount("integration")).To(Equal("896164604406"))
-		})
+	It("returns the standard jump account when FedRAMP is disabled", func() {
+		Expect(GetJumpAccount("production")).To(Equal(JumpAccounts["production"]))
+		Expect(GetJumpAccount("local")).To(Equal(JumpAccounts["local"]))
 	})
 
-	When("env is local", func() {
-		It("Should return the local jump account", func() {
-			Expect(GetJumpAccount("local")).To(Equal("765374464689"))
-		})
+	It("returns the FedRAMP jump account when FedRAMP is enabled", func() {
+		fedramp.Enable()
+
+		Expect(GetJumpAccount("production")).To(Equal(fedramp.JumpAccounts["production"]))
+		Expect(GetJumpAccount("integration")).To(Equal(fedramp.JumpAccounts["integration"]))
 	})
 
-	When("env is unknown", func() {
-		It("Should return empty string", func() {
-			Expect(GetJumpAccount("unknown-env")).To(BeEmpty())
-		})
+	It("returns empty string for an unknown environment", func() {
+		Expect(GetJumpAccount("unknown-env")).To(BeEmpty())
 	})
 })
 
