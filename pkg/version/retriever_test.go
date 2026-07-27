@@ -17,14 +17,17 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 )
 
-var expectedVersions = []string{"1.0.0", "2.0.1", "3.0.0"}
+var expectedVersions = []string{"1.0.0", "2.0.1", "3.0.0", "4.0.0"}
 
 var htmlContent = `
 			<html>
 				<body>
-					<div class="file"><a href="1.0.0/">1.0.0/</a></div>
-					<div class="file"><a href="2.0.1/">2.0.0/</a></div>
-					<div class="file"><a href="3.0.0/">3.0.0/</a></div>
+					<table>
+					<tr class="file"><td></td><td><a href="1.0.0/">1.0.0/</a></td></tr>
+					<tr class="file"><td></td><td><a href="2.0.1/">2.0.0/</a></td></tr>
+					<tr class="file"><td></td><td><a href="3.0.0/">3.0.0/</a></td></tr>
+					<tr class="file odd"><td></td><td><a href="4.0.0/">4.0.0</a></td></tr>
+					</table>
 				</body>
 			</html>`
 
@@ -61,7 +64,7 @@ var _ = Describe("RetrieveLatestVersionFromMirror", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(latestVersion).ToNot(BeNil())
-			Expect(latestVersion.String()).To(Equal("3.0.0"))
+			Expect(latestVersion.String()).To(Equal("4.0.0"))
 		})
 	})
 
@@ -82,7 +85,7 @@ var _ = Describe("RetrieveLatestVersionFromMirror", func() {
 			// Verify the result
 			Expect(err).To(BeNil())
 			Expect(latestVersion).ToNot(BeNil())
-			Expect(latestVersion.String()).To(Equal("3.0.0"))
+			Expect(latestVersion.String()).To(Equal("4.0.0"))
 
 		})
 	})
