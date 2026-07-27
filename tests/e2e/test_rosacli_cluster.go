@@ -194,7 +194,7 @@ var _ = Describe("Edit cluster",
 				}
 
 				if jsonData.DigBool("hypershift", "enabled") {
-					//todo
+					// todo
 				} else {
 					if jsonData.DigBool("multi_az") {
 						Expect(CD.MultiAZ).To(Equal(jsonData.DigBool("multi_az")))
@@ -499,7 +499,7 @@ var _ = Describe("Edit cluster",
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
 
-				var verifyProxy = func(httpProxy string, httpsProxy string, noProxy string, caFile string) {
+				verifyProxy := func(httpProxy string, httpsProxy string, noProxy string, caFile string) {
 					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -522,8 +522,7 @@ var _ = Describe("Edit cluster",
 				if clusterConfig.Proxy.Enabled {
 					originalHttpProxy,
 						originalHTTPSProxy,
-						originalNoProxy, originalCAFile =
-						clusterConfig.Proxy.Http,
+						originalNoProxy, originalCAFile = clusterConfig.Proxy.Http,
 						clusterConfig.Proxy.Https,
 						clusterConfig.Proxy.NoProxy,
 						clusterConfig.Proxy.TrustBundleFile
@@ -883,8 +882,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			if clusterConfig.Proxy != nil && clusterConfig.Proxy.Enabled {
 				originalHttpProxy,
 					originalHTTPSProxy,
-					originalNoProxy, originalCAFile =
-					clusterConfig.Proxy.Http,
+					originalNoProxy, originalCAFile = clusterConfig.Proxy.Http,
 					clusterConfig.Proxy.Https,
 					clusterConfig.Proxy.NoProxy,
 					clusterConfig.Proxy.TrustBundleFile
@@ -974,7 +972,6 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			Expect(err).To(HaveOccurred())
 			Expect(output.String()).Should(
 				ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
-
 		})
 
 	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2,
@@ -983,29 +980,22 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 			if !hostedCluster {
-				output, err := clusterService.EditCluster(clusterID,
+				_, err = clusterService.EditCluster(clusterID,
 					"--registry-config-blocked-registries", "test.blocked.com")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Setting the registry config is only supported for hosted clusters"))
+				helper.ExpectErrorWithMessage(err, "Setting the registry config is only supported for hosted clusters")
 				return
 			}
 
 			By("patch hcp with --registry-config-blocked-registries and --registry-config-allowed-registries at same time")
-			output, err := clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--registry-config-blocked-registries", "test.blocked.com",
 				"--registry-config-allowed-registries", "test.com")
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Allowed registries and blocked registries are mutually exclusive fields"))
+			helper.ExpectErrorWithMessage(err, "allowed registries and blocked registries are mutually exclusive fields")
 
 			By("patch hcp with invalid value for --registry-config-allowed-registries-for-import flag")
-			output, err = clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--registry-config-allowed-registries-for-import", "test.com:stringType")
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Expected valid allowed registries for import values"))
-
+			helper.ExpectErrorWithMessage(err, "Expected valid allowed registries for import values")
 		})
 	It("can validate autonode edit - [id:84982]", labels.Medium, labels.Runtime.Day2,
 		labels.FedRAMP, func() {
@@ -1045,7 +1035,8 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			var subCommandArgs []string
 			if jsonData.DigString("auto_node", "mode") == "enabled" {
 				subCommandArgs = []string{
-					"--autonode-iam-role-arn", "invalide-arn"}
+					"--autonode-iam-role-arn", "invalide-arn",
+				}
 				By("Validate invalide autonde-iam-role-arn when autonode is enabled")
 				output, err = clusterService.EditCluster(clusterID,
 					subCommandArgs...)
@@ -1072,6 +1063,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			}
 		})
 })
+
 var _ = Describe("Additional security groups validation",
 	labels.Feature.Cluster,
 	func() {
@@ -1151,7 +1143,7 @@ var _ = Describe("Additional security groups validation",
 				subnetMap, err := resourcesHandler.PrepareSubnets([]string{}, false)
 				Expect(err).ToNot(HaveOccurred())
 
-				//Check all subnets are created successfully and are in available state. If not, wait for them to be available
+				// Check all subnets are created successfully and are in available state. If not, wait for them to be available
 				subnetIDs := append(subnetMap["private"], subnetMap["public"]...)
 
 				awsClient, err := aws_client.CreateAWSClient("", resourcesHandler.GetVPC().Region)
@@ -1555,14 +1547,12 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(out.String()).
 					To(ContainSubstring(
 						"invalid tag format for tag '[name gender age]'. Expected tag format: 'key value'"))
-
 			})
 
 		It("Create cluster with invalid volume size [id:66372]",
 			labels.Medium,
 			labels.Runtime.Day1Negative,
 			func() {
-
 				minSize := constants.MinClassicDiskSize
 				maxSize := constants.MaxDiskSize
 				clusterName := helper.GenerateRandomName("ocp-66372", 2)
@@ -2064,7 +2054,8 @@ var _ = Describe("Create cluster with invalid options will",
 						"--subnet-ids", strings.Join(
 							[]string{
 								subnetMap["private"].ID,
-								subnetMap2["private"].ID},
+								subnetMap2["private"].ID,
+							},
 							","),
 						"--region", testingTegion,
 					)
@@ -2203,7 +2194,6 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring(`invalid argument "invalid" for "--host-prefix" flag`))
-
 			})
 
 		It("to validate the invalid proxy when create cluster - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
@@ -2335,9 +2325,7 @@ var _ = Describe("Classic cluster deletion validation",
 	func() {
 		defer GinkgoRecover()
 
-		var (
-			rosaClient *rosacli.Client
-		)
+		var rosaClient *rosacli.Client
 
 		BeforeEach(func() {
 			// Init the client
@@ -2379,7 +2367,6 @@ var _ = Describe("Classic cluster creation negative testing",
 			ocmResourceService       rosacli.OCMResourceService
 		)
 		BeforeEach(func() {
-
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
@@ -2536,7 +2523,6 @@ var _ = Describe("Classic cluster creation negative testing",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
-
 			})
 		It("to validate to create sts cluster with dulicated role arns- [id:74620]",
 			labels.Low, labels.Runtime.Day1Negative,
@@ -2593,32 +2579,45 @@ var _ = Describe("Classic cluster creation negative testing",
 						"time: invalid duration \"e\"": {"--autoscaler-scale-down-delay-after-add", "e"},
 
 					"Error validating delay-after-delete: " +
-						"time: missing unit in duration \"3.3\"": {"--autoscaler-scale-down-delay-after-delete",
-						"3.3"},
+						"time: missing unit in duration \"3.3\"": {
+						"--autoscaler-scale-down-delay-after-delete",
+						"3.3",
+					},
 					"Error validating min-cores: Number " +
-						"must be greater or equal to zero": {"--autoscaler-min-cores", "-5",
-						"--autoscaler-max-cores", "0"},
+						"must be greater or equal to zero": {
+						"--autoscaler-min-cores", "-5",
+						"--autoscaler-max-cores", "0",
+					},
 
 					"Error validating max-cores: Number" +
-						" must be greater or equal to zero": {"--autoscaler-min-cores", "0",
-						"--autoscaler-max-cores", "-5"},
+						" must be greater or equal to zero": {
+						"--autoscaler-min-cores", "0",
+						"--autoscaler-max-cores", "-5",
+					},
 
 					"Error validating cores range: max" +
-						" value must be greater or equal than min value 100": {"--autoscaler-min-cores", "100",
-						"--autoscaler-max-cores", "5"},
+						" value must be greater or equal than min value 100": {
+						"--autoscaler-min-cores", "100",
+						"--autoscaler-max-cores", "5",
+					},
 
 					"Error validating max-cores: Should" +
-						" provide an integer number between 0 to 2147483647": {"--autoscaler-min-cores", "5",
-						"--autoscaler-max-cores", "1152000000000"},
+						" provide an integer number between 0 to 2147483647": {
+						"--autoscaler-min-cores", "5",
+						"--autoscaler-max-cores", "1152000000000",
+					},
 
 					"Error validating memory range: max value" +
-						" must be greater or equal than min value 1000": {"--autoscaler-min-memory", "1000",
-						"--autoscaler-max-memory", "100"},
+						" must be greater or equal than min value 1000": {
+						"--autoscaler-min-memory", "1000",
+						"--autoscaler-max-memory", "100",
+					},
 
 					"Error validating GPU range: max value " +
 						"must be greater or equal than min value 15": {
 						"--autoscaler-gpu-limit", "nvidia.com/gpu,0,10",
-						"--autoscaler-gpu-limit", "amd.com/gpu,15,5"},
+						"--autoscaler-gpu-limit", "amd.com/gpu,15,5",
+					},
 				}
 
 				for errMsg, flag := range errAndFlagMap {
@@ -3075,7 +3074,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					"--support-role-arn": ar.SupportRole,
 					"--worker-iam-role":  ar.WorkerRole,
 				}
-				var accountRoles = make(map[string]string)
+				accountRoles := make(map[string]string)
 				arnPrefix := "arn:aws:iam::aws:policy/service-role"
 				for _, r := range arl.AccountRoles(accountRolePrefix) {
 					switch r.RoleType {
@@ -3162,6 +3161,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					"ERR: Allowed registries and blocked registries are mutually exclusive fields"))
 			})
 	})
+
 var _ = Describe("HCP cluster creation subnets validation",
 	labels.Feature.Cluster,
 	func() {
@@ -3417,7 +3417,6 @@ var _ = Describe("Create cluster with availability zones testing",
 		AfterEach(func() {
 			By("Clean remaining resources")
 			rosaClient.CleanResources(clusterID)
-
 		})
 
 		It("User can set availability zones - [id:52691]",
@@ -3458,6 +3457,7 @@ var _ = Describe("Create cluster with availability zones testing",
 				Expect(helper.ReplaceCommaSpaceWithComma(mp.AvalaiblityZones)).To(Equal(availabilityZones))
 			})
 	})
+
 var _ = Describe("Create sts and hcp cluster with the IAM roles with path setting", labels.Feature.Cluster, func() {
 	defer GinkgoRecover()
 	var (
@@ -3484,7 +3484,6 @@ var _ = Describe("Create sts and hcp cluster with the IAM roles with path settin
 	AfterEach(func() {
 		By("Clean remaining resources")
 		rosaClient.CleanResources(clusterID)
-
 	})
 
 	It("to check the IAM roles can be used to create clsuters - [id:53570]",
@@ -3597,7 +3596,6 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 					"-y")
 				Expect(err).To(BeNil())
 			}
-
 		})
 
 		It("to validate to create cluster with existing operator roles prefix - [id:45742]",
@@ -3826,6 +3824,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 				}
 			})
 	})
+
 var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", labels.Feature.Cluster, func() {
 	defer GinkgoRecover()
 	var (
@@ -3883,7 +3882,6 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).To(ContainSubstring("Successfully deleted the OIDC provider"))
 		}
-
 	})
 
 	It("to reuse operator-roles prefix and oidc config - [id:60688]",
@@ -3988,6 +3986,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			}
 		})
 })
+
 var _ = Describe("Sts cluster creation with external id",
 	labels.Feature.Cluster,
 	func() {
@@ -4080,71 +4079,85 @@ var _ = Describe("Sts cluster creation with external id",
 				rosalCommand.AddFlags("--mode", "auto")
 
 				By("Update installer role")
-				ExternalId := "223B9588-36A5-ECA4-BE8D-7C673B77CEC1"
+				ExternalID := "223B9588-36A5-ECA4-BE8D-7C673B77CEC1"
 				installRoleArn := rosalCommand.GetFlagValue("--role-arn", true)
-				_, roleName, err := helper.ParseRoleARN(installRoleArn)
+				_, installerRoleName, err := helper.ParseRoleARN(installRoleArn)
 				Expect(err).To(BeNil())
+				supportRoleArn := rosalCommand.GetFlagValue("--support-role-arn", true)
+				_, supportRoleName, err := helper.ParseRoleARN(supportRoleArn)
+				Expect(err).To(BeNil())
+
+				accountRoleNames := []string{
+					installerRoleName,
+					supportRoleName,
+				}
 
 				awsClient, err := aws_client.CreateAWSClient("", "")
 				Expect(err).To(BeNil())
-				opRole, err := awsClient.IamClient.GetRole(
-					context.TODO(),
-					&iam.GetRoleInput{
-						RoleName: &roleName,
-					})
-				Expect(err).To(BeNil())
 
-				decodedPolicyDocument, err := url.QueryUnescape(*opRole.Role.AssumeRolePolicyDocument)
-				Expect(err).To(BeNil())
-
-				By("update the trust relationship")
-				var policyDocument map[string]interface{}
-
-				err = json.Unmarshal([]byte(decodedPolicyDocument), &policyDocument)
-				Expect(err).To(BeNil())
-
-				newCondition := map[string]interface{}{
-					"StringEquals": map[string]interface{}{
-						"sts:ExternalId": ExternalId,
-					},
-				}
-
-				statements := policyDocument["Statement"].([]interface{})
-				for _, statement := range statements {
-					stmt := statement.(map[string]interface{})
-					stmt["Condition"] = newCondition
-				}
-				updatedPolicyDocument, err := json.Marshal(policyDocument)
-				Expect(err).To(BeNil())
-
-				_, err = awsClient.IamClient.UpdateAssumeRolePolicy(context.TODO(), &iam.UpdateAssumeRolePolicyInput{
-					RoleName:       aws.String(roleName),
-					PolicyDocument: aws.String(string(updatedPolicyDocument)),
-				})
-				Expect(err).To(BeNil())
-
-				By("Wait for the trust relationship to be updated")
-				err = wait.PollUntilContextTimeout(
-					context.Background(),
-					20*time.Second,
-					300*time.Second,
-					false,
-					func(context.Context) (bool, error) {
-						result, err := awsClient.IamClient.GetRole(context.TODO(), &iam.GetRoleInput{
-							RoleName: aws.String(roleName),
+				for _, roleName := range accountRoleNames {
+					opRole, err := awsClient.IamClient.GetRole(
+						context.TODO(),
+						&iam.GetRoleInput{
+							RoleName: &roleName,
 						})
+					Expect(err).To(BeNil())
 
-						if strings.Contains(*result.Role.AssumeRolePolicyDocument, ExternalId) {
-							return true, nil
-						}
+					decodedPolicyDocument, err := url.QueryUnescape(*opRole.Role.AssumeRolePolicyDocument)
+					Expect(err).To(BeNil())
 
-						return false, err
+					By("update the trust relationship")
+					var policyDocument map[string]any
+
+					err = json.Unmarshal([]byte(decodedPolicyDocument), &policyDocument)
+					Expect(err).To(BeNil())
+
+					newCondition := map[string]any{
+						"StringEquals": map[string]any{
+							"sts:ExternalId": ExternalID,
+						},
+					}
+
+					statements := policyDocument["Statement"].([]any)
+					for _, statement := range statements {
+						stmt := statement.(map[string]any)
+						stmt["Condition"] = newCondition
+					}
+					updatedPolicyDocument, err := json.Marshal(policyDocument)
+					Expect(err).To(BeNil())
+
+					_, err = awsClient.IamClient.UpdateAssumeRolePolicy(context.TODO(), &iam.UpdateAssumeRolePolicyInput{
+						RoleName:       aws.String(roleName),
+						PolicyDocument: aws.String(string(updatedPolicyDocument)),
 					})
-				Expect(err).To(BeNil())
+					Expect(err).To(BeNil())
+
+					By("Wait for the trust relationship to be updated")
+					err = wait.PollUntilContextTimeout(
+						context.Background(),
+						20*time.Second,
+						300*time.Second,
+						false,
+						func(context.Context) (bool, error) {
+							result, err := awsClient.IamClient.GetRole(context.TODO(), &iam.GetRoleInput{
+								RoleName: aws.String(roleName),
+							})
+
+							if err != nil || result == nil {
+								return false, nil
+							}
+							if strings.Contains(*result.Role.AssumeRolePolicyDocument, ExternalID) {
+								return true, nil
+							}
+
+							return false, err
+						})
+					Expect(err).To(BeNil())
+				}
 
 				By("Create cluster with external id not same with the role setting one")
-				notMatchExternalId := "333B9588-36A5-ECA4-BE8D-7C673B77CDCD"
-				rosalCommand.AddFlags("--external-id", notMatchExternalId)
+				notMatchExternalID := "333B9588-36A5-ECA4-BE8D-7C673B77CDCD"
+				rosalCommand.AddFlags("--external-id", notMatchExternalID)
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).ToNot(BeNil())
 				Expect(stdout.String()).To(ContainSubstring(
@@ -4152,7 +4165,7 @@ var _ = Describe("Sts cluster creation with external id",
 
 				By("Create cluster with external id")
 				rosalCommand.ReplaceFlagValue(map[string]string{
-					"--external-id": ExternalId,
+					"--external-id": ExternalID,
 				})
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
@@ -4167,6 +4180,7 @@ var _ = Describe("Sts cluster creation with external id",
 				Expect(err).To(BeNil())
 			})
 	})
+
 var _ = Describe("HCP cluster creation supplemental testing",
 	labels.Feature.Cluster,
 	func() {
@@ -4429,6 +4443,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
 			})
 	})
+
 var _ = Describe("Sts cluster creation supplemental testing",
 	labels.Feature.Cluster,
 	func() {
@@ -4775,6 +4790,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
 			})
 	})
+
 var _ = Describe("Non-STS cluster with local credentials",
 	labels.Feature.Cluster,
 	func() {
