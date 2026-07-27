@@ -31,6 +31,7 @@ type AWSNodePoolBuilder struct {
 	instanceProfile            string
 	instanceType               string
 	rootVolume                 *AWSVolumeBuilder
+	spotMarketOptions          *AwsNodePoolSpotMarketOptionsBuilder
 	subnetOutposts             map[string]string
 	tags                       map[string]string
 }
@@ -38,14 +39,14 @@ type AWSNodePoolBuilder struct {
 // NewAWSNodePool creates a new builder of 'AWS_node_pool' objects.
 func NewAWSNodePool() *AWSNodePoolBuilder {
 	return &AWSNodePoolBuilder{
-		fieldSet_: make([]bool, 12),
+		fieldSet_: make([]bool, 13),
 	}
 }
 
 // Link sets the flag that indicates if this is a link.
 func (b *AWSNodePoolBuilder) Link(value bool) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.fieldSet_[0] = true
 	return b
@@ -54,7 +55,7 @@ func (b *AWSNodePoolBuilder) Link(value bool) *AWSNodePoolBuilder {
 // ID sets the identifier of the object.
 func (b *AWSNodePoolBuilder) ID(value string) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.id = value
 	b.fieldSet_[1] = true
@@ -64,7 +65,7 @@ func (b *AWSNodePoolBuilder) ID(value string) *AWSNodePoolBuilder {
 // HREF sets the link to the object.
 func (b *AWSNodePoolBuilder) HREF(value string) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.href = value
 	b.fieldSet_[2] = true
@@ -88,7 +89,7 @@ func (b *AWSNodePoolBuilder) Empty() bool {
 // AdditionalSecurityGroupIds sets the value of the 'additional_security_group_ids' attribute to the given values.
 func (b *AWSNodePoolBuilder) AdditionalSecurityGroupIds(values ...string) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.additionalSecurityGroupIds = make([]string, len(values))
 	copy(b.additionalSecurityGroupIds, values)
@@ -99,7 +100,7 @@ func (b *AWSNodePoolBuilder) AdditionalSecurityGroupIds(values ...string) *AWSNo
 // AvailabilityZoneTypes sets the value of the 'availability_zone_types' attribute to the given value.
 func (b *AWSNodePoolBuilder) AvailabilityZoneTypes(value map[string]string) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.availabilityZoneTypes = value
 	if value != nil {
@@ -115,7 +116,7 @@ func (b *AWSNodePoolBuilder) AvailabilityZoneTypes(value map[string]string) *AWS
 // AWS Capacity Reservation specification.
 func (b *AWSNodePoolBuilder) CapacityReservation(value *AWSCapacityReservationBuilder) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.capacityReservation = value
 	if value != nil {
@@ -131,7 +132,7 @@ func (b *AWSNodePoolBuilder) CapacityReservation(value *AWSCapacityReservationBu
 // Which Ec2MetadataHttpTokens to use for metadata service interaction options for EC2 instances
 func (b *AWSNodePoolBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.ec2MetadataHttpTokens = value
 	b.fieldSet_[6] = true
@@ -141,7 +142,7 @@ func (b *AWSNodePoolBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) 
 // InstanceProfile sets the value of the 'instance_profile' attribute to the given value.
 func (b *AWSNodePoolBuilder) InstanceProfile(value string) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.instanceProfile = value
 	b.fieldSet_[7] = true
@@ -151,7 +152,7 @@ func (b *AWSNodePoolBuilder) InstanceProfile(value string) *AWSNodePoolBuilder {
 // InstanceType sets the value of the 'instance_type' attribute to the given value.
 func (b *AWSNodePoolBuilder) InstanceType(value string) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.instanceType = value
 	b.fieldSet_[8] = true
@@ -163,7 +164,7 @@ func (b *AWSNodePoolBuilder) InstanceType(value string) *AWSNodePoolBuilder {
 // Holds settings for an AWS storage volume.
 func (b *AWSNodePoolBuilder) RootVolume(value *AWSVolumeBuilder) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
 	b.rootVolume = value
 	if value != nil {
@@ -174,12 +175,14 @@ func (b *AWSNodePoolBuilder) RootVolume(value *AWSVolumeBuilder) *AWSNodePoolBui
 	return b
 }
 
-// SubnetOutposts sets the value of the 'subnet_outposts' attribute to the given value.
-func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoolBuilder {
+// SpotMarketOptions sets the value of the 'spot_market_options' attribute to the given value.
+//
+// Spot market options for AWS node pool.
+func (b *AWSNodePoolBuilder) SpotMarketOptions(value *AwsNodePoolSpotMarketOptionsBuilder) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
-	b.subnetOutposts = value
+	b.spotMarketOptions = value
 	if value != nil {
 		b.fieldSet_[10] = true
 	} else {
@@ -188,16 +191,30 @@ func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoo
 	return b
 }
 
-// Tags sets the value of the 'tags' attribute to the given value.
-func (b *AWSNodePoolBuilder) Tags(value map[string]string) *AWSNodePoolBuilder {
+// SubnetOutposts sets the value of the 'subnet_outposts' attribute to the given value.
+func (b *AWSNodePoolBuilder) SubnetOutposts(value map[string]string) *AWSNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 12)
+		b.fieldSet_ = make([]bool, 13)
 	}
-	b.tags = value
+	b.subnetOutposts = value
 	if value != nil {
 		b.fieldSet_[11] = true
 	} else {
 		b.fieldSet_[11] = false
+	}
+	return b
+}
+
+// Tags sets the value of the 'tags' attribute to the given value.
+func (b *AWSNodePoolBuilder) Tags(value map[string]string) *AWSNodePoolBuilder {
+	if len(b.fieldSet_) == 0 {
+		b.fieldSet_ = make([]bool, 13)
+	}
+	b.tags = value
+	if value != nil {
+		b.fieldSet_[12] = true
+	} else {
+		b.fieldSet_[12] = false
 	}
 	return b
 }
@@ -239,6 +256,11 @@ func (b *AWSNodePoolBuilder) Copy(object *AWSNodePool) *AWSNodePoolBuilder {
 		b.rootVolume = NewAWSVolume().Copy(object.rootVolume)
 	} else {
 		b.rootVolume = nil
+	}
+	if object.spotMarketOptions != nil {
+		b.spotMarketOptions = NewAwsNodePoolSpotMarketOptions().Copy(object.spotMarketOptions)
+	} else {
+		b.spotMarketOptions = nil
 	}
 	if len(object.subnetOutposts) > 0 {
 		b.subnetOutposts = map[string]string{}
@@ -289,6 +311,12 @@ func (b *AWSNodePoolBuilder) Build() (object *AWSNodePool, err error) {
 	object.instanceType = b.instanceType
 	if b.rootVolume != nil {
 		object.rootVolume, err = b.rootVolume.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.spotMarketOptions != nil {
+		object.spotMarketOptions, err = b.spotMarketOptions.Build()
 		if err != nil {
 			return
 		}

@@ -42,6 +42,7 @@ type AWSBuilder struct {
 	secretAccessKey                        string
 	subnetIDs                              []string
 	tags                                   map[string]string
+	terminationHandlerQueueUrl             string
 	vpcEndpointRoleArn                     string
 	zeroEgress                             *ZeroEgressBuilder
 	privateLink                            bool
@@ -50,7 +51,7 @@ type AWSBuilder struct {
 // NewAWS creates a new builder of 'AWS' objects.
 func NewAWS() *AWSBuilder {
 	return &AWSBuilder{
-		fieldSet_: make([]bool, 23),
+		fieldSet_: make([]bool, 24),
 	}
 }
 
@@ -70,7 +71,7 @@ func (b *AWSBuilder) Empty() bool {
 // KMSKeyArn sets the value of the 'KMS_key_arn' attribute to the given value.
 func (b *AWSBuilder) KMSKeyArn(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.kmsKeyArn = value
 	b.fieldSet_[0] = true
@@ -82,7 +83,7 @@ func (b *AWSBuilder) KMSKeyArn(value string) *AWSBuilder {
 // Contains the necessary attributes to support role-based authentication on AWS.
 func (b *AWSBuilder) STS(value *STSBuilder) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.sts = value
 	if value != nil {
@@ -96,7 +97,7 @@ func (b *AWSBuilder) STS(value *STSBuilder) *AWSBuilder {
 // AccessKeyID sets the value of the 'access_key_ID' attribute to the given value.
 func (b *AWSBuilder) AccessKeyID(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.accessKeyID = value
 	b.fieldSet_[2] = true
@@ -106,7 +107,7 @@ func (b *AWSBuilder) AccessKeyID(value string) *AWSBuilder {
 // AccountID sets the value of the 'account_ID' attribute to the given value.
 func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.accountID = value
 	b.fieldSet_[3] = true
@@ -116,7 +117,7 @@ func (b *AWSBuilder) AccountID(value string) *AWSBuilder {
 // AdditionalAllowedPrincipals sets the value of the 'additional_allowed_principals' attribute to the given values.
 func (b *AWSBuilder) AdditionalAllowedPrincipals(values ...string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.additionalAllowedPrincipals = make([]string, len(values))
 	copy(b.additionalAllowedPrincipals, values)
@@ -127,7 +128,7 @@ func (b *AWSBuilder) AdditionalAllowedPrincipals(values ...string) *AWSBuilder {
 // AdditionalComputeSecurityGroupIds sets the value of the 'additional_compute_security_group_ids' attribute to the given values.
 func (b *AWSBuilder) AdditionalComputeSecurityGroupIds(values ...string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.additionalComputeSecurityGroupIds = make([]string, len(values))
 	copy(b.additionalComputeSecurityGroupIds, values)
@@ -138,7 +139,7 @@ func (b *AWSBuilder) AdditionalComputeSecurityGroupIds(values ...string) *AWSBui
 // AdditionalControlPlaneSecurityGroupIds sets the value of the 'additional_control_plane_security_group_ids' attribute to the given values.
 func (b *AWSBuilder) AdditionalControlPlaneSecurityGroupIds(values ...string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.additionalControlPlaneSecurityGroupIds = make([]string, len(values))
 	copy(b.additionalControlPlaneSecurityGroupIds, values)
@@ -149,7 +150,7 @@ func (b *AWSBuilder) AdditionalControlPlaneSecurityGroupIds(values ...string) *A
 // AdditionalInfraSecurityGroupIds sets the value of the 'additional_infra_security_group_ids' attribute to the given values.
 func (b *AWSBuilder) AdditionalInfraSecurityGroupIds(values ...string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.additionalInfraSecurityGroupIds = make([]string, len(values))
 	copy(b.additionalInfraSecurityGroupIds, values)
@@ -162,7 +163,7 @@ func (b *AWSBuilder) AdditionalInfraSecurityGroupIds(values ...string) *AWSBuild
 // Contains the necessary attributes to support audit log forwarding
 func (b *AWSBuilder) AuditLog(value *AuditLogBuilder) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.auditLog = value
 	if value != nil {
@@ -178,7 +179,7 @@ func (b *AWSBuilder) AuditLog(value *AuditLogBuilder) *AWSBuilder {
 // AWS provider configuration settings when using AutoNode on a ROSA HCP Cluster
 func (b *AWSBuilder) AutoNode(value *AwsAutoNodeBuilder) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.autoNode = value
 	if value != nil {
@@ -192,7 +193,7 @@ func (b *AWSBuilder) AutoNode(value *AwsAutoNodeBuilder) *AWSBuilder {
 // BillingAccountID sets the value of the 'billing_account_ID' attribute to the given value.
 func (b *AWSBuilder) BillingAccountID(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.billingAccountID = value
 	b.fieldSet_[10] = true
@@ -204,7 +205,7 @@ func (b *AWSBuilder) BillingAccountID(value string) *AWSBuilder {
 // Which Ec2MetadataHttpTokens to use for metadata service interaction options for EC2 instances
 func (b *AWSBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.ec2MetadataHttpTokens = value
 	b.fieldSet_[11] = true
@@ -216,7 +217,7 @@ func (b *AWSBuilder) Ec2MetadataHttpTokens(value Ec2MetadataHttpTokens) *AWSBuil
 // Contains the necessary attributes to support etcd encryption for AWS based clusters.
 func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.etcdEncryption = value
 	if value != nil {
@@ -230,7 +231,7 @@ func (b *AWSBuilder) EtcdEncryption(value *AwsEtcdEncryptionBuilder) *AWSBuilder
 // HcpInternalCommunicationHostedZoneId sets the value of the 'hcp_internal_communication_hosted_zone_id' attribute to the given value.
 func (b *AWSBuilder) HcpInternalCommunicationHostedZoneId(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.hcpInternalCommunicationHostedZoneId = value
 	b.fieldSet_[13] = true
@@ -240,7 +241,7 @@ func (b *AWSBuilder) HcpInternalCommunicationHostedZoneId(value string) *AWSBuil
 // PrivateHostedZoneID sets the value of the 'private_hosted_zone_ID' attribute to the given value.
 func (b *AWSBuilder) PrivateHostedZoneID(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.privateHostedZoneID = value
 	b.fieldSet_[14] = true
@@ -250,7 +251,7 @@ func (b *AWSBuilder) PrivateHostedZoneID(value string) *AWSBuilder {
 // PrivateHostedZoneRoleARN sets the value of the 'private_hosted_zone_role_ARN' attribute to the given value.
 func (b *AWSBuilder) PrivateHostedZoneRoleARN(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.privateHostedZoneRoleARN = value
 	b.fieldSet_[15] = true
@@ -260,7 +261,7 @@ func (b *AWSBuilder) PrivateHostedZoneRoleARN(value string) *AWSBuilder {
 // PrivateLink sets the value of the 'private_link' attribute to the given value.
 func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.privateLink = value
 	b.fieldSet_[16] = true
@@ -272,7 +273,7 @@ func (b *AWSBuilder) PrivateLink(value bool) *AWSBuilder {
 // Manages the configuration for the Private Links.
 func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigurationBuilder) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.privateLinkConfiguration = value
 	if value != nil {
@@ -286,7 +287,7 @@ func (b *AWSBuilder) PrivateLinkConfiguration(value *PrivateLinkClusterConfigura
 // SecretAccessKey sets the value of the 'secret_access_key' attribute to the given value.
 func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.secretAccessKey = value
 	b.fieldSet_[18] = true
@@ -296,7 +297,7 @@ func (b *AWSBuilder) SecretAccessKey(value string) *AWSBuilder {
 // SubnetIDs sets the value of the 'subnet_IDs' attribute to the given values.
 func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.subnetIDs = make([]string, len(values))
 	copy(b.subnetIDs, values)
@@ -307,7 +308,7 @@ func (b *AWSBuilder) SubnetIDs(values ...string) *AWSBuilder {
 // Tags sets the value of the 'tags' attribute to the given value.
 func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.tags = value
 	if value != nil {
@@ -318,13 +319,23 @@ func (b *AWSBuilder) Tags(value map[string]string) *AWSBuilder {
 	return b
 }
 
+// TerminationHandlerQueueUrl sets the value of the 'termination_handler_queue_url' attribute to the given value.
+func (b *AWSBuilder) TerminationHandlerQueueUrl(value string) *AWSBuilder {
+	if len(b.fieldSet_) == 0 {
+		b.fieldSet_ = make([]bool, 24)
+	}
+	b.terminationHandlerQueueUrl = value
+	b.fieldSet_[21] = true
+	return b
+}
+
 // VpcEndpointRoleArn sets the value of the 'vpc_endpoint_role_arn' attribute to the given value.
 func (b *AWSBuilder) VpcEndpointRoleArn(value string) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.vpcEndpointRoleArn = value
-	b.fieldSet_[21] = true
+	b.fieldSet_[22] = true
 	return b
 }
 
@@ -333,13 +344,13 @@ func (b *AWSBuilder) VpcEndpointRoleArn(value string) *AWSBuilder {
 // Zero egress configuration.
 func (b *AWSBuilder) ZeroEgress(value *ZeroEgressBuilder) *AWSBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 23)
+		b.fieldSet_ = make([]bool, 24)
 	}
 	b.zeroEgress = value
 	if value != nil {
-		b.fieldSet_[22] = true
+		b.fieldSet_[23] = true
 	} else {
-		b.fieldSet_[22] = false
+		b.fieldSet_[23] = false
 	}
 	return b
 }
@@ -426,6 +437,7 @@ func (b *AWSBuilder) Copy(object *AWS) *AWSBuilder {
 	} else {
 		b.tags = nil
 	}
+	b.terminationHandlerQueueUrl = object.terminationHandlerQueueUrl
 	b.vpcEndpointRoleArn = object.vpcEndpointRoleArn
 	if object.zeroEgress != nil {
 		b.zeroEgress = NewZeroEgress().Copy(object.zeroEgress)
@@ -508,6 +520,7 @@ func (b *AWSBuilder) Build() (object *AWS, err error) {
 			object.tags[k] = v
 		}
 	}
+	object.terminationHandlerQueueUrl = b.terminationHandlerQueueUrl
 	object.vpcEndpointRoleArn = b.vpcEndpointRoleArn
 	if b.zeroEgress != nil {
 		object.zeroEgress, err = b.zeroEgress.Build()

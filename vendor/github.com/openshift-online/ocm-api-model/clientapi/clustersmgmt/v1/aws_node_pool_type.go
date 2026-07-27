@@ -45,6 +45,7 @@ type AWSNodePool struct {
 	instanceProfile            string
 	instanceType               string
 	rootVolume                 *AWSVolume
+	spotMarketOptions          *AwsNodePoolSpotMarketOptions
 	subnetOutposts             map[string]string
 	tags                       map[string]string
 }
@@ -277,12 +278,35 @@ func (o *AWSNodePool) GetRootVolume() (value *AWSVolume, ok bool) {
 	return
 }
 
+// SpotMarketOptions returns the value of the 'spot_market_options' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Use spot instances on this node pool to reduce cost.
+func (o *AWSNodePool) SpotMarketOptions() *AwsNodePoolSpotMarketOptions {
+	if o != nil && len(o.fieldSet_) > 10 && o.fieldSet_[10] {
+		return o.spotMarketOptions
+	}
+	return nil
+}
+
+// GetSpotMarketOptions returns the value of the 'spot_market_options' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Use spot instances on this node pool to reduce cost.
+func (o *AWSNodePool) GetSpotMarketOptions() (value *AwsNodePoolSpotMarketOptions, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 10 && o.fieldSet_[10]
+	if ok {
+		value = o.spotMarketOptions
+	}
+	return
+}
+
 // SubnetOutposts returns the value of the 'subnet_outposts' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // Associates nodepool subnets with AWS Outposts.
 func (o *AWSNodePool) SubnetOutposts() map[string]string {
-	if o != nil && len(o.fieldSet_) > 10 && o.fieldSet_[10] {
+	if o != nil && len(o.fieldSet_) > 11 && o.fieldSet_[11] {
 		return o.subnetOutposts
 	}
 	return nil
@@ -293,7 +317,7 @@ func (o *AWSNodePool) SubnetOutposts() map[string]string {
 //
 // Associates nodepool subnets with AWS Outposts.
 func (o *AWSNodePool) GetSubnetOutposts() (value map[string]string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 10 && o.fieldSet_[10]
+	ok = o != nil && len(o.fieldSet_) > 11 && o.fieldSet_[11]
 	if ok {
 		value = o.subnetOutposts
 	}
@@ -312,7 +336,7 @@ func (o *AWSNodePool) GetSubnetOutposts() (value map[string]string, ok bool) {
 // - Tag values may be between 0 and 256 characters in length
 // - Tags may only contain letters, numbers, spaces, and the following characters: [_ . : / = + - @]
 func (o *AWSNodePool) Tags() map[string]string {
-	if o != nil && len(o.fieldSet_) > 11 && o.fieldSet_[11] {
+	if o != nil && len(o.fieldSet_) > 12 && o.fieldSet_[12] {
 		return o.tags
 	}
 	return nil
@@ -330,7 +354,7 @@ func (o *AWSNodePool) Tags() map[string]string {
 // - Tag values may be between 0 and 256 characters in length
 // - Tags may only contain letters, numbers, spaces, and the following characters: [_ . : / = + - @]
 func (o *AWSNodePool) GetTags() (value map[string]string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 11 && o.fieldSet_[11]
+	ok = o != nil && len(o.fieldSet_) > 12 && o.fieldSet_[12]
 	if ok {
 		value = o.tags
 	}
