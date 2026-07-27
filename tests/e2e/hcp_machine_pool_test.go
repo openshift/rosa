@@ -608,7 +608,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("with invalid machinepool id")
 			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything%^")
-			helper.ExpectErrorWithMessage(err, "Expected a valid identifier for the machine pool")
+			helper.ExpectErrorWithMessage(err, "expected a valid identifier for the machine pool")
 
 			By("with unknown flag --interactive")
 			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything", "--interactive")
@@ -734,7 +734,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 					"",
 					"")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' is not yet ready", notReadyClusterID)))
+				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("cluster '%s' is not yet ready", notReadyClusterID)))
 			} else {
 				Logger.Info("No cluster found in state not-ready. Skipping this step")
 			}
@@ -793,7 +793,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"",
 				"")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid machine pool version"))
+			Expect(err.Error()).To(ContainSubstring("expected a valid machine pool version"))
 
 			By("with schedule and version")
 			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
@@ -802,7 +802,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"2 5 * * *",
 				"--version", clusterConfig.Version.RawID)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("The '--schedule' option is mutually exclusive with '--version'"))
+			Expect(err.Error()).To(ContainSubstring("the '--schedule' option is mutually exclusive with '--version'"))
 
 			By("with schedule and schedule-date")
 			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
@@ -813,7 +813,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(
 				ContainSubstring(
-					"The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+					"the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
 			By("with schedule and schedule-time")
 			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
@@ -824,7 +824,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(
 				ContainSubstring(
-					"The '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+					"the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
 			By("with already existing upgrade")
 			availableUpgradeVersions := helper.ParseCommaSeparatedStrings(upgradableVersion.AvailableUpgrades)
