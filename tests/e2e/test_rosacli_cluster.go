@@ -2208,7 +2208,7 @@ var _ = Describe("Create cluster with invalid options will",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring(
-					"number of subnets for a 'single AZ' 'cluster' should be '2', instead received: '0'"),
+					"cluster_wide_proxy is only supported if subnetIDs exist"),
 				)
 
 				By("Prepare vpc with subnets")
