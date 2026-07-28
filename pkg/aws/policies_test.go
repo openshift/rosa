@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/logging"
+	"github.com/openshift/rosa/pkg/reporter"
 )
 
 var _ = Describe("ListOperatorRoles", func() {
@@ -1067,6 +1068,727 @@ var _ = Describe("hasCompatibleMajorMinorVersionTags", func() {
 	})
 })
 
+var _ = Describe("FindRoleARNs", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("A version-compatible installer role exists", func() {
+		It("Should return the role ARN", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					IsTruncated: false,
+					Roles: []iamtypes.Role{
+						{
+							RoleName: aws.String("my-prefix-Installer-Role"),
+							Arn:      aws.String("arn:aws:iam::123456789012:role/my-prefix-Installer-Role"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+					},
+				}, nil)
+
+			arns, err := client.FindRoleARNs(InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arns).To(HaveLen(1))
+			Expect(arns[0]).To(Equal("arn:aws:iam::123456789012:role/my-prefix-Installer-Role"))
+		})
+	})
+
+	When("A role exists but is version-incompatible", func() {
+		It("Should return empty", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					IsTruncated: false,
+					Roles: []iamtypes.Role{
+						{
+							RoleName: aws.String("my-prefix-Installer-Role"),
+							Arn:      aws.String("arn:aws:iam::123456789012:role/my-prefix-Installer-Role"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.12")},
+					},
+				}, nil)
+
+			arns, err := client.FindRoleARNs(InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arns).To(BeEmpty())
+		})
+	})
+
+	When("ListRoles returns an error", func() {
+		It("Should propagate the error", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("access denied"))
+
+			arns, err := client.FindRoleARNs(InstallerAccountRole, "4.14")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("access denied"))
+			Expect(arns).To(BeEmpty())
+		})
+	})
+})
+
+var _ = Describe("FindRoleARNsClassic", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("A classic-only compatible role exists", func() {
+		It("Should return the role ARN", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					IsTruncated: false,
+					Roles: []iamtypes.Role{
+						{
+							RoleName: aws.String("prefix-Installer-Role"),
+							Arn:      aws.String("arn:aws:iam::123456789012:role/prefix-Installer-Role"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+					},
+				}, nil)
+
+			arns, err := client.FindRoleARNsClassic(InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arns).To(HaveLen(1))
+		})
+	})
+
+	When("A role has HCP policies tag", func() {
+		It("Should exclude the HCP role", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					IsTruncated: false,
+					Roles: []iamtypes.Role{
+						{
+							RoleName: aws.String("prefix-Installer-Role"),
+							Arn:      aws.String("arn:aws:iam::123456789012:role/prefix-Installer-Role"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+						{Key: aws.String("rosa_managed_policies"), Value: aws.String(TrueString)},
+						{Key: aws.String("rosa_hcp_policies"), Value: aws.String(TrueString)},
+					},
+				}, nil)
+
+			arns, err := client.FindRoleARNsClassic(InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arns).To(BeEmpty())
+		})
+	})
+})
+
+var _ = Describe("FindRoleARNsHostedCp", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("A role has HCP policies tag", func() {
+		It("Should return the HCP role ARN", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					IsTruncated: false,
+					Roles: []iamtypes.Role{
+						{
+							RoleName: aws.String("prefix-Installer-Role"),
+							Arn:      aws.String("arn:aws:iam::123456789012:role/prefix-Installer-Role"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+						{Key: aws.String("rosa_managed_policies"), Value: aws.String(TrueString)},
+						{Key: aws.String("rosa_hcp_policies"), Value: aws.String(TrueString)},
+					},
+				}, nil)
+
+			arns, err := client.FindRoleARNsHostedCp(InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arns).To(HaveLen(1))
+		})
+	})
+
+	When("A role has classic policies only", func() {
+		It("Should exclude the classic role", func() {
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					IsTruncated: false,
+					Roles: []iamtypes.Role{
+						{
+							RoleName: aws.String("prefix-Installer-Role"),
+							Arn:      aws.String("arn:aws:iam::123456789012:role/prefix-Installer-Role"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+						{Key: aws.String("rosa_managed_policies"), Value: aws.String(TrueString)},
+					},
+				}, nil)
+
+			arns, err := client.FindRoleARNsHostedCp(InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(arns).To(BeEmpty())
+		})
+	})
+})
+
+var _ = Describe("ValidateAccountRoleVersionCompatibility", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role tags show compatible version", func() {
+		It("Should return true", func() {
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+					},
+				}, nil)
+
+			isValid, err := client.ValidateAccountRoleVersionCompatibility(
+				"my-Installer-Role", InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isValid).To(BeTrue())
+		})
+	})
+
+	When("Role tags show incompatible version", func() {
+		It("Should return false", func() {
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.12")},
+					},
+				}, nil)
+
+			isValid, err := client.ValidateAccountRoleVersionCompatibility(
+				"my-Installer-Role", InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isValid).To(BeFalse())
+		})
+	})
+
+	When("Role has managed policies", func() {
+		It("Should return compatible regardless of version tag", func() {
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.12")},
+						{Key: aws.String("rosa_managed_policies"), Value: aws.String(TrueString)},
+					},
+				}, nil)
+
+			isValid, err := client.ValidateAccountRoleVersionCompatibility(
+				"my-Installer-Role", InstallerAccountRole, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isValid).To(BeTrue())
+		})
+	})
+})
+
+var _ = Describe("FindPolicyARN", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("A matching policy exists", func() {
+		It("Should return the policy ARN", func() {
+			mockIamAPI.EXPECT().ListPolicies(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListPoliciesOutput{
+					IsTruncated: false,
+					Policies: []iamtypes.Policy{
+						{
+							Arn:        aws.String("arn:aws:iam::123456789012:policy/my-policy"),
+							PolicyName: aws.String("my-policy"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListPolicyTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("operator_namespace"), Value: aws.String("openshift-ingress")},
+						{Key: aws.String("operator_name"), Value: aws.String("cloud-credentials")},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+					},
+				}, nil)
+
+			policyARN, err := client.FindPolicyARN(
+				Operator{Namespace: "openshift-ingress", Name: "cloud-credentials"}, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(policyARN).To(Equal("arn:aws:iam::123456789012:policy/my-policy"))
+		})
+	})
+
+	When("No matching policy exists", func() {
+		It("Should return empty string", func() {
+			mockIamAPI.EXPECT().ListPolicies(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListPoliciesOutput{
+					IsTruncated: false,
+					Policies: []iamtypes.Policy{
+						{
+							Arn:        aws.String("arn:aws:iam::123456789012:policy/other-policy"),
+							PolicyName: aws.String("other-policy"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListPolicyTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String("operator_namespace"), Value: aws.String("different-ns")},
+						{Key: aws.String("operator_name"), Value: aws.String("cloud-credentials")},
+						{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+					},
+				}, nil)
+
+			policyARN, err := client.FindPolicyARN(
+				Operator{Namespace: "openshift-ingress", Name: "cloud-credentials"}, "4.14")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(policyARN).To(BeEmpty())
+		})
+	})
+
+	When("ListPolicies returns an error", func() {
+		It("Should propagate the error", func() {
+			mockIamAPI.EXPECT().ListPolicies(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("list error"))
+
+			_, err := client.FindPolicyARN(
+				Operator{Namespace: "openshift-ingress", Name: "cloud-credentials"}, "4.14")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("list error"))
+		})
+	})
+})
+
+var _ = Describe("HasHostedCPPolicies", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role has the rosa_hcp_policies tag", func() {
+		It("Should return true", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+						Arn:      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						Tags: []iamtypes.Tag{
+							{Key: aws.String("rosa_hcp_policies"), Value: aws.String(TrueString)},
+						},
+					},
+				}, nil)
+
+			result, err := client.HasHostedCPPolicies("arn:aws:iam::123456789012:role/test-role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeTrue())
+		})
+	})
+
+	When("Role does not have the rosa_hcp_policies tag", func() {
+		It("Should return false", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+						Arn:      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						Tags:     []iamtypes.Tag{},
+					},
+				}, nil)
+
+			result, err := client.HasHostedCPPolicies("arn:aws:iam::123456789012:role/test-role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeFalse())
+		})
+	})
+
+	When("Role ARN is empty", func() {
+		It("Should return false without calling AWS", func() {
+			result, err := client.HasHostedCPPolicies("")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeFalse())
+		})
+	})
+})
+
+var _ = Describe("HasManagedPolicies", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role has the rosa_managed_policies tag", func() {
+		It("Should return true", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+						Arn:      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						Tags: []iamtypes.Tag{
+							{Key: aws.String("rosa_managed_policies"), Value: aws.String(TrueString)},
+						},
+					},
+				}, nil)
+
+			result, err := client.HasManagedPolicies("arn:aws:iam::123456789012:role/test-role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeTrue())
+		})
+	})
+
+	When("Role does not have the rosa_managed_policies tag", func() {
+		It("Should return false", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+						Arn:      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						Tags:     []iamtypes.Tag{},
+					},
+				}, nil)
+
+			result, err := client.HasManagedPolicies("arn:aws:iam::123456789012:role/test-role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeFalse())
+		})
+	})
+
+	When("Role ARN is empty", func() {
+		It("Should return false without calling AWS", func() {
+			result, err := client.HasManagedPolicies("")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeFalse())
+		})
+	})
+})
+
+var _ = Describe("UpdateTag", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role exists and tag succeeds", func() {
+		It("Should return nil", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+					},
+				}, nil)
+			mockIamAPI.EXPECT().TagRole(gomock.Any(), gomock.Any()).Return(
+				&iam.TagRoleOutput{}, nil)
+
+			err := client.UpdateTag("test-role", "4.15")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("GetRole fails", func() {
+		It("Should propagate the error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("role not found"))
+
+			err := client.UpdateTag("test-role", "4.15")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("role not found"))
+		})
+	})
+})
+
+var _ = Describe("AddRoleTag", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role exists and tagging succeeds", func() {
+		It("Should return nil", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+					},
+				}, nil)
+			mockIamAPI.EXPECT().TagRole(gomock.Any(), gomock.Any()).Return(
+				&iam.TagRoleOutput{}, nil)
+
+			err := client.AddRoleTag("test-role", "my-key", "my-value")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("TagRole fails", func() {
+		It("Should propagate the error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+					},
+				}, nil)
+			mockIamAPI.EXPECT().TagRole(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("tagging failed"))
+
+			err := client.AddRoleTag("test-role", "my-key", "my-value")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("tagging failed"))
+		})
+	})
+})
+
+var _ = Describe("GetAccountRoleVersion", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role has the version tag", func() {
+		It("Should return the version", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-Installer-Role"),
+						Tags: []iamtypes.Tag{
+							{Key: aws.String("rosa_role_type"), Value: aws.String(InstallerAccountRole)},
+							{Key: aws.String("rosa_openshift_version"), Value: aws.String("4.14")},
+						},
+					},
+				}, nil)
+
+			version, err := client.GetAccountRoleVersion("test-Installer-Role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(version).To(Equal("4.14"))
+		})
+	})
+
+	When("Role has no version tag", func() {
+		It("Should return empty string", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-Installer-Role"),
+						Tags:     []iamtypes.Tag{},
+					},
+				}, nil)
+
+			version, err := client.GetAccountRoleVersion("test-Installer-Role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(version).To(BeEmpty())
+		})
+	})
+})
+
+var _ = Describe("IsAdminRole", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("Role has the admin role tag", func() {
+		It("Should return true", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+						Tags: []iamtypes.Tag{
+							{Key: aws.String(tags.AdminRole), Value: aws.String(TrueString)},
+						},
+					},
+				}, nil)
+
+			isAdmin, err := client.IsAdminRole("test-role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isAdmin).To(BeTrue())
+		})
+	})
+
+	When("Role does not have the admin role tag", func() {
+		It("Should return false", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: aws.String("test-role"),
+						Tags:     []iamtypes.Tag{},
+					},
+				}, nil)
+
+			isAdmin, err := client.IsAdminRole("test-role")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isAdmin).To(BeFalse())
+		})
+	})
+
+	When("GetRole returns an error", func() {
+		It("Should propagate the error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("IAM error"))
+
+			isAdmin, err := client.IsAdminRole("test-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("IAM error"))
+			Expect(isAdmin).To(BeFalse())
+		})
+	})
+})
+
 var _ = Describe("IsPolicyCompatible", func() {
 	var (
 		client     awsClient
@@ -1136,5 +1858,550 @@ var _ = Describe("IsPolicyCompatible", func() {
 		_, err := client.IsPolicyCompatible("arn:aws:iam::123456789:policy/test", "4.14.0")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("access denied"))
+	})
+})
+
+var _ = Describe("EnsureRole", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+		rep        reporter.Logger
+	)
+
+	testPolicy := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow",` +
+		`"Action":"sts:AssumeRole","Principal":{"Service":["ec2.amazonaws.com"]}}]}`
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+		rep = &reporter.Object{}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("the role does not exist", func() {
+		It("creates the role successfully", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				nil, &iamtypes.NoSuchEntityException{})
+			mockIamAPI.EXPECT().CreateRole(gomock.Any(), gomock.Any()).Return(
+				&iam.CreateRoleOutput{
+					Role: &iamtypes.Role{
+						Arn: aws.String("arn:aws:iam::123456789012:role/test-role"),
+					},
+				}, nil)
+
+			roleArn, err := client.EnsureRole(rep, "test-role", testPolicy, "",
+				"", map[string]string{}, "", false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roleArn).To(Equal("arn:aws:iam::123456789012:role/test-role"))
+		})
+	})
+
+	When("the role exists with matching path", func() {
+		It("reuses the role without updating", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Arn:                      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						RoleName:                 aws.String("test-role"),
+						AssumeRolePolicyDocument: aws.String(testPolicy),
+					},
+				}, nil)
+
+			roleArn, err := client.EnsureRole(rep, "test-role", testPolicy, "",
+				"", map[string]string{}, "", false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roleArn).To(Equal("arn:aws:iam::123456789012:role/test-role"))
+		})
+	})
+
+	When("the role exists with mismatched path", func() {
+		It("returns an error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Arn:      aws.String("arn:aws:iam::123456789012:role/custom-path/test-role"),
+						RoleName: aws.String("test-role"),
+					},
+				}, nil)
+
+			_, err := client.EnsureRole(rep, "test-role", testPolicy, "",
+				"", map[string]string{}, "", false)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Role with same name but different path exists"))
+		})
+	})
+
+	When("the role exists with managed policies but role is unmanaged", func() {
+		It("returns an error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Arn:      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						RoleName: aws.String("test-role"),
+						Tags:     []iamtypes.Tag{},
+					},
+				}, nil)
+
+			_, err := client.EnsureRole(rep, "test-role", testPolicy, "",
+				"", map[string]string{}, "", true)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unmanaged policies already exists"))
+		})
+	})
+
+	When("the role exists with incompatible version", func() {
+		It("updates assume-role policy and tags", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Arn:                      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						RoleName:                 aws.String("test-role"),
+						AssumeRolePolicyDocument: aws.String(testPolicy),
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRoleTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String(common.OpenShiftVersion), Value: aws.String("4.13.0")},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().UpdateAssumeRolePolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.UpdateAssumeRolePolicyOutput{}, nil)
+			mockIamAPI.EXPECT().TagRole(gomock.Any(), gomock.Any()).Return(
+				&iam.TagRoleOutput{}, nil)
+
+			tagList := map[string]string{common.OpenShiftVersion: "4.14.0"}
+			roleArn, err := client.EnsureRole(rep, "test-role", testPolicy, "",
+				"4.14.0", tagList, "", false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roleArn).To(Equal("arn:aws:iam::123456789012:role/test-role"))
+		})
+	})
+
+	When("permissions boundary should be added", func() {
+		It("calls PutRolePermissionsBoundary", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Arn:                      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						RoleName:                 aws.String("test-role"),
+						AssumeRolePolicyDocument: aws.String(testPolicy),
+					},
+				}, nil)
+			mockIamAPI.EXPECT().PutRolePermissionsBoundary(gomock.Any(), gomock.Any()).Return(
+				&iam.PutRolePermissionsBoundaryOutput{}, nil)
+
+			roleArn, err := client.EnsureRole(rep, "test-role", testPolicy,
+				"arn:aws:iam::123456789012:policy/boundary", "", map[string]string{}, "", false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roleArn).To(Equal("arn:aws:iam::123456789012:role/test-role"))
+		})
+	})
+
+	When("role has permissions boundary and empty input removes it", func() {
+		It("calls DeleteRolePermissionsBoundary", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						Arn:                      aws.String("arn:aws:iam::123456789012:role/test-role"),
+						RoleName:                 aws.String("test-role"),
+						AssumeRolePolicyDocument: aws.String(testPolicy),
+						PermissionsBoundary: &iamtypes.AttachedPermissionsBoundary{
+							PermissionsBoundaryArn: aws.String("arn:aws:iam::123456789012:policy/old-boundary"),
+						},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().DeleteRolePermissionsBoundary(gomock.Any(), gomock.Any()).Return(
+				&iam.DeleteRolePermissionsBoundaryOutput{}, nil)
+
+			roleArn, err := client.EnsureRole(rep, "test-role", testPolicy, "",
+				"", map[string]string{}, "", false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roleArn).To(Equal("arn:aws:iam::123456789012:role/test-role"))
+		})
+	})
+})
+
+var _ = Describe("EnsurePolicy", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	testPolicyArn := "arn:aws:iam::123456789012:policy/test-policy"
+	testDocument := `{"Version":"2012-10-17","Statement":[]}`
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("the policy does not exist", func() {
+		It("creates the policy", func() {
+			mockIamAPI.EXPECT().GetPolicy(gomock.Any(), gomock.Any()).Return(
+				nil, &iamtypes.NoSuchEntityException{})
+			mockIamAPI.EXPECT().CreatePolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.CreatePolicyOutput{
+					Policy: &iamtypes.Policy{
+						Arn: aws.String(testPolicyArn),
+					},
+				}, nil)
+
+			resultArn, err := client.EnsurePolicy(testPolicyArn, testDocument,
+				"4.14.0", map[string]string{}, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resultArn).To(Equal(testPolicyArn))
+		})
+	})
+
+	When("GetPolicy returns a non-NoSuchEntity error", func() {
+		It("propagates the error", func() {
+			mockIamAPI.EXPECT().GetPolicy(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("access denied"))
+
+			_, err := client.EnsurePolicy(testPolicyArn, testDocument,
+				"4.14.0", map[string]string{}, "")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("access denied"))
+		})
+	})
+
+	When("the policy exists and is compatible", func() {
+		It("does not create a new version", func() {
+			mockIamAPI.EXPECT().GetPolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.GetPolicyOutput{
+					Policy: &iamtypes.Policy{Arn: aws.String(testPolicyArn)},
+				}, nil)
+			mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListPolicyTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String(common.OpenShiftVersion), Value: aws.String("4.14.0")},
+					},
+				}, nil)
+
+			resultArn, err := client.EnsurePolicy(testPolicyArn, testDocument,
+				"4.14.0", map[string]string{}, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resultArn).To(Equal(testPolicyArn))
+		})
+	})
+
+	When("the policy exists and is incompatible", func() {
+		It("deletes stale versions, creates new default version, and tags", func() {
+			mockIamAPI.EXPECT().GetPolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.GetPolicyOutput{
+					Policy: &iamtypes.Policy{Arn: aws.String(testPolicyArn)},
+				}, nil)
+			mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListPolicyTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String(common.OpenShiftVersion), Value: aws.String("4.13.0")},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().ListPolicyVersions(gomock.Any(), gomock.Any()).Return(
+				&iam.ListPolicyVersionsOutput{
+					Versions: []iamtypes.PolicyVersion{
+						{VersionId: aws.String("v1"), IsDefaultVersion: true},
+						{VersionId: aws.String("v2"), IsDefaultVersion: false},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().DeletePolicyVersion(
+				gomock.Any(),
+				gomock.Cond(func(input *iam.DeletePolicyVersionInput) bool {
+					return aws.ToString(input.VersionId) == "v2"
+				}),
+			).Return(&iam.DeletePolicyVersionOutput{}, nil)
+			mockIamAPI.EXPECT().CreatePolicyVersion(gomock.Any(), gomock.Any()).Return(
+				&iam.CreatePolicyVersionOutput{}, nil)
+			mockIamAPI.EXPECT().TagPolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.TagPolicyOutput{}, nil)
+
+			tagList := map[string]string{common.OpenShiftVersion: "4.14.0"}
+			resultArn, err := client.EnsurePolicy(testPolicyArn, testDocument,
+				"4.14.0", tagList, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resultArn).To(Equal(testPolicyArn))
+		})
+	})
+
+	When("the HCP shared VPC tag is present", func() {
+		It("short-circuits the version check", func() {
+			mockIamAPI.EXPECT().GetPolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.GetPolicyOutput{
+					Policy: &iamtypes.Policy{Arn: aws.String(testPolicyArn)},
+				}, nil)
+			mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
+				&iam.ListPolicyTagsOutput{
+					Tags: []iamtypes.Tag{
+						{Key: aws.String(common.OpenShiftVersion), Value: aws.String("4.13.0")},
+					},
+				}, nil)
+
+			tagList := map[string]string{tags.HcpSharedVpc: tags.True}
+			resultArn, err := client.EnsurePolicy(testPolicyArn, testDocument,
+				"4.14.0", tagList, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resultArn).To(Equal(testPolicyArn))
+		})
+	})
+})
+
+var _ = Describe("ForceEnsurePolicy", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	testPolicyArn := "arn:aws:iam::123456789012:policy/test-policy"
+	testDocument := `{"Version":"2012-10-17","Statement":[]}`
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("the policy exists", func() {
+		It("always forces the update path", func() {
+			mockIamAPI.EXPECT().GetPolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.GetPolicyOutput{
+					Policy: &iamtypes.Policy{Arn: aws.String(testPolicyArn)},
+				}, nil)
+			mockIamAPI.EXPECT().ListPolicyVersions(gomock.Any(), gomock.Any()).Return(
+				&iam.ListPolicyVersionsOutput{
+					Versions: []iamtypes.PolicyVersion{
+						{VersionId: aws.String("v1"), IsDefaultVersion: true},
+					},
+				}, nil)
+			mockIamAPI.EXPECT().CreatePolicyVersion(gomock.Any(), gomock.Any()).Return(
+				&iam.CreatePolicyVersionOutput{}, nil)
+			mockIamAPI.EXPECT().TagPolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.TagPolicyOutput{}, nil)
+
+			tagList := map[string]string{common.OpenShiftVersion: "4.14.0"}
+			resultArn, err := client.ForceEnsurePolicy(testPolicyArn, testDocument,
+				"4.14.0", tagList, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resultArn).To(Equal(testPolicyArn))
+		})
+	})
+})
+
+var _ = Describe("ValidateRoleNameAvailable", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("the role does not exist", func() {
+		It("returns nil", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				nil, &iamtypes.NoSuchEntityException{})
+
+			err := client.ValidateRoleNameAvailable("new-role")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("the role exists", func() {
+		It("returns an error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{RoleName: aws.String("existing-role")},
+				}, nil)
+
+			err := client.ValidateRoleNameAvailable("existing-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("already exists"))
+		})
+	})
+
+	When("GetRole returns another error", func() {
+		It("returns a wrapped error", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("access denied"))
+
+			err := client.ValidateRoleNameAvailable("some-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Error validating role name"))
+			Expect(err.Error()).To(ContainSubstring("access denied"))
+		})
+	})
+})
+
+var _ = Describe("PutRolePolicy", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("the call succeeds", func() {
+		It("returns nil", func() {
+			mockIamAPI.EXPECT().PutRolePolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.PutRolePolicyOutput{}, nil)
+
+			err := client.PutRolePolicy("my-role", "my-policy", `{"Version":"2012-10-17"}`)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("the call fails", func() {
+		It("returns the error", func() {
+			mockIamAPI.EXPECT().PutRolePolicy(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("put role policy failed"))
+
+			err := client.PutRolePolicy("my-role", "my-policy", `{"Version":"2012-10-17"}`)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("put role policy failed"))
+		})
+	})
+})
+
+var _ = Describe("AttachRolePolicy", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+		rep        reporter.Logger
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+		rep = &reporter.Object{}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("the call succeeds", func() {
+		It("returns nil", func() {
+			mockIamAPI.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.AttachRolePolicyOutput{}, nil)
+
+			err := client.AttachRolePolicy(rep, "my-role",
+				"arn:aws:iam::123456789012:policy/my-policy")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("the call fails", func() {
+		It("returns the error", func() {
+			mockIamAPI.EXPECT().AttachRolePolicy(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("attach failed"))
+
+			err := client.AttachRolePolicy(rep, "my-role",
+				"arn:aws:iam::123456789012:policy/my-policy")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("attach failed"))
+		})
+	})
+})
+
+var _ = Describe("DeleteInlineRolePolicies", func() {
+	var (
+		client     awsClient
+		mockIamAPI *mocks.MockIamApiClient
+		mockCtrl   *gomock.Controller
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("there are no inline policies", func() {
+		It("returns nil without deletions", func() {
+			mockIamAPI.EXPECT().ListRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolePoliciesOutput{PolicyNames: []string{}}, nil)
+
+			err := client.DeleteInlineRolePolicies("my-role")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("there are multiple inline policies", func() {
+		It("deletes all of them", func() {
+			mockIamAPI.EXPECT().ListRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolePoliciesOutput{
+					PolicyNames: []string{"policy-a", "policy-b"},
+				}, nil)
+			mockIamAPI.EXPECT().DeleteRolePolicy(gomock.Any(), gomock.Any()).Return(
+				&iam.DeleteRolePolicyOutput{}, nil).Times(2)
+
+			err := client.DeleteInlineRolePolicies("my-role")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("ListRolePolicies returns an error", func() {
+		It("propagates the error", func() {
+			mockIamAPI.EXPECT().ListRolePolicies(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("list error"))
+
+			err := client.DeleteInlineRolePolicies("my-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("list error"))
+		})
+	})
+
+	When("DeleteRolePolicy returns an error", func() {
+		It("propagates the error", func() {
+			mockIamAPI.EXPECT().ListRolePolicies(gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolePoliciesOutput{
+					PolicyNames: []string{"policy-a"},
+				}, nil)
+			mockIamAPI.EXPECT().DeleteRolePolicy(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("delete error"))
+
+			err := client.DeleteInlineRolePolicies("my-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("delete error"))
+		})
 	})
 })

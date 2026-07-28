@@ -1,10 +1,19 @@
 package aws
 
 import (
+	"context"
+	"fmt"
+
+	gomock "go.uber.org/mock/gomock"
+
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	servicequotastypes "github.com/aws/aws-sdk-go-v2/service/servicequotas/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+
+	"github.com/openshift/rosa/pkg/aws/mocks"
 )
 
 var _ = Describe("Quota", func() {
@@ -71,6 +80,80 @@ var _ = Describe("Quota", func() {
 			Expect(*result.QuotaCode).To(Equal(targetCode))
 			Expect(*result.QuotaName).To(Equal("Target Quota"))
 			Expect(*result.Value).To(Equal(200.0))
+		})
+	})
+
+	Context("GetIAMServiceQuota", func() {
+		var (
+			client          Client
+			mockCtrl        *gomock.Controller
+			mockIamQuotaAPI *mocks.MockServiceQuotasApiClient
+		)
+
+		BeforeEach(func() {
+			mockCtrl = gomock.NewController(GinkgoT())
+			mockIamQuotaAPI = mocks.NewMockServiceQuotasApiClient(mockCtrl)
+			client = New(
+				awsSdk.Config{},
+				NewLoggerWrapper(logrus.New(), nil),
+				mocks.NewMockIamApiClient(mockCtrl),
+				mocks.NewMockEc2ApiClient(mockCtrl),
+				mocks.NewMockOrganizationsApiClient(mockCtrl),
+				mocks.NewMockS3ApiClient(mockCtrl),
+				mocks.NewMockSecretsManagerApiClient(mockCtrl),
+				mocks.NewMockStsApiClient(mockCtrl),
+				mocks.NewMockCloudFormationApiClient(mockCtrl),
+				mocks.NewMockServiceQuotasApiClient(mockCtrl),
+				mockIamQuotaAPI,
+				&AccessKey{},
+				false,
+			)
+		})
+
+		AfterEach(func() {
+			mockCtrl.Finish()
+		})
+
+		It("Returns quota on success", func() {
+			quotaCode := "L-F4A5425F"
+			expectedOutput := &servicequotas.GetServiceQuotaOutput{
+				Quota: &servicequotastypes.ServiceQuota{
+					QuotaCode: awsSdk.String(quotaCode),
+					QuotaName: awsSdk.String("Roles per account"),
+					Value:     awsSdk.Float64(1000.0),
+				},
+			}
+
+			mockIamQuotaAPI.EXPECT().GetServiceQuota(
+				context.Background(),
+				&servicequotas.GetServiceQuotaInput{
+					ServiceCode: awsSdk.String(IAMServiceCode),
+					QuotaCode:   awsSdk.String(quotaCode),
+				},
+			).Return(expectedOutput, nil)
+
+			result, err := client.GetIAMServiceQuota(quotaCode)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(expectedOutput))
+			Expect(*result.Quota.QuotaCode).To(Equal(quotaCode))
+			Expect(*result.Quota.Value).To(Equal(1000.0))
+		})
+
+		It("Propagates API error", func() {
+			quotaCode := "L-F4A5425F"
+
+			mockIamQuotaAPI.EXPECT().GetServiceQuota(
+				context.Background(),
+				&servicequotas.GetServiceQuotaInput{
+					ServiceCode: awsSdk.String(IAMServiceCode),
+					QuotaCode:   awsSdk.String(quotaCode),
+				},
+			).Return(nil, fmt.Errorf("access denied"))
+
+			result, err := client.GetIAMServiceQuota(quotaCode)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("access denied"))
+			Expect(result).To(BeNil())
 		})
 	})
 })

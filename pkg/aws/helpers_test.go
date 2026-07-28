@@ -10,6 +10,9 @@ import (
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	"github.com/openshift/rosa/pkg/fedramp"
 )
 
 var _ = Describe("UserTagValidator", func() {
@@ -1042,6 +1045,80 @@ var _ = Describe("resolveSTSRole", func() {
 			_, err := resolveSTSRole(malformedARN)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't appear to have"))
+		})
+	})
+})
+
+var _ = Describe("GetJumpAccount", func() {
+	BeforeEach(func() {
+		fedramp.Disable()
+	})
+
+	AfterEach(func() {
+		fedramp.Disable()
+	})
+
+	It("returns the standard jump account when FedRAMP is disabled", func() {
+		Expect(GetJumpAccount("production")).To(Equal(JumpAccounts["production"]))
+		Expect(GetJumpAccount("local")).To(Equal(JumpAccounts["local"]))
+	})
+
+	It("returns the FedRAMP jump account when FedRAMP is enabled", func() {
+		fedramp.Enable()
+
+		Expect(GetJumpAccount("production")).To(Equal(fedramp.JumpAccounts["production"]))
+		Expect(GetJumpAccount("integration")).To(Equal(fedramp.JumpAccounts["integration"]))
+	})
+
+	It("returns empty string for an unknown environment", func() {
+		Expect(GetJumpAccount("unknown-env")).To(BeEmpty())
+	})
+})
+
+var _ = Describe("ComputeOperatorRoleArn", func() {
+	var operator *cmv1.STSOperator
+
+	BeforeEach(func() {
+		var err error
+		operator, err = cmv1.NewSTSOperator().
+			Namespace("openshift-ingress").
+			Name("cloud-credentials").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	When("path is empty", func() {
+		It("Should build an ARN without path", func() {
+			creator := &Creator{
+				AccountID: "123456789012",
+				Partition: "aws",
+			}
+			result := ComputeOperatorRoleArn("my-prefix", operator, creator, "")
+			Expect(result).To(Equal(
+				"arn:aws:iam::123456789012:role/my-prefix-openshift-ingress-cloud-credentials"))
+		})
+	})
+
+	When("path is provided", func() {
+		It("Should build an ARN with the path", func() {
+			creator := &Creator{
+				AccountID: "123456789012",
+				Partition: "aws",
+			}
+			result := ComputeOperatorRoleArn("my-prefix", operator, creator, "/my/path/")
+			Expect(result).To(Equal(
+				"arn:aws:iam::123456789012:role/my/path/my-prefix-openshift-ingress-cloud-credentials"))
+		})
+	})
+
+	When("partition is GovCloud", func() {
+		It("Should use the GovCloud partition in the ARN", func() {
+			creator := &Creator{
+				AccountID: "123456789012",
+				Partition: "aws-us-gov",
+			}
+			result := ComputeOperatorRoleArn("prefix", operator, creator, "")
+			Expect(result).To(ContainSubstring("arn:aws-us-gov:iam::"))
 		})
 	})
 })

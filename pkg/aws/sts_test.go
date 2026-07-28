@@ -324,6 +324,47 @@ var _ = Describe("STS", func() {
 		})
 	})
 
+	Context("HasPermissionsBoundary", func() {
+		It("returns true when role has a permissions boundary", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: awsSdk.String("test-role"),
+						PermissionsBoundary: &iamtypes.AttachedPermissionsBoundary{
+							PermissionsBoundaryArn: awsSdk.String("arn:aws:iam::123:policy/boundary"),
+						},
+					},
+				}, nil)
+
+			hasBoundary, err := client.HasPermissionsBoundary("test-role")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(hasBoundary).To(BeTrue())
+		})
+
+		It("returns false when role has no permissions boundary", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				&iam.GetRoleOutput{
+					Role: &iamtypes.Role{
+						RoleName: awsSdk.String("test-role"),
+					},
+				}, nil)
+
+			hasBoundary, err := client.HasPermissionsBoundary("test-role")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(hasBoundary).To(BeFalse())
+		})
+
+		It("returns error when GetRole fails", func() {
+			mockIamAPI.EXPECT().GetRole(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("GetRole error"))
+
+			hasBoundary, err := client.HasPermissionsBoundary("test-role")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("GetRole error"))
+			Expect(hasBoundary).To(BeFalse())
+		})
+	})
+
 	Context("DeleteOCMRole", func() {
 		It("detaches but does not delete policies when managedPolicies is true", func() {
 			mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(

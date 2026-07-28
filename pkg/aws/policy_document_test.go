@@ -2,9 +2,18 @@ package aws
 
 import (
 	"encoding/json"
+	"fmt"
 
+	gomock "go.uber.org/mock/gomock"
+
+	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+
+	"github.com/openshift/rosa/pkg/aws/mocks"
 )
 
 var _ = Describe("PolicyDocument", func() {
@@ -319,6 +328,161 @@ var _ = Describe("PolicyDocument", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(ContainSubstring("arn:aws-us-gov:iam::"))
 			Expect(result).ToNot(ContainSubstring("arn:aws:"))
+		})
+	})
+
+	Describe("checkPermissionsUsingQueryClient", func() {
+		var (
+			mockCtrl   *gomock.Controller
+			mockIamAPI *mocks.MockIamApiClient
+			client     *awsClient
+		)
+
+		BeforeEach(func() {
+			mockCtrl = gomock.NewController(GinkgoT())
+			mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+			client = &awsClient{
+				iamClient: mockIamAPI,
+				logger:    NewLoggerWrapper(logrus.New(), nil),
+			}
+		})
+
+		AfterEach(func() {
+			mockCtrl.Finish()
+		})
+
+		It("returns true when all actions are allowed", func() {
+			doc := &PolicyDocument{
+				Statement: []PolicyStatement{
+					{Effect: "Allow", Action: []interface{}{"s3:GetObject", "s3:PutObject"}},
+				},
+			}
+
+			mockIamAPI.EXPECT().SimulatePrincipalPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&iam.SimulatePrincipalPolicyOutput{
+					EvaluationResults: []iamtypes.EvaluationResult{
+						{EvalActionName: awsSdk.String("s3:GetObject"), EvalDecision: "allowed"},
+						{EvalActionName: awsSdk.String("s3:PutObject"), EvalDecision: "allowed"},
+					},
+					IsTruncated: false,
+				}, nil)
+
+			result, err := doc.checkPermissionsUsingQueryClient(client,
+				"arn:aws:iam::123456789012:user/TestUser", nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeTrue())
+		})
+
+		It("returns false with failed actions when some are denied", func() {
+			doc := &PolicyDocument{
+				Statement: []PolicyStatement{
+					{Effect: "Allow", Action: []interface{}{"s3:GetObject", "ec2:RunInstances"}},
+				},
+			}
+
+			mockIamAPI.EXPECT().SimulatePrincipalPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&iam.SimulatePrincipalPolicyOutput{
+					EvaluationResults: []iamtypes.EvaluationResult{
+						{EvalActionName: awsSdk.String("s3:GetObject"), EvalDecision: "allowed"},
+						{EvalActionName: awsSdk.String("ec2:RunInstances"), EvalDecision: "implicitDeny"},
+					},
+					IsTruncated: false,
+				}, nil)
+
+			result, err := doc.checkPermissionsUsingQueryClient(client,
+				"arn:aws:iam::123456789012:user/TestUser", nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ec2:RunInstances"))
+			Expect(result).To(BeFalse())
+		})
+
+		It("returns error when SimulatePrincipalPolicy fails", func() {
+			doc := &PolicyDocument{
+				Statement: []PolicyStatement{
+					{Effect: "Allow", Action: "s3:GetObject"},
+				},
+			}
+
+			mockIamAPI.EXPECT().SimulatePrincipalPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, fmt.Errorf("access denied"))
+
+			result, err := doc.checkPermissionsUsingQueryClient(client,
+				"arn:aws:iam::123456789012:user/TestUser", nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("error simulating policy"))
+			Expect(result).To(BeFalse())
+		})
+
+		It("passes region context entry when SimulateParams has a region", func() {
+			doc := &PolicyDocument{
+				Statement: []PolicyStatement{
+					{Effect: "Allow", Action: "s3:GetObject"},
+				},
+			}
+
+			mockIamAPI.EXPECT().SimulatePrincipalPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ interface{}, input *iam.SimulatePrincipalPolicyInput,
+					_ ...interface{}) (*iam.SimulatePrincipalPolicyOutput, error) {
+					Expect(input.ContextEntries).To(HaveLen(1))
+					Expect(*input.ContextEntries[0].ContextKeyName).To(Equal("aws:RequestedRegion"))
+					Expect(input.ContextEntries[0].ContextKeyValues).To(ConsistOf("us-east-1"))
+					return &iam.SimulatePrincipalPolicyOutput{
+						EvaluationResults: []iamtypes.EvaluationResult{
+							{EvalActionName: awsSdk.String("s3:GetObject"), EvalDecision: "allowed"},
+						},
+						IsTruncated: false,
+					}, nil
+				})
+
+			params := &SimulateParams{Region: "us-east-1"}
+			result, err := doc.checkPermissionsUsingQueryClient(client,
+				"arn:aws:iam::123456789012:user/TestUser", params)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeTrue())
+		})
+
+		It("does not add region context when SimulateParams is nil", func() {
+			doc := &PolicyDocument{
+				Statement: []PolicyStatement{
+					{Effect: "Allow", Action: "s3:GetObject"},
+				},
+			}
+
+			mockIamAPI.EXPECT().SimulatePrincipalPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ interface{}, input *iam.SimulatePrincipalPolicyInput,
+					_ ...interface{}) (*iam.SimulatePrincipalPolicyOutput, error) {
+					Expect(input.ContextEntries).To(BeEmpty())
+					return &iam.SimulatePrincipalPolicyOutput{
+						EvaluationResults: []iamtypes.EvaluationResult{
+							{EvalActionName: awsSdk.String("s3:GetObject"), EvalDecision: "allowed"},
+						},
+						IsTruncated: false,
+					}, nil
+				})
+
+			result, err := doc.checkPermissionsUsingQueryClient(client,
+				"arn:aws:iam::123456789012:user/TestUser", nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeTrue())
+		})
+
+		It("returns true for a document with no allowed actions", func() {
+			doc := &PolicyDocument{
+				Statement: []PolicyStatement{
+					{Effect: "Deny", Action: "s3:GetObject"},
+				},
+			}
+
+			mockIamAPI.EXPECT().SimulatePrincipalPolicy(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&iam.SimulatePrincipalPolicyOutput{
+					EvaluationResults: []iamtypes.EvaluationResult{},
+					IsTruncated:       false,
+				}, nil)
+
+			result, err := doc.checkPermissionsUsingQueryClient(client,
+				"arn:aws:iam::123456789012:user/TestUser", nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeTrue())
 		})
 	})
 })
