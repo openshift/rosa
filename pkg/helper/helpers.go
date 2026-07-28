@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/google/uuid"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/reporter"
@@ -182,11 +181,6 @@ func SaveDocument(doc, filename string) error {
 	}
 
 	return nil
-}
-
-func IsValidUUID(u string) bool {
-	_, err := uuid.Parse(u)
-	return err == nil
 }
 
 func HandleEscapedEmptyString(input string) string {
