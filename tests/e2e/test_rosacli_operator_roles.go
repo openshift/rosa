@@ -356,7 +356,6 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				Expect(err).To(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(textData).To(ContainSubstring("Successfully deleted the operator roles"))
-
 			}()
 
 			roles, err := listOperatorRoles(classicSTSOperatorRolesPrefix)
@@ -464,7 +463,6 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				Should(ContainSubstring(
 					"Either a cluster key for STS cluster or an operator roles prefix must be specified"))
 		})
-
 })
 
 var _ = Describe("create operator-roles forcely testing",
@@ -591,6 +589,7 @@ var _ = Describe("create operator-roles forcely testing",
 				}
 			})
 	})
+
 var _ = Describe("create IAM roles forcely testing",
 	func() {
 		defer GinkgoRecover()
@@ -804,6 +803,7 @@ var _ = Describe("create IAM roles forcely testing",
 				}
 			})
 	})
+
 var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorRoles, func() {
 	defer GinkgoRecover()
 	var (
@@ -832,10 +832,8 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 
 		By("Get the default dir")
 		defaultDir = rosaClient.Runner.GetDir()
-
 	})
 	AfterEach(func() {
-
 		By("Delete testing operator-roles")
 		_, err = ocmResourceService.DeleteOperatorRoles(
 			"--prefix", operatorRolePrefixC,
@@ -949,7 +947,6 @@ var _ = Describe("Detele operator roles with byo oidc", labels.Feature.OperatorR
 				Expect(err).To(BeNil())
 			}
 		})
-
 })
 
 var _ = Describe("Create cluster with oprator roles which are attaching managed policies in manual mode",
@@ -1178,21 +1175,28 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
 				Expect(err).To(BeNil())
 
+				By("Edit cluster channel")
+				preparation, err := clusterService.PrepareClusterForYStreamUpgrade(clusterID, customProfile.ChannelGroup)
+				Expect(err).ToNot(HaveOccurred())
+
 				By("Get cluster upgrade version")
-				output, err := upgradeService.ListUpgrades("-c", clusterID)
-				Expect(err).To(BeNil())
-				upgradeVersionList, err := upgradeService.ReflectUpgradeVersionList(output)
-				Expect(err).To(BeNil())
-				Expect(len(upgradeVersionList.UpgradeVersions)).To(BeNumerically(">", 0),
-					"Expected at least one upgrade version to be available")
-				upgradingVersion := upgradeVersionList.UpgradeVersions[0].Version
+				upgradingVersion, _, err := upgradeService.WaitForAvailableYStreamUpgrade(
+					clusterID,
+					preparation,
+					yStreamUpgradeWaitInterval,
+					yStreamUpgradeWaitTimeout,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(upgradingVersion).ToNot(BeEmpty(), "Failed to find an upgrade target")
+
 				_, _, roleUpgradeVersion, err := helper.GetMajorMinorFromVersion(upgradingVersion)
 				Expect(err).To(BeNil())
 
 				By("Upgrade cluster to verify if there are any prompts to upgrade account roles firstly")
-				scheduledDate := time.Now().Format("2006-01-02")
-				scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
-				output, err = upgradeService.Upgrade(
+				scheduledAt := time.Now().UTC().Add(10 * time.Minute)
+				scheduledDate := scheduledAt.Format("2006-01-02")
+				scheduledTime := scheduledAt.Format("15:04")
+				output, err := upgradeService.Upgrade(
 					"-c", clusterID,
 					"--version", upgradingVersion,
 					"--schedule-date", scheduledDate,
@@ -1271,7 +1275,6 @@ var _ = Describe("Create/Delete operator roles for hosted-cp shared vpc", labels
 		By("Init the client")
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
-
 	})
 
 	AfterEach(func() {
