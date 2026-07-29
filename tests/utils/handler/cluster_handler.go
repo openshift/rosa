@@ -1211,52 +1211,67 @@ func (ch *clusterHandler) CreateCluster(waitForClusterReady bool) (err error) {
 	return err
 }
 
-func (ch *clusterHandler) destroyCluster() (errors []error) {
+// destroyCluster deletes the cluster and waits for uninstall to finish.
+// clusterRemoved is true when there is no cluster left to block follow-on
+// cleanup (already gone, or uninstall completed). It is false when delete or
+// uninstall failed and the cluster may still exist — callers should skip
+// resource cleanup that requires the cluster to be gone.
+func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool) {
 	var clusterID string
 	if ch.clusterDetail != nil && ch.clusterDetail.ClusterID != "" {
 		clusterID = ch.clusterDetail.ClusterID
 	} else if ch.resourcesHandler != nil && ch.resourcesHandler.resources.ClusterID != "" {
 		clusterID = ch.resourcesHandler.resources.ClusterID
 	}
-	if clusterID != "" {
-		clusterService := ch.rosaClient.Cluster
-		output, errDeleteCluster := clusterService.DeleteCluster(clusterID, "-y")
-		if errDeleteCluster != nil {
-			if strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterID)) {
-				log.Logger.Infof("Cluster %s not exists.", clusterID)
-			} else {
-				log.Logger.Errorf("Error happened when delete cluster: %s", output.String())
-				errors = append(errors, errDeleteCluster)
-			}
-		} else {
-			log.Logger.Infof("Waiting for the cluster %s to be uninstalled", clusterID)
-			err := clusterService.WaitForClusterPassUninstalled(clusterID, 2, config.Test.GlobalENV.ClusterWaitingTime)
-			if err != nil {
-				log.Logger.Errorf("Error happened when waiting cluster uninstall: %s", err.Error())
-				errors = append(errors, err)
-			} else {
-				log.Logger.Infof("Delete cluster %s successfully.", clusterID)
-			}
+	if clusterID == "" {
+		// Nothing to uninstall; allow prepared-resource cleanup to proceed.
+		return nil, true
+	}
 
-			// Remove OIDC provider
-			if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" {
-				_, err = ch.rosaClient.OCMResource.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
-				if err != nil {
-					log.Logger.Errorf("Error happened when delete oidc provider: %s", err.Error())
-					errors = append(errors, err)
-				}
-				log.Logger.Infof("Delete oidc provider successfully")
-			}
+	clusterService := ch.rosaClient.Cluster
+	output, errDeleteCluster := clusterService.DeleteCluster(clusterID, "-y")
+	if errDeleteCluster != nil {
+		if strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterID)) {
+			log.Logger.Infof("Cluster %s not exists.", clusterID)
+			return nil, true
+		}
+		log.Logger.Errorf("Error happened when delete cluster: %s", output.String())
+		return []error{errDeleteCluster}, false
+	}
+
+	log.Logger.Infof("Waiting for the cluster %s to be uninstalled", clusterID)
+	err := clusterService.WaitForClusterPassUninstalled(clusterID, 2, config.Test.GlobalENV.ClusterWaitingTime)
+	if err != nil {
+		log.Logger.Errorf("Error happened when waiting cluster uninstall: %s", err.Error())
+		// Fail fast: do not attempt OIDC/provider cleanup while the cluster may
+		// still exist; that only produces noisy secondary errors.
+		return []error{err}, false
+	}
+	log.Logger.Infof("Delete cluster %s successfully.", clusterID)
+
+	// Remove OIDC provider only after uninstall completed.
+	if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" {
+		_, err = ch.rosaClient.OCMResource.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
+		if err != nil {
+			log.Logger.Errorf("Error happened when delete oidc provider: %s", err.Error())
+			errors = append(errors, err)
+		} else {
+			log.Logger.Infof("Delete oidc provider successfully")
 		}
 	}
-	return
+	return errors, true
 }
 
 func (ch *clusterHandler) Destroy() (errors []error) {
-	// destroy cluster
-	errDestroyCluster := ch.destroyCluster()
+	errDestroyCluster, clusterRemoved := ch.destroyCluster()
 	if len(errDestroyCluster) > 0 {
 		errors = append(errors, errDestroyCluster...)
+	}
+
+	if !clusterRemoved {
+		log.Logger.Warnf(
+			"Skipping prepared resource cleanup because the cluster was not fully removed")
+		return errors
 	}
 
 	// Destroy ch.resourcesHandler.Prepared user data
