@@ -2,6 +2,7 @@ package version
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	verify "github.com/openshift/rosa/cmd/verify/rosa"
 	"github.com/openshift/rosa/pkg/info"
@@ -12,6 +13,7 @@ import (
 type RosaVersionUserOptions struct {
 	clientOnly bool
 	verbose    bool
+	build      bool
 }
 
 func NewRosaVersionUserOptions() *RosaVersionUserOptions {
@@ -45,6 +47,41 @@ func (o *RosaVersionOptions) Version() error {
 		o.reporter.Infof("Information and download locations:\n\t%s\n\t%s\n",
 			version.ConsoleLatestFolder,
 			version.DownloadLatestMirrorFolder)
+	}
+
+	if o.args.build {
+		buildInfo, ok := debug.ReadBuildInfo()
+		if ok {
+			var revision string
+			var buildTime string
+			var dirty bool
+
+			for _, setting := range buildInfo.Settings {
+				switch setting.Key {
+				case "vcs.revision":
+					revision = setting.Value
+				case "vcs.time":
+					buildTime = setting.Value
+				case "vcs.modified":
+					dirty = setting.Value == "true"
+				}
+			}
+
+			if revision == "" {
+				revision = info.Build
+			}
+			buildMsg := revision
+			if dirty {
+				buildMsg += " (dirty)"
+			}
+			if buildTime != "" {
+				buildMsg += " " + buildTime
+			}
+
+			o.reporter.Infof("Build info: %s", buildMsg)
+		} else {
+			o.reporter.Infof("Build info: %s", info.Build)
+		}
 	}
 
 	if !o.args.clientOnly {
