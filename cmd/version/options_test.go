@@ -19,10 +19,12 @@ var _ = Describe("RosaVersionOptions", func() {
 				userOptions = RosaVersionUserOptions{
 					verbose:    true,
 					clientOnly: true,
+					build:      true,
 				}
 				expectedArgs = RosaVersionUserOptions{
 					verbose:    true,
 					clientOnly: true,
+					build:      true,
 				}
 				o.BindAndValidate(&userOptions)
 				Expect(o.args).To(Equal(&expectedArgs))

@@ -126,23 +126,31 @@ var _ = Describe("RosaVersionOptions", func() {
 		})
 
 		It("should print version information correctly", func() {
-			// todo move this to a helper func for capturing output of a func
-			var stdout []byte
-			var err error
-
-			rout, wout, _ := os.Pipe()
+			rout, wout, pipeErr := os.Pipe()
+			Expect(pipeErr).ToNot(HaveOccurred())
 			tmpout := os.Stdout
 			defer func() {
 				os.Stdout = tmpout
 			}()
 			os.Stdout = wout
 
+			type result struct {
+				versionErr error
+				closeErr   error
+			}
+			ch := make(chan result, 1)
 			go func() {
-				err = opts.Version()
-				wout.Close()
+				vErr := opts.Version()
+				cErr := wout.Close()
+				ch <- result{versionErr: vErr, closeErr: cErr}
 			}()
-			Expect(err).To(BeNil())
-			stdout, _ = io.ReadAll(rout)
+
+			stdout, readErr := io.ReadAll(rout)
+			Expect(readErr).ToNot(HaveOccurred())
+
+			res := <-ch
+			Expect(res.versionErr).ToNot(HaveOccurred())
+			Expect(res.closeErr).ToNot(HaveOccurred())
 
 			// Verify the outputs
 			Expect(string(stdout)).To(ContainSubstring(info.DefaultVersion))
@@ -154,12 +162,66 @@ var _ = Describe("RosaVersionOptions", func() {
 			}
 		})
 	})
+
+	When("Both clientOnly and build are true", func() {
+		BeforeEach(func() {
+			ctrl = gomock.NewController(GinkgoT())
+			mockVerify = rosa.NewMockVerifyRosa(ctrl)
+
+			rpt := reporter.CreateReporter()
+
+			opts = &RosaVersionOptions{
+				verifyRosa: mockVerify,
+				reporter:   rpt,
+
+				args: &RosaVersionUserOptions{
+					clientOnly: true,
+					verbose:    false,
+					build:      true,
+				},
+			}
+		})
+
+		AfterEach(func() {
+			ctrl.Finish()
+		})
+
+		It("should print version information correctly", func() {
+			rout, wout, pipeErr := os.Pipe()
+			Expect(pipeErr).ToNot(HaveOccurred())
+			tmpout := os.Stdout
+			defer func() {
+				os.Stdout = tmpout
+			}()
+			os.Stdout = wout
+
+			type result struct {
+				versionErr error
+				closeErr   error
+			}
+			ch := make(chan result, 1)
+			go func() {
+				vErr := opts.Version()
+				cErr := wout.Close()
+				ch <- result{versionErr: vErr, closeErr: cErr}
+			}()
+
+			stdout, readErr := io.ReadAll(rout)
+			Expect(readErr).ToNot(HaveOccurred())
+
+			res := <-ch
+			Expect(res.versionErr).ToNot(HaveOccurred())
+			Expect(res.closeErr).ToNot(HaveOccurred())
+
+			// Verify the outputs
+			Expect(string(stdout)).To(ContainSubstring(info.DefaultVersion))
+			Expect(string(stdout)).To(ContainSubstring("Build info: local"))
+		})
+	})
 })
 
 var _ = Describe("NewRosaVersionCommand", func() {
-	var (
-		cmd *cobra.Command
-	)
+	var cmd *cobra.Command
 
 	BeforeEach(func() {
 		cmd = NewRosaVersionCommand()
@@ -186,5 +248,14 @@ var _ = Describe("NewRosaVersionCommand", func() {
 		Expect(verboseFlag.Name).To(Equal("verbose"))
 		Expect(verboseFlag.Shorthand).To(Equal("v"))
 		Expect(verboseFlag.Usage).To(Equal("Display verbose version information, including download locations"))
+	})
+
+	It("should add build flag", func() {
+		buildFlag := cmd.Flag("build")
+		Expect(buildFlag).NotTo(BeNil())
+		Expect(buildFlag.Name).To(Equal("build"))
+		Expect(buildFlag.Shorthand).To(Equal("b"))
+		Expect(buildFlag.Hidden).To(BeTrue())
+		Expect(buildFlag.Usage).To(Equal("Display build version information, including git commit and build time"))
 	})
 })
