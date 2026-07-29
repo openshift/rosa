@@ -32,8 +32,6 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	msv1 "github.com/openshift-online/ocm-sdk-go/servicemgmt/v1"
 
-	"gitlab.com/c0b/go-ordered-json"
-
 	"github.com/openshift/rosa/pkg/aws"
 )
 
@@ -288,12 +286,11 @@ func prettifyJSON(stream io.Writer, body []byte) error {
 	if len(body) == 0 {
 		return nil
 	}
-	data := ordered.NewOrderedMap()
-	err := json.Unmarshal(body, data)
-	if err != nil {
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, body, "", "  "); err != nil {
 		return dumpBytes(stream, body)
 	}
-	return dumpJSON(stream, data)
+	return dumpBytes(stream, buf.Bytes())
 }
 
 func dumpBytes(stream io.Writer, data []byte) error {
@@ -303,10 +300,4 @@ func dumpBytes(stream io.Writer, data []byte) error {
 	}
 	_, err = stream.Write([]byte("\n"))
 	return err
-}
-
-func dumpJSON(stream io.Writer, data *ordered.OrderedMap) error {
-	encoder := json.NewEncoder(stream)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(data)
 }
