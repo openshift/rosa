@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"encoding/json"
 	"net/http"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -15,7 +16,6 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	BeforeEach(func() {
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 		ocmClient = buildTestOCMClient(apiServer.URL())
 	})
@@ -27,7 +27,10 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	It("handles missing current account in GetCurrentOrganization", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusNotFound, `{"reason":"not found"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusNotFound, `{"reason":"not found"}`),
+			),
 		)
 
 		var (
@@ -46,10 +49,13 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	It("returns current account body when GetCurrentAccount succeeds", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1","external_id":"ext-1"}
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1","external_id":"ext-1"}
+				}`),
+			),
 		)
 
 		account, err := ocmClient.GetCurrentAccount()
@@ -62,8 +68,20 @@ var _ = Describe("Helpers API client behavior", func() {
 	It("links a role to organization labels when account is not present yet", func() {
 		roleARN := "arn:aws:iam::123456789012:role/first-role"
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":""}`),
-			RespondWithJSON(http.StatusCreated, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/first-role"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
+				RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":""}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/accounts_mgmt/v1/organizations/org-1/labels"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]string{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("key", "sts_ocm_role"))
+					Expect(payload).To(HaveKeyWithValue("value", roleARN))
+				},
+				RespondWithJSON(http.StatusCreated, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/first-role"}`),
+			),
 		)
 
 		linked, err := ocmClient.LinkOrgToRole("org-1", roleARN)
@@ -73,7 +91,10 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	It("rejects linking a second role for the same aws account", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/existing-role"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
+				RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/existing-role"}`),
+			),
 		)
 
 		linked, err := ocmClient.LinkOrgToRole("org-1", "arn:aws:iam::123456789012:role/new-role")
@@ -85,8 +106,14 @@ var _ = Describe("Helpers API client behavior", func() {
 	It("unlinks organization ocm role by deleting label when last entry is removed", func() {
 		roleARN := "arn:aws:iam::123456789012:role/only-role"
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/only-role"}`),
-			RespondWithJSON(http.StatusOK, `{}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
+				RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/only-role"}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
+				RespondWithJSON(http.StatusOK, `{}`),
+			),
 		)
 
 		err := ocmClient.UnlinkOCMRoleFromOrg("org-1", roleARN)
@@ -95,7 +122,10 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	It("avoids creating duplicate user role links on an account", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{"key":"sts_user_role","value":"arn:aws:iam::123456789012:role/existing"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/accounts/acct-1/labels/sts_user_role"),
+				RespondWithJSON(http.StatusOK, `{"key":"sts_user_role","value":"arn:aws:iam::123456789012:role/existing"}`),
+			),
 		)
 
 		err := ocmClient.LinkAccountRole("acct-1", "arn:aws:iam::123456789012:role/existing")
@@ -104,14 +134,26 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	It("unlinks a user role from account labels and updates remaining roles", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"key":"sts_user_role",
-				"value":"arn:aws:iam::123456789012:role/remove,arn:aws:iam::123456789012:role/keep"
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"key":"sts_user_role",
-				"value":"arn:aws:iam::123456789012:role/keep"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/accounts/acct-1/labels/sts_user_role"),
+				RespondWithJSON(http.StatusOK, `{
+					"key":"sts_user_role",
+					"value":"arn:aws:iam::123456789012:role/remove,arn:aws:iam::123456789012:role/keep"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPatch, "/api/accounts_mgmt/v1/accounts/acct-1/labels/sts_user_role"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]string{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("key", "sts_user_role"))
+					Expect(payload).To(HaveKeyWithValue("value", "arn:aws:iam::123456789012:role/keep"))
+				},
+				RespondWithJSON(http.StatusOK, `{
+					"key":"sts_user_role",
+					"value":"arn:aws:iam::123456789012:role/keep"
+				}`),
+			),
 		)
 
 		err := ocmClient.UnlinkUserRoleFromAccount("acct-1", "arn:aws:iam::123456789012:role/remove")

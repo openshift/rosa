@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -22,7 +23,6 @@ var _ = Describe("NodePools", Ordered, func() {
 	BeforeEach(func() {
 		ssoServer = MakeTCPServer()
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 
 		accessToken := MakeTokenString("Bearer", 15*time.Minute)
@@ -48,17 +48,22 @@ var _ = Describe("NodePools", Ordered, func() {
 	})
 
 	It("finds node pools using a kubelet config name", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{
-			"kind": "NodePoolList",
-			"page": 1,
-			"size": 3,
-			"total": 3,
-			"items": [
-				{"id":"np-1","kubelet_configs":["kc-a","kc-b"]},
-				{"id":"np-2","kubelet_configs":["kc-b"]},
-				{"id":"np-3","kubelet_configs":[]}
-			]
-		}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind": "NodePoolList",
+					"page": 1,
+					"size": 3,
+					"total": 3,
+					"items": [
+						{"id":"np-1","kubelet_configs":["kc-a","kc-b"]},
+						{"id":"np-2","kubelet_configs":["kc-b"]},
+						{"id":"np-3","kubelet_configs":[]}
+					]
+				}`),
+			),
+		)
 
 		found, err := ocmClient.FindNodePoolsUsingKubeletConfig(clusterID, "kc-b")
 		Expect(err).NotTo(HaveOccurred())
@@ -68,7 +73,14 @@ var _ = Describe("NodePools", Ordered, func() {
 	})
 
 	It("returns an error when listing node pools fails during kubelet search", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusInternalServerError, `{"reason":"broken"}`))
+		for i := 0; i < 3; i++ {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools"),
+					RespondWithJSON(http.StatusInternalServerError, `{"reason":"broken"}`),
+				),
+			)
+		}
 
 		found, err := ocmClient.FindNodePoolsUsingKubeletConfig(clusterID, "kc-b")
 		Expect(err).To(HaveOccurred())
@@ -76,16 +88,21 @@ var _ = Describe("NodePools", Ordered, func() {
 	})
 
 	It("returns an empty list when no node pool uses kubelet config", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{
-			"kind": "NodePoolList",
-			"page": 1,
-			"size": 2,
-			"total": 2,
-			"items": [
-				{"id":"np-1","kubelet_configs":["kc-a"]},
-				{"id":"np-2","kubelet_configs":["kc-c"]}
-			]
-		}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind": "NodePoolList",
+					"page": 1,
+					"size": 2,
+					"total": 2,
+					"items": [
+						{"id":"np-1","kubelet_configs":["kc-a"]},
+						{"id":"np-2","kubelet_configs":["kc-c"]}
+					]
+				}`),
+			),
+		)
 
 		found, err := ocmClient.FindNodePoolsUsingKubeletConfig(clusterID, "kc-b")
 		Expect(err).NotTo(HaveOccurred())
@@ -93,7 +110,12 @@ var _ = Describe("NodePools", Ordered, func() {
 	})
 
 	It("returns exists=false,nil error when node pool is not found", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, `{"reason":"not found"}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools/missing"),
+				RespondWithJSON(http.StatusNotFound, `{"reason":"not found"}`),
+			),
+		)
 
 		nodePool, exists, err := ocmClient.GetNodePool(clusterID, "missing")
 		Expect(err).NotTo(HaveOccurred())
@@ -102,7 +124,12 @@ var _ = Describe("NodePools", Ordered, func() {
 	})
 
 	It("returns node pool and exists=true when node pool exists", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{"id":"np-1","kubelet_configs":["kc-a"]}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools/np-1"),
+				RespondWithJSON(http.StatusOK, `{"id":"np-1","kubelet_configs":["kc-a"]}`),
+			),
+		)
 
 		nodePool, exists, err := ocmClient.GetNodePool(clusterID, "np-1")
 		Expect(err).NotTo(HaveOccurred())
@@ -112,16 +139,47 @@ var _ = Describe("NodePools", Ordered, func() {
 	})
 
 	It("supports basic node pool CRUD wrappers", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, `{"id":"np-created","kubelet_configs":["kc-a"]}`))
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{
-			"kind":"NodePoolList",
-			"page":1,
-			"size":1,
-			"total":1,
-			"items":[{"id":"np-created","kubelet_configs":["kc-a"]}]
-		}`))
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{"id":"np-created","kubelet_configs":["kc-a","kc-b"]}`))
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ``))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]interface{}{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("id", "np-created"))
+				},
+				RespondWithJSON(http.StatusCreated, `{"id":"np-created","kubelet_configs":["kc-a"]}`),
+			),
+		)
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"NodePoolList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{"id":"np-created","kubelet_configs":["kc-a"]}]
+				}`),
+			),
+		)
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPatch, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools/np-created"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]interface{}{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("id", "np-created"))
+					Expect(payload).To(HaveKeyWithValue("kubelet_configs", []interface{}{"kc-a", "kc-b"}))
+				},
+				RespondWithJSON(http.StatusOK, `{"id":"np-created","kubelet_configs":["kc-a","kc-b"]}`),
+			),
+		)
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools/np-created"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
 
 		input, err := cmv1.NewNodePool().ID("np-created").Build()
 		Expect(err).NotTo(HaveOccurred())

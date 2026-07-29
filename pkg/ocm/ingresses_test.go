@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -22,7 +23,6 @@ var _ = Describe("Ingresses", Ordered, func() {
 	BeforeEach(func() {
 		ssoServer = MakeTCPServer()
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 
 		accessToken := MakeTokenString("Bearer", 15*time.Minute)
@@ -60,7 +60,12 @@ var _ = Describe("Ingresses", Ordered, func() {
 		}`
 
 		It("returns the default ingress for apps", func() {
-			apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ingressesBody))
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/ingresses"),
+					RespondWithJSON(http.StatusOK, ingressesBody),
+				),
+			)
 
 			ingress, err := ocmClient.GetIngress(clusterID, "apps")
 			Expect(err).NotTo(HaveOccurred())
@@ -69,7 +74,12 @@ var _ = Describe("Ingresses", Ordered, func() {
 		})
 
 		It("returns the non-default ingress for apps2", func() {
-			apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ingressesBody))
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/ingresses"),
+					RespondWithJSON(http.StatusOK, ingressesBody),
+				),
+			)
 
 			ingress, err := ocmClient.GetIngress(clusterID, "apps2")
 			Expect(err).NotTo(HaveOccurred())
@@ -78,7 +88,12 @@ var _ = Describe("Ingresses", Ordered, func() {
 		})
 
 		It("returns ingress by explicit id lookup", func() {
-			apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ingressesBody))
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/ingresses"),
+					RespondWithJSON(http.StatusOK, ingressesBody),
+				),
+			)
 
 			ingress, err := ocmClient.GetIngress(clusterID, "custom-ingress")
 			Expect(err).NotTo(HaveOccurred())
@@ -87,7 +102,12 @@ var _ = Describe("Ingresses", Ordered, func() {
 		})
 
 		It("returns not found error when ingress key has no match", func() {
-			apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ingressesBody))
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/ingresses"),
+					RespondWithJSON(http.StatusOK, ingressesBody),
+				),
+			)
 
 			ingress, err := ocmClient.GetIngress(clusterID, "missing")
 			Expect(err).To(HaveOccurred())
@@ -98,13 +118,18 @@ var _ = Describe("Ingresses", Ordered, func() {
 
 	Describe("GetIngresses", func() {
 		It("returns ingress list", func() {
-			apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{
-				"kind": "IngressList",
-				"page": 1,
-				"size": 1,
-				"total": 1,
-				"items": [{"id": "ingress-1", "default": true}]
-			}`))
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/ingresses"),
+					RespondWithJSON(http.StatusOK, `{
+						"kind": "IngressList",
+						"page": 1,
+						"size": 1,
+						"total": 1,
+						"items": [{"id": "ingress-1", "default": true}]
+					}`),
+				),
+			)
 
 			ingresses, err := ocmClient.GetIngresses(clusterID)
 			Expect(err).NotTo(HaveOccurred())
@@ -115,10 +140,21 @@ var _ = Describe("Ingresses", Ordered, func() {
 
 	Describe("UpdateIngress", func() {
 		It("updates and returns ingress", func() {
-			apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{
-				"id": "ingress-1",
-				"default": false
-			}`))
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodPatch, "/api/clusters_mgmt/v1/clusters/cluster-1/ingresses/ingress-1"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						payload := map[string]interface{}{}
+						Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+						Expect(payload).To(HaveKeyWithValue("id", "ingress-1"))
+						Expect(payload).To(HaveKeyWithValue("default", false))
+					},
+					RespondWithJSON(http.StatusOK, `{
+						"id": "ingress-1",
+						"default": false
+					}`),
+				),
+			)
 
 			ingress, err := cmv1.NewIngress().
 				ID("ingress-1").
@@ -135,7 +171,12 @@ var _ = Describe("Ingresses", Ordered, func() {
 
 	Describe("DeleteIngress", func() {
 		It("deletes ingress", func() {
-			apiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/ingresses/ingress-1"),
+					RespondWithJSON(http.StatusNoContent, ""),
+				),
+			)
 
 			err := ocmClient.DeleteIngress(clusterID, "ingress-1")
 			Expect(err).NotTo(HaveOccurred())

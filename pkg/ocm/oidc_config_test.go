@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -22,7 +23,6 @@ var _ = Describe("Oidc Config", Ordered, func() {
 	BeforeEach(func() {
 		ssoServer = MakeTCPServer()
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 
 		accessToken := MakeTokenString("Bearer", 15*time.Minute)
@@ -50,6 +50,7 @@ var _ = Describe("Oidc Config", Ordered, func() {
 	It("lists OIDC configs with expected search query", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/oidc_configs"),
 				ghttp.VerifyFormKV("search", "aws.account_id='123456789012' or aws.account_id=''"),
 				RespondWithJSON(http.StatusOK, `{
 					"kind": "OidcConfigList",
@@ -68,10 +69,20 @@ var _ = Describe("Oidc Config", Ordered, func() {
 	})
 
 	It("fetches OIDC thumbprint", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{
-			"id": "thumb-1",
-			"thumbprint": "ABCD"
-		}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/aws_inquiries/oidc_thumbprint"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]interface{}{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("oidc_config_id", "oidc-1"))
+				},
+				RespondWithJSON(http.StatusOK, `{
+					"id": "thumb-1",
+					"thumbprint": "ABCD"
+				}`),
+			),
+		)
 
 		input, err := cmv1.NewOidcThumbprintInput().OidcConfigId("oidc-1").Build()
 		Expect(err).NotTo(HaveOccurred())
@@ -83,7 +94,17 @@ var _ = Describe("Oidc Config", Ordered, func() {
 	})
 
 	It("returns error when fetching OIDC thumbprint fails", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusBadRequest, `{"reason":"invalid issuer"}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/aws_inquiries/oidc_thumbprint"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]interface{}{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("oidc_config_id", "missing-oidc"))
+				},
+				RespondWithJSON(http.StatusBadRequest, `{"reason":"invalid issuer"}`),
+			),
+		)
 
 		input, err := cmv1.NewOidcThumbprintInput().OidcConfigId("missing-oidc").Build()
 		Expect(err).NotTo(HaveOccurred())
@@ -94,9 +115,33 @@ var _ = Describe("Oidc Config", Ordered, func() {
 	})
 
 	It("supports basic OIDC config CRUD wrappers", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{"id":"oidc-1","secret_arn":"arn:aws:secretsmanager:us-east-1:123:secret:one"}`))
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, `{"id":"oidc-2","secret_arn":"arn:aws:secretsmanager:us-east-1:123:secret:two"}`))
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ``))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/oidc_configs/oidc-1"),
+				RespondWithJSON(http.StatusOK, `{"id":"oidc-1","secret_arn":"arn:aws:secretsmanager:us-east-1:123:secret:one"}`),
+			),
+		)
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/oidc_configs"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]interface{}{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("id", "oidc-2"))
+					Expect(payload).To(HaveKeyWithValue(
+						"secret_arn",
+						"arn:aws:secretsmanager:us-east-1:123:secret:two",
+					))
+				},
+				RespondWithJSON(http.StatusCreated, `{"id":"oidc-2","secret_arn":"arn:aws:secretsmanager:us-east-1:123:secret:two"}`),
+			),
+		)
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/oidc_configs/oidc-2"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
 
 		config, err := ocmClient.GetOidcConfig("oidc-1")
 		Expect(err).NotTo(HaveOccurred())

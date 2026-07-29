@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -26,7 +27,6 @@ var _ = Describe("Users", Ordered, func() {
 	BeforeEach(func() {
 		ssoServer = MakeTCPServer()
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 
 		accessToken := MakeTokenString("Bearer", 15*time.Minute)
@@ -52,7 +52,12 @@ var _ = Describe("Users", Ordered, func() {
 	})
 
 	It("gets an existing user", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{"id":"user-1"}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users/alice"),
+				RespondWithJSON(http.StatusOK, `{"id":"user-1"}`),
+			),
+		)
 
 		user, err := ocmClient.GetUser(clusterID, groupID, username)
 		Expect(err).NotTo(HaveOccurred())
@@ -61,7 +66,12 @@ var _ = Describe("Users", Ordered, func() {
 	})
 
 	It("returns nil,nil when user is not found", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, `{"reason":"not found"}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users/missing"),
+				RespondWithJSON(http.StatusNotFound, `{"reason":"not found"}`),
+			),
+		)
 
 		user, err := ocmClient.GetUser(clusterID, groupID, "missing")
 		Expect(err).NotTo(HaveOccurred())
@@ -69,7 +79,14 @@ var _ = Describe("Users", Ordered, func() {
 	})
 
 	It("returns an error when user lookup fails with non-404 status", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusInternalServerError, `{"reason":"internal error"}`))
+		for i := 0; i < 3; i++ {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users/alice"),
+					RespondWithJSON(http.StatusInternalServerError, `{"reason":"internal error"}`),
+				),
+			)
+		}
 
 		user, err := ocmClient.GetUser(clusterID, groupID, username)
 		Expect(err).To(HaveOccurred())
@@ -77,16 +94,21 @@ var _ = Describe("Users", Ordered, func() {
 	})
 
 	It("lists users", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusOK, `{
-			"kind": "UserList",
-			"page": 1,
-			"size": 2,
-			"total": 2,
-			"items": [
-				{"id":"user-1"},
-				{"id":"user-2"}
-			]
-		}`))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind": "UserList",
+					"page": 1,
+					"size": 2,
+					"total": 2,
+					"items": [
+						{"id":"user-1"},
+						{"id":"user-2"}
+					]
+				}`),
+			),
+		)
 
 		users, err := ocmClient.GetUsers(clusterID, groupID)
 		Expect(err).NotTo(HaveOccurred())
@@ -96,8 +118,23 @@ var _ = Describe("Users", Ordered, func() {
 	})
 
 	It("creates and deletes users", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, `{"id":"user-3"}`))
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ``))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]interface{}{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("id", "user-3"))
+				},
+				RespondWithJSON(http.StatusCreated, `{"id":"user-3"}`),
+			),
+		)
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users/charlie"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
 
 		createInput, err := cmv1.NewUser().ID("user-3").Build()
 		Expect(err).NotTo(HaveOccurred())

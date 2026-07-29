@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -20,7 +21,6 @@ var _ = Describe("DNS Domains", Ordered, func() {
 	BeforeEach(func() {
 		ssoServer = MakeTCPServer()
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 
 		accessToken := MakeTokenString("Bearer", 15*time.Minute)
@@ -48,6 +48,7 @@ var _ = Describe("DNS Domains", Ordered, func() {
 	It("lists DNS domains with search and order parameters", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/dns_domains"),
 				ghttp.VerifyFormKV("search", "name like 'example'"),
 				ghttp.VerifyFormKV("order", "organization.id asc"),
 				RespondWithJSON(http.StatusOK, `{
@@ -67,8 +68,24 @@ var _ = Describe("DNS Domains", Ordered, func() {
 	})
 
 	It("creates and deletes DNS domains", func() {
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, `{"id":"dns-2","user_defined":true}`))
-		apiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ``))
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/dns_domains"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					payload := map[string]interface{}{}
+					Expect(json.NewDecoder(request.Body).Decode(&payload)).To(Succeed())
+					Expect(payload).To(HaveKeyWithValue("id", "dns-2"))
+					Expect(payload).To(HaveKeyWithValue("user_defined", true))
+				},
+				RespondWithJSON(http.StatusCreated, `{"id":"dns-2","user_defined":true}`),
+			),
+		)
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/dns_domains/dns-2"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
 
 		domainInput, err := cmv1.NewDNSDomain().ID("dns-2").UserDefined(true).Build()
 		Expect(err).NotTo(HaveOccurred())
