@@ -269,9 +269,14 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 		return nil, fmt.Errorf("unable to create cluster spec: %v", err)
 	}
 
+	dryRun := false
+	if config.DryRun != nil {
+		dryRun = *config.DryRun
+	}
+
 	cluster, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Add().
-		Parameter("dryRun", *config.DryRun).
+		Parameter("dryRun", dryRun).
 		Body(spec).
 		Send()
 	if config.DryRun != nil && *config.DryRun {
@@ -329,11 +334,12 @@ func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluste
 
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
+	pageSize := count
+	if count == 0 {
+		pageSize = 100
+	}
 	for {
-		clusterRequestList := request.Page(page)
-		if count > 0 {
-			clusterRequestList = clusterRequestList.Size(count)
-		}
+		clusterRequestList := request.Page(page).Size(pageSize)
 		response, err := clusterRequestList.Send()
 		if err != nil {
 			return clusters, err
@@ -343,7 +349,11 @@ func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluste
 			clusters = append(clusters, cluster)
 			return true
 		})
-		if response.Size() != count {
+		if count == 0 {
+			if len(clusters) >= response.Total() {
+				break
+			}
+		} else if response.Size() < pageSize {
 			break
 		}
 		page++
