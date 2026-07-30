@@ -50,7 +50,6 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	BeforeEach(func() {
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 		ocmClient = buildTestOCMClient(apiServer.URL())
 	})
@@ -102,6 +101,49 @@ var _ = Describe("Cluster API client behavior", func() {
 		Expect(clusters).To(HaveLen(2))
 		Expect(clusters[0].ID()).To(Equal("cluster-1"))
 		Expect(clusters[1].ID()).To(Equal("cluster-2"))
+	})
+
+	It("paginates while count is greater than zero", func() {
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV("page", "1"),
+				ghttp.VerifyFormKV("size", "2"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":1,
+					"size":2,
+					"total":3,
+					"items":[{"id":"cluster-1","name":"one"},{"id":"cluster-2","name":"two"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV("page", "2"),
+				ghttp.VerifyFormKV("size", "2"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":2,
+					"size":1,
+					"total":3,
+					"items":[{"id":"cluster-3","name":"three"}]
+				}`),
+			),
+		)
+
+		clusters, err := ocmClient.GetClusters(nil, 2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(clusters).To(HaveLen(3))
+		Expect(clusters[0].ID()).To(Equal("cluster-1"))
+		Expect(clusters[1].ID()).To(Equal("cluster-2"))
+		Expect(clusters[2].ID()).To(Equal("cluster-3"))
+	})
+
+	It("returns an error when count is negative", func() {
+		clusters, err := ocmClient.GetClusters(nil, -1)
+		Expect(err).To(HaveOccurred())
+		Expect(clusters).To(BeNil())
+		Expect(err.Error()).To(ContainSubstring("Invalid Cluster count"))
 	})
 
 	It("sends dryRun query and payload when CreateCluster dry run is requested", func() {
@@ -194,6 +236,23 @@ var _ = Describe("Cluster API client behavior", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
+	It("returns an error when hibernate capability is disabled", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, `{
+				"id":"acct-1",
+				"organization":{"id":"org-1","external_id":"ext-1"}
+			}`),
+			RespondWithJSON(http.StatusOK, `{
+				"id":"org-1",
+				"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"false"}]
+			}`),
+		)
+
+		err := ocmClient.HibernateCluster("cluster-1")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("capability.organization.hibernate_cluster"))
+	})
+
 	It("resumes a cluster when org capability is enabled", func() {
 		apiServer.AppendHandlers(
 			RespondWithJSON(http.StatusOK, `{
@@ -209,6 +268,23 @@ var _ = Describe("Cluster API client behavior", func() {
 
 		err := ocmClient.ResumeCluster("cluster-1")
 		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("returns an error when resume capability is disabled", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, `{
+				"id":"acct-1",
+				"organization":{"id":"org-1","external_id":"ext-1"}
+			}`),
+			RespondWithJSON(http.StatusOK, `{
+				"id":"org-1",
+				"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"false"}]
+			}`),
+		)
+
+		err := ocmClient.ResumeCluster("cluster-1")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("capability.organization.hibernate_cluster"))
 	})
 
 	It("detects clusters using a matching oidc endpoint url", func() {

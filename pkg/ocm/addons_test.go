@@ -18,7 +18,6 @@ var _ = Describe("Addons API client behavior", func() {
 
 	BeforeEach(func() {
 		apiServer = MakeTCPServer()
-		apiServer.SetAllowUnhandledRequests(true)
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 		ocmClient = buildTestOCMClient(apiServer.URL())
 	})
@@ -74,11 +73,14 @@ var _ = Describe("Addons API client behavior", func() {
 
 	It("returns add-on installation details", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"addon-a",
-				"addon":{"id":"addon-a"},
-				"billing":{"billing_model":"standard","billing_marketplace_account":"123456789012"}
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/clusters/cluster-1/addons/addon-a"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"addon-a",
+					"addon":{"id":"addon-a"},
+					"billing":{"billing_model":"standard","billing_marketplace_account":"123456789012"}
+				}`),
+			),
 		)
 
 		installation, err := ocmClient.GetAddOnInstallation("cluster-1", "addon-a")
@@ -90,49 +92,58 @@ var _ = Describe("Addons API client behavior", func() {
 
 	It("filters incompatible add-ons and keeps quota-constrained entries", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1"}
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"QuotaCostList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{
-					"allowed":1,
-					"consumed":1,
-					"related_resources":[
-						{
-							"resource_name":"addon-a",
-							"cost":1,
-							"availability_zone_type":"single",
-							"product":"rosa",
-							"cloud_provider":"aws",
-							"byoc":"byoc"
-						},
-						{
-							"resource_name":"addon-c",
-							"cost":1,
-							"availability_zone_type":"single",
-							"product":"other",
-							"cloud_provider":"aws",
-							"byoc":"byoc"
-						}
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"QuotaCostList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{
+						"allowed":1,
+						"consumed":1,
+						"related_resources":[
+							{
+								"resource_name":"addon-a",
+								"cost":1,
+								"availability_zone_type":"single",
+								"product":"rosa",
+								"cloud_provider":"aws",
+								"byoc":"byoc"
+							},
+							{
+								"resource_name":"addon-c",
+								"cost":1,
+								"availability_zone_type":"single",
+								"product":"other",
+								"cloud_provider":"aws",
+								"byoc":"byoc"
+							}
+						]
+					}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/addons"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"AddonList",
+					"page":1,
+					"size":3,
+					"total":3,
+					"items":[
+						{"id":"addon-a","name":"Addon A","resource_name":"addon-a","resource_cost":1},
+						{"id":"addon-free","name":"Addon Free","resource_name":"addon-free","resource_cost":0},
+						{"id":"addon-c","name":"Addon C","resource_name":"addon-c","resource_cost":1}
 					]
-				}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"AddonList",
-				"page":1,
-				"size":3,
-				"total":3,
-				"items":[
-					{"id":"addon-a","name":"Addon A","resource_name":"addon-a","resource_cost":1},
-					{"id":"addon-free","name":"Addon Free","resource_name":"addon-free","resource_cost":0},
-					{"id":"addon-c","name":"Addon C","resource_name":"addon-c","resource_cost":1}
-				]
-			}`),
+				}`),
+			),
 		)
 
 		addons, err := ocmClient.GetAvailableAddOns()
@@ -143,6 +154,7 @@ var _ = Describe("Addons API client behavior", func() {
 		Expect(addons[0].AZType).To(Equal("single"))
 		Expect(addons[1].AddOn.ID()).To(Equal("addon-free"))
 		Expect(addons[1].Available).To(BeTrue())
+		Expect(addons[1].AZType).To(Equal(ANY))
 	})
 
 	It("excludes add-ons incompatible with cluster AZ topology", func() {
@@ -313,5 +325,61 @@ var _ = Describe("Addons API client behavior", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(addons).To(BeNil())
 		Expect(err.Error()).To(ContainSubstring("failed to load quota cost"))
+	})
+
+	It("returns error when listing installed add-ons fails", func() {
+		cluster, err := cmv1.NewCluster().ID("cluster-1").MultiAZ(false).Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"QuotaCostList",
+					"page":1,
+					"size":0,
+					"total":0,
+					"items":[]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/addons"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"AddonList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[
+						{"id":"addon-free","name":"Addon Free","resource_name":"addon-free","resource_cost":0}
+					]
+				}`),
+			),
+		)
+		for i := 0; i < 3; i++ {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/clusters/cluster-1/addons"),
+					RespondWithJSON(http.StatusInternalServerError, `{
+						"kind":"Error",
+						"id":"500",
+						"href":"/api/errors/500",
+						"code":"ADDONS-MGMT-500",
+						"reason":"failed to list installations"
+					}`),
+				),
+			)
+		}
+
+		clusterAddOns, err := ocmClient.GetClusterAddOns(cluster)
+		Expect(err).To(HaveOccurred())
+		Expect(clusterAddOns).To(BeNil())
+		Expect(err.Error()).To(ContainSubstring("failed to list installations"))
 	})
 })

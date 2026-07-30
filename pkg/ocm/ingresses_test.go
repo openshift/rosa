@@ -3,46 +3,27 @@ package ocm
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 )
 
 var _ = Describe("Ingresses", Ordered, func() {
 	const clusterID = "cluster-1"
 
-	var ssoServer, apiServer *ghttp.Server
+	var apiServer *ghttp.Server
 	var ocmClient *Client
 
 	BeforeEach(func() {
-		ssoServer = MakeTCPServer()
 		apiServer = MakeTCPServer()
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
-
-		accessToken := MakeTokenString("Bearer", 15*time.Minute)
-		ssoServer.AppendHandlers(RespondWithAccessToken(accessToken))
-
-		logger, err := logging.NewGoLoggerBuilder().Debug(true).Build()
-		Expect(err).NotTo(HaveOccurred())
-
-		connection, err := sdk.NewConnectionBuilder().
-			Logger(logger).
-			Tokens(accessToken).
-			URL(apiServer.URL()).
-			Build()
-		Expect(err).NotTo(HaveOccurred())
-
-		ocmClient = NewClientWithConnection(connection)
+		ocmClient = buildTestOCMClient(apiServer.URL())
 	})
 
 	AfterEach(func() {
-		ssoServer.Close()
 		apiServer.Close()
 		Expect(ocmClient.Close()).To(Succeed())
 	})
