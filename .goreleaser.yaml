@@ -8,6 +8,8 @@ builds:
   - main: ./cmd/rosa
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -X github.com/openshift/rosa/pkg/info.Build={{ .ShortCommit }}
     goos:
       - linux
       - windows

@@ -61,7 +61,7 @@ func NewRosaVersionCommand() *cobra.Command {
 		buildFlag,
 		"b",
 		false,
-		"Display build version information, including git commit and build time",
+		"Display extra build info, primarily the git commit the binary was built from",
 	)
 	cmd.Flags().MarkHidden(buildFlag)
 	return cmd

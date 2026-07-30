@@ -4,7 +4,6 @@ WORKDIR /rosa
 USER root
 ENV GOBIN=/go/bin
 ENV PATH="/go/bin:${PATH}"
-ENV GOFLAGS=-buildvcs=false
 RUN mkdir -p /go/bin
 COPY . .
 RUN git config --global --add safe.directory /rosa

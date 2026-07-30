@@ -16,7 +16,7 @@ do
         extension=".exe"
     fi
     tmpdir=$(mktemp -d)
-    GOOS="${os}" GOARCH="${arch}" go build -o "${tmpdir}/rosa${extension}" ./cmd/rosa
+    GOOS="${os}" GOARCH="${arch}" go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(git rev-parse --short HEAD)" -o "${tmpdir}/rosa${extension}" ./cmd/rosa
     tar -czf "releases/rosa_${os}_${arch}.tar.gz" -C "${tmpdir}" "rosa${extension}"
     rm -rf "${tmpdir}"
   done
