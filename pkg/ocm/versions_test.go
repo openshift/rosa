@@ -147,9 +147,12 @@ var _ = Describe("OCMClient", func() {
 	Context("Describe version list", func() {
 		It("Expects a version list", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					VersionsListResponse,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						VersionsListResponse,
+					),
 				),
 			)
 
@@ -160,9 +163,12 @@ var _ = Describe("OCMClient", func() {
 
 		It("Expects a valid Hypershift Version", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					VersionsListResponse,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						VersionsListResponse,
+					),
 				),
 			)
 
@@ -173,9 +179,12 @@ var _ = Describe("OCMClient", func() {
 
 		It("Expects a non supported Hypershift Version", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					NonSupportedHypershiftVersionsListResponse,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						NonSupportedHypershiftVersionsListResponse,
+					),
 				),
 			)
 
@@ -186,15 +195,18 @@ var _ = Describe("OCMClient", func() {
 
 		It("returns latest version major.minor", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-						"kind":"VersionList",
-						"page":1,
-						"size":1,
-						"total":1,
-						"items":[{"id":"4.16.3","raw_id":"4.16.3","channel_group":"stable","rosa_enabled":true}]
-					}`,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						`{
+							"kind":"VersionList",
+							"page":1,
+							"size":1,
+							"total":1,
+							"items":[{"id":"4.16.3","raw_id":"4.16.3","channel_group":"stable","rosa_enabled":true}]
+						}`,
+					),
 				),
 			)
 
@@ -205,15 +217,18 @@ var _ = Describe("OCMClient", func() {
 
 		It("returns error when latest version cannot be resolved", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					`{
-						"kind":"VersionList",
-						"page":1,
-						"size":0,
-						"total":0,
-						"items":[]
-					}`,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						`{
+							"kind":"VersionList",
+							"page":1,
+							"size":0,
+							"total":0,
+							"items":[]
+						}`,
+					),
 				),
 			)
 
@@ -225,6 +240,7 @@ var _ = Describe("OCMClient", func() {
 		It("passes product to GetVersionsWithProduct requests", func() {
 			apiServer.AppendHandlers(
 				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
 					func(_ http.ResponseWriter, request *http.Request) {
 						Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
 					},

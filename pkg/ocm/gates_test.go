@@ -28,6 +28,7 @@ var _ = Describe("Version gates API client behavior", func() {
 	It("paginates all version gate pages and applies the version prefix filter", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/version_gates"),
 				func(_ http.ResponseWriter, request *http.Request) {
 					Expect(request.URL.Query().Get("page")).To(Equal("1"))
 					Expect(request.URL.Query().Get("size")).To(Equal("100"))
@@ -42,6 +43,7 @@ var _ = Describe("Version gates API client behavior", func() {
 				}`),
 			),
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/version_gates"),
 				func(_ http.ResponseWriter, request *http.Request) {
 					Expect(request.URL.Query().Get("page")).To(Equal("2"))
 					Expect(request.URL.Query().Get("size")).To(Equal("100"))
@@ -65,16 +67,19 @@ var _ = Describe("Version gates API client behavior", func() {
 
 	It("returns only STS-only gates", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"VersionGateList",
-				"page":1,
-				"size":2,
-				"total":2,
-				"items":[
-					{"id":"gate-sts","sts_only":true},
-					{"id":"gate-shared","sts_only":false}
-				]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/version_gates"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"VersionGateList",
+					"page":1,
+					"size":2,
+					"total":2,
+					"items":[
+						{"id":"gate-sts","sts_only":true},
+						{"id":"gate-shared","sts_only":false}
+					]
+				}`),
+			),
 		)
 
 		gates, err := ocmClient.ListStsGates("4.15")
@@ -86,16 +91,19 @@ var _ = Describe("Version gates API client behavior", func() {
 
 	It("returns only non-STS gates", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"VersionGateList",
-				"page":1,
-				"size":2,
-				"total":2,
-				"items":[
-					{"id":"gate-sts","sts_only":true},
-					{"id":"gate-shared","sts_only":false}
-				]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/version_gates"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"VersionGateList",
+					"page":1,
+					"size":2,
+					"total":2,
+					"items":[
+						{"id":"gate-sts","sts_only":true},
+						{"id":"gate-shared","sts_only":false}
+					]
+				}`),
+			),
 		)
 
 		gates, err := ocmClient.ListOcpGates("4.15")
@@ -107,27 +115,36 @@ var _ = Describe("Version gates API client behavior", func() {
 
 	It("returns an error when listing all gates fails", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"CLUSTERS-MGMT-500",
-				"reason":"unable to list version gates"
-			}`),
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"CLUSTERS-MGMT-500",
-				"reason":"unable to list version gates"
-			}`),
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"CLUSTERS-MGMT-500",
-				"reason":"unable to list version gates"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/version_gates"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"CLUSTERS-MGMT-500",
+					"reason":"unable to list version gates"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/version_gates"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"CLUSTERS-MGMT-500",
+					"reason":"unable to list version gates"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/version_gates"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"CLUSTERS-MGMT-500",
+					"reason":"unable to list version gates"
+				}`),
+			),
 		)
 
 		gates, err := ocmClient.ListAllOcpGates("4.15")

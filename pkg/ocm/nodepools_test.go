@@ -119,7 +119,7 @@ var _ = Describe("NodePools", Ordered, func() {
 		Expect(nodePool.ID()).To(Equal("np-1"))
 	})
 
-	It("supports basic node pool CRUD wrappers", func() {
+	It("creates node pools", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools"),
@@ -131,6 +131,16 @@ var _ = Describe("NodePools", Ordered, func() {
 				RespondWithJSON(http.StatusCreated, `{"id":"np-created","kubelet_configs":["kc-a"]}`),
 			),
 		)
+		input, err := cmv1.NewNodePool().ID("np-created").Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		created, err := ocmClient.CreateNodePool(clusterID, input)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(created).NotTo(BeNil())
+		Expect(created.ID()).To(Equal("np-created"))
+	})
+
+	It("lists node pools", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools"),
@@ -143,6 +153,14 @@ var _ = Describe("NodePools", Ordered, func() {
 				}`),
 			),
 		)
+
+		nodePools, err := ocmClient.GetNodePools(clusterID)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(nodePools).To(HaveLen(1))
+		Expect(nodePools[0].ID()).To(Equal("np-created"))
+	})
+
+	It("updates node pools", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodPatch, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools/np-created"),
@@ -155,25 +173,6 @@ var _ = Describe("NodePools", Ordered, func() {
 				RespondWithJSON(http.StatusOK, `{"id":"np-created","kubelet_configs":["kc-a","kc-b"]}`),
 			),
 		)
-		apiServer.AppendHandlers(
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools/np-created"),
-				RespondWithJSON(http.StatusNoContent, ``),
-			),
-		)
-
-		input, err := cmv1.NewNodePool().ID("np-created").Build()
-		Expect(err).NotTo(HaveOccurred())
-
-		created, err := ocmClient.CreateNodePool(clusterID, input)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(created).NotTo(BeNil())
-		Expect(created.ID()).To(Equal("np-created"))
-
-		nodePools, err := ocmClient.GetNodePools(clusterID)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(nodePools).To(HaveLen(1))
-		Expect(nodePools[0].ID()).To(Equal("np-created"))
 
 		updateInput, err := cmv1.NewNodePool().ID("np-created").KubeletConfigs("kc-a", "kc-b").Build()
 		Expect(err).NotTo(HaveOccurred())
@@ -182,8 +181,17 @@ var _ = Describe("NodePools", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updated).NotTo(BeNil())
 		Expect(updated.KubeletConfigs()).To(Equal([]string{"kc-a", "kc-b"}))
+	})
 
-		err = ocmClient.DeleteNodePool(clusterID, "np-created")
+	It("deletes node pools", func() {
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/node_pools/np-created"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
+
+		err := ocmClient.DeleteNodePool(clusterID, "np-created")
 		Expect(err).NotTo(HaveOccurred())
 	})
 })

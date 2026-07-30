@@ -98,7 +98,7 @@ var _ = Describe("Users", Ordered, func() {
 		Expect(users[1].ID()).To(Equal("user-2"))
 	})
 
-	It("creates and deletes users", func() {
+	It("creates users", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users"),
@@ -110,13 +110,6 @@ var _ = Describe("Users", Ordered, func() {
 				RespondWithJSON(http.StatusCreated, `{"id":"user-3"}`),
 			),
 		)
-		apiServer.AppendHandlers(
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users/charlie"),
-				RespondWithJSON(http.StatusNoContent, ``),
-			),
-		)
-
 		createInput, err := cmv1.NewUser().ID("user-3").Build()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -124,8 +117,17 @@ var _ = Describe("Users", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(created).NotTo(BeNil())
 		Expect(created.ID()).To(Equal("user-3"))
+	})
 
-		err = ocmClient.DeleteUser(clusterID, groupID, "charlie")
+	It("deletes users", func() {
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/groups/dedicated-admins/users/user-3"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
+
+		err := ocmClient.DeleteUser(clusterID, groupID, "user-3")
 		Expect(err).NotTo(HaveOccurred())
 	})
 })

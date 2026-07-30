@@ -238,14 +238,20 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("returns an error when hibernate capability is disabled", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1","external_id":"ext-1"}
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"id":"org-1",
-				"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"false"}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1","external_id":"ext-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"org-1",
+					"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"false"}]
+				}`),
+			),
 		)
 
 		err := ocmClient.HibernateCluster("cluster-1")
@@ -272,14 +278,20 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("returns an error when resume capability is disabled", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1","external_id":"ext-1"}
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"id":"org-1",
-				"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"false"}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1","external_id":"ext-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"org-1",
+					"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"false"}]
+				}`),
+			),
 		)
 
 		err := ocmClient.ResumeCluster("cluster-1")

@@ -41,7 +41,8 @@ import (
 )
 
 const (
-	legacyIngressSupportLabel = "ext-managed.openshift.io/legacy-ingress-support"
+	legacyIngressSupportLabel   = "ext-managed.openshift.io/legacy-ingress-support"
+	defaultClusterQueryPageSize = 100
 )
 
 var NetworkTypes = []string{"OpenShiftSDN", "OVNKubernetes"}
@@ -279,7 +280,7 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 		Parameter("dryRun", dryRun).
 		Body(spec).
 		Send()
-	if config.DryRun != nil && *config.DryRun {
+	if dryRun {
 		if cluster.Error() != nil {
 			return nil, handleErr(cluster.Error(), err)
 		}
@@ -336,7 +337,7 @@ func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluste
 	page := 1
 	pageSize := count
 	if count == 0 {
-		pageSize = 100
+		pageSize = defaultClusterQueryPageSize
 	}
 	for {
 		clusterRequestList := request.Page(page).Size(pageSize)

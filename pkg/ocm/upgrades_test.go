@@ -28,20 +28,30 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 
 	It("paginates upgrade policy listings", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"UpgradePolicyList",
-				"page":1,
-				"size":100,
-				"total":101,
-				"items":[{"id":"policy-1","upgrade_type":"OSD"}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"UpgradePolicyList",
-				"page":2,
-				"size":1,
-				"total":101,
-				"items":[{"id":"policy-2","upgrade_type":"OSD"}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies"),
+				ghttp.VerifyFormKV("page", "1"),
+				ghttp.VerifyFormKV("size", "100"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"UpgradePolicyList",
+					"page":1,
+					"size":100,
+					"total":101,
+					"items":[{"id":"policy-1","upgrade_type":"OSD"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies"),
+				ghttp.VerifyFormKV("page", "2"),
+				ghttp.VerifyFormKV("size", "100"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"UpgradePolicyList",
+					"page":2,
+					"size":1,
+					"total":101,
+					"items":[{"id":"policy-2","upgrade_type":"OSD"}]
+				}`),
+			),
 		)
 
 		policies, err := ocmClient.GetUpgradePolicies("cluster-1")
@@ -53,20 +63,26 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 
 	It("returns the scheduled OSD upgrade and its state", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"UpgradePolicyList",
-				"page":1,
-				"size":2,
-				"total":2,
-				"items":[
-					{"id":"policy-control-plane","upgrade_type":"CONTROL_PLANE"},
-					{"id":"policy-osd","upgrade_type":"OSD"}
-				]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"description":"scheduled for tonight",
-				"value":"scheduled"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"UpgradePolicyList",
+					"page":1,
+					"size":2,
+					"total":2,
+					"items":[
+						{"id":"policy-control-plane","upgrade_type":"CONTROL_PLANE"},
+						{"id":"policy-osd","upgrade_type":"OSD"}
+					]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies/policy-osd/state"),
+				RespondWithJSON(http.StatusOK, `{
+					"description":"scheduled for tonight",
+					"value":"scheduled"
+				}`),
+			),
 		)
 
 		policy, state, err := ocmClient.GetScheduledUpgrade("cluster-1")
@@ -79,13 +95,16 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 
 	It("returns false when no scheduled OSD upgrade exists", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"UpgradePolicyList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{"id":"policy-control-plane","upgrade_type":"CONTROL_PLANE"}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"UpgradePolicyList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{"id":"policy-control-plane","upgrade_type":"CONTROL_PLANE"}]
+				}`),
+			),
 		)
 
 		cancelled, err := ocmClient.CancelUpgrade("cluster-1")
@@ -95,18 +114,27 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 
 	It("deletes the scheduled OSD upgrade when cancelling", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"UpgradePolicyList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{"id":"policy-osd","upgrade_type":"OSD"}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"description":"scheduled for tonight",
-				"value":"scheduled"
-			}`),
-			RespondWithJSON(http.StatusOK, `{}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"UpgradePolicyList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{"id":"policy-osd","upgrade_type":"OSD"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies/policy-osd/state"),
+				RespondWithJSON(http.StatusOK, `{
+					"description":"scheduled for tonight",
+					"value":"scheduled"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies/policy-osd"),
+				RespondWithJSON(http.StatusOK, `{}`),
+			),
 		)
 
 		cancelled, err := ocmClient.CancelUpgrade("cluster-1")
@@ -119,14 +147,18 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusBadRequest, `{
-				"kind":"Error",
-				"id":"400",
-				"href":"/api/errors/400",
-				"code":"CLUSTERS-MGMT-400",
-				"reason":"missing gate agreements",
-				"details":[{"id":"gate-a","sts_only":false}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies"),
+				ghttp.VerifyFormKV("dryRun", "true"),
+				RespondWithJSON(http.StatusBadRequest, `{
+					"kind":"Error",
+					"id":"400",
+					"href":"/api/errors/400",
+					"code":"CLUSTERS-MGMT-400",
+					"reason":"missing gate agreements",
+					"details":[{"id":"gate-a","sts_only":false}]
+				}`),
+			),
 		)
 
 		gates, err := ocmClient.GetMissingGateAgreementsClassic("cluster-1", upgradePolicy)
@@ -140,14 +172,18 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusBadRequest, `{
-				"kind":"Error",
-				"id":"400",
-				"href":"/api/errors/400",
-				"code":"CLUSTERS-MGMT-400",
-				"reason":"invalid version gate payload",
-				"details":[{"id":""}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/upgrade_policies"),
+				ghttp.VerifyFormKV("dryRun", "true"),
+				RespondWithJSON(http.StatusBadRequest, `{
+					"kind":"Error",
+					"id":"400",
+					"href":"/api/errors/400",
+					"code":"CLUSTERS-MGMT-400",
+					"reason":"invalid version gate payload",
+					"details":[{"id":""}]
+				}`),
+			),
 		)
 
 		gates, err := ocmClient.GetMissingGateAgreementsClassic("cluster-1", upgradePolicy)
@@ -161,14 +197,18 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusBadRequest, `{
-				"kind":"Error",
-				"id":"400",
-				"href":"/api/errors/400",
-				"code":"CLUSTERS-MGMT-400",
-				"reason":"missing gate agreements",
-				"details":[{"id":"gate-hcp","sts_only":true}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/control_plane/upgrade_policies"),
+				ghttp.VerifyFormKV("dryRun", "true"),
+				RespondWithJSON(http.StatusBadRequest, `{
+					"kind":"Error",
+					"id":"400",
+					"href":"/api/errors/400",
+					"code":"CLUSTERS-MGMT-400",
+					"reason":"missing gate agreements",
+					"details":[{"id":"gate-hcp","sts_only":true}]
+				}`),
+			),
 		)
 
 		gates, err := ocmClient.GetMissingGateAgreementsHypershift("cluster-1", upgradePolicy)
@@ -182,14 +222,18 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusBadRequest, `{
-				"kind":"Error",
-				"id":"400",
-				"href":"/api/errors/400",
-				"code":"CLUSTERS-MGMT-400",
-				"reason":"invalid hypershift version gate payload",
-				"details":[{"id":""}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/control_plane/upgrade_policies"),
+				ghttp.VerifyFormKV("dryRun", "true"),
+				RespondWithJSON(http.StatusBadRequest, `{
+					"kind":"Error",
+					"id":"400",
+					"href":"/api/errors/400",
+					"code":"CLUSTERS-MGMT-400",
+					"reason":"invalid hypershift version gate payload",
+					"details":[{"id":""}]
+				}`),
+			),
 		)
 
 		gates, err := ocmClient.GetMissingGateAgreementsHypershift("cluster-1", upgradePolicy)
@@ -200,7 +244,10 @@ var _ = Describe("Upgrade policies API client behavior", func() {
 
 	It("acknowledges version gates successfully", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusCreated, `{"id":"agreement-1"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/gate_agreements"),
+				RespondWithJSON(http.StatusCreated, `{"id":"agreement-1"}`),
+			),
 		)
 
 		err := ocmClient.AckVersionGate("cluster-1", "gate-1")

@@ -29,6 +29,7 @@ var _ = Describe("Cluster logs API client behavior", func() {
 	It("passes the requested tail value when retrieving install logs", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/logs/install"),
 				func(_ http.ResponseWriter, request *http.Request) {
 					Expect(request.URL.Query().Get("tail")).To(Equal("42"))
 				},
@@ -44,13 +45,16 @@ var _ = Describe("Cluster logs API client behavior", func() {
 
 	It("translates install log 404 responses into user-facing not-found errors", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusNotFound, `{
-				"kind":"Error",
-				"id":"404",
-				"href":"/api/errors/404",
-				"code":"CLUSTERS-MGMT-404",
-				"reason":"missing logs"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-404/logs/install"),
+				RespondWithJSON(http.StatusNotFound, `{
+					"kind":"Error",
+					"id":"404",
+					"href":"/api/errors/404",
+					"code":"CLUSTERS-MGMT-404",
+					"reason":"missing logs"
+				}`),
+			),
 		)
 
 		_, err := ocmClient.GetInstallLogs("cluster-404", 5)
@@ -61,6 +65,7 @@ var _ = Describe("Cluster logs API client behavior", func() {
 	It("passes the requested tail value when retrieving uninstall logs", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/logs/uninstall"),
 				func(_ http.ResponseWriter, request *http.Request) {
 					Expect(request.URL.Query().Get("tail")).To(Equal("27"))
 				},
@@ -76,13 +81,16 @@ var _ = Describe("Cluster logs API client behavior", func() {
 
 	It("translates uninstall log 404 responses into user-facing not-found errors", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusNotFound, `{
-				"kind":"Error",
-				"id":"404",
-				"href":"/api/errors/404",
-				"code":"CLUSTERS-MGMT-404",
-				"reason":"missing logs"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-404/logs/uninstall"),
+				RespondWithJSON(http.StatusNotFound, `{
+					"kind":"Error",
+					"id":"404",
+					"href":"/api/errors/404",
+					"code":"CLUSTERS-MGMT-404",
+					"reason":"missing logs"
+				}`),
+			),
 		)
 
 		_, err := ocmClient.GetUninstallLogs("cluster-404", 5)
@@ -93,6 +101,7 @@ var _ = Describe("Cluster logs API client behavior", func() {
 	It("uses fixed polling parameters and returns install logs", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/logs/install"),
 				func(_ http.ResponseWriter, request *http.Request) {
 					Expect(request.URL.Query().Get("tail")).To(Equal("100"))
 				},
@@ -111,13 +120,16 @@ var _ = Describe("Cluster logs API client behavior", func() {
 
 	It("translates poll 404 responses into user-facing not-found errors", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusNotFound, `{
-				"kind":"Error",
-				"id":"404",
-				"href":"/api/errors/404",
-				"code":"CLUSTERS-MGMT-404",
-				"reason":"missing logs"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-404/logs/install"),
+				RespondWithJSON(http.StatusNotFound, `{
+					"kind":"Error",
+					"id":"404",
+					"href":"/api/errors/404",
+					"code":"CLUSTERS-MGMT-404",
+					"reason":"missing logs"
+				}`),
+			),
 		)
 
 		callback := func(response *cmv1.LogGetResponse) bool {
@@ -130,13 +142,16 @@ var _ = Describe("Cluster logs API client behavior", func() {
 
 	It("translates uninstall poll 404 responses into user-facing not-found errors", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusNotFound, `{
-				"kind":"Error",
-				"id":"404",
-				"href":"/api/errors/404",
-				"code":"CLUSTERS-MGMT-404",
-				"reason":"missing logs"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-404/logs/uninstall"),
+				RespondWithJSON(http.StatusNotFound, `{
+					"kind":"Error",
+					"id":"404",
+					"href":"/api/errors/404",
+					"code":"CLUSTERS-MGMT-404",
+					"reason":"missing logs"
+				}`),
+			),
 		)
 
 		callback := func(response *cmv1.LogGetResponse) bool {
@@ -149,13 +164,16 @@ var _ = Describe("Cluster logs API client behavior", func() {
 
 	It("wraps polling errors for uninstall logs", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"CLUSTERS-MGMT-500",
-				"reason":"poll backend failure"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters/cluster-1/logs/uninstall"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"CLUSTERS-MGMT-500",
+					"reason":"poll backend failure"
+				}`),
+			),
 		)
 
 		callback := func(response *cmv1.LogGetResponse) bool {

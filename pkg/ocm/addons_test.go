@@ -39,6 +39,7 @@ var _ = Describe("Addons API client behavior", func() {
 	It("sends add-on billing and parameter payload during installation", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/addons_mgmt/v1/clusters/cluster-1/addons"),
 				func(_ http.ResponseWriter, request *http.Request) {
 					body, err := io.ReadAll(request.Body)
 					Expect(err).NotTo(HaveOccurred())
@@ -162,55 +163,67 @@ var _ = Describe("Addons API client behavior", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1"}
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"QuotaCostList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{
-					"allowed":2,
-					"consumed":0,
-					"related_resources":[
-						{
-							"resource_name":"addon-single",
-							"cost":1,
-							"availability_zone_type":"single",
-							"product":"rosa",
-							"cloud_provider":"aws",
-							"byoc":"byoc"
-						},
-						{
-							"resource_name":"addon-multi",
-							"cost":1,
-							"availability_zone_type":"multi",
-							"product":"rosa",
-							"cloud_provider":"aws",
-							"byoc":"byoc"
-						}
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"QuotaCostList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{
+						"allowed":2,
+						"consumed":0,
+						"related_resources":[
+							{
+								"resource_name":"addon-single",
+								"cost":1,
+								"availability_zone_type":"single",
+								"product":"rosa",
+								"cloud_provider":"aws",
+								"byoc":"byoc"
+							},
+							{
+								"resource_name":"addon-multi",
+								"cost":1,
+								"availability_zone_type":"multi",
+								"product":"rosa",
+								"cloud_provider":"aws",
+								"byoc":"byoc"
+							}
+						]
+					}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/addons"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"AddonList",
+					"page":1,
+					"size":2,
+					"total":2,
+					"items":[
+						{"id":"addon-single","name":"Addon Single","resource_name":"addon-single","resource_cost":1},
+						{"id":"addon-multi","name":"Addon Multi","resource_name":"addon-multi","resource_cost":1}
 					]
-				}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"AddonList",
-				"page":1,
-				"size":2,
-				"total":2,
-				"items":[
-					{"id":"addon-single","name":"Addon Single","resource_name":"addon-single","resource_cost":1},
-					{"id":"addon-multi","name":"Addon Multi","resource_name":"addon-multi","resource_cost":1}
-				]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"AddonInstallationList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{"addon":{"id":"addon-single"}}]
-			}`),
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/clusters/cluster-1/addons"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"AddonInstallationList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{"addon":{"id":"addon-single"}}]
+				}`),
+			),
 		)
 
 		clusterAddons, err := ocmClient.GetClusterAddOns(cluster)
@@ -225,33 +238,45 @@ var _ = Describe("Addons API client behavior", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1"}
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"QuotaCostList",
-				"page":1,
-				"size":0,
-				"total":0,
-				"items":[]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"AddonList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[
-					{"id":"addon-free","name":"Addon Free","resource_name":"addon-free","resource_cost":0}
-				]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"AddonInstallationList",
-				"page":1,
-				"size":0,
-				"total":0,
-				"items":[]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"QuotaCostList",
+					"page":1,
+					"size":0,
+					"total":0,
+					"items":[]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/addons"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"AddonList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[
+						{"id":"addon-free","name":"Addon Free","resource_name":"addon-free","resource_cost":0}
+					]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/clusters/cluster-1/addons"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"AddonInstallationList",
+					"page":1,
+					"size":0,
+					"total":0,
+					"items":[]
+				}`),
+			),
 		)
 
 		clusterAddons, err := ocmClient.GetClusterAddOns(cluster)
@@ -263,27 +288,36 @@ var _ = Describe("Addons API client behavior", func() {
 
 	It("returns error when current account lookup fails for available add-ons", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"ACCOUNTS-MGMT-500",
-				"reason":"failed to load current account"
-			}`),
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"ACCOUNTS-MGMT-500",
-				"reason":"failed to load current account"
-			}`),
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"ACCOUNTS-MGMT-500",
-				"reason":"failed to load current account"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"ACCOUNTS-MGMT-500",
+					"reason":"failed to load current account"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"ACCOUNTS-MGMT-500",
+					"reason":"failed to load current account"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"ACCOUNTS-MGMT-500",
+					"reason":"failed to load current account"
+				}`),
+			),
 		)
 
 		addons, err := ocmClient.GetAvailableAddOns()
@@ -294,31 +328,43 @@ var _ = Describe("Addons API client behavior", func() {
 
 	It("returns error when quota cost lookup fails for available add-ons", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1"}
-			}`),
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"ACCOUNTS-MGMT-500",
-				"reason":"failed to load quota cost"
-			}`),
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"ACCOUNTS-MGMT-500",
-				"reason":"failed to load quota cost"
-			}`),
-			RespondWithJSON(http.StatusInternalServerError, `{
-				"kind":"Error",
-				"id":"500",
-				"href":"/api/errors/500",
-				"code":"ACCOUNTS-MGMT-500",
-				"reason":"failed to load quota cost"
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"ACCOUNTS-MGMT-500",
+					"reason":"failed to load quota cost"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"ACCOUNTS-MGMT-500",
+					"reason":"failed to load quota cost"
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusInternalServerError, `{
+					"kind":"Error",
+					"id":"500",
+					"href":"/api/errors/500",
+					"code":"ACCOUNTS-MGMT-500",
+					"reason":"failed to load quota cost"
+				}`),
+			),
 		)
 
 		addons, err := ocmClient.GetAvailableAddOns()

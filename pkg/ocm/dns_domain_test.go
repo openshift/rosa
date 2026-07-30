@@ -48,7 +48,7 @@ var _ = Describe("DNS Domains", Ordered, func() {
 		Expect(domains[0].ID()).To(Equal("dns-1"))
 	})
 
-	It("creates and deletes DNS domains", func() {
+	It("creates DNS domains", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/dns_domains"),
@@ -61,13 +61,6 @@ var _ = Describe("DNS Domains", Ordered, func() {
 				RespondWithJSON(http.StatusCreated, `{"id":"dns-2","user_defined":true}`),
 			),
 		)
-		apiServer.AppendHandlers(
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/dns_domains/dns-2"),
-				RespondWithJSON(http.StatusNoContent, ``),
-			),
-		)
-
 		domainInput, err := cmv1.NewDNSDomain().ID("dns-2").UserDefined(true).Build()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -75,8 +68,17 @@ var _ = Describe("DNS Domains", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(created).NotTo(BeNil())
 		Expect(created.ID()).To(Equal("dns-2"))
+	})
 
-		err = ocmClient.DeleteDNSDomain("dns-2")
+	It("deletes DNS domains", func() {
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/dns_domains/dns-2"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
+
+		err := ocmClient.DeleteDNSDomain("dns-2")
 		Expect(err).NotTo(HaveOccurred())
 	})
 })

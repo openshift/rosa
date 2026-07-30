@@ -95,13 +95,21 @@ var _ = Describe("Oidc Config", Ordered, func() {
 		Expect(thumbprint).To(BeNil())
 	})
 
-	It("supports basic OIDC config CRUD wrappers", func() {
+	It("gets OIDC configs", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/oidc_configs/oidc-1"),
 				RespondWithJSON(http.StatusOK, `{"id":"oidc-1","secret_arn":"arn:aws:secretsmanager:us-east-1:123:secret:one"}`),
 			),
 		)
+
+		config, err := ocmClient.GetOidcConfig("oidc-1")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(config).NotTo(BeNil())
+		Expect(config.ID()).To(Equal("oidc-1"))
+	})
+
+	It("creates OIDC configs", func() {
 		apiServer.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/oidc_configs"),
@@ -117,17 +125,6 @@ var _ = Describe("Oidc Config", Ordered, func() {
 				RespondWithJSON(http.StatusCreated, `{"id":"oidc-2","secret_arn":"arn:aws:secretsmanager:us-east-1:123:secret:two"}`),
 			),
 		)
-		apiServer.AppendHandlers(
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/oidc_configs/oidc-2"),
-				RespondWithJSON(http.StatusNoContent, ``),
-			),
-		)
-
-		config, err := ocmClient.GetOidcConfig("oidc-1")
-		Expect(err).NotTo(HaveOccurred())
-		Expect(config).NotTo(BeNil())
-		Expect(config.ID()).To(Equal("oidc-1"))
 
 		createInput, err := cmv1.NewOidcConfig().
 			ID("oidc-2").
@@ -139,8 +136,17 @@ var _ = Describe("Oidc Config", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(created).NotTo(BeNil())
 		Expect(created.ID()).To(Equal("oidc-2"))
+	})
 
-		err = ocmClient.DeleteOidcConfig("oidc-2")
+	It("deletes OIDC configs", func() {
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/oidc_configs/oidc-2"),
+				RespondWithJSON(http.StatusNoContent, ``),
+			),
+		)
+
+		err := ocmClient.DeleteOidcConfig("oidc-2")
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
