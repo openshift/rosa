@@ -7,7 +7,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
@@ -74,7 +76,7 @@ var _ = Describe("Network verifier",
 						break
 					}
 				}
-				subnets := strings.Replace(subnetsNetworkInfo, " ", "", -1)
+				subnets := strings.ReplaceAll(subnetsNetworkInfo, " ", "")
 				region := clusterDetail.Region
 				installerRoleArn := clusterDetail.STSRoleArn
 
@@ -161,7 +163,7 @@ var _ = Describe("Network verifier",
 						break
 					}
 				}
-				subnets := strings.Replace(subnetsNetworkInfo, " ", "", -1)
+				subnets := strings.ReplaceAll(subnetsNetworkInfo, " ", "")
 				region := clusterDetail.Region
 				isBYOVPC, err := clusterService.IsBYOVPCCluster(clusterID)
 				Expect(err).To(BeNil())
@@ -239,7 +241,7 @@ var _ = Describe("Network verifier",
 						break
 					}
 				}
-				subnets := strings.Replace(subnetsNetworkInfo, " ", "", -1)
+				subnets := strings.ReplaceAll(subnetsNetworkInfo, " ", "")
 				region := clusterDetail.Region
 				var vpcClient *vpc_client.VPC
 
@@ -279,20 +281,26 @@ var _ = Describe("Network verifier",
 				err = wait.PollUntilContextTimeout(
 					context.Background(),
 					20*time.Second,
-					300*time.Second,
+					600*time.Second,
 					false,
 					func(context.Context) (bool, error) {
 						clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
-						if !strings.Contains(clusterDetail.FailedInflightChecks,
-							"rosa verify network -c ") {
+						if err != nil {
 							return false, err
 						}
-						return true, err
+						// Wait for the subnet failure details from this verifier run, not only
+						// the generic "rosa verify network -c" footer that appears for any
+						// failed egress inflight (see cmd/describe/cluster).
+						if !strings.Contains(clusterDetail.FailedInflightChecks,
+							"Invalid configurations on subnet") {
+							return false, nil
+						}
+						return true, nil
 					})
-				Expect(err).To(BeNil())
-
-				clusterDetail, err = clusterService.DescribeClusterAndReflect(clusterID)
-				Expect(clusterDetail.FailedInflightChecks).To(ContainSubstring("Invalid configurations on subnet"))
+				helper.AssertWaitPollNoErr(err,
+					"Subnet invalid-configuration inflight details not synced after network verifier within 600s")
+				Expect(clusterDetail.FailedInflightChecks).
+					To(ContainSubstring("Invalid configurations on subnet"))
 			})
 
 	})
