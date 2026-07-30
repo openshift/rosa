@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -544,6 +545,16 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Upgrade wide AMI roles in manual mode")
+				tmpDir, err := os.MkdirTemp("", "rosa-upgrade-manual-*")
+				Expect(err).To(BeNil())
+				defer func() {
+					cleanupErr := os.RemoveAll(tmpDir)
+					Expect(cleanupErr).ToNot(HaveOccurred())
+				}()
+				originalDir := rosaClient.Runner.GetDir()
+				rosaClient.Runner.SetDir(tmpDir)
+				defer rosaClient.Runner.SetDir(originalDir)
+
 				if profile.ClusterConfig.HCP {
 					By("upgrade HCP cluster wide AMI roles in manual mode")
 					output1, err := ocmResourceService.UpgradeRoles(
