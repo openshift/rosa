@@ -147,9 +147,12 @@ var _ = Describe("OCMClient", func() {
 	Context("Describe version list", func() {
 		It("Expects a version list", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					VersionsListResponse,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						VersionsListResponse,
+					),
 				),
 			)
 
@@ -160,9 +163,18 @@ var _ = Describe("OCMClient", func() {
 
 		It("Expects a valid Hypershift Version", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					VersionsListResponse,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
+						Expect(request.URL.Query().Get("search")).To(Equal(
+							"raw_id='4.14.9' AND channel_group = 'stable'",
+						))
+					},
+					RespondWithJSON(
+						http.StatusOK,
+						VersionsListResponse,
+					),
 				),
 			)
 
@@ -173,15 +185,93 @@ var _ = Describe("OCMClient", func() {
 
 		It("Expects a non supported Hypershift Version", func() {
 			apiServer.AppendHandlers(
-				RespondWithJSON(
-					http.StatusOK,
-					NonSupportedHypershiftVersionsListResponse,
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
+						Expect(request.URL.Query().Get("search")).To(Equal(
+							"raw_id='4.13.0' AND channel_group = 'stable'",
+						))
+					},
+					RespondWithJSON(
+						http.StatusOK,
+						NonSupportedHypershiftVersionsListResponse,
+					),
 				),
 			)
 
 			vs, err := ocmClient.ValidateHypershiftVersion("4.13.0", DefaultChannelGroup)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(vs).To(BeFalse())
+		})
+
+		It("returns latest version major.minor", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						`{
+							"kind":"VersionList",
+							"page":1,
+							"size":1,
+							"total":1,
+							"items":[{"id":"4.16.3","raw_id":"4.16.3","channel_group":"stable","rosa_enabled":true}]
+						}`,
+					),
+				),
+			)
+
+			version, err := ocmClient.GetLatestVersion(DefaultChannelGroup)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(version).To(Equal("4.16"))
+		})
+
+		It("returns error when latest version cannot be resolved", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					RespondWithJSON(
+						http.StatusOK,
+						`{
+							"kind":"VersionList",
+							"page":1,
+							"size":0,
+							"total":0,
+							"items":[]
+						}`,
+					),
+				),
+			)
+
+			_, err := ocmClient.GetLatestVersion(DefaultChannelGroup)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("there are no OpenShift versions available"))
+		})
+
+		It("passes product to GetVersionsWithProduct requests", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
+					},
+					RespondWithJSON(
+						http.StatusOK,
+						`{
+							"kind":"VersionList",
+							"page":1,
+							"size":1,
+							"total":1,
+							"items":[{"id":"4.16.3","raw_id":"4.16.3","channel_group":"stable","rosa_enabled":true}]
+						}`,
+					),
+				),
+			)
+
+			versions, err := ocmClient.GetVersionsWithProduct(HcpProduct, DefaultChannelGroup, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(versions).To(HaveLen(1))
 		})
 	})
 })
@@ -341,6 +431,22 @@ var _ = Describe("Minimal http tokens required version", Ordered, func() {
 					"is not supported: %v", "bad version", "malformed version: bad version"),
 			),
 		)
+	})
+})
+
+var _ = Describe("GetAvailableUpgradesByCluster", func() {
+	It("returns descending upgrades for cluster versions", func() {
+		cluster, err := cmv1.NewCluster().
+			Version(cmv1.NewVersion().AvailableUpgrades("4.14.1", "4.14.3", "4.14.2")).
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+
+		upgrades := GetAvailableUpgradesByCluster(cluster)
+		Expect(upgrades).To(Equal([]string{"4.14.3", "4.14.2", "4.14.1"}))
+	})
+
+	It("returns empty upgrades for nil cluster", func() {
+		Expect(GetAvailableUpgradesByCluster(nil)).To(BeEmpty())
 	})
 })
 
