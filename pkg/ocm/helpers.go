@@ -388,6 +388,9 @@ func (c *Client) GetCurrentOrganization() (id string, externalID string, err err
 	if err != nil {
 		return
 	}
+	if acctResponse == nil {
+		return
+	}
 	id = acctResponse.Organization().ID()
 	externalID = acctResponse.Organization().ExternalID()
 
