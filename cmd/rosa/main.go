@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/color"
 	"github.com/openshift/rosa/pkg/commands"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/reporter"
 	versionUtils "github.com/openshift/rosa/pkg/version"
@@ -46,6 +47,7 @@ func init() {
 	fs := root.PersistentFlags()
 	color.AddFlag(root)
 	arguments.AddDebugFlag(fs)
+	hyperfleet.AddFlags(root)
 
 	// Register the subcommands:
 	commands.RegisterCommands(root)

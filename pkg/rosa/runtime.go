@@ -1,29 +1,56 @@
 package rosa
 
 import (
+	"context"
 	"os"
 	"time"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	awssts "github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
+	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
 	"github.com/sirupsen/logrus"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/profile"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/reporter"
 )
 
+// awsLoadConfig, awsGetIdentity, hfNewClient, hfExplicitURL, hfExitFn are
+// package-level vars so they can be replaced in unit tests without interface indirection.
+var (
+	awsLoadConfig = func(ctx context.Context, region, awsProfile string) (awssdk.Config, error) {
+		return awsconfig.LoadDefaultConfig(ctx,
+			awsconfig.WithRegion(region),
+			awsconfig.WithSharedConfigProfile(awsProfile),
+		)
+	}
+	awsGetIdentity = func(ctx context.Context, cfg awssdk.Config) (*awssts.GetCallerIdentityOutput, error) {
+		return awssts.NewFromConfig(cfg).GetCallerIdentity(ctx, &awssts.GetCallerIdentityInput{})
+	}
+	hfNewClient   = hyperfleetclientset.NewForConfig
+	hfExplicitURL = hyperfleet.ExplicitURL
+	hfExitFn      = func(code int) { os.Exit(code) }
+)
+
 type Runtime struct {
-	Reporter   reporter.Logger
-	Logger     *logrus.Logger
-	OCMClient  *ocm.Client
-	AWSClient  aws.Client
-	Creator    *aws.Creator
-	ClusterKey string
-	Cluster    *cmv1.Cluster
-	Spinner    *spinner.Spinner
+	Reporter         reporter.Logger
+	Logger           *logrus.Logger
+	OCMClient        *ocm.Client
+	AWSClient        aws.Client
+	Creator          *aws.Creator
+	ClusterKey       string
+	Cluster          *cmv1.Cluster
+	Spinner          *spinner.Spinner
+	HyperFleetClient *hyperfleetclientset.Clientset
 }
 
 func NewRuntime() *Runtime {
@@ -103,6 +130,68 @@ func (r *Runtime) GetClusterKey() string {
 	}
 	r.ClusterKey = clusterKey
 	return clusterKey
+}
+
+// WithHyperFleet builds the Platform API v2 client from the --hyperfleet-url flag.
+// Region is resolved from --region / AWS_DEFAULT_REGION, falling back to extraction
+// from the URL hostname. --profile / AWS_PROFILE are honoured for credential loading.
+// No OCM login is required.
+func (r *Runtime) WithHyperFleet() *Runtime {
+	ctx := context.Background()
+
+	rawURL := hfExplicitURL()
+
+	// Resolve region: explicit flag/env takes precedence, then extracted from URL.
+	region := arguments.GetRegion()
+	if region == "" {
+		var err error
+		region, err = hyperfleet.ExtractRegion(rawURL)
+		if err != nil {
+			r.Reporter.Errorf("%v", err)
+			hfExitFn(1)
+			return r
+		}
+	} else {
+		hyperfleet.WarnOnMismatch(region, rawURL, r.Reporter)
+	}
+
+	// Load AWS config, honouring --profile / AWS_PROFILE and resolved region.
+	awsCfg, err := awsLoadConfig(ctx, region, profile.Profile())
+	if err != nil {
+		r.Reporter.Errorf("Failed to load AWS config: %v", err)
+		hfExitFn(1)
+		return r
+	}
+
+	// Derive account ID and caller ARN via STS (no OCM required).
+	identity, err := awsGetIdentity(ctx, awsCfg)
+	if err != nil {
+		r.Reporter.Errorf("Failed to get AWS caller identity: %v", err)
+		hfExitFn(1)
+		return r
+	}
+	creator, err := aws.CreatorForCallerIdentity(identity)
+	if err != nil {
+		r.Reporter.Errorf("Failed to build creator from caller identity: %v", err)
+		hfExitFn(1)
+		return r
+	}
+	r.Creator = creator
+
+	cs, err := hfNewClient(&hfrest.Config{
+		Host:      rawURL,
+		Region:    region,
+		AccountID: creator.AccountID,
+		CallerARN: creator.ARN,
+		AWSConfig: awsCfg,
+	})
+	if err != nil {
+		r.Reporter.Errorf("Failed to build Platform API client: %v", err)
+		hfExitFn(1)
+		return r
+	}
+	r.HyperFleetClient = cs
+	return r
 }
 
 func (r *Runtime) FetchCluster() *cmv1.Cluster {

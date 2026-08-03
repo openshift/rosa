@@ -2,7 +2,6 @@ package output
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,44 +9,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/openshift/rosa/pkg/reporter"
+	reportertest "github.com/openshift/rosa/test/reporter"
 )
-
-// fakeReporter records formatted messages for assertion in tests.
-type fakeReporter struct {
-	errors   []string
-	warnings []string
-	infos    []string
-	debugs   []string
-}
-
-func (f *fakeReporter) Errorf(format string, args ...interface{}) error {
-	msg := fmt.Sprintf(format, args...)
-	f.errors = append(f.errors, msg)
-	return errors.New(msg)
-}
-
-func (f *fakeReporter) Warnf(format string, args ...interface{}) {
-	f.warnings = append(f.warnings, fmt.Sprintf(format, args...))
-}
-
-func (f *fakeReporter) Infof(format string, args ...interface{}) {
-	f.infos = append(f.infos, fmt.Sprintf(format, args...))
-}
-
-func (f *fakeReporter) Debugf(format string, args ...interface{}) {
-	f.debugs = append(f.debugs, fmt.Sprintf(format, args...))
-}
-
-func (f *fakeReporter) IsTerminal() bool { return false }
-
-var _ reporter.Logger = &fakeReporter{}
 
 var _ = Describe("StructuredReporter", func() {
 
 	var (
-		fake       *fakeReporter
-		structured reporter.Logger
 		origStderr *os.File
 		readPipe   *os.File
 		writePipe  *os.File
@@ -55,8 +22,6 @@ var _ = Describe("StructuredReporter", func() {
 
 	BeforeEach(func() {
 		SetOutput("")
-		fake = &fakeReporter{}
-		structured = NewStructuredReporter(fake)
 		origStderr = os.Stderr
 		var err error
 		readPipe, writePipe, err = os.Pipe()
@@ -81,32 +46,40 @@ var _ = Describe("StructuredReporter", func() {
 
 	Context("Errorf", func() {
 		It("delegates to inner reporter when no output flag is set", func() {
-			structured.Errorf("something went wrong")
+			errCalled := false
+			fake := &reportertest.FakeLogger{ErrorFn: func(string, ...any) error { errCalled = true; return nil }}
+			NewStructuredReporter(fake).Errorf("something went wrong")
 			captured := captureStderr()
-			Expect(fake.errors).To(HaveLen(1))
+			Expect(errCalled).To(BeTrue())
 			Expect(captured).To(BeEmpty())
 		})
 
 		It("formats args correctly before delegating when no flag is set", func() {
-			structured.Errorf("failed: %s", "bad token")
+			var lastErr string
+			fake := &reportertest.FakeLogger{ErrorFn: func(f string, a ...any) error { lastErr = fmt.Sprintf(f, a...); return nil }}
+			NewStructuredReporter(fake).Errorf("failed: %s", "bad token")
 			captureStderr()
-			Expect(fake.errors).To(ContainElement("failed: bad token"))
+			Expect(lastErr).To(Equal("failed: bad token"))
 		})
 
 		It("prints JSON to stderr and skips inner reporter when JSON flag is set", func() {
 			SetOutput(JSON)
-			structured.Errorf("connection failed")
+			errCalled := false
+			fake := &reportertest.FakeLogger{ErrorFn: func(string, ...any) error { errCalled = true; return nil }}
+			NewStructuredReporter(fake).Errorf("connection failed")
 			captured := captureStderr()
-			Expect(fake.errors).To(BeEmpty())
+			Expect(errCalled).To(BeFalse())
 			Expect(captured).To(ContainSubstring(`"error"`))
 			Expect(captured).To(ContainSubstring("connection failed"))
 		})
 
 		It("prints JSON to stderr and skips inner reporter when YAML flag is set", func() {
 			SetOutput(YAML)
-			structured.Errorf("connection failed")
+			errCalled := false
+			fake := &reportertest.FakeLogger{ErrorFn: func(string, ...any) error { errCalled = true; return nil }}
+			NewStructuredReporter(fake).Errorf("connection failed")
 			captured := captureStderr()
-			Expect(fake.errors).To(BeEmpty())
+			Expect(errCalled).To(BeFalse())
 			Expect(captured).To(ContainSubstring(`"error"`))
 			Expect(captured).To(ContainSubstring("connection failed"))
 		})
@@ -114,26 +87,32 @@ var _ = Describe("StructuredReporter", func() {
 
 	Context("Warnf", func() {
 		It("delegates to inner reporter when no output flag is set", func() {
-			structured.Warnf("region mismatch")
+			warnCalled := false
+			fake := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warnCalled = true }}
+			NewStructuredReporter(fake).Warnf("region mismatch")
 			captured := captureStderr()
-			Expect(fake.warnings).To(HaveLen(1))
+			Expect(warnCalled).To(BeTrue())
 			Expect(captured).To(BeEmpty())
 		})
 
 		It("prints JSON to stderr and skips inner reporter when JSON flag is set", func() {
 			SetOutput(JSON)
-			structured.Warnf("region mismatch")
+			warnCalled := false
+			fake := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warnCalled = true }}
+			NewStructuredReporter(fake).Warnf("region mismatch")
 			captured := captureStderr()
-			Expect(fake.warnings).To(BeEmpty())
+			Expect(warnCalled).To(BeFalse())
 			Expect(captured).To(ContainSubstring(`"warning"`))
 			Expect(captured).To(ContainSubstring("region mismatch"))
 		})
 
 		It("prints JSON to stderr and skips inner reporter when YAML flag is set", func() {
 			SetOutput(YAML)
-			structured.Warnf("region mismatch")
+			warnCalled := false
+			fake := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warnCalled = true }}
+			NewStructuredReporter(fake).Warnf("region mismatch")
 			captured := captureStderr()
-			Expect(fake.warnings).To(BeEmpty())
+			Expect(warnCalled).To(BeFalse())
 			Expect(captured).To(ContainSubstring(`"warning"`))
 			Expect(captured).To(ContainSubstring("region mismatch"))
 		})
@@ -141,19 +120,23 @@ var _ = Describe("StructuredReporter", func() {
 
 	Context("passthrough methods", func() {
 		It("Infof delegates to inner", func() {
-			structured.Infof("hello %s", "world")
+			var lastInfo string
+			fake := &reportertest.FakeLogger{InfoFn: func(f string, a ...any) { lastInfo = fmt.Sprintf(f, a...) }}
+			NewStructuredReporter(fake).Infof("hello %s", "world")
 			captureStderr()
-			Expect(fake.infos).To(ContainElement("hello world"))
+			Expect(lastInfo).To(Equal("hello world"))
 		})
 
 		It("Debugf delegates to inner", func() {
-			structured.Debugf("debug %s", "msg")
+			var lastDebug string
+			fake := &reportertest.FakeLogger{DebugFn: func(f string, a ...any) { lastDebug = fmt.Sprintf(f, a...) }}
+			NewStructuredReporter(fake).Debugf("debug %s", "msg")
 			captureStderr()
-			Expect(fake.debugs).To(ContainElement("debug msg"))
+			Expect(lastDebug).To(Equal("debug msg"))
 		})
 
 		It("IsTerminal delegates to inner", func() {
-			Expect(structured.IsTerminal()).To(BeFalse())
+			Expect(NewStructuredReporter(&reportertest.FakeLogger{}).IsTerminal()).To(BeFalse())
 		})
 	})
 })
