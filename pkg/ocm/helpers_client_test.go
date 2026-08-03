@@ -13,20 +13,28 @@ import (
 var _ = Describe("Helpers API client behavior", func() {
 	var apiServer *ghttp.Server
 	var ocmClient *Client
+	var expectedRequests int
+
+	appendHandlers := func(requestCount int, handlers ...http.HandlerFunc) {
+		expectedRequests += requestCount
+		apiServer.AppendHandlers(handlers...)
+	}
 
 	BeforeEach(func() {
 		apiServer = MakeTCPServer()
 		apiServer.SetUnhandledRequestStatusCode(http.StatusInternalServerError)
 		ocmClient = buildTestOCMClient(apiServer.URL())
+		expectedRequests = 0
 	})
 
 	AfterEach(func() {
+		Expect(apiServer.ReceivedRequests()).To(HaveLen(expectedRequests))
 		apiServer.Close()
 		Expect(ocmClient.Close()).To(Succeed())
 	})
 
 	It("handles missing current account in GetCurrentOrganization", func() {
-		apiServer.AppendHandlers(
+		appendHandlers(1,
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
 				RespondWithJSON(http.StatusNotFound, `{"reason":"not found"}`),
@@ -48,7 +56,7 @@ var _ = Describe("Helpers API client behavior", func() {
 	})
 
 	It("returns current account body when GetCurrentAccount succeeds", func() {
-		apiServer.AppendHandlers(
+		appendHandlers(1,
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
 				RespondWithJSON(http.StatusOK, `{
@@ -67,7 +75,7 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	It("links a role to organization labels when account is not present yet", func() {
 		roleARN := "arn:aws:iam::123456789012:role/first-role"
-		apiServer.AppendHandlers(
+		appendHandlers(2,
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
 				RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":""}`),
@@ -90,7 +98,7 @@ var _ = Describe("Helpers API client behavior", func() {
 	})
 
 	It("rejects linking a second role for the same aws account", func() {
-		apiServer.AppendHandlers(
+		appendHandlers(1,
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
 				RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/existing-role"}`),
@@ -105,7 +113,7 @@ var _ = Describe("Helpers API client behavior", func() {
 
 	It("unlinks organization ocm role by deleting label when last entry is removed", func() {
 		roleARN := "arn:aws:iam::123456789012:role/only-role"
-		apiServer.AppendHandlers(
+		appendHandlers(2,
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
 				RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/only-role"}`),
@@ -121,7 +129,7 @@ var _ = Describe("Helpers API client behavior", func() {
 	})
 
 	It("avoids creating duplicate user role links on an account", func() {
-		apiServer.AppendHandlers(
+		appendHandlers(1,
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/accounts/acct-1/labels/sts_user_role"),
 				RespondWithJSON(http.StatusOK, `{"key":"sts_user_role","value":"arn:aws:iam::123456789012:role/existing"}`),
@@ -133,7 +141,7 @@ var _ = Describe("Helpers API client behavior", func() {
 	})
 
 	It("unlinks a user role from account labels and updates remaining roles", func() {
-		apiServer.AppendHandlers(
+		appendHandlers(2,
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/accounts/acct-1/labels/sts_user_role"),
 				RespondWithJSON(http.StatusOK, `{

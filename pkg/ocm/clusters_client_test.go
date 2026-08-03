@@ -61,7 +61,11 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("handles CreateCluster when DryRun is nil", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusCreated, `{"id":"cluster-1","name":"test-cluster"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV("dryRun", "false"),
+				RespondWithJSON(http.StatusCreated, `{"id":"cluster-1","name":"test-cluster"}`),
+			),
 		)
 
 		spec := buildMinimalClusterSpec()
@@ -80,20 +84,30 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("paginates all results when GetClusters count is zero", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"ClusterList",
-				"page":1,
-				"size":1,
-				"total":2,
-				"items":[{"id":"cluster-1","name":"one"}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"ClusterList",
-				"page":2,
-				"size":1,
-				"total":2,
-				"items":[{"id":"cluster-2","name":"two"}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV("page", "1"),
+				ghttp.VerifyFormKV("size", "100"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":1,
+					"size":1,
+					"total":2,
+					"items":[{"id":"cluster-1","name":"one"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV("page", "2"),
+				ghttp.VerifyFormKV("size", "100"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":2,
+					"size":1,
+					"total":2,
+					"items":[{"id":"cluster-2","name":"two"}]
+				}`),
+			),
 		)
 
 		clusters, err := ocmClient.GetClusters(nil, 0)
