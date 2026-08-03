@@ -46,7 +46,9 @@ type Runtime struct {
 	Logger           *logrus.Logger
 	OCMClient        *ocm.Client
 	AWSClient        aws.Client
+	AWSConfig        awssdk.Config
 	Creator          *aws.Creator
+	Region           string
 	ClusterKey       string
 	Cluster          *cmv1.Cluster
 	Spinner          *spinner.Spinner
@@ -177,6 +179,8 @@ func (r *Runtime) WithHyperFleet() *Runtime {
 		return r
 	}
 	r.Creator = creator
+	r.AWSConfig = awsCfg
+	r.Region = region
 
 	cs, err := hfNewClient(&hfrest.Config{
 		Host:      rawURL,
