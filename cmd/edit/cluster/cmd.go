@@ -280,6 +280,10 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	if hfEnabled() {
+		hfEditCluster(cmd)
+		return
+	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 	r.OCMClient.WarnIfOCMRoleNotLinked(r.Reporter, r.Creator.AccountID)

@@ -69,6 +69,10 @@ func listClustersUsingAccountRole(creator *aws.Creator, runtime *rosa.Runtime) (
 }
 
 func run(_ *cobra.Command, _ []string) {
+	if hfEnabled() {
+		hfListClusters()
+		return
+	}
 	r := rosa.NewRuntime().WithAWSWarnInsteadOfExit().WithOCM()
 	defer r.Cleanup()
 
