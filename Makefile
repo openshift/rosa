@@ -172,6 +172,30 @@ e2e_test: install
         --focus-file tests/e2e/.* \
 		$(NULL)
 
+# e2e-hyperfleet: runs the hyperfleet Platform API sanity test.
+#
+# Required:
+#   HYPERFLEET_URL  — Platform API v2 base URL
+#
+# Optional:
+#   HYPERFLEET_VERSION    — release image pullspec; server picks default when empty
+#   CLUSTER_NAME          — defaults to hf-sanity-<unix timestamp>
+#   OPERATOR_ROLES_PREFIX — defaults to CLUSTER_NAME
+#   AWS_DEFAULT_REGION    — fallback when region cannot be derived from HYPERFLEET_URL
+.PHONY: e2e-hyperfleet
+e2e-hyperfleet:
+	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
+	HYPERFLEET_VERSION="$${HYPERFLEET_VERSION}" \
+	CLUSTER_NAME="$${CLUSTER_NAME}" \
+	OPERATOR_ROLES_PREFIX="$${OPERATOR_ROLES_PREFIX}" \
+	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
+	ginkgo run \
+		--focus "Hyperfleet sanity" \
+		--timeout 3h \
+		-v \
+		./tests/e2e/ \
+		$(NULL)
+
 .PHONY: generate-docs
 generate-docs:
 	go run ./tools/gendocs
