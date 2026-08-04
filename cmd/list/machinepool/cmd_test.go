@@ -371,6 +371,55 @@ func formatNodePools() string {
 		test.FormatResource(np1), test.FormatResource(np2))
 }
 
+var _ = Describe("ListMachinePoolRunner error branches", func() {
+	var t *test.TestingRuntime
+
+	BeforeEach(func() {
+		t = test.NewTestRuntime()
+		SetOutput("")
+	})
+
+	It("returns an error when cluster is not ready", func() {
+		notReadyCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663"))
+			c.State(cmv1.ClusterStateInstalling)
+			c.Hypershift(cmv1.NewHypershift().Enabled(false))
+		})
+		t.ApiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, test.FormatClusterList([]*cmv1.Cluster{notReadyCluster})))
+
+		runner := ListMachinePoolRunner()
+		cmd := NewListMachinePoolCommand()
+		err := cmd.Flag("cluster").Value.Set(clusterId)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("is not yet ready"))
+	})
+
+	It("returns an error when listing machinepools fails", func() {
+		classicReadyCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663"))
+			c.State(cmv1.ClusterStateReady)
+			c.Hypershift(cmv1.NewHypershift().Enabled(false))
+		})
+		t.ApiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, test.FormatClusterList([]*cmv1.Cluster{classicReadyCluster})))
+		t.ApiServer.AppendHandlers(
+			RespondWithJSON(http.StatusInternalServerError, `{"code":"OCM-0","reason":"internal error"}`))
+
+		runner := ListMachinePoolRunner()
+		cmd := NewListMachinePoolCommand()
+		err := cmd.Flag("cluster").Value.Set(clusterId)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to list machinepools"))
+	})
+})
+
 // formatMachinePool simulates the output of APIs for a fake machine pool list
 func formatMachinePool() string {
 	awsMachinePoolPool := cmv1.NewAWSMachinePool().SpotMarketOptions(cmv1.NewAWSSpotMarketOptions().MaxPrice(5))

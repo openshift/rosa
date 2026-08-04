@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	reportertest "github.com/openshift/rosa/test/reporter"
 )
@@ -112,5 +113,23 @@ var _ = Describe("ComputeRolesRef", func() {
 var _ = Describe("ComputeInstanceProfile", func() {
 	It("appends the worker role suffix", func() {
 		Expect(ComputeInstanceProfile("my-cluster")).To(Equal("my-cluster-ROSA-Worker-Role"))
+	})
+})
+
+var _ = Describe("InstanceProfileFromRolesRef", func() {
+	It("extracts prefix from NodePoolManagementARN and returns the instance profile name", func() {
+		ref := hypershiftv1beta1.AWSRolesRef{
+			NodePoolManagementARN: "arn:aws:iam::123456789012:role/my-cluster-node-pool-management",
+		}
+		Expect(InstanceProfileFromRolesRef(ref)).To(Equal("my-cluster-ROSA-Worker-Role"))
+	})
+
+	It("returns empty string when NodePoolManagementARN has unexpected format", func() {
+		ref := hypershiftv1beta1.AWSRolesRef{NodePoolManagementARN: "bad-arn"}
+		Expect(InstanceProfileFromRolesRef(ref)).To(BeEmpty())
+	})
+
+	It("returns empty string when NodePoolManagementARN is empty", func() {
+		Expect(InstanceProfileFromRolesRef(hypershiftv1beta1.AWSRolesRef{})).To(BeEmpty())
 	})
 })

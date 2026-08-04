@@ -52,7 +52,7 @@ type Runtime struct {
 	ClusterKey       string
 	Cluster          *cmv1.Cluster
 	Spinner          *spinner.Spinner
-	HyperFleetClient *hyperfleetclientset.Clientset
+	HyperFleetClient hyperfleetclientset.Interface
 }
 
 func NewRuntime() *Runtime {
@@ -79,6 +79,23 @@ func (r *Runtime) WithAWS() *Runtime {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+	if r.AWSClient == nil {
+		r.AWSClient = aws.CreateNewClientOrExit(r.Logger, r.Reporter)
+	}
+	if r.Creator == nil {
+		var err error
+		r.Creator, err = r.AWSClient.GetCreator()
+		if err != nil {
+			r.Reporter.Errorf("Failed to get AWS creator: %v", err)
+			os.Exit(1)
+		}
+	}
+	return r
+}
+
+// WithAWSOnly initializes the AWS client and creator without requiring an OCM connection.
+// Use this when OCM credentials may not be available (e.g. hyperfleet-only mode).
+func (r *Runtime) WithAWSOnly() *Runtime {
 	if r.AWSClient == nil {
 		r.AWSClient = aws.CreateNewClientOrExit(r.Logger, r.Reporter)
 	}

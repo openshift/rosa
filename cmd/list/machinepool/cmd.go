@@ -53,7 +53,13 @@ func NewListMachinePoolCommand() *cobra.Command {
 		Aliases: aliases,
 		Example: example,
 		Args:    cobra.NoArgs,
-		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), ListMachinePoolRunner()),
+		Run: func(c *cobra.Command, argv []string) {
+			if hfEnabled() {
+				hfListMachinePools(c, argv)
+				return
+			}
+			rosa.DefaultRunner(rosa.RuntimeWithOCM(), ListMachinePoolRunner())(c, argv)
+		},
 	}
 
 	flags := cmd.Flags()
@@ -98,7 +104,7 @@ func ListMachinePoolRunner() rosa.CommandRunner {
 		cluster := runtime.FetchCluster()
 		if cluster.State() != cmv1.ClusterStateReady &&
 			cluster.State() != cmv1.ClusterStateHibernating {
-			return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+			return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 		}
 
 		service := machinepool.NewMachinePoolService()
@@ -109,7 +115,7 @@ func ListMachinePoolRunner() rosa.CommandRunner {
 			args,
 		)
 		if err != nil {
-			return fmt.Errorf("Failed to list machinepools: %s", err)
+			return fmt.Errorf("failed to list machinepools: %s", err)
 		}
 		return nil
 	}

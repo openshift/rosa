@@ -607,6 +607,35 @@ func formatMachinePool() string {
 	return test.FormatResource(mp)
 }
 
+var _ = Describe("DescribeMachinePoolRunner error branches", func() {
+	var t *test.TestingRuntime
+
+	BeforeEach(func() {
+		t = test.NewTestRuntime()
+	})
+
+	It("returns an error when cluster is not ready", func() {
+		notReadyCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+			c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663"))
+			c.State(cmv1.ClusterStateInstalling)
+			c.Hypershift(cmv1.NewHypershift().Enabled(true))
+		})
+		t.ApiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, test.FormatClusterList([]*cmv1.Cluster{notReadyCluster})))
+
+		args := NewDescribeMachinepoolUserOptions()
+		args.machinepool = nodePoolName
+		runner := DescribeMachinePoolRunner(args)
+		cmd := NewDescribeMachinePoolCommand()
+		err := cmd.Flag("cluster").Value.Set(clusterId)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("is not yet ready"))
+	})
+})
+
 func buildNodePoolUpgradePolicy() *cmv1.NodePoolUpgradePolicy {
 	t, err := time.Parse(time.RFC3339, "2023-08-07T15:22:00Z")
 	Expect(err).To(BeNil())
