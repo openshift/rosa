@@ -3308,13 +3308,28 @@ var _ = Describe("HCP cluster creation subnets validation",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(out.String()).To(ContainSubstring(successOutput))
 
+				// CPO versions 4.22.4+, 4.21.25+, 4.20.31+ handle duplicate subnets
+				// per AZ (OCPBUGS-82443), so the preflight guardrail is relaxed.
+				versionStr := rosalCommand.GetFlagValue("--version", true)
+				major, minor, patch, vErr := helper.ParseVersion(versionStr)
+				subnetDedupSupported := vErr == nil && major == 4 &&
+					((minor > 22) ||
+						(minor == 22 && patch >= 4) ||
+						(minor == 21 && patch >= 25) ||
+						(minor == 20 && patch >= 31))
+
 				By("Create a public cluster with 2 private subnets from same AZ and 1 public subnet")
 				subnets = []string{subnetMap["private"][0], additionalPrivateSubnet.ID, subnetMap["public"][0]}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				if subnetDedupSupported {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(successOutput))
+				} else {
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(failOutput_1))
+					Expect(out.String()).To(ContainSubstring(failOutput_2))
+				}
 
 				By("Create a public cluster with 4 private subnets (2 subnets from same AZ) and 1 public subnet")
 				subnets = []string{
@@ -3326,9 +3341,14 @@ var _ = Describe("HCP cluster creation subnets validation",
 				}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				if subnetDedupSupported {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(successOutput))
+				} else {
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(failOutput_1))
+					Expect(out.String()).To(ContainSubstring(failOutput_2))
+				}
 
 				By("Create a public cluster with 1 private subnet and 2 public subnet from same AZ")
 				subnets = []string{subnetMap["private"][0], subnetMap["public"][0], additionalPublicSubnet.ID}
@@ -3356,9 +3376,14 @@ var _ = Describe("HCP cluster creation subnets validation",
 				subnets = []string{subnetMap["private"][0], additionalPrivateSubnet.ID}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				if subnetDedupSupported {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(successOutput))
+				} else {
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(failOutput_1))
+					Expect(out.String()).To(ContainSubstring(failOutput_2))
+				}
 
 				By("Create a private cluster with 4 private subnets (2 subnets from same AZ)")
 				subnets = []string{
@@ -3369,9 +3394,14 @@ var _ = Describe("HCP cluster creation subnets validation",
 				}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(failOutput_1))
-				Expect(out.String()).To(ContainSubstring(failOutput_2))
+				if subnetDedupSupported {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(successOutput))
+				} else {
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring(failOutput_1))
+					Expect(out.String()).To(ContainSubstring(failOutput_2))
+				}
 
 				By("Create a private cluster with 1 private subnet and 1 public subnet")
 				subnets = []string{subnetMap["private"][0], subnetMap["public"][0]}
