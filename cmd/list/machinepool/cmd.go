@@ -98,7 +98,7 @@ func ListMachinePoolRunner() rosa.CommandRunner {
 		cluster := runtime.FetchCluster()
 		if cluster.State() != cmv1.ClusterStateReady &&
 			cluster.State() != cmv1.ClusterStateHibernating {
-			return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey) //nolint:staticcheck
+			return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 		}
 
 		service := machinepool.NewMachinePoolService()
@@ -109,7 +109,7 @@ func ListMachinePoolRunner() rosa.CommandRunner {
 			args,
 		)
 		if err != nil {
-			return fmt.Errorf("Failed to list machinepools: %s", err) //nolint:staticcheck
+			return fmt.Errorf("failed to list machinepools: %s", err)
 		}
 		return nil
 	}

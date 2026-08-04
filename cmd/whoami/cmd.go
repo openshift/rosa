@@ -54,7 +54,16 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS()
+	r := rosa.NewRuntime()
+	// Load config before initializing OCM so we can detect hyperfleet-only mode.
+	// When only a Platform API URL is configured (no OCM credentials), skip the
+	// OCM dependency and the region validation that WithAWS() requires.
+	cfg, cfgErr := config.Load()
+	if cfgErr == nil && cfg != nil && cfg.HyperfleetURL != "" && config.IsNotValid(cfg) {
+		r = r.WithAWSOnly()
+	} else {
+		r = r.WithAWS()
+	}
 	err := runWithRuntime(r)
 	r.Cleanup()
 	if err != nil {
@@ -123,33 +132,39 @@ func runWithRuntime(r *rosa.Runtime) error {
 			Logger(r.Logger).
 			Build()
 		if err != nil {
-			r.Reporter.Errorf("Failed to create OCM connection: %v", err)
-			return fmt.Errorf("creating OCM connection: %w", err)
-		}
-
-		account, err := r.OCMClient.GetCurrentAccount()
-		if err != nil {
-			r.Reporter.Errorf("Failed to get current account: %s", err)
-			return fmt.Errorf("getting current account: %w", err)
-		}
-
-		if account == nil {
-			account, err = getAccountDataFromToken(cfg)
-			if err != nil {
-				r.Reporter.Errorf("Failed to get account data from token: %v", err)
-				return fmt.Errorf("getting account data from token: %w", err)
+			if hfURL != "" {
+				// Hyperfleet-only login: stale OCM credentials may be present
+				// but are not required. Degrade gracefully without OCM data.
+				r.Reporter.Warnf("Skipping OCM info (not logged in to OCM): %v", err)
+			} else {
+				r.Reporter.Errorf("Failed to create OCM connection: %v", err)
+				return fmt.Errorf("creating OCM connection: %w", err)
 			}
-		}
+		} else {
+			account, err := r.OCMClient.GetCurrentAccount()
+			if err != nil {
+				r.Reporter.Errorf("Failed to get current account: %s", err)
+				return fmt.Errorf("getting current account: %w", err)
+			}
 
-		outputObject["OCM API"] = cfg.URL
-		outputObject["OCM Account ID"] = account.ID()
-		outputObject["OCM Account Name"] = fmt.Sprintf("%s %s", account.FirstName(), account.LastName())
-		outputObject["OCM Account Username"] = account.Username()
-		outputObject["OCM Account Email"] = account.Email()
-		outputObject["OCM Organization ID"] = account.Organization().ID()
-		outputObject["OCM Organization Name"] = account.Organization().Name()
-		if account.Organization().ExternalID() != "" {
-			outputObject["OCM Organization External ID"] = account.Organization().ExternalID()
+			if account == nil {
+				account, err = getAccountDataFromToken(cfg)
+				if err != nil {
+					r.Reporter.Errorf("Failed to get account data from token: %v", err)
+					return fmt.Errorf("getting account data from token: %w", err)
+				}
+			}
+
+			outputObject["OCM API"] = cfg.URL
+			outputObject["OCM Account ID"] = account.ID()
+			outputObject["OCM Account Name"] = fmt.Sprintf("%s %s", account.FirstName(), account.LastName())
+			outputObject["OCM Account Username"] = account.Username()
+			outputObject["OCM Account Email"] = account.Email()
+			outputObject["OCM Organization ID"] = account.Organization().ID()
+			outputObject["OCM Organization Name"] = account.Organization().Name()
+			if account.Organization().ExternalID() != "" {
+				outputObject["OCM Organization External ID"] = account.Organization().ExternalID()
+			}
 		}
 	}
 

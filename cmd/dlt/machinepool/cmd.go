@@ -79,7 +79,7 @@ func DeleteMachinePoolRunner(userOptions *DeleteMachinepoolUserOptions) rosa.Com
 		service := machinepool.NewMachinePoolService()
 		err = service.DeleteMachinePool(runtime, options.Machinepool(), clusterKey, cluster)
 		if err != nil {
-			return fmt.Errorf("Error deleting machinepool: %v", err) //nolint:staticcheck
+			return fmt.Errorf("error deleting machinepool: %v", err)
 		}
 		return nil
 	}

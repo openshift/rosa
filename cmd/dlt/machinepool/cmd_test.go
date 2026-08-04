@@ -98,7 +98,7 @@ var _ = Describe("Delete machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{"--machinepool", nodePoolName, "-y"})
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("Error deleting machinepool: machine pool "+
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("error deleting machinepool: machine pool "+
 					"'%s' does not exist for hosted cluster '%s'", nodePoolName, clusterId))
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
@@ -163,7 +163,7 @@ var _ = Describe("Delete machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{"--machinepool", nodePoolName, "-y"})
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("Error deleting machinepool: failed to "+
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("error deleting machinepool: failed to "+
 					"get machine pool '%s' for cluster '%s'", nodePoolName,
 					clusterId))
 				stdout, err := t.StdOutReader.Read()

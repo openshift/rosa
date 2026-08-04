@@ -4,34 +4,25 @@
 package machinepool
 
 import (
-	"os"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 )
 
 var _ = Describe("Dispatch", func() {
-	var exitCalled bool
-	var exitCode int
+	var originalEnabled func() bool
+	var originalCreate func(*mpOpts.CreateMachinepoolUserOptions, []string)
 
 	BeforeEach(func() {
-		exitCalled = false
-		exitCode = 0
-
-		// Override exit function
-		exitWithError = func() {
-			exitCalled = true
-			exitCode = 1
-		}
+		originalEnabled = hyperfleetEnabled
+		originalCreate = hfCreateMachinePool
 	})
 
 	AfterEach(func() {
-		// Reset to production defaults
-		exitWithError = func() { os.Exit(1) }
-		hyperfleetEnabled = hyperfleet.Enabled
+		hyperfleetEnabled = originalEnabled
+		hfCreateMachinePool = originalCreate
 	})
 
 	Context("when hyperfleet is disabled", func() {
@@ -45,11 +36,6 @@ var _ = Describe("Dispatch", func() {
 			Expect(runner).NotTo(BeNil())
 		})
 
-		It("should not call exit", func() {
-			opts := &mpOpts.CreateMachinepoolUserOptions{}
-			dispatch(opts)
-			Expect(exitCalled).To(BeFalse())
-		})
 	})
 
 	Context("when hyperfleet is enabled", func() {
@@ -57,18 +43,12 @@ var _ = Describe("Dispatch", func() {
 			hyperfleetEnabled = func() bool { return true }
 		})
 
-		It("should call exit with status 1", func() {
+		It("routes to the Platform API handler", func() {
+			called := false
+			hfCreateMachinePool = func(*mpOpts.CreateMachinepoolUserOptions, []string) { called = true }
 			opts := &mpOpts.CreateMachinepoolUserOptions{}
-			dispatch(opts)
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(1))
-		})
-
-		It("should return nil instead of a runner", func() {
-			opts := &mpOpts.CreateMachinepoolUserOptions{}
-			runner := dispatch(opts)
-			Expect(exitCalled).To(BeTrue())
-			Expect(runner).To(BeNil())
+			dispatch(opts)(&cobra.Command{}, []string{"worker"})
+			Expect(called).To(BeTrue())
 		})
 	})
 })

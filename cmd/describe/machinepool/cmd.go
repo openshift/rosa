@@ -75,7 +75,7 @@ func DescribeMachinePoolRunner(userOptions *DescribeMachinepoolUserOptions) rosa
 		clusterKey := runtime.GetClusterKey()
 		cluster := runtime.FetchCluster()
 		if cluster.State() != cmv1.ClusterStateReady {
-			return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey) //nolint:staticcheck
+			return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 		}
 
 		service := machinepool.NewMachinePoolService()

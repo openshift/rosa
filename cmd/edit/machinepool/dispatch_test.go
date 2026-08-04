@@ -4,33 +4,23 @@
 package machinepool
 
 import (
-	"os"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/spf13/cobra"
 )
 
 var _ = Describe("Dispatch", func() {
-	var exitCalled bool
-	var exitCode int
+	var originalEnabled func() bool
+	var originalEdit func(*EditMachinepoolUserOptions, *cobra.Command, []string)
 
 	BeforeEach(func() {
-		exitCalled = false
-		exitCode = 0
-
-		// Override exit function
-		exitWithError = func() {
-			exitCalled = true
-			exitCode = 1
-		}
+		originalEnabled = hyperfleetEnabled
+		originalEdit = hfEditMachinePool
 	})
 
 	AfterEach(func() {
-		// Reset to production defaults
-		exitWithError = func() { os.Exit(1) }
-		hyperfleetEnabled = hyperfleet.Enabled
+		hyperfleetEnabled = originalEnabled
+		hfEditMachinePool = originalEdit
 	})
 
 	Context("when hyperfleet is disabled", func() {
@@ -44,11 +34,6 @@ var _ = Describe("Dispatch", func() {
 			Expect(runner).NotTo(BeNil())
 		})
 
-		It("should not call exit", func() {
-			opts := &EditMachinepoolUserOptions{}
-			dispatch(opts)
-			Expect(exitCalled).To(BeFalse())
-		})
 	})
 
 	Context("when hyperfleet is enabled", func() {
@@ -56,18 +41,13 @@ var _ = Describe("Dispatch", func() {
 			hyperfleetEnabled = func() bool { return true }
 		})
 
-		It("should call exit with status 1", func() {
+		It("routes to the Platform API handler", func() {
+			called := false
+			hfEditMachinePool = func(*EditMachinepoolUserOptions, *cobra.Command, []string) { called = true }
 			opts := &EditMachinepoolUserOptions{}
-			dispatch(opts)
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(1))
-		})
-
-		It("should return nil instead of a runner", func() {
-			opts := &EditMachinepoolUserOptions{}
-			runner := dispatch(opts)
-			Expect(exitCalled).To(BeTrue())
-			Expect(runner).To(BeNil())
+			cmd := &cobra.Command{}
+			dispatch(opts)(cmd, []string{"worker"})
+			Expect(called).To(BeTrue())
 		})
 	})
 })

@@ -4,26 +4,20 @@
 package machinepool
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
-	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-var (
-	hyperfleetEnabled = hyperfleet.Enabled
-	exitWithError     = func() { os.Exit(1) }
-)
+var hyperfleetEnabled = hyperfleet.Enabled
 
 func dispatch(options *DescribeMachinepoolUserOptions) func(*cobra.Command, []string) {
-	if hyperfleetEnabled() {
-		r := reporter.CreateReporter()
-		r.Errorf("This command is not yet supported with the Platform API")
-		exitWithError()
-		return nil
+	return func(cmd *cobra.Command, argv []string) {
+		if hyperfleetEnabled() {
+			hfDescribeMachinePool(options, argv)
+			return
+		}
+		rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeMachinePoolRunner(options))(cmd, argv)
 	}
-	return rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeMachinePoolRunner(options))
 }
