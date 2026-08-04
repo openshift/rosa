@@ -1,15 +1,14 @@
 package cluster
 
 import (
-	"github.com/spf13/cobra"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
 )
 
 var _ = Describe("hyperfleet dispatch", func() {
 	var (
-		origEnabled    func() bool
+		origEnabled     func() bool
 		origEditCluster func(*cobra.Command)
 	)
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -45,17 +46,18 @@ func TestConfig(t *testing.T) {
 
 var _ = Describe("Config", Ordered, func() {
 	propNamesAndDocs := map[string]string{
-		"access_token":  "Bearer access token.",
-		"client_id":     "OpenID client identifier.",
-		"client_secret": "OpenID client secret.",
-		"insecure":      "Enables insecure communication with the server.",
-		"refresh_token": "Offline or refresh token.",
-		"scopes":        "OpenID scope.",
-		"token_url":     "OpenID token URL.",
-		"url":           "URL of the API gateway.",
-		"user_agent":    "OCM client UserAgent. Default value is used if not set.",
-		"version":       "OCM client version. Default value is used if not set.",
-		"fedramp":       "Indicates FedRAMP.",
+		"access_token":   "Bearer access token.",
+		"client_id":      "OpenID client identifier.",
+		"client_secret":  "OpenID client secret.",
+		"insecure":       "Enables insecure communication with the server.",
+		"refresh_token":  "Offline or refresh token.",
+		"scopes":         "OpenID scope.",
+		"token_url":      "OpenID token URL.",
+		"url":            "URL of the API gateway.",
+		"user_agent":     "OCM client UserAgent. Default value is used if not set.",
+		"version":        "OCM client version. Default value is used if not set.",
+		"fedramp":        "Indicates FedRAMP.",
+		"hyperfleet_url": "Platform API v2 endpoint URL.",
 	}
 
 	It("Shows properties and docs for config", func() {
@@ -287,6 +289,85 @@ var _ = Describe("Config Keyring", func() {
 				Expect(mockSpy.calledRemove).To(BeTrue())
 			})
 		})
+	})
+})
+
+var _ = Describe("Config error paths", func() {
+	var tmpdir string
+
+	// buildJWT creates a minimal unsigned JWT from the given claims payload.
+	buildJWT := func(claims map[string]interface{}) string {
+		headerJSON, _ := json.Marshal(map[string]string{"alg": "none", "typ": "JWT"})
+		payloadJSON, _ := json.Marshal(claims)
+		h := base64.RawURLEncoding.EncodeToString(headerJSON)
+		p := base64.RawURLEncoding.EncodeToString(payloadJSON)
+		return h + "." + p + "."
+	}
+
+	BeforeEach(func() {
+		var err error
+		tmpdir, err = os.MkdirTemp("/tmp", ".ocm-config-err-*")
+		Expect(err).NotTo(HaveOccurred())
+		os.Setenv("OCM_CONFIG", tmpdir+"/ocm_config.json")
+	})
+
+	AfterEach(func() {
+		os.Setenv("OCM_CONFIG", "")
+		os.RemoveAll(tmpdir)
+	})
+
+	It("loadFromFile returns error for invalid JSON content", func() {
+		err := os.WriteFile(tmpdir+"/ocm_config.json", []byte("{not valid json"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = Load()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to parse config file"))
+	})
+
+	It("GetData returns error for unparseable access token", func() {
+		cfg := &Config{AccessToken: "not-a-valid-jwt"}
+		_, err := cfg.GetData("username")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to parse token"))
+	})
+
+	It("GetData returns error when claim is missing from token", func() {
+		token := buildJWT(map[string]interface{}{"sub": "test", "exp": 9999999999})
+		cfg := &Config{AccessToken: token}
+		_, err := cfg.GetData("nonexistent_claim")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("does not contain"))
+	})
+
+	It("GetData returns error when claim value is not a string", func() {
+		token := buildJWT(map[string]interface{}{"sub": "test", "exp": 9999999999, "num_claim": 42})
+		cfg := &Config{AccessToken: token}
+		_, err := cfg.GetData("num_claim")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("expected string"))
+	})
+
+	It("loadFromFile returns error when config path is a directory", func() {
+		os.Setenv("OCM_CONFIG", tmpdir)
+
+		_, err := Load()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to read config file"))
+	})
+
+	It("Armed returns error for invalid access token", func() {
+		cfg := &Config{AccessToken: "not-a-valid-jwt"}
+		_, err := cfg.Armed()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to parse token"))
+	})
+
+	It("Armed returns error for invalid refresh token", func() {
+		cfg := &Config{RefreshToken: "not-a-valid-jwt"}
+		_, err := cfg.Armed()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to parse token"))
 	})
 })
 

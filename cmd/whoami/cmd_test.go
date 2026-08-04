@@ -322,6 +322,20 @@ var _ = Describe("whoami command", func() {
 		Expect(stdout).To(ContainSubstring("OCM Account Username:"))
 	})
 
+	It("Shows Platform API URL when logged in with hyperfleet only (no OCM)", func() {
+		hfURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
+		saveConfig(&config.Config{HyperfleetURL: hfURL})
+
+		stdout, _, err := test.RunWithOutputCapture(
+			func(r *rosa.Runtime, _ *cobra.Command) error {
+				return runWithRuntime(r)
+			}, t.RosaRuntime, Cmd)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stdout).To(ContainSubstring("Platform API"))
+		Expect(stdout).To(ContainSubstring(hfURL))
+		Expect(stdout).NotTo(ContainSubstring("OCM API"))
+	})
+
 	It("Rejects extra arguments via cobra.NoArgs", func() {
 		Expect(Cmd.Args).NotTo(BeNil())
 		err := Cmd.Args(Cmd, []string{"unexpected"})

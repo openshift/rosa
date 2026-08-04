@@ -7,7 +7,7 @@ import (
 
 var _ = Describe("hyperfleet dispatch", func() {
 	var (
-		origEnabled    func() bool
+		origEnabled      func() bool
 		origListClusters func()
 	)
 

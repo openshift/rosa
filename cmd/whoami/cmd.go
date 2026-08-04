@@ -77,65 +77,80 @@ func runWithRuntime(r *rosa.Runtime) error {
 		r.Reporter.Errorf("Failed to load config file: %v", err)
 		return fmt.Errorf("loading config file: %w", err)
 	}
-	if cfg == nil || config.IsNotValid(cfg) {
-		r.Reporter.Errorf("User is not logged in to OCM")
+
+	hfURL := ""
+	if cfg != nil {
+		hfURL = cfg.HyperfleetURL
+	}
+
+	ocmArmed := cfg != nil && !config.IsNotValid(cfg)
+	if ocmArmed {
+		var armed bool
+		armed, err = cfg.Armed()
+		if err != nil {
+			r.Reporter.Errorf("Failed to verify configuration: %v", err)
+			return fmt.Errorf("verifying configuration: %w", err)
+		}
+		ocmArmed = armed
+	}
+
+	if !ocmArmed && hfURL == "" {
+		r.Reporter.Errorf("User is not logged in")
 		return errNotLoggedIn
 	}
 
-	loggedIn, err := cfg.Armed()
-	if err != nil {
-		r.Reporter.Errorf("Failed to verify configuration: %v", err)
-		return fmt.Errorf("verifying configuration: %w", err)
-	}
-	if !loggedIn {
-		r.Reporter.Errorf("User is not logged in to OCM")
-		return errNotLoggedIn
-	}
-
-	if r.OCMClient != nil {
-		err = r.OCMClient.Close()
-		if err != nil {
-			r.Reporter.Errorf("Failed to close existing OCM connection: %v", err)
-			return fmt.Errorf("closing existing OCM connection: %w", err)
-		}
-	}
-
-	r.OCMClient, err = ocm.NewClient().
-		Config(cfg).
-		Logger(r.Logger).
-		Build()
-	if err != nil {
-		r.Reporter.Errorf("Failed to create OCM connection: %v", err)
-		return fmt.Errorf("creating OCM connection: %w", err)
-	}
-
-	account, err := r.OCMClient.GetCurrentAccount()
-	if err != nil {
-		r.Reporter.Errorf("Failed to get current account: %s", err)
-		return fmt.Errorf("getting current account: %w", err)
-	}
-
-	if account == nil {
-		account, err = getAccountDataFromToken(cfg)
-		if err != nil {
-			r.Reporter.Errorf("Failed to get account data from token: %v", err)
-			return fmt.Errorf("getting account data from token: %w", err)
-		}
-	}
 	outputObject := object.Object{
-		"AWS Account ID":        r.Creator.AccountID,
-		"AWS Default Region":    awsRegion,
-		"AWS ARN":               r.Creator.ARN,
-		"OCM API":               cfg.URL,
-		"OCM Account ID":        account.ID(),
-		"OCM Account Name":      fmt.Sprintf("%s %s", account.FirstName(), account.LastName()),
-		"OCM Account Username":  account.Username(),
-		"OCM Account Email":     account.Email(),
-		"OCM Organization ID":   account.Organization().ID(),
-		"OCM Organization Name": account.Organization().Name(),
+		"AWS Account ID":     r.Creator.AccountID,
+		"AWS Default Region": awsRegion,
+		"AWS ARN":            r.Creator.ARN,
 	}
-	if account.Organization().ExternalID() != "" {
-		outputObject["OCM Organization External ID"] = account.Organization().ExternalID()
+
+	if hfURL != "" {
+		outputObject["Platform API"] = hfURL
+	}
+
+	if ocmArmed {
+		if r.OCMClient != nil {
+			err = r.OCMClient.Close()
+			if err != nil {
+				r.Reporter.Errorf("Failed to close existing OCM connection: %v", err)
+				return fmt.Errorf("closing existing OCM connection: %w", err)
+			}
+		}
+
+		r.OCMClient, err = ocm.NewClient().
+			Config(cfg).
+			Logger(r.Logger).
+			Build()
+		if err != nil {
+			r.Reporter.Errorf("Failed to create OCM connection: %v", err)
+			return fmt.Errorf("creating OCM connection: %w", err)
+		}
+
+		account, err := r.OCMClient.GetCurrentAccount()
+		if err != nil {
+			r.Reporter.Errorf("Failed to get current account: %s", err)
+			return fmt.Errorf("getting current account: %w", err)
+		}
+
+		if account == nil {
+			account, err = getAccountDataFromToken(cfg)
+			if err != nil {
+				r.Reporter.Errorf("Failed to get account data from token: %v", err)
+				return fmt.Errorf("getting account data from token: %w", err)
+			}
+		}
+
+		outputObject["OCM API"] = cfg.URL
+		outputObject["OCM Account ID"] = account.ID()
+		outputObject["OCM Account Name"] = fmt.Sprintf("%s %s", account.FirstName(), account.LastName())
+		outputObject["OCM Account Username"] = account.Username()
+		outputObject["OCM Account Email"] = account.Email()
+		outputObject["OCM Organization ID"] = account.Organization().ID()
+		outputObject["OCM Organization Name"] = account.Organization().Name()
+		if account.Organization().ExternalID() != "" {
+			outputObject["OCM Organization External ID"] = account.Organization().ExternalID()
+		}
 	}
 
 	if output.HasFlag() {
