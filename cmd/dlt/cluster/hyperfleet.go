@@ -13,6 +13,7 @@ import (
 
 var (
 	hfEnabled       = hyperfleet.Enabled
+	exitFn          = func(code int) { os.Exit(code) }
 	hfDeleteCluster = func() {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
@@ -29,32 +30,19 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil || clusterKey == "" {
 		r.Reporter.Errorf("--cluster is required")
-		os.Exit(1)
+		exitFn(1)
+	}
+
+	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, r.Creator.AccountID, clusterKey)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		exitFn(1)
 	}
 
 	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID)
-
-	list, err := clusters.List(ctx, wrappers.ListOptions{})
-	if err != nil {
-		r.Reporter.Errorf("Failed to list clusters: %v", err)
-		os.Exit(1)
-	}
-
-	var clusterID string
-	for _, c := range list.Items {
-		if c.Name == clusterKey {
-			clusterID = string(c.UID)
-			break
-		}
-	}
-	if clusterID == "" {
-		r.Reporter.Errorf("Cluster '%s' not found", clusterKey)
-		os.Exit(1)
-	}
-
 	if err = clusters.Delete(ctx, clusterID, wrappers.DeleteOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		exitFn(1)
 	}
 
 	r.Reporter.Infof("Cluster '%s' will start deleting now", clusterKey)

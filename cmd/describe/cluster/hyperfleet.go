@@ -19,6 +19,7 @@ import (
 
 var (
 	hfEnabled         = hyperfleet.Enabled
+	exitFn            = func(code int) { os.Exit(code) }
 	hfDescribeCluster = func(cmd *cobra.Command, argv []string) {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
@@ -36,40 +37,27 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil || clusterKey == "" {
 		r.Reporter.Errorf("--cluster is required")
-		os.Exit(1)
+		exitFn(1)
+	}
+
+	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, r.Creator.AccountID, clusterKey)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		exitFn(1)
 	}
 
 	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID)
-
-	list, err := clusters.List(ctx, wrappers.ListOptions{})
-	if err != nil {
-		r.Reporter.Errorf("Failed to list clusters: %v", err)
-		os.Exit(1)
-	}
-
-	var clusterID string
-	for _, c := range list.Items {
-		if c.Name == clusterKey {
-			clusterID = string(c.UID)
-			break
-		}
-	}
-	if clusterID == "" {
-		r.Reporter.Errorf("Cluster '%s' not found", clusterKey)
-		os.Exit(1)
-	}
-
 	cluster, err := clusters.Get(ctx, clusterID, wrappers.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		exitFn(1)
 	}
 
 	if output.HasFlag() {
 		m := hfClusterToMap(cluster)
 		if err := output.Print(m); err != nil {
 			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			exitFn(1)
 		}
 		return
 	}
