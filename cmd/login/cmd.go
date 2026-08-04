@@ -36,6 +36,7 @@ import (
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -252,7 +253,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config file: %v", err)
 	}
-	if cfg == nil || config.IsNotValid(cfg) {
+	if cfg == nil {
 		cfg = new(config.Config)
 	}
 
@@ -274,6 +275,18 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 			token = os.Getenv(constants.OcmToken)
 		}
 		haveReqs = token != ""
+	}
+
+	// Hyperfleet-only login: --hyperfleet-url was supplied but no explicit OCM credentials
+	// are available from command line or env vars. SigV4 auth is handled per-request via
+	// AWS credentials, so there is nothing to exchange here — just persist the URL and return.
+	if !haveReqs && hyperfleet.ExplicitURL() != "" {
+		cfg.HyperfleetURL = hyperfleet.ExplicitURL()
+		if err = config.Save(cfg); err != nil {
+			return fmt.Errorf("failed to save config file: %v", err)
+		}
+		r.Reporter.Infof("Logged in to Platform API: %s", cfg.HyperfleetURL)
+		return nil
 	}
 
 	// Verify configuration file:
@@ -447,6 +460,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	// Save the configuration:
 	cfg.AccessToken = accessToken
 	cfg.RefreshToken = refreshToken
+	if hfURL := hyperfleet.ExplicitURL(); hfURL != "" {
+		cfg.HyperfleetURL = hfURL
+	}
 	err = config.Save(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to save config file: %v", err)
@@ -461,6 +477,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 
 	r.Reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
+	if cfg.HyperfleetURL != "" {
+		r.Reporter.Infof("Platform API: %s", cfg.HyperfleetURL)
+	}
 	r.OCMClient.LogEvent("ROSALoginSuccess", map[string]string{
 		ocm.Response: ocm.Success,
 		ocm.Username: username,

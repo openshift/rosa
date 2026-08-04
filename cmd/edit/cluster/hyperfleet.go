@@ -6,9 +6,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/spf13/cobra"
-
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
