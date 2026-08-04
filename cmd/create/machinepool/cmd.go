@@ -45,7 +45,13 @@ func NewCreateMachinePool(spec CreateMachinePoolSpec) CreateMachinePool {
 
 func NewCreateMachinePoolCommand() *cobra.Command {
 	cmd, options := mpOpts.BuildMachinePoolCreateCommandWithOptions()
-	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCM(), CreateMachinepoolRunner(options))
+	cmd.Run = func(c *cobra.Command, argv []string) {
+		if hfEnabled() {
+			hfCreateMachinePool(options, argv)
+			return
+		}
+		rosa.DefaultRunner(rosa.RuntimeWithOCM(), CreateMachinepoolRunner(options))(c, argv)
+	}
 	return cmd
 }
 

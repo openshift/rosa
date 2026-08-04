@@ -16,6 +16,7 @@ import (
 
 var (
 	hfEnabled     = hyperfleet.Enabled
+	exitFn        = func(code int) { os.Exit(code) }
 	hfEditCluster = func(cmd *cobra.Command) {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
@@ -32,41 +33,34 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil || clusterKey == "" {
 		r.Reporter.Errorf("--cluster is required")
-		os.Exit(1)
+		exitFn(1)
 	}
 
 	if !cmd.Flags().Changed("expiration") && !cmd.Flags().Changed("expiration-time") {
 		r.Reporter.Errorf("specify at least one supported flag: --expiration, --expiration-time")
-		os.Exit(1)
+		exitFn(1)
 	}
 
 	expiration, err := validateExpiration()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		exitFn(1)
+	}
+
+	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, r.Creator.AccountID, clusterKey)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		exitFn(1)
 	}
 
 	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID)
-
-	list, err := clusters.List(ctx, wrappers.ListOptions{})
+	current, err := clusters.Get(ctx, clusterID, wrappers.GetOptions{})
 	if err != nil {
-		r.Reporter.Errorf("Failed to list clusters: %v", err)
-		os.Exit(1)
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		exitFn(1)
 	}
 
-	var found = -1
-	for i := range list.Items {
-		if list.Items[i].Name == clusterKey {
-			found = i
-			break
-		}
-	}
-	if found == -1 {
-		r.Reporter.Errorf("Cluster '%s' not found", clusterKey)
-		os.Exit(1)
-	}
-
-	updated := list.Items[found].DeepCopy()
+	updated := current.DeepCopy()
 	if !expiration.IsZero() {
 		t := metav1.NewTime(expiration)
 		updated.Spec.ExpirationTimestamp = &t
@@ -74,7 +68,7 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 
 	if _, err = clusters.Update(ctx, updated, wrappers.UpdateOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+		exitFn(1)
 	}
 
 	r.Reporter.Infof("Updated cluster '%s'", clusterKey)

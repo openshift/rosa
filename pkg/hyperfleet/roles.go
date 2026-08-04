@@ -2,6 +2,7 @@ package hyperfleet
 
 import (
 	"fmt"
+	"strings"
 
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
@@ -26,4 +27,23 @@ func ComputeRolesRef(prefix, accountID string) hypershiftv1beta1.AWSRolesRef {
 // ComputeInstanceProfile returns the worker node instance profile name for a given prefix.
 func ComputeInstanceProfile(prefix string) string {
 	return prefix + "-ROSA-Worker-Role"
+}
+
+// InstanceProfileFromRolesRef derives the worker instance profile name from a cluster's
+// RolesRef by extracting the operator roles prefix from the NodePoolManagementARN.
+// Returns an empty string if the ARN is not set or cannot be parsed.
+func InstanceProfileFromRolesRef(rolesRef hypershiftv1beta1.AWSRolesRef) string {
+	arn := rolesRef.NodePoolManagementARN
+	// ARN format: arn:aws:iam::<account>:role/<prefix>-node-pool-management
+	slash := strings.LastIndex(arn, "/")
+	if slash < 0 {
+		return ""
+	}
+	roleName := arn[slash+1:]
+	const suffix = "-node-pool-management"
+	prefix, found := strings.CutSuffix(roleName, suffix)
+	if !found {
+		return ""
+	}
+	return ComputeInstanceProfile(prefix)
 }
