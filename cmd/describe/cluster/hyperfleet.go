@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -19,7 +18,7 @@ import (
 )
 
 var (
-	hfEnabled        = hyperfleet.Enabled
+	hfEnabled         = hyperfleet.Enabled
 	hfDescribeCluster = func(cmd *cobra.Command, argv []string) {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
@@ -102,9 +101,9 @@ func hfClusterToMap(c *v1alpha1.Cluster) map[string]interface{} {
 		"state":         string(c.Status.Phase),
 		"created_at":    c.CreationTimestamp.UTC().Format(time.RFC3339),
 		"spec": map[string]interface{}{
-			"creator_arn":   c.Spec.CreatorARN,
-			"oidc_issuer":   c.Spec.HostedCluster.IssuerURL,
-			"roles_ref":     rolesRef,
+			"creator_arn": c.Spec.CreatorARN,
+			"oidc_issuer": c.Spec.HostedCluster.IssuerURL,
+			"roles_ref":   rolesRef,
 		},
 	}
 

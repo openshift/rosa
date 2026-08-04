@@ -21,12 +21,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
-	rosacli "github.com/openshift/rosa/tests/utils/exec/rosacli"
 	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
+	rosacli "github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
 const (
@@ -118,6 +118,29 @@ var _ = Describe("Hyperfleet sanity",
 			if rolesPrefix == "" {
 				rolesPrefix = clusterName
 			}
+
+			By("Logging in with Platform API URL")
+			_, err := rosacli.NewClient().Runner.
+				Cmd("login").
+				CmdFlags("--hyperfleet-url", hfURL).
+				Run()
+			Expect(err).NotTo(HaveOccurred(), "rosa login --hyperfleet-url")
+
+			DeferCleanup(func() {
+				By("Cleanup: removing CLI config")
+				_, _ = rosacli.NewClient().Runner.Cmd("logout").Run()
+			})
+
+			By("Verifying whoami shows Platform API URL")
+			whoamiRunner := rosacli.NewClient().Runner
+			whoamiRunner.JsonFormat()
+			whoamiOut, err := whoamiRunner.Cmd("whoami").Run()
+			Expect(err).NotTo(HaveOccurred(), "rosa whoami")
+			var whoamiMap map[string]interface{}
+			Expect(json.Unmarshal(whoamiOut.Bytes(), &whoamiMap)).To(Succeed(),
+				"parsing whoami JSON output")
+			Expect(whoamiMap["Platform API"]).To(Equal(hfURL),
+				"whoami must report the Platform API URL stored during login")
 
 			ctx := context.Background()
 
@@ -214,7 +237,6 @@ var _ = Describe("Hyperfleet sanity",
 			// HYPERFLEET_VERSION is optional — when empty the server resolves a default.
 			version := os.Getenv("HYPERFLEET_VERSION")
 			createArgs := []string{
-				"--hyperfleet-url", hfURL,
 				"--cluster-name", clusterName,
 				"--subnet-ids", subnetID,
 				"--operator-roles-prefix", rolesPrefix,
@@ -232,7 +254,7 @@ var _ = Describe("Hyperfleet sanity",
 				By("Cleanup: deleting cluster via CLI")
 				_, _ = rosacli.NewClient().Runner.
 					Cmd("delete", "cluster").
-					CmdFlags("--hyperfleet-url", hfURL, "-c", clusterName, "-y").
+					CmdFlags("-c", clusterName, "-y").
 					Run()
 			})
 
@@ -240,7 +262,7 @@ var _ = Describe("Hyperfleet sanity",
 			describeCreateRunner := rosacli.NewClient().Runner
 			describeCreateRunner.JsonFormat()
 			describeCreateOut, err := describeCreateRunner.Cmd("describe", "cluster").
-				CmdFlags("--hyperfleet-url", hfURL, "-c", clusterName).
+				CmdFlags("-c", clusterName).
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa describe cluster after create")
 
@@ -353,7 +375,7 @@ var _ = Describe("Hyperfleet sanity",
 
 			By("Listing clusters via CLI and verifying the new cluster appears")
 			rosaRunner := rosacli.NewClient().Runner
-			listOut, err := rosaRunner.Cmd("list", "clusters").CmdFlags("--hyperfleet-url", hfURL).Run()
+			listOut, err := rosaRunner.Cmd("list", "clusters").Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa list clusters CLI call")
 			Expect(listOut.String()).To(ContainSubstring(clusterID),
 				"cluster UID must appear in rosa list clusters output")
@@ -371,7 +393,7 @@ var _ = Describe("Hyperfleet sanity",
 			describeRunner := rosacli.NewClient().Runner
 			describeRunner.JsonFormat()
 			cliOut, err := describeRunner.Cmd("describe", "cluster").
-				CmdFlags("--hyperfleet-url", hfURL, "-c", clusterName).
+				CmdFlags("-c", clusterName).
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa describe cluster CLI call")
 			describeRunner.UnsetFormat()
