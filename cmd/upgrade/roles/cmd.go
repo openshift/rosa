@@ -54,8 +54,8 @@ var args struct {
 var Cmd = &cobra.Command{
 	Use:     "roles",
 	Aliases: []string{},
-	Short:   "Upgrade cluster-specific IAM roles to the latest version.",
-	Long:    "Upgrade cluster-specific IAM roles to the latest version before upgrading your cluster.",
+	Short:   "Upgrade cluster-specific IAM roles for a target OpenShift version.",
+	Long:    "Upgrade cluster-specific IAM roles to a compatible version before upgrading your cluster.",
 	Example: `  # Upgrade cluster roles for ROSA STS clusters
 		rosa upgrade roles -c <cluster_key>`,
 	Args: cobra.MaximumNArgs(2),
@@ -193,9 +193,13 @@ func run(cmd *cobra.Command, argv []string) {
 		return
 	}
 
-	policyVersion := args.policyUpgradeversion
-	isPolicyVersionChosen := policyVersion != ""
 	channelGroup := args.channelGroup
+	policyVersion, isPolicyVersionChosen, err := resolvePolicyVersionForUpgrade(
+		args.policyUpgradeversion, clusterUpgradeVersion)
+	if err != nil {
+		reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
 	policyVersion, err = ocmClient.GetPolicyVersion(policyVersion, channelGroup)
 	if err != nil {
 		reporter.Errorf("Error getting version: %s", err)
@@ -1109,6 +1113,20 @@ func upgradeMissingOperatorRole(
 		}
 	}
 	return nil
+}
+
+func resolvePolicyVersionForUpgrade(policyVersion, clusterUpgradeVersion string) (string, bool, error) {
+	if policyVersion != "" {
+		return policyVersion, true, nil
+	}
+	if clusterUpgradeVersion != "" {
+		parsed, err := ocm.ParseVersion(clusterUpgradeVersion)
+		if err != nil {
+			return "", false, fmt.Errorf("error parsing cluster upgrade version: %w", err)
+		}
+		return parsed, true, nil
+	}
+	return "", false, nil
 }
 
 func checkPolicyAndClusterVersionCompatibility(policyVersion, clusterVersion string) (err error) {

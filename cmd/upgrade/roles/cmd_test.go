@@ -12,6 +12,35 @@ import (
 	awsmock "github.com/openshift/rosa/pkg/aws"
 )
 
+var _ = Describe("resolvePolicyVersionForUpgrade", func() {
+	It("derives policy version from cluster upgrade version when policy is empty", func() {
+		policyVersion, chosen, err := resolvePolicyVersionForUpgrade("", "4.21.3")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(policyVersion).To(Equal("4.21"))
+		Expect(chosen).To(BeTrue())
+	})
+
+	It("returns an error for a malformed cluster upgrade version", func() {
+		_, _, err := resolvePolicyVersionForUpgrade("", "not-a-version")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("error parsing cluster upgrade version"))
+	})
+
+	It("preserves explicit policy version even when cluster version differs", func() {
+		policyVersion, chosen, err := resolvePolicyVersionForUpgrade("4.20", "4.21.3")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(policyVersion).To(Equal("4.20"))
+		Expect(chosen).To(BeTrue())
+	})
+
+	It("returns empty and not chosen when both inputs are empty", func() {
+		policyVersion, chosen, err := resolvePolicyVersionForUpgrade("", "")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(policyVersion).To(BeEmpty())
+		Expect(chosen).To(BeFalse())
+	})
+})
+
 var _ = Describe("generateClusterUpgradeInfo", func() {
 	It("OK: Returns the cluster upgrade info string successfully", func() {
 		info := generateClusterUpgradeInfo("cluster-key-01", "4.15.0", "auto")
