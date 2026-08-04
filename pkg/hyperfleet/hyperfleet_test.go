@@ -58,6 +58,28 @@ var _ = Describe("WarnOnMismatch", func() {
 	})
 })
 
+var _ = Describe("SetURL and Reset", func() {
+	BeforeEach(func() { hyperfleetURL = "" })
+	AfterEach(func() { hyperfleetURL = "" })
+
+	It("sets the URL when empty", func() {
+		SetURL("https://example.execute-api.us-east-1.amazonaws.com")
+		Expect(hyperfleetURL).To(Equal("https://example.execute-api.us-east-1.amazonaws.com"))
+	})
+
+	It("does not overwrite an existing URL", func() {
+		hyperfleetURL = "https://first.execute-api.us-east-1.amazonaws.com"
+		SetURL("https://second.execute-api.us-east-1.amazonaws.com")
+		Expect(hyperfleetURL).To(Equal("https://first.execute-api.us-east-1.amazonaws.com"))
+	})
+
+	It("Reset clears the URL", func() {
+		hyperfleetURL = "https://something.execute-api.us-east-1.amazonaws.com"
+		Reset()
+		Expect(hyperfleetURL).To(BeEmpty())
+	})
+})
+
 var _ = Describe("Enabled and ExplicitURL", func() {
 	BeforeEach(func() { hyperfleetURL = "" })
 	AfterEach(func() { hyperfleetURL = "" })
