@@ -39,9 +39,6 @@
     "constraints": {
       "go": "1.26.3"
     },
-    "managerFilePatterns": [
-      "/(^|/)\\.bingo/[^/]+\\.mod$/"
-    ],
     "postUpdateOptions": ["gomodUpdateImportPaths"],
     "packageRules": [
       {
@@ -110,13 +107,15 @@
       "enabled": false
     },
     {
+      "customType": "regex",
       "description": "Group Bingo-managed tool modules",
       "groupName": "bingo-tooling",
-      "matchManagers": [
-        "gomod"
-      ],
       "matchFileNames": [
         ".bingo/*.mod"
+      ],
+      "datasourceTemplate": "go",
+      "matchStrings": [
+    	"require\\s+(?<depName>\\S+)\\s+(?<currentValue>v[^\\s]+)"
       ]
     },
     {
