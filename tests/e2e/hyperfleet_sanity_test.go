@@ -629,6 +629,9 @@ var _ = Describe("Hyperfleet sanity",
 
 				By("Releasing orphaned ENIs left by cluster controllers")
 				hfDeleteAvailableENIs(ctx, ec2Client, vpcID)
+
+				By("Deleting non-default security groups left by cluster controllers")
+				hfDeleteVPCSecurityGroups(ctx, ec2Client, vpcID)
 			})
 
 			By("Fetching cluster ID and OIDC IssuerURL via CLI describe")
@@ -1079,6 +1082,35 @@ func hfDeleteAvailableENIs(ctx context.Context, ec2Client *ec2svc.Client, vpcID 
 			GinkgoWriter.Printf("Failed to delete ENI %s: %v\n", eniID, delErr)
 		} else {
 			GinkgoWriter.Printf("Deleted orphaned ENI %s\n", eniID)
+		}
+	}
+}
+
+// hfDeleteVPCSecurityGroups deletes all non-default security groups in the VPC.
+// The cluster controller and ingress controller create SGs that are not removed
+// when the cluster is deleted; they block VPC deletion if left behind.
+func hfDeleteVPCSecurityGroups(ctx context.Context, ec2Client *ec2svc.Client, vpcID string) {
+	out, err := ec2Client.DescribeSecurityGroups(ctx, &ec2svc.DescribeSecurityGroupsInput{
+		Filters: []ec2types.Filter{
+			{Name: awssdk.String("vpc-id"), Values: []string{vpcID}},
+		},
+	})
+	if err != nil {
+		GinkgoWriter.Printf("DescribeSecurityGroups error for VPC %s: %v\n", vpcID, err)
+		return
+	}
+	for _, sg := range out.SecurityGroups {
+		if awssdk.ToString(sg.GroupName) == "default" {
+			continue
+		}
+		sgID := awssdk.ToString(sg.GroupId)
+		_, delErr := ec2Client.DeleteSecurityGroup(ctx, &ec2svc.DeleteSecurityGroupInput{
+			GroupId: awssdk.String(sgID),
+		})
+		if delErr != nil {
+			GinkgoWriter.Printf("Failed to delete security group %s: %v\n", sgID, delErr)
+		} else {
+			GinkgoWriter.Printf("Deleted security group %s (%s)\n", sgID, awssdk.ToString(sg.GroupName))
 		}
 	}
 }
