@@ -11,6 +11,7 @@ func AddFlags(cmd *cobra.Command) {
 		"",
 		"Platform API v2 endpoint URL. When set, commands route to the Platform API instead of OCM.",
 	)
+	_ = cmd.PersistentFlags().MarkHidden("hyperfleet-url")
 }
 
 func Enabled() bool       { return hyperfleetURL != "" }
