@@ -1,6 +1,7 @@
 package machinepool
 
 import (
+	"context"
 	"fmt"
 
 	"go.uber.org/mock/gomock"
@@ -11,11 +12,18 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	"github.com/spf13/cobra"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
 )
+
+func testCmd() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	return cmd
+}
 
 func newDltMPMocks(ctrl *gomock.Controller) (
 	*hfmocks.MockInterface,
@@ -49,6 +57,9 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 
 	BeforeEach(func() {
 		t = test.NewTestRuntime()
+		origConfirm := confirmFn
+		confirmFn = func(string, ...interface{}) bool { return true }
+		DeferCleanup(func() { confirmFn = origConfirm })
 	})
 
 	It("deletes a node pool successfully", func() {
@@ -59,7 +70,7 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		nodePools.EXPECT().Delete(gomock.Any(), "np-uid", gomock.Any()).Return(nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
-		runHyperfleetDelete(t.RosaRuntime, &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
+		runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
 	})
 
 	It("resolves node pool name from argv when machinepool option is empty", func() {
@@ -70,7 +81,19 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		nodePools.EXPECT().Delete(gomock.Any(), "np-uid", gomock.Any()).Return(nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
-		runHyperfleetDelete(t.RosaRuntime, &DeleteMachinepoolUserOptions{}, []string{"my-np"})
+		runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{}, []string{"my-np"})
+	})
+
+	It("skips delete when user declines confirmation", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, nodePools := newDltMPMocks(ctrl)
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(clusterList("cluster1", "cluster-uid"), nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(npList("my-np", "np-uid"), nil)
+		// Delete must NOT be called — omitting the expectation enforces this via gomock.
+
+		confirmFn = func(string, ...interface{}) bool { return false }
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
 	})
 
 	It("fails when machinepool name is not specified", func() {
@@ -82,7 +105,7 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		hf, _, _ := newDltMPMocks(ctrl)
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
-			runHyperfleetDelete(t.RosaRuntime, &DeleteMachinepoolUserOptions{}, nil)
+			runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{}, nil)
 		}).To(Panic())
 	})
 
@@ -97,7 +120,7 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		hf, _, _ := newDltMPMocks(ctrl)
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
-			runHyperfleetDelete(t.RosaRuntime, &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
+			runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
 		}).To(Panic())
 	})
 
@@ -112,7 +135,7 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
-			runHyperfleetDelete(t.RosaRuntime, &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
+			runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
 		}).To(Panic())
 	})
 
@@ -128,7 +151,7 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
-			runHyperfleetDelete(t.RosaRuntime, &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
+			runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
 		}).To(Panic())
 	})
 
@@ -145,7 +168,7 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
-			runHyperfleetDelete(t.RosaRuntime, &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
+			runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
 		}).To(Panic())
 	})
 })

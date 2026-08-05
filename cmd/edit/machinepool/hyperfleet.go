@@ -3,6 +3,7 @@ package machinepool
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
@@ -65,6 +66,12 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 	if err != nil {
 		r.Reporter.Errorf("Failed to get node pool '%s': %v", nodePoolName, err)
 		exitFn(1)
+	}
+
+	if userOptions.replicas < 0 || userOptions.replicas > math.MaxInt32 {
+		r.Reporter.Errorf("--replicas must be between 0 and %d", math.MaxInt32)
+		exitFn(1)
+		return
 	}
 
 	updated := np.DeepCopy()

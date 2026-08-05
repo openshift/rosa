@@ -156,9 +156,16 @@ func (r *Runtime) GetClusterKey() string {
 // from the URL hostname. --profile / AWS_PROFILE are honoured for credential loading.
 // No OCM login is required.
 func (r *Runtime) WithHyperFleet() *Runtime {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	rawURL := hfExplicitURL()
+
+	if err := hyperfleet.ValidateURL(rawURL); err != nil {
+		r.Reporter.Errorf("%v", err)
+		hfExitFn(1)
+		return r
+	}
 
 	// Resolve region: explicit flag/env takes precedence, then extracted from URL.
 	region := arguments.GetRegion()

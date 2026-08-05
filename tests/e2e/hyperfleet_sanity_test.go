@@ -290,21 +290,25 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating Internet Gateway")
 			igwID := awssdk.ToString(igwOut.InternetGateway.InternetGatewayId)
+			igwAttached := false
+			DeferCleanup(func() {
+				By("Cleanup: detaching and deleting Internet Gateway")
+				if igwAttached {
+					_, _ = ec2Client.DetachInternetGateway(ctx, &ec2svc.DetachInternetGatewayInput{
+						InternetGatewayId: awssdk.String(igwID),
+						VpcId:             awssdk.String(vpcID),
+					})
+				}
+				_, _ = ec2Client.DeleteInternetGateway(ctx, &ec2svc.DeleteInternetGatewayInput{
+					InternetGatewayId: awssdk.String(igwID),
+				})
+			})
 			_, err = ec2Client.AttachInternetGateway(ctx, &ec2svc.AttachInternetGatewayInput{
 				InternetGatewayId: awssdk.String(igwID),
 				VpcId:             awssdk.String(vpcID),
 			})
 			Expect(err).NotTo(HaveOccurred(), "attaching IGW %s to VPC %s", igwID, vpcID)
-			DeferCleanup(func() {
-				By("Cleanup: detaching and deleting Internet Gateway")
-				_, _ = ec2Client.DetachInternetGateway(ctx, &ec2svc.DetachInternetGatewayInput{
-					InternetGatewayId: awssdk.String(igwID),
-					VpcId:             awssdk.String(vpcID),
-				})
-				_, _ = ec2Client.DeleteInternetGateway(ctx, &ec2svc.DeleteInternetGatewayInput{
-					InternetGatewayId: awssdk.String(igwID),
-				})
-			})
+			igwAttached = true
 
 			By("Allocating Elastic IP for NAT Gateway")
 			eipOut, err := ec2Client.AllocateAddress(ctx, &ec2svc.AllocateAddressInput{
@@ -319,6 +323,12 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "allocating EIP for NAT Gateway")
 			natEIPAllocID := awssdk.ToString(eipOut.AllocationId)
+			DeferCleanup(func() {
+				By("Cleanup: releasing NAT Gateway EIP")
+				_, _ = ec2Client.ReleaseAddress(ctx, &ec2svc.ReleaseAddressInput{
+					AllocationId: awssdk.String(natEIPAllocID),
+				})
+			})
 
 			By("Creating NAT Gateway")
 			natOut, err := ec2Client.CreateNatGateway(ctx, &ec2svc.CreateNatGatewayInput{
@@ -336,7 +346,7 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "creating NAT Gateway")
 			natGWID := awssdk.ToString(natOut.NatGateway.NatGatewayId)
 			DeferCleanup(func() {
-				By("Cleanup: deleting NAT Gateway and releasing EIP")
+				By("Cleanup: deleting NAT Gateway")
 				_, _ = ec2Client.DeleteNatGateway(ctx, &ec2svc.DeleteNatGatewayInput{
 					NatGatewayId: awssdk.String(natGWID),
 				})
@@ -344,9 +354,6 @@ var _ = Describe("Hyperfleet sanity",
 					&ec2svc.DescribeNatGatewaysInput{NatGatewayIds: []string{natGWID}},
 					5*time.Minute,
 				)
-				_, _ = ec2Client.ReleaseAddress(ctx, &ec2svc.ReleaseAddressInput{
-					AllocationId: awssdk.String(natEIPAllocID),
-				})
 			})
 
 			By("Waiting for NAT Gateway to become available")
@@ -368,6 +375,18 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating public route table")
 			publicRTID := awssdk.ToString(pubRTOut.RouteTable.RouteTableId)
+			var publicRTAssocID string
+			DeferCleanup(func() {
+				By("Cleanup: deleting public route table")
+				if publicRTAssocID != "" {
+					_, _ = ec2Client.DisassociateRouteTable(ctx, &ec2svc.DisassociateRouteTableInput{
+						AssociationId: awssdk.String(publicRTAssocID),
+					})
+				}
+				_, _ = ec2Client.DeleteRouteTable(ctx, &ec2svc.DeleteRouteTableInput{
+					RouteTableId: awssdk.String(publicRTID),
+				})
+			})
 			_, err = ec2Client.CreateRoute(ctx, &ec2svc.CreateRouteInput{
 				RouteTableId:         awssdk.String(publicRTID),
 				DestinationCidrBlock: awssdk.String("0.0.0.0/0"),
@@ -379,7 +398,7 @@ var _ = Describe("Hyperfleet sanity",
 				SubnetId:     awssdk.String(publicSubnetID),
 			})
 			Expect(err).NotTo(HaveOccurred(), "associating public subnet with public route table")
-			publicRTAssocID := awssdk.ToString(pubAssocOut.AssociationId)
+			publicRTAssocID = awssdk.ToString(pubAssocOut.AssociationId)
 
 			By("Creating private route table with NAT Gateway route")
 			privRTOut, err := ec2Client.CreateRouteTable(ctx, &ec2svc.CreateRouteTableInput{
@@ -394,6 +413,18 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating private route table")
 			privateRTID := awssdk.ToString(privRTOut.RouteTable.RouteTableId)
+			var privateRTAssocID string
+			DeferCleanup(func() {
+				By("Cleanup: deleting private route table")
+				if privateRTAssocID != "" {
+					_, _ = ec2Client.DisassociateRouteTable(ctx, &ec2svc.DisassociateRouteTableInput{
+						AssociationId: awssdk.String(privateRTAssocID),
+					})
+				}
+				_, _ = ec2Client.DeleteRouteTable(ctx, &ec2svc.DeleteRouteTableInput{
+					RouteTableId: awssdk.String(privateRTID),
+				})
+			})
 			_, err = ec2Client.CreateRoute(ctx, &ec2svc.CreateRouteInput{
 				RouteTableId:         awssdk.String(privateRTID),
 				DestinationCidrBlock: awssdk.String("0.0.0.0/0"),
@@ -405,22 +436,7 @@ var _ = Describe("Hyperfleet sanity",
 				SubnetId:     awssdk.String(subnetID),
 			})
 			Expect(err).NotTo(HaveOccurred(), "associating private subnet with private route table")
-			privateRTAssocID := awssdk.ToString(privAssocOut.AssociationId)
-			DeferCleanup(func() {
-				By("Cleanup: deleting route tables")
-				_, _ = ec2Client.DisassociateRouteTable(ctx, &ec2svc.DisassociateRouteTableInput{
-					AssociationId: awssdk.String(privateRTAssocID),
-				})
-				_, _ = ec2Client.DisassociateRouteTable(ctx, &ec2svc.DisassociateRouteTableInput{
-					AssociationId: awssdk.String(publicRTAssocID),
-				})
-				_, _ = ec2Client.DeleteRouteTable(ctx, &ec2svc.DeleteRouteTableInput{
-					RouteTableId: awssdk.String(privateRTID),
-				})
-				_, _ = ec2Client.DeleteRouteTable(ctx, &ec2svc.DeleteRouteTableInput{
-					RouteTableId: awssdk.String(publicRTID),
-				})
-			})
+			privateRTAssocID = awssdk.ToString(privAssocOut.AssociationId)
 
 			By("Creating worker security group")
 			sgOut, err := ec2Client.CreateSecurityGroup(ctx, &ec2svc.CreateSecurityGroupInput{
@@ -437,6 +453,12 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating worker security group")
 			workerSGID := awssdk.ToString(sgOut.GroupId)
+			DeferCleanup(func() {
+				By("Cleanup: deleting worker security group")
+				_, _ = ec2Client.DeleteSecurityGroup(ctx, &ec2svc.DeleteSecurityGroupInput{
+					GroupId: awssdk.String(workerSGID),
+				})
+			})
 			_, err = ec2Client.AuthorizeSecurityGroupIngress(ctx, &ec2svc.AuthorizeSecurityGroupIngressInput{
 				GroupId: awssdk.String(workerSGID),
 				IpPermissions: []ec2types.IpPermission{
@@ -453,12 +475,6 @@ var _ = Describe("Hyperfleet sanity",
 				},
 			})
 			Expect(err).NotTo(HaveOccurred(), "adding ingress rules to worker security group")
-			DeferCleanup(func() {
-				By("Cleanup: deleting worker security group")
-				_, _ = ec2Client.DeleteSecurityGroup(ctx, &ec2svc.DeleteSecurityGroupInput{
-					GroupId: awssdk.String(workerSGID),
-				})
-			})
 
 			By("Creating private hosted zone for PrivateLink DNS")
 			hzOut, err := r53Client.CreateHostedZone(ctx, &route53svc.CreateHostedZoneInput{

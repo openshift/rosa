@@ -12,13 +12,25 @@ import (
 // Examples: us-east-1, ap-southeast-1, us-gov-east-1
 var awsRegionRE = regexp.MustCompile(`[a-z]+-(?:[a-z]+-)+\d+`)
 
+// ValidateURL returns an error if rawURL cannot be parsed or its scheme is not HTTPS.
+func ValidateURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid --hyperfleet-url %q: %w", rawURL, err)
+	}
+	if u.Scheme != "https" {
+		return fmt.Errorf("--hyperfleet-url must use HTTPS, got %q", rawURL)
+	}
+	return nil
+}
+
 // ExtractRegion parses the AWS region from a Platform API endpoint URL using
 // the same approach as the Platform API SDK's rest.Config.ResolveRegion.
 func ExtractRegion(rawURL string) (string, error) {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return "", fmt.Errorf("invalid --hyperfleet-url %q: %w", rawURL, err)
+	if err := ValidateURL(rawURL); err != nil {
+		return "", err
 	}
+	u, _ := url.Parse(rawURL) // already validated above
 	region := awsRegionRE.FindString(u.Hostname())
 	if region == "" {
 		return "", fmt.Errorf(
