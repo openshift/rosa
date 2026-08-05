@@ -15,7 +15,7 @@ func ResolveClusterUID(
 ) (string, error) {
 	list, err := client.HyperfleetV1alpha1().Clusters(accountID).List(ctx, wrappers.ListOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to list clusters: %v", err)
+		return "", fmt.Errorf("failed to list clusters: %w", err)
 	}
 	for _, c := range list.Items {
 		if c.Name == clusterName {

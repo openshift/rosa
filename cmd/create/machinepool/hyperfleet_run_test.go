@@ -1,6 +1,7 @@
 package machinepool
 
 import (
+	"context"
 	"fmt"
 
 	"go.uber.org/mock/gomock"
@@ -10,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
@@ -68,7 +70,16 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
-		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(created, nil)
+		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ wrappers.CreateOptions) (*v1alpha1.NodePool, error) {
+				Expect(np.Name).To(Equal("my-np"))
+				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
+				Expect(np.Spec.NodePool.Release.Image).To(Equal("v4.17.0-ec.2"))
+				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
+				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
+				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
+				return created, nil
+			})
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
@@ -89,7 +100,16 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
-		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(created, nil)
+		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ wrappers.CreateOptions) (*v1alpha1.NodePool, error) {
+				Expect(np.Name).To(Equal("my-np"))
+				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
+				Expect(np.Spec.NodePool.Release.Image).To(Equal("v4.17.0-ec.2"))
+				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
+				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
+				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
+				return created, nil
+			})
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{Replicas: 2, Subnet: "subnet-abc123"}, []string{"my-np"})

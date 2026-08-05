@@ -76,9 +76,9 @@ func init() {
 	)
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, _ []string) {
 	if hfEnabled() {
-		hfDeleteCluster()
+		hfDeleteCluster(cmd)
 		return
 	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()

@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/object"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -53,13 +54,29 @@ func init() {
 	output.AddFlag(Cmd)
 }
 
+// useAWSOnly reports whether run should call WithAWSOnly rather than WithAWS.
+// It returns true when an effective Platform API URL is present (explicit flag
+// takes precedence over the stored config value) and OCM credentials are absent,
+// structurally invalid, or expired/unarmed.
+func useAWSOnly(cfg *config.Config, cfgErr error, explicitHFURL string) bool {
+	effectiveURL := explicitHFURL
+	if effectiveURL == "" && cfgErr == nil && cfg != nil {
+		effectiveURL = cfg.HyperfleetURL
+	}
+	if effectiveURL == "" {
+		return false
+	}
+	if cfgErr != nil || cfg == nil {
+		return true
+	}
+	armed, err := cfg.Armed()
+	return err != nil || !armed
+}
+
 func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime()
-	// Load config before initializing OCM so we can detect hyperfleet-only mode.
-	// When only a Platform API URL is configured (no OCM credentials), skip the
-	// OCM dependency and the region validation that WithAWS() requires.
 	cfg, cfgErr := config.Load()
-	if cfgErr == nil && cfg != nil && cfg.HyperfleetURL != "" && config.IsNotValid(cfg) {
+	if useAWSOnly(cfg, cfgErr, hyperfleet.ExplicitURL()) {
 		r = r.WithAWSOnly()
 	} else {
 		r = r.WithAWS()

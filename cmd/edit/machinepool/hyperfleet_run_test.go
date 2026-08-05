@@ -2,6 +2,7 @@ package machinepool
 
 import (
 	"fmt"
+	"math"
 
 	"go.uber.org/mock/gomock"
 
@@ -163,6 +164,84 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 			runHyperfleetEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np"},
 				makeEditCmd("5"), nil)
 		}).To(Panic())
+	})
+
+	setupGetMocks := func(ctrl *gomock.Controller) (*hfmocks.MockNodePoolInterface, *v1alpha1.NodePool) {
+		hf, clusters, nodePools := newEditMPMocks(ctrl)
+		replicas := int32(3)
+		np := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: hypershiftv1beta1.NodePoolSpec{Replicas: &replicas},
+			},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+		return nodePools, np
+	}
+
+	It("rejects negative replica count", func() {
+		orig := exitFn
+		exitFn = func(_ int) { panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		setupGetMocks(ctrl)
+
+		Expect(func() {
+			runHyperfleetEdit(t.RosaRuntime,
+				&EditMachinepoolUserOptions{machinepool: "my-np", replicas: -1},
+				makeEditCmd("5"), nil)
+		}).To(Panic())
+	})
+
+	It("rejects replica count above math.MaxInt32", func() {
+		orig := exitFn
+		exitFn = func(_ int) { panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		setupGetMocks(ctrl)
+
+		Expect(func() {
+			runHyperfleetEdit(t.RosaRuntime,
+				&EditMachinepoolUserOptions{machinepool: "my-np", replicas: math.MaxInt32 + 1},
+				makeEditCmd("5"), nil)
+		}).To(Panic())
+	})
+
+	It("accepts math.MaxInt32 as a valid replica count", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		_, nodePools, np := func() (*hfmocks.MockInterface, *hfmocks.MockNodePoolInterface, *v1alpha1.NodePool) {
+			hf, clusters, nps := newEditMPMocks(ctrl)
+			replicas := int32(3)
+			np := &v1alpha1.NodePool{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+				Spec: v1alpha1.NodePoolSpec{
+					NodePool: hypershiftv1beta1.NodePoolSpec{Replicas: &replicas},
+				},
+			}
+			clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+				ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+			}}}, nil)
+			nps.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+				&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
+			nps.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
+			nps.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(np, nil)
+			t.RosaRuntime.HyperFleetClient = hf
+			return hf, nps, np
+		}()
+		_ = nodePools
+		_ = np
+
+		runHyperfleetEdit(t.RosaRuntime,
+			&EditMachinepoolUserOptions{machinepool: "my-np", replicas: math.MaxInt32},
+			makeEditCmd("5"), nil)
 	})
 
 	It("fails when node pool update fails", func() {

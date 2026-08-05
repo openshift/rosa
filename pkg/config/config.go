@@ -151,19 +151,19 @@ func loadFromFile() (cfg *Config, err error) {
 		return
 	}
 	if err != nil {
-		err = fmt.Errorf("failed to check if config file '%s' exists: %v", file, err)
+		err = fmt.Errorf("failed to check if config file '%s' exists: %w", file, err)
 		return
 	}
 	// #nosec G304
 	data, err := os.ReadFile(file)
 	if err != nil {
-		err = fmt.Errorf("failed to read config file '%s': %v", file, err)
+		err = fmt.Errorf("failed to read config file '%s': %w", file, err)
 		return
 	}
 	cfg = new(Config)
 	err = json.Unmarshal(data, cfg)
 	if err != nil {
-		err = fmt.Errorf("failed to parse config file '%s': %v", file, err)
+		err = fmt.Errorf("failed to parse config file '%s': %w", file, err)
 		return
 	}
 	return
@@ -192,11 +192,11 @@ func Save(cfg *Config) error {
 	dir := filepath.Dir(file)
 	err = os.MkdirAll(dir, os.FileMode(0755))
 	if err != nil {
-		return fmt.Errorf("failed to create directory %s: %v", dir, err)
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 	err = os.WriteFile(file, data, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to write file '%s': %v", file, err)
+		return fmt.Errorf("failed to write file '%s': %w", file, err)
 	}
 	return nil
 }
@@ -266,7 +266,7 @@ func (c *Config) GetData(key string) (value string, err error) {
 	parser := new(jwt.Parser)
 	token, _, err := parser.ParseUnverified(c.AccessToken, jwt.MapClaims{})
 	if err != nil {
-		err = fmt.Errorf("failed to parse token: %v", err)
+		err = fmt.Errorf("failed to parse token: %w", err)
 		return
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
@@ -302,7 +302,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		var accessToken *jwt.Token
 		accessToken, err = ParseToken(c.AccessToken)
 		if err != nil {
-			err = fmt.Errorf("failed to parse token: %v", err)
+			err = fmt.Errorf("failed to parse token: %w", err)
 			return
 		}
 		expires, left, err = getTokenExpiry(accessToken, now)
@@ -326,7 +326,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		var refreshToken *jwt.Token
 		refreshToken, err = ParseToken(c.RefreshToken)
 		if err != nil {
-			err = fmt.Errorf("failed to parse token: %v", err)
+			err = fmt.Errorf("failed to parse token: %w", err)
 			return
 		}
 		expires, left, err = getTokenExpiry(refreshToken, now)

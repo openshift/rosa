@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"context"
 	"os"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +27,7 @@ var (
 // Only --expiration and --expiration-time are supported; all other edit flags
 // are OCM-only and have no equivalent in the Platform API spec.
 func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil || clusterKey == "" {

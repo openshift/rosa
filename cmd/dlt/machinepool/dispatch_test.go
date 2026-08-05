@@ -11,7 +11,7 @@ import (
 
 var _ = Describe("Dispatch", func() {
 	var originalEnabled func() bool
-	var originalDelete func(*DeleteMachinepoolUserOptions, []string)
+	var originalDelete func(*cobra.Command, *DeleteMachinepoolUserOptions, []string)
 
 	BeforeEach(func() {
 		originalEnabled = hyperfleetEnabled
@@ -43,7 +43,7 @@ var _ = Describe("Dispatch", func() {
 
 		It("routes to the Platform API handler", func() {
 			called := false
-			hfDeleteMachinePool = func(*DeleteMachinepoolUserOptions, []string) { called = true }
+			hfDeleteMachinePool = func(*cobra.Command, *DeleteMachinepoolUserOptions, []string) { called = true }
 			opts := &DeleteMachinepoolUserOptions{}
 			dispatch(opts)(&cobra.Command{}, []string{"worker"})
 			Expect(called).To(BeTrue())

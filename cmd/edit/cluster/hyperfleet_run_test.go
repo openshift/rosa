@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 
 	"go.uber.org/mock/gomock"
@@ -32,6 +33,7 @@ func newEditClusterMocks(ctrl *gomock.Controller) (*hfmocks.MockInterface, *hfmo
 // to args.expirationDuration and optionally set to a value.
 func makeExpirationCmd(setExpiration bool) *cobra.Command {
 	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(context.Background())
 	cmd.Flags().DurationVar(&args.expirationDuration, "expiration", 0, "")
 	if setExpiration {
 		if err := cmd.Flags().Set("expiration", "1h"); err != nil {

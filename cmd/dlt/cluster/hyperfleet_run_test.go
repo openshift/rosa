@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 
 	"go.uber.org/mock/gomock"
@@ -11,11 +12,18 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	"github.com/spf13/cobra"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
 )
+
+func testCmd() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	return cmd
+}
 
 func newDltClusterMocks(ctrl *gomock.Controller) (*hfmocks.MockInterface, *hfmocks.MockClusterInterface) {
 	hf := hfmocks.NewMockInterface(ctrl)
@@ -31,6 +39,9 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 
 	BeforeEach(func() {
 		t = test.NewTestRuntime()
+		origConfirm := confirmFn
+		confirmFn = func(string, ...interface{}) bool { return true }
+		DeferCleanup(func() { confirmFn = origConfirm })
 	})
 
 	It("deletes a cluster successfully", func() {
@@ -42,7 +53,20 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
-		runHyperfleetDelete(t.RosaRuntime)
+		runHyperfleetDelete(t.RosaRuntime, testCmd())
+	})
+
+	It("skips delete when user declines confirmation", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters := newDltClusterMocks(ctrl)
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		// Delete must NOT be called — omitting the expectation enforces this via gomock.
+
+		confirmFn = func(string, ...interface{}) bool { return false }
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleetDelete(t.RosaRuntime, testCmd())
 	})
 
 	It("fails when cluster key is not set", func() {
@@ -55,7 +79,7 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, _ := newDltClusterMocks(ctrl)
 		t.RosaRuntime.HyperFleetClient = hf
-		Expect(func() { runHyperfleetDelete(t.RosaRuntime) }).To(Panic())
+		Expect(func() { runHyperfleetDelete(t.RosaRuntime, testCmd()) }).To(Panic())
 	})
 
 	It("fails when cluster cannot be resolved", func() {
@@ -68,7 +92,7 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{}, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
-		Expect(func() { runHyperfleetDelete(t.RosaRuntime) }).To(Panic())
+		Expect(func() { runHyperfleetDelete(t.RosaRuntime, testCmd()) }).To(Panic())
 	})
 
 	It("fails when cluster delete fails", func() {
@@ -84,6 +108,6 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(fmt.Errorf("delete failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
-		Expect(func() { runHyperfleetDelete(t.RosaRuntime) }).To(Panic())
+		Expect(func() { runHyperfleetDelete(t.RosaRuntime, testCmd()) }).To(Panic())
 	})
 })
