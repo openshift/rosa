@@ -40,12 +40,14 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	if nodePoolName == "" {
 		r.Reporter.Errorf("--name is required")
 		exitFn(1)
+		return
 	}
 
 	clusterKey, err := ocm.GetClusterKey()
 	if err != nil || clusterKey == "" {
 		r.Reporter.Errorf("--cluster is required")
 		exitFn(1)
+		return
 	}
 
 	// Resolve cluster name → UID, and fetch the cluster to default release image.
@@ -53,6 +55,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
+		return
 	}
 
 	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID).
@@ -60,6 +63,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		exitFn(1)
+		return
 	}
 
 	releaseImage := userOptions.Version
@@ -69,6 +73,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	if releaseImage == "" {
 		r.Reporter.Errorf("--version is required (or the cluster must have a release image set)")
 		exitFn(1)
+		return
 	}
 
 	instanceType := userOptions.InstanceType
@@ -80,6 +85,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	if subnetID == "" {
 		r.Reporter.Errorf("--subnet is required for Platform API node pool creation")
 		exitFn(1)
+		return
 	}
 
 	var rolesRef hypershiftv1beta1.AWSRolesRef
@@ -90,6 +96,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	if instanceProfile == "" {
 		r.Reporter.Errorf("Cannot derive worker instance profile from cluster roles ref")
 		exitFn(1)
+		return
 	}
 
 	replicas := int32(userOptions.Replicas)
@@ -124,6 +131,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	if err != nil {
 		r.Reporter.Errorf("Failed to create node pool '%s': %v", nodePoolName, err)
 		exitFn(1)
+		return
 	}
 
 	r.Reporter.Infof("Node pool '%s' created in cluster '%s' (ID: %s)", created.Name, clusterKey, string(created.UID))

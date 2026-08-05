@@ -163,7 +163,7 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=cmd/create/idp/cmd.go -package=mocks -destination=cmd/create/idp/mocks/identityprovider.go
 	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/hyperfleet.go -package=mocks -destination=pkg/hyperfleet/mocks/hyperfleet_mock.go
 	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers/wire_wrappers_generated.go -package=mocks -destination=pkg/hyperfleet/mocks/wrappers_mock.go
-	sed -i '' 's|github.com/openshift/rosa/vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers|github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers|g' pkg/hyperfleet/mocks/wrappers_mock.go
+	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers|github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers|g' pkg/hyperfleet/mocks/wrappers_mock.go
 
 
 .PHONY: e2e_test

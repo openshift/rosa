@@ -33,6 +33,7 @@ var _ = Describe("ExtractRegion", func() {
 		Entry("govcloud west", "https://abc123.execute-api.us-gov-west-1.amazonaws.com", "us-gov-west-1", false),
 		Entry("no region in URL", "https://example.com/api", "", true),
 		Entry("invalid URL", "://bad url", "", true),
+		Entry("cleartext HTTP", "http://abc123.execute-api.us-east-1.amazonaws.com", "", true),
 	)
 })
 
@@ -74,6 +75,11 @@ var _ = Describe("SetURL and Reset", func() {
 		Expect(hyperfleetURL).To(Equal("https://first.execute-api.us-east-1.amazonaws.com"))
 	})
 
+	It("does not set a cleartext HTTP URL", func() {
+		SetURL("http://abc123.execute-api.us-east-1.amazonaws.com")
+		Expect(hyperfleetURL).To(BeEmpty())
+	})
+
 	It("Reset clears the URL", func() {
 		hyperfleetURL = "https://something.execute-api.us-east-1.amazonaws.com"
 		Reset()
@@ -98,16 +104,20 @@ var _ = Describe("Enabled and ExplicitURL", func() {
 })
 
 var _ = Describe("ComputeRolesRef", func() {
-	It("builds all seven ARNs from prefix and account ID", func() {
-		ref := ComputeRolesRef("my-cluster", "123456789012")
-		Expect(ref.IngressARN).To(Equal("arn:aws:iam::123456789012:role/my-cluster-ingress"))
-		Expect(ref.KubeCloudControllerARN).To(Equal("arn:aws:iam::123456789012:role/my-cluster-cloud-controller-manager"))
-		Expect(ref.StorageARN).To(Equal("arn:aws:iam::123456789012:role/my-cluster-ebs-csi"))
-		Expect(ref.ImageRegistryARN).To(Equal("arn:aws:iam::123456789012:role/my-cluster-image-registry"))
-		Expect(ref.NetworkARN).To(Equal("arn:aws:iam::123456789012:role/my-cluster-network-config"))
-		Expect(ref.ControlPlaneOperatorARN).To(Equal("arn:aws:iam::123456789012:role/my-cluster-control-plane-operator"))
-		Expect(ref.NodePoolManagementARN).To(Equal("arn:aws:iam::123456789012:role/my-cluster-node-pool-management"))
-	})
+	DescribeTable("builds all seven ARNs for each partition",
+		func(partition, wantPrefix string) {
+			ref := ComputeRolesRef("my-cluster", "123456789012", partition)
+			Expect(ref.IngressARN).To(Equal(wantPrefix + "my-cluster-ingress"))
+			Expect(ref.KubeCloudControllerARN).To(Equal(wantPrefix + "my-cluster-cloud-controller-manager"))
+			Expect(ref.StorageARN).To(Equal(wantPrefix + "my-cluster-ebs-csi"))
+			Expect(ref.ImageRegistryARN).To(Equal(wantPrefix + "my-cluster-image-registry"))
+			Expect(ref.NetworkARN).To(Equal(wantPrefix + "my-cluster-network-config"))
+			Expect(ref.ControlPlaneOperatorARN).To(Equal(wantPrefix + "my-cluster-control-plane-operator"))
+			Expect(ref.NodePoolManagementARN).To(Equal(wantPrefix + "my-cluster-node-pool-management"))
+		},
+		Entry("commercial", "aws", "arn:aws:iam::123456789012:role/"),
+		Entry("GovCloud", "aws-us-gov", "arn:aws-us-gov:iam::123456789012:role/"),
+	)
 })
 
 var _ = Describe("ComputeInstanceProfile", func() {

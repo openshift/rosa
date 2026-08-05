@@ -75,16 +75,17 @@ var _ = Describe("WithHyperFleet", func() {
 		}
 	}
 
-	stubNewClient := func() {
-		hfNewClient = func(_ *hfrest.Config) (*hyperfleetclientset.Clientset, error) {
-			return &hyperfleetclientset.Clientset{}, nil
-		}
-	}
-
 	It("populates Creator and HyperFleetClient on success", func() {
+		GinkgoT().Setenv("AWS_REGION", "")
+
 		stubLoadConfig()
 		stubIdentity("123456789012", "arn:aws:iam::123456789012:user/test")
-		stubNewClient()
+
+		var capturedCfg *hfrest.Config
+		hfNewClient = func(cfg *hfrest.Config) (*hyperfleetclientset.Clientset, error) {
+			capturedCfg = cfg
+			return &hyperfleetclientset.Clientset{}, nil
+		}
 
 		r := &Runtime{Reporter: fakeRept}
 		r.WithHyperFleet()
@@ -93,6 +94,22 @@ var _ = Describe("WithHyperFleet", func() {
 		Expect(r.Creator).NotTo(BeNil())
 		Expect(r.Creator.AccountID).To(Equal("123456789012"))
 		Expect(r.HyperFleetClient).NotTo(BeNil())
+
+		Expect(capturedCfg).NotTo(BeNil(), "hfNewClient must have been called with a config")
+		Expect(capturedCfg.Host).To(Equal(testHyperfleetURL), "Host must be the hyperfleet URL")
+		Expect(capturedCfg.Region).To(Equal("us-east-1"), "Region must be extracted from the URL")
+		Expect(capturedCfg.AccountID).To(Equal("123456789012"), "AccountID must match caller identity")
+		Expect(capturedCfg.CallerARN).To(Equal("arn:aws:iam::123456789012:user/test"), "CallerARN must match caller identity")
+	})
+
+	It("exits when URL uses HTTP instead of HTTPS", func() {
+		hfExplicitURL = func() string { return "http://abc123.execute-api.us-east-1.amazonaws.com" }
+
+		r := &Runtime{Reporter: fakeRept}
+		r.WithHyperFleet()
+
+		Expect(exited).To(BeTrue())
+		Expect(errMsg).To(ContainSubstring("must use HTTPS"))
 	})
 
 	It("exits when URL has no extractable region", func() {

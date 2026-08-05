@@ -6,6 +6,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
@@ -15,10 +16,18 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-// hfEnabled and hfCreateCluster are package-level vars so tests can stub the
-// hyperfleet dispatch path without making real AWS or Platform API calls.
+// hfEnabled, hfExitFn, hfDescribeSubnets, and hfCreateCluster are package-level
+// vars so tests can stub the hyperfleet dispatch path without real AWS calls.
 var (
-	hfEnabled       = hyperfleet.Enabled
+	hfEnabled         = hyperfleet.Enabled
+	hfExitFn          = func(code int) { os.Exit(code) }
+	hfDescribeSubnets = func(
+		ctx context.Context, cfg awssdk.Config, subnetID string,
+	) (*ec2svc.DescribeSubnetsOutput, error) {
+		return ec2svc.NewFromConfig(cfg).DescribeSubnets(ctx, &ec2svc.DescribeSubnetsInput{
+			SubnetIds: []string{subnetID},
+		})
+	}
 	hfCreateCluster = func() {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
@@ -34,37 +43,49 @@ func runHyperfleet(r *rosa.Runtime) {
 	clusterName := args.clusterName
 	if clusterName == "" {
 		r.Reporter.Errorf("--cluster-name is required")
-		os.Exit(1)
+		hfExitFn(1)
+		return
 	}
 
 	if args.operatorRolesPrefix == "" {
 		r.Reporter.Errorf("--operator-roles-prefix is required")
-		os.Exit(1)
+		hfExitFn(1)
+		return
 	}
 
 	if len(args.subnetIDs) == 0 {
 		r.Reporter.Errorf("--subnet-ids is required")
-		os.Exit(1)
+		hfExitFn(1)
+		return
 	}
 	subnetID := args.subnetIDs[0]
 
 	// Derive VPC ID and availability zone from the subnet.
-	ec2Client := ec2svc.NewFromConfig(r.AWSConfig)
-	subnetOut, err := ec2Client.DescribeSubnets(ctx, &ec2svc.DescribeSubnetsInput{
-		SubnetIds: []string{subnetID},
-	})
+	subnetOut, err := hfDescribeSubnets(ctx, r.AWSConfig, subnetID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to describe subnet '%s': %v", subnetID, err)
-		os.Exit(1)
+		hfExitFn(1)
+		return
 	}
 	if len(subnetOut.Subnets) == 0 {
 		r.Reporter.Errorf("Subnet '%s' not found", subnetID)
-		os.Exit(1)
+		hfExitFn(1)
+		return
 	}
-	vpcID := *subnetOut.Subnets[0].VpcId
-	zone := *subnetOut.Subnets[0].AvailabilityZone
+	vpcID := awssdk.ToString(subnetOut.Subnets[0].VpcId)
+	if vpcID == "" {
+		r.Reporter.Errorf("Subnet '%s' has no VPC ID", subnetID)
+		hfExitFn(1)
+		return
+	}
+	zone := awssdk.ToString(subnetOut.Subnets[0].AvailabilityZone)
+	if zone == "" {
+		r.Reporter.Errorf("Subnet '%s' has no availability zone", subnetID)
+		hfExitFn(1)
+		return
+	}
 
-	rolesRef := hyperfleet.ComputeRolesRef(args.operatorRolesPrefix, r.Creator.AccountID)
+	rolesRef := hyperfleet.ComputeRolesRef(args.operatorRolesPrefix, r.Creator.AccountID, r.Creator.Partition)
 
 	subnetRef := subnetID
 	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID).Create(
@@ -96,7 +117,8 @@ func runHyperfleet(r *rosa.Runtime) {
 	)
 	if err != nil {
 		r.Reporter.Errorf("Failed to create cluster '%s': %v", clusterName, err)
-		os.Exit(1)
+		hfExitFn(1)
+		return
 	}
 
 	r.Reporter.Infof("Cluster '%s' created with ID '%s'", clusterName, string(cluster.UID))

@@ -15,7 +15,7 @@ func ResolveNodePoolUID(
 ) (string, error) {
 	list, err := client.HyperfleetV1alpha1().NodePools(clusterUID).List(ctx, wrappers.ListOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to list node pools: %v", err)
+		return "", fmt.Errorf("failed to list node pools: %w", err)
 	}
 	for _, np := range list.Items {
 		if np.Name == nodePoolName {
