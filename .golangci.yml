@@ -21,6 +21,8 @@ run:
 linters:
   default: none
   enable:
+    - depguard
+    - forbidigo
     - goconst
     - govet
     - ineffassign
@@ -30,6 +32,48 @@ linters:
     - unconvert
     - unused
   settings:
+    depguard:
+      rules:
+        core-no-cli-deps:
+          deny:
+            - pkg: "github.com/spf13/cobra"
+              desc: "pkg/ is core layer -- must not import cobra"
+            - pkg: "github.com/spf13/pflag"
+              desc: "pkg/ is core layer -- must not import pflag"
+            - pkg: "github.com/AlecAivazis/survey"
+              desc: "pkg/ is core layer -- must not import survey"
+            - pkg: "github.com/openshift/rosa/pkg/reporter"
+              desc: "pkg/ is core layer -- must not import CLI presenter reporter"
+            - pkg: "github.com/openshift/rosa/pkg/output"
+              desc: "pkg/ is core layer -- must not import CLI presenter output"
+            - pkg: "github.com/openshift/rosa/pkg/interactive"
+              desc: "pkg/ is core layer -- must not import CLI presenter interactive"
+            - pkg: "github.com/openshift/rosa/pkg/arguments"
+              desc: "pkg/ is core layer -- must not import CLI presenter arguments"
+            - pkg: "github.com/openshift/rosa/pkg/color"
+              desc: "pkg/ is core layer -- must not import CLI presenter color"
+            - pkg: "github.com/openshift/rosa/pkg/debug"
+              desc: "pkg/ is core layer -- must not import CLI presenter debug"
+            - pkg: "github.com/openshift/rosa/pkg/commands"
+              desc: "pkg/ is core layer -- must not import CLI presenter commands"
+            - pkg: "github.com/openshift/rosa/pkg/rosa"
+              desc: "pkg/ is core layer -- must not import CLI runtime rosa"
+            - pkg: "github.com/openshift/rosa/pkg/options"
+              desc: "pkg/ is core layer -- must not import CLI presenter options"
+            - pkg: "github.com/openshift/rosa/pkg/aws/profile"
+              desc: "pkg/ is core layer -- must not import CLI presenter aws/profile"
+            - pkg: "github.com/openshift/rosa/pkg/aws/region"
+              desc: "pkg/ is core layer -- must not import CLI presenter aws/region"
+            - pkg: "github.com/openshift/rosa/pkg/ocm/output"
+              desc: "pkg/ is core layer -- must not import CLI presenter ocm/output"
+            - pkg: "github.com/openshift/rosa/pkg/aws/commandbuilder"
+              desc: "pkg/ is core layer -- must not import CLI presenter aws/commandbuilder"
+    forbidigo:
+      forbid:
+        - pattern: "^fmt\\.Print(f|ln)?$"
+          msg: "pkg/ must not write to stdout -- return data and let the caller render"
+        - pattern: "^os\\.Exit$"
+          msg: "pkg/ must not call os.Exit -- return an error instead"
     goconst:
       ignore-tests: true
       match-constant: false
@@ -51,6 +95,14 @@ linters:
       - path: tests/utils/
         linters:
           - goconst
+      - path-except: "^pkg/"
+        linters:
+          - depguard
+          - forbidigo
+      - path: "^pkg/(arguments|color|commands|debug|interactive|output|reporter|rosa|options|test|aws/(commandbuilder|profile|region)|ocm/output)/"
+        linters:
+          - depguard
+          - forbidigo
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

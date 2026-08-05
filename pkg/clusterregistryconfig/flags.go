@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	"github.com/spf13/cobra" //nolint:depguard
+	"github.com/spf13/pflag" //nolint:depguard
 
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/input"
-	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive" //nolint:depguard
 	"github.com/openshift/rosa/pkg/ocm"
 )
 

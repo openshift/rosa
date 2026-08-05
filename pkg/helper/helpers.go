@@ -14,7 +14,7 @@ import (
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
-	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/reporter" //nolint:depguard
 )
 
 var r *rand.Rand

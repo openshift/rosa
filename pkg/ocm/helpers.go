@@ -43,8 +43,8 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper"
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
-	"github.com/openshift/rosa/pkg/output"
-	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/output"   //nolint:depguard
+	"github.com/openshift/rosa/pkg/reporter" //nolint:depguard
 )
 
 const (
