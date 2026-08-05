@@ -16,6 +16,8 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	elbsvc "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing"
+	elbv2svc "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	iamsvc "github.com/aws/aws-sdk-go-v2/service/iam"
 	route53svc "github.com/aws/aws-sdk-go-v2/service/route53"
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
@@ -183,6 +185,8 @@ var _ = Describe("Hyperfleet sanity",
 			ec2Client := ec2svc.NewFromConfig(awsCfg)
 			iamClient := iamsvc.NewFromConfig(awsCfg)
 			r53Client := route53svc.NewFromConfig(awsCfg)
+			elbClient := elbsvc.NewFromConfig(awsCfg)
+			elbv2Client := elbv2svc.NewFromConfig(awsCfg)
 
 			// ── Network setup ────────────────────────────────────────────────
 			// Mirrors what rosactl cluster-vpc create provisions via CloudFormation.
@@ -482,7 +486,8 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "tagging hosted zone %s", hostedZoneID)
 			GinkgoWriter.Printf("Private hosted zone %s.hypershift.local created: %s\n", clusterName, hostedZoneID)
 			DeferCleanup(func() {
-				By("Cleanup: deleting private hosted zone")
+				By("Cleanup: purging records and deleting private hosted zone")
+				hfPurgeHostedZoneRecords(ctx, r53Client, hostedZoneIDShort)
 				_, _ = r53Client.DeleteHostedZone(ctx, &route53svc.DeleteHostedZoneInput{
 					Id: awssdk.String(hostedZoneID),
 				})
@@ -599,6 +604,12 @@ var _ = Describe("Hyperfleet sanity",
 
 				By("Waiting for worker EC2 instances in VPC to terminate")
 				hfWaitVPCInstancesTerminated(ctx, ec2Client, vpcID, 15*time.Minute)
+
+				By("Deleting classic load balancers created by cluster ingress controller")
+				hfDeleteVPCClassicLoadBalancers(ctx, elbClient, vpcID)
+
+				By("Deleting ALBs/NLBs created by cluster ingress controller")
+				hfDeleteVPCLoadBalancers(ctx, elbv2Client, vpcID)
 
 				By("Releasing orphaned ENIs left by cluster controllers")
 				hfDeleteAvailableENIs(ctx, ec2Client, vpcID)
@@ -922,6 +933,111 @@ var _ = Describe("Hyperfleet sanity",
 		})
 	},
 )
+
+// hfPurgeHostedZoneRecords deletes all non-default record sets (everything
+// except NS and SOA) from the hosted zone so that DeleteHostedZone succeeds.
+// The operator writes A/CNAME records into the zone for ingress and the
+// ignition server; if those are not removed first, zone deletion fails.
+func hfPurgeHostedZoneRecords(ctx context.Context, r53Client *route53svc.Client, zoneID string) {
+	out, err := r53Client.ListResourceRecordSets(ctx, &route53svc.ListResourceRecordSetsInput{
+		HostedZoneId: awssdk.String(zoneID),
+	})
+	if err != nil {
+		GinkgoWriter.Printf("ListResourceRecordSets error for zone %s: %v\n", zoneID, err)
+		return
+	}
+	var changes []route53types.Change
+	for i := range out.ResourceRecordSets {
+		rrs := out.ResourceRecordSets[i]
+		if rrs.Type == route53types.RRTypeNs || rrs.Type == route53types.RRTypeSoa {
+			continue
+		}
+		changes = append(changes, route53types.Change{
+			Action:            route53types.ChangeActionDelete,
+			ResourceRecordSet: &rrs,
+		})
+	}
+	if len(changes) == 0 {
+		return
+	}
+	_, err = r53Client.ChangeResourceRecordSets(ctx, &route53svc.ChangeResourceRecordSetsInput{
+		HostedZoneId: awssdk.String(zoneID),
+		ChangeBatch:  &route53types.ChangeBatch{Changes: changes},
+	})
+	if err != nil {
+		GinkgoWriter.Printf("Failed to purge records from zone %s: %v\n", zoneID, err)
+	} else {
+		GinkgoWriter.Printf("Purged %d record(s) from zone %s\n", len(changes), zoneID)
+	}
+}
+
+// hfDeleteVPCClassicLoadBalancers deletes all classic (ELBv1) load balancers
+// in the VPC. Kubernetes Services of type LoadBalancer in older clusters may
+// create classic ELBs; if not removed they block VPC deletion.
+func hfDeleteVPCClassicLoadBalancers(ctx context.Context, elbClient *elbsvc.Client, vpcID string) {
+	var marker *string
+	for {
+		out, err := elbClient.DescribeLoadBalancers(ctx, &elbsvc.DescribeLoadBalancersInput{
+			Marker: marker,
+		})
+		if err != nil {
+			GinkgoWriter.Printf("DescribeLoadBalancers (classic) error: %v\n", err)
+			return
+		}
+		for _, lb := range out.LoadBalancerDescriptions {
+			if awssdk.ToString(lb.VPCId) != vpcID {
+				continue
+			}
+			name := awssdk.ToString(lb.LoadBalancerName)
+			_, delErr := elbClient.DeleteLoadBalancer(ctx, &elbsvc.DeleteLoadBalancerInput{
+				LoadBalancerName: awssdk.String(name),
+			})
+			if delErr != nil {
+				GinkgoWriter.Printf("Failed to delete classic load balancer %s: %v\n", name, delErr)
+			} else {
+				GinkgoWriter.Printf("Deleted classic load balancer %s\n", name)
+			}
+		}
+		if out.NextMarker == nil {
+			break
+		}
+		marker = out.NextMarker
+	}
+}
+
+// hfDeleteVPCLoadBalancers deletes all ALBs and NLBs (ELBv2) in the VPC. The
+// cluster ingress controller creates these; if they are not removed before VPC
+// teardown the subnets and security groups they reference cannot be deleted.
+func hfDeleteVPCLoadBalancers(ctx context.Context, elbv2Client *elbv2svc.Client, vpcID string) {
+	var marker *string
+	for {
+		out, err := elbv2Client.DescribeLoadBalancers(ctx, &elbv2svc.DescribeLoadBalancersInput{
+			Marker: marker,
+		})
+		if err != nil {
+			GinkgoWriter.Printf("DescribeLoadBalancers error: %v\n", err)
+			return
+		}
+		for _, lb := range out.LoadBalancers {
+			if awssdk.ToString(lb.VpcId) != vpcID {
+				continue
+			}
+			lbARN := awssdk.ToString(lb.LoadBalancerArn)
+			_, delErr := elbv2Client.DeleteLoadBalancer(ctx, &elbv2svc.DeleteLoadBalancerInput{
+				LoadBalancerArn: awssdk.String(lbARN),
+			})
+			if delErr != nil {
+				GinkgoWriter.Printf("Failed to delete load balancer %s: %v\n", lbARN, delErr)
+			} else {
+				GinkgoWriter.Printf("Deleted load balancer %s\n", awssdk.ToString(lb.LoadBalancerName))
+			}
+		}
+		if out.NextMarker == nil {
+			break
+		}
+		marker = out.NextMarker
+	}
+}
 
 // hfDeleteAvailableENIs deletes all network interfaces in the VPC that are in
 // the "available" state (not attached to any resource). These are typically

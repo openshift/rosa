@@ -7,18 +7,20 @@ toolchain go1.26.9
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/semver v1.5.0
-	github.com/aws/aws-sdk-go-v2 v1.43.2
+	github.com/aws/aws-sdk-go-v2 v1.43.3
 	github.com/aws/aws-sdk-go-v2/config v1.32.30
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.30
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.74.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.316.1
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing v1.36.3
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.0
 	github.com/aws/aws-sdk-go-v2/service/iam v1.55.1
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.52.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.2
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.43.1
 	github.com/aws/aws-sdk-go-v2/service/servicequotas v1.36.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.45.0
-	github.com/aws/smithy-go v1.27.5
+	github.com/aws/smithy-go v1.27.6
 	github.com/briandowns/spinner v1.23.2
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang/glog v1.2.5
@@ -30,6 +32,7 @@ require (
 	github.com/openshift-online/ocm-common v0.0.46
 	github.com/openshift-online/ocm-sdk-go v0.1.517
 	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.0.0-20260803002448-a25b07fe4598
+	github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api v0.0.0
 	github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.2
@@ -39,13 +42,13 @@ require (
 	go.uber.org/mock v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.37.1
+	k8s.io/client-go v0.37.1
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -72,7 +75,6 @@ require (
 	github.com/lib/pq v1.10.5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.470 // indirect
-	github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api v0.0.0 // indirect
 	github.com/openshift/api v0.0.0-20260715165912-72066cc9718b // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -83,7 +85,6 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	k8s.io/api v0.37.1 // indirect
-	k8s.io/client-go v0.37.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
@@ -97,8 +98,8 @@ require (
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.31 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.31 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.31 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.34 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.32 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.79.1
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
