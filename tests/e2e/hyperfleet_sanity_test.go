@@ -209,7 +209,11 @@ var _ = Describe("Hyperfleet sanity",
 			vpcID := awssdk.ToString(vpcOut.Vpc.VpcId)
 			DeferCleanup(func() {
 				By("Cleanup: deleting VPC")
-				_, _ = ec2Client.DeleteVpc(ctx, &ec2svc.DeleteVpcInput{VpcId: awssdk.String(vpcID)})
+				if _, err := ec2Client.DeleteVpc(ctx, &ec2svc.DeleteVpcInput{VpcId: awssdk.String(vpcID)}); err != nil {
+					GinkgoWriter.Printf("Failed to delete VPC %s: %v\n", vpcID, err)
+					return
+				}
+				hfWaitVPCDeleted(ctx, ec2Client, vpcID, 2*time.Minute)
 			})
 
 			By("Waiting for VPC to become available")
@@ -623,9 +627,11 @@ var _ = Describe("Hyperfleet sanity",
 
 				By("Deleting classic load balancers created by cluster ingress controller")
 				hfDeleteVPCClassicLoadBalancers(ctx, elbClient, vpcID)
+				hfWaitVPCClassicLoadBalancersDeleted(ctx, elbClient, vpcID, 5*time.Minute)
 
 				By("Deleting ALBs/NLBs created by cluster ingress controller")
 				hfDeleteVPCLoadBalancers(ctx, elbv2Client, vpcID)
+				hfWaitVPCLoadBalancersDeleted(ctx, elbv2Client, vpcID, 5*time.Minute)
 
 				By("Releasing orphaned ENIs left by cluster controllers")
 				hfDeleteAvailableENIs(ctx, ec2Client, vpcID)
@@ -1058,6 +1064,62 @@ func hfDeleteVPCLoadBalancers(ctx context.Context, elbv2Client *elbv2svc.Client,
 	}
 }
 
+// hfWaitVPCClassicLoadBalancersDeleted polls until no classic (ELBv1) load
+// balancers remain in the VPC. Classic LB deletion is synchronous but the SG
+// dependency is released only after the LB is fully gone.
+func hfWaitVPCClassicLoadBalancersDeleted(ctx context.Context, elbClient *elbsvc.Client, vpcID string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		out, err := elbClient.DescribeLoadBalancers(ctx, &elbsvc.DescribeLoadBalancersInput{})
+		if err != nil {
+			GinkgoWriter.Printf("DescribeLoadBalancers (classic) error while waiting: %v\n", err)
+			return
+		}
+		found := 0
+		for _, lb := range out.LoadBalancerDescriptions {
+			if awssdk.ToString(lb.VPCId) == vpcID {
+				found++
+			}
+		}
+		if found == 0 {
+			GinkgoWriter.Printf("All classic load balancers in VPC %s deleted\n", vpcID)
+			return
+		}
+		GinkgoWriter.Printf("[%s] %d classic load balancer(s) still present in VPC %s, waiting...\n",
+			time.Now().Format(time.RFC3339), found, vpcID)
+		time.Sleep(10 * time.Second)
+	}
+	GinkgoWriter.Printf("WARNING: timed out waiting for classic load balancers in VPC %s to be deleted\n", vpcID)
+}
+
+// hfWaitVPCLoadBalancersDeleted polls until no ALBs or NLBs (ELBv2) remain in
+// the VPC. ALB/NLB deletion is asynchronous; the security group dependency is
+// not released until AWS fully removes the load balancer.
+func hfWaitVPCLoadBalancersDeleted(ctx context.Context, elbv2Client *elbv2svc.Client, vpcID string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		out, err := elbv2Client.DescribeLoadBalancers(ctx, &elbv2svc.DescribeLoadBalancersInput{})
+		if err != nil {
+			GinkgoWriter.Printf("DescribeLoadBalancers error while waiting: %v\n", err)
+			return
+		}
+		found := 0
+		for _, lb := range out.LoadBalancers {
+			if awssdk.ToString(lb.VpcId) == vpcID {
+				found++
+			}
+		}
+		if found == 0 {
+			GinkgoWriter.Printf("All load balancers in VPC %s deleted\n", vpcID)
+			return
+		}
+		GinkgoWriter.Printf("[%s] %d load balancer(s) still present in VPC %s, waiting...\n",
+			time.Now().Format(time.RFC3339), found, vpcID)
+		time.Sleep(10 * time.Second)
+	}
+	GinkgoWriter.Printf("WARNING: timed out waiting for load balancers in VPC %s to be deleted\n", vpcID)
+}
+
 // hfDeleteAvailableENIs deletes all network interfaces in the VPC that are in
 // the "available" state (not attached to any resource). These are typically
 // ENIs left behind by cluster controllers (ingress, CSI, cloud controller)
@@ -1113,6 +1175,32 @@ func hfDeleteVPCSecurityGroups(ctx context.Context, ec2Client *ec2svc.Client, vp
 			GinkgoWriter.Printf("Deleted security group %s (%s)\n", sgID, awssdk.ToString(sg.GroupName))
 		}
 	}
+}
+
+// hfWaitVPCDeleted polls DescribeVpcs until the VPC is no longer present or
+// the timeout expires. Logs a warning on timeout rather than failing so that a
+// cleanup race does not mask the actual test result.
+func hfWaitVPCDeleted(ctx context.Context, ec2Client *ec2svc.Client, vpcID string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		out, err := ec2Client.DescribeVpcs(ctx, &ec2svc.DescribeVpcsInput{
+			Filters: []ec2types.Filter{
+				{Name: awssdk.String("vpc-id"), Values: []string{vpcID}},
+			},
+		})
+		if err != nil {
+			GinkgoWriter.Printf("DescribeVpcs error while waiting for VPC %s deletion: %v\n", vpcID, err)
+			return
+		}
+		if len(out.Vpcs) == 0 {
+			GinkgoWriter.Printf("VPC %s deleted\n", vpcID)
+			return
+		}
+		GinkgoWriter.Printf("[%s] VPC %s still present (state: %s), waiting...\n",
+			time.Now().Format(time.RFC3339), vpcID, out.Vpcs[0].State)
+		time.Sleep(10 * time.Second)
+	}
+	GinkgoWriter.Printf("WARNING: timed out waiting for VPC %s to be deleted\n", vpcID)
 }
 
 // hfWaitVPCInstancesTerminated polls until no non-terminated EC2 instances
