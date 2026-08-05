@@ -322,9 +322,61 @@ var _ = Describe("whoami command", func() {
 		Expect(stdout).To(ContainSubstring("OCM Account Username:"))
 	})
 
+	It("Shows Platform API URL when logged in with hyperfleet only (no OCM)", func() {
+		hfURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
+		saveConfig(&config.Config{HyperfleetURL: hfURL})
+
+		stdout, _, err := test.RunWithOutputCapture(
+			func(r *rosa.Runtime, _ *cobra.Command) error {
+				return runWithRuntime(r)
+			}, t.RosaRuntime, Cmd)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stdout).To(ContainSubstring("Platform API"))
+		Expect(stdout).To(ContainSubstring(hfURL))
+		Expect(stdout).NotTo(ContainSubstring("OCM API"))
+	})
+
 	It("Rejects extra arguments via cobra.NoArgs", func() {
 		Expect(Cmd.Args).NotTo(BeNil())
 		err := Cmd.Args(Cmd, []string{"unexpected"})
 		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("useAWSOnly", func() {
+	It("returns true for explicit URL with nil config (no OCM login)", func() {
+		Expect(useAWSOnly(nil, nil, "https://api.example.com")).To(BeTrue())
+	})
+
+	It("returns false for explicit URL when OCM config is armed via client credentials", func() {
+		cfg := &config.Config{
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			URL:          "https://api.openshift.com",
+			TokenURL:     "https://sso.example.com",
+		}
+		Expect(useAWSOnly(cfg, nil, "https://api.example.com")).To(BeFalse())
+	})
+
+	It("returns true for stored hyperfleet URL when OCM access token is expired", func() {
+		expiredToken := MakeTokenString("Bearer", -10*time.Minute)
+		cfg := &config.Config{
+			AccessToken:   expiredToken,
+			ClientID:      "client-id",
+			URL:           "https://api.openshift.com",
+			TokenURL:      "https://sso.example.com",
+			HyperfleetURL: "https://api.example.com",
+		}
+		Expect(useAWSOnly(cfg, nil, "")).To(BeTrue())
+	})
+
+	It("returns false when no hyperfleet URL is configured", func() {
+		cfg := &config.Config{
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			URL:          "https://api.openshift.com",
+			TokenURL:     "https://sso.example.com",
+		}
+		Expect(useAWSOnly(cfg, nil, "")).To(BeFalse())
 	})
 })

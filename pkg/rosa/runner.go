@@ -59,3 +59,10 @@ func RuntimeWithAWS() RuntimeVisitor {
 		runtime.WithAWS()
 	}
 }
+
+// RuntimeWithHyperFleet configures the Runtime with a Platform API v2 client.
+func RuntimeWithHyperFleet() RuntimeVisitor {
+	return func(ctx context.Context, runtime *Runtime, command *cobra.Command, args []string) {
+		runtime.WithHyperFleet()
+	}
+}

@@ -25,7 +25,9 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
@@ -175,6 +177,49 @@ var _ = Describe("Login Configuration", Ordered, func() {
 			Expect(cfg.TokenURL).To(Equal(testRuntime.SsoServer.URL()))
 			Expect(cfg.ClientID).To(Equal("my-client"))
 			Expect(cfg.ClientSecret).To(Equal("my-secret"))
+		})
+	})
+
+	When("Armed() returns an error for the config token", func() {
+		It("returns an error without prompting for token", func() {
+			// Save a config with an invalid JWT so cfg.Armed() fails.
+			invalidCfg := &config.Config{AccessToken: "not-a-jwt"}
+			Expect(config.Save(invalidCfg)).To(Succeed())
+
+			args.token = ""
+			args.clientID = ""
+			args.clientSecret = ""
+			hyperfleet.Reset()
+			os.Unsetenv(constants.RosaToken)
+			os.Unsetenv(constants.OcmToken)
+
+			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to verify configuration"))
+		})
+	})
+
+	When("Using --hyperfleet-url without OCM credentials", func() {
+		It("saves HyperfleetURL to config and returns without an OCM token", func() {
+			hfURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
+			hyperfleet.Reset()
+			hyperfleet.SetURL(hfURL)
+			DeferCleanup(hyperfleet.Reset)
+
+			// Ensure no implicit credentials are available.
+			args.token = ""
+			args.clientID = ""
+			args.clientSecret = ""
+			os.Unsetenv(constants.RosaToken)
+			os.Unsetenv(constants.OcmToken)
+
+			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, loadErr := config.Load()
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(cfg).NotTo(BeNil())
+			Expect(cfg.HyperfleetURL).To(Equal(hfURL))
 		})
 	})
 
