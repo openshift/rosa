@@ -342,3 +342,41 @@ var _ = Describe("whoami command", func() {
 		Expect(err).To(HaveOccurred())
 	})
 })
+
+var _ = Describe("useAWSOnly", func() {
+	It("returns true for explicit URL with nil config (no OCM login)", func() {
+		Expect(useAWSOnly(nil, nil, "https://api.example.com")).To(BeTrue())
+	})
+
+	It("returns false for explicit URL when OCM config is armed via client credentials", func() {
+		cfg := &config.Config{
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			URL:          "https://api.openshift.com",
+			TokenURL:     "https://sso.example.com",
+		}
+		Expect(useAWSOnly(cfg, nil, "https://api.example.com")).To(BeFalse())
+	})
+
+	It("returns true for stored hyperfleet URL when OCM access token is expired", func() {
+		expiredToken := MakeTokenString("Bearer", -10*time.Minute)
+		cfg := &config.Config{
+			AccessToken:   expiredToken,
+			ClientID:      "client-id",
+			URL:           "https://api.openshift.com",
+			TokenURL:      "https://sso.example.com",
+			HyperfleetURL: "https://api.example.com",
+		}
+		Expect(useAWSOnly(cfg, nil, "")).To(BeTrue())
+	})
+
+	It("returns false when no hyperfleet URL is configured", func() {
+		cfg := &config.Config{
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			URL:          "https://api.openshift.com",
+			TokenURL:     "https://sso.example.com",
+		}
+		Expect(useAWSOnly(cfg, nil, "")).To(BeFalse())
+	})
+})

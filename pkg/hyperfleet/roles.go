@@ -7,11 +7,12 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
-// ComputeRolesRef builds the AWSRolesRef from an operator roles prefix and AWS account ID.
-// Role names follow the convention established by the Platform API IAM CloudFormation template.
-func ComputeRolesRef(prefix, accountID string) hypershiftv1beta1.AWSRolesRef {
+// ComputeRolesRef builds the AWSRolesRef from an operator roles prefix, AWS account ID, and
+// partition. Role names follow the convention established by the Platform API IAM CloudFormation
+// template.
+func ComputeRolesRef(prefix, accountID, partition string) hypershiftv1beta1.AWSRolesRef {
 	arn := func(suffix string) string {
-		return fmt.Sprintf("arn:aws:iam::%s:role/%s%s", accountID, prefix, suffix)
+		return fmt.Sprintf("arn:%s:iam::%s:role/%s%s", partition, accountID, prefix, suffix)
 	}
 	return hypershiftv1beta1.AWSRolesRef{
 		IngressARN:              arn("-ingress"),

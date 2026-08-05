@@ -19,9 +19,10 @@ func ExplicitURL() string { return hyperfleetURL }
 
 // SetURL seeds the hyperfleet URL from an external source (e.g. stored config)
 // when the --hyperfleet-url flag was not passed explicitly. A flag value always
-// takes precedence: if Enabled() is already true, this is a no-op.
+// takes precedence: if Enabled() is already true, this is a no-op. Non-HTTPS
+// URLs are silently rejected to prevent cleartext endpoints from being used.
 func SetURL(url string) {
-	if hyperfleetURL == "" {
+	if hyperfleetURL == "" && ValidateURL(url) == nil {
 		hyperfleetURL = url
 	}
 }
