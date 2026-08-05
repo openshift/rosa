@@ -536,7 +536,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 	}
 	if ch.profile.ClusterConfig.AutoscalerEnabled {
 		if !ch.profile.ClusterConfig.Autoscale {
-			return nil, errors.New("Autoscaler is enabled without having enabled the autoscale field") // nolint
+			return nil, errors.New("Autoscaler is enabled without having enabled the autoscale field") //nolint:staticcheck
 		}
 		autoscaler := &ClusterConfigure.Autoscaler{
 			AutoscalerBalanceSimilarNodeGroups:    true,

@@ -417,7 +417,7 @@ var _ = Describe("Healthy check",
 					ingressPrivate := "false"
 					if clusterConfig.Private {
 						private = constants.Yes
-						ingressPrivate = "true" // nolint
+						ingressPrivate = "true"
 					}
 
 					By("Describe the cluster and check private field")

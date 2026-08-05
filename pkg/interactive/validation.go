@@ -70,7 +70,6 @@ func IsURL(val interface{}) error {
 // https://github.com/openshift/kubernetes/blob/91607f5d750ba4002f87d34a12ae1cfd45b45b81/openshift-kube-apiserver/admission/customresourcevalidation/oauth/helpers.go#L13
 // and denies any [*.]github.com hostnames
 // https://github.com/openshift/kubernetes/blob/258f1d5fb6491ba65fd8201c827e179432430627/openshift-kube-apiserver/admission/customresourcevalidation/oauth/validate_github.go#L49
-// nolint
 func IsValidHostname(val interface{}) error {
 	hostname := val.(string)
 	if hostname == "" {
@@ -79,6 +78,7 @@ func IsValidHostname(val interface{}) error {
 	if hostname == "github.com" || strings.HasSuffix(hostname, ".github.com") {
 		return fmt.Errorf("%s", fmt.Sprintf("'%s' hostname cannot be equal to [*.]github.com", hostname))
 	}
+	//nolint:staticcheck
 	if !(len(validation.IsDNS1123Subdomain(hostname)) == 0 || netutils.ParseIPSloppy(hostname) != nil) {
 		return fmt.Errorf("%s", fmt.Sprintf("'%s' hostname must be a valid DNS subdomain or IP address", hostname))
 	}

@@ -1360,28 +1360,28 @@ var _ = Describe("Edit nodepool",
 					{
 						"max surge":       "0",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprintf("The value of only one attribute, %s", //nolint
+						"errMsg": fmt.Sprintf("The value of only one attribute, %s",
 							eitherMsg+
 								zeroMsg),
 					},
 					{
 						"max surge":       "0%",
 						"max unavailable": "0%",
-						"errMsg": fmt.Sprint("The value of only one attribute, " + //nolint
+						"errMsg": fmt.Sprint("The value of only one attribute, " +
 							eitherMsg +
 							zeroMsg),
 					},
 					{
 						"max surge":       "0",
 						"max unavailable": "1%",
-						"errMsg": fmt.Sprint("Attribute " + //nolint
+						"errMsg": fmt.Sprint("Attribute " +
 							bothMsg +
 							sameUnitMsg),
 					},
 					{
 						"max surge":       "1%",
 						"max unavailable": "0",
-						"errMsg": fmt.Sprint("Attribute " + //nolint
+						"errMsg": fmt.Sprint("Attribute " +
 							bothMsg +
 							sameUnitMsg),
 					},

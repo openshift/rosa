@@ -35,7 +35,7 @@ import (
 	client "github.com/openshift/rosa/pkg/aws/api_interface"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/reporter" //nolint:depguard
 )
 
 const (
@@ -1129,11 +1129,11 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool,
 	err = c.detachOperatorRolePolicies(role)
 	if err != nil {
 		if awserr.IsNoSuchEntityException(err) {
-			fmt.Printf("Entity does not exist: %s", err)
+			fmt.Printf("Entity does not exist: %s", err) //nolint:forbidigo
 			err = nil
 		}
 		if awserr.IsDeleteConfictException(err) {
-			fmt.Printf("Unable to detach operator role policy: %s", err)
+			fmt.Printf("Unable to detach operator role policy: %s", err) //nolint:forbidigo
 			err = nil
 		}
 		if err != nil {
@@ -1239,11 +1239,11 @@ func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPol
 	}
 	if err != nil {
 		if awserr.IsNoSuchEntityException(err) {
-			fmt.Printf("Entity does not exist: %s", err)
+			fmt.Printf("Entity does not exist: %s", err) //nolint:forbidigo
 			err = nil
 		}
 		if awserr.IsDeleteConfictException(err) {
-			fmt.Printf("Unable to detach account role policy: %s", err)
+			fmt.Printf("Unable to detach account role policy: %s", err) //nolint:forbidigo
 			err = nil
 		}
 		if err != nil {

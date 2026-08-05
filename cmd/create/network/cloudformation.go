@@ -1,7 +1,8 @@
 package network
 
 // This file is used for binary builds
-// nolint:lll
+//
+//nolint:lll
 const CloudFormationTemplateFile = `
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template to create a ROSA Quickstart default VPC.

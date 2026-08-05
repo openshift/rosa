@@ -3,7 +3,7 @@ package machinepool
 import (
 	"fmt"
 
-	"github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/core" //nolint:depguard
 )
 
 func ValidateKubeletConfig(input interface{}) error {

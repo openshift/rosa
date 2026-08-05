@@ -306,7 +306,6 @@ var _ = Describe("Edit cluster",
 
 				clusterDetail, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).ToNot(HaveOccurred())
-				// nolint
 				expectedUWMValue := UWMEnabled
 				recoverUWMStatus := false
 				if clusterConfig.DisableWorkloadMonitoring {
@@ -1295,7 +1294,6 @@ var _ = Describe("Classic cluster creation validation",
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).To(BeNil())
 
-				// nolint
 				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
 				rosalCommand = config.GenerateCommand(command)
 
@@ -3084,7 +3082,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					case "Support":
 						accountRoles[r.RoleName] = fmt.Sprintf("%s/ROSASRESupportPolicy",
 							arnPrefix)
-					case "Worker": // nolint:goconst
+					case "Worker":
 						accountRoles[r.RoleName] = fmt.Sprintf("%s/ROSAWorkerInstancePolicy",
 							arnPrefix)
 					}
@@ -3454,7 +3452,7 @@ var _ = Describe("Create cluster with availability zones testing",
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 				mpID := "mp-52691"
-				machineType := "m5.2xlarge" // nolint:goconst
+				machineType := "m5.2xlarge"
 
 				if profile.ClusterConfig.BYOVPC || profile.ClusterConfig.Zones == "" {
 					SkipTestOnFeature("create rosa cluster with availability zones")

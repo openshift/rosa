@@ -25,14 +25,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/arguments" //nolint:depguard
 	client "github.com/openshift/rosa/pkg/aws/api_interface"
-	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder" //nolint:depguard
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	rprtr "github.com/openshift/rosa/pkg/reporter" //nolint:depguard
 )
 
 // AWS accepted role name: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
@@ -58,7 +58,8 @@ var (
 // second,is for IPv4 CIDR range validation
 // third pattern is to validate domains
 // and the fifth petterrn is to be able to remove the existing no-proxy value by typing empty string ("").
-// nolint
+//
+//nolint:lll
 var UserNoProxyRE = regexp.MustCompile(
 	`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$|^(.?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^""$`,
 )
@@ -189,16 +190,16 @@ func GetAWSClientForUserRegion(reporter rprtr.Logger, logger *logrus.Logger,
 	awsRegionInUserConfig, err := GetRegion(arguments.GetRegion())
 	if err != nil {
 		reporter.Errorf("Error getting region: %v", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo
 	}
 	if awsRegionInUserConfig == "" {
 		reporter.Errorf("AWS Region not set")
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo
 	}
 	if !helper.Contains(supportedRegions, awsRegionInUserConfig) {
 		reporter.Errorf("Unsupported region '%s', available regions: %s",
 			awsRegionInUserConfig, helper.SliceToSortedString(supportedRegions))
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo
 	}
 
 	// Create the AWS client:
@@ -209,7 +210,7 @@ func GetAWSClientForUserRegion(reporter rprtr.Logger, logger *logrus.Logger,
 		Build()
 	if err != nil {
 		reporter.Errorf("Error creating aws client for stack validation: %v", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo
 	}
 	regionUsedForInit, err := client.GetClusterRegionTagForUser(AdminUserName)
 	if err != nil || regionUsedForInit == "" {
@@ -220,7 +221,7 @@ func GetAWSClientForUserRegion(reporter rprtr.Logger, logger *logrus.Logger,
 		if !helper.Contains(supportedRegions, regionUsedForInit) {
 			reporter.Errorf("Unsupported region '%s', available regions: %s",
 				regionUsedForInit, helper.SliceToSortedString(supportedRegions))
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 		// Create the AWS client with the region used in the init
 		// So we can check for the stack in that region
@@ -231,7 +232,7 @@ func GetAWSClientForUserRegion(reporter rprtr.Logger, logger *logrus.Logger,
 			Build()
 		if err != nil {
 			reporter.Errorf("Error creating aws client for stack validation: %v", err)
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 		return awsClient
 	}

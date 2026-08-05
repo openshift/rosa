@@ -54,15 +54,15 @@ import (
 	"github.com/zgalor/weberr"
 
 	client "github.com/openshift/rosa/pkg/aws/api_interface"
-	"github.com/openshift/rosa/pkg/aws/profile"
-	regionflag "github.com/openshift/rosa/pkg/aws/region"
+	"github.com/openshift/rosa/pkg/aws/profile"           //nolint:depguard
+	regionflag "github.com/openshift/rosa/pkg/aws/region" //nolint:depguard
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/logging"
-	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/reporter" //nolint:depguard
 )
 
 var (
@@ -272,7 +272,7 @@ func CreateNewClientOrExit(logger *logrus.Logger, reporter reporter.Logger) Clie
 		Build()
 	if err != nil {
 		reporter.Errorf("Failed to create AWS client: %v", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo
 	}
 
 	return awsClient
@@ -959,14 +959,14 @@ func (c *awsClient) ValidateAccessKeys(AccessKey *AccessKey) error {
 			if awserr.IsInvalidTokenException(err) {
 				wait := time.Duration((i * 200)) * time.Millisecond
 				waited := time.Since(start)
-				logger.Debug(fmt.Printf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
+				logger.Debug(fmt.Sprintf("InvalidClientTokenId, waited %.2f\n", waited.Seconds()))
 				time.Sleep(wait)
 			}
 
 			if awserr.IsAccessDeniedException(err) {
 				wait := time.Duration((i * 200)) * time.Millisecond
 				waited := time.Since(start)
-				logger.Debug(fmt.Printf("AccessDenied, waited %.2f\n", waited.Seconds()))
+				logger.Debug(fmt.Sprintf("AccessDenied, waited %.2f\n", waited.Seconds()))
 				time.Sleep(wait)
 			}
 

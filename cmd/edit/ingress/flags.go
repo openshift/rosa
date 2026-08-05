@@ -92,7 +92,6 @@ func addIngressV2Flags(flags *pflag.FlagSet) {
 		&args.componentRoutes,
 		componentRoutesFlag,
 		"",
-		//nolint:lll
 		"Component route settings. Specify one or more routes to update; routes not specified remain unchanged. "+
 			"Available keys are [oauth, console, downloads] (HCP clusters support console and downloads only). "+
 			"Each route requires a hostname and tlsSecretRef. To clear a route, set both to empty values. "+

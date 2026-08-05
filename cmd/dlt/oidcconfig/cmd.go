@@ -49,7 +49,6 @@ var Cmd = &cobra.Command{
 }
 
 const (
-	//nolint
 	OidcConfigIdFlag          = "oidc-config-id"
 	prefixForPrivateKeySecret = "rosa-private-key-"
 )

@@ -8,7 +8,7 @@ import (
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/rosa" //nolint:depguard
 )
 
 const (

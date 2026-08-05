@@ -282,7 +282,6 @@ var _ = Describe("Create machinepool",
 			labels.FedRAMP,
 			func() {
 				By("Create a spot machinepool on the cluster")
-				// nolint:goconst
 				machinePoolName := "spotmp"
 				output, err := machinePoolService.CreateMachinePool(
 					clusterID,
@@ -299,7 +298,6 @@ var _ = Describe("Create machinepool",
 						clusterID))
 
 				By("Create another machinepool without spot instances")
-				// nolint:goconst
 				machinePoolName = "nospotmp"
 				output, err = machinePoolService.CreateMachinePool(
 					clusterID,

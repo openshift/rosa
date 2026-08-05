@@ -3,7 +3,7 @@ package roles
 import (
 	errors "github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/arguments" //nolint:depguard
 	"github.com/openshift/rosa/pkg/ocm"
 )
 

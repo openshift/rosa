@@ -13,11 +13,11 @@ import (
 	v1 "github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
+	"github.com/spf13/cobra" //nolint:depguard
 
 	"github.com/openshift/rosa/pkg/aws"
-	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/interactive" //nolint:depguard
+	"github.com/openshift/rosa/pkg/rosa"        //nolint:depguard
 )
 
 // To clear existing labels in interactive mode, the user enters "" as an empty list value
@@ -102,13 +102,13 @@ func GetTaints(cmd *cobra.Command, r *rosa.Runtime, existingTaints []*cmv1.Taint
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 	}
 	taintBuilders, err := ParseTaints(inputTaints)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo
 	}
 	return taintBuilders
 }
@@ -218,7 +218,7 @@ func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string) map[str
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid set of tags: %s", err)
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 		if len(tagsInput) > 0 {
 			tags = strings.Split(tagsInput, ",")
@@ -227,7 +227,7 @@ func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string) map[str
 	if len(tags) > 0 {
 		if err := aws.UserTagValidator(tags); err != nil {
 			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 		delim := aws.GetTagsDelimiter(tags)
 		for _, tag := range tags {
@@ -260,13 +260,13 @@ func GetLabelMap(cmd *cobra.Command, r *rosa.Runtime, existingLabels map[string]
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid comma-separated list of attributes: %s", err)
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 	}
 	labelMap, err := ParseLabels(inputLabels)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo
 	}
 	return labelMap
 }
