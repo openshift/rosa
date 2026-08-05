@@ -26,6 +26,8 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/color"
 	"github.com/openshift/rosa/pkg/commands"
+	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/reporter"
 	versionUtils "github.com/openshift/rosa/pkg/version"
@@ -37,8 +39,18 @@ var root = &cobra.Command{
 	Long: "Command line tool for Red Hat OpenShift Service on AWS.\n" +
 		"For further documentation visit " +
 		"https://access.redhat.com/documentation/en-us/red_hat_openshift_service_on_aws\n",
-	PersistentPreRun: versionCheck,
-	Args:             cobra.NoArgs,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		versionCheck(cmd, args)
+		// Populate the hyperfleet URL from saved config when --hyperfleet-url
+		// was not passed on the command line. This allows commands to route to
+		// the Platform API without repeating the flag on every invocation.
+		if !hyperfleet.Enabled() {
+			if cfg, err := config.Load(); err == nil && cfg != nil {
+				hyperfleet.SetURL(cfg.HyperfleetURL)
+			}
+		}
+	},
+	Args: cobra.NoArgs,
 }
 
 func init() {
@@ -46,6 +58,7 @@ func init() {
 	fs := root.PersistentFlags()
 	color.AddFlag(root)
 	arguments.AddDebugFlag(fs)
+	hyperfleet.AddFlags(root)
 
 	// Register the subcommands:
 	commands.RegisterCommands(root)

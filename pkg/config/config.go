@@ -47,17 +47,18 @@ var (
 
 // Config is the type used to store the configuration of the client.
 type Config struct {
-	AccessToken  string   `json:"access_token,omitempty" doc:"Bearer access token."`
-	ClientID     string   `json:"client_id,omitempty" doc:"OpenID client identifier."`
-	ClientSecret string   `json:"client_secret,omitempty" doc:"OpenID client secret."`
-	Insecure     bool     `json:"insecure,omitempty" doc:"Enables insecure communication with the server."`
-	RefreshToken string   `json:"refresh_token,omitempty" doc:"Offline or refresh token."`
-	Scopes       []string `json:"scopes,omitempty" doc:"OpenID scope."`
-	TokenURL     string   `json:"token_url,omitempty" doc:"OpenID token URL."`
-	URL          string   `json:"url,omitempty" doc:"URL of the API gateway."`
-	UserAgent    string   `json:"user_agent,omitempty" doc:"OCM client UserAgent. Default value is used if not set."`
-	Version      string   `json:"version,omitempty" doc:"OCM client version. Default value is used if not set."`
-	FedRAMP      bool     `json:"fedramp,omitempty" doc:"Indicates FedRAMP."`
+	AccessToken   string   `json:"access_token,omitempty" doc:"Bearer access token."`
+	ClientID      string   `json:"client_id,omitempty" doc:"OpenID client identifier."`
+	ClientSecret  string   `json:"client_secret,omitempty" doc:"OpenID client secret."`
+	Insecure      bool     `json:"insecure,omitempty" doc:"Enables insecure communication with the server."`
+	RefreshToken  string   `json:"refresh_token,omitempty" doc:"Offline or refresh token."`
+	Scopes        []string `json:"scopes,omitempty" doc:"OpenID scope."`
+	TokenURL      string   `json:"token_url,omitempty" doc:"OpenID token URL."`
+	URL           string   `json:"url,omitempty" doc:"URL of the API gateway."`
+	UserAgent     string   `json:"user_agent,omitempty" doc:"OCM client UserAgent. Default value is used if not set."`
+	Version       string   `json:"version,omitempty" doc:"OCM client version. Default value is used if not set."`
+	FedRAMP       bool     `json:"fedramp,omitempty" doc:"Indicates FedRAMP."`
+	HyperfleetURL string   `json:"hyperfleet_url,omitempty" doc:"Platform API v2 endpoint URL."`
 }
 
 var DisallowedSetConfigProperties = []string{"scopes"}
@@ -150,19 +151,19 @@ func loadFromFile() (cfg *Config, err error) {
 		return
 	}
 	if err != nil {
-		err = fmt.Errorf("Failed to check if config file '%s' exists: %v", file, err)
+		err = fmt.Errorf("failed to check if config file '%s' exists: %w", file, err)
 		return
 	}
 	// #nosec G304
 	data, err := os.ReadFile(file)
 	if err != nil {
-		err = fmt.Errorf("Failed to read config file '%s': %v", file, err)
+		err = fmt.Errorf("failed to read config file '%s': %w", file, err)
 		return
 	}
 	cfg = new(Config)
 	err = json.Unmarshal(data, cfg)
 	if err != nil {
-		err = fmt.Errorf("Failed to parse config file '%s': %v", file, err)
+		err = fmt.Errorf("failed to parse config file '%s': %w", file, err)
 		return
 	}
 	return
@@ -191,11 +192,11 @@ func Save(cfg *Config) error {
 	dir := filepath.Dir(file)
 	err = os.MkdirAll(dir, os.FileMode(0755))
 	if err != nil {
-		return fmt.Errorf("Failed to create directory %s: %v", dir, err)
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 	err = os.WriteFile(file, data, 0600)
 	if err != nil {
-		return fmt.Errorf("Failed to write file '%s': %v", file, err)
+		return fmt.Errorf("failed to write file '%s': %w", file, err)
 	}
 	return nil
 }
@@ -265,22 +266,22 @@ func (c *Config) GetData(key string) (value string, err error) {
 	parser := new(jwt.Parser)
 	token, _, err := parser.ParseUnverified(c.AccessToken, jwt.MapClaims{})
 	if err != nil {
-		err = fmt.Errorf("Failed to parse token: %v", err)
+		err = fmt.Errorf("failed to parse token: %w", err)
 		return
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		err = fmt.Errorf("Expected map claims but got %T", claims)
+		err = fmt.Errorf("expected map claims but got %T", claims)
 		return
 	}
 	claim, ok := claims[key]
 	if !ok {
-		err = fmt.Errorf("Token does not contain the '%s' claim", key)
+		err = fmt.Errorf("token does not contain the '%s' claim", key)
 		return
 	}
 	value, ok = claim.(string)
 	if !ok {
-		err = fmt.Errorf("Expected string '%s' but got %T", key, claim)
+		err = fmt.Errorf("expected string '%s' but got %T", key, claim)
 		return
 	}
 
@@ -301,7 +302,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		var accessToken *jwt.Token
 		accessToken, err = ParseToken(c.AccessToken)
 		if err != nil {
-			err = fmt.Errorf("Failed to parse token: %v", err)
+			err = fmt.Errorf("failed to parse token: %w", err)
 			return
 		}
 		expires, left, err = getTokenExpiry(accessToken, now)
@@ -325,7 +326,7 @@ func (c *Config) Armed() (armed bool, err error) {
 		var refreshToken *jwt.Token
 		refreshToken, err = ParseToken(c.RefreshToken)
 		if err != nil {
-			err = fmt.Errorf("Failed to parse token: %v", err)
+			err = fmt.Errorf("failed to parse token: %w", err)
 			return
 		}
 		expires, left, err = getTokenExpiry(refreshToken, now)
