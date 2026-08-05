@@ -308,7 +308,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	prefix := args.prefix
 	if interactive.Enabled() {
-		prefix, err = interactive.GetString(interactive.Input{
+		prefix, err = r.Prompter.GetString(interactive.Input{
 			Question: "Role prefix",
 			Help:     cmd.Flags().Lookup("prefix").Usage,
 			Default:  prefix,
@@ -338,7 +338,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	permissionsBoundary := args.permissionsBoundary
 	if interactive.Enabled() {
-		permissionsBoundary, err = interactive.GetString(interactive.Input{
+		permissionsBoundary, err = r.Prompter.GetString(interactive.Input{
 			Question: "Permissions boundary ARN",
 			Help:     cmd.Flags().Lookup("permissions-boundary").Usage,
 			Default:  permissionsBoundary,
@@ -362,7 +362,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	path := args.path
 	if interactive.Enabled() {
-		path, err = interactive.GetString(interactive.Input{
+		path, err = r.Prompter.GetString(interactive.Input{
 			Question: "Path",
 			Help:     cmd.Flags().Lookup("path").Usage,
 			Default:  path,
@@ -383,7 +383,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() && !cmd.Flags().Changed("external-id") {
-		args.externalID, err = interactive.GetString(interactive.Input{
+		args.externalID, err = r.Prompter.GetString(interactive.Input{
 			Question: "STS external ID",
 			Help:     cmd.Flags().Lookup("external-id").Usage,
 			Default:  args.externalID,
@@ -404,7 +404,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() {
-		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
+		mode, err = r.Prompter.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
 			os.Exit(1)
@@ -423,38 +423,26 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	createClassic := args.classic
-	if interactive.Enabled() && !isClassicValueSet && !isHostedCPValueSet {
-		createClassic, err = interactive.GetBool(interactive.Input{
-			Question: "Create Classic account roles",
-			Help:     cmd.Flags().Lookup("classic").Usage,
-			Default:  true,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
-		}
-		isClassicValueSet = true
-	}
-
 	createHostedCP := args.hostedCP
 	defaultValue := args.route53RoleArn != "" && args.vpcEndpointRoleArn != ""
-	if interactive.Enabled() && !isHostedCPValueSet && !cmd.Flags().Changed("classic") {
-		createHostedCP, err = interactive.GetBool(interactive.Input{
-			Question: "Create Hosted CP account roles",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-			Default:  defaultValue || !createClassic,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
-		}
-		isHostedCPValueSet = true
+	createClassic, createHostedCP, isClassicValueSet, isHostedCPValueSet, err = promptClassicAndHostedCP(
+		r.Prompter,
+		cmd.Flags().Lookup("classic").Usage,
+		cmd.Flags().Lookup("hosted-cp").Usage,
+		createClassic,
+		createHostedCP,
+		isClassicValueSet,
+		isHostedCPValueSet,
+		cmd.Flags().Changed("classic"),
+		defaultValue,
+	)
+	if err != nil {
+		r.Reporter.Errorf("Expected a valid value: %s", err)
+		os.Exit(1)
 	}
 
 	if interactive.Enabled() && createHostedCP {
-		isHcpSharedVpc, err = interactive.GetBool(interactive.Input{
+		isHcpSharedVpc, err = r.Prompter.GetBool(interactive.Input{
 			Question: "Use account roles for Hosted CP shared VPC?",
 			Help: "Whether or not to set route53/VPC endpoint role ARNs to be used for Hosted CP shared VPC " +
 				"(cross-account VPC)",
@@ -473,7 +461,7 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud && createHostedCP {
-		args.vpcEndpointRoleArn, err = interactive.GetString(interactive.Input{
+		args.vpcEndpointRoleArn, err = r.Prompter.GetString(interactive.Input{
 			Question: "Set VPC endpoint role ARN",
 			Help:     cmd.Flags().Lookup(vpcEndpointRoleArnFlag).Usage,
 			Default:  args.vpcEndpointRoleArn,
@@ -488,7 +476,7 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud && createHostedCP {
-		args.route53RoleArn, err = interactive.GetString(interactive.Input{
+		args.route53RoleArn, err = r.Prompter.GetString(interactive.Input{
 			Question: "Set route53 role ARN",
 			Help:     cmd.Flags().Lookup(route53RoleArnFlag).Usage,
 			Default:  args.route53RoleArn,

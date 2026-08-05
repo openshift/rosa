@@ -42,8 +42,13 @@ type Input struct {
 	Validators     []Validator
 }
 
+// GetString gets string input from the command line using the default prompter.
+func GetString(input Input) (string, error) {
+	return defaultPrompter.GetString(input)
+}
+
 // Gets string input from the command line
-func GetString(input Input) (a string, err error) {
+func (s *SurveyPrompter) GetString(input Input) (a string, err error) {
 	transformer := survey.TransformString(helper.HandleEscapedEmptyString)
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
@@ -67,8 +72,13 @@ func GetString(input Input) (a string, err error) {
 	return
 }
 
+// GetInt gets int input from the command line using the default prompter.
+func GetInt(input Input) (int, error) {
+	return defaultPrompter.GetInt(input)
+}
+
 // Gets int number input from the command line
-func GetInt(input Input) (a int, err error) {
+func (s *SurveyPrompter) GetInt(input Input) (a int, err error) {
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(int)
 	if !ok {
@@ -105,8 +115,13 @@ func parseInt(str string) (num int, err error) {
 	return strconv.Atoi(str)
 }
 
+// GetFloat gets float input from the command line using the default prompter.
+func GetFloat(input Input) (float64, error) {
+	return defaultPrompter.GetFloat(input)
+}
+
 // Gets float number input from the command line
-func GetFloat(input Input) (a float64, err error) {
+func (s *SurveyPrompter) GetFloat(input Input) (a float64, err error) {
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(float64)
 	if !ok {
@@ -145,8 +160,13 @@ func parseFloat(str string) (num float64, err error) {
 	return strconv.ParseFloat(str, commonUtils.MaxByteSize)
 }
 
-// Asks for multiple options selection
+// GetMultipleOptions asks for multiple options using the default prompter.
 func GetMultipleOptions(input Input) ([]string, error) {
+	return defaultPrompter.GetMultipleOptions(input)
+}
+
+// Asks for multiple options selection
+func (s *SurveyPrompter) GetMultipleOptions(input Input) ([]string, error) {
 	core.DisableColor = !color.UseColor()
 	var err error
 	res := make([]string, 0)
@@ -171,8 +191,13 @@ func GetMultipleOptions(input Input) ([]string, error) {
 	return res, err
 }
 
+// GetOption asks for option selection using the default prompter.
+func GetOption(input Input) (string, error) {
+	return defaultPrompter.GetOption(input)
+}
+
 // Asks for option selection in the command line
-func GetOption(input Input) (a string, err error) {
+func (s *SurveyPrompter) GetOption(input Input) (a string, err error) {
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
 	if !ok {
@@ -235,8 +260,13 @@ func containsString(s []string, input string) bool {
 	return false
 }
 
+// GetBool asks for true/false using the default prompter.
+func GetBool(input Input) (bool, error) {
+	return defaultPrompter.GetBool(input)
+}
+
 // Asks for true/false value in the command line
-func GetBool(input Input) (a bool, err error) {
+func (s *SurveyPrompter) GetBool(input Input) (a bool, err error) {
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(bool)
 	if !ok {
@@ -254,8 +284,13 @@ func GetBool(input Input) (a bool, err error) {
 	return
 }
 
+// GetIPNet asks for a CIDR using the default prompter.
+func GetIPNet(input Input) (net.IPNet, error) {
+	return defaultPrompter.GetIPNet(input)
+}
+
 // Asks for CIDR value in the command line
-func GetIPNet(input Input) (a net.IPNet, err error) {
+func (s *SurveyPrompter) GetIPNet(input Input) (a net.IPNet, err error) {
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(net.IPNet)
 	if !ok {
@@ -295,8 +330,13 @@ func GetIPNet(input Input) (a net.IPNet, err error) {
 	return
 }
 
+// GetPassword gets password input using the default prompter.
+func GetPassword(input Input) (string, error) {
+	return defaultPrompter.GetPassword(input)
+}
+
 // Gets password input from the command line
-func GetPassword(input Input) (a string, err error) {
+func (s *SurveyPrompter) GetPassword(input Input) (a string, err error) {
 	core.DisableColor = !color.UseColor()
 	question := input.Question
 	if !input.Required {
@@ -313,8 +353,13 @@ func GetPassword(input Input) (a string, err error) {
 	return
 }
 
+// GetCert gets a certificate path using the default prompter.
+func GetCert(input Input) (string, error) {
+	return defaultPrompter.GetCert(input)
+}
+
 // Gets path to certificate file from the command line
-func GetCert(input Input) (a string, err error) {
+func (s *SurveyPrompter) GetCert(input Input) (a string, err error) {
 	core.DisableColor = !color.UseColor()
 	dflt, ok := input.Default.(string)
 	if !ok {

@@ -31,7 +31,7 @@ var _ = Describe("Mode Test", func() {
 			SetModeKey("invalid_mode")
 			_, err := GetMode()
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Invalid mode. Allowed values are %v", Modes)))
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("invalid mode. Allowed values are %v", Modes)))
 		})
 	})
 

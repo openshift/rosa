@@ -56,7 +56,7 @@ func GetMode() (string, error) {
 		return "", nil
 	}
 	if !arguments.IsValidMode(Modes, mode) {
-		return "", fmt.Errorf("Invalid mode. Allowed values are %s", Modes)
+		return "", fmt.Errorf("invalid mode. Allowed values are %s", Modes)
 	}
 	return mode, nil
 }
@@ -66,7 +66,11 @@ func modeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 }
 
 func GetOptionMode(cmd *cobra.Command, mode string, question string) (string, error) {
-	mode, err := GetOption(Input{
+	return defaultPrompter.GetOptionMode(cmd, mode, question)
+}
+
+func (s *SurveyPrompter) GetOptionMode(cmd *cobra.Command, mode string, question string) (string, error) {
+	mode, err := s.GetOption(Input{
 		Question: question,
 		Help:     cmd.Flags().Lookup(Mode).Usage,
 		Default:  mode,

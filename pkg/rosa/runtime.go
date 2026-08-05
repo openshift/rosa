@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -24,13 +25,19 @@ type Runtime struct {
 	ClusterKey string
 	Cluster    *cmv1.Cluster
 	Spinner    *spinner.Spinner
+	Prompter   interactive.Prompter
 }
 
 func NewRuntime() *Runtime {
 	r := reporter.CreateReporter()
 	logger := logging.NewLogger()
 	spinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	return &Runtime{Reporter: output.NewStructuredReporter(r), Logger: logger, Spinner: spinner}
+	return &Runtime{
+		Reporter: output.NewStructuredReporter(r),
+		Logger:   logger,
+		Spinner:  spinner,
+		Prompter: &interactive.SurveyPrompter{},
+	}
 }
 
 // WithOCM Adds an OCM client to the runtime. Requires a deferred call to `.Cleanup()` to close connections.

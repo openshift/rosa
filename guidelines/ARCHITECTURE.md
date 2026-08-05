@@ -207,6 +207,10 @@ The codebase does not yet follow this target architecture. Today:
   dependencies). In the target architecture, packages under `internal/` should
   be organized into `internal/core/` (private core implementation) or
   `internal/cli/` (shared CLI infrastructure).
+- Interactive prompting is still under `pkg/interactive` / `pkg/rosa.Runtime`.
+  Unit tests inject a `Prompter` on `Runtime` (same idea as `confirmFn` in
+  `cmd/dlt/cluster`). Production uses `SurveyPrompter`. This is the current
+  pattern, not the final `internal/cli/` move.
 
 The migration is incremental. See [`pkg-architecture.md`](refactor/pkg-architecture.md) for
 the per-package classification and split work required.

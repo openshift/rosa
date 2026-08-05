@@ -78,7 +78,7 @@ Target location: `cmd/` (commands) or `internal/cli/` (shared CLI code). Each en
 | `internal/cli/commandbuilder/roles` (`pkg/aws/commandbuilder/helper/roles`) | Generates manual-mode AWS CLI commands for operator roles. |
 | `internal/cli/commands` (`pkg/commands`) | Single-function command registry wiring all subcommands onto root `cobra.Command`. |
 | `internal/cli/debug` (`pkg/debug`) | Adds the `--debug` pflag and tracks its boolean state. |
-| `internal/cli/interactive` (`pkg/interactive`) | `survey`-based `GetString`, `GetBool`, `GetInt`, `GetOption`, `GetPassword`, validation combinators, `--interactive` pflag. |
+| `internal/cli/interactive` (`pkg/interactive`) | `survey`-based `GetString`, `GetBool`, `GetInt`, `GetOption`, `GetPassword`, validation combinators, `--interactive` pflag. Interim: `Prompter` / `SurveyPrompter` for unit tests; package `Get*` stay as wrappers. Target path still `internal/cli/interactive`. |
 | `internal/cli/interactive/confirm` (`pkg/interactive/confirm`) | `--yes` flag and confirmation prompts using `survey`. |
 | `internal/cli/interactive/consts` (`pkg/interactive/consts`) | Single constant (`SkipSelectionOption`) used exclusively by the interactive layer. |
 | `internal/cli/interactive/logforwarding` (`pkg/interactive/logforwarding`) | Interactive prompts for CloudWatch/S3 log forwarding config. |
@@ -91,7 +91,7 @@ Target location: `cmd/` (commands) or `internal/cli/` (shared CLI code). Each en
 | `internal/cli/region` (`pkg/aws/region`) | Adds the `--region` pflag. |
 | `internal/cli/reporter` (`pkg/reporter`) | `Logger` interface and terminal-aware reporter printing colored messages to stdout/stderr. |
 | `internal/cli/roles` (`pkg/helper/roles`) | Needs split. CLI workflow orchestration: auto/manual mode branching, `confirm.Prompt`, `r.Reporter.*`, `fmt.Println`, `os.Exit`. Reusable logic (role name generation, ARN validation, managed policy validation, tag checks) moves to `pkg/operatorroles`. |
-| `internal/cli/runtime` (`pkg/rosa`) | Central `Runtime` struct bundling Reporter, Logger, OCMClient, AWSClient, plus `DefaultRunner`/`RuntimeVisitor` Cobra wrappers. The CLI lifecycle harness. |
+| `internal/cli/runtime` (`pkg/rosa`) | Central `Runtime` struct bundling Reporter, Logger, OCMClient, AWSClient, Prompter, plus `DefaultRunner`/`RuntimeVisitor` Cobra wrappers. The CLI lifecycle harness. Target path still `internal/cli/runtime`. |
 | `cmd/` (`pkg/options/iamserviceaccount`) | Builds full `cobra.Command` structs and wires flags for IAM service account create/delete/describe. |
 | `cmd/` (`pkg/options/machinepool`) | Builds `cobra.Command` and wires flags for machine pool creation. |
 | `cmd/` (`pkg/options/network`) | Builds `cobra.Command` and instantiates `reporter.CreateReporter()`. |
