@@ -21,7 +21,7 @@ github.com/alessio/shellescape
 # github.com/apparentlymart/go-cidr v1.1.0
 ## explicit
 github.com/apparentlymart/go-cidr/cidr
-# github.com/aws/aws-sdk-go-v2 v1.43.2
+# github.com/aws/aws-sdk-go-v2 v1.43.3
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/aws
 github.com/aws/aws-sdk-go-v2/aws/arn
@@ -71,10 +71,10 @@ github.com/aws/aws-sdk-go-v2/credentials/stscreds
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
-# github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.31
+# github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.34
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/internal/configsources
-# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.31
+# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.34
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
 # github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.32
@@ -97,6 +97,11 @@ github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types
 github.com/aws/aws-sdk-go-v2/service/ec2
 github.com/aws/aws-sdk-go-v2/service/ec2/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ec2/types
+# github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing v1.36.3
+## explicit; go 1.24
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing/internal/endpoints
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing/types
 # github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.0
 ## explicit; go 1.20
 github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2
@@ -179,7 +184,7 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.27.5
+# github.com/aws/smithy-go v1.27.6
 ## explicit; go 1.24
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
