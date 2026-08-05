@@ -6,10 +6,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/ocm"
-	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/rosa" //nolint:depguard
 )
 
-var exitFunc = os.Exit
+var exitFunc = os.Exit //nolint:forbidigo
 
 // CheckIfHypershiftClusterOrExit will exit if the input cluster is not an Hypershift cluster
 func CheckIfHypershiftClusterOrExit(r *rosa.Runtime, cluster *cmv1.Cluster) {

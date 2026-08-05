@@ -77,7 +77,7 @@ func Download(url string, filename string) error {
 	}
 
 	// The progress use the same line so print a new line once it's finished downloading
-	fmt.Print("\n")
+	fmt.Print("\n") //nolint:forbidigo
 
 	// Close the file without defer so it can happen before Rename()
 	out.Close()
@@ -158,11 +158,11 @@ func (wc *WriteCounter) Write(p []byte) (int, error) {
 func (wc WriteCounter) PrintProgress() {
 	// Clear the line by using a character return to go back to the start and remove
 	// the remaining characters by filling it with spaces
-	fmt.Printf("\r%s", strings.Repeat(" ", 35))
+	fmt.Printf("\r%s", strings.Repeat(" ", 35)) //nolint:forbidigo
 
 	// Return again and print current status of download
 	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
-	fmt.Printf("\rDownloading... %s complete", readableBytes(wc.Total))
+	fmt.Printf("\rDownloading... %s complete", readableBytes(wc.Total)) //nolint:forbidigo
 }
 
 func readableBytes(b uint64) string {
