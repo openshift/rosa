@@ -874,11 +874,15 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			rosaClient     *rosacli.Client
 			clusterService rosacli.ClusterService
 			upgradeService rosacli.UpgradeService
+			profile        *handler.Profile
 			yStreamVersion string
 			zStreamVersion string
 		)
 
 		BeforeEach(func() {
+			yStreamVersion = ""
+			zStreamVersion = ""
+
 			By("Get the cluster")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
@@ -887,6 +891,9 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			upgradeService = rosaClient.Upgrade
+
+			By("Load the profile")
+			profile = handler.LoadProfileYamlFileByENV()
 
 			By("Skip testing if the cluster is not a HCP cluster")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
@@ -900,6 +907,20 @@ var _ = Describe("ROSA HCP cluster upgrade",
 			Expect(err).ToNot(HaveOccurred())
 			clusterVersion := clusterVersionInfo.RawID
 
+			// Y-stream HCP lanes need the next-minor channel before available_upgrades
+			// populate (same flow as classic cases after ROSAENG-61412 / #3353).
+			if profile.Version == constants.YStreamPreviousVersion {
+				By("Prepare cluster for y-stream upgrade target discovery")
+				upgradingVersion, err := prepareYStreamUpgradeVersion(
+					clusterID,
+					profile.ChannelGroup,
+					clusterService,
+					upgradeService,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				yStreamVersion = upgradingVersion
+			}
+
 			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 			Expect(err).To(BeNil())
 
@@ -910,10 +931,10 @@ var _ = Describe("ROSA HCP cluster upgrade",
 				}
 			}
 
-			By("Get cluster z stream available version")
+			By("Get cluster available upgrade versions")
 			yStreamVersions, zStreamVersions, err := helper.FindUpgradeVersions(availableUpgrades, clusterVersion)
 			Expect(err).To(BeNil())
-			if len(yStreamVersions) != 0 {
+			if yStreamVersion == "" && len(yStreamVersions) != 0 {
 				yStreamVersion = yStreamVersions[len(yStreamVersions)-1]
 			}
 			if len(zStreamVersions) != 0 {
@@ -985,10 +1006,18 @@ var _ = Describe("ROSA HCP cluster upgrade",
 		})
 
 		It("manual upgrade for hcp upgrade  - [id:62929]", labels.Critical, labels.Runtime.Upgrade, func() {
-			targetVersion := zStreamVersion
-			if targetVersion == "" {
+			// On y-1 profiles use the prepared next-minor target; do not prefer a
+			// z-stream when both are advertised on the next-minor channel.
+			var targetVersion string
+			if profile.Version == constants.YStreamPreviousVersion {
 				targetVersion = yStreamVersion
+			} else {
+				targetVersion = zStreamVersion
+				if targetVersion == "" {
+					targetVersion = yStreamVersion
+				}
 			}
+			Expect(targetVersion).ToNot(BeEmpty())
 			By("Try to upgrade the cluster with manual mode and default time ")
 			output, err := upgradeService.Upgrade(
 				"-c", clusterID,
@@ -1107,10 +1136,18 @@ var _ = Describe("ROSA HCP cluster upgrade",
 
 				By("detach managed policies from account role and operator role and update cluster")
 				arbitraryPolicyService = rosaClient.Policy
-				upgradeVersion := zStreamVersion
-				if zStreamVersion == "" {
+				// On y-1 profiles use the prepared next-minor target; do not prefer a
+				// z-stream when both are advertised on the next-minor channel.
+				var upgradeVersion string
+				if profile.Version == constants.YStreamPreviousVersion {
 					upgradeVersion = yStreamVersion
+				} else {
+					upgradeVersion = zStreamVersion
+					if upgradeVersion == "" {
+						upgradeVersion = yStreamVersion
+					}
 				}
+				Expect(upgradeVersion).ToNot(BeEmpty())
 				for r, p := range rolePolicyMap {
 					_, err := arbitraryPolicyService.DetachPolicy(r, []string{p}, "--mode", "auto")
 					Expect(err).To(BeNil())
