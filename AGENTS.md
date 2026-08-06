@@ -39,6 +39,8 @@ Use this file as the starting point for repository context. When this file point
   - CLI command authoring expectations, structure-test alignment, and reporter/output patterns.
 - `guidelines/testing-guidelines.md`
   - Test style, generated-file boundaries, validation paths, and PR-readiness checklist use.
+- `guidelines/workflow-conventions.md`
+  - Request and Result type naming, construction, optional-value handling, and the lifecycle for reusable workflow functions in `pkg/`.
 
 ## Codebase Map
 
