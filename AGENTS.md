@@ -41,6 +41,8 @@ Use this file as the starting point for repository context. When this file point
   - Test style, generated-file boundaries, validation paths, and PR-readiness checklist use.
 - `guidelines/workflow-conventions.md`
   - Request and Result type naming, construction, optional-value handling, and the lifecycle for reusable workflow functions in `pkg/`.
+- `guidelines/error-conventions.md`
+  - Error handling at the CLI/core boundary: wrapping, typed errors, CLI translation, exit codes, and diagnostic context.
 
 ## Codebase Map
 
