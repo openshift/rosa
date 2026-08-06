@@ -1189,9 +1189,6 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(upgradingVersion).ToNot(BeEmpty(), "Failed to find an upgrade target")
 
-				_, _, roleUpgradeVersion, err := helper.GetMajorMinorFromVersion(upgradingVersion)
-				Expect(err).To(BeNil())
-
 				By("Upgrade cluster to verify if there are any prompts to upgrade account roles firstly")
 				scheduledAt := time.Now().UTC().Add(10 * time.Minute)
 				scheduledDate := scheduledAt.Format("2006-01-02")
@@ -1206,46 +1203,21 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				Expect(err).NotTo(BeNil())
 				Expect(output.String()).To(ContainSubstring("Account roles need to be upgraded to proceed"))
 
-				By("Upgrade account roles in auto mode")
-				accountRolePrefix := customProfile.ClusterConfig.Name
-				_, err = ocmResourceService.UpgradeAccountRole(
-					"--prefix", accountRolePrefix,
+				By("Upgrade account and operator roles in auto mode")
+				output, err = ocmResourceService.UpgradeRoles(
+					"-c", clusterID,
+					"--cluster-version", upgradingVersion,
 					"--mode", "auto",
-					"--version", roleUpgradeVersion,
-					"--channel-group", "candidate",
 					"-y",
 				)
 				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("Ensuring account role/policies compatibility for " +
+					"upgrade"))
+				Expect(output.String()).To(ContainSubstring("Starting to upgrade the policies"))
+				Expect(output.String()).To(ContainSubstring("Ensuring operator role/policies compatibility for" +
+					" upgrade"))
 
-				By("Upgrade operator roles in auto mode")
-				output, err = ocmResourceService.UpgradeOperatorRoles(
-					"--cluster", clusterID,
-					"--version", upgradingVersion,
-					"--mode", "auto",
-					"-y",
-				)
-				Expect(err).To(BeNil())
-				Expect(output.String()).To(ContainSubstring("Starting to upgrade the operator IAM roles and " +
-					"policies"))
-				Expect(output.String()).To(ContainSubstring(
-					"policy/%s-openshift-image-registry-installer-cloud-credent' to version '%s'",
-					accountRolePrefix, roleUpgradeVersion))
-				Expect(output.String()).To(ContainSubstring(
-					"policy/%s-openshift-ingress-operator-cloud-credentials' to version '%s'",
-					accountRolePrefix, roleUpgradeVersion))
-				Expect(output.String()).To(ContainSubstring(
-					"policy/%s-openshift-cluster-csi-drivers-ebs-cloud-credenti' to version '%s'",
-					accountRolePrefix, roleUpgradeVersion))
-				Expect(output.String()).To(ContainSubstring(
-					"policy/%s-openshift-cloud-network-config-controller-cloud-' to version '%s'",
-					accountRolePrefix, roleUpgradeVersion))
-				Expect(output.String()).To(ContainSubstring(
-					"policy/%s-openshift-machine-api-aws-cloud-credentials' to version '%s'",
-					accountRolePrefix, roleUpgradeVersion))
-				Expect(output.String()).To(ContainSubstring(
-					"policy/%s-openshift-cloud-credential-operator-cloud-creden' to version '%s'",
-					accountRolePrefix, roleUpgradeVersion))
-				By("Update cluster with --dry-run")
+				By("Verify cluster upgrade no longer requires role upgrades")
 				output, _ = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--version", upgradingVersion,
