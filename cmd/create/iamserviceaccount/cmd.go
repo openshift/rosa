@@ -16,14 +16,17 @@ package iamserviceaccount
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/aws/rolebridge"
+	rosaerrors "github.com/openshift/rosa/pkg/errors"
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -40,7 +43,7 @@ var Cmd = NewCreateIamServiceAccountCommand()
 func CreateIamServiceAccountRunner(
 	userOptions *iamServiceAccountOpts.CreateIamServiceAccountUserOptions,
 ) rosa.CommandRunner {
-	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
+	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, argv []string) (err error) {
 		cluster := r.FetchCluster()
 
 		// Validate cluster has STS enabled
@@ -48,40 +51,89 @@ func CreateIamServiceAccountRunner(
 			return fmt.Errorf("cluster '%s' is not an STS cluster", cluster.Name())
 		}
 
+		// Early feedback before any AWS API call (GetCreator, the OIDC
+		// provider lookup); see "Intentional duplication" in
+		// guidelines/workflow-conventions.md. CreateIAMServiceAccountRequest.
+		// Validate() checks all of this again: pkg/iamserviceaccount may
+		// eventually be called by something other than this CLI, so it must
+		// not assume these checks already ran.
+		//
+		// Usage is shown only for the checks below where a required flag was
+		// not supplied at all: that's the one case where reminding the
+		// caller of the command's flags actually helps. A value that was
+		// supplied but is malformed (an invalid ARN, an empty inline policy)
+		// is explained by its own error message; showing the full flag list
+		// alongside it reads as "your flags are wrong" when they aren't.
+		if len(userOptions.ServiceAccountNames) == 0 {
+			_ = cmd.Usage()
+			return &rosaerrors.ValidationError{
+				Field: "ServiceAccounts", Message: "at least one service account name is required",
+			}
+		}
+		if len(userOptions.PolicyArns) == 0 && userOptions.InlinePolicy == "" {
+			_ = cmd.Usage()
+			return &rosaerrors.ValidationError{Message: "at least one policy ARN or inline policy must be specified"}
+		}
+		for i, policyARN := range userOptions.PolicyArns {
+			if policyARN == "" {
+				return &rosaerrors.ValidationError{
+					Field:   "PolicyARNs",
+					Message: fmt.Sprintf("policy ARN at index %d is empty", i),
+				}
+			}
+			parsed, err := arn.Parse(policyARN)
+			if err != nil {
+				return &rosaerrors.ValidationError{
+					Field:   "PolicyARNs",
+					Message: fmt.Sprintf("policy ARN at index %d is invalid", i),
+					Err:     err,
+				}
+			}
+			if parsed.Service != "iam" || !strings.HasPrefix(parsed.Resource, "policy/") ||
+				strings.HasSuffix(parsed.Resource, "/") {
+				return &rosaerrors.ValidationError{
+					Field:   "PolicyARNs",
+					Message: fmt.Sprintf("policy ARN at index %d is not an IAM policy ARN", i),
+				}
+			}
+		}
+		if userOptions.RoleName == "" && len(userOptions.ServiceAccountNames) > 1 {
+			_ = cmd.Usage()
+			return &rosaerrors.ValidationError{
+				Field:   "RoleName",
+				Message: "role name is required when specifying multiple service accounts",
+			}
+		}
+
+		// nil means "no inline policy requested," which must be decided by
+		// whether the flag was provided, not by what it resolves to: a
+		// file:// reference that resolves to empty content is a request for
+		// an (invalid) empty inline policy, not the absence of one. Checked
+		// here, before any AWS call, as well as in domain validation; see
+		// "Intentional duplication" in guidelines/workflow-conventions.md.
+		var inlinePolicy *string
+		if userOptions.InlinePolicy != "" {
+			resolved, err := resolveInlinePolicy(userOptions.InlinePolicy)
+			if err != nil {
+				return err
+			}
+			if resolved == "" {
+				return &rosaerrors.ValidationError{
+					Field: "InlinePolicy", Message: "inline policy must not be empty when provided",
+				}
+			}
+			if !json.Valid([]byte(resolved)) {
+				return &rosaerrors.ValidationError{
+					Field: "InlinePolicy", Message: "inline policy must be valid JSON",
+				}
+			}
+			inlinePolicy = &resolved
+		}
+
 		// Get AWS creator information to determine partition for FedRAMP
 		creator, err := r.AWSClient.GetCreator()
 		if err != nil {
-			return fmt.Errorf("failed to get AWS creator information: %s", err)
-		}
-
-		// Validate service account names
-		if len(userOptions.ServiceAccountNames) == 0 {
-			return fmt.Errorf("at least one service account name is required")
-		}
-
-		// Validate that at least one policy is specified
-		if len(userOptions.PolicyArns) == 0 && userOptions.InlinePolicy == "" {
-			return fmt.Errorf("at least one policy ARN or inline policy must be specified")
-		}
-
-		// Validate policy ARNs
-		for _, arn := range userOptions.PolicyArns {
-			if err := aws.ARNValidator(arn); err != nil {
-				return fmt.Errorf("invalid policy ARN '%s': %s", arn, err)
-			}
-		}
-
-		// Generate role name if not provided
-		roleName := userOptions.RoleName
-		if roleName == "" {
-			if len(userOptions.ServiceAccountNames) > 1 {
-				return fmt.Errorf("role name is required when specifying multiple service accounts")
-			}
-			roleName = iamserviceaccount.GenerateRoleName(
-				cluster.Name(),
-				userOptions.Namespace,
-				userOptions.ServiceAccountNames[0],
-			)
+			return fmt.Errorf("failed to get AWS creator information: %w", err)
 		}
 
 		serviceAccounts := make([]iamserviceaccount.ServiceAccountIdentifier, len(userOptions.ServiceAccountNames))
@@ -94,71 +146,62 @@ func CreateIamServiceAccountRunner(
 
 		oidcProviderARN, err := getOIDCProviderARN(r, cluster)
 		if err != nil {
-			return fmt.Errorf("failed to get OIDC provider ARN: %s", err)
+			return fmt.Errorf("failed to get OIDC provider ARN: %w", err)
 		}
 
-		trustPolicy := iamserviceaccount.GenerateTrustPolicyMultiple(oidcProviderARN, serviceAccounts)
-		tags := iamserviceaccount.GenerateDefaultTags(
-			cluster.Name(),
-			userOptions.Namespace,
-			userOptions.ServiceAccountNames[0],
-		)
+		req := iamserviceaccount.CreateIAMServiceAccountRequest{
+			ClusterName:         cluster.Name(),
+			OIDCProviderARN:     oidcProviderARN,
+			ServiceAccounts:     serviceAccounts,
+			RoleName:            nilIfEmpty(userOptions.RoleName),
+			PolicyARNs:          userOptions.PolicyArns,
+			InlinePolicy:        inlinePolicy,
+			PermissionsBoundary: nilIfEmpty(userOptions.PermissionsBoundary),
+			Path:                nilIfEmpty(userOptions.Path),
+			AccountID:           creator.AccountID,
+			Partition:           creator.Partition,
+			IsGovcloud:          creator.IsGovcloud,
+		}
 
-		managedPolicies := false
-		roleARN, err := r.AWSClient.EnsureRole(
-			r.Reporter,
-			roleName,
-			trustPolicy,
-			userOptions.PermissionsBoundary,
-			"",
-			tags,
-			userOptions.Path,
-			managedPolicies,
-		)
+		adapter := rolebridge.New(r.AWSClient, r.Reporter)
+		service := &iamserviceaccount.Service{}
+		result, err := service.CreateIAMServiceAccount(ctx, adapter, req)
 		if err != nil {
-			return fmt.Errorf("failed to create role: %s", err)
+			return err
 		}
 
-		// For FedRAMP environments, update the role ARN to use the correct partition
-		if creator.IsGovcloud {
-			roleARN = iamserviceaccount.GetRoleARN(creator.AccountID, roleName, userOptions.Path, creator.Partition)
-		}
-
-		r.Reporter.Infof("Created IAM role '%s' with ARN '%s' using OIDC '%s'", roleName, roleARN, oidcProviderARN)
-
-		// Attach managed policies
-		for _, policyARN := range userOptions.PolicyArns {
-			err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyARN)
-			if err != nil {
-				return fmt.Errorf("failed to attach policy '%s' to role '%s': %s", policyARN, roleName, err)
-			}
-		}
-
-		// Handle inline policy
-		if userOptions.InlinePolicy != "" {
-			inlinePolicy := userOptions.InlinePolicy
-
-			// Process inline policy if it's a file reference
-			if after, ok := strings.CutPrefix(inlinePolicy, "file://"); ok {
-				policyPath := after
-				policyBytes, err := os.ReadFile(policyPath)
-				if err != nil {
-					return fmt.Errorf("failed to read policy file '%s': %s", policyPath, err)
-				}
-				inlinePolicy = string(policyBytes)
-			}
-
-			// Generate inline policy name
-			policyName := fmt.Sprintf("%s-inline-policy", roleName)
-			err = r.AWSClient.PutRolePolicy(roleName, policyName, inlinePolicy)
-			if err != nil {
-				return fmt.Errorf("failed to attach inline policy to role '%s': %s", roleName, err)
-			}
-			r.Reporter.Infof("Attached inline policy '%s' to role '%s'", policyName, roleName)
+		r.Reporter.Infof("Created IAM role '%s' with ARN '%s' using OIDC '%s'",
+			result.RoleName, result.RoleARN, oidcProviderARN)
+		if result.InlinePolicyName != "" {
+			r.Reporter.Infof("Attached inline policy '%s' to role '%s'", result.InlinePolicyName, result.RoleName)
 		}
 
 		return nil
 	}
+}
+
+// resolveInlinePolicy returns the inline policy document, reading it from
+// disk when raw is a file:// reference. raw must be non-empty.
+func resolveInlinePolicy(raw string) (string, error) {
+	policyPath, ok := strings.CutPrefix(raw, "file://")
+	if !ok {
+		return raw, nil
+	}
+	policyBytes, err := os.ReadFile(policyPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read policy file '%s': %w", policyPath, err)
+	}
+	return string(policyBytes), nil
+}
+
+// nilIfEmpty converts a CLI option's zero-value string into a nil pointer,
+// matching CreateIAMServiceAccountRequest's "not provided" representation
+// for optional fields.
+func nilIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func getOIDCProviderARN(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) {
@@ -168,8 +211,10 @@ func getOIDCProviderARN(r *rosa.Runtime, cluster *cmv1.Cluster) (string, error) 
 	}
 
 	providerArn, err := r.AWSClient.GetOpenIDConnectProviderByOidcEndpointUrl(oidcConfigEndpointUrl)
-
-	if err != nil || providerArn == "" {
+	if err != nil {
+		return "", fmt.Errorf("failed to get OIDC provider for cluster with ID '%s': %w", cluster.ID(), err)
+	}
+	if providerArn == "" {
 		return "", fmt.Errorf("no OIDC provider found for cluster with ID '%s'", cluster.ID())
 	}
 
