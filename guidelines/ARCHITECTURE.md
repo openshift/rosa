@@ -141,6 +141,11 @@ Stable, exported packages that any consumer can import. These define the domain:
   validation, URL validation, version feature gates.
 - **Constants**: Tag keys, property keys, environment variable names.
 
+Service operations accept **Request** types and return **Result** types (or
+domain types) with errors. See
+[`workflow-conventions.md`](workflow-conventions.md) for naming, construction,
+optional-value handling, and the full Request/Result lifecycle.
+
 A function in `pkg/` must **never**:
 - Import Cobra, pflag, survey, or the reporter/output/interactive packages.
 - Call `os.Exit`.
@@ -182,7 +187,8 @@ around them.
 | `os.Exit` | `cmd/` or `internal/cli/` | `cmd/` Run functions, `rosa.DefaultRunner` error path |
 | Workflow orchestration (resolve flags, prompt, call service, render) | `cmd/` Run function | `CreateMachinepoolRunner` |
 | Business logic (create pool, validate labels, build OCM request) | `pkg/` | `machinepool.CreateMachinePool(...)` |
-| Domain types and validation | `pkg/` | `machinepool.Options`, `ValidateLabels` |
+| Request/Result types (workflow boundary contract) | `pkg/` | `machinepool.CreateMachinePoolRequest`, `CreateMachinePoolResult` |
+| Domain types and validation | `pkg/` | `machinepool.MachinePool`, `ValidateLabels` |
 | Constants (tag keys, property keys, env var names) | `pkg/` | `aws/tags`, `properties`, `constants` |
 | AWS SDK operations | `internal/core/` | `aws.Client.CreateRole(...)` |
 | OCM API operations | `internal/core/` | `ocm.Client.CreateCluster(...)` |
