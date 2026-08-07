@@ -381,11 +381,11 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 
 			versionList, err = versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, true)
 			Expect(err).To(BeNil())
-			defaultVersion = versionList.DefaultVersion()
-			Expect(defaultVersion).ToNot(BeNil())
-			version, err = versionList.FindNearestBackwardMinorVersion(defaultVersion.Version, 1, true)
+			_, version, err = versionList.FindBaseAndNearestBackwardMinorVersion(1, true)
 			Expect(err).To(BeNil())
-			Expect(version).NotTo(BeNil())
+			if version == nil {
+				Skip("No y-1 version pair available in candidate hosted-cp channel")
+			}
 			_, _, versionCandidate, err = version.MajorMinor()
 			Expect(err).To(BeNil())
 
@@ -1033,13 +1033,13 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 			// get candidate channel version
 			versionListC, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, true)
 			Expect(err).To(BeNil())
-			defaultVersionC := versionListC.DefaultVersion()
-			Expect(defaultVersionC).ToNot(BeNil())
-			_, _, upgradeVersionC, err := defaultVersionC.MajorMinor()
+			baseVersionC, versionC, err := versionListC.FindBaseAndNearestBackwardMinorVersion(1, true)
 			Expect(err).To(BeNil())
-			versionC, err := versionListC.FindNearestBackwardMinorVersion(defaultVersionC.Version, 1, true)
+			if versionC == nil {
+				Skip("No y-1 version pair available in candidate hosted-cp channel")
+			}
+			_, _, upgradeVersionC, err := baseVersionC.MajorMinor()
 			Expect(err).To(BeNil())
-			Expect(versionC).NotTo(BeNil())
 			_, _, versionCandidate, err := versionC.MajorMinor()
 			Expect(err).To(BeNil())
 

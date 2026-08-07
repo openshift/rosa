@@ -309,6 +309,52 @@ func (vl *OpenShiftVersionTableList) DefaultVersion() (defaultVersion *OpenShift
 	return vl.OpenShiftVersions[0]
 }
 
+// FindBaseAndNearestBackwardMinorVersion picks a base version that has a same-list
+// nearest backward minor (e.g. y-1 when minorSub is 1). Prefer DEFAULT=yes when
+// that version has a pair; otherwise use the newest version that does.
+// Returns (nil, nil, nil) when no pair exists in the list.
+func (vl *OpenShiftVersionTableList) FindBaseAndNearestBackwardMinorVersion(
+	minorSub int64, strict bool) (base *OpenShiftVersionTableOutput, backward *OpenShiftVersionTableOutput, err error) {
+	if vl == nil || vl.Len() == 0 {
+		return nil, nil, nil
+	}
+
+	tryVersion := func(candidate *OpenShiftVersionTableOutput) (
+		*OpenShiftVersionTableOutput, *OpenShiftVersionTableOutput, error) {
+		found, findErr := vl.FindNearestBackwardMinorVersion(candidate.Version, minorSub, strict)
+		if findErr != nil {
+			return nil, nil, findErr
+		}
+		if found != nil {
+			return candidate, found, nil
+		}
+		return nil, nil, nil
+	}
+
+	for _, version := range vl.OpenShiftVersions {
+		if version.Default != "yes" {
+			continue
+		}
+		base, backward, err = tryVersion(version)
+		if err != nil || base != nil {
+			return base, backward, err
+		}
+		break
+	}
+
+	sorted, err := vl.Sort(true)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, version := range sorted.OpenShiftVersions {
+		base, backward, err = tryVersion(version)
+		if err != nil || base != nil {
+			return base, backward, err
+		}
+	}
+	return nil, nil, nil
+}
+
 func (vl *OpenShiftVersionTableOutput) MajorMinor() (major int64, minor int64, majorMinorVersion string, err error) {
 	var semverVersion *semver.Version
 	if semverVersion, err = semver.NewVersion(vl.Version); err != nil {
