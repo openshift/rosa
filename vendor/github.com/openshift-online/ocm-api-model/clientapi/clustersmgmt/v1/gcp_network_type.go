@@ -28,6 +28,7 @@ type GCPNetwork struct {
 	vpcProjectID       string
 	computeSubnet      string
 	controlPlaneSubnet string
+	firewallRulesId    string
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -131,6 +132,29 @@ func (o *GCPNetwork) GetControlPlaneSubnet() (value string, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3]
 	if ok {
 		value = o.controlPlaneSubnet
+	}
+	return
+}
+
+// FirewallRulesId returns the value of the 'firewall_rules_id' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// ID of the GCP firewall rule set associated with this cluster.
+func (o *GCPNetwork) FirewallRulesId() string {
+	if o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4] {
+		return o.firewallRulesId
+	}
+	return ""
+}
+
+// GetFirewallRulesId returns the value of the 'firewall_rules_id' attribute and
+// a flag indicating if the attribute has a value.
+//
+// ID of the GCP firewall rule set associated with this cluster.
+func (o *GCPNetwork) GetFirewallRulesId() (value string, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4]
+	if ok {
+		value = o.firewallRulesId
 	}
 	return
 }
