@@ -19,7 +19,7 @@ import (
 
 func buildTestOCMClient(apiServerURL string) *Client {
 	accessToken := MakeTokenString("Bearer", 15*time.Minute)
-	logger, err := logging.NewGoLoggerBuilder().Debug(true).Build()
+	logger, err := logging.NewGoLoggerBuilder().Debug(false).Build()
 	Expect(err).NotTo(HaveOccurred())
 
 	connection, err := sdk.NewConnectionBuilder().
@@ -29,7 +29,7 @@ func buildTestOCMClient(apiServerURL string) *Client {
 		Build()
 	Expect(err).NotTo(HaveOccurred())
 
-	return &Client{ocm: connection}
+	return NewClientWithConnection(connection)
 }
 
 func buildMinimalClusterSpec() Spec {
@@ -189,14 +189,37 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("updates a cluster after resolving it by key", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"ClusterList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{"id":"cluster-1","name":"one"}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{"id":"cluster-1"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV(
+					"search",
+					"product.id = 'rosa' AND (id = 'cluster-1' OR name = 'cluster-1' OR external_id = 'cluster-1')",
+				),
+				ghttp.VerifyFormKV("page", "1"),
+				ghttp.VerifyFormKV("size", "1"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{"id":"cluster-1","name":"one"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPatch, "/api/clusters_mgmt/v1/clusters/cluster-1"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					body, err := io.ReadAll(request.Body)
+					Expect(err).NotTo(HaveOccurred())
+
+					payload := map[string]interface{}{}
+					Expect(json.Unmarshal(body, &payload)).To(Succeed())
+
+					version, ok := payload["version"].(map[string]interface{})
+					Expect(ok).To(BeTrue())
+					Expect(version).To(HaveKeyWithValue("id", "4.15.2"))
+				},
+				RespondWithJSON(http.StatusOK, `{"id":"cluster-1"}`),
+			),
 		)
 
 		err := ocmClient.UpdateCluster("cluster-1", nil, Spec{
@@ -217,14 +240,26 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("deletes a cluster after resolving it by key", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"ClusterList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{"id":"cluster-1","name":"one"}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{"kind":"DeleteResponse"}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV(
+					"search",
+					"product.id = 'rosa' AND (id = 'cluster-1' OR name = 'cluster-1' OR external_id = 'cluster-1')",
+				),
+				ghttp.VerifyFormKV("page", "1"),
+				ghttp.VerifyFormKV("size", "1"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{"id":"cluster-1","name":"one"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodDelete, "/api/clusters_mgmt/v1/clusters/cluster-1"),
+				RespondWithJSON(http.StatusOK, `{"kind":"DeleteResponse"}`),
+			),
 		)
 
 		cluster, err := ocmClient.DeleteCluster("cluster-1", false, nil)
@@ -235,15 +270,25 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("hibernates a cluster when org capability is enabled", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1","external_id":"ext-1"}
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"id":"org-1",
-				"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"true"}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1","external_id":"ext-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1"),
+				ghttp.VerifyFormKV("fetchCapabilities", "true"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"org-1",
+					"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"true"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/hibernate"),
+				RespondWithJSON(http.StatusOK, `{}`),
+			),
 		)
 
 		err := ocmClient.HibernateCluster("cluster-1")
@@ -275,15 +320,25 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("resumes a cluster when org capability is enabled", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"id":"acct-1",
-				"organization":{"id":"org-1","external_id":"ext-1"}
-			}`),
-			RespondWithJSON(http.StatusOK, `{
-				"id":"org-1",
-				"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"true"}]
-			}`),
-			RespondWithJSON(http.StatusOK, `{}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1","external_id":"ext-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1"),
+				ghttp.VerifyFormKV("fetchCapabilities", "true"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"org-1",
+					"capabilities":[{"name":"capability.organization.hibernate_cluster","value":"true"}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodPost, "/api/clusters_mgmt/v1/clusters/cluster-1/resume"),
+				RespondWithJSON(http.StatusOK, `{}`),
+			),
 		)
 
 		err := ocmClient.ResumeCluster("cluster-1")
@@ -315,17 +370,43 @@ var _ = Describe("Cluster API client behavior", func() {
 
 	It("detects clusters using a matching oidc endpoint url", func() {
 		apiServer.AppendHandlers(
-			RespondWithJSON(http.StatusOK, `{
-				"kind":"ClusterList",
-				"page":1,
-				"size":1,
-				"total":1,
-				"items":[{"id":"cluster-1"}]
-			}`),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV("search", "aws.sts.oidc_endpoint_url = 'https://issuer.example.com'"),
+				ghttp.VerifyFormKV("page", "1"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{"id":"cluster-1"}]
+				}`),
+			),
 		)
 
 		exists, err := ocmClient.HasAClusterUsingOidcEndpointUrl("https://issuer.example.com")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(exists).To(BeTrue())
+	})
+
+	It("returns false when no cluster uses a matching oidc endpoint url", func() {
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/clusters"),
+				ghttp.VerifyFormKV("search", "aws.sts.oidc_endpoint_url = 'https://issuer.example.com'"),
+				ghttp.VerifyFormKV("page", "1"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"ClusterList",
+					"page":1,
+					"size":0,
+					"total":0,
+					"items":[]
+				}`),
+			),
+		)
+
+		exists, err := ocmClient.HasAClusterUsingOidcEndpointUrl("https://issuer.example.com")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(exists).To(BeFalse())
 	})
 })

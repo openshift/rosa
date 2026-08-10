@@ -71,6 +71,24 @@ var _ = Describe("Helpers API client behavior", func() {
 		Expect(account).NotTo(BeNil())
 		Expect(account.ID()).To(Equal("acct-1"))
 		Expect(account.Organization().ID()).To(Equal("org-1"))
+		Expect(account.Organization().ExternalID()).To(Equal("ext-1"))
+	})
+
+	It("returns organization identifiers when GetCurrentOrganization succeeds", func() {
+		appendHandlers(1,
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1","external_id":"ext-1"}
+				}`),
+			),
+		)
+
+		id, externalID, err := ocmClient.GetCurrentOrganization()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(id).To(Equal("org-1"))
+		Expect(externalID).To(Equal("ext-1"))
 	})
 
 	It("links a role to organization labels when account is not present yet", func() {
@@ -109,6 +127,20 @@ var _ = Describe("Helpers API client behavior", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(linked).To(BeFalse())
 		Expect(err.Error()).To(ContainSubstring("Only one role can be linked per AWS account per organization"))
+	})
+
+	It("treats linking the same organization role as idempotent", func() {
+		roleARN := "arn:aws:iam::123456789012:role/existing-role"
+		appendHandlers(1,
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/labels/sts_ocm_role"),
+				RespondWithJSON(http.StatusOK, `{"key":"sts_ocm_role","value":"arn:aws:iam::123456789012:role/existing-role"}`),
+			),
+		)
+
+		linked, err := ocmClient.LinkOrgToRole("org-1", roleARN)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(linked).To(BeFalse())
 	})
 
 	It("unlinks organization ocm role by deleting label when last entry is removed", func() {

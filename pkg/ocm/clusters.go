@@ -335,8 +335,9 @@ func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluste
 
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
+	fetchAll := count == 0
 	pageSize := count
-	if count == 0 {
+	if fetchAll {
 		pageSize = defaultClusterQueryPageSize
 	}
 	for {
@@ -350,11 +351,12 @@ func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluste
 			clusters = append(clusters, cluster)
 			return true
 		})
-		if count == 0 {
-			if len(clusters) >= response.Total() {
-				break
-			}
-		} else if response.Size() < pageSize {
+
+		stopPaging := response.Size() < pageSize
+		if fetchAll {
+			stopPaging = len(clusters) >= response.Total()
+		}
+		if stopPaging {
 			break
 		}
 		page++
