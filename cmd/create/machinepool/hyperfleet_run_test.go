@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -27,11 +27,11 @@ func newCreateMPMocks(ctrl *gomock.Controller) (
 	*hfmocks.MockNodePoolInterface,
 ) {
 	hf := hfmocks.NewMockInterface(ctrl)
-	v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+	v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 	clusters := hfmocks.NewMockClusterInterface(ctrl)
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-	v1.EXPECT().Clusters(gomock.Any()).Return(clusters).AnyTimes()
+	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
 	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
 	return hf, clusters, nodePools
 }
@@ -40,7 +40,7 @@ func makeCluster(name, uid, releaseImage string) *v1alpha1.Cluster {
 	return &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID(uid)},
 		Spec: v1alpha1.ClusterSpec{
-			HostedCluster: hypershiftv1beta1.HostedClusterSpec{
+			HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 				Release: hypershiftv1beta1.Release{Image: releaseImage},
 				Platform: hypershiftv1beta1.PlatformSpec{
 					AWS: &hypershiftv1beta1.AWSPlatformSpec{
@@ -205,7 +205,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: "cluster-uid"},
 			Spec: v1alpha1.ClusterSpec{
-				HostedCluster: hypershiftv1beta1.HostedClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					Release: hypershiftv1beta1.Release{Image: "v4.17.0-ec.2"},
 				},
 			},

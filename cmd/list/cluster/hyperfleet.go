@@ -32,7 +32,7 @@ var (
 func runHyperfleetList(r *rosa.Runtime) {
 	ctx := context.Background()
 
-	list, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID).List(ctx, wrappers.ListOptions{})
+	list, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().List(ctx, wrappers.ListOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to list clusters: %v", err)
 		os.Exit(1)

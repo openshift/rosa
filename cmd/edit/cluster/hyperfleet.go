@@ -46,13 +46,13 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 		exitFn(1)
 	}
 
-	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, r.Creator.AccountID, clusterKey)
+	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 	}
 
-	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID)
+	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
 	current, err := clusters.Get(ctx, clusterID, wrappers.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)

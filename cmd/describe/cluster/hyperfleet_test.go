@@ -8,7 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 )
@@ -50,9 +50,8 @@ var _ = Describe("hfClusterToMap", func() {
 				UID:  types.UID("cluster-uid-123"),
 			},
 			Spec: v1alpha1.ClusterSpec{
-				CreatorARN:          "arn:aws:iam::123456789012:user/tester",
 				ExpirationTimestamp: &expiry,
-				HostedCluster: hypershiftv1beta1.HostedClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					IssuerURL: "https://oidc.example.com/issuer",
 					Platform: hypershiftv1beta1.PlatformSpec{
 						AWS: &hypershiftv1beta1.AWSPlatformSpec{
@@ -120,7 +119,6 @@ var _ = Describe("hfClusterToMap", func() {
 
 		spec, ok := m["spec"].(map[string]interface{})
 		Expect(ok).To(BeTrue())
-		Expect(spec["creator_arn"]).To(Equal("arn:aws:iam::123456789012:user/tester"))
 		Expect(spec["oidc_issuer"]).To(Equal("https://oidc.example.com/issuer"))
 
 		roles, ok := spec["roles_ref"].(map[string]string)

@@ -14,8 +14,8 @@ import (
 	reflect "reflect"
 	time "time"
 
+	public "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	wrappers "github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
 	gomock "go.uber.org/mock/gomock"
 	types "k8s.io/apimachinery/pkg/types"
 	rest "k8s.io/client-go/rest"
@@ -45,10 +45,10 @@ func (m *MockClusterInterface) EXPECT() *MockClusterInterfaceMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockClusterInterface) Create(ctx context.Context, obj *v1alpha1.Cluster, opts wrappers.CreateOptions) (*v1alpha1.Cluster, error) {
+func (m *MockClusterInterface) Create(ctx context.Context, obj *public.Cluster, opts wrappers.CreateOptions) (*public.Cluster, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, obj, opts)
-	ret0, _ := ret[0].(*v1alpha1.Cluster)
+	ret0, _ := ret[0].(*public.Cluster)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -74,10 +74,10 @@ func (mr *MockClusterInterfaceMockRecorder) Delete(ctx, name, opts any) *gomock.
 }
 
 // Get mocks base method.
-func (m *MockClusterInterface) Get(ctx context.Context, name string, opts wrappers.GetOptions) (*v1alpha1.Cluster, error) {
+func (m *MockClusterInterface) Get(ctx context.Context, name string, opts wrappers.GetOptions) (*public.Cluster, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx, name, opts)
-	ret0, _ := ret[0].(*v1alpha1.Cluster)
+	ret0, _ := ret[0].(*public.Cluster)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -89,10 +89,10 @@ func (mr *MockClusterInterfaceMockRecorder) Get(ctx, name, opts any) *gomock.Cal
 }
 
 // List mocks base method.
-func (m *MockClusterInterface) List(ctx context.Context, opts wrappers.ListOptions) (*v1alpha1.ClusterList, error) {
+func (m *MockClusterInterface) List(ctx context.Context, opts wrappers.ListOptions) (*public.ClusterList, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, opts)
-	ret0, _ := ret[0].(*v1alpha1.ClusterList)
+	ret0, _ := ret[0].(*public.ClusterList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -104,10 +104,10 @@ func (mr *MockClusterInterfaceMockRecorder) List(ctx, opts any) *gomock.Call {
 }
 
 // Patch mocks base method.
-func (m *MockClusterInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts wrappers.PatchOptions) (*v1alpha1.Cluster, error) {
+func (m *MockClusterInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts wrappers.PatchOptions) (*public.Cluster, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Patch", ctx, name, pt, data, opts)
-	ret0, _ := ret[0].(*v1alpha1.Cluster)
+	ret0, _ := ret[0].(*public.Cluster)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -119,10 +119,10 @@ func (mr *MockClusterInterfaceMockRecorder) Patch(ctx, name, pt, data, opts any)
 }
 
 // Update mocks base method.
-func (m *MockClusterInterface) Update(ctx context.Context, obj *v1alpha1.Cluster, opts wrappers.UpdateOptions) (*v1alpha1.Cluster, error) {
+func (m *MockClusterInterface) Update(ctx context.Context, obj *public.Cluster, opts wrappers.UpdateOptions) (*public.Cluster, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, obj, opts)
-	ret0, _ := ret[0].(*v1alpha1.Cluster)
+	ret0, _ := ret[0].(*public.Cluster)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -134,7 +134,7 @@ func (mr *MockClusterInterfaceMockRecorder) Update(ctx, obj, opts any) *gomock.C
 }
 
 // WaitUntil mocks base method.
-func (m *MockClusterInterface) WaitUntil(ctx context.Context, id string, condition func(*v1alpha1.Cluster) bool, interval, timeout time.Duration) error {
+func (m *MockClusterInterface) WaitUntil(ctx context.Context, id string, condition func(*public.Cluster) bool, interval, timeout time.Duration) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WaitUntil", ctx, id, condition, interval, timeout)
 	ret0, _ := ret[0].(error)
@@ -171,10 +171,10 @@ func (m *MockNodePoolInterface) EXPECT() *MockNodePoolInterfaceMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockNodePoolInterface) Create(ctx context.Context, obj *v1alpha1.NodePool, opts wrappers.CreateOptions) (*v1alpha1.NodePool, error) {
+func (m *MockNodePoolInterface) Create(ctx context.Context, obj *public.NodePool, opts wrappers.CreateOptions) (*public.NodePool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, obj, opts)
-	ret0, _ := ret[0].(*v1alpha1.NodePool)
+	ret0, _ := ret[0].(*public.NodePool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -200,10 +200,10 @@ func (mr *MockNodePoolInterfaceMockRecorder) Delete(ctx, name, opts any) *gomock
 }
 
 // Get mocks base method.
-func (m *MockNodePoolInterface) Get(ctx context.Context, name string, opts wrappers.GetOptions) (*v1alpha1.NodePool, error) {
+func (m *MockNodePoolInterface) Get(ctx context.Context, name string, opts wrappers.GetOptions) (*public.NodePool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx, name, opts)
-	ret0, _ := ret[0].(*v1alpha1.NodePool)
+	ret0, _ := ret[0].(*public.NodePool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -215,10 +215,10 @@ func (mr *MockNodePoolInterfaceMockRecorder) Get(ctx, name, opts any) *gomock.Ca
 }
 
 // List mocks base method.
-func (m *MockNodePoolInterface) List(ctx context.Context, opts wrappers.ListOptions) (*v1alpha1.NodePoolList, error) {
+func (m *MockNodePoolInterface) List(ctx context.Context, opts wrappers.ListOptions) (*public.NodePoolList, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, opts)
-	ret0, _ := ret[0].(*v1alpha1.NodePoolList)
+	ret0, _ := ret[0].(*public.NodePoolList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -230,10 +230,10 @@ func (mr *MockNodePoolInterfaceMockRecorder) List(ctx, opts any) *gomock.Call {
 }
 
 // Patch mocks base method.
-func (m *MockNodePoolInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts wrappers.PatchOptions) (*v1alpha1.NodePool, error) {
+func (m *MockNodePoolInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts wrappers.PatchOptions) (*public.NodePool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Patch", ctx, name, pt, data, opts)
-	ret0, _ := ret[0].(*v1alpha1.NodePool)
+	ret0, _ := ret[0].(*public.NodePool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -245,10 +245,10 @@ func (mr *MockNodePoolInterfaceMockRecorder) Patch(ctx, name, pt, data, opts any
 }
 
 // Update mocks base method.
-func (m *MockNodePoolInterface) Update(ctx context.Context, obj *v1alpha1.NodePool, opts wrappers.UpdateOptions) (*v1alpha1.NodePool, error) {
+func (m *MockNodePoolInterface) Update(ctx context.Context, obj *public.NodePool, opts wrappers.UpdateOptions) (*public.NodePool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, obj, opts)
-	ret0, _ := ret[0].(*v1alpha1.NodePool)
+	ret0, _ := ret[0].(*public.NodePool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -260,7 +260,7 @@ func (mr *MockNodePoolInterfaceMockRecorder) Update(ctx, obj, opts any) *gomock.
 }
 
 // WaitUntil mocks base method.
-func (m *MockNodePoolInterface) WaitUntil(ctx context.Context, id string, condition func(*v1alpha1.NodePool) bool, interval, timeout time.Duration) error {
+func (m *MockNodePoolInterface) WaitUntil(ctx context.Context, id string, condition func(*public.NodePool) bool, interval, timeout time.Duration) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WaitUntil", ctx, id, condition, interval, timeout)
 	ret0, _ := ret[0].(error)
@@ -273,45 +273,45 @@ func (mr *MockNodePoolInterfaceMockRecorder) WaitUntil(ctx, id, condition, inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitUntil", reflect.TypeOf((*MockNodePoolInterface)(nil).WaitUntil), ctx, id, condition, interval, timeout)
 }
 
-// MockV1alpha1Interface is a mock of V1alpha1Interface interface.
-type MockV1alpha1Interface struct {
+// MockV1alpha1PublicInterface is a mock of V1alpha1PublicInterface interface.
+type MockV1alpha1PublicInterface struct {
 	ctrl     *gomock.Controller
-	recorder *MockV1alpha1InterfaceMockRecorder
+	recorder *MockV1alpha1PublicInterfaceMockRecorder
 }
 
-// MockV1alpha1InterfaceMockRecorder is the mock recorder for MockV1alpha1Interface.
-type MockV1alpha1InterfaceMockRecorder struct {
-	mock *MockV1alpha1Interface
+// MockV1alpha1PublicInterfaceMockRecorder is the mock recorder for MockV1alpha1PublicInterface.
+type MockV1alpha1PublicInterfaceMockRecorder struct {
+	mock *MockV1alpha1PublicInterface
 }
 
-// NewMockV1alpha1Interface creates a new mock instance.
-func NewMockV1alpha1Interface(ctrl *gomock.Controller) *MockV1alpha1Interface {
-	mock := &MockV1alpha1Interface{ctrl: ctrl}
-	mock.recorder = &MockV1alpha1InterfaceMockRecorder{mock}
+// NewMockV1alpha1PublicInterface creates a new mock instance.
+func NewMockV1alpha1PublicInterface(ctrl *gomock.Controller) *MockV1alpha1PublicInterface {
+	mock := &MockV1alpha1PublicInterface{ctrl: ctrl}
+	mock.recorder = &MockV1alpha1PublicInterfaceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockV1alpha1Interface) EXPECT() *MockV1alpha1InterfaceMockRecorder {
+func (m *MockV1alpha1PublicInterface) EXPECT() *MockV1alpha1PublicInterfaceMockRecorder {
 	return m.recorder
 }
 
 // Clusters mocks base method.
-func (m *MockV1alpha1Interface) Clusters(namespace string) wrappers.ClusterInterface {
+func (m *MockV1alpha1PublicInterface) Clusters() wrappers.ClusterInterface {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Clusters", namespace)
+	ret := m.ctrl.Call(m, "Clusters")
 	ret0, _ := ret[0].(wrappers.ClusterInterface)
 	return ret0
 }
 
 // Clusters indicates an expected call of Clusters.
-func (mr *MockV1alpha1InterfaceMockRecorder) Clusters(namespace any) *gomock.Call {
+func (mr *MockV1alpha1PublicInterfaceMockRecorder) Clusters() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clusters", reflect.TypeOf((*MockV1alpha1Interface)(nil).Clusters), namespace)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clusters", reflect.TypeOf((*MockV1alpha1PublicInterface)(nil).Clusters))
 }
 
 // NodePools mocks base method.
-func (m *MockV1alpha1Interface) NodePools(namespace string) wrappers.NodePoolInterface {
+func (m *MockV1alpha1PublicInterface) NodePools(namespace string) wrappers.NodePoolInterface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NodePools", namespace)
 	ret0, _ := ret[0].(wrappers.NodePoolInterface)
@@ -319,13 +319,13 @@ func (m *MockV1alpha1Interface) NodePools(namespace string) wrappers.NodePoolInt
 }
 
 // NodePools indicates an expected call of NodePools.
-func (mr *MockV1alpha1InterfaceMockRecorder) NodePools(namespace any) *gomock.Call {
+func (mr *MockV1alpha1PublicInterfaceMockRecorder) NodePools(namespace any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NodePools", reflect.TypeOf((*MockV1alpha1Interface)(nil).NodePools), namespace)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NodePools", reflect.TypeOf((*MockV1alpha1PublicInterface)(nil).NodePools), namespace)
 }
 
 // RESTClient mocks base method.
-func (m *MockV1alpha1Interface) RESTClient() rest.Interface {
+func (m *MockV1alpha1PublicInterface) RESTClient() rest.Interface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RESTClient")
 	ret0, _ := ret[0].(rest.Interface)
@@ -333,7 +333,7 @@ func (m *MockV1alpha1Interface) RESTClient() rest.Interface {
 }
 
 // RESTClient indicates an expected call of RESTClient.
-func (mr *MockV1alpha1InterfaceMockRecorder) RESTClient() *gomock.Call {
+func (mr *MockV1alpha1PublicInterfaceMockRecorder) RESTClient() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RESTClient", reflect.TypeOf((*MockV1alpha1Interface)(nil).RESTClient))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RESTClient", reflect.TypeOf((*MockV1alpha1PublicInterface)(nil).RESTClient))
 }

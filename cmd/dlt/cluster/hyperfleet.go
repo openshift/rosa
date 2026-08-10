@@ -35,7 +35,7 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 		exitFn(1)
 	}
 
-	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, r.Creator.AccountID, clusterKey)
+	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
@@ -45,7 +45,7 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 		return
 	}
 
-	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID)
+	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
 	if err = clusters.Delete(ctx, clusterID, wrappers.DeleteOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		exitFn(1)
