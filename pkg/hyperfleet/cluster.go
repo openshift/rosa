@@ -9,11 +9,10 @@ import (
 )
 
 // ResolveClusterUID looks up a cluster by human-readable name and returns its UID.
-// accountID is used as the cluster namespace in the Platform API.
 func ResolveClusterUID(
-	ctx context.Context, client hyperfleetclientset.Interface, accountID, clusterName string,
+	ctx context.Context, client hyperfleetclientset.Interface, clusterName string,
 ) (string, error) {
-	list, err := client.HyperfleetV1alpha1().Clusters(accountID).List(ctx, wrappers.ListOptions{})
+	list, err := client.HyperfleetV1alpha1().Clusters().List(ctx, wrappers.ListOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to list clusters: %w", err)
 	}

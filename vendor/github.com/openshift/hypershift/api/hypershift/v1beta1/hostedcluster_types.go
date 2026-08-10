@@ -278,8 +278,6 @@ const (
 
 	// EnableMetricsForwarding enables metrics forwarding from the management cluster to hosted clusters.
 	// When present, components like the endpoint-resolver and metrics-proxy will be deployed.
-	// Deprecated: Use spec.monitoring.metricsForwarding instead. This annotation is preserved
-	// for backward compatibility and will be honored when spec.monitoring is not set.
 	EnableMetricsForwarding = "hypershift.openshift.io/enable-metrics-forwarding"
 
 	// JSONPatchAnnotation allow modifying the kubevirt VM template using jsonpatch
@@ -841,15 +839,6 @@ type HostedClusterSpec struct {
 	// +kubebuilder:default={}
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf", message="Capabilities is immutable. Changes might result in unpredictable and disruptive behavior."
 	Capabilities *Capabilities `json:"capabilities,omitempty"`
-
-	// monitoring configures monitoring for the hosted cluster, including
-	// forwarding of control plane metrics to the hosted cluster's monitoring stack.
-	// When omitted, metrics forwarding behavior is determined by the
-	// hypershift.openshift.io/enable-metrics-forwarding annotation for backward compatibility.
-	// If neither is set, metrics forwarding is disabled.
-	//
-	// +optional
-	Monitoring MonitoringSpec `json:"monitoring,omitzero"`
 }
 
 // OLMCatalogPlacement is an enum specifying the placement of OLM catalog components.
@@ -884,97 +873,6 @@ func (olm *OLMCatalogPlacement) Set(s string) error {
 
 func (olm *OLMCatalogPlacement) Type() string {
 	return "OLMCatalogPlacement"
-}
-
-// MetricsForwardingMode controls whether metrics forwarding is active for a hosted cluster.
-//
-// +kubebuilder:validation:Enum=Forward;None
-type MetricsForwardingMode string
-
-const (
-	// MetricsForwardingModeForward indicates metrics forwarding is active.
-	MetricsForwardingModeForward MetricsForwardingMode = "Forward"
-
-	// MetricsForwardingModeNone indicates metrics forwarding is inactive.
-	MetricsForwardingModeNone MetricsForwardingMode = "None"
-)
-
-// MetricsSet specifies the set of metrics to collect and forward from hosted clusters.
-//
-// +kubebuilder:validation:Enum=Telemetry;SRE;All
-type MetricsSet string
-
-const (
-	// MetricsSetTelemetry collects only the minimal set of metrics required for
-	// OpenShift Telemetry. Use this to minimize metrics volume while still
-	// satisfying cluster telemetry requirements.
-	MetricsSetTelemetry MetricsSet = "Telemetry"
-
-	// MetricsSetSRE collects the metrics defined in the sre-metric-set ConfigMap,
-	// which includes the Telemetry set plus additional metrics needed for SRE
-	// monitoring dashboards and alerts. Use this for clusters that require
-	// SRE observability.
-	MetricsSetSRE MetricsSet = "SRE"
-
-	// MetricsSetAll collects all metrics from control plane components without
-	// any filtering. Use this for debugging or when full metric visibility is
-	// needed, but be aware it produces significantly higher metrics volume.
-	MetricsSetAll MetricsSet = "All"
-)
-
-// MonitoringSpec configures monitoring for the hosted cluster.
-// At least one field must be specified when this struct is present.
-//
-// +kubebuilder:validation:MinProperties=1
-type MonitoringSpec struct {
-	// metricsForwarding configures forwarding of control plane metrics into
-	// the hosted cluster's monitoring stack.
-	// When omitted, metrics forwarding behavior is determined by the
-	// hypershift.openshift.io/enable-metrics-forwarding annotation for backward compatibility.
-	// If neither is set, metrics forwarding is disabled.
-	//
-	// +optional
-	MetricsForwarding MetricsForwardingSpec `json:"metricsForwarding,omitzero"`
-
-	// metricsSet specifies which set of metrics to collect and forward.
-	// This overrides the global METRICS_SET environment variable configured on the HyperShift Operator.
-	// When not specified, the global METRICS_SET value is used, which defaults to "Telemetry".
-	//
-	// "Telemetry" collects only the minimal set of metrics required for OpenShift Telemetry.
-	// "SRE" collects the Telemetry set plus additional metrics defined in the sre-metric-set ConfigMap,
-	// needed for SRE dashboards and alerts.
-	// "All" collects all metrics from control plane components without filtering,
-	// which produces significantly higher metrics volume.
-	//
-	// +optional
-	MetricsSet MetricsSet `json:"metricsSet,omitempty"`
-}
-
-// MetricsForwardingSpec configures metrics forwarding for the hosted cluster.
-type MetricsForwardingSpec struct {
-	// mode controls whether metrics forwarding is active for this hosted cluster.
-	// When set to "Forward", metrics-proxy and endpoint-resolver are deployed in the
-	// control plane, and a metrics-forwarder is deployed in the hosted cluster.
-	// When set to "None", metrics forwarding is inactive.
-	//
-	// +required
-	Mode MetricsForwardingMode `json:"mode,omitempty"`
-
-	// metricsSet specifies which set of metrics to forward to the hosted
-	// cluster's monitoring stack. This controls only the metrics-proxy forwarding
-	// path and does not affect management-cluster-side ServiceMonitor/PodMonitor
-	// relabel configurations.
-	// When not specified, the value from monitoring.metricsSet is used, which itself
-	// falls back to the global METRICS_SET environment variable (default "Telemetry").
-	//
-	// "Telemetry" forwards only the minimal set of metrics required for OpenShift Telemetry.
-	// "SRE" forwards the Telemetry set plus additional metrics defined in the sre-metric-set
-	// ConfigMap, needed for SRE dashboards and alerts.
-	// "All" forwards all metrics from control plane components without filtering,
-	// which produces significantly higher metrics volume.
-	//
-	// +optional
-	MetricsSet MetricsSet `json:"metricsSet,omitempty"`
 }
 
 // ImageContentSource specifies image mirrors that can be used by cluster nodes
@@ -2006,7 +1904,6 @@ type EtcdSpec struct {
 
 // ManagedEtcdSpec specifies the behavior of an etcd cluster managed by
 // HyperShift.
-// +openshift:validation:FeatureGateAwareXValidation:featureGate=EtcdSharding,rule="has(oldSelf.shards) == has(self.shards)",message="shards cannot be added or removed after creation"
 type ManagedEtcdSpec struct {
 	// storage specifies how etcd data is persisted.
 	// +required
@@ -2019,34 +1916,6 @@ type ManagedEtcdSpec struct {
 	// +optional
 	// +openshift:enable:FeatureGate=HCPEtcdBackup
 	Backup HCPEtcdBackupConfig `json:"backup,omitzero"`
-
-	// scheduling specifies scheduling constraints for the default etcd shard pods.
-	// +optional
-	// +openshift:enable:FeatureGate=EtcdSharding
-	Scheduling EtcdShardSchedulingSpec `json:"scheduling,omitzero"`
-
-	// shards defines additional etcd shards for resource-level routing.
-	// The existing storage and scheduling fields above configure
-	// the default shard (catch-all for all resources not explicitly
-	// routed). Entries in this list define non-default shards,
-	// each deployed as an independent StatefulSet and ControlPlaneComponent.
-	// Minimum 1, maximum 10 entries. Resources must not overlap across
-	// shards. Immutable after creation: shards cannot be added, removed,
-	// or reordered.
-	//
-	// WARNING: In the current TechPreview implementation, shard data is NOT
-	// included in HCPEtcdBackup. Resources routed to shards will not be
-	// backed up. This will be addressed before promotion beyond TechPreview.
-	// +optional
-	// +openshift:enable:FeatureGate=EtcdSharding
-	// +listType=map
-	// +listMapKey=name
-	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:MaxItems=10
-	// +kubebuilder:validation:XValidation:rule="self.all(s1, self.all(s2, s1.name == s2.name || !s1.resources.exists(r, s2.resources.exists(q, r.apiGroup == q.apiGroup && r.resource == q.resource))))",message="resources must not overlap across shards"
-	// +kubebuilder:validation:XValidation:rule="self.size() == oldSelf.size()",message="shards cannot be added or removed after creation"
-	// +kubebuilder:validation:XValidation:rule="oldSelf.all(old, self.exists(cur, cur.name == old.name))",message="existing shards cannot be replaced"
-	Shards []ManagedEtcdShardSpec `json:"shards,omitempty"`
 }
 
 // ManagedEtcdStorageType is a storage type for an etcd cluster.
@@ -2119,7 +1988,6 @@ type PersistentVolumeEtcdStorageSpec struct {
 
 // UnmanagedEtcdSpec specifies configuration which enables the control plane to
 // integrate with an eternally managed etcd cluster.
-// +openshift:validation:FeatureGateAwareXValidation:featureGate=EtcdSharding,rule="has(oldSelf.shards) == has(self.shards)",message="shards cannot be added or removed after creation"
 type UnmanagedEtcdSpec struct {
 	// endpoint is the full etcd cluster client endpoint URL. For example:
 	//
@@ -2135,25 +2003,6 @@ type UnmanagedEtcdSpec struct {
 	// tls specifies TLS configuration for HTTPS etcd client endpoints.
 	// +required
 	TLS EtcdTLSConfig `json:"tls"`
-
-	// shards defines additional etcd shards for resource-level routing.
-	// The top-level endpoint and tls fields define the default shard
-	// (the catch-all for all resources not explicitly routed). Entries
-	// in this list define non-default shards, each with its own endpoint
-	// and TLS configuration.
-	// Minimum 1, maximum 10 entries. Resources must not overlap across
-	// shards. Immutable after creation: shards cannot be added, removed,
-	// or reordered.
-	// +optional
-	// +openshift:enable:FeatureGate=EtcdSharding
-	// +listType=map
-	// +listMapKey=name
-	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:MaxItems=10
-	// +kubebuilder:validation:XValidation:rule="self.all(s1, self.all(s2, s1.name == s2.name || !s1.resources.exists(r, s2.resources.exists(q, r.apiGroup == q.apiGroup && r.resource == q.resource))))",message="resources must not overlap across shards"
-	// +kubebuilder:validation:XValidation:rule="self.size() == oldSelf.size()",message="shards cannot be added or removed after creation"
-	// +kubebuilder:validation:XValidation:rule="oldSelf.all(old, self.exists(cur, cur.name == old.name))",message="existing shards cannot be replaced"
-	Shards []UnmanagedEtcdShardSpec `json:"shards,omitempty"`
 }
 
 // EtcdTLSConfig specifies TLS configuration for HTTPS etcd client endpoints.
@@ -2166,221 +2015,6 @@ type EtcdTLSConfig struct {
 	//     etcd-client.key: Client certificate key value
 	// +required
 	ClientSecret corev1.LocalObjectReference `json:"clientSecret"`
-}
-
-// EtcdShardResource identifies a Kubernetes resource type to be routed to an
-// etcd shard. It is used to build the KAS --etcd-servers-overrides flag.
-// The combination of apiGroup and resource uniquely identifies a resource type.
-//
-// Routing only takes effect for resource types compiled into the
-// kube-apiserver binary (built-in types such as events, pods, or
-// coordination.k8s.io/leases). This is a kube-apiserver limitation:
-// --etcd-servers-overrides does not apply to other resource types. In
-// particular, resources backed by CustomResourceDefinitions and resources
-// served by aggregated API servers (such as the openshift.io groups served
-// by openshift-apiserver and oauth-apiserver) are NOT routed: entries for
-// such resources are accepted but have no effect, and their data remains in
-// the default shard while the configured shard stays empty.
-type EtcdShardResource struct {
-	// apiGroup is the API group of the resource (e.g., "coordination.k8s.io"
-	// for leases). An empty string designates the core API group (e.g.,
-	// events, pods, configmaps). For core-group resources, specify
-	// apiGroup: "" explicitly (e.g., {apiGroup: "", resource: "events"}).
-	// When non-empty, must be at most 253 characters in length and consist
-	// of only lowercase alphanumeric characters, hyphens and periods. Each
-	// period separated segment must start and end with an alphanumeric
-	// character.
-	// +required
-	// +kubebuilder:validation:MinLength=0
-	// +kubebuilder:validation:MaxLength=253
-	// +kubebuilder:validation:XValidation:rule="self == '' || self.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*$')",message="apiGroup must be a valid DNS subdomain (lowercase alphanumeric, hyphens, dots)"
-	APIGroup *string `json:"apiGroup,omitempty"`
-
-	// resource is the plural resource name (e.g., "events", "leases",
-	// "configmaps"). Must be a valid DNS label (RFC 1123): lowercase
-	// alphanumeric characters or hyphens, starting and ending with an
-	// alphanumeric character, max 63 characters.
-	// +required
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=63
-	// +kubebuilder:validation:XValidation:rule="self.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')",message="resource must be a valid DNS label (lowercase alphanumeric, hyphens)"
-	Resource string `json:"resource,omitempty"`
-}
-
-// ManagedEtcdShardSpec defines the configuration for a single etcd shard
-// within a managed etcd deployment.
-// +kubebuilder:validation:XValidation:rule="has(oldSelf.storage) == has(self.storage)",message="storage cannot be added or removed after creation"
-type ManagedEtcdShardSpec struct {
-	// name is a unique identifier for this shard. It is used to derive
-	// resource names (e.g., StatefulSet "etcd-{name}", Service
-	// "etcd-client-{name}").
-	// Must be a valid DNS1123 label (lowercase alphanumeric with hyphens,
-	// starting and ending with an alphanumeric character), max 48 characters.
-	// Immutable once set.
-	// +required
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=48
-	// +kubebuilder:validation:XValidation:rule="self.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')",message="name must be a valid DNS1123 label: lowercase alphanumeric with hyphens, starting and ending with an alphanumeric character"
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="name is immutable"
-	Name string `json:"name,omitempty"`
-
-	// resources is the list of Kubernetes resource types routed to this
-	// shard. Each entry identifies a resource by its API group and plural
-	// resource name. For example, events in the core group would be
-	// {apiGroup: "", resource: "events"}, and leases in the coordination group would be
-	// {apiGroup: "coordination.k8s.io", resource: "leases"}.
-	// Only resource types built into the kube-apiserver are routed; entries
-	// for CRD-backed or aggregated API resources have no effect (see
-	// EtcdShardResource).
-	// Minimum 1, maximum 20 entries. Immutable once set.
-	// +required
-	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:MaxItems=20
-	// +listType=map
-	// +listMapKey=apiGroup
-	// +listMapKey=resource
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="resources are immutable"
-	Resources []EtcdShardResource `json:"resources,omitempty"`
-
-	// storage configures the storage backend for this shard.
-	// If not specified, the shard inherits PersistentVolume storage from
-	// the parent ManagedEtcdSpec.Storage. Immutable once set.
-	// +optional
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="storage is immutable"
-	Storage ManagedEtcdShardStorageSpec `json:"storage,omitzero"`
-
-	// replicas is the number of etcd replicas for this shard. Must be 1 or 3.
-	// Immutable once set.
-	// +required
-	// +kubebuilder:validation:Enum=1;3
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="replicas is immutable"
-	Replicas int32 `json:"replicas,omitempty"`
-
-	// scheduling configures per-shard pod placement constraints. These
-	// constraints are merged with the framework's control plane node
-	// isolation settings (nodeSelector, tolerations, topology spread).
-	// +optional
-	Scheduling EtcdShardSchedulingSpec `json:"scheduling,omitzero"`
-}
-
-// ManagedEtcdShardStorageType defines the type of storage for an etcd shard.
-// +kubebuilder:validation:Enum=PersistentVolume;EmptyDir
-type ManagedEtcdShardStorageType string
-
-const (
-	// PersistentVolumeEtcdShardStorage uses PersistentVolumes for shard storage.
-	PersistentVolumeEtcdShardStorage ManagedEtcdShardStorageType = "PersistentVolume"
-	// EmptyDirEtcdShardStorage uses memory-backed EmptyDir for shard storage.
-	EmptyDirEtcdShardStorage ManagedEtcdShardStorageType = "EmptyDir"
-)
-
-// ManagedEtcdShardStorageSpec configures storage for a single etcd shard.
-// +kubebuilder:validation:XValidation:rule="self.type == 'PersistentVolume' ? true : !has(self.persistentVolume)",message="persistentVolume is forbidden when type is not PersistentVolume"
-type ManagedEtcdShardStorageSpec struct {
-	// type is the kind of storage backend to use for this shard.
-	// Valid values are PersistentVolume and EmptyDir.
-	// When set to PersistentVolume, a PersistentVolumeClaim is created for
-	// each etcd replica via the StatefulSet volumeClaimTemplates. The
-	// optional persistentVolume field can override the StorageClass for
-	// this shard; when persistentVolume is omitted, the shard inherits
-	// the StorageClass and size from the parent spec.etcd.managed.storage
-	// configuration.
-	// When set to EmptyDir, the shard uses memory-backed ephemeral
-	// storage (tmpfs). Data is lost when the pod restarts. This is
-	// suitable for shards holding expendable, high-churn data such as
-	// events or leases.
-	// +required
-	// +unionDiscriminator
-	Type ManagedEtcdShardStorageType `json:"type,omitempty"`
-
-	// persistentVolume configures PVC-based storage for this shard.
-	// Only valid when type is PersistentVolume.
-	// When omitted and type is PersistentVolume, the shard inherits the
-	// StorageClass and volume size from the parent
-	// spec.etcd.managed.storage.persistentVolume configuration.
-	// +optional
-	PersistentVolume ManagedEtcdShardPersistentVolumeSpec `json:"persistentVolume,omitzero"`
-}
-
-// ManagedEtcdShardPersistentVolumeSpec configures PVC storage for an etcd shard.
-// +kubebuilder:validation:MinProperties=1
-type ManagedEtcdShardPersistentVolumeSpec struct {
-	// storageClassName overrides the StorageClass for this shard's PVCs.
-	// If not specified, the parent ManagedEtcdSpec's storageClassName is used.
-	// Must be a valid DNS1123 subdomain (lowercase alphanumeric, hyphens, or
-	// dots, starting and ending with an alphanumeric character), max 253
-	// characters.
-	// +optional
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=253
-	// +kubebuilder:validation:XValidation:rule="self.matches('^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$')",message="storageClassName must be a valid DNS1123 subdomain"
-	StorageClassName string `json:"storageClassName,omitempty"`
-}
-
-// EtcdShardSchedulingSpec configures pod placement for a single etcd shard.
-// +kubebuilder:validation:MinProperties=1
-type EtcdShardSchedulingSpec struct {
-	// nodeSelector constrains this shard's pods to nodes matching the
-	// specified labels, in addition to the framework's control plane node
-	// selector. Keys and values must be valid Kubernetes label key/value
-	// pairs. Maximum 16 entries.
-	// +optional
-	// +kubebuilder:validation:MinProperties=1
-	// +kubebuilder:validation:MaxProperties=16
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// tolerations allows this shard's pods to schedule on nodes with
-	// matching taints, in addition to the framework's control plane
-	// tolerations. Maximum 16 entries.
-	// +optional
-	// +listType=atomic
-	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:MaxItems=16
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-}
-
-// UnmanagedEtcdShardSpec defines the configuration for a single etcd shard
-// within an unmanaged (externally operated) etcd deployment.
-type UnmanagedEtcdShardSpec struct {
-	// name is a unique identifier for this shard.
-	// Must be a valid DNS1123 label (lowercase alphanumeric with hyphens,
-	// starting and ending with an alphanumeric character), max 48 characters.
-	// Immutable once set.
-	// +required
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=48
-	// +kubebuilder:validation:XValidation:rule="self.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')",message="name must be a valid DNS1123 label: lowercase alphanumeric with hyphens, starting and ending with an alphanumeric character"
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="name is immutable"
-	Name string `json:"name,omitempty"`
-
-	// resources is the list of Kubernetes resource types routed to this
-	// shard. Uses the same format as ManagedEtcdShardSpec.Resources.
-	// Only resource types built into the kube-apiserver are routed; entries
-	// for CRD-backed or aggregated API resources have no effect (see
-	// EtcdShardResource).
-	// Minimum 1, maximum 20 entries. Immutable once set.
-	// +required
-	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:MaxItems=20
-	// +listType=map
-	// +listMapKey=apiGroup
-	// +listMapKey=resource
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="resources are immutable"
-	Resources []EtcdShardResource `json:"resources,omitempty"`
-
-	// endpoint is the full etcd client endpoint URL for this shard.
-	// Must be a valid HTTPS URL, max 267 characters. Immutable once set.
-	// All shards must share the same CA and client certificate as the
-	// top-level UnmanagedEtcdSpec.TLS, because kube-apiserver uses a
-	// single --etcd-cafile/--etcd-certfile/--etcd-keyfile for all etcd
-	// connections; --etcd-servers-overrides only overrides server URLs.
-	// +required
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=267
-	// +kubebuilder:validation:XValidation:rule="isURL(self) && url(self).getScheme() == 'https'",message="endpoint must be a valid HTTPS URL"
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="endpoint is immutable"
-	Endpoint string `json:"endpoint,omitempty"`
 }
 
 // SecretEncryptionType defines the type of kube secret encryption being used.

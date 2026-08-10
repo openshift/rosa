@@ -10,7 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
@@ -22,10 +22,10 @@ import (
 
 func newDescribeClusterMocks(ctrl *gomock.Controller) (*hfmocks.MockInterface, *hfmocks.MockClusterInterface) {
 	hf := hfmocks.NewMockInterface(ctrl)
-	v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+	v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 	clusters := hfmocks.NewMockClusterInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-	v1.EXPECT().Clusters(gomock.Any()).Return(clusters).AnyTimes()
+	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
 	return hf, clusters
 }
 
@@ -43,7 +43,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 			Spec: v1alpha1.ClusterSpec{
-				HostedCluster: hypershiftv1beta1.HostedClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					IssuerURL: "https://oidc.example.com",
 					Platform: hypershiftv1beta1.PlatformSpec{
 						AWS: &hypershiftv1beta1.AWSPlatformSpec{Region: "us-east-1"},

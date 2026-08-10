@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -40,13 +40,13 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 		exitFn(1)
 	}
 
-	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, r.Creator.AccountID, clusterKey)
+	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 	}
 
-	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID)
+	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
 	cluster, err := clusters.Get(ctx, clusterID, wrappers.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -89,7 +89,6 @@ func hfClusterToMap(c *v1alpha1.Cluster) map[string]interface{} {
 		"state":         string(c.Status.Phase),
 		"created_at":    c.CreationTimestamp.UTC().Format(time.RFC3339),
 		"spec": map[string]interface{}{
-			"creator_arn": c.Spec.CreatorARN,
 			"oidc_issuer": c.Spec.HostedCluster.IssuerURL,
 			"roles_ref":   rolesRef,
 		},

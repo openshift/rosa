@@ -10,7 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -24,11 +24,11 @@ func newListMPMocks(ctrl *gomock.Controller) (
 	*hfmocks.MockNodePoolInterface,
 ) {
 	hf := hfmocks.NewMockInterface(ctrl)
-	v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+	v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 	clusters := hfmocks.NewMockClusterInterface(ctrl)
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-	v1.EXPECT().Clusters(gomock.Any()).Return(clusters).AnyTimes()
+	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
 	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
 	return hf, clusters, nodePools
 }
@@ -48,7 +48,7 @@ var _ = Describe("runHyperfleetList", func() {
 		np := v1alpha1.NodePool{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
 			Spec: v1alpha1.NodePoolSpec{
-				NodePool: hypershiftv1beta1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					Replicas: &replicas,
 					Platform: hypershiftv1beta1.NodePoolPlatform{
 						AWS: &hypershiftv1beta1.AWSNodePoolPlatform{InstanceType: "m5.xlarge"},

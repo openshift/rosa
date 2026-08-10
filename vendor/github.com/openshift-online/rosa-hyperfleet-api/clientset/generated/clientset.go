@@ -22,7 +22,7 @@ import (
 	fmt "fmt"
 	http "net/http"
 
-	v1alpha1internalversion "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/typed/v1alpha1/internalversion"
+	v1alpha1public "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/typed/v1alpha1/public"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -30,18 +30,18 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	V1alpha1() v1alpha1internalversion.V1alpha1Interface
+	V1alpha1Public() v1alpha1public.V1alpha1PublicInterface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	v1alpha1 *v1alpha1internalversion.V1alpha1Client
+	v1alpha1Public *v1alpha1public.V1alpha1PublicClient
 }
 
-// V1alpha1 retrieves the V1alpha1Client
-func (c *Clientset) V1alpha1() v1alpha1internalversion.V1alpha1Interface {
-	return c.v1alpha1
+// V1alpha1Public retrieves the V1alpha1PublicClient
+func (c *Clientset) V1alpha1Public() v1alpha1public.V1alpha1PublicInterface {
+	return c.v1alpha1Public
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -88,7 +88,7 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-	cs.v1alpha1, err = v1alpha1internalversion.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.v1alpha1Public, err = v1alpha1public.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.v1alpha1 = v1alpha1internalversion.New(c)
+	cs.v1alpha1Public = v1alpha1public.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

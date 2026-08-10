@@ -14,7 +14,7 @@ import (
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
 	pkgaws "github.com/openshift/rosa/pkg/aws"
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -105,10 +105,10 @@ var _ = Describe("runHyperfleet", func() {
 	It("creates a cluster and uses the partition in role ARNs", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf := hfmocks.NewMockInterface(ctrl)
-		v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 		clusters := hfmocks.NewMockClusterInterface(ctrl)
 		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-		v1.EXPECT().Clusters(gomock.Any()).Return(clusters).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusters).AnyTimes()
 
 		var capturedCluster *v1alpha1.Cluster
 		clusters.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -188,10 +188,10 @@ var _ = Describe("runHyperfleet", func() {
 	It("exits when cluster create fails", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf := hfmocks.NewMockInterface(ctrl)
-		v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 		clusters := hfmocks.NewMockClusterInterface(ctrl)
 		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-		v1.EXPECT().Clusters(gomock.Any()).Return(clusters).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusters).AnyTimes()
 		clusters.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, fmt.Errorf("create error"))
 

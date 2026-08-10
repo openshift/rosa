@@ -27,7 +27,7 @@ import (
 	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
 	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	rosacli "github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -608,7 +608,7 @@ var _ = Describe("Hyperfleet sanity",
 					return
 				}
 				By("Waiting for cluster to be fully deleted before releasing AWS resources")
-				_ = hfClient.HyperfleetV1alpha1().Clusters(accountID).WaitUntil(
+				_ = hfClient.HyperfleetV1alpha1().Clusters().WaitUntil(
 					ctx, clusterID,
 					func(c *v1alpha1.Cluster) bool {
 						if c == nil {
@@ -749,7 +749,7 @@ var _ = Describe("Hyperfleet sanity",
 
 			By("Waiting for cluster to become Ready")
 			var clusterPhase v1alpha1.ClusterPhase
-			err = hfClient.HyperfleetV1alpha1().Clusters(accountID).WaitUntil(
+			err = hfClient.HyperfleetV1alpha1().Clusters().WaitUntil(
 				ctx,
 				clusterID,
 				func(c *v1alpha1.Cluster) bool {
@@ -780,7 +780,7 @@ var _ = Describe("Hyperfleet sanity",
 			// ── Describe sanity ───────────────────────────────────────────────
 
 			By("Describing cluster via CLI and comparing with Get response")
-			getOut, err := hfClient.HyperfleetV1alpha1().Clusters(accountID).Get(
+			getOut, err := hfClient.HyperfleetV1alpha1().Clusters().Get(
 				ctx, clusterID, wrappers.GetOptions{},
 			)
 			Expect(err).NotTo(HaveOccurred(), "SDK Get before CLI describe")

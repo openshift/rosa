@@ -12,7 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
 	"github.com/openshift/rosa/pkg/output"
@@ -30,10 +30,10 @@ var _ = Describe("runHyperfleetList structured output", func() {
 
 	stubClusterList := func(ctrl *gomock.Controller, clusters []v1alpha1.Cluster) {
 		hf := hfmocks.NewMockInterface(ctrl)
-		v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 		clusterIface := hfmocks.NewMockClusterInterface(ctrl)
 		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-		v1.EXPECT().Clusters(gomock.Any()).Return(clusterIface).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusterIface).AnyTimes()
 		clusterIface.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: clusters}, nil)
 		t.RosaRuntime.HyperFleetClient = hf

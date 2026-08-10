@@ -31,9 +31,9 @@ require (
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.470
 	github.com/openshift-online/ocm-common v0.0.46
 	github.com/openshift-online/ocm-sdk-go v0.1.517
-	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.0.0-20260803002448-a25b07fe4598
-	github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api v0.0.0
-	github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7
+	github.com/openshift-online/rosa-hyperfleet-api/api v0.0.0
+	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.0.0-20260810145312-a1bbdf150898
+	github.com/openshift/hypershift/api v0.0.0-20260625052409-9acec4759a16
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2
@@ -160,4 +160,4 @@ require (
 
 replace github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
 
-replace github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api v0.0.0 => github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api v0.0.0-20260731220330-4c0f86054074
+replace github.com/openshift-online/rosa-hyperfleet-api/api v0.0.0 => github.com/openshift-online/rosa-hyperfleet-api/api v0.0.0-20260810130109-dc2456b9ccbe

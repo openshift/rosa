@@ -9,7 +9,7 @@ import (
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -88,13 +88,12 @@ func runHyperfleet(r *rosa.Runtime) {
 	rolesRef := hyperfleet.ComputeRolesRef(args.operatorRolesPrefix, r.Creator.AccountID, r.Creator.Partition)
 
 	subnetRef := subnetID
-	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID).Create(
+	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().Create(
 		ctx,
 		&v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: clusterName},
 			Spec: v1alpha1.ClusterSpec{
-				CreatorARN: r.Creator.ARN,
-				HostedCluster: hypershiftv1beta1.HostedClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					Release: hypershiftv1beta1.Release{Image: args.version},
 					Platform: hypershiftv1beta1.PlatformSpec{
 						Type: hypershiftv1beta1.AWSPlatform,
