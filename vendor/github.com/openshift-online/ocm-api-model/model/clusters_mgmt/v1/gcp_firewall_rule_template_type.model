@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024 Red Hat, Inc.
+Copyright (c) 2026 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Manages the collection of gcp endpoints.
-resource GCP {
-	// Reference to the resource that manages wif_configs
-	locator WifConfigs {
-		target WifConfigs
-	}
+// GCP firewall rule template definition.
+// Templates define the set of firewall rules that will be created for a cluster.
+// Each template has a version and one or more profiles (e.g. "public", "private").
+struct GcpFirewallRuleTemplate {
+	// Template version identifier (e.g. "v1").
+	Version String
 
-	// Reference to the resource that manages GCP firewall rules.
-	locator FirewallRules {
-		target GcpFirewallRules
-	}
+	// Profile name (e.g. "public", "private").
+	Profile String
 
-	// Reference to the resource that manages GCP firewall rule templates.
-	locator FirewallRuleTemplates {
-		target GcpFirewallRuleTemplates
-	}
+	// Human-readable description of this template profile.
+	Description String
+
+	// Self link to the template resource.
+	Href String
 }

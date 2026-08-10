@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024 Red Hat, Inc.
+Copyright (c) 2020 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Manages the collection of gcp endpoints.
-resource GCP {
-	// Reference to the resource that manages wif_configs
-	locator WifConfigs {
-		target WifConfigs
-	}
+// IMPORTANT: This file has been generated automatically, refrain from modifying it manually as all
+// your changes will be lost when the file is generated again.
 
-	// Reference to the resource that manages GCP firewall rules.
-	locator FirewallRules {
-		target GcpFirewallRules
-	}
-
-	// Reference to the resource that manages GCP firewall rule templates.
-	locator FirewallRuleTemplates {
-		target GcpFirewallRuleTemplates
-	}
-}
+package v1 // github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1
