@@ -26,10 +26,10 @@ import (
 	"github.com/openshift-online/ocm-api-model/clientapi/helpers"
 )
 
-// MarshalGCPNetwork writes a value of the 'GCP_network' type to the given writer.
-func MarshalGCPNetwork(object *GCPNetwork, writer io.Writer) error {
+// MarshalGcpFirewallRuleGcpNetwork writes a value of the 'gcp_firewall_rule_gcp_network' type to the given writer.
+func MarshalGcpFirewallRuleGcpNetwork(object *GcpFirewallRuleGcpNetwork, writer io.Writer) error {
 	stream := helpers.NewStream(writer)
-	WriteGCPNetwork(object, stream)
+	WriteGcpFirewallRuleGcpNetwork(object, stream)
 	err := stream.Flush()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func MarshalGCPNetwork(object *GCPNetwork, writer io.Writer) error {
 	return stream.Error
 }
 
-// WriteGCPNetwork writes a value of the 'GCP_network' type to the given stream.
-func WriteGCPNetwork(object *GCPNetwork, stream *jsoniter.Stream) {
+// WriteGcpFirewallRuleGcpNetwork writes a value of the 'gcp_firewall_rule_gcp_network' type to the given stream.
+func WriteGcpFirewallRuleGcpNetwork(object *GcpFirewallRuleGcpNetwork, stream *jsoniter.Stream) {
 	count := 0
 	stream.WriteObjectStart()
 	var present_ bool
@@ -47,8 +47,8 @@ func WriteGCPNetwork(object *GCPNetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("vpc_name")
-		stream.WriteString(object.vpcName)
+		stream.WriteObjectField("machine_cidr")
+		stream.WriteString(object.machineCidr)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 1 && object.fieldSet_[1]
@@ -56,8 +56,8 @@ func WriteGCPNetwork(object *GCPNetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("vpc_project_id")
-		stream.WriteString(object.vpcProjectID)
+		stream.WriteObjectField("project_id")
+		stream.WriteString(object.projectId)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 2 && object.fieldSet_[2]
@@ -65,46 +65,28 @@ func WriteGCPNetwork(object *GCPNetwork, stream *jsoniter.Stream) {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("compute_subnet")
-		stream.WriteString(object.computeSubnet)
-		count++
-	}
-	present_ = len(object.fieldSet_) > 3 && object.fieldSet_[3]
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("control_plane_subnet")
-		stream.WriteString(object.controlPlaneSubnet)
-		count++
-	}
-	present_ = len(object.fieldSet_) > 4 && object.fieldSet_[4]
-	if present_ {
-		if count > 0 {
-			stream.WriteMore()
-		}
-		stream.WriteObjectField("firewall_rules_id")
-		stream.WriteString(object.firewallRulesId)
+		stream.WriteObjectField("vpc_name")
+		stream.WriteString(object.vpcName)
 	}
 	stream.WriteObjectEnd()
 }
 
-// UnmarshalGCPNetwork reads a value of the 'GCP_network' type from the given
+// UnmarshalGcpFirewallRuleGcpNetwork reads a value of the 'gcp_firewall_rule_gcp_network' type from the given
 // source, which can be an slice of bytes, a string or a reader.
-func UnmarshalGCPNetwork(source interface{}) (object *GCPNetwork, err error) {
+func UnmarshalGcpFirewallRuleGcpNetwork(source interface{}) (object *GcpFirewallRuleGcpNetwork, err error) {
 	iterator, err := helpers.NewIterator(source)
 	if err != nil {
 		return
 	}
-	object = ReadGCPNetwork(iterator)
+	object = ReadGcpFirewallRuleGcpNetwork(iterator)
 	err = iterator.Error
 	return
 }
 
-// ReadGCPNetwork reads a value of the 'GCP_network' type from the given iterator.
-func ReadGCPNetwork(iterator *jsoniter.Iterator) *GCPNetwork {
-	object := &GCPNetwork{
-		fieldSet_: make([]bool, 5),
+// ReadGcpFirewallRuleGcpNetwork reads a value of the 'gcp_firewall_rule_gcp_network' type from the given iterator.
+func ReadGcpFirewallRuleGcpNetwork(iterator *jsoniter.Iterator) *GcpFirewallRuleGcpNetwork {
+	object := &GcpFirewallRuleGcpNetwork{
+		fieldSet_: make([]bool, 3),
 	}
 	for {
 		field := iterator.ReadObject()
@@ -112,26 +94,18 @@ func ReadGCPNetwork(iterator *jsoniter.Iterator) *GCPNetwork {
 			break
 		}
 		switch field {
+		case "machine_cidr":
+			value := iterator.ReadString()
+			object.machineCidr = value
+			object.fieldSet_[0] = true
+		case "project_id":
+			value := iterator.ReadString()
+			object.projectId = value
+			object.fieldSet_[1] = true
 		case "vpc_name":
 			value := iterator.ReadString()
 			object.vpcName = value
-			object.fieldSet_[0] = true
-		case "vpc_project_id":
-			value := iterator.ReadString()
-			object.vpcProjectID = value
-			object.fieldSet_[1] = true
-		case "compute_subnet":
-			value := iterator.ReadString()
-			object.computeSubnet = value
 			object.fieldSet_[2] = true
-		case "control_plane_subnet":
-			value := iterator.ReadString()
-			object.controlPlaneSubnet = value
-			object.fieldSet_[3] = true
-		case "firewall_rules_id":
-			value := iterator.ReadString()
-			object.firewallRulesId = value
-			object.fieldSet_[4] = true
 		default:
 			iterator.ReadAny()
 		}

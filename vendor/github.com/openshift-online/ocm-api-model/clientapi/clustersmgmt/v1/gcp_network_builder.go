@@ -26,12 +26,13 @@ type GCPNetworkBuilder struct {
 	vpcProjectID       string
 	computeSubnet      string
 	controlPlaneSubnet string
+	firewallRulesId    string
 }
 
 // NewGCPNetwork creates a new builder of 'GCP_network' objects.
 func NewGCPNetwork() *GCPNetworkBuilder {
 	return &GCPNetworkBuilder{
-		fieldSet_: make([]bool, 4),
+		fieldSet_: make([]bool, 5),
 	}
 }
 
@@ -51,7 +52,7 @@ func (b *GCPNetworkBuilder) Empty() bool {
 // VPCName sets the value of the 'VPC_name' attribute to the given value.
 func (b *GCPNetworkBuilder) VPCName(value string) *GCPNetworkBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
 	b.vpcName = value
 	b.fieldSet_[0] = true
@@ -61,7 +62,7 @@ func (b *GCPNetworkBuilder) VPCName(value string) *GCPNetworkBuilder {
 // VPCProjectID sets the value of the 'VPC_project_ID' attribute to the given value.
 func (b *GCPNetworkBuilder) VPCProjectID(value string) *GCPNetworkBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
 	b.vpcProjectID = value
 	b.fieldSet_[1] = true
@@ -71,7 +72,7 @@ func (b *GCPNetworkBuilder) VPCProjectID(value string) *GCPNetworkBuilder {
 // ComputeSubnet sets the value of the 'compute_subnet' attribute to the given value.
 func (b *GCPNetworkBuilder) ComputeSubnet(value string) *GCPNetworkBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
 	b.computeSubnet = value
 	b.fieldSet_[2] = true
@@ -81,10 +82,20 @@ func (b *GCPNetworkBuilder) ComputeSubnet(value string) *GCPNetworkBuilder {
 // ControlPlaneSubnet sets the value of the 'control_plane_subnet' attribute to the given value.
 func (b *GCPNetworkBuilder) ControlPlaneSubnet(value string) *GCPNetworkBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
 	b.controlPlaneSubnet = value
 	b.fieldSet_[3] = true
+	return b
+}
+
+// FirewallRulesId sets the value of the 'firewall_rules_id' attribute to the given value.
+func (b *GCPNetworkBuilder) FirewallRulesId(value string) *GCPNetworkBuilder {
+	if len(b.fieldSet_) == 0 {
+		b.fieldSet_ = make([]bool, 5)
+	}
+	b.firewallRulesId = value
+	b.fieldSet_[4] = true
 	return b
 }
 
@@ -101,6 +112,7 @@ func (b *GCPNetworkBuilder) Copy(object *GCPNetwork) *GCPNetworkBuilder {
 	b.vpcProjectID = object.vpcProjectID
 	b.computeSubnet = object.computeSubnet
 	b.controlPlaneSubnet = object.controlPlaneSubnet
+	b.firewallRulesId = object.firewallRulesId
 	return b
 }
 
@@ -115,5 +127,6 @@ func (b *GCPNetworkBuilder) Build() (object *GCPNetwork, err error) {
 	object.vpcProjectID = b.vpcProjectID
 	object.computeSubnet = b.computeSubnet
 	object.controlPlaneSubnet = b.controlPlaneSubnet
+	object.firewallRulesId = b.firewallRulesId
 	return
 }
