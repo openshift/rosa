@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 
 	"go.uber.org/mock/gomock"
 
@@ -163,7 +164,7 @@ var _ = Describe("RosaVersionOptions", func() {
 		})
 	})
 
-	When("Both clientOnly and build are true", func() {
+	When("Both clientOnly and build are true and build info is unavailable", func() {
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 			mockVerify = rosa.NewMockVerifyRosa(ctrl)
@@ -171,8 +172,9 @@ var _ = Describe("RosaVersionOptions", func() {
 			rpt := reporter.CreateReporter()
 
 			opts = &RosaVersionOptions{
-				verifyRosa: mockVerify,
-				reporter:   rpt,
+				verifyRosa:    mockVerify,
+				reporter:      rpt,
+				readBuildInfo: func() (*debug.BuildInfo, bool) { return nil, false },
 
 				args: &RosaVersionUserOptions{
 					clientOnly: true,
@@ -215,10 +217,117 @@ var _ = Describe("RosaVersionOptions", func() {
 
 			// Verify the outputs
 			Expect(string(stdout)).To(ContainSubstring(info.DefaultVersion))
-			Expect(string(stdout)).To(ContainSubstring("Build info: local"))
+			Expect(string(stdout)).To(ContainSubstring(fmt.Sprintf("Git commit: %s", info.Build)))
+		})
+	})
+
+	When("Both clientOnly and build are true and build info is available", func() {
+		BeforeEach(func() {
+			ctrl = gomock.NewController(GinkgoT())
+			mockVerify = rosa.NewMockVerifyRosa(ctrl)
+		})
+
+		AfterEach(func() {
+			ctrl.Finish()
+		})
+
+		It("should print git commit info", func() {
+			rpt := reporter.CreateReporter()
+			opts = &RosaVersionOptions{
+				verifyRosa:    mockVerify,
+				reporter:      rpt,
+				readBuildInfo: fakeBuildInfo("abc1234"),
+				args: &RosaVersionUserOptions{
+					clientOnly: true,
+					build:      true,
+				},
+			}
+
+			rout, wout, pipeErr := os.Pipe()
+			Expect(pipeErr).ToNot(HaveOccurred())
+			tmpout := os.Stdout
+			defer func() {
+				os.Stdout = tmpout
+			}()
+			os.Stdout = wout
+
+			type result struct {
+				versionErr error
+				closeErr   error
+			}
+			ch := make(chan result, 1)
+			go func() {
+				vErr := opts.Version()
+				cErr := wout.Close()
+				ch <- result{versionErr: vErr, closeErr: cErr}
+			}()
+
+			stdout, readErr := io.ReadAll(rout)
+			Expect(readErr).ToNot(HaveOccurred())
+
+			res := <-ch
+			Expect(res.versionErr).ToNot(HaveOccurred())
+			Expect(res.closeErr).ToNot(HaveOccurred())
+
+			Expect(string(stdout)).To(ContainSubstring("Git commit: abc1234"))
+			Expect(string(stdout)).ToNot(ContainSubstring(fmt.Sprintf("Git commit: %s", info.Build)))
+		})
+
+		It("should fall back to info.Build when revision is empty", func() {
+			rpt := reporter.CreateReporter()
+			opts = &RosaVersionOptions{
+				verifyRosa:    mockVerify,
+				reporter:      rpt,
+				readBuildInfo: fakeBuildInfo(""),
+				args: &RosaVersionUserOptions{
+					clientOnly: true,
+					build:      true,
+				},
+			}
+
+			rout, wout, pipeErr := os.Pipe()
+			Expect(pipeErr).ToNot(HaveOccurred())
+			tmpout := os.Stdout
+			defer func() {
+				os.Stdout = tmpout
+			}()
+			os.Stdout = wout
+
+			type result struct {
+				versionErr error
+				closeErr   error
+			}
+			ch := make(chan result, 1)
+			go func() {
+				vErr := opts.Version()
+				cErr := wout.Close()
+				ch <- result{versionErr: vErr, closeErr: cErr}
+			}()
+
+			stdout, readErr := io.ReadAll(rout)
+			Expect(readErr).ToNot(HaveOccurred())
+
+			res := <-ch
+			Expect(res.versionErr).ToNot(HaveOccurred())
+			Expect(res.closeErr).ToNot(HaveOccurred())
+
+			Expect(string(stdout)).To(ContainSubstring(fmt.Sprintf("Git commit: %s", info.Build)))
 		})
 	})
 })
+
+func fakeBuildInfo(revision string) func() (*debug.BuildInfo, bool) {
+	return func() (*debug.BuildInfo, bool) {
+		bi := &debug.BuildInfo{}
+		if revision != "" {
+			bi.Settings = append(bi.Settings, debug.BuildSetting{
+				Key:   "vcs.revision",
+				Value: revision,
+			})
+		}
+		return bi, true
+	}
+}
 
 var _ = Describe("NewRosaVersionCommand", func() {
 	var cmd *cobra.Command
@@ -256,6 +365,6 @@ var _ = Describe("NewRosaVersionCommand", func() {
 		Expect(buildFlag.Name).To(Equal("build"))
 		Expect(buildFlag.Shorthand).To(Equal("b"))
 		Expect(buildFlag.Hidden).To(BeTrue())
-		Expect(buildFlag.Usage).To(Equal("Display build version information, including git commit and build time"))
+		Expect(buildFlag.Usage).To(Equal("Display extra build info, primarily the git commit the binary was built from"))
 	})
 })

@@ -55,7 +55,7 @@ coverage-changed-files:
 
 .PHONY: install
 install:
-	go install ./cmd/rosa
+	go install -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD)" ./cmd/rosa
 
 .PHONY: fmt
 fmt: $(GCI)

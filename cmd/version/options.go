@@ -21,8 +21,9 @@ func NewRosaVersionUserOptions() *RosaVersionUserOptions {
 }
 
 type RosaVersionOptions struct {
-	reporter   *reporter.Object
-	verifyRosa verify.VerifyRosa
+	reporter      *reporter.Object
+	verifyRosa    verify.VerifyRosa
+	readBuildInfo func() (*debug.BuildInfo, bool)
 
 	args *RosaVersionUserOptions
 }
@@ -34,9 +35,10 @@ func NewRosaVersionOptions() (*RosaVersionOptions, error) {
 	}
 
 	return &RosaVersionOptions{
-		verifyRosa: verifyRosa,
-		reporter:   reporter.CreateReporter(),
-		args:       NewRosaVersionUserOptions(),
+		verifyRosa:    verifyRosa,
+		reporter:      reporter.CreateReporter(),
+		readBuildInfo: debug.ReadBuildInfo,
+		args:          NewRosaVersionUserOptions(),
 	}, nil
 }
 
@@ -50,37 +52,22 @@ func (o *RosaVersionOptions) Version() error {
 	}
 
 	if o.args.build {
-		buildInfo, ok := debug.ReadBuildInfo()
+		buildInfo, ok := o.readBuildInfo()
 		if ok {
 			var revision string
-			var buildTime string
-			var dirty bool
 
 			for _, setting := range buildInfo.Settings {
-				switch setting.Key {
-				case "vcs.revision":
+				if setting.Key == "vcs.revision" {
 					revision = setting.Value
-				case "vcs.time":
-					buildTime = setting.Value
-				case "vcs.modified":
-					dirty = setting.Value == "true"
 				}
 			}
 
 			if revision == "" {
 				revision = info.Build
 			}
-			buildMsg := revision
-			if dirty {
-				buildMsg += " (dirty)"
-			}
-			if buildTime != "" {
-				buildMsg += " " + buildTime
-			}
-
-			o.reporter.Infof("Build info: %s", buildMsg)
+			o.reporter.Infof("Git commit: %s", revision)
 		} else {
-			o.reporter.Infof("Build info: %s", info.Build)
+			o.reporter.Infof("Git commit: %s", info.Build)
 		}
 	}
 
