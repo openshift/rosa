@@ -11,7 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/spf13/cobra"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -27,10 +27,10 @@ func testCmd() *cobra.Command {
 
 func newDltClusterMocks(ctrl *gomock.Controller) (*hfmocks.MockInterface, *hfmocks.MockClusterInterface) {
 	hf := hfmocks.NewMockInterface(ctrl)
-	v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+	v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 	clusters := hfmocks.NewMockClusterInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-	v1.EXPECT().Clusters(gomock.Any()).Return(clusters).AnyTimes()
+	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
 	return hf, clusters
 }
 

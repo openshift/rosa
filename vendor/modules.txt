@@ -545,25 +545,24 @@ github.com/openshift-online/ocm-sdk-go/statusboard/v1
 github.com/openshift-online/ocm-sdk-go/testing
 github.com/openshift-online/ocm-sdk-go/webrca
 github.com/openshift-online/ocm-sdk-go/webrca/v1
-# github.com/openshift-online/rosa-hyperfleet-api/clientset v0.0.0-20260803002448-a25b07fe4598
+# github.com/openshift-online/rosa-hyperfleet-api/api v0.0.0 => github.com/openshift-online/rosa-hyperfleet-api/api v0.0.0-20260810130109-dc2456b9ccbe
+## explicit; go 1.26.3
+github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public
+# github.com/openshift-online/rosa-hyperfleet-api/clientset v0.0.0-20260810145312-a1bbdf150898
 ## explicit; go 1.26.3
 github.com/openshift-online/rosa-hyperfleet-api/clientset
 github.com/openshift-online/rosa-hyperfleet-api/clientset/generated
 github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/scheme
-github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/typed/v1alpha1/internalversion
+github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/typed/v1alpha1/public
 github.com/openshift-online/rosa-hyperfleet-api/clientset/rest
 github.com/openshift-online/rosa-hyperfleet-api/clientset/transport
 github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers
-# github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api v0.0.0 => github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api v0.0.0-20260731220330-4c0f86054074
-## explicit; go 1.26.3
-github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1
-github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1/install
 # github.com/openshift/api v0.0.0-20260715165912-72066cc9718b
 ## explicit; go 1.26.0
 github.com/openshift/api/config/v1
 github.com/openshift/api/operator/v1
-# github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7
-## explicit; go 1.26.0
+# github.com/openshift/hypershift/api v0.0.0-20260625052409-9acec4759a16
+## explicit; go 1.25.7
 github.com/openshift/hypershift/api/hypershift/v1beta1
 github.com/openshift/hypershift/api/ibmcapi
 github.com/openshift/hypershift/api/util/ipnet

@@ -28,8 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 
-	internalversion "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/typed/v1alpha1/internalversion"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	typedclient "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/typed/v1alpha1/public"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 )
 
 // ClusterInterface is the platform-scoped client for Cluster resources.
@@ -49,7 +49,7 @@ type ClusterInterface interface {
 }
 
 type clusterClient struct {
-	inner internalversion.ClusterInterface
+	inner typedclient.ClusterInterface
 }
 
 func (c *clusterClient) Create(ctx context.Context, obj *v1alpha1.Cluster, opts CreateOptions) (*v1alpha1.Cluster, error) {
@@ -148,7 +148,7 @@ type NodePoolInterface interface {
 }
 
 type nodePoolClient struct {
-	inner internalversion.NodePoolInterface
+	inner typedclient.NodePoolInterface
 }
 
 func (c *nodePoolClient) Create(ctx context.Context, obj *v1alpha1.NodePool, opts CreateOptions) (*v1alpha1.NodePool, error) {
@@ -229,19 +229,19 @@ func (c *nodePoolClient) WaitUntil(ctx context.Context, id string, condition fun
 		}
 	}
 }
-// V1alpha1Interface is the platform-scoped typed client for the hyperfleet.io/v1alpha1 group.
-type V1alpha1Interface interface {
+// V1alpha1PublicInterface is the platform-scoped typed client for the hyperfleet.io/v1alpha1 group.
+type V1alpha1PublicInterface interface {
 	RESTClient() rest.Interface
-	Clusters(namespace string) ClusterInterface
+	Clusters() ClusterInterface
 	NodePools(namespace string) NodePoolInterface
 }
 
 type wrappedV1alpha1 struct {
-	inner internalversion.V1alpha1Interface
+	inner typedclient.V1alpha1PublicInterface
 }
 
-// NewV1alpha1Client wraps the generated typed client with platform-specific interfaces.
-func NewV1alpha1Client(inner internalversion.V1alpha1Interface) V1alpha1Interface {
+// NewV1alpha1PublicClient wraps the generated typed client with platform-specific interfaces.
+func NewV1alpha1PublicClient(inner typedclient.V1alpha1PublicInterface) V1alpha1PublicInterface {
 	return &wrappedV1alpha1{inner: inner}
 }
 
@@ -249,8 +249,8 @@ func (w *wrappedV1alpha1) RESTClient() rest.Interface {
 	return w.inner.RESTClient()
 }
 
-func (w *wrappedV1alpha1) Clusters(namespace string) ClusterInterface {
-	return &clusterClient{inner: w.inner.Clusters(namespace)}
+func (w *wrappedV1alpha1) Clusters() ClusterInterface {
+	return &clusterClient{inner: w.inner.Clusters()}
 }
 
 func (w *wrappedV1alpha1) NodePools(namespace string) NodePoolInterface {

@@ -11,7 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
 )
@@ -22,11 +22,11 @@ func newResolveMocks(ctrl *gomock.Controller) (
 	*hfmocks.MockNodePoolInterface,
 ) {
 	hf := hfmocks.NewMockInterface(ctrl)
-	v1 := hfmocks.NewMockV1alpha1Interface(ctrl)
+	v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 	clusters := hfmocks.NewMockClusterInterface(ctrl)
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-	v1.EXPECT().Clusters(gomock.Any()).Return(clusters).AnyTimes()
+	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
 	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
 	return hf, clusters, nodePools
 }
@@ -44,7 +44,7 @@ var _ = Describe("ResolveClusterUID", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{cluster}}, nil)
 
-		uid, err := ResolveClusterUID(ctx, hf, "account-1", "my-cluster")
+		uid, err := ResolveClusterUID(ctx, hf, "my-cluster")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(uid).To(Equal("cluster-uid-123"))
 	})
@@ -59,7 +59,7 @@ var _ = Describe("ResolveClusterUID", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{cluster}}, nil)
 
-		_, err := ResolveClusterUID(ctx, hf, "account-1", "my-cluster")
+		_, err := ResolveClusterUID(ctx, hf, "my-cluster")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("not found"))
 	})
@@ -70,7 +70,7 @@ var _ = Describe("ResolveClusterUID", func() {
 
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(nil, errors.New("connection refused"))
 
-		_, err := ResolveClusterUID(ctx, hf, "account-1", "any")
+		_, err := ResolveClusterUID(ctx, hf, "any")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("failed to list clusters"))
 	})

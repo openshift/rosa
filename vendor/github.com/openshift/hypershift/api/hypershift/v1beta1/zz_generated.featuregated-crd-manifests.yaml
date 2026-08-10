@@ -103,17 +103,17 @@ controlplanecomponents.hypershift.openshift.io:
     jsonPath: .status.conditions[?(@.type=="Available")].status
     name: Available
     type: string
-  - description: RolloutComplete
-    jsonPath: .status.conditions[?(@.type=="RolloutComplete")].status
-    name: RolloutComplete
+  - description: Progressing
+    jsonPath: .status.conditions[?(@.type=="Progressing")].status
+    name: Progressing
     type: string
   - description: Message
     jsonPath: .status.conditions[?(@.type=="Available")].message
     name: Message
     type: string
-  - description: RolloutCompleteMessage
-    jsonPath: .status.conditions[?(@.type=="RolloutComplete")].message
-    name: RolloutCompleteMessage
+  - description: ProgressingMessage
+    jsonPath: .status.conditions[?(@.type=="Progressing")].message
+    name: ProgressingMessage
     priority: 1
     type: string
   Scope: Namespaced
@@ -206,21 +206,16 @@ hostedclusters.hypershift.openshift.io:
   FeatureGates:
   - ClusterUpdateAcceptRisks
   - ClusterVersionOperatorConfiguration
-  - EtcdSharding
   - ExternalOIDC
-  - ExternalOIDCExternalClaimsSourcing
   - ExternalOIDCWithUIDAndExtraClaimMappings
   - ExternalOIDCWithUpstreamParity
   - GCPPlatform
   - HCPEtcdBackup
   - HyperShiftOnlyDynamicResourceAllocation
   - ImageStreamImportMode
-  - IngressComponentRouteLabels
-  - KMSEncryption
-  - NetworkObservabilityInstall
+  - KMSEncryptionProvider
   - OpenStack
   - TLSAdherence
-  - TLSGroupPreferences
   FilenameOperatorName: ""
   FilenameOperatorOrdering: ""
   FilenameRunLevel: ""
@@ -284,21 +279,16 @@ hostedcontrolplanes.hypershift.openshift.io:
   FeatureGates:
   - ClusterUpdateAcceptRisks
   - ClusterVersionOperatorConfiguration
-  - EtcdSharding
   - ExternalOIDC
-  - ExternalOIDCExternalClaimsSourcing
   - ExternalOIDCWithUIDAndExtraClaimMappings
   - ExternalOIDCWithUpstreamParity
   - GCPPlatform
   - HCPEtcdBackup
   - HyperShiftOnlyDynamicResourceAllocation
   - ImageStreamImportMode
-  - IngressComponentRouteLabels
-  - KMSEncryption
-  - NetworkObservabilityInstall
+  - KMSEncryptionProvider
   - OpenStack
   - TLSAdherence
-  - TLSGroupPreferences
   FilenameOperatorName: ""
   FilenameOperatorOrdering: ""
   FilenameRunLevel: ""

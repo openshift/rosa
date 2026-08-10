@@ -7,7 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -51,14 +51,14 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	}
 
 	// Resolve cluster name → UID, and fetch the cluster to default release image.
-	clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, r.Creator.AccountID, clusterKey)
+	clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 		return
 	}
 
-	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters(r.Creator.AccountID).
+	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().
 		Get(ctx, clusterUID, wrappers.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
@@ -106,7 +106,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 			Name: nodePoolName,
 		},
 		Spec: v1alpha1.NodePoolSpec{
-			NodePool: hypershiftv1beta1.NodePoolSpec{
+			NodePool: v1alpha1.NodePoolSpecPassthrough{
 				ClusterName: clusterKey,
 				Release:     hypershiftv1beta1.Release{Image: releaseImage},
 				Replicas:    &replicas,
@@ -119,9 +119,6 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 							ID: &subnetID,
 						},
 					},
-				},
-				Management: hypershiftv1beta1.NodePoolManagement{
-					UpgradeType: hypershiftv1beta1.UpgradeTypeReplace,
 				},
 			},
 		},

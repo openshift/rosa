@@ -40,10 +40,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // HyperfleetV1alpha1 mocks base method.
-func (m *MockInterface) HyperfleetV1alpha1() wrappers.V1alpha1Interface {
+func (m *MockInterface) HyperfleetV1alpha1() wrappers.V1alpha1PublicInterface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HyperfleetV1alpha1")
-	ret0, _ := ret[0].(wrappers.V1alpha1Interface)
+	ret0, _ := ret[0].(wrappers.V1alpha1PublicInterface)
 	return ret0
 }
 

@@ -9,7 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/hyperfleet-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
@@ -22,7 +22,7 @@ func buildTestNodePool() *v1alpha1.NodePool {
 			CreationTimestamp: metav1.NewTime(time.Date(2026, 6, 15, 10, 30, 0, 0, time.UTC)),
 		},
 		Spec: v1alpha1.NodePoolSpec{
-			NodePool: hypershiftv1beta1.NodePoolSpec{
+			NodePool: v1alpha1.NodePoolSpecPassthrough{
 				Replicas: &replicas,
 				Release:  hypershiftv1beta1.Release{Image: "v4.17.0-ec.2"},
 				Platform: hypershiftv1beta1.NodePoolPlatform{
