@@ -9,13 +9,4 @@
 # - module: The exact module path where the vulnerability exists
 # - reason: Why this vulnerability is accepted
 
-ignored_vulnerabilities:
-  - id: GO-2026-5037
-    module: stdlib
-    reason: "Deferred until Go 1.26.4 toolchain is available (fix in v1.26.4; current go.mod: 1.25.8)"
-  - id: GO-2026-5038
-    module: stdlib
-    reason: "Deferred until Go 1.26.4 toolchain is available (fix in v1.26.4; current go.mod: 1.25.8)"
-  - id: GO-2026-5039
-    module: stdlib
-    reason: "Deferred until Go 1.26.4 toolchain is available (fix in v1.26.4; current go.mod: 1.25.8)"
+ignored_vulnerabilities: []
