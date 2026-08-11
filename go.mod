@@ -30,8 +30,8 @@ require (
 	github.com/openshift-online/ocm-common v0.0.45
 	github.com/openshift-online/ocm-sdk-go v0.1.509
 	github.com/openshift-online/rosa-hyperfleet-api/api v0.0.0
-	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.0.0-20260810145312-a1bbdf150898
-	github.com/openshift/hypershift/api v0.0.0-20260625052409-9acec4759a16
+	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.0.0-20260811091300-06681345ef58
+	github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.1
 	github.com/spf13/cobra v1.10.2

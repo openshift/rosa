@@ -168,7 +168,7 @@ func (a *Adapter) adaptRequest(req *http.Request) (*http.Request, error) {
 // Fields that have no mapping are preserved as-is (spec, status pass through).
 func (a *Adapter) adaptResponse(resp *http.Response) (*http.Response, error) {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return resp, nil
+		return adaptErrorResponse(resp)
 	}
 
 	body, readErr := io.ReadAll(resp.Body)
@@ -198,6 +198,98 @@ func (a *Adapter) adaptResponse(resp *http.Response) (*http.Response, error) {
 	resp.Body = io.NopCloser(bytes.NewReader(adapted))
 	resp.ContentLength = int64(len(adapted))
 	return resp, nil
+}
+
+// adaptErrorResponse translates a platform-api error envelope into a metav1.Status
+// JSON body so that client-go's transformResponse can parse and surface the
+// server's error message rather than falling back to StatusReasonUnknown.
+//
+// Platform-api error format: {"kind":"Error","code":"...","reason":"..."}
+// metav1.Status format:      {"apiVersion":"v1","kind":"Status","status":"Failure",...}
+//
+// If the body cannot be read the error is returned to the caller. If the body
+// is not a platform-api error envelope the original response is returned unchanged.
+func adaptErrorResponse(resp *http.Response) (*http.Response, error) {
+	body, readErr := io.ReadAll(resp.Body)
+	closeErr := resp.Body.Close()
+	if readErr != nil {
+		return nil, fmt.Errorf("reading error response body: %w", readErr)
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("closing error response body: %w", closeErr)
+	}
+
+	var apiErr struct {
+		Kind   string `json:"kind"`
+		Code   string `json:"code"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal(body, &apiErr); err != nil || apiErr.Kind != "Error" {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return resp, nil
+	}
+
+	msg := apiErr.Reason
+	if apiErr.Code != "" {
+		msg = apiErr.Code + ": " + apiErr.Reason
+	}
+
+	// Minimal metav1.Status — only the fields client-go actually reads.
+	status := struct {
+		APIVersion string `json:"apiVersion"`
+		Kind       string `json:"kind"`
+		Status     string `json:"status"`
+		Message    string `json:"message"`
+		Reason     string `json:"reason"`
+		Code       int32  `json:"code"`
+	}{
+		APIVersion: "v1",
+		Kind:       "Status",
+		Status:     "Failure",
+		Message:    msg,
+		Reason:     httpStatusToReason(resp.StatusCode),
+		Code:       int32(resp.StatusCode),
+	}
+
+	adapted, err := json.Marshal(status)
+	if err != nil {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return resp, nil
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(adapted))
+	resp.ContentLength = int64(len(adapted))
+	return resp, nil
+}
+
+// httpStatusToReason maps an HTTP status code to the corresponding
+// metav1.StatusReason string expected by client-go's error classification.
+func httpStatusToReason(code int) string {
+	switch code {
+	case http.StatusBadRequest:
+		return "BadRequest"
+	case http.StatusUnauthorized:
+		return "Unauthorized"
+	case http.StatusForbidden:
+		return "Forbidden"
+	case http.StatusNotFound:
+		return "NotFound"
+	case http.StatusMethodNotAllowed:
+		return "MethodNotAllowed"
+	case http.StatusConflict:
+		return "Conflict"
+	case http.StatusUnprocessableEntity:
+		return "Invalid"
+	case http.StatusTooManyRequests:
+		return "TooManyRequests"
+	case http.StatusInternalServerError:
+		return "InternalError"
+	case http.StatusServiceUnavailable:
+		return "ServiceUnavailable"
+	case http.StatusGatewayTimeout:
+		return "Timeout"
+	default:
+		return "Unknown"
+	}
 }
 
 // hasWireField reports whether any mapped wire field is present in raw,
