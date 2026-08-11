@@ -41,7 +41,8 @@ import (
 )
 
 const (
-	legacyIngressSupportLabel = "ext-managed.openshift.io/legacy-ingress-support"
+	legacyIngressSupportLabel   = "ext-managed.openshift.io/legacy-ingress-support"
+	defaultClusterQueryPageSize = 100
 )
 
 var NetworkTypes = []string{"OpenShiftSDN", "OVNKubernetes"}
@@ -269,12 +270,17 @@ func (c *Client) CreateCluster(config Spec) (*cmv1.Cluster, error) {
 		return nil, fmt.Errorf("unable to create cluster spec: %v", err)
 	}
 
+	dryRun := false
+	if config.DryRun != nil {
+		dryRun = *config.DryRun
+	}
+
 	cluster, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Add().
-		Parameter("dryRun", *config.DryRun).
+		Parameter("dryRun", dryRun).
 		Body(spec).
 		Send()
-	if config.DryRun != nil && *config.DryRun {
+	if dryRun {
 		if cluster.Error() != nil {
 			return nil, handleErr(cluster.Error(), err)
 		}
@@ -329,11 +335,13 @@ func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluste
 
 	request := c.ocm.ClustersMgmt().V1().Clusters().List().Search(query)
 	page := 1
+	fetchAll := count == 0
+	pageSize := count
+	if fetchAll {
+		pageSize = defaultClusterQueryPageSize
+	}
 	for {
-		clusterRequestList := request.Page(page)
-		if count > 0 {
-			clusterRequestList = clusterRequestList.Size(count)
-		}
+		clusterRequestList := request.Page(page).Size(pageSize)
 		response, err := clusterRequestList.Send()
 		if err != nil {
 			return clusters, err
@@ -343,7 +351,12 @@ func (c *Client) queryClusters(query string, count int) (clusters []*cmv1.Cluste
 			clusters = append(clusters, cluster)
 			return true
 		})
-		if response.Size() != count {
+
+		stopPaging := response.Size() < pageSize
+		if fetchAll {
+			stopPaging = len(clusters) >= response.Total()
+		}
+		if stopPaging {
 			break
 		}
 		page++
