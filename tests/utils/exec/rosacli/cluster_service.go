@@ -260,10 +260,12 @@ func (c *clusterService) List() (bytes.Buffer, error) {
 
 func (c *clusterService) CreateDryRun(clusterName string, flags ...string) (bytes.Buffer, error) {
 	combflags := append([]string{"-c", clusterName, "--dry-run", "--mode=auto", "--yes"}, flags...)
-	createDryRun := c.client.Runner.
-		Cmd("create", "cluster").
-		CmdFlags(combflags...)
-	return createDryRun.Run()
+	return config.RetryOnAWSRegionsCredentialError(func() (bytes.Buffer, error) {
+		createDryRun := c.client.Runner.
+			Cmd("create", "cluster").
+			CmdFlags(combflags...)
+		return createDryRun.Run()
+	}, 3, 10*time.Second)
 }
 
 func (c *clusterService) Create(clusterName string, flags ...string) (bytes.Buffer, string, error) {
