@@ -51,4 +51,8 @@ class AWSNodePool {
     // If present it defines the AWS Capacity Reservation used for this NodePool
     @json(name = "capacity_reservation")
     CapacityReservation AWSCapacityReservation
+
+    // Use spot instances on this node pool to reduce cost.
+    @json(name = "spot_market_options")
+    SpotMarketOptions AwsNodePoolSpotMarketOptions
 }

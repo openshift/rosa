@@ -27,4 +27,7 @@ struct GCPNetwork {
 
     // Compute subnet used by the cluster.
     ComputeSubnet   String
+
+    // ID of the GCP firewall rule set associated with this cluster.
+    FirewallRulesId String
 }

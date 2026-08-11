@@ -387,6 +387,16 @@ var pathTreeData = `{
           "-": null
         },
         "gcp": {
+          "firewall_rule_templates": {
+            "-": {
+              "profiles": {
+                "-": null
+              }
+            }
+          },
+          "firewall_rules": {
+            "-": null
+          },
           "wif_configs": {
             "-": {
               "status": null
