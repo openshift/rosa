@@ -85,4 +85,10 @@ struct AWS {
 
 	// Zero egress configuration.
 	ZeroEgress ZeroEgress
+
+	// URL of the SQS queue used for graceful Spot instance interruption handling.
+	// When set, HyperShift deploys the AWS Node Termination Handler in the hosted
+	// control plane. Queue must be in the same region as the cluster.
+	@json(name = "termination_handler_queue_url")
+	TerminationHandlerQueueUrl String
 }

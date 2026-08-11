@@ -112,7 +112,7 @@ type ClusterBuilder struct {
 	openshiftVersion                  string
 	product                           *ProductBuilder
 	properties                        map[string]string
-	provisionShard                    *ProvisionShardBuilder
+	provisionShardID                  string
 	proxy                             *ProxyBuilder
 	region                            *CloudRegionBuilder
 	registryConfig                    *ClusterRegistryConfigBuilder
@@ -870,19 +870,13 @@ func (b *ClusterBuilder) Properties(value map[string]string) *ClusterBuilder {
 	return b
 }
 
-// ProvisionShard sets the value of the 'provision_shard' attribute to the given value.
-//
-// Contains the properties of the provision shard
-func (b *ClusterBuilder) ProvisionShard(value *ProvisionShardBuilder) *ClusterBuilder {
+// ProvisionShardID sets the value of the 'provision_shard_ID' attribute to the given value.
+func (b *ClusterBuilder) ProvisionShardID(value string) *ClusterBuilder {
 	if len(b.fieldSet_) == 0 {
 		b.fieldSet_ = make([]bool, 63)
 	}
-	b.provisionShard = value
-	if value != nil {
-		b.fieldSet_[54] = true
-	} else {
-		b.fieldSet_[54] = false
-	}
+	b.provisionShardID = value
+	b.fieldSet_[54] = true
 	return b
 }
 
@@ -1248,11 +1242,7 @@ func (b *ClusterBuilder) Copy(object *Cluster) *ClusterBuilder {
 	} else {
 		b.properties = nil
 	}
-	if object.provisionShard != nil {
-		b.provisionShard = NewProvisionShard().Copy(object.provisionShard)
-	} else {
-		b.provisionShard = nil
-	}
+	b.provisionShardID = object.provisionShardID
 	if object.proxy != nil {
 		b.proxy = NewProxy().Copy(object.proxy)
 	} else {
@@ -1527,12 +1517,7 @@ func (b *ClusterBuilder) Build() (object *Cluster, err error) {
 			object.properties[k] = v
 		}
 	}
-	if b.provisionShard != nil {
-		object.provisionShard, err = b.provisionShard.Build()
-		if err != nil {
-			return
-		}
-	}
+	object.provisionShardID = b.provisionShardID
 	if b.proxy != nil {
 		object.proxy, err = b.proxy.Build()
 		if err != nil {

@@ -42,6 +42,26 @@ func NewGCPClient(transport http.RoundTripper, path string) *GCPClient {
 	}
 }
 
+// FirewallRuleTemplates returns the target 'gcp_firewall_rule_templates' resource.
+//
+// Reference to the resource that manages GCP firewall rule templates.
+func (c *GCPClient) FirewallRuleTemplates() *GcpFirewallRuleTemplatesClient {
+	return NewGcpFirewallRuleTemplatesClient(
+		c.transport,
+		path.Join(c.path, "firewall_rule_templates"),
+	)
+}
+
+// FirewallRules returns the target 'gcp_firewall_rules' resource.
+//
+// Reference to the resource that manages GCP firewall rules.
+func (c *GCPClient) FirewallRules() *GcpFirewallRulesClient {
+	return NewGcpFirewallRulesClient(
+		c.transport,
+		path.Join(c.path, "firewall_rules"),
+	)
+}
+
 // WifConfigs returns the target 'wif_configs' resource.
 //
 // Reference to the resource that manages wif_configs

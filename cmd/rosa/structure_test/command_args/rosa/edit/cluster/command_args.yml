@@ -20,6 +20,7 @@
 - name: registry-config-platform-allowlist
 - name: registry-config-additional-trusted-ca
 - name: billing-account
+- name: spot-termination-queue-url
 - name: network-type
 - name: ovn-internal-subnets
 - name: channel-group

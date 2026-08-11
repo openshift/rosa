@@ -95,6 +95,7 @@
 - name: cluster-admin-user
 - name: cluster-admin-password
 - name: audit-log-arn
+- name: spot-termination-queue-url
 - name: default-ingress-route-selector
 - name: default-ingress-excluded-namespaces
 - name: default-ingress-wildcard-policy

@@ -1,0 +1,104 @@
+/*
+Copyright (c) 2026 Red Hat, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// GCP firewall rule configuration for BYO (Bring Your Own) firewall workflow.
+// These are organization-level resources that can be created before cluster
+// provisioning and reused after cluster deletion.
+class GcpFirewallRule {
+	// Firewall rule name (unique per organization).
+	Name String
+
+	// Profile type (e.g. "public", "private").
+	Profile String
+
+	// Template version and profile reference.
+	Template GcpFirewallRuleTemplateRef
+
+	// Link to the WIF config used by this firewall rule.
+	link WifConfig WifConfig
+
+	// GCP network configuration.
+	GcpNetwork GcpFirewallRuleGcpNetwork
+
+	// Status containing the rendered firewall rules.
+	Status GcpFirewallRuleStatus
+
+	// Link to the organization that owns this firewall rule.
+	Organization OrganizationLink
+}
+
+// Status of a GCP firewall rule set, containing the rendered rules.
+struct GcpFirewallRuleStatus {
+	// Rendered firewall rule specifications.
+	Rules []GcpFirewallRuleSpec
+}
+
+// A single rendered GCP firewall rule specification.
+struct GcpFirewallRuleSpec {
+	// Name of the firewall rule.
+	Name String
+
+	// GCP network URL.
+	Network String
+
+	// Direction of traffic (INGRESS or EGRESS).
+	Direction String
+
+	// Priority of the rule (0-65535).
+	Priority Integer
+
+	// Allowed protocols and ports.
+	Allowed []GcpFirewallRuleAllowed
+
+	// Source IP CIDR ranges.
+	SourceRanges []String
+
+	// Source service accounts.
+	SourceServiceAccounts []String
+
+	// Target service accounts.
+	TargetServiceAccounts []String
+}
+
+// Allowed protocol and ports for a GCP firewall rule.
+struct GcpFirewallRuleAllowed {
+	// IP protocol (e.g. "tcp", "udp", "icmp").
+	IPProtocol String
+
+	// Ports to allow (e.g. "6443", "10250").
+	Ports []String
+}
+
+// Template version and profile reference for a firewall rule.
+struct GcpFirewallRuleTemplateRef {
+	// Template version identifier.
+	Version String
+
+	// Self link to the template resource.
+	Href String
+}
+
+// GCP network configuration for a firewall rule.
+struct GcpFirewallRuleGcpNetwork {
+	// GCP project ID.
+	ProjectId String
+
+	// VPC network name.
+	VpcName String
+
+	// Machine CIDR block.
+	MachineCidr String
+}

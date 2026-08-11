@@ -991,6 +991,54 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		}
 	}
 
+	// Spot instances
+	isSpotSet := cmd.Flags().Changed("use-spot-instances")
+	isSpotMaxPriceSet := cmd.Flags().Changed("spot-max-price")
+
+	useSpotInstances := args.UseSpotInstances
+	spotMaxPrice := args.SpotMaxPrice
+	if isSpotMaxPriceSet && isSpotSet && !useSpotInstances {
+		return fmt.Errorf("can't set max price when not using spot instances")
+	}
+
+	if !isSpotSet && !isSpotMaxPriceSet && interactive.Enabled() {
+		useSpotInstances, err = interactive.GetBool(interactive.Input{
+			Question: "Use spot instances",
+			Help:     cmd.Flags().Lookup("use-spot-instances").Usage,
+			Default:  useSpotInstances,
+			Required: false,
+		})
+		if err != nil {
+			return fmt.Errorf("expected a valid value for use spot instances: %s", err)
+		}
+	}
+
+	if useSpotInstances && !isSpotMaxPriceSet && interactive.Enabled() {
+		spotMaxPrice, err = interactive.GetString(interactive.Input{
+			Question: "Spot instance max price",
+			Help:     cmd.Flags().Lookup("spot-max-price").Usage,
+			Required: false,
+			Default:  spotMaxPrice,
+			Validators: []interactive.Validator{
+				spotMaxPriceValidator,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("expected a valid value for spot max price: %s", err)
+		}
+	}
+
+	if useSpotInstances {
+		err = spotMaxPriceValidator(spotMaxPrice)
+		if err != nil {
+			return err
+		}
+	}
+
+	if useSpotInstances && capacityReservationId != "" {
+		return fmt.Errorf("spot instances are incompatible with capacity reservations")
+	}
+
 	awsNodepoolBuilder := createAwsNodePoolBuilder(
 		instanceType,
 		securityGroupIds,
@@ -998,6 +1046,14 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		awsTags,
 		rootDiskSize,
 	)
+
+	if useSpotInstances {
+		spotBuilder := cmv1.NewAwsNodePoolSpotMarketOptions()
+		if spotMaxPrice != "on-demand" {
+			spotBuilder = spotBuilder.MaxPrice(spotMaxPrice)
+		}
+		awsNodepoolBuilder.SpotMarketOptions(spotBuilder)
+	}
 
 	if !fedramp.Enabled() {
 		capacityReservation := cmv1.NewAWSCapacityReservation()
@@ -1476,9 +1532,10 @@ func getMachinePoolsString(
 
 func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 	outputString := "ID\tAUTOSCALING\tREPLICAS\t" +
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\t" +
+		"SPOT INSTANCES\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"
 	for _, nodePool := range nodePools {
-		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
+		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
 			ocmOutput.PrintNodePoolReplicasShort(
@@ -1490,6 +1547,7 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 			ocmOutput.PrintTaints(nodePool.Taints()),
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
+			ocmOutput.PrintNodePoolSpot(nodePool.AWSNodePool()),
 			ocmOutput.PrintNodePoolDiskSize(nodePool.AWSNodePool()),
 			ocmOutput.PrintNodePoolVersion(nodePool.Version()),
 			ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),

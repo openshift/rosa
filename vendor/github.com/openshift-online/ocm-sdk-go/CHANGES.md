@@ -3,7 +3,41 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
-## 0.1.501
+## 0.1.509 Aug 10 2026
+
+- feat: aro-hcp: allow providing CS Provision Shard ID during cluster creation
+- feat: aro-hcp: remove provisionshard reference in cluster type
+
+## 0.1.508 Aug 7 2026
+
+- chore: version bump to v0.1.508 (skip v0.1.507 due to duplicate tag on proxy.golang.org)
+
+## 0.1.507 Aug 5 2026
+
+- ROSAENG-61162 | feat: changes to support BYO firewall for OSD-GCP deployments
+
+## 0.1.506 Jul 23 2026
+
+- ROSAENG-61032 | feat: changes to support SpotMarketOptions for ROSA HCP 
+
+## 0.1.505 Jul 06 2026
+
+- ROSAENG-59819 | feat: add HCC severity constants
+
+## 0.1.504 Jun 23 2026
+
+- chore: bump ocm-api-model to v0.0.459
+
+## 0.1.503 Jun 11 2026
+
+- chore: bump ocm-api-model to v0.0.457
+
+## 0.1.502 Jun 01 2026
+
+- Add two GitHub Actions workflows:
+  - auto-tag.yaml, sync-from-model.yaml
+
+## 0.1.501 May 19 2026
 
 - Update model to 0.0.456
   - Add `access_shared_role_arn` field to AWS Disaster Recovery backup config

@@ -20,4 +20,14 @@ resource GCP {
 	locator WifConfigs {
 		target WifConfigs
 	}
+
+	// Reference to the resource that manages GCP firewall rules.
+	locator FirewallRules {
+		target GcpFirewallRules
+	}
+
+	// Reference to the resource that manages GCP firewall rule templates.
+	locator FirewallRuleTemplates {
+		target GcpFirewallRuleTemplates
+	}
 }

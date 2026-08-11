@@ -206,6 +206,7 @@ var args struct {
 	billingAccount              string
 	noCni                       bool
 	additionalAllowedPrincipals []string
+	spotTerminationQueueUrl     string
 
 	// Cluster Admin
 	createAdminUser      bool
@@ -832,6 +833,15 @@ func initFlags(cmd *cobra.Command) {
 		"audit-log-arn",
 		"",
 		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
+	)
+
+	flags.StringVar(
+		&args.spotTerminationQueueUrl,
+		"spot-termination-queue-url",
+		"",
+		"URL of the SQS queue for graceful Spot instance interruption handling. "+
+			"When set, the AWS Node Termination Handler is deployed in the hosted control plane. "+
+			"Queue must be in the same region as the cluster. Only supported for Hosted Control Plane clusters.",
 	)
 
 	flags.StringVar(
@@ -3326,6 +3336,24 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	// Spot Termination Queue URL
+	spotTerminationQueueUrl := args.spotTerminationQueueUrl
+	if cmd.Flags().Changed("spot-termination-queue-url") && !isHostedCP {
+		r.Reporter.Errorf("Spot termination queue URL is only supported for Hosted Control Plane clusters")
+		os.Exit(1)
+	}
+	if interactive.Enabled() && isHostedCP {
+		spotTerminationQueueUrl, err = interactive.GetString(interactive.Input{
+			Question: "Spot termination handler queue URL (optional)",
+			Help:     cmd.Flags().Lookup("spot-termination-queue-url").Usage,
+			Default:  spotTerminationQueueUrl,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for spot-termination-queue-url: %s", err)
+			os.Exit(1)
+		}
+	}
+
 	isVersionCompatibleManagedIngressV2, err := versions.IsGreaterThanOrEqual(
 		version, ocm.MinVersionForManagedIngressV2)
 	if err != nil {
@@ -3527,9 +3555,10 @@ func run(cmd *cobra.Command, _ []string) {
 		Hypershift: ocm.Hypershift{
 			Enabled: isHostedCP,
 		},
-		BillingAccount:  billingAccount,
-		NoCni:           noCni,
-		AuditLogRoleARN: &auditLogRoleARN,
+		BillingAccount:          billingAccount,
+		NoCni:                   noCni,
+		AuditLogRoleARN:         &auditLogRoleARN,
+		SpotTerminationQueueUrl: spotTerminationQueueUrl,
 		DefaultIngress: ocm.DefaultIngressSpec{
 			RouteSelectors:           routeSelectors,
 			ExcludedNamespaces:       sliceExcludedNamespaces,
@@ -4331,6 +4360,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 
 	if spec.AuditLogRoleARN != nil && *spec.AuditLogRoleARN != "" {
 		command += fmt.Sprintf(" --audit-log-arn %s", *spec.AuditLogRoleARN)
+	}
+	if spec.SpotTerminationQueueUrl != "" {
+		command += fmt.Sprintf(" --spot-termination-queue-url %s", spec.SpotTerminationQueueUrl)
 	}
 	if spec.MachinePoolRootDisk != nil {
 		machinePoolRootDiskSize := spec.MachinePoolRootDisk.Size
