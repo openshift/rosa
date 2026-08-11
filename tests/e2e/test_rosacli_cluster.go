@@ -982,7 +982,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			if !hostedCluster {
 				_, err = clusterService.EditCluster(clusterID,
 					"--registry-config-blocked-registries", "test.blocked.com")
-				helper.ExpectErrorWithMessage(err, "Setting the registry config is only supported for hosted clusters")
+				helper.ExpectErrorWithMessage(err, "setting the registry config is only supported for hosted clusters")
 				return
 			}
 
@@ -995,7 +995,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("patch hcp with invalid value for --registry-config-allowed-registries-for-import flag")
 			_, err = clusterService.EditCluster(clusterID,
 				"--registry-config-allowed-registries-for-import", "test.com:stringType")
-			helper.ExpectErrorWithMessage(err, "Expected valid allowed registries for import values")
+			helper.ExpectErrorWithMessage(err, "expected valid allowed registries for import values")
 		})
 	It("can validate autonode edit - [id:84982]", labels.Medium, labels.Runtime.Day2,
 		labels.FedRAMP, func() {
@@ -3127,12 +3127,9 @@ var _ = Describe("HCP cluster creation negative testing",
 					if rosalCommand.CheckFlagExist(flag) {
 						rosalCommand.DeleteFlag(flag, true)
 					}
-					output, err := clusterService.CreateDryRun(clusterName, flag, "dummy-value")
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).
-						To(
-							ContainSubstring(
-								"ERR: Setting the registry config is only supported for hosted clusters"))
+					_, err := clusterService.CreateDryRun(clusterName, flag, "dummy-value")
+					helper.ExpectErrorWithMessage(err,
+						"setting the registry config is only supported for hosted clusters")
 				}
 
 				By("create hcp with invalid value for --registry-config-allowed-registries-for-import flag")
@@ -3146,19 +3143,17 @@ var _ = Describe("HCP cluster creation negative testing",
 				log.Logger.Debug(strings.Split(rosalCommand.GetFullCommand(), " "))
 
 				rosalCommand.AddFlags("--registry-config-allowed-registries-for-import", "test.com:invalid")
-				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				log.Logger.Info(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: Expected valid allowed registries for import values"))
+				helper.ExpectErrorWithMessage(err, "expected valid allowed registries for import values")
 
 				By("create hcp with --registry-config-blocked-registries and --registry-config-allowed-registries at same time")
 				rosalCommand.DeleteFlag("--registry-config-allowed-registries-for-import", true)
 				rosalCommand.AddFlags("--registry-config-allowed-registries", "test.com",
 					"--registry-config-blocked-registries", "test.blocked.com")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring(
-					"ERR: Allowed registries and blocked registries are mutually exclusive fields"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"allowed registries and blocked registries are mutually exclusive fields")
 			})
 	})
 
