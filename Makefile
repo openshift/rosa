@@ -185,9 +185,10 @@ e2e_test: install
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
 .PHONY: e2e-hyperfleet
 e2e-hyperfleet: install
+	name=$${CLUSTER_NAME:-hf-sanity-$$(date +%s)}; \
 	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
-	CLUSTER_NAME="$${CLUSTER_NAME}" \
-	OPERATOR_ROLES_PREFIX="$${CLUSTER_NAME}" \
+	CLUSTER_NAME="$$name" \
+	OPERATOR_ROLES_PREFIX="$$name" \
 	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
 	ginkgo run \
 		--focus "Hyperfleet sanity" \
