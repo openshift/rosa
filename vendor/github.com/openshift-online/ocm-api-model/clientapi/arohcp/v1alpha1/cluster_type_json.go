@@ -570,13 +570,13 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		}
 		count++
 	}
-	present_ = len(object.fieldSet_) > 54 && object.fieldSet_[54] && object.provisionShard != nil
+	present_ = len(object.fieldSet_) > 54 && object.fieldSet_[54]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
 		}
-		stream.WriteObjectField("provision_shard")
-		WriteProvisionShard(object.provisionShard, stream)
+		stream.WriteObjectField("provision_shard_id")
+		stream.WriteString(object.provisionShardID)
 		count++
 	}
 	present_ = len(object.fieldSet_) > 55 && object.fieldSet_[55] && object.proxy != nil
@@ -1045,9 +1045,9 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			}
 			object.properties = value
 			object.fieldSet_[53] = true
-		case "provision_shard":
-			value := ReadProvisionShard(iterator)
-			object.provisionShard = value
+		case "provision_shard_id":
+			value := iterator.ReadString()
+			object.provisionShardID = value
 			object.fieldSet_[54] = true
 		case "proxy":
 			value := ReadProxy(iterator)

@@ -126,7 +126,7 @@ type Cluster struct {
 	openshiftVersion                  string
 	product                           *Product
 	properties                        map[string]string
-	provisionShard                    *ProvisionShard
+	provisionShardID                  string
 	proxy                             *Proxy
 	region                            *CloudRegion
 	registryConfig                    *ClusterRegistryConfig
@@ -1436,25 +1436,41 @@ func (o *Cluster) GetProperties() (value map[string]string, ok bool) {
 	return
 }
 
-// ProvisionShard returns the value of the 'provision_shard' attribute, or
+// ProvisionShardID returns the value of the 'provision_shard_ID' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// ProvisionShard contains the properties of the provision shard, including AWS and GCP related configurations
-func (o *Cluster) ProvisionShard() *ProvisionShard {
+// ProvisionShardID is the CS Provision Shard identifier where the cluster
+// is allocated. It is not the full HREF.
+// Optional.
+// When provided during creation, the Cluster is allocated to the
+// CS Provision Shard identified by ProvisionShardID. Additionally, all
+// the capacity checks and provision shard state checks are bypassed.
+// When not provided during creation, selection of a suitable CS provision shard
+// is automatically performed by CS.
+// Immutable.
+func (o *Cluster) ProvisionShardID() string {
 	if o != nil && len(o.fieldSet_) > 54 && o.fieldSet_[54] {
-		return o.provisionShard
+		return o.provisionShardID
 	}
-	return nil
+	return ""
 }
 
-// GetProvisionShard returns the value of the 'provision_shard' attribute and
+// GetProvisionShardID returns the value of the 'provision_shard_ID' attribute and
 // a flag indicating if the attribute has a value.
 //
-// ProvisionShard contains the properties of the provision shard, including AWS and GCP related configurations
-func (o *Cluster) GetProvisionShard() (value *ProvisionShard, ok bool) {
+// ProvisionShardID is the CS Provision Shard identifier where the cluster
+// is allocated. It is not the full HREF.
+// Optional.
+// When provided during creation, the Cluster is allocated to the
+// CS Provision Shard identified by ProvisionShardID. Additionally, all
+// the capacity checks and provision shard state checks are bypassed.
+// When not provided during creation, selection of a suitable CS provision shard
+// is automatically performed by CS.
+// Immutable.
+func (o *Cluster) GetProvisionShardID() (value string, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 54 && o.fieldSet_[54]
 	if ok {
-		value = o.provisionShard
+		value = o.provisionShardID
 	}
 	return
 }

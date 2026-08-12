@@ -199,10 +199,18 @@ class Cluster {
 	// ExternalConfiguration shows external configuration on the cluster.
 	ExternalConfiguration ExternalConfiguration
 
-	// ProvisionShard contains the properties of the provision shard, including AWS and GCP related configurations
-	ProvisionShard ProvisionShard
+	// ProvisionShardID is the CS Provision Shard identifier where the cluster
+	// is allocated. It is not the full HREF.
+	// Optional.
+	// When provided during creation, the Cluster is allocated to the
+	// CS Provision Shard identified by ProvisionShardID. Additionally, all
+	// the capacity checks and provision shard state checks are bypassed.
+	// When not provided during creation, selection of a suitable CS provision shard
+	// is automatically performed by CS.
+	// Immutable.
+	ProvisionShardID String
 
-	//Status of cluster
+	// Status of cluster
 	Status ClusterStatus
 
 	// Node drain grace period.
