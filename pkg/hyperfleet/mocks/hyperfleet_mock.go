@@ -12,7 +12,7 @@ package mocks
 import (
 	reflect "reflect"
 
-	wrappers "github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	platform "github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,10 +40,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // HyperfleetV1alpha1 mocks base method.
-func (m *MockInterface) HyperfleetV1alpha1() wrappers.V1alpha1PublicInterface {
+func (m *MockInterface) HyperfleetV1alpha1() platform.V1alpha1PublicInterface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HyperfleetV1alpha1")
-	ret0, _ := ret[0].(wrappers.V1alpha1PublicInterface)
+	ret0, _ := ret[0].(platform.V1alpha1PublicInterface)
 	return ret0
 }
 

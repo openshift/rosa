@@ -162,8 +162,8 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=pkg/kubeletconfig/config.go -package=kubeletconfig -destination=pkg/kubeletconfig/capability_checker_mock.go
 	$(MOCKGEN) -source=cmd/create/idp/cmd.go -package=mocks -destination=cmd/create/idp/mocks/identityprovider.go
 	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/hyperfleet.go -package=mocks -destination=pkg/hyperfleet/mocks/hyperfleet_mock.go
-	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers/wire_wrappers_generated.go -package=mocks -destination=pkg/hyperfleet/mocks/wrappers_mock.go
-	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers|github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers|g' pkg/hyperfleet/mocks/wrappers_mock.go
+	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/platform/bridge_wrappers_generated.go -package=mocks -destination=pkg/hyperfleet/mocks/wrappers_mock.go
+	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-hyperfleet-api/clientset/platform|github.com/openshift-online/rosa-hyperfleet-api/clientset/platform|g' pkg/hyperfleet/mocks/wrappers_mock.go
 
 
 .PHONY: e2e_test

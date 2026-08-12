@@ -5,7 +5,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -53,7 +53,7 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 
 	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
-	current, err := clusters.Get(ctx, clusterID, wrappers.GetOptions{})
+	current, err := clusters.Get(ctx, clusterID, platform.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		exitFn(1)
@@ -65,7 +65,7 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 		updated.Spec.ExpirationTimestamp = &t
 	}
 
-	if _, err = clusters.Update(ctx, updated, wrappers.UpdateOptions{}); err != nil {
+	if _, err = clusters.Update(ctx, updated, platform.UpdateOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to update cluster '%s': %v", clusterKey, err)
 		exitFn(1)
 	}

@@ -6,7 +6,7 @@ import (
 	"math"
 	"os"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -62,7 +62,7 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 	}
 
 	nodePools := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID)
-	np, err := nodePools.Get(ctx, nodePoolID, wrappers.GetOptions{})
+	np, err := nodePools.Get(ctx, nodePoolID, platform.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get node pool '%s': %v", nodePoolName, err)
 		exitFn(1)
@@ -78,7 +78,7 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 	replicas := int32(userOptions.replicas)
 	updated.Spec.NodePool.Replicas = &replicas
 
-	if _, err = nodePools.Update(ctx, updated, wrappers.UpdateOptions{}); err != nil {
+	if _, err = nodePools.Update(ctx, updated, platform.UpdateOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to update node pool '%s': %v", nodePoolName, err)
 		exitFn(1)
 	}
