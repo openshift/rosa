@@ -3,6 +3,11 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.509 Aug 10 2026
+
+- feat: aro-hcp: allow providing CS Provision Shard ID during cluster creation
+- feat: aro-hcp: remove provisionshard reference in cluster type
+
 ## 0.1.508 Aug 7 2026
 
 - chore: version bump to v0.1.508 (skip v0.1.507 due to duplicate tag on proxy.golang.org)
