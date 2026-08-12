@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/spf13/cobra"
 
@@ -47,7 +47,7 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 	}
 
 	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
-	cluster, err := clusters.Get(ctx, clusterID, wrappers.GetOptions{})
+	cluster, err := clusters.Get(ctx, clusterID, platform.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		exitFn(1)

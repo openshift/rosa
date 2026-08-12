@@ -3,7 +3,7 @@ package cluster
 import (
 	"os"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -46,7 +46,7 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 
 	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
-	if err = clusters.Delete(ctx, clusterID, wrappers.DeleteOptions{}); err != nil {
+	if err = clusters.Delete(ctx, clusterID, platform.DeleteOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		exitFn(1)
 	}

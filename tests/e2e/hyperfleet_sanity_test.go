@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
 	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"

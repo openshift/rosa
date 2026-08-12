@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package wrappers
+package platform
 
 // GetOptions configures a single-resource read.
 // Currently only the default behavior is supported.

@@ -6,7 +6,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/output"
@@ -32,7 +32,7 @@ var (
 func runHyperfleetList(r *rosa.Runtime) {
 	ctx := context.Background()
 
-	list, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().List(ctx, wrappers.ListOptions{})
+	list, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().List(ctx, platform.ListOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to list clusters: %v", err)
 		os.Exit(1)

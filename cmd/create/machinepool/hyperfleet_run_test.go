@@ -11,7 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
@@ -71,7 +71,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
 		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ wrappers.CreateOptions) (*v1alpha1.NodePool, error) {
+			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
 				Expect(np.Name).To(Equal("my-np"))
 				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
 				Expect(np.Spec.NodePool.Release.Image).To(Equal("v4.17.0-ec.2"))
@@ -101,7 +101,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
 		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ wrappers.CreateOptions) (*v1alpha1.NodePool, error) {
+			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
 				Expect(np.Name).To(Equal("my-np"))
 				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
 				Expect(np.Spec.NodePool.Release.Image).To(Equal("v4.17.0-ec.2"))

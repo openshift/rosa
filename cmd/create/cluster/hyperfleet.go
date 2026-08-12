@@ -8,7 +8,7 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
@@ -112,7 +112,7 @@ func runHyperfleet(r *rosa.Runtime) {
 				},
 			},
 		},
-		wrappers.CreateOptions{},
+		platform.CreateOptions{},
 	)
 	if err != nil {
 		r.Reporter.Errorf("Failed to create cluster '%s': %v", clusterName, err)

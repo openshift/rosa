@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 )
 
 // ResolveNodePoolUID looks up a node pool by human-readable name within the
@@ -13,7 +13,7 @@ import (
 func ResolveNodePoolUID(
 	ctx context.Context, client hyperfleetclientset.Interface, clusterUID, nodePoolName string,
 ) (string, error) {
-	list, err := client.HyperfleetV1alpha1().NodePools(clusterUID).List(ctx, wrappers.ListOptions{})
+	list, err := client.HyperfleetV1alpha1().NodePools(clusterUID).List(ctx, platform.ListOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to list node pools: %w", err)
 	}
