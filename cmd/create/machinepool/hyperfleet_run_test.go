@@ -36,12 +36,11 @@ func newCreateMPMocks(ctrl *gomock.Controller) (
 	return hf, clusters, nodePools
 }
 
-func makeCluster(name, uid, releaseImage string) *v1alpha1.Cluster {
+func makeCluster(name, uid string) *v1alpha1.Cluster {
 	return &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID(uid)},
 		Spec: v1alpha1.ClusterSpec{
 			HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
-				Release: hypershiftv1beta1.Release{Image: releaseImage},
 				Platform: hypershiftv1beta1.PlatformSpec{
 					AWS: &hypershiftv1beta1.AWSPlatformSpec{
 						RolesRef: hypershiftv1beta1.AWSRolesRef{
@@ -65,7 +64,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newCreateMPMocks(ctrl)
 
-		cluster := makeCluster("cluster1", "cluster-uid", "v4.17.0-ec.2")
+		cluster := makeCluster("cluster1", "cluster-uid")
 		created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: "np-uid-new"}}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
@@ -74,7 +73,6 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
 				Expect(np.Name).To(Equal("my-np"))
 				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
-				Expect(np.Spec.NodePool.Release.Image).To(Equal("v4.17.0-ec.2"))
 				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
 				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
 				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
@@ -86,7 +84,6 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			Name:         "my-np",
 			Replicas:     2,
 			InstanceType: "m5.xlarge",
-			Version:      "v4.17.0-ec.2",
 			Subnet:       "subnet-abc123",
 		}, nil)
 	})
@@ -95,7 +92,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newCreateMPMocks(ctrl)
 
-		cluster := makeCluster("cluster1", "cluster-uid", "v4.17.0-ec.2")
+		cluster := makeCluster("cluster1", "cluster-uid")
 		created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: "np-uid-new"}}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
@@ -104,7 +101,6 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
 				Expect(np.Name).To(Equal("my-np"))
 				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
-				Expect(np.Spec.NodePool.Release.Image).To(Equal("v4.17.0-ec.2"))
 				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
 				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
 				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
@@ -165,31 +161,12 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, _ := newCreateMPMocks(ctrl)
-		cluster := makeCluster("cluster1", "cluster-uid", "")
+		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil, fmt.Errorf("get failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
-		Expect(func() {
-			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{Name: "my-np"}, nil)
-		}).To(Panic())
-	})
-
-	It("fails when release image is not set", func() {
-		orig := exitFn
-		exitFn = func(_ int) { panic("exit") }
-		DeferCleanup(func() { exitFn = orig })
-
-		ctrl := gomock.NewController(GinkgoT())
-		hf, clusters, _ := newCreateMPMocks(ctrl)
-		cluster := makeCluster("cluster1", "cluster-uid", "")
-		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
-			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
-
-		t.RosaRuntime.HyperFleetClient = hf
-		// No Version in opts, no release image in cluster → error
 		Expect(func() {
 			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{Name: "my-np"}, nil)
 		}).To(Panic())
@@ -204,11 +181,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		hf, clusters, _ := newCreateMPMocks(ctrl)
 		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: "cluster-uid"},
-			Spec: v1alpha1.ClusterSpec{
-				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
-					Release: hypershiftv1beta1.Release{Image: "v4.17.0-ec.2"},
-				},
-			},
+			Spec:       v1alpha1.ClusterSpec{},
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
@@ -217,7 +190,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
 			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
-				Name: "my-np", Version: "v4.17.0-ec.2", Subnet: "subnet-abc123",
+				Name: "my-np", Subnet: "subnet-abc123",
 			}, nil)
 		}).To(Panic())
 	})
@@ -229,7 +202,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, _ := newCreateMPMocks(ctrl)
-		cluster := makeCluster("cluster1", "cluster-uid", "v4.17.0-ec.2")
+		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
@@ -237,8 +210,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
 			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
-				Name:    "my-np",
-				Version: "v4.17.0-ec.2",
+				Name: "my-np",
 			}, nil)
 		}).To(Panic())
 	})

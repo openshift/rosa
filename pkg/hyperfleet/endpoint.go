@@ -41,19 +41,22 @@ func ExtractRegion(rawURL string) (string, error) {
 	return region, nil
 }
 
-// WarnOnMismatch emits a warning when an explicitly provided --region does not
-// match the region embedded in --hyperfleet-url, or when the URL contains no
-// recognizable region at all.
-func WarnOnMismatch(explicitRegion, rawURL string, r reporter.Logger) {
+// CheckRegionConflict returns an error when an explicitly provided region can be
+// compared against the region embedded in rawURL and they differ — a configuration
+// error that would cause SigV4 to sign for the wrong endpoint. When the URL
+// contains no recognizable region (e.g. a VPN or custom endpoint) a warning is
+// emitted instead, since signing with the explicit region may be intentional.
+func CheckRegionConflict(explicitRegion, rawURL string, r reporter.Logger) error {
 	urlRegion, err := ExtractRegion(rawURL)
 	if err != nil {
 		r.Warnf("cannot verify region for --hyperfleet-url %s; SigV4 will sign with %s", rawURL, explicitRegion)
-		return
+		return nil
 	}
 	if explicitRegion != urlRegion {
-		r.Warnf(
-			"resolved region %s does not match region in --hyperfleet-url %s; SigV4 will sign with %s",
-			explicitRegion, rawURL, explicitRegion,
+		return fmt.Errorf(
+			"--region %s does not match region in --hyperfleet-url (%s); use --region %s or omit --region to derive it from the URL",
+			explicitRegion, urlRegion, urlRegion,
 		)
 	}
+	return nil
 }
