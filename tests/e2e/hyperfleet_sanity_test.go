@@ -781,7 +781,7 @@ var _ = Describe("Hyperfleet sanity",
 
 			By("Describing cluster via CLI and comparing with Get response")
 			getOut, err := hfClient.HyperfleetV1alpha1().Clusters().Get(
-				ctx, clusterID, wrappers.GetOptions{},
+				ctx, clusterID, platform.GetOptions{},
 			)
 			Expect(err).NotTo(HaveOccurred(), "SDK Get before CLI describe")
 
@@ -855,7 +855,7 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "rosa create machinepool %s", np2Name)
 
 			By("Resolving node pool IDs via API")
-			npList, err := hfClient.HyperfleetV1alpha1().NodePools(clusterID).List(ctx, wrappers.ListOptions{})
+			npList, err := hfClient.HyperfleetV1alpha1().NodePools(clusterID).List(ctx, platform.ListOptions{})
 			Expect(err).NotTo(HaveOccurred(), "listing node pools")
 			for i := range npList.Items {
 				switch npList.Items[i].Name {
