@@ -1,9 +1,14 @@
 package network
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
+	"go.uber.org/mock/gomock"
+
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/table"
 	. "github.com/onsi/gomega"
@@ -428,5 +433,112 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 		Expect(err.Error()).To(
 			ContainSubstring(
 				"running the network verifier is only supported for BYO VPC clusters"))
+	})
+	It("Warns when subnets are in different VPCs", func() {
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient := aws.NewMockClient(mockCtrl)
+		r.AWSClient = mockClient
+
+		mockClient.EXPECT().ListSubnets("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc").
+			Return([]ec2types.Subnet{
+				{
+					SubnetId: awssdk.String("subnet-0b761d44d3d9a4663"),
+					VpcId:    awssdk.String("vpc-aaa"),
+				},
+				{
+					SubnetId: awssdk.String("subnet-0f87f640e56934cbc"),
+					VpcId:    awssdk.String("vpc-bbb"),
+				},
+			}, nil)
+
+		// POST /api/clusters_mgmt/v1/network_verifications
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetsComplete),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetA
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetPassedSuccess),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetPassedSuccess),
+		)
+
+		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
+		cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")
+		cmd.Flags().Set("region", "us-east-1")
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal("WARN: Provided subnets are in different VPCs: " +
+			"Subnet subnet-0b761d44d3d9a4663 is in VPC vpc-aaa; " +
+			"Subnet subnet-0f87f640e56934cbc is in VPC vpc-bbb\n"))
+		Expect(stdout).To(Equal(successOutputComplete))
+	})
+	It("Does not warn when ListSubnets returns an error", func() {
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient := aws.NewMockClient(mockCtrl)
+		r.AWSClient = mockClient
+
+		mockClient.EXPECT().ListSubnets("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc").
+			Return(nil, fmt.Errorf("access denied"))
+
+		// POST /api/clusters_mgmt/v1/network_verifications
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetsComplete),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetA
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetPassedSuccess),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetPassedSuccess),
+		)
+
+		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
+		cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")
+		cmd.Flags().Set("region", "us-east-1")
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(successOutputComplete))
+	})
+	It("Does not warn when subnets are in the same VPC", func() {
+		mockCtrl := gomock.NewController(GinkgoT())
+		mockClient := aws.NewMockClient(mockCtrl)
+		r.AWSClient = mockClient
+
+		mockClient.EXPECT().ListSubnets("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc").
+			Return([]ec2types.Subnet{
+				{
+					SubnetId: awssdk.String("subnet-0b761d44d3d9a4663"),
+					VpcId:    awssdk.String("vpc-aaa"),
+				},
+				{
+					SubnetId: awssdk.String("subnet-0f87f640e56934cbc"),
+					VpcId:    awssdk.String("vpc-aaa"),
+				},
+			}, nil)
+
+		// POST /api/clusters_mgmt/v1/network_verifications
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetsComplete),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetA
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetPassedSuccess),
+		)
+		// GET /api/clusters_mgmt/v1/network_verifications/subnetB
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, subnetPassedSuccess),
+		)
+
+		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
+		cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")
+		cmd.Flags().Set("region", "us-east-1")
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(successOutputComplete))
 	})
 })

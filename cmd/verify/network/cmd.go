@@ -20,9 +20,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
@@ -190,6 +192,11 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	r.Reporter.Debugf("Received the following subnetIDs: %v", args.subnetIDs)
+
+	if !cmd.Flags().Changed(statusOnlyFlag) {
+		warnIfSubnetsInDifferentVPCs(r, args.subnetIDs)
+	}
+
 	if r.Reporter.IsTerminal() {
 		if cmd.Flags().Changed(statusOnlyFlag) {
 			r.Reporter.Infof("Checking the status of the following subnet IDs: %v", args.subnetIDs)
@@ -324,6 +331,44 @@ func printStatus(r *rosa.Runtime, spin *spinner.Spinner, subnet string,
 
 	if spin != nil {
 		spin.Restart()
+	}
+}
+
+func warnIfSubnetsInDifferentVPCs(r *rosa.Runtime, subnetIDs []string) {
+	if len(subnetIDs) < 2 || r.AWSClient == nil {
+		return
+	}
+	subnets, err := r.AWSClient.ListSubnets(subnetIDs...)
+	if err != nil {
+		r.Reporter.Debugf("Unable to retrieve subnet details to check VPCs: %v", err)
+		return
+	}
+
+	vpcToSubnets := map[string][]string{}
+	for _, subnet := range subnets {
+		vpcID := awssdk.ToString(subnet.VpcId)
+		subnetID := awssdk.ToString(subnet.SubnetId)
+		vpcToSubnets[vpcID] = append(vpcToSubnets[vpcID], subnetID)
+	}
+
+	if len(vpcToSubnets) > 1 {
+		vpcIDs := make([]string, 0, len(vpcToSubnets))
+		for vpcID := range vpcToSubnets {
+			vpcIDs = append(vpcIDs, vpcID)
+		}
+		sort.Strings(vpcIDs)
+
+		var parts []string
+		for _, vpcID := range vpcIDs {
+			ids := vpcToSubnets[vpcID]
+			sort.Strings(ids)
+			if len(ids) == 1 {
+				parts = append(parts, fmt.Sprintf("Subnet %s is in VPC %s", ids[0], vpcID))
+			} else {
+				parts = append(parts, fmt.Sprintf("Subnets %s are in VPC %s", strings.Join(ids, ", "), vpcID))
+			}
+		}
+		r.Reporter.Warnf("Provided subnets are in different VPCs: %s", strings.Join(parts, "; "))
 	}
 }
 
