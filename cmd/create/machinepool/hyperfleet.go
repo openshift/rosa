@@ -6,7 +6,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
@@ -59,7 +59,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	}
 
 	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().
-		Get(ctx, clusterUID, wrappers.GetOptions{})
+		Get(ctx, clusterUID, platform.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		exitFn(1)
@@ -124,7 +124,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 		},
 	}
 
-	created, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).Create(ctx, np, wrappers.CreateOptions{})
+	created, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).Create(ctx, np, platform.CreateOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to create node pool '%s': %v", nodePoolName, err)
 		exitFn(1)

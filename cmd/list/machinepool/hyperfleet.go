@@ -6,7 +6,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -39,7 +39,7 @@ func runHyperfleetList(r *rosa.Runtime) {
 		exitFn(1)
 	}
 
-	list, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).List(ctx, wrappers.ListOptions{})
+	list, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).List(ctx, platform.ListOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to list node pools: %v", err)
 		exitFn(1)

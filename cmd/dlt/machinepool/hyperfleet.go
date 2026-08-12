@@ -3,7 +3,7 @@ package machinepool
 import (
 	"os"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -60,7 +60,7 @@ func runHyperfleetDelete(
 	}
 
 	if err = r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).
-		Delete(ctx, nodePoolID, wrappers.DeleteOptions{}); err != nil {
+		Delete(ctx, nodePoolID, platform.DeleteOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to delete node pool '%s': %v", nodePoolName, err)
 		exitFn(1)
 	}

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/wrappers"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -56,7 +56,7 @@ func runHyperfleetDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUser
 		exitFn(1)
 	}
 
-	np, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).Get(ctx, nodePoolID, wrappers.GetOptions{})
+	np, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).Get(ctx, nodePoolID, platform.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get node pool '%s': %v", nodePoolName, err)
 		exitFn(1)
