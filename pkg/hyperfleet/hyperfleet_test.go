@@ -37,25 +37,24 @@ var _ = Describe("ExtractRegion", func() {
 	)
 })
 
-var _ = Describe("WarnOnMismatch", func() {
-	It("does not warn when regions match", func() {
-		warned := false
-		r := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warned = true }}
-		WarnOnMismatch("us-east-1", "https://abc.execute-api.us-east-1.amazonaws.com", r)
-		Expect(warned).To(BeFalse())
+var _ = Describe("CheckRegionConflict", func() {
+	It("returns nil when regions match", func() {
+		r := &reportertest.FakeLogger{}
+		Expect(CheckRegionConflict("us-east-1", "https://abc.execute-api.us-east-1.amazonaws.com", r)).To(Succeed())
 	})
 
-	It("warns when explicit region differs from URL region", func() {
-		warned := false
-		r := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warned = true }}
-		WarnOnMismatch("us-west-2", "https://abc.execute-api.us-east-1.amazonaws.com", r)
-		Expect(warned).To(BeTrue())
+	It("returns an error when explicit region differs from URL region", func() {
+		r := &reportertest.FakeLogger{}
+		err := CheckRegionConflict("us-west-2", "https://abc.execute-api.us-east-1.amazonaws.com", r)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("us-west-2"))
+		Expect(err.Error()).To(ContainSubstring("us-east-1"))
 	})
 
-	It("warns when URL has no extractable region", func() {
+	It("warns (but does not error) when URL has no extractable region", func() {
 		warned := false
 		r := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warned = true }}
-		WarnOnMismatch("us-east-1", "https://example.com", r)
+		Expect(CheckRegionConflict("us-east-1", "https://example.com", r)).To(Succeed())
 		Expect(warned).To(BeTrue())
 	})
 })

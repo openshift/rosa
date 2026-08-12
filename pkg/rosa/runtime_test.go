@@ -122,6 +122,17 @@ var _ = Describe("WithHyperFleet", func() {
 		Expect(errMsg).To(ContainSubstring("cannot derive AWS region"))
 	})
 
+	It("exits when explicit region conflicts with URL region", func() {
+		GinkgoT().Setenv("AWS_REGION", "us-west-2")
+
+		r := &Runtime{Reporter: fakeRept}
+		r.WithHyperFleet()
+
+		Expect(exited).To(BeTrue())
+		Expect(errMsg).To(ContainSubstring("us-west-2"))
+		Expect(errMsg).To(ContainSubstring("us-east-1"))
+	})
+
 	It("exits when CreatorForCallerIdentity fails due to bad ARN", func() {
 		stubLoadConfig()
 		awsGetIdentity = func(_ context.Context, _ awssdk.Config) (*awssts.GetCallerIdentityOutput, error) {

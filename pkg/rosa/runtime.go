@@ -178,7 +178,11 @@ func (r *Runtime) WithHyperFleet() *Runtime {
 			return r
 		}
 	} else {
-		hyperfleet.WarnOnMismatch(region, rawURL, r.Reporter)
+		if err := hyperfleet.CheckRegionConflict(region, rawURL, r.Reporter); err != nil {
+			r.Reporter.Errorf("%v", err)
+			hfExitFn(1)
+			return r
+		}
 	}
 
 	// Load AWS config, honouring --profile / AWS_PROFILE and resolved region.

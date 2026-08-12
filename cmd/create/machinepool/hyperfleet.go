@@ -27,9 +27,9 @@ var (
 )
 
 // runHyperfleetCreate creates a node pool via the Platform API v2.
-// It reads --name (or positional arg), --replicas, --instance-type, and --version
-// from the existing create machinepool flags. If --version is not supplied the
-// cluster's own release image is used as the default.
+// It reads --name (or positional arg), --replicas, --instance-type, and --subnet
+// from the existing create machinepool flags. The release image is managed by the
+// Platform API and does not need to be specified by the caller.
 func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolUserOptions, argv []string) {
 	ctx := context.Background()
 
@@ -66,16 +66,6 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 		return
 	}
 
-	releaseImage := userOptions.Version
-	if releaseImage == "" {
-		releaseImage = cluster.Spec.HostedCluster.Release.Image
-	}
-	if releaseImage == "" {
-		r.Reporter.Errorf("--version is required (or the cluster must have a release image set)")
-		exitFn(1)
-		return
-	}
-
 	instanceType := userOptions.InstanceType
 	if instanceType == "" {
 		instanceType = mpOpts.DefaultInstanceType
@@ -108,7 +98,6 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 		Spec: v1alpha1.NodePoolSpec{
 			NodePool: v1alpha1.NodePoolSpecPassthrough{
 				ClusterName: clusterKey,
-				Release:     hypershiftv1beta1.Release{Image: releaseImage},
 				Replicas:    &replicas,
 				Platform: hypershiftv1beta1.NodePoolPlatform{
 					Type: hypershiftv1beta1.AWSPlatform,

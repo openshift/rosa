@@ -126,8 +126,22 @@ var _ = Describe("Hyperfleet sanity",
 				rolesPrefix = clusterName
 			}
 
+			// Derive region from URL or AWS_DEFAULT_REGION.
+			region, err := hyperfleet.ExtractRegion(hfURL)
+			if err != nil {
+				envRegion := os.Getenv("AWS_DEFAULT_REGION")
+				Expect(envRegion).NotTo(BeEmpty(),
+					"cannot derive region from HYPERFLEET_URL; set AWS_DEFAULT_REGION")
+				region = envRegion
+			}
+
+			// Ensure AWS_DEFAULT_REGION reflects the URL-encoded region so that
+			// subprocesses (e.g. rosa whoami) display the correct region rather
+			// than any ambient value the caller may have set.
+			GinkgoT().Setenv("AWS_DEFAULT_REGION", region)
+
 			By("Logging in with Platform API URL")
-			_, err := rosacli.NewClient().Runner.
+			_, err = rosacli.NewClient().Runner.
 				Cmd("login").
 				CmdFlags("--hyperfleet-url", hfURL).
 				Run()
@@ -138,7 +152,7 @@ var _ = Describe("Hyperfleet sanity",
 				_, _ = rosacli.NewClient().Runner.Cmd("logout").Run()
 			})
 
-			By("Verifying whoami shows Platform API URL")
+			By("Verifying whoami shows Platform API URL and correct region")
 			whoamiRunner := rosacli.NewClient().Runner
 			whoamiRunner.JsonFormat()
 			whoamiOut, err := whoamiRunner.Cmd("whoami").Run()
@@ -148,17 +162,10 @@ var _ = Describe("Hyperfleet sanity",
 				"parsing whoami JSON output")
 			Expect(whoamiMap["Platform API"]).To(Equal(hfURL),
 				"whoami must report the Platform API URL stored during login")
+			Expect(whoamiMap["AWS Default Region"]).To(Equal(region),
+				"whoami must report the region derived from the Platform API URL")
 
 			ctx := context.Background()
-
-			// Derive region from URL or AWS_DEFAULT_REGION.
-			region, err := hyperfleet.ExtractRegion(hfURL)
-			if err != nil {
-				envRegion := os.Getenv("AWS_DEFAULT_REGION")
-				Expect(envRegion).NotTo(BeEmpty(),
-					"cannot derive region from HYPERFLEET_URL; set AWS_DEFAULT_REGION")
-				region = envRegion
-			}
 
 			By("Loading AWS configuration")
 			awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
