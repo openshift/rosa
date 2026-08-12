@@ -181,11 +181,11 @@ e2e_test: install
 #   HYPERFLEET_URL  — Platform API v2 base URL
 #
 # Optional:
-#   CLUSTER_NAME       — defaults to hf-sanity-<unix timestamp>
+#   CLUSTER_NAME       — defaults to hf-e2e-<unix timestamp> (≤18 chars)
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
 .PHONY: e2e-hyperfleet
 e2e-hyperfleet: install
-	name=$${CLUSTER_NAME:-hf-sanity-$$(date +%s)}; \
+	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
 	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
 	CLUSTER_NAME="$$name" \
 	OPERATOR_ROLES_PREFIX="$$name" \
