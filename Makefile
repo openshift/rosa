@@ -181,16 +181,13 @@ e2e_test: install
 #   HYPERFLEET_URL  — Platform API v2 base URL
 #
 # Optional:
-#   HYPERFLEET_VERSION    — release image pullspec; server picks default when empty
-#   CLUSTER_NAME          — defaults to hf-sanity-<unix timestamp>
-#   OPERATOR_ROLES_PREFIX — defaults to CLUSTER_NAME
-#   AWS_DEFAULT_REGION    — fallback when region cannot be derived from HYPERFLEET_URL
+#   CLUSTER_NAME       — defaults to hf-sanity-<unix timestamp>
+#   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
 .PHONY: e2e-hyperfleet
-e2e-hyperfleet:
+e2e-hyperfleet: install
 	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
-	HYPERFLEET_VERSION="$${HYPERFLEET_VERSION}" \
 	CLUSTER_NAME="$${CLUSTER_NAME}" \
-	OPERATOR_ROLES_PREFIX="$${OPERATOR_ROLES_PREFIX}" \
+	OPERATOR_ROLES_PREFIX="$${CLUSTER_NAME}" \
 	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
 	ginkgo run \
 		--focus "Hyperfleet sanity" \
