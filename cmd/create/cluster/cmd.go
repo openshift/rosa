@@ -87,7 +87,7 @@ const (
 	listInputMessage          = "Format should be a comma-separated list."
 	listBillingAccountMessage = "To see the list of billing account options, you can use interactive mode by passing '-i'."
 
-	// nolint:lll
+	//nolint:lll
 	createVpcForHcpDoc = "https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"
 
 	duplicateIamRoleArnErrorMsg = "ROSA IAM roles must have unique ARNs " +

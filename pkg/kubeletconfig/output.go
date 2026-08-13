@@ -13,7 +13,7 @@ func PrintKubeletConfigsForTabularOutput(configs []*cmv1.KubeletConfig) string {
 	var output strings.Builder
 	output.WriteString("ID\tNAME\tPOD PIDS LIMIT\n")
 	for _, config := range configs {
-		fmt.Fprintf(&output, "%s\t%s\t%d\n", config.ID(), getName(config), config.PodPidsLimit())
+		fmt.Fprintf(&output, "%s\t%s\t%d\n", config.ID(), getName(config), config.PodPidsLimit()) //nolint:forbidigo
 	}
 
 	return output.String()
@@ -32,7 +32,7 @@ func PrintKubeletConfigForHcp(config *cmv1.KubeletConfig, nodePools []*cmv1.Node
 	if len(nodePools) != 0 {
 		output.WriteString("MachinePools Using This KubeletConfig:\n")
 		for _, n := range nodePools {
-			fmt.Fprintf(&output, " - %s\n", n.ID())
+			fmt.Fprintf(&output, " - %s\n", n.ID()) //nolint:forbidigo
 		}
 	}
 

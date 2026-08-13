@@ -37,7 +37,7 @@ func LogForwarderObjectAsString(logForwarder *cmv1.LogForwarder) string {
 			if i > 0 {
 				groupsStr.WriteString(" ")
 			}
-			fmt.Fprintf(&groupsStr, "(%s,v%s)", group.ID(), group.Version())
+			fmt.Fprintf(&groupsStr, "(%s,v%s)", group.ID(), group.Version()) //nolint:forbidigo
 		}
 		out += fmt.Sprintf("Groups:                              %s\n", groupsStr.String())
 	}

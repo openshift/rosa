@@ -34,10 +34,10 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/info"
-	"github.com/openshift/rosa/pkg/interactive/consts"
+	"github.com/openshift/rosa/pkg/interactive/consts" //nolint:depguard
 	"github.com/openshift/rosa/pkg/logforwarding"
 	"github.com/openshift/rosa/pkg/properties"
-	rprtr "github.com/openshift/rosa/pkg/reporter"
+	rprtr "github.com/openshift/rosa/pkg/reporter" //nolint:depguard
 )
 
 const (
@@ -830,12 +830,12 @@ func (c *Client) EnsureNoPendingClusters(awsCreator *aws.Creator) error {
 		pendingCluster, err := c.GetPendingClusterForARN(awsCreator)
 		if err != nil {
 			reporter.Errorf("Error getting cluster using ARN '%s'", awsCreator.ARN)
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 		if time.Now().After(deadline) {
 			reporter.Errorf("Timeout waiting for the cluster '%s' installation. Try again in a few minutes",
 				pendingCluster.ID())
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 		if pendingCluster == nil {
 			break

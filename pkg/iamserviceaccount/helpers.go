@@ -147,7 +147,7 @@ func GenerateTrustPolicyMultiple(oidcProviderARN string, serviceAccounts []Servi
 			if i > 0 {
 				subjectsJSON.WriteString(", ")
 			}
-			fmt.Fprintf(&subjectsJSON, `"%s"`, subject)
+			fmt.Fprintf(&subjectsJSON, `"%s"`, subject) //nolint:forbidigo
 		}
 		subjectsJSON.WriteString(`]`)
 

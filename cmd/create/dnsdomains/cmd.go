@@ -17,7 +17,7 @@ limitations under the License.
 package dnsdomains
 
 import (
-	// nolint:gosec
+	//nolint:gosec
 	"os"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"

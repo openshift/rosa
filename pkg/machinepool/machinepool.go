@@ -16,7 +16,7 @@ import (
 	diskValidator "github.com/openshift-online/ocm-common/pkg/machinepool/validations"
 	commonUtils "github.com/openshift-online/ocm-common/pkg/utils"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/spf13/cobra"
+	"github.com/spf13/cobra" //nolint:depguard
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/fedramp"
@@ -24,15 +24,15 @@ import (
 	"github.com/openshift/rosa/pkg/helper/features"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
-	"github.com/openshift/rosa/pkg/interactive"
-	"github.com/openshift/rosa/pkg/interactive/confirm"
-	"github.com/openshift/rosa/pkg/interactive/securitygroups"
+	"github.com/openshift/rosa/pkg/interactive"                //nolint:depguard
+	"github.com/openshift/rosa/pkg/interactive/confirm"        //nolint:depguard
+	"github.com/openshift/rosa/pkg/interactive/securitygroups" //nolint:depguard
 	"github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/ocm"
-	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
-	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
-	"github.com/openshift/rosa/pkg/output"
-	"github.com/openshift/rosa/pkg/rosa"
+	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"       //nolint:depguard
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool" //nolint:depguard
+	"github.com/openshift/rosa/pkg/output"                     //nolint:depguard
+	"github.com/openshift/rosa/pkg/rosa"                       //nolint:depguard
 )
 
 const (
@@ -1200,7 +1200,7 @@ func (m *machinePool) ListMachinePools(r *rosa.Runtime, clusterKey string, clust
 	if isHypershift {
 		finalStringToOutput = getNodePoolsString(nodePools)
 	}
-	fmt.Fprint(writer, finalStringToOutput)
+	fmt.Fprint(writer, finalStringToOutput) //nolint:forbidigo
 	writer.Flush()
 	return nil
 }
@@ -1225,7 +1225,7 @@ func (m *machinePool) DescribeMachinePool(r *rosa.Runtime, cluster *cmv1.Cluster
 		return output.Print(machinePool)
 	}
 
-	fmt.Print(machinePoolOutput(cluster.ID(), machinePool))
+	fmt.Print(machinePoolOutput(cluster.ID(), machinePool)) //nolint:forbidigo
 
 	return nil
 }
@@ -1256,7 +1256,7 @@ func (m *machinePool) describeNodePool(r *rosa.Runtime, cluster *cmv1.Cluster, c
 	}
 
 	// Attach and print scheduledUpgrades if they exist, otherwise, print output normally
-	fmt.Print(appendUpgradesIfExist(scheduledUpgrade, nodePoolOutput(cluster.ID(), nodePool)))
+	fmt.Print(appendUpgradesIfExist(scheduledUpgrade, nodePoolOutput(cluster.ID(), nodePool))) //nolint:forbidigo
 
 	return nil
 }
@@ -1964,7 +1964,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		err = ValidateKubeletConfig(inputKubeletConfig)
 		if err != nil {
 			r.Reporter.Errorf(err.Error())
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo
 		}
 		npBuilder.KubeletConfigs(inputKubeletConfig...)
 		isKubeletConfigSet = true
@@ -2023,7 +2023,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 			})
 			if err != nil {
 				r.Reporter.Errorf("expected a valid value for max surge: %s", err)
-				os.Exit(1)
+				os.Exit(1) //nolint:forbidigo
 			}
 
 			maxUnavailable, err = interactive.GetString(interactive.Input{
@@ -2037,7 +2037,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 			})
 			if err != nil {
 				r.Reporter.Errorf("expected a valid value for max unavailable: %s", err)
-				os.Exit(1)
+				os.Exit(1) //nolint:forbidigo
 			}
 		}
 

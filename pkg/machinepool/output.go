@@ -5,8 +5,8 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
-	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
-	"github.com/openshift/rosa/pkg/output"
+	ocmOutput "github.com/openshift/rosa/pkg/ocm/output" //nolint:depguard
+	"github.com/openshift/rosa/pkg/output"               //nolint:depguard
 )
 
 var nodePoolOutputString string = "\n" +

@@ -54,7 +54,6 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 				output, _ := kubeletService.CreateKubeletConfig(clusterID,
 					"--pod-pids-limit", "12345")
 
-				// nolint:goconst
 				Expect(output.String()).To(ContainSubstring("Creating the KubeletConfig for cluster '%s' "+
 					"will cause all non-Control Plane nodes to reboot. "+
 					"This may cause outages to your applications. Do you wish to continue",

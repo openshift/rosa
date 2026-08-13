@@ -117,7 +117,7 @@ func formatParams(params map[string]string) string {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		fmt.Fprintf(&paramStr, "ParameterKey=%s,ParameterValue=%s ", k, params[k])
+		fmt.Fprintf(&paramStr, "ParameterKey=%s,ParameterValue=%s ", k, params[k]) //nolint:forbidigo
 	}
 	return paramStr.String()
 }
@@ -130,7 +130,7 @@ func formatTags(tags map[string]string) string {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		fmt.Fprintf(&tagStr, "Key=%s,Value=%s ", k, tags[k])
+		fmt.Fprintf(&tagStr, "Key=%s,Value=%s ", k, tags[k]) //nolint:forbidigo
 	}
 	return tagStr.String()
 }
