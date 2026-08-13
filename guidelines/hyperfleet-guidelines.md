@@ -447,6 +447,105 @@ Use this to plan future additions to the Hyperfleet path.
 
 ---
 
+## Infrastructure Prerequisites & Provisioning
+
+The Platform API **consumes** pre-existing AWS infrastructure; it does not
+provision it. `rosa create cluster` on the hyperfleet path takes existing
+subnets (`--subnet-ids`; VPC and AZ are derived from the first) and an operator
+roles prefix (`--operator-roles-prefix`, from which the seven role ARNs are
+*computed*, not created). Everything below must already exist before the cluster
+is created — or be created immediately after, once the cluster's OIDC issuer is
+known.
+
+### No CLI provisioning flow on the hyperfleet path
+
+The OCM/HCP path builds IAM and OIDC through dedicated CLI subcommands:
+`rosa create account-roles`, `rosa create operator-roles`,
+`rosa create oidc-config`, and `rosa create oidc-provider`. **None of these are
+wired for the Platform API path.** There is currently no `rosa` command that
+provisions account roles, operator roles, an OIDC config/provider, or a hosted
+zone for a hyperfleet cluster. Callers (including the e2e test) must create
+these directly against AWS with the SDK.
+
+### What OCM handled internally, hyperfleet expects as prerequisites
+
+Several resources that the OCM backend/installer created and managed
+**internally** are now **caller-supplied prerequisites** on the hyperfleet
+path:
+
+- **Private hosted zone** — OCM provisions the cluster's private hosted zone
+  internally (the shared-VPC scenario is the only case where OCM expects a
+  caller-provided zone). On the hyperfleet path the caller must create the
+  private hosted zone (`<cluster-name>.hypershift.local`) and associate it with
+  the VPC **before** cluster creation.
+- **Worker instance profile** — OCM creates the worker instance profile as part
+  of its provisioning. On the hyperfleet path it is a caller prerequisite,
+  created directly against IAM as `{prefix}-ROSA-Worker-Role` (see
+  `hyperfleet.ComputeInstanceProfile`).
+
+### IAM + OIDC differ from the OCM path
+
+- **Operator roles** — the seven roles are created with OIDC-scoped trust
+  policies whose federated principal is the IAM OIDC provider for the cluster's
+  issuer, with a `StringEquals` condition binding each role to its
+  `system:serviceaccount:<ns>:<name>`.
+- **OIDC provider** — the issuer URL is **server-managed**: it is read back
+  from `rosa describe cluster` (`spec.oidc_issuer`) after the cluster object is
+  created, then the IAM OpenID Connect provider is created for it (thumbprint
+  computed by TLS-dialing the issuer host). There is no `oidc-config` resource
+  and no client-side issuer generation.
+
+### Operator role naming convention differs
+
+- **OCM** fetches the authoritative operator role **names and their
+  service-account namespaces** from the API via the `sts_operator_roles`
+  endpoint. `rosa` uses that response to name each role and to build the correct
+  trust-policy service-account bindings — the convention is **API-driven**.
+- **Hyperfleet** has no such endpoint. The client **computes** the seven role
+  ARNs from `--operator-roles-prefix` and **hardcodes** the suffixes and
+  service-account bindings (`hyperfleet.ComputeRolesRef`: `-ingress`,
+  `-cloud-controller-manager`, `-ebs-csi`, `-image-registry`,
+  `-network-config`, `-control-plane-operator`, `-node-pool-management`). The
+  Platform API **accepts any prefix/formatting** and does not dictate or
+  validate the convention.
+
+This is why the sanity test stands up IAM/OIDC by hand with `aws-sdk-go-v2`
+rather than shelling out to `rosa` (see the E2E section below). The two-phase
+ordering matters: subnets, the worker security group, and the private hosted
+zone must exist **before** `create cluster`; the OIDC provider, operator roles,
+and worker instance profile can only be created **after**, because they depend
+on the server-assigned issuer.
+
+### Open questions (convention ownership)
+
+The divergences above raise questions that should be resolved before broad
+adoption:
+
+- Should hyperfleet **reuse** the OCM conventions/contract (e.g. the
+  `sts_operator_roles` endpoint) instead of diverging?
+- Should the conventions stay **hardcoded in the client** (the current state)?
+- Should a **new hyperfleet endpoint/resource** expose the naming conventions
+  and required prerequisites (operator roles, hosted zone, worker instance
+  profile) so clients don't hardcode them?
+
+### Hosted zones — gap in the shared test fixture
+
+Hyperfleet requires the private hosted zone described above, but the mainstream
+e2e fixture has **no reusable place to provision it today**: the handler's
+hosted-zone preparation (`PrepareHostedZone` in
+`tests/utils/handler/resources_handler_prepare.go`) only covers the
+**shared-VPC** scenario. The hyperfleet private hosted zone is currently created
+inline inside `hyperfleet_sanity_test.go` and cannot be reused by other specs.
+
+**Follow-up (e2e integration):** to wire hyperfleet into the existing e2e
+suite, the inline IAM/OIDC/hosted-zone provisioning must be extracted from the
+sanity test into a shared `tests/utils` helper, and a hyperfleet-aware
+hosted-zone preparation path added alongside the shared-VPC one. Networking
+(VPC, subnets, NAT, route tables) should reuse
+`ocm-common/pkg/test/vpc_client` rather than the inline single-AZ code.
+
+---
+
 ## End-to-End Test
 
 **File:** `tests/e2e/hyperfleet_sanity_test.go`

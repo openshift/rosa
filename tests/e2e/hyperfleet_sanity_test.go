@@ -24,10 +24,10 @@ import (
 	stssvc "github.com/aws/aws-sdk-go-v2/service/sts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
-	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	rosacli "github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -41,6 +41,15 @@ const (
 	hfNodePoolReadyInterval = 30 * time.Second
 	hfNodePoolReadyTimeout  = 30 * time.Minute
 	hfDefaultInstanceType   = "m5.xlarge"
+
+	// teardownGracePeriod bounds how long each cleanup node may run after a
+	// mid-run interrupt (Ctrl-C). Ginkgo's default is 30s, which is far too
+	// short for AWS teardown and leaves resources orphaned. It is sized to
+	// exceed the longest single cleanup node (cluster delete waits up to
+	// hfClusterReadyTimeout, followed by the LB/ENI/instance waits) so the
+	// per-resource timeouts govern rather than this cap. It has no effect on
+	// a normal run to completion.
+	teardownGracePeriod = hfClusterReadyTimeout + 30*time.Minute
 )
 
 // hfOperatorRole maps a role suffix to its AWS managed policy name and the
@@ -112,7 +121,7 @@ var hfOperatorRoles = []hfOperatorRole{
 
 var _ = Describe("Hyperfleet sanity",
 	func() {
-		It("creates and deletes an HCP cluster via the Platform API", func() {
+		It("creates and deletes an HCP cluster via the Platform API", func(ctx SpecContext) {
 			hfURL := os.Getenv("HYPERFLEET_URL")
 			if hfURL == "" {
 				Skip("HYPERFLEET_URL is not set")
@@ -140,6 +149,15 @@ var _ = Describe("Hyperfleet sanity",
 			// than any ambient value the caller may have set.
 			GinkgoT().Setenv("AWS_DEFAULT_REGION", region)
 
+			// deferTeardown registers a cleanup with a bounded grace period so a
+			// mid-run interrupt still lets AWS teardown make progress instead of
+			// being cut off after Ginkgo's default 30s. Each cleanup receives a
+			// fresh SpecContext (cancelled when the grace period expires) so long
+			// WaitUntil/waiter calls abort promptly on a second interrupt.
+			deferTeardown := func(fn func(ctx SpecContext)) {
+				DeferCleanup(fn, GracePeriod(teardownGracePeriod))
+			}
+
 			By("Logging in with Platform API URL")
 			_, err = rosacli.NewClient().Runner.
 				Cmd("login").
@@ -147,7 +165,7 @@ var _ = Describe("Hyperfleet sanity",
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa login --hyperfleet-url")
 
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: removing CLI config")
 				_, _ = rosacli.NewClient().Runner.Cmd("logout").Run()
 			})
@@ -164,8 +182,6 @@ var _ = Describe("Hyperfleet sanity",
 				"whoami must report the Platform API URL stored during login")
 			Expect(whoamiMap["AWS Default Region"]).To(Equal(region),
 				"whoami must report the region derived from the Platform API URL")
-
-			ctx := context.Background()
 
 			By("Loading AWS configuration")
 			awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
@@ -214,7 +230,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating VPC")
 			vpcID := awssdk.ToString(vpcOut.Vpc.VpcId)
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting VPC")
 				if _, err := ec2Client.DeleteVpc(ctx, &ec2svc.DeleteVpcInput{VpcId: awssdk.String(vpcID)}); err != nil {
 					GinkgoWriter.Printf("Failed to delete VPC %s: %v\n", vpcID, err)
@@ -257,7 +273,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating private subnet")
 			subnetID := awssdk.ToString(privateSubnetOut.Subnet.SubnetId)
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting private subnet")
 				_, _ = ec2Client.DeleteSubnet(ctx, &ec2svc.DeleteSubnetInput{SubnetId: awssdk.String(subnetID)})
 			})
@@ -278,7 +294,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating public subnet")
 			publicSubnetID := awssdk.ToString(publicSubnetOut.Subnet.SubnetId)
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting public subnet")
 				_, _ = ec2Client.DeleteSubnet(ctx, &ec2svc.DeleteSubnetInput{SubnetId: awssdk.String(publicSubnetID)})
 			})
@@ -302,7 +318,7 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "creating Internet Gateway")
 			igwID := awssdk.ToString(igwOut.InternetGateway.InternetGatewayId)
 			igwAttached := false
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: detaching and deleting Internet Gateway")
 				if igwAttached {
 					_, _ = ec2Client.DetachInternetGateway(ctx, &ec2svc.DetachInternetGatewayInput{
@@ -334,7 +350,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "allocating EIP for NAT Gateway")
 			natEIPAllocID := awssdk.ToString(eipOut.AllocationId)
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: releasing NAT Gateway EIP")
 				_, _ = ec2Client.ReleaseAddress(ctx, &ec2svc.ReleaseAddressInput{
 					AllocationId: awssdk.String(natEIPAllocID),
@@ -356,7 +372,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating NAT Gateway")
 			natGWID := awssdk.ToString(natOut.NatGateway.NatGatewayId)
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting NAT Gateway")
 				_, _ = ec2Client.DeleteNatGateway(ctx, &ec2svc.DeleteNatGatewayInput{
 					NatGatewayId: awssdk.String(natGWID),
@@ -387,7 +403,7 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "creating public route table")
 			publicRTID := awssdk.ToString(pubRTOut.RouteTable.RouteTableId)
 			var publicRTAssocID string
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting public route table")
 				if publicRTAssocID != "" {
 					_, _ = ec2Client.DisassociateRouteTable(ctx, &ec2svc.DisassociateRouteTableInput{
@@ -425,7 +441,7 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "creating private route table")
 			privateRTID := awssdk.ToString(privRTOut.RouteTable.RouteTableId)
 			var privateRTAssocID string
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting private route table")
 				if privateRTAssocID != "" {
 					_, _ = ec2Client.DisassociateRouteTable(ctx, &ec2svc.DisassociateRouteTableInput{
@@ -464,7 +480,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "creating worker security group")
 			workerSGID := awssdk.ToString(sgOut.GroupId)
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting worker security group")
 				_, _ = ec2Client.DeleteSecurityGroup(ctx, &ec2svc.DeleteSecurityGroupInput{
 					GroupId: awssdk.String(workerSGID),
@@ -512,7 +528,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 			Expect(err).NotTo(HaveOccurred(), "tagging hosted zone %s", hostedZoneID)
 			GinkgoWriter.Printf("Private hosted zone %s.hypershift.local created: %s\n", clusterName, hostedZoneID)
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: purging records and deleting private hosted zone")
 				hfPurgeHostedZoneRecords(ctx, r53Client, hostedZoneIDShort)
 				_, _ = r53Client.DeleteHostedZone(ctx, &route53svc.DeleteHostedZoneInput{
@@ -528,7 +544,7 @@ var _ = Describe("Hyperfleet sanity",
 			// authenticate to AWS; it is deleted last among these.
 
 			var oidcARN string
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				if oidcARN == "" {
 					return
 				}
@@ -539,7 +555,7 @@ var _ = Describe("Hyperfleet sanity",
 			})
 
 			var createdRoles []string
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: detaching policies and deleting operator roles")
 				for i, role := range hfOperatorRoles {
 					if i >= len(createdRoles) {
@@ -562,7 +578,7 @@ var _ = Describe("Hyperfleet sanity",
 				fmt.Sprintf("arn:%s:iam::aws:policy/service-role/ROSAWorkerInstancePolicy", partition),
 				fmt.Sprintf("arn:%s:iam::aws:policy/AmazonSSMManagedInstanceCore", partition),
 			}
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting worker instance profile and role")
 				_, _ = iamClient.RemoveRoleFromInstanceProfile(ctx, &iamsvc.RemoveRoleFromInstanceProfileInput{
 					InstanceProfileName: awssdk.String(workerRoleName),
@@ -604,7 +620,7 @@ var _ = Describe("Hyperfleet sanity",
 			// Declare clusterID before the DeferCleanup so the closure captures
 			// the variable; it will be populated after the describe call below.
 			var clusterID string
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting cluster via CLI")
 				_, _ = rosacli.NewClient().Runner.
 					Cmd("delete", "cluster").
@@ -828,7 +844,7 @@ var _ = Describe("Hyperfleet sanity",
 			const np2Name = "np2"
 			var np1ID, np2ID string
 
-			DeferCleanup(func() {
+			deferTeardown(func(ctx SpecContext) {
 				// np2 is explicitly deleted and waited on in the happy path.
 				// np1 cannot be waited on due to PDB restrictions — cluster
 				// deletion forces it; fire-and-forget here as a safety net.
