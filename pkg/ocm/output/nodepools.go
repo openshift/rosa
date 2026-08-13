@@ -140,6 +140,19 @@ func PrintNodePoolManagementUpgrade(upgrade *cmv1.NodePoolManagementUpgrade) str
 	return ""
 }
 
+func PrintNodePoolSpot(aws *cmv1.AWSNodePool) string {
+	if aws != nil {
+		if spot := aws.SpotMarketOptions(); spot != nil {
+			price := "on-demand"
+			if maxPrice, ok := spot.GetMaxPrice(); ok && maxPrice != "" {
+				price = fmt.Sprintf("max $%s", maxPrice)
+			}
+			return fmt.Sprintf("Yes (%s)", price)
+		}
+	}
+	return output.No
+}
+
 func PrintNodePoolDiskSize(aws *cmv1.AWSNodePool) string {
 	diskSizeStr := "default"
 	if aws != nil && aws.RootVolume() != nil {

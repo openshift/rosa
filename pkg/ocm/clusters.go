@@ -180,6 +180,9 @@ type Spec struct {
 	VpcEndpointRoleArn                string
 	InternalCommunicationHostedZoneId string
 
+	// Spot termination handling
+	SpotTerminationQueueUrl string
+
 	// Worker Machine Pool attributes
 	AdditionalComputeSecurityGroupIds []string
 
@@ -737,7 +740,7 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 	}
 
 	if config.AuditLogRoleARN != nil || config.AdditionalAllowedPrincipals != nil || config.BillingAccount != "" ||
-		config.AutoNodeRoleARN != "" {
+		config.AutoNodeRoleARN != "" || config.SpotTerminationQueueUrl != "" {
 		awsBuilder := cmv1.NewAWS()
 		if config.AdditionalAllowedPrincipals != nil {
 			awsBuilder = awsBuilder.AdditionalAllowedPrincipals(config.AdditionalAllowedPrincipals...)
@@ -754,6 +757,9 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		if config.AutoNodeRoleARN != "" {
 			autoNodeBuilder := cmv1.NewAwsAutoNode().RoleArn(config.AutoNodeRoleARN)
 			awsBuilder = awsBuilder.AutoNode(autoNodeBuilder)
+		}
+		if config.SpotTerminationQueueUrl != "" {
+			awsBuilder = awsBuilder.TerminationHandlerQueueUrl(config.SpotTerminationQueueUrl)
 		}
 		clusterBuilder.AWS(awsBuilder)
 	}
@@ -1120,6 +1126,10 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 		awsBuilder = awsBuilder.VpcEndpointRoleArn(config.VpcEndpointRoleArn)
 		awsBuilder = awsBuilder.HcpInternalCommunicationHostedZoneId(config.InternalCommunicationHostedZoneId)
 	}
+	if config.SpotTerminationQueueUrl != "" {
+		awsBuilder = awsBuilder.TerminationHandlerQueueUrl(config.SpotTerminationQueueUrl)
+	}
+
 	if config.BaseDomain != "" {
 		clusterBuilder = clusterBuilder.DNS(cmv1.NewDNS().BaseDomain(config.BaseDomain))
 	}

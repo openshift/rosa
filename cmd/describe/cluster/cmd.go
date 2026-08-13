@@ -549,6 +549,10 @@ func run(cmd *cobra.Command, argv []string) {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
 		}
+		if cluster.AWS().TerminationHandlerQueueUrl() != "" {
+			str = fmt.Sprintf("%s"+
+				"Spot Termination Queue URL: %s\n", str, cluster.AWS().TerminationHandlerQueueUrl())
+		}
 		// Display AutoNode status
 		if cluster.AutoNode() != nil {
 			str = fmt.Sprintf("%s"+

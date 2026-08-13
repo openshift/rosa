@@ -64,7 +64,8 @@ var args struct {
 	autoNodeRoleARN string
 
 	// HCP options:
-	billingAccount string
+	billingAccount          string
+	spotTerminationQueueUrl string
 
 	// Other options
 	additionalAllowedPrincipals []string
@@ -220,6 +221,15 @@ func initFlags(cmd *cobra.Command) {
 	)
 
 	flags.StringVar(
+		&args.spotTerminationQueueUrl,
+		"spot-termination-queue-url",
+		"",
+		"URL of the SQS queue for graceful Spot instance interruption handling. "+
+			"When set, the AWS Node Termination Handler is deployed in the hosted control plane. "+
+			"Queue must be in the same region as the cluster. Only supported for Hosted Control Plane clusters.",
+	)
+
+	flags.StringVar(
 		&args.networkType,
 		"network-type",
 		"",
@@ -283,7 +293,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
 			"registry-config-allowed-registries-for-import", "enable-delete-protection",
-			"channel-group", "network-type", "channel"} {
+			"channel-group", "network-type", "channel", "spot-termination-queue-url"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
@@ -717,6 +727,30 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		}
 	}
 
+	// Spot Termination Queue URL
+	var spotTerminationQueueUrl string
+	if cmd.Flags().Changed("spot-termination-queue-url") {
+		if !isHostedCP {
+			r.Reporter.Errorf("Spot termination queue URL is only supported for Hosted Control Plane clusters")
+			os.Exit(1)
+		}
+		spotTerminationQueueUrl = args.spotTerminationQueueUrl
+	}
+	if interactive.Enabled() && isHostedCP {
+		spotTerminationQueueUrlValue, err := interactive.GetString(interactive.Input{
+			Question: "Spot termination handler queue URL",
+			Help:     cmd.Flags().Lookup("spot-termination-queue-url").Usage,
+			Default:  cluster.AWS().TerminationHandlerQueueUrl(),
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for spot-termination-queue-url: %s", err)
+			os.Exit(1)
+		}
+		if spotTerminationQueueUrlValue != cluster.AWS().TerminationHandlerQueueUrl() {
+			spotTerminationQueueUrl = spotTerminationQueueUrlValue
+		}
+	}
+
 	clusterConfig := ocm.Spec{
 		Expiration: expiration,
 		Private:    private,
@@ -986,6 +1020,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	if args.channel != "" {
 		clusterConfig.Channel = args.channel
+	}
+
+	if spotTerminationQueueUrl != "" {
+		clusterConfig.SpotTerminationQueueUrl = spotTerminationQueueUrl
 	}
 
 	r.Reporter.Debugf("Updating cluster '%s'", clusterKey)
