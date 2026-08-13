@@ -54,8 +54,11 @@ func CheckRegionConflict(explicitRegion, rawURL string, r reporter.Logger) error
 	}
 	if explicitRegion != urlRegion {
 		return fmt.Errorf(
+			//nolint:lll
 			"--region %s does not match region in --hyperfleet-url (%s); use --region %s or omit --region to derive it from the URL",
-			explicitRegion, urlRegion, urlRegion,
+			explicitRegion,
+			urlRegion,
+			urlRegion,
 		)
 	}
 	return nil
