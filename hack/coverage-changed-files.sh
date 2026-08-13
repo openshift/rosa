@@ -22,7 +22,7 @@ diff_file="$tmp_dir/changes.diff"
 delta_file="$tmp_dir/delta-cov.txt"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-git diff "${diff_base_args[@]}" -U0 -- '*.go' > "$diff_file"
+git diff "${diff_base_args[@]}" -U0 -- '*.go' ':!*/mocks/*.go' > "$diff_file"
 if [ ! -s "$diff_file" ]; then
   exit 0
 fi
@@ -32,7 +32,7 @@ declare -a changed_packages=()
 for file_path in "${candidate_files[@]}"; do
   [ -z "$file_path" ] && continue
   case "$file_path" in
-    vendor/*|.tmp/*|*_test.go)
+    vendor/*|.tmp/*|*_test.go|*/mocks/*)
       continue
       ;;
   esac
