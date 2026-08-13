@@ -2,6 +2,7 @@ approvers:
 - olucasfreitas
 - jerichokeyne
 - amandahla
+- markirish
 - BraeTroutman
 - marcolan018
 - gdbranco
@@ -9,3 +10,8 @@ approvers:
 - davidleerh
 - dustman9000
 - red-hat-konflux[bot]
+reviewers:
+- jerichokeyne
+- olucasfreitas
+- amandahla
+- markirish
