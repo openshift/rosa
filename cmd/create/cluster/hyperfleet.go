@@ -8,8 +8,8 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
