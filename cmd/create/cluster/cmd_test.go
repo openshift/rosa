@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/cmd/create/admin"
@@ -54,6 +55,29 @@ var _ = Describe("Validate build command", func() {
 				Expect(command).To(Equal(
 					"rosa create cluster --cluster-name cluster-name --domain-prefix dns-label" +
 						" --operator-roles-prefix prefix"))
+			})
+		})
+
+		When("spot termination queue URL is present", func() {
+			It("prints --spot-termination-queue-url", func() {
+				queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+				clusterConfig.TerminationHandlerQueueUrl = &queueURL
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
+						" --spot-termination-queue-url https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"))
+			})
+		})
+
+		When("spot termination queue URL pointer is nil", func() {
+			It("does not print --spot-termination-queue-url", func() {
+				clusterConfig.TerminationHandlerQueueUrl = nil
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).NotTo(ContainSubstring("spot-termination-queue-url"))
 			})
 		})
 
@@ -305,6 +329,88 @@ var _ = Describe("Validate build command", func() {
 				}
 			})
 		})
+	})
+})
+
+var _ = Describe("Create cluster command flags", func() {
+	It("exposes the spot-termination-queue-url flag", func() {
+		cmd := makeCmd()
+		initFlags(cmd)
+		Expect(cmd.Flags().Lookup("spot-termination-queue-url")).ToNot(BeNil())
+	})
+
+	It("spot-termination-queue-url guard rejects classic clusters", func() {
+		classicCluster, err := cmv1.NewCluster().
+			ID("classic-cluster").
+			Hypershift(cmv1.NewHypershift().Enabled(false)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mock.IsHostedCP(classicCluster)).To(BeFalse(),
+			"classic cluster must not pass the spot-termination-queue-url HCP guard")
+	})
+
+	It("spot-termination-queue-url guard accepts HCP clusters", func() {
+		hcpCluster, err := cmv1.NewCluster().
+			ID("hcp-cluster").
+			Hypershift(cmv1.NewHypershift().Enabled(true)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mock.IsHostedCP(hcpCluster)).To(BeTrue(),
+			"HCP cluster must pass the spot-termination-queue-url guard")
+	})
+})
+
+var _ = Describe("setSpotTerminationQueueURLForCreate", func() {
+	It("sets a valid queue URL for HCP clusters", func() {
+		clusterConfig := ocm.Spec{}
+		queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+
+		err := setSpotTerminationQueueURLForCreate(&clusterConfig, true, queueURL)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(clusterConfig.TerminationHandlerQueueUrl).ToNot(BeNil())
+		Expect(*clusterConfig.TerminationHandlerQueueUrl).To(Equal(queueURL))
+	})
+
+	It("rejects invalid queue URLs for HCP clusters", func() {
+		clusterConfig := ocm.Spec{}
+
+		err := setSpotTerminationQueueURLForCreate(
+			&clusterConfig,
+			true,
+			"http://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue",
+		)
+
+		Expect(err).To(MatchError(
+			"invalid value for '--spot-termination-queue-url': " +
+				"expect URL 'http://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue' to use an 'https://' scheme",
+		))
+		Expect(clusterConfig.TerminationHandlerQueueUrl).To(BeNil())
+	})
+
+	It("rejects non-empty queue URLs for classic clusters", func() {
+		clusterConfig := ocm.Spec{}
+		queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+
+		err := setSpotTerminationQueueURLForCreate(&clusterConfig, false, queueURL)
+
+		Expect(err).To(MatchError(
+			"the '--spot-termination-queue-url' flag is only supported for Hosted Control Plane clusters",
+		))
+		Expect(clusterConfig.TerminationHandlerQueueUrl).To(BeNil())
+	})
+
+	It("leaves an existing queue URL unchanged when the create input is empty", func() {
+		existingQueueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/existing-queue"
+		clusterConfig := ocm.Spec{
+			TerminationHandlerQueueUrl: &existingQueueURL,
+		}
+
+		err := setSpotTerminationQueueURLForCreate(&clusterConfig, true, "")
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(clusterConfig.TerminationHandlerQueueUrl).ToNot(BeNil())
+		Expect(*clusterConfig.TerminationHandlerQueueUrl).To(Equal(existingQueueURL))
 	})
 })
 

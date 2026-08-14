@@ -32,9 +32,12 @@ const (
 	zoneTypeStandard   = "Standard"
 	zoneTypeNA         = "N/A"
 
-	displayValueYes     = "Yes"
-	displayValueNo      = "No"
-	displayValueUnknown = "Unknown"
+	displayValueYes                              = "Yes"
+	displayValueNo                               = "No"
+	displayValueUnknown                          = "Unknown"
+	spotPriceOnDemand                            = "on-demand"
+	spotNodePoolWithoutTerminationHandlerWarning = "Spot NodePool created without termination handler configuration. " +
+		"Nodes will not be gracefully drained on interruptions."
 
 	imageTypeWindows = "windows"
 
@@ -282,7 +285,7 @@ func (r *ReplicaSizeValidation) MinReplicaValidator() interactive.Validator {
 
 func spotMaxPriceValidator(val interface{}) error {
 	spotMaxPrice := fmt.Sprintf("%v", val)
-	if spotMaxPrice == "on-demand" {
+	if spotMaxPrice == spotPriceOnDemand {
 		return nil
 	}
 	price, err := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)

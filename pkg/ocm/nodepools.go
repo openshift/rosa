@@ -1,12 +1,29 @@
 package ocm
 
 import (
+	"net/http"
 	"slices"
+	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
+// CreateNodePoolResult bundles the created node pool with any server-side warnings.
+type CreateNodePoolResult struct {
+	NodePool *cmv1.NodePool
+	Warnings []string
+}
+
 func (c *Client) CreateNodePool(clusterID string, nodePool *cmv1.NodePool) (*cmv1.NodePool, error) {
+	result, err := c.CreateNodePoolWithWarnings(clusterID, nodePool)
+	if err != nil {
+		return nil, err
+	}
+	return result.NodePool, nil
+}
+
+// CreateNodePoolWithWarnings creates a node pool and returns any Warning headers from the response.
+func (c *Client) CreateNodePoolWithWarnings(clusterID string, nodePool *cmv1.NodePool) (*CreateNodePoolResult, error) {
 	response, err := c.ocm.ClustersMgmt().V1().
 		Clusters().Cluster(clusterID).
 		NodePools().
@@ -15,7 +32,39 @@ func (c *Client) CreateNodePool(clusterID string, nodePool *cmv1.NodePool) (*cmv
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
-	return response.Body(), nil
+	return &CreateNodePoolResult{
+		NodePool: response.Body(),
+		Warnings: extractWarningHeaders(response.Header()),
+	}, nil
+}
+
+func extractWarningHeaders(headers http.Header) []string {
+	if headers == nil {
+		return nil
+	}
+
+	rawWarnings := headers.Values("Warning")
+	warnings := make([]string, 0, len(rawWarnings))
+	for _, raw := range rawWarnings {
+		warning := strings.TrimSpace(raw)
+		if warning == "" {
+			continue
+		}
+
+		firstQuote := strings.Index(warning, `"`)
+		lastQuote := strings.LastIndex(warning, `"`)
+		if firstQuote >= 0 && lastQuote > firstQuote {
+			warning = warning[firstQuote+1 : lastQuote]
+		} else if parts := strings.SplitN(warning, " - ", 2); len(parts) == 2 {
+			warning = strings.TrimSpace(parts[1])
+		}
+
+		if warning != "" {
+			warnings = append(warnings, warning)
+		}
+	}
+
+	return warnings
 }
 
 func (c *Client) FindNodePoolsUsingKubeletConfig(

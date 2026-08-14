@@ -39,6 +39,7 @@ import (
 	"github.com/openshift/rosa/cmd/create/oidcprovider"
 	"github.com/openshift/rosa/cmd/create/operatorroles"
 	"github.com/openshift/rosa/cmd/create/service"
+	"github.com/openshift/rosa/cmd/create/spotterminationqueue"
 	"github.com/openshift/rosa/cmd/create/tuningconfigs"
 	"github.com/openshift/rosa/cmd/create/userrole"
 	"github.com/openshift/rosa/pkg/arguments"
@@ -82,6 +83,7 @@ func init() {
 	decisionCommand := decision.NewCreateDecisionCommand()
 	Cmd.AddCommand(decisionCommand)
 	Cmd.AddCommand(network.NewNetworkCommand())
+	Cmd.AddCommand(spotterminationqueue.NewCreateSpotTerminationQueueCommand())
 
 	flags := Cmd.PersistentFlags()
 	arguments.AddProfileFlag(flags)

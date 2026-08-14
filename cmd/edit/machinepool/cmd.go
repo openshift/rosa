@@ -112,6 +112,20 @@ func NewEditMachinePoolCommand() *cobra.Command {
 	)
 
 	flags.BoolVar(
+		&options.useSpotInstances,
+		"use-spot-instances",
+		false,
+		"Use spot instances for the hosted machine pool.",
+	)
+
+	flags.StringVar(
+		&options.spotMaxPrice,
+		"spot-max-price",
+		"on-demand",
+		"Max price for spot instances. Defaults to 'on-demand', which uses the on-demand price.",
+	)
+
+	flags.BoolVar(
 		&options.autorepair,
 		"autorepair",
 		true,

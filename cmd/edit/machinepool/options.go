@@ -21,6 +21,8 @@ type EditMachinepoolUserOptions struct {
 	nodeDrainGracePeriod string
 	maxSurge             string
 	maxUnavailable       string
+	useSpotInstances     bool
+	spotMaxPrice         string
 }
 
 type EditMachinepoolOptions struct {

@@ -73,6 +73,20 @@ func PrintNodePoolAdditionalSecurityGroups(aws *cmv1.AWSNodePool) string {
 	return output.PrintStringSlice(aws.AdditionalSecurityGroupIds())
 }
 
+// PrintNodePoolSpot returns a human-readable Spot instance status for a node pool.
+func PrintNodePoolSpot(aws *cmv1.AWSNodePool) string {
+	if aws != nil {
+		if spot := aws.SpotMarketOptions(); spot != nil {
+			price := "on-demand"
+			if maxPrice, ok := spot.GetMaxPrice(); ok && maxPrice != "" {
+				price = fmt.Sprintf("max $%s", maxPrice)
+			}
+			return fmt.Sprintf("Yes (%s)", price)
+		}
+	}
+	return output.No
+}
+
 func PrintEC2MetadataHttpTokens(aws *cmv1.AWSNodePool) cmv1.Ec2MetadataHttpTokens {
 	if aws == nil || aws.Ec2MetadataHttpTokens() == "" {
 		return cmv1.Ec2MetadataHttpTokensOptional

@@ -22,6 +22,7 @@ var nodePoolOutputString string = "\n" +
 	"Taints:                                %s\n" +
 	"Availability zone:                     %s\n" +
 	"Subnet:                                %s\n" +
+	"Spot instances:                        %s\n" +
 	"Disk Size:                             %s\n" +
 	"Version:                               %s\n" +
 	"EC2 Metadata Http Tokens:              %s\n" +
@@ -81,6 +82,7 @@ func nodePoolOutput(clusterId string, nodePool *cmv1.NodePool) string {
 		ocmOutput.PrintTaints(nodePool.Taints()),
 		nodePool.AvailabilityZone(),
 		nodePool.Subnet(),
+		ocmOutput.PrintNodePoolSpot(nodePool.AWSNodePool()),
 		ocmOutput.PrintNodePoolDiskSize(nodePool.AWSNodePool()),
 		ocmOutput.PrintNodePoolVersion(nodePool.Version()),
 		ocmOutput.PrintEC2MetadataHttpTokens(nodePool.AWSNodePool()),

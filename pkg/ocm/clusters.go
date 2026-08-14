@@ -154,6 +154,8 @@ type Spec struct {
 
 	// Audit Log Forwarding
 	AuditLogRoleARN *string
+	// Spot termination handling
+	TerminationHandlerQueueUrl *string
 
 	// AutoNode configuration
 	AutoNodeMode    string
@@ -737,7 +739,7 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 	}
 
 	if config.AuditLogRoleARN != nil || config.AdditionalAllowedPrincipals != nil || config.BillingAccount != "" ||
-		config.AutoNodeRoleARN != "" {
+		config.AutoNodeRoleARN != "" || config.TerminationHandlerQueueUrl != nil {
 		awsBuilder := cmv1.NewAWS()
 		if config.AdditionalAllowedPrincipals != nil {
 			awsBuilder = awsBuilder.AdditionalAllowedPrincipals(config.AdditionalAllowedPrincipals...)
@@ -754,6 +756,9 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		if config.AutoNodeRoleARN != "" {
 			autoNodeBuilder := cmv1.NewAwsAutoNode().RoleArn(config.AutoNodeRoleARN)
 			awsBuilder = awsBuilder.AutoNode(autoNodeBuilder)
+		}
+		if config.TerminationHandlerQueueUrl != nil {
+			awsBuilder = awsBuilder.TerminationHandlerQueueUrl(*config.TerminationHandlerQueueUrl)
 		}
 		clusterBuilder.AWS(awsBuilder)
 	}
@@ -1043,6 +1048,10 @@ func (c *Client) createClusterSpec(config Spec) (*cmv1.Cluster, error) {
 
 	if config.Ec2MetadataHttpTokens != "" {
 		awsBuilder = awsBuilder.Ec2MetadataHttpTokens(config.Ec2MetadataHttpTokens)
+	}
+
+	if config.TerminationHandlerQueueUrl != nil {
+		awsBuilder = awsBuilder.TerminationHandlerQueueUrl(*config.TerminationHandlerQueueUrl)
 	}
 
 	if config.RoleARN != "" {

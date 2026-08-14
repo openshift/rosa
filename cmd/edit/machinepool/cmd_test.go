@@ -1,6 +1,7 @@
 package machinepool
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 
@@ -69,6 +70,19 @@ var _ = Describe("Edit Machinepool", func() {
 		})
 
 		Describe("Machinepools", Ordered, func() {
+			It("Rejects spot flags on classic machine pools", func() {
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
+				t.SetCluster(clusterId, mockClassicClusterReady)
+				args := NewEditMachinepoolUserOptions()
+				args.machinepool = nodePoolId
+				runner := EditMachinePoolRunner(args)
+				cmd := NewEditMachinePoolCommand()
+				Expect(cmd.Flag("cluster").Value.Set(clusterId)).To(Succeed())
+				Expect(cmd.Flags().Set("use-spot-instances", "true")).To(Succeed())
+				err := runner(context.Background(), t.RosaRuntime, cmd, []string{})
+				Expect(err).To(MatchError(
+					"spot instance configuration is only supported for Hosted Control Plane machine pools"))
+			})
 			It("Able to edit machinepool with no issues", func() {
 				// First get
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, mpResponse))
@@ -105,6 +119,11 @@ var _ = Describe("Edit Machinepool", func() {
 		})
 
 		Describe("Nodepools", func() {
+			It("exposes the spot edit flags", func() {
+				cmd := NewEditMachinePoolCommand()
+				Expect(cmd.Flags().Lookup("use-spot-instances")).ToNot(BeNil())
+				Expect(cmd.Flags().Lookup("spot-max-price")).ToNot(BeNil())
+			})
 			It("Able to edit nodepool with no issues", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 				// First get
@@ -153,6 +172,57 @@ var _ = Describe("Edit Machinepool", func() {
 					"2", "--enable-autoscaling", "true", "--interactive", "false", "--max-replicas",
 					"10"})).To(Succeed())
 			})
+			It("Rejects modifying spot on an existing nodepool with guidance to recreate", func() {
+				spotNodePool, err := cmv1.NewNodePool().ID(nodePoolId).Version(version).
+					AWSNodePool(cmv1.NewAWSNodePool().InstanceType("m5.xlarge")).
+					AvailabilityZone("us-east-1a").Build()
+				Expect(err).ToNot(HaveOccurred())
+				spotNodePoolResponse := formatNodePoolResource(spotNodePool)
+
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, spotNodePoolResponse))
+				t.SetCluster(clusterId, mockClusterReady)
+				args := NewEditMachinepoolUserOptions()
+				args.machinepool = nodePoolId
+				runner := EditMachinePoolRunner(args)
+				cmd := NewEditMachinePoolCommand()
+				Expect(cmd.Flag("cluster").Value.Set(clusterId)).To(Succeed())
+				Expect(cmd.Flag("yes").Value.Set("true")).To(Succeed())
+				Expect(cmd.Flags().Set("use-spot-instances", "true")).To(Succeed())
+				Expect(cmd.Flags().Set("spot-max-price", "1.00")).To(Succeed())
+
+				err = runner(context.Background(), t.RosaRuntime, cmd, []string{nodePoolId})
+				Expect(err).To(MatchError(ContainSubstring(
+					"delete the machine pool and create a new one with the desired spot settings")))
+			})
+			It("Rejects disabling spot instances on nodepool edits for now", func() {
+				existingSpotNodePool, err := cmv1.NewNodePool().ID(nodePoolId).Version(version).
+					AWSNodePool(cmv1.NewAWSNodePool().InstanceType("m5.xlarge").
+						SpotMarketOptions(cmv1.NewAwsNodePoolSpotMarketOptions().MaxPrice("1.00"))).
+					AvailabilityZone("us-east-1a").Build()
+				Expect(err).ToNot(HaveOccurred())
+				existingSpotNodePoolResponse := formatNodePoolResource(existingSpotNodePool)
+
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, existingSpotNodePoolResponse))
+				t.SetCluster(clusterId, mockClusterReady)
+				args := NewEditMachinepoolUserOptions()
+				args.machinepool = nodePoolId
+				runner := EditMachinePoolRunner(args)
+				cmd := NewEditMachinePoolCommand()
+				Expect(cmd.Flag("cluster").Value.Set(clusterId)).To(Succeed())
+				Expect(cmd.Flag("yes").Value.Set("true")).To(Succeed())
+				Expect(cmd.Flags().Set("use-spot-instances", "false")).To(Succeed())
+
+				err = runner(context.Background(), t.RosaRuntime, cmd, []string{nodePoolId})
+				Expect(err).To(MatchError("disabling spot instances on hosted machine pools is not supported yet"))
+			})
 		})
 	})
 })
+
+func formatNodePoolResource(nodePool *cmv1.NodePool) string {
+	var output bytes.Buffer
+	Expect(cmv1.MarshalNodePool(nodePool, &output)).To(Succeed())
+	return output.String()
+}

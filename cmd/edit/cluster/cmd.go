@@ -33,6 +33,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/autonode"
 	"github.com/openshift/rosa/pkg/helper/roles"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -58,6 +59,8 @@ var args struct {
 
 	// Audit log forwarding
 	auditLogRoleARN string
+	// Spot termination handling
+	spotTerminationQueueUrl string
 
 	// AutoNode configuration
 	autonode        string
@@ -186,6 +189,12 @@ func initFlags(cmd *cobra.Command) {
 		"",
 		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
 	)
+	flags.StringVar(
+		&args.spotTerminationQueueUrl,
+		"spot-termination-queue-url",
+		"",
+		"Optional SQS queue URL that enables graceful Spot interruption handling for Hosted Control Plane clusters.",
+	)
 
 	flags.StringVar(
 		&args.autonode,
@@ -282,7 +291,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			"registry-config-allowed-registries", "registry-config-blocked-registries",
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
-			"registry-config-allowed-registries-for-import", "enable-delete-protection",
+			"registry-config-allowed-registries-for-import", "enable-delete-protection", "spot-termination-queue-url",
 			"channel-group", "network-type", "channel"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
@@ -760,6 +769,15 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 		clusterConfig.AdditionalAllowedPrincipals = additionalAllowedPrincipals
 	}
 
+	if err := setSpotTerminationQueueURLForEdit(
+		&clusterConfig,
+		isHostedCP,
+		cmd.Flags().Changed("spot-termination-queue-url"),
+		args.spotTerminationQueueUrl,
+	); err != nil {
+		return err
+	}
+
 	clusterRegistryConfigArgs, err = clusterregistryconfig.GetClusterRegistryConfigOptions(
 		cmd.Flags(), clusterRegistryConfigArgs, aws.IsHostedCP(cluster), cluster)
 	if err != nil {
@@ -1198,6 +1216,25 @@ func PromptUserToAcceptRegistryChange(r *rosa.Runtime) bool {
 		return false
 	}
 	return true
+}
+
+func setSpotTerminationQueueURLForEdit(
+	clusterConfig *ocm.Spec, isHostedCP bool, flagChanged bool, queueURL string,
+) error {
+	if flagChanged && !isHostedCP {
+		return fmt.Errorf("the '--spot-termination-queue-url' flag is only supported for Hosted Control Plane clusters")
+	}
+	if !flagChanged {
+		return nil
+	}
+	if queueURL != "" {
+		if err := urlHelper.ValidateHTTPSQueueURL(queueURL); err != nil {
+			return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
+		}
+	}
+
+	clusterConfig.TerminationHandlerQueueUrl = &queueURL
+	return nil
 }
 
 func BuildClusterConfigWithRegistry(clusterConfig ocm.Spec, allowedRegistries []string,

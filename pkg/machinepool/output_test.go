@@ -121,7 +121,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "Yes", replicasOutput, "", "", "", labelsOutput, "", taintsOutput,
-				"test-az", "test-subnets", "300 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "", "",
+				"test-az", "test-subnets", ocmOutput.PrintNodePoolSpot(nodePool.AWSNodePool()), "300 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "", "",
 				managementUpgradeOutput, "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
@@ -141,7 +141,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "No", "4", "", "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "300 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "", "", "", "")
+				"test-subnets", ocmOutput.PrintNodePoolSpot(nodePool.AWSNodePool()), "300 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
@@ -159,7 +159,7 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "No", "4", "", "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "256 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "", "", "", "")
+				"test-subnets", ocmOutput.PrintNodePoolSpot(nodePool.AWSNodePool()), "256 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))
@@ -180,9 +180,29 @@ var _ = Describe("Output", Ordered, func() {
 
 			out := fmt.Sprintf(nodePoolOutputString,
 				"test-mp", "test-cluster", "No", "4", "", "", "", labelsOutput, "", taintsOutput, "test-az",
-				"test-subnets", "256 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "",
+				"test-subnets", ocmOutput.PrintNodePoolSpot(nodePool.AWSNodePool()), "256 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "",
 				"\n - ID:                                 test-id\n - Type:                               OnDemand",
 				"", "")
+
+			result := nodePoolOutput("test-cluster", nodePool)
+			Expect(out).To(Equal(result))
+		})
+		It("nodepool output with spot instances", func() {
+			awsNodePoolBuilder := cmv1.NewAWSNodePool().RootVolume(cmv1.NewAWSVolume().Size(256)).
+				SpotMarketOptions(cmv1.NewAwsNodePoolSpotMarketOptions().MaxPrice("1.00"))
+
+			nodePoolBuilder := cmv1.NewNodePool().ID("test-mp").Replicas(4).AWSNodePool(awsNodePoolBuilder).
+				AvailabilityZone("test-az").Subnet("test-subnets").Version(cmv1.NewVersion().
+				ID("1")).AutoRepair(false).TuningConfigs("test-tc").
+				KubeletConfigs("test-kc").Labels(labels).Taints(taintsBuilder)
+			nodePool, err := nodePoolBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			labelsOutput := ocmOutput.PrintLabels(labels)
+			taintsOutput := ocmOutput.PrintTaints([]*cmv1.Taint{taint})
+
+			out := fmt.Sprintf(nodePoolOutputString,
+				"test-mp", "test-cluster", "No", "4", "", "", "", labelsOutput, "", taintsOutput, "test-az",
+				"test-subnets", "Yes (max $1.00)", "256 GiB", "1", "optional", "No", "test-tc", "test-kc", "", "", "", "", "")
 
 			result := nodePoolOutput("test-cluster", nodePool)
 			Expect(out).To(Equal(result))

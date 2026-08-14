@@ -107,6 +107,35 @@ var _ = Describe("ValidateURLCredentials", func() {
 })
 
 var _ = Describe("Parse helpers", func() {
+	Describe("ValidateHTTPSQueueURL", func() {
+		It("accepts a valid HTTPS queue URL", func() {
+			err := ValidateHTTPSQueueURL("https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects malformed URLs", func() {
+			err := ValidateHTTPSQueueURL("not-a-url")
+			Expect(err).To(HaveOccurred())
+		})
+
+		DescribeTable("rejects invalid queue URL shapes",
+			func(queueURL string, expectedError string) {
+				err := ValidateHTTPSQueueURL(queueURL)
+				Expect(err).To(MatchError(expectedError))
+			},
+			Entry("non-https scheme", "http://sqs.us-east-1.amazonaws.com/123456789012/queue",
+				"expect URL 'http://sqs.us-east-1.amazonaws.com/123456789012/queue' to use an 'https://' scheme"),
+			Entry("missing host", "https:///123456789012/queue",
+				"expect URL 'https:///123456789012/queue' to include a host"),
+			Entry("userinfo", "https://user:pass@sqs.us-east-1.amazonaws.com/123456789012/queue",
+				"expect URL 'https://user:pass@sqs.us-east-1.amazonaws.com/123456789012/queue' to not include user info"),
+			Entry("query string", "https://sqs.us-east-1.amazonaws.com/123456789012/queue?debug=true",
+				"expect URL 'https://sqs.us-east-1.amazonaws.com/123456789012/queue?debug=true' to not include a query string"),
+			Entry("fragment", "https://sqs.us-east-1.amazonaws.com/123456789012/queue#anchor",
+				"expect URL 'https://sqs.us-east-1.amazonaws.com/123456789012/queue#anchor' to not include a fragment"),
+		)
+	})
+
 	Describe("Parse", func() {
 		It("accepts a valid IPv6 host literal", func() {
 			parsedURL, err := Parse("http://[::1]:8080")

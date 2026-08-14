@@ -31,6 +31,30 @@ var _ = Describe("Validate node drain grace period print output", func() {
 	)
 })
 
+var _ = Describe("PrintNodePoolSpot", func() {
+	It("returns No when spot is not configured", func() {
+		awsNodePool, err := cmv1.NewAWSNodePool().Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(PrintNodePoolSpot(awsNodePool)).To(Equal("No"))
+	})
+
+	It("returns on-demand when spot is configured without max price", func() {
+		awsNodePool, err := cmv1.NewAWSNodePool().
+			SpotMarketOptions(cmv1.NewAwsNodePoolSpotMarketOptions()).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(PrintNodePoolSpot(awsNodePool)).To(Equal("Yes (on-demand)"))
+	})
+
+	It("returns the max price when spot max price is configured", func() {
+		awsNodePool, err := cmv1.NewAWSNodePool().
+			SpotMarketOptions(cmv1.NewAwsNodePoolSpotMarketOptions().MaxPrice("1.00")).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(PrintNodePoolSpot(awsNodePool)).To(Equal("Yes (max $1.00)"))
+	})
+})
+
 var _ = Describe("PrintNodePoolReplicasInline", func() {
 	It("Should print the correct output if autoscaling exists", func() {
 		autoscaling := cmv1.NewNodePoolAutoscaling().MinReplica(2).MaxReplica(6)

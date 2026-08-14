@@ -18,8 +18,8 @@ import (
 const (
 	nodePoolName         = "nodepool85"
 	clusterId            = "24vf9iitg3p6tlml88iml6j6mu095mh8"
-	singleNodePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS    TAINTS    AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR  \n" +
-		"nodepool85  No           /0        m5.xlarge                          us-east-1a                 default    4.12.24  No          \n"
+	singleNodePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  LABELS    TAINTS    AVAILABILITY ZONE  SUBNET  SPOT INSTANCES  DISK SIZE  VERSION  AUTOREPAIR  \n" +
+		"nodepool85  No           /0        m5.xlarge                          us-east-1a                 No              default    4.12.24  No          \n"
 
 	singleMachinePoolOutput = "ID          AUTOSCALING  REPLICAS  INSTANCE TYPE  AVAILABILITY ZONES                  SPOT INSTANCES  DISK SIZE\n" +
 		"nodepool85  No           0         m5.xlarge      us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n"
@@ -29,9 +29,9 @@ const (
 		"nodepool852  No           0         m5.xlarge      test=label               us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n" +
 		"nodepool853  Yes          1-100     m5.xlarge      test=label  test=taint:  us-east-1a, us-east-1b, us-east-1c  Yes (max $5)    default\n"
 
-	multipleNodePoolsOutput = "ID           AUTOSCALING  REPLICAS   INSTANCE TYPE  LABELS        TAINTS    AVAILABILITY ZONE  SUBNET  DISK SIZE  VERSION  AUTOREPAIR  \n" +
-		"nodepool85   No           /0         m5.xlarge                              us-east-1a                 default    4.12.24  No          \n" +
-		"nodepool852  Yes          /100-1000  m5.xlarge      test=label              us-east-1a                 default    4.12.24  No          \n"
+	multipleNodePoolsOutput = "ID           AUTOSCALING  REPLICAS   INSTANCE TYPE  LABELS        TAINTS    AVAILABILITY ZONE  SUBNET  SPOT INSTANCES  DISK SIZE  VERSION  AUTOREPAIR  \n" +
+		"nodepool85   No           /0         m5.xlarge                              us-east-1a                 No              default    4.12.24  No          \n" +
+		"nodepool852  Yes          /100-1000  m5.xlarge      test=label              us-east-1a                 No              default    4.12.24  No          \n"
 )
 
 var _ = Describe("List machine pool", func() {
