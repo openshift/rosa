@@ -1,12 +1,12 @@
 approvers:
-- xueli181114
-- yasun1
-- yuwang-RH
 - jerichokeyne
+- olucasfreitas
+- amandahla
+- markirish
 reviewers:
-- yasun1
-- xueli181114
-- yuwang-RH
-- tzhou5
-- yingzhanredhat
+- jerichokeyne
+- olucasfreitas
+- amandahla
+- markirish
+required_reviewers:
 - jerichokeyne
