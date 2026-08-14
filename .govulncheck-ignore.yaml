@@ -9,4 +9,7 @@
 # - module: The exact module path where the vulnerability exists
 # - reason: Why this vulnerability is accepted
 
-ignored_vulnerabilities: []
+ignored_vulnerabilities:
+  - id: GO-2026-5932
+    module: golang.org/x/crypto
+    reason: "Transitive dependency on deprecated openpgp package. No fix available — package is unmaintained by design. Not directly imported by ROSA."
