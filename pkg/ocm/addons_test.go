@@ -296,6 +296,60 @@ var _ = Describe("Addons API client behavior", func() {
 		Expect(clusterAddons[0].State).To(Equal("not installed"))
 	})
 
+	It("lets matching quota metadata override free add-on defaults", func() {
+		apiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/current_account"),
+				RespondWithJSON(http.StatusOK, `{
+					"id":"acct-1",
+					"organization":{"id":"org-1"}
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/accounts_mgmt/v1/organizations/org-1/quota_cost"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"QuotaCostList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[{
+						"allowed":0,
+						"consumed":0,
+						"related_resources":[
+							{
+								"resource_name":"addon-free",
+								"cost":1,
+								"availability_zone_type":"single",
+								"product":"rosa",
+								"cloud_provider":"aws",
+								"byoc":"byoc"
+							}
+						]
+					}]
+				}`),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/addons_mgmt/v1/addons"),
+				RespondWithJSON(http.StatusOK, `{
+					"kind":"AddonList",
+					"page":1,
+					"size":1,
+					"total":1,
+					"items":[
+						{"id":"addon-free","name":"Addon Free","resource_name":"addon-free","resource_cost":0}
+					]
+				}`),
+			),
+		)
+
+		addons, err := ocmClient.GetAvailableAddOns()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(addons).To(HaveLen(1))
+		Expect(addons[0].AddOn.ID()).To(Equal("addon-free"))
+		Expect(addons[0].Available).To(BeFalse())
+		Expect(addons[0].AZType).To(Equal("single"))
+	})
+
 	It("keeps multi-AZ add-ons for multi-AZ clusters", func() {
 		cluster, err := cmv1.NewCluster().ID("cluster-1").MultiAZ(true).Build()
 		Expect(err).NotTo(HaveOccurred())
