@@ -39,9 +39,6 @@
     "constraints": {
       "go": "1.26.5"
     },
-    "managerFilePatterns": [
-      "/(^|/)\\.bingo/[^/]+\\.mod$/"
-    ],
     "postUpdateOptions": ["gomodUpdateImportPaths"],
     "packageRules": [
       {
@@ -110,14 +107,11 @@
       "enabled": false
     },
     {
-      "description": "Group Bingo-managed tool modules",
-      "groupName": "bingo-tooling",
-      "matchManagers": [
-        "gomod"
-      ],
+      "description": "Bingo-managed tools (.bingo) are updated manually. Renovate does not provide a way to run the bingo command as expected by bingo's implementation, so automated .bingo updates are disabled for now.",
       "matchFileNames": [
-        ".bingo/*.mod"
-      ]
+        ".bingo/**"
+      ],
+      "enabled": false
     },
     {
       "description": "AWS SDK v2 and smithy",
