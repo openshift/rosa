@@ -51,6 +51,32 @@ func ValidateURLCredentials(urlString string) error {
 	return checkForInvalidChars(password, "password")
 }
 
+// ValidateHTTPSQueueURL performs lightweight sanity checks for queue-style URLs
+// without mirroring backend-owned service semantics.
+func ValidateHTTPSQueueURL(urlString string) error {
+	if strings.Contains(urlString, "#") {
+		return fmt.Errorf("expect URL '%s' to not include a fragment", urlString)
+	}
+
+	parsedURL, err := ParseRequestURI(urlString)
+	if err != nil {
+		return err
+	}
+	if parsedURL.Scheme != "https" {
+		return fmt.Errorf("expect URL '%s' to use an 'https://' scheme", urlString)
+	}
+	if parsedURL.Host == "" {
+		return fmt.Errorf("expect URL '%s' to include a host", urlString)
+	}
+	if parsedURL.User != nil {
+		return fmt.Errorf("expect URL '%s' to not include user info", urlString)
+	}
+	if parsedURL.RawQuery != "" {
+		return fmt.Errorf("expect URL '%s' to not include a query string", urlString)
+	}
+	return nil
+}
+
 func checkForInvalidChars(value, field string) error {
 	invalidChars := "/:#?[]@!$&'()*+,;="
 

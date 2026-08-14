@@ -26,6 +26,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
 )
@@ -54,6 +55,87 @@ var _ = Describe("Edit cluster", func() {
 				Expect(err.Error()).To(ContainSubstring(
 					"if any flags in the group [channel channel-group] are set none of the others can be"))
 			})
+		})
+		It("should expose the spot-termination-queue-url flag", func() {
+			Expect(cmd.Flags().Lookup("spot-termination-queue-url")).ToNot(BeNil())
+		})
+		It("should reject spot-termination-queue-url for classic clusters", func() {
+			classicCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.Hypershift(cmv1.NewHypershift().Enabled(false))
+			})
+			Expect(aws.IsHostedCP(classicCluster)).To(BeFalse(),
+				"classic cluster must not satisfy IsHostedCP guard")
+		})
+		It("should accept spot-termination-queue-url for HCP clusters", func() {
+			hcpCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.Hypershift(cmv1.NewHypershift().Enabled(true))
+			})
+			Expect(aws.IsHostedCP(hcpCluster)).To(BeTrue(),
+				"HCP cluster must satisfy IsHostedCP guard")
+		})
+	})
+	Context("setSpotTerminationQueueURLForEdit", func() {
+		It("sets a valid queue URL for HCP clusters", func() {
+			clusterConfig := ocm.Spec{}
+			queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+
+			err := setSpotTerminationQueueURLForEdit(&clusterConfig, true, true, queueURL)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(clusterConfig.TerminationHandlerQueueUrl).ToNot(BeNil())
+			Expect(*clusterConfig.TerminationHandlerQueueUrl).To(Equal(queueURL))
+		})
+
+		It("rejects invalid non-empty queue URLs", func() {
+			clusterConfig := ocm.Spec{}
+
+			err := setSpotTerminationQueueURLForEdit(
+				&clusterConfig,
+				true,
+				true,
+				"http://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue",
+			)
+
+			Expect(err).To(MatchError(
+				"invalid value for '--spot-termination-queue-url': " +
+					"expect URL 'http://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue' to use an 'https://' scheme",
+			))
+			Expect(clusterConfig.TerminationHandlerQueueUrl).To(BeNil())
+		})
+
+		It("allows clearing the queue URL", func() {
+			clusterConfig := ocm.Spec{}
+
+			err := setSpotTerminationQueueURLForEdit(&clusterConfig, true, true, "")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(clusterConfig.TerminationHandlerQueueUrl).ToNot(BeNil())
+			Expect(*clusterConfig.TerminationHandlerQueueUrl).To(BeEmpty())
+		})
+
+		It("rejects a changed non-empty queue URL for classic clusters", func() {
+			clusterConfig := ocm.Spec{}
+			queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+
+			err := setSpotTerminationQueueURLForEdit(&clusterConfig, false, true, queueURL)
+
+			Expect(err).To(MatchError(
+				"the '--spot-termination-queue-url' flag is only supported for Hosted Control Plane clusters",
+			))
+			Expect(clusterConfig.TerminationHandlerQueueUrl).To(BeNil())
+		})
+
+		It("leaves the queue URL unchanged when the edit flag was not changed", func() {
+			existingQueueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/existing-queue"
+			clusterConfig := ocm.Spec{
+				TerminationHandlerQueueUrl: &existingQueueURL,
+			}
+
+			err := setSpotTerminationQueueURLForEdit(&clusterConfig, true, false, "https://ignored.example.com")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(clusterConfig.TerminationHandlerQueueUrl).ToNot(BeNil())
+			Expect(*clusterConfig.TerminationHandlerQueueUrl).To(Equal(existingQueueURL))
 		})
 	})
 	Context("warnUserForOAuthHCPVisibility", func() {

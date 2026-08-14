@@ -33,6 +33,7 @@ Tags:
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional
@@ -61,6 +62,7 @@ Tags:
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional
@@ -91,6 +93,7 @@ Tags:
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional
@@ -120,6 +123,7 @@ Tags:
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional
@@ -149,6 +153,7 @@ Tags:                                  foo=bar
 Taints:                                
 Availability zone:                     us-east-1a
 Subnet:                                
+Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
 EC2 Metadata Http Tokens:              optional

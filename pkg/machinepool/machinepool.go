@@ -401,7 +401,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 	if err != nil {
 		return err
 	}
-	if spotMaxPrice != "on-demand" {
+	if spotMaxPrice != spotPriceOnDemand {
 		price, _ := strconv.ParseFloat(spotMaxPrice, commonUtils.MaxByteSize)
 		maxPrice = &price
 	}
@@ -713,6 +713,18 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		npBuilder.Subnet(subnet)
 	}
 
+	isSpotSet := cmd.Flags().Changed("use-spot-instances")
+	isSpotMaxPriceSet := cmd.Flags().Changed("spot-max-price")
+	useSpotInstances := args.UseSpotInstances
+	spotMaxPrice := args.SpotMaxPrice
+	if spotMaxPrice == "" {
+		spotMaxPrice = spotPriceOnDemand
+	}
+
+	if isSpotMaxPriceSet && (!isSpotSet || !useSpotInstances) {
+		return fmt.Errorf("can't set max price when not using spot instances")
+	}
+
 	// Machine pool instance type:
 	// NodePools don't support MultiAZ yet, so the availabilityZonesFilters is calculated from the cluster
 	instanceType := args.InstanceType
@@ -739,6 +751,18 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 			return fmt.Errorf("%s", err)
 		}
 		availabilityZonesFilter = []string{availabilityZone}
+	}
+
+	isLocalZone := false
+	if len(availabilityZonesFilter) == 1 &&
+		(useSpotInstances || (!isSpotSet && !isSpotMaxPriceSet && interactive.Enabled())) {
+		isLocalZone, err = r.AWSClient.IsLocalAvailabilityZone(availabilityZonesFilter[0])
+		if err != nil {
+			return err
+		}
+	}
+	if isLocalZone && useSpotInstances {
+		return fmt.Errorf("spot instances are not supported for local zones")
 	}
 
 	instanceTypeList, err := r.OCMClient.GetAvailableMachineTypesInRegion(cluster.Region().ID(),
@@ -943,6 +967,43 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		return fmt.Errorf("expected a valid http tokens value : %v", err)
 	}
 
+	if !isSpotSet && !isSpotMaxPriceSet && !isLocalZone && interactive.Enabled() {
+		useSpotInstances, err = interactive.GetBool(interactive.Input{
+			Question: "Use spot instances",
+			Help:     cmd.Flags().Lookup("use-spot-instances").Usage,
+			Default:  useSpotInstances,
+			Required: false,
+		})
+		if err != nil {
+			return fmt.Errorf("expected a valid value for use spot instances: %s", err)
+		}
+	}
+
+	if useSpotInstances && (capacityReservationId != "" || capacityReservationPreference != "") {
+		return fmt.Errorf("can't use spot instances with capacity reservation")
+	}
+
+	if useSpotInstances {
+		if !isSpotMaxPriceSet && interactive.Enabled() {
+			spotMaxPrice, err = interactive.GetString(interactive.Input{
+				Question: "Spot instance max price",
+				Help:     cmd.Flags().Lookup("spot-max-price").Usage,
+				Required: false,
+				Default:  spotMaxPrice,
+				Validators: []interactive.Validator{
+					spotMaxPriceValidator,
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("expected a valid value for spot max price: %s", err)
+			}
+		}
+		err = spotMaxPriceValidator(spotMaxPrice)
+		if err != nil {
+			return err
+		}
+	}
+
 	var rootDiskSize *int
 	_, _, _, _, defaultRootDiskSize, _ :=
 		r.OCMClient.GetDefaultClusterFlavors(cluster.Flavour().ID())
@@ -998,6 +1059,14 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		awsTags,
 		rootDiskSize,
 	)
+
+	if useSpotInstances {
+		spotMarketOptions := cmv1.NewAwsNodePoolSpotMarketOptions()
+		if spotMaxPrice != spotPriceOnDemand {
+			spotMarketOptions = spotMarketOptions.MaxPrice(spotMaxPrice)
+		}
+		awsNodepoolBuilder = awsNodepoolBuilder.SpotMarketOptions(spotMarketOptions)
+	}
 
 	if !fedramp.Enabled() {
 		capacityReservation := cmv1.NewAWSCapacityReservation()
@@ -1146,9 +1215,19 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		return fmt.Errorf("failed to create machine pool for hosted cluster '%s': %v", clusterKey, err)
 	}
 
-	createdNodePool, err := r.OCMClient.CreateNodePool(cluster.ID(), nodePool)
+	createResult, err := r.OCMClient.CreateNodePoolWithWarnings(cluster.ID(), nodePool)
 	if err != nil {
 		return fmt.Errorf("failed to add machine pool to hosted cluster '%s': %v", clusterKey, err)
+	}
+	createdNodePool := createResult.NodePool
+	for _, warning := range createResult.Warnings {
+		r.Reporter.Warnf("%s", warning)
+	}
+	if len(createResult.Warnings) == 0 &&
+		useSpotInstances &&
+		cluster.AWS() != nil &&
+		cluster.AWS().TerminationHandlerQueueUrl() == "" {
+		r.Reporter.Warnf("%s", spotNodePoolWithoutTerminationHandlerWarning)
 	}
 
 	if output.HasFlag() {
@@ -1476,9 +1555,9 @@ func getMachinePoolsString(
 
 func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 	outputString := "ID\tAUTOSCALING\tREPLICAS\t" +
-		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"
+		"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tSPOT INSTANCES\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"
 	for _, nodePool := range nodePools {
-		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
+		outputString += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
 			nodePool.ID(),
 			ocmOutput.PrintNodePoolAutoscaling(nodePool.Autoscaling()),
 			ocmOutput.PrintNodePoolReplicasShort(
@@ -1490,6 +1569,7 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 			ocmOutput.PrintTaints(nodePool.Taints()),
 			nodePool.AvailabilityZone(),
 			nodePool.Subnet(),
+			ocmOutput.PrintNodePoolSpot(nodePool.AWSNodePool()),
 			ocmOutput.PrintNodePoolDiskSize(nodePool.AWSNodePool()),
 			ocmOutput.PrintNodePoolVersion(nodePool.Version()),
 			ocmOutput.PrintNodePoolAutorepair(nodePool.AutoRepair()),
@@ -1707,6 +1787,10 @@ func editMachinePool(cmd *cobra.Command, machinePoolId string,
 	isLabelsSet := cmd.Flags().Changed("labels")
 	isTaintsSet := cmd.Flags().Changed("taints")
 
+	if cmd.Flags().Changed("use-spot-instances") || cmd.Flags().Changed("spot-max-price") {
+		return fmt.Errorf("spot instance configuration is only supported for Hosted Control Plane machine pools")
+	}
+
 	// if no value set enter interactive mode
 	//nolint:staticcheck
 	if !(isMinReplicasSet || isMaxReplicasSet || isReplicasSet || isAutoscalingSet || isLabelsSet || isTaintsSet) {
@@ -1802,10 +1886,22 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	isNodeDrainGracePeriodSet := cmd.Flags().Changed("node-drain-grace-period")
 	isUpgradeMaxSurgeSet := cmd.Flags().Changed("max-surge")
 	isUpgradeMaxUnavailableSet := cmd.Flags().Changed("max-unavailable")
+	isSpotSet := cmd.Flags().Changed("use-spot-instances")
+	isSpotMaxPriceSet := cmd.Flags().Changed("spot-max-price")
+	requestedUseSpotInstances := false
+	if isSpotSet {
+		requestedUseSpotInstances, err = strconv.ParseBool(cmd.Flags().Lookup("use-spot-instances").Value.String())
+		if err != nil {
+			return fmt.Errorf("failed to parse use-spot-instances flag: %s", err)
+		}
+		if !requestedUseSpotInstances {
+			return fmt.Errorf("disabling spot instances on hosted machine pools is not supported yet")
+		}
+	}
 
 	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
 	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet ||
-		isKubeletConfigSet || isUpgradeMaxSurgeSet || isUpgradeMaxUnavailableSet
+		isKubeletConfigSet || isUpgradeMaxSurgeSet || isUpgradeMaxUnavailableSet || isSpotSet || isSpotMaxPriceSet
 	isAnyParameterSet := isMinReplicasSet || isMaxReplicasSet || isReplicasSet ||
 		isAutoscalingSet || isAnyAdditionalParameterSet
 
@@ -1834,6 +1930,21 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 		isMinReplicasSet, isMaxReplicasSet)
 	if err != nil {
 		return err
+	}
+
+	existingSpotEnabled := nodePool.AWSNodePool() != nil && nodePool.AWSNodePool().SpotMarketOptions() != nil
+	targetUseSpotInstances := existingSpotEnabled
+	if isSpotSet {
+		targetUseSpotInstances = requestedUseSpotInstances
+	}
+
+	if isSpotMaxPriceSet && !isSpotSet && !existingSpotEnabled {
+		return fmt.Errorf("can't set max price when not using spot instances")
+	}
+
+	if isSpotMaxPriceSet || (isSpotSet && targetUseSpotInstances && !existingSpotEnabled) {
+		return fmt.Errorf("modifying spot configuration on an existing machine pool is not supported; " +
+			"delete the machine pool and create a new one with the desired spot settings")
 	}
 
 	labels := cmd.Flags().Lookup("labels").Value.String()

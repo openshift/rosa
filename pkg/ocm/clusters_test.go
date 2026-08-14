@@ -1,9 +1,17 @@
 package ocm
 
 import (
+	"bytes"
+	"net/http"
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
+	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift-online/ocm-sdk-go/logging"
+	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/aws"
 )
@@ -244,5 +252,85 @@ var _ = Describe("Helper Functions", func() {
 			})
 
 		})
+	})
+})
+
+var _ = Describe("Spot termination queue URL wiring", func() {
+	It("createClusterSpec maps termination handler queue URL into the AWS builder", func() {
+		client := &Client{}
+		queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+
+		cluster, err := client.createClusterSpec(Spec{
+			Name:                       "test-cluster",
+			Region:                     "us-east-1",
+			Hypershift:                 Hypershift{Enabled: true},
+			RoleARN:                    "arn:aws:iam::123456789012:role/test-role",
+			AWSCreator:                 &aws.Creator{ARN: "arn:aws:iam::123456789012:role/test-role", AccountID: "123456789012"},
+			TerminationHandlerQueueUrl: &queueURL,
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cluster.AWS()).ToNot(BeNil())
+		Expect(cluster.AWS().TerminationHandlerQueueUrl()).To(Equal(queueURL))
+	})
+
+	It("createClusterSpec does NOT set termination handler queue URL when pointer is nil", func() {
+		client := &Client{}
+
+		cluster, err := client.createClusterSpec(Spec{
+			Name:       "test-cluster",
+			Region:     "us-east-1",
+			Hypershift: Hypershift{Enabled: true},
+			RoleARN:    "arn:aws:iam::123456789012:role/test-role",
+			AWSCreator: &aws.Creator{ARN: "arn:aws:iam::123456789012:role/test-role", AccountID: "123456789012"},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cluster.AWS()).ToNot(BeNil())
+		Expect(cluster.AWS().TerminationHandlerQueueUrl()).To(BeEmpty())
+	})
+
+	It("UpdateCluster sends termination handler queue URL when it is the only AWS update", func() {
+		apiServer := MakeTCPServer()
+		DeferCleanup(apiServer.Close)
+
+		accessToken := MakeTokenString("Bearer", 15*time.Minute)
+		logger, err := logging.NewGoLoggerBuilder().
+			Debug(false).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		connection, err := sdk.NewConnectionBuilder().
+			Logger(logger).
+			Tokens(accessToken).
+			URL(apiServer.URL()).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		client := NewClientWithConnection(connection)
+		DeferCleanup(func() {
+			Expect(client.Close()).To(Succeed())
+		})
+
+		cluster, err := cmv1.NewCluster().
+			ID("test-cluster").
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+
+		var clusterBody bytes.Buffer
+		err = cmv1.MarshalCluster(cluster, &clusterBody)
+		Expect(err).ToNot(HaveOccurred())
+		clusterListBody := []byte(`{"kind":"ClusterList","page":1,"size":1,"total":1,"items":[` + clusterBody.String() + `]}`)
+
+		queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, string(clusterListBody)),
+			ghttp.CombineHandlers(
+				VerifyJQ(".aws.termination_handler_queue_url", queueURL),
+				RespondWithJSON(http.StatusOK, clusterBody.String()),
+			),
+		)
+
+		err = client.UpdateCluster("test-cluster", &aws.Creator{AccountID: "123456789012"}, Spec{
+			TerminationHandlerQueueUrl: &queueURL,
+		})
+		Expect(err).ToNot(HaveOccurred())
 	})
 })

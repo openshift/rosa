@@ -24,6 +24,7 @@ import (
 
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
 	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
@@ -303,8 +304,8 @@ var _ = Describe("Machinepool and nodepool", func() {
 			out := getNodePoolsString(cluster.NodePools().Slice())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out).To(Equal(fmt.Sprintf("ID\tAUTOSCALING\tREPLICAS\t"+
-				"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"+
-				"%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t\n",
+				"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tSPOT INSTANCES\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"+
+				"%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
 				cluster.NodePools().Get(0).ID(),
 				ocmOutput.PrintNodePoolAutoscaling(cluster.NodePools().Get(0).Autoscaling()),
 				ocmOutput.PrintNodePoolReplicasShort(
@@ -317,6 +318,39 @@ var _ = Describe("Machinepool and nodepool", func() {
 				ocmOutput.PrintTaints(cluster.NodePools().Get(0).Taints()),
 				cluster.NodePools().Get(0).AvailabilityZone(),
 				cluster.NodePools().Get(0).Subnet(),
+				ocmOutput.PrintNodePoolSpot(cluster.NodePools().Get(0).AWSNodePool()),
+				ocmOutput.PrintNodePoolDiskSize(cluster.NodePools().Get(0).AWSNodePool()),
+				ocmOutput.PrintNodePoolVersion(cluster.NodePools().Get(0).Version()),
+				ocmOutput.PrintNodePoolAutorepair(cluster.NodePools().Get(0).AutoRepair()))))
+		})
+		It("Test printNodePools with spot instances", func() {
+			clusterBuilder := cmv1.NewCluster().ID("test").State(cmv1.ClusterStateReady).
+				Hypershift(cmv1.NewHypershift().Enabled(true)).NodePools(cmv1.NewNodePoolList().
+				Items(cmv1.NewNodePool().ID("np").Replicas(8).AvailabilityZone("az").
+					AWSNodePool(cmv1.NewAWSNodePool().
+						RootVolume(cmv1.NewAWSVolume().Size(256)).
+						SpotMarketOptions(cmv1.NewAwsNodePoolSpotMarketOptions().MaxPrice("1.00"))).
+					Subnet("sn").Version(cmv1.NewVersion().ID("1")).AutoRepair(false)))
+			cluster, err := clusterBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			out := getNodePoolsString(cluster.NodePools().Slice())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out).To(Equal(fmt.Sprintf("ID\tAUTOSCALING\tREPLICAS\t"+
+				"INSTANCE TYPE\tLABELS\t\tTAINTS\t\tAVAILABILITY ZONE\tSUBNET\tSPOT INSTANCES\tDISK SIZE\tVERSION\tAUTOREPAIR\t\n"+
+				"%s\t%s\t%s\t%s\t%s\t\t%s\t\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
+				cluster.NodePools().Get(0).ID(),
+				ocmOutput.PrintNodePoolAutoscaling(cluster.NodePools().Get(0).Autoscaling()),
+				ocmOutput.PrintNodePoolReplicasShort(
+					ocmOutput.PrintNodePoolCurrentReplicas(cluster.NodePools().Get(0).Status()),
+					ocmOutput.PrintNodePoolReplicas(cluster.NodePools().Get(0).Autoscaling(),
+						cluster.NodePools().Get(0).Replicas()),
+				),
+				ocmOutput.PrintNodePoolInstanceType(cluster.NodePools().Get(0).AWSNodePool()),
+				ocmOutput.PrintLabels(cluster.NodePools().Get(0).Labels()),
+				ocmOutput.PrintTaints(cluster.NodePools().Get(0).Taints()),
+				cluster.NodePools().Get(0).AvailabilityZone(),
+				cluster.NodePools().Get(0).Subnet(),
+				"Yes (max $1.00)",
 				ocmOutput.PrintNodePoolDiskSize(cluster.NodePools().Get(0).AWSNodePool()),
 				ocmOutput.PrintNodePoolVersion(cluster.NodePools().Get(0).Version()),
 				ocmOutput.PrintNodePoolAutorepair(cluster.NodePools().Get(0).AutoRepair()))))
@@ -1551,6 +1585,148 @@ var _ = Describe("NodePools", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("you must supply a valid instance type"))
 		})
+		It("should error when spot-max-price is set without use-spot-instances for node pools", func() {
+			machinePool := &machinePool{}
+			version := "4.15.0"
+
+			cluster = returnMockCluster(version)
+			day1AvailabilityZone := "a1"
+			privateSubnets := []ec2types.Subnet{{AvailabilityZone: &day1AvailabilityZone, SubnetId: &subnet}}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			cmd.Flags().Int32("replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			cmd.Flags().StringVar(&args.SpotMaxPrice, "spot-max-price", "", "Spot max price")
+			cmd.Flags().Set("spot-max-price", "1.00")
+
+			args.Replicas = 3
+			args.InstanceType = "t3.small"
+			args.SpotMaxPrice = "1.00"
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("can't set max price when not using spot instances"))
+		})
+
+		It("should reject spot instances for local zones on node pools", func() {
+			machinePool := &machinePool{}
+			version := "4.22.0"
+			az := "us-east-1-lz-1"
+
+			cluster = returnMockCluster(version)
+			day1AvailabilityZone := "a1"
+			privateSubnets := []ec2types.Subnet{{AvailabilityZone: &day1AvailabilityZone, SubnetId: &subnet}}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			cmd.Flags().Int32("replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			cmd.Flags().BoolVar(&args.UseSpotInstances, "use-spot-instances", false, "Use spot instances")
+			cmd.Flags().Set("use-spot-instances", "true")
+
+			args.Replicas = 3
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mockClient.EXPECT().IsLocalAvailabilityZone(az).Return(true, nil)
+
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("spot instances are not supported for local zones"))
+		})
+		It("should error when spot instances and capacity reservation are both set for node pools", func() {
+			machinePool := &machinePool{}
+			version := "4.19.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "test")
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			cmd.Flags().Int32("replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			cmd.Flags().BoolVar(&args.UseSpotInstances, "use-spot-instances", false, "Use spot instances")
+			cmd.Flags().Set("use-spot-instances", "true")
+			cmd.Flags().StringVar(&args.CapacityReservationId, "capacity-reservation-id",
+				"fake-capacity-reservation-id", "capacity-reservation-id")
+			cmd.Flags().Set("capacity-reservation-id", "fake-capacity-reservation-id")
+
+			args.Replicas = 3
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+			args.CapacityReservationId = "fake-capacity-reservation-id"
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mockClient.EXPECT().IsLocalAvailabilityZone(az).Return(false, nil)
+			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version("4.19.0").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
+
+			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
+			Expect(err).ToNot(HaveOccurred())
+			nodePoolResponse := test.FormatNodePoolList([]*cmv1.NodePool{})
+			t.ApiServer.RouteToHandler(http.MethodGet,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				RespondWithJSON(http.StatusOK, nodePoolResponse))
+			t.ApiServer.RouteToHandler(http.MethodPost,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
+
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("can't use spot instances with capacity reservation"))
+		})
 		It("fails to add the node pool to the hosted cluster", func() {
 			machinePool := &machinePool{}
 			version := "4.15.0"
@@ -1853,6 +2029,248 @@ var _ = Describe("NodePools", func() {
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(Not(HaveOccurred()))
 		})
+		It("Successfully creates a spot node pool", func() {
+			machinePool := &machinePool{}
+			version := "4.22.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "spot-workers")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			cmd.Flags().Int32("replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			cmd.Flags().BoolVar(&args.UseSpotInstances, "use-spot-instances", false, "Use spot instances")
+			cmd.Flags().Set("use-spot-instances", "true")
+			cmd.Flags().StringVar(&args.SpotMaxPrice, "spot-max-price", "", "Spot max price")
+			cmd.Flags().Set("spot-max-price", "1.00")
+
+			args.Replicas = 3
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+			args.SpotMaxPrice = "1.00"
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mockClient.EXPECT().IsLocalAvailabilityZone(az).Return(false, nil)
+			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version(version).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
+
+			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
+			Expect(err).ToNot(HaveOccurred())
+			nodePoolResponse := test.FormatNodePoolList([]*cmv1.NodePool{})
+			t.ApiServer.RouteToHandler(http.MethodGet,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				RespondWithJSON(http.StatusOK, nodePoolResponse))
+			t.ApiServer.RouteToHandler(http.MethodPost,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				ghttp.CombineHandlers(
+					RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)),
+					VerifyJQ(".aws_node_pool.spot_market_options.max_price", "1.00"),
+				))
+
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("prints a warning when a spot node pool is created without termination handler configuration", func() {
+			machinePool := &machinePool{}
+			version := "4.22.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "spot-workers")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			cmd.Flags().Int32("replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			cmd.Flags().BoolVar(&args.UseSpotInstances, "use-spot-instances", false, "Use spot instances")
+			cmd.Flags().Set("use-spot-instances", "true")
+
+			args.Replicas = 3
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mockClient.EXPECT().IsLocalAvailabilityZone(az).Return(false, nil)
+			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version(version).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
+
+			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
+			Expect(err).ToNot(HaveOccurred())
+			nodePoolResponse := test.FormatNodePoolList([]*cmv1.NodePool{})
+			t.ApiServer.RouteToHandler(http.MethodGet,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				RespondWithJSON(http.StatusOK, nodePoolResponse))
+			t.ApiServer.RouteToHandler(http.MethodPost,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				ghttp.CombineHandlers(
+					func(w http.ResponseWriter, req *http.Request) {
+						w.Header().Add("Warning",
+							`199 - "Spot NodePool created without termination handler configuration. Nodes will not be gracefully drained on interruptions."`)
+					},
+					RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)),
+				))
+
+			stderrState := os.Stderr
+			stderrReader, stderrWriter, err := os.Pipe()
+			Expect(err).ToNot(HaveOccurred())
+			os.Stderr = stderrWriter
+			defer func() {
+				os.Stderr = stderrState
+			}()
+
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = stderrWriter.Close()
+			Expect(err).ToNot(HaveOccurred())
+
+			stderrOutput, err := io.ReadAll(stderrReader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(stderrOutput)).To(ContainSubstring(
+				"Spot NodePool created without termination handler configuration. Nodes will not be gracefully drained on interruptions.",
+			))
+		})
+		It("prints a fallback warning when the backend returns no warning header", func() {
+			machinePool := &machinePool{}
+			version := "4.22.0"
+			az := "a1"
+
+			cluster = returnMockCluster(version)
+			privateSubnets := []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnet},
+			}
+
+			cmd.Flags().StringVar(&args.Name, "name", "", "Name of the machine pool")
+			cmd.Flags().Set("name", "spot-workers")
+
+			cmd.Flags().StringVar(&args.Version, "version", "", "Version of the machine pool")
+			cmd.Flags().Set("version", version)
+			cmd.Flags().Int32("replicas", 3, "Replicas of the machine pool")
+			cmd.Flags().Set("replicas", "3")
+			cmd.Flags().BoolVar(&args.UseSpotInstances, "use-spot-instances", false, "Use spot instances")
+			cmd.Flags().Set("use-spot-instances", "true")
+
+			args.Replicas = 3
+			args.InstanceType = "t3.small"
+			args.UseSpotInstances = true
+
+			v := cmv1.VersionBuilder{}
+			v.ID(version).ChannelGroup("stable").RawID(version).Default(true).
+				Enabled(true).ROSAEnabled(true).HostedControlPlaneDefault(true)
+			versionObj, err := v.Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
+				[]*cmv1.Version{versionObj})))
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
+			mockClient.EXPECT().IsLocalAvailabilityZone(az).Return(false, nil)
+			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
+			machineType, err := mtBuilder.Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatMachineTypeList(
+				[]*cmv1.MachineType{machineType})))
+			acc, err := amsv1.NewAccount().ID("123456789012").Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
+			qc, err := amsv1.NewQuotaCost().QuotaID("test-quota").
+				OrganizationID("123456789012").Version(version).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
+			flavour, err := cmv1.NewFlavour().AWS(cmv1.NewAWSFlavour().ComputeInstanceType("x-large").
+				WorkerVolume(cmv1.NewAWSVolume().Size(100))).
+				Network(cmv1.NewNetwork().MachineCIDR("").PodCIDR("").ServiceCIDR("").HostPrefix(1)).Build()
+			Expect(err).ToNot(HaveOccurred())
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(flavour)))
+
+			nodePoolObj, err := cmv1.NewNodePool().ID("np-1").Build()
+			Expect(err).ToNot(HaveOccurred())
+			nodePoolResponse := test.FormatNodePoolList([]*cmv1.NodePool{})
+			t.ApiServer.RouteToHandler(http.MethodGet,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				RespondWithJSON(http.StatusOK, nodePoolResponse))
+			t.ApiServer.RouteToHandler(http.MethodPost,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
+
+			stderrState := os.Stderr
+			stderrReader, stderrWriter, err := os.Pipe()
+			Expect(err).ToNot(HaveOccurred())
+			os.Stderr = stderrWriter
+			defer func() {
+				os.Stderr = stderrState
+			}()
+
+			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = stderrWriter.Close()
+			Expect(err).ToNot(HaveOccurred())
+
+			stderrOutput, err := io.ReadAll(stderrReader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(stderrOutput)).To(ContainSubstring(spotNodePoolWithoutTerminationHandlerWarning))
+		})
 		It("should fail if disk size is invalid", func() {
 			machinePool := &machinePool{}
 			version := "4.15.0"
@@ -1929,6 +2347,127 @@ var _ = Describe("NodePools", func() {
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(ContainSubstring("expected a valid node pool root disk size value"))
+		})
+	})
+
+	Context("EditNodePool spot behavior", func() {
+		const (
+			editNodePoolID     = "edit-nodepool"
+			editClusterKey     = "edit-cluster-key"
+			editClusterVersion = "4.22.0"
+		)
+
+		var (
+			t          *TestRuntime
+			mockClient *mock.MockClient
+			mockCtrl   *gomock.Controller
+			cmd        *cobra.Command
+			cluster    *cmv1.Cluster
+		)
+
+		BeforeEach(func() {
+			mockCtrl = gomock.NewController(GinkgoT())
+			mockClient = mock.NewMockClient(mockCtrl)
+			t = NewTestingRuntime(mockClient)
+			cmd = &cobra.Command{}
+			confirm.AddFlag(cmd.Flags())
+			Expect(cmd.Flags().Set("yes", "true")).To(Succeed())
+			Expect(cmd.Flags().Bool("use-spot-instances", false, "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("spot-max-price", "on-demand", "")).ToNot(BeNil())
+			Expect(cmd.Flags().Int("replicas", 0, "")).ToNot(BeNil())
+			Expect(cmd.Flags().Bool("enable-autoscaling", false, "")).ToNot(BeNil())
+			Expect(cmd.Flags().Int("min-replicas", 0, "")).ToNot(BeNil())
+			Expect(cmd.Flags().Int("max-replicas", 0, "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("labels", "", "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("taints", "", "")).ToNot(BeNil())
+			Expect(cmd.Flags().Bool("autorepair", false, "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("tuning-configs", "", "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("kubelet-configs", "", "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("node-drain-grace-period", "", "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("max-surge", "", "")).ToNot(BeNil())
+			Expect(cmd.Flags().String("max-unavailable", "", "")).ToNot(BeNil())
+			cluster = returnMockCluster(editClusterVersion)
+		})
+
+		It("rejects enabling spot on an existing nodepool with guidance to recreate", func() {
+			existingNodePool, err := cmv1.NewNodePool().
+				ID(editNodePoolID).
+				Version(cmv1.NewVersion().ID("4.22.0").RawID("openshift-4.22.0")).
+				AWSNodePool(cmv1.NewAWSNodePool().InstanceType("m5.xlarge")).
+				AvailabilityZone("us-east-1a").
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(existingNodePool)))
+
+			Expect(cmd.Flags().Set("use-spot-instances", "true")).To(Succeed())
+			Expect(cmd.Flags().Set("spot-max-price", "1.00")).To(Succeed())
+
+			err = editNodePool(cmd, editNodePoolID, editClusterKey, cluster, nil, t.RosaRuntime)
+			Expect(err).To(MatchError(ContainSubstring(
+				"delete the machine pool and create a new one with the desired spot settings")))
+		})
+
+		It("rejects modifying spot max price on an existing spot nodepool with guidance to recreate", func() {
+			existingNodePool, err := cmv1.NewNodePool().
+				ID(editNodePoolID).
+				Version(cmv1.NewVersion().ID("4.22.0").RawID("openshift-4.22.0")).
+				AWSNodePool(cmv1.NewAWSNodePool().
+					InstanceType("m5.xlarge").
+					SpotMarketOptions(cmv1.NewAwsNodePoolSpotMarketOptions().MaxPrice("0.50"))).
+				AvailabilityZone("us-east-1a").
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(existingNodePool)))
+
+			Expect(cmd.Flags().Set("spot-max-price", "2.00")).To(Succeed())
+
+			err = editNodePool(cmd, editNodePoolID, editClusterKey, cluster, nil, t.RosaRuntime)
+			Expect(err).To(MatchError(ContainSubstring(
+				"delete the machine pool and create a new one with the desired spot settings")))
+		})
+
+		It("rejects disabling spot instances for now", func() {
+			Expect(cmd.Flags().Set("use-spot-instances", "false")).To(Succeed())
+
+			err := editNodePool(cmd, editNodePoolID, editClusterKey, cluster, nil, t.RosaRuntime)
+			Expect(err).To(MatchError("disabling spot instances on hosted machine pools is not supported yet"))
+		})
+
+		It("rejects spot max price when spot is not enabled", func() {
+			existingNodePool, err := cmv1.NewNodePool().
+				ID(editNodePoolID).
+				Version(cmv1.NewVersion().ID("4.22.0").RawID("openshift-4.22.0")).
+				AWSNodePool(cmv1.NewAWSNodePool().InstanceType("m5.xlarge")).
+				AvailabilityZone("us-east-1a").
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(existingNodePool)))
+			Expect(cmd.Flags().Set("spot-max-price", "1.00")).To(Succeed())
+
+			err = editNodePool(cmd, editNodePoolID, editClusterKey, cluster, nil, t.RosaRuntime)
+			Expect(err).To(MatchError("can't set max price when not using spot instances"))
+		})
+
+		It("rejects enabling spot when the node pool has a capacity reservation", func() {
+			existingNodePool, err := cmv1.NewNodePool().
+				ID(editNodePoolID).
+				Version(cmv1.NewVersion().ID("4.22.0").RawID("openshift-4.22.0")).
+				AWSNodePool(cmv1.NewAWSNodePool().
+					InstanceType("m5.xlarge").
+					CapacityReservation(cmv1.NewAWSCapacityReservation().Id("cr-123"))).
+				AvailabilityZone("us-east-1a").
+				Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(existingNodePool)))
+			Expect(cmd.Flags().Set("use-spot-instances", "true")).To(Succeed())
+
+			err = editNodePool(cmd, editNodePoolID, editClusterKey, cluster, nil, t.RosaRuntime)
+			Expect(err).To(MatchError(ContainSubstring(
+				"delete the machine pool and create a new one with the desired spot settings")))
 		})
 	})
 })
@@ -2101,6 +2640,44 @@ var _ = Describe("Utility Functions", func() {
 		It("should not return error for positive price", func() {
 			err := spotMaxPriceValidator("0.01")
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("editMachinePool spot flag guard", func() {
+		It("rejects use-spot-instances on classic machine pools", func() {
+			cmd := &cobra.Command{}
+			var useSpot bool
+			cmd.Flags().BoolVar(&useSpot, "use-spot-instances", false, "")
+			Expect(cmd.Flags().Set("use-spot-instances", "true")).To(Succeed())
+
+			cluster, err := cmv1.NewCluster().ID("cls").
+				State(cmv1.ClusterStateReady).
+				Hypershift(cmv1.NewHypershift().Enabled(false)).Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := rosa.NewRuntime()
+
+			err = editMachinePool(cmd, "mp1", "cls", cluster, r)
+			Expect(err).To(MatchError(ContainSubstring(
+				"spot instance configuration is only supported for Hosted Control Plane machine pools")))
+		})
+
+		It("rejects spot-max-price on classic machine pools", func() {
+			cmd := &cobra.Command{}
+			var spotPrice string
+			cmd.Flags().StringVar(&spotPrice, "spot-max-price", "on-demand", "")
+			Expect(cmd.Flags().Set("spot-max-price", "1.00")).To(Succeed())
+
+			cluster, err := cmv1.NewCluster().ID("cls").
+				State(cmv1.ClusterStateReady).
+				Hypershift(cmv1.NewHypershift().Enabled(false)).Build()
+			Expect(err).ToNot(HaveOccurred())
+
+			r := rosa.NewRuntime()
+
+			err = editMachinePool(cmd, "mp1", "cls", cluster, r)
+			Expect(err).To(MatchError(ContainSubstring(
+				"spot instance configuration is only supported for Hosted Control Plane machine pools")))
 		})
 	})
 })

@@ -54,6 +54,7 @@ import (
 	"github.com/openshift/rosa/pkg/helper"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/roles"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -214,6 +215,8 @@ var args struct {
 
 	// Audit Log Forwarding
 	AuditLogRoleARN string
+	// Spot termination handling
+	spotTerminationQueueUrl string
 
 	// Default Ingress Attributes
 	defaultIngressRouteSelectors            string
@@ -832,6 +835,12 @@ func initFlags(cmd *cobra.Command) {
 		"audit-log-arn",
 		"",
 		"The ARN of the role that is used to forward audit logs to AWS CloudWatch.",
+	)
+	flags.StringVar(
+		&args.spotTerminationQueueUrl,
+		"spot-termination-queue-url",
+		"",
+		"Optional SQS queue URL that enables graceful Spot interruption handling for Hosted Control Plane clusters.",
 	)
 
 	flags.StringVar(
@@ -3545,6 +3554,11 @@ func run(cmd *cobra.Command, _ []string) {
 		InfraMachineType:                       args.infraMachineType,
 	}
 
+	if err := setSpotTerminationQueueURLForCreate(&clusterConfig, isHostedCP, args.spotTerminationQueueUrl); err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+
 	if !isHostedCP {
 		clusterConfig.DisableWorkloadMonitoring = &disableWorkloadMonitoring
 	}
@@ -4393,6 +4407,10 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --billing-account %s", spec.BillingAccount)
 	}
 
+	if spec.TerminationHandlerQueueUrl != nil && *spec.TerminationHandlerQueueUrl != "" {
+		command += fmt.Sprintf(" --spot-termination-queue-url %s", *spec.TerminationHandlerQueueUrl)
+	}
+
 	if spec.NoCni {
 		command += " --no-cni"
 	}
@@ -4407,7 +4425,6 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	return command
 }
-
 func buildTagsCommand(tags map[string]string) []string {
 	// set correct delim, if a key or value contains `:` the delim should be " "
 	delim := ":"
@@ -4670,5 +4687,20 @@ func validateUniqueIamRoleArnsForStsCluster(accountRoles []string, operatorRoles
 		return fmt.Errorf(duplicateIamRoleArnErrorMsg, duplicate)
 	}
 
+	return nil
+}
+
+func setSpotTerminationQueueURLForCreate(clusterConfig *ocm.Spec, isHostedCP bool, queueURL string) error {
+	if queueURL != "" && !isHostedCP {
+		return fmt.Errorf("the '--spot-termination-queue-url' flag is only supported for Hosted Control Plane clusters")
+	}
+	if queueURL == "" {
+		return nil
+	}
+	if err := urlHelper.ValidateHTTPSQueueURL(queueURL); err != nil {
+		return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
+	}
+
+	clusterConfig.TerminationHandlerQueueUrl = &queueURL
 	return nil
 }

@@ -35,6 +35,7 @@ children:
     - name: user-role
     - name: decision
     - name: network
+    - name: spot-termination-queue
 - name: delete
   children:
     - name: account-roles

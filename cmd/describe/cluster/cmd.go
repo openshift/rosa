@@ -549,6 +549,7 @@ func run(cmd *cobra.Command, argv []string) {
 			str = fmt.Sprintf("%s"+
 				"Audit Log Role ARN:         %s\n", str, cluster.AWS().AuditLog().RoleArn())
 		}
+		str = fmt.Sprintf("%s%s", str, getSpotTerminationHandling(cluster))
 		// Display AutoNode status
 		if cluster.AutoNode() != nil {
 			str = fmt.Sprintf("%s"+
@@ -1084,4 +1085,17 @@ func getLimitedSupportReasons(limitedSupportReasons []*cmv1.LimitedSupportReason
 			str, reason.Summary(), reason.Details())
 	}
 	return str
+}
+
+func getSpotTerminationHandling(cluster *cmv1.Cluster) string {
+	if cluster == nil || cluster.AWS() == nil || cluster.Hypershift() == nil || !cluster.Hypershift().Enabled() {
+		return ""
+	}
+
+	queueURL := cluster.AWS().TerminationHandlerQueueUrl()
+	if queueURL == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("Spot Termination Queue URL: %s\n", queueURL)
 }

@@ -986,4 +986,63 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
 		})
 	})
+
+	Describe("Spot instance node pool lifecycle", func() {
+		It("should create, describe, edit, and delete a Spot node pool [id:spot-hcp-np]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Create a node pool with spot instances enabled")
+				mpName := helper.GenerateRandomName("spot-np", 2)
+				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--use-spot-instances",
+					"--spot-max-price", "0.05",
+					"--replicas", "1",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+
+				if isNodePoolGlobalCheck {
+					err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
+						clusterID, mpName, false, constants.NodePoolCheckPoll, constants.NodePoolCheckTimeout)
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+				By("Describe the node pool and verify spot info")
+				description, err := rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(description.String()).To(ContainSubstring("Yes (max $0.05)"))
+
+				By("Edit the node pool spot-max-price")
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--spot-max-price", "0.10",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Verify the updated spot-max-price in describe")
+				description, err = rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(description.String()).To(ContainSubstring("Yes (max $0.10)"))
+			})
+
+		It("should create a Spot node pool with on-demand fallback (no max price) [id:spot-hcp-np-ondemand]",
+			labels.Medium, labels.Runtime.Day2,
+			func() {
+				By("Create a node pool with spot instances but no max price (on-demand price)")
+				mpName := helper.GenerateRandomName("spot-od", 2)
+				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--use-spot-instances",
+					"--replicas", "1",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+
+				By("Describe the node pool and verify spot info shows on-demand")
+				description, err := rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(description.String()).To(ContainSubstring("Yes (on-demand)"))
+			})
+	})
 })

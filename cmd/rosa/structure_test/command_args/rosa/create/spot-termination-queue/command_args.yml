@@ -1,0 +1,4 @@
+- name: mode
+- name: name
+- name: nodepool-management-role-arn
+- name: output

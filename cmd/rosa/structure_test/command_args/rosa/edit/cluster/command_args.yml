@@ -13,6 +13,7 @@
 - name: autonode
 - name: autonode-iam-role-arn
 - name: additional-allowed-principals
+- name: spot-termination-queue-url
 - name: registry-config-allowed-registries
 - name: registry-config-insecure-registries
 - name: registry-config-blocked-registries

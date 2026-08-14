@@ -29,6 +29,7 @@
 - name: no-proxy
 - name: additional-trust-bundle-file
 - name: additional-allowed-principals
+- name: spot-termination-queue-url
 - name: enable-customer-managed-key
 - name: kms-key-arn
 - name: etcd-encryption-kms-arn

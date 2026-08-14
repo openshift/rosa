@@ -72,7 +72,7 @@ fmt-check: $(GCI)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --timeout 5m0s $(LINT_OUTPUT_FLAGS) ./...
+	$(GOLANGCI_LINT) run --timeout 15m0s $(LINT_OUTPUT_FLAGS) ./...
 
 .PHONY: govulncheck
 govulncheck: $(GOVULNCHECK) rosa

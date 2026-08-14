@@ -180,6 +180,38 @@ var _ = Describe("Cluster description", Ordered, func() {
 	})
 })
 
+var _ = Describe("Spot termination handling output", func() {
+	It("returns empty for non-hosted clusters", func() {
+		cluster, err := cmv1.NewCluster().
+			AWS(cmv1.NewAWS()).
+			Hypershift(cmv1.NewHypershift().Enabled(false)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(getSpotTerminationHandling(cluster)).To(BeEmpty())
+	})
+
+	It("returns empty when no queue URL is configured", func() {
+		cluster, err := cmv1.NewCluster().
+			AWS(cmv1.NewAWS()).
+			Hypershift(cmv1.NewHypershift().Enabled(true)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(getSpotTerminationHandling(cluster)).To(BeEmpty())
+	})
+
+	It("returns the queue URL when configured", func() {
+		queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+		cluster, err := cmv1.NewCluster().
+			AWS(cmv1.NewAWS().TerminationHandlerQueueUrl(queueURL)).
+			Hypershift(cmv1.NewHypershift().Enabled(true)).
+			Build()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(getSpotTerminationHandling(cluster)).To(Equal(
+			"Spot Termination Queue URL: https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue\n",
+		))
+	})
+})
+
 var _ = Describe("getLimitedSupportReasons", func() {
 	It("Should return expected LimitedSupportReasons output", func() {
 		By("handle single limited support reason")
