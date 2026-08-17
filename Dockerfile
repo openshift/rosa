@@ -5,8 +5,10 @@ RUN git config --global --add safe.directory /opt/app-root/src && \
     make release
 
 FROM registry.access.redhat.com/ubi9/ubi-micro:latest
-LABEL description="ROSA CLI"
-LABEL io.k8s.description="ROSA CLI"
+LABEL description="Red Hat OpenShift Service on AWS (ROSA) CLI"
+LABEL io.k8s.description="Red Hat OpenShift Service on AWS (ROSA) CLI"
+LABEL io.k8s.display-name="Red Hat OpenShift Service on AWS (ROSA) CLI"
+LABEL summary="Red Hat OpenShift Service on AWS (ROSA) CLI"
 LABEL com.redhat.component="rh-rosa-cli"
 LABEL distribution-scope="release"
 LABEL name="rh-rosa-cli" release="vX.Y" url="https://github.com/openshift/rosa"
