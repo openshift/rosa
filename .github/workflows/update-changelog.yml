@@ -11,14 +11,22 @@ permissions:
 jobs:
   tag-check:
     runs-on: ubuntu-latest
+    outputs:
+      is_stable: ${{ steps.check.outputs.is_stable }}
     steps:
-      - name: Validate supported release tag
+      - name: Check if tag is a stable release
+        id: check
         run: |
-          set -euo pipefail
-          [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-prerelease\.[0-9]+)?$ ]] \
-            || { echo "❌  Tag '${GITHUB_REF_NAME}' is not a supported release tag"; exit 1; }
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "✅  Tag '${GITHUB_REF_NAME}' is a stable release tag"
+            echo "is_stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "⏭️  Tag '${GITHUB_REF_NAME}' is not a stable release tag — skipping changelog"
+            echo "is_stable=false" >> "$GITHUB_OUTPUT"
+          fi
   update-changelog:
     needs: tag-check
+    if: needs.tag-check.outputs.is_stable == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,17 +41,14 @@ jobs:
       - name: Find previous stable release tag
         id: prev-tag
         run: |
-          set -euo pipefail
           git fetch --tags --force
           CURRENT_TAG="${{ github.ref_name }}"
-          TARGET_BASE="${CURRENT_TAG%%-prerelease.*}"
-          PREV_TAG=$(printf '%s\n' \
-            "$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$')" \
-            "${TARGET_BASE}" \
-            | sort -Vu \
-            | grep -B1 "^${TARGET_BASE}$" \
+          PREV_TAG=$(git tag -l 'v*' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | grep -B1 "^${CURRENT_TAG}$" \
             | head -1)
-          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$TARGET_BASE" ]; then
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$CURRENT_TAG" ]; then
             echo "No previous stable tag found for ${CURRENT_TAG}"
             echo "prev_tag=" >> $GITHUB_OUTPUT
             exit 0
