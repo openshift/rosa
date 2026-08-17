@@ -22,7 +22,7 @@ PREVIOUS_TAG=""
 usage() {
   cat <<'EOF'
 Usage:
-  hack/changelog-pr.sh [--tag <vX.Y.Z>] [--previous-tag <vX.Y.Z>]
+  hack/changelog-pr.sh [--tag <vX.Y.Z[-prerelease.N]>] [--previous-tag <vX.Y.Z>]
 
 Environment:
   GITHUB_TOKEN                   Token used to push the changelog branch and create/update the PR.
@@ -66,7 +66,7 @@ if [[ -z "${TARGET_TAG}" ]]; then
 fi
 
 if [[ -z "${TARGET_TAG}" ]]; then
-  echo "Unable to determine the stable tag for the current revision; pass --tag explicitly" >&2
+  echo "Unable to determine the release tag for the current revision; pass --tag explicitly" >&2
   exit 1
 fi
 
