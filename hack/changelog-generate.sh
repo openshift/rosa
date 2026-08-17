@@ -20,11 +20,11 @@ usage() {
   cat <<'EOF'
 Usage:
   hack/changelog-generate.sh --bootstrap [--output <path>]
-  hack/changelog-generate.sh --tag <vX.Y.Z> [--previous-tag <vX.Y.Z>] [--output <path>]
+  hack/changelog-generate.sh --tag <vX.Y.Z[-prerelease.N]> [--previous-tag <vX.Y.Z>] [--output <path>]
 
 Options:
   --bootstrap             Generate the full historical changelog from all stable tags.
-  --tag                   Generate and prepend a single release entry for the given stable tag.
+  --tag                   Generate and prepend a single release entry for the given supported release tag.
   --previous-tag          Override the automatically detected previous stable tag.
   --output                Path to the changelog file. Defaults to CHANGELOG.md in the repo root.
   --no-fetch-tags         Skip 'git fetch --tags --force'.
@@ -71,6 +71,7 @@ if [[ ! -f "${CONFIG_FILE}" ]]; then
 fi
 
 stable_tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+release_tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+(-prerelease\.[0-9]+)?$'
 
 if [[ "${FETCH_TAGS}" == "true" ]]; then
   git -C "${REPO_ROOT}" fetch --tags --force >/dev/null 2>&1 || true
@@ -170,8 +171,8 @@ if [[ -z "${TARGET_TAG}" ]]; then
   exit 1
 fi
 
-if ! [[ "${TARGET_TAG}" =~ ${stable_tag_pattern} ]]; then
-  echo "Tag '${TARGET_TAG}' does not match the expected stable format vX.Y.Z" >&2
+if ! [[ "${TARGET_TAG}" =~ ${release_tag_pattern} ]]; then
+  echo "Tag '${TARGET_TAG}' does not match the supported release formats vX.Y.Z or vX.Y.Z-prerelease.N" >&2
   exit 1
 fi
 
@@ -181,9 +182,11 @@ if ! git -C "${REPO_ROOT}" rev-parse --verify "${TARGET_TAG}^{tag}" >/dev/null 2
 fi
 
 if [[ -z "${PREVIOUS_TAG}" ]]; then
+  target_base_tag="${TARGET_TAG%%-prerelease.*}"
+  mapfile -t ordered_release_markers < <(printf '%s\n' "${stable_tags[@]}" "${target_base_tag}" | sort -Vu)
   previous_index=-1
-  for i in "${!stable_tags[@]}"; do
-    if [[ "${stable_tags[$i]}" == "${TARGET_TAG}" ]]; then
+  for i in "${!ordered_release_markers[@]}"; do
+    if [[ "${ordered_release_markers[$i]}" == "${target_base_tag}" ]]; then
       previous_index=$((i - 1))
       break
     fi
@@ -194,7 +197,7 @@ if [[ -z "${PREVIOUS_TAG}" ]]; then
     exit 1
   fi
 
-  PREVIOUS_TAG="${stable_tags[$previous_index]}"
+  PREVIOUS_TAG="${ordered_release_markers[$previous_index]}"
 fi
 
 if ! [[ "${PREVIOUS_TAG}" =~ ${stable_tag_pattern} ]]; then
