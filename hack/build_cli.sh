@@ -3,6 +3,8 @@
 #which builds a cli wrapper container that contains all release images
 archs=(amd64 arm64)
 oses=(darwin linux windows)
+release_version=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+release_version=${release_version#v}
 
 mkdir -p releases
 
@@ -24,3 +26,9 @@ done
 }
 
 build_release
+
+# Konflux release-to-github expects a single *_SHA256SUMS manifest.
+(
+  cd releases || exit 1
+  sha256sum rosa_*.tar.gz > "rosa_${release_version}_SHA256SUMS"
+)
