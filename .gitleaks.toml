@@ -1,0 +1,82 @@
+# Gitleaks — https://github.com/gitleaks/gitleaks/blob/master/README.md
+#
+# Purpose: Detect hardcoded secrets, credentials, and sensitive data in this
+# ROSA CLI repository.
+#
+# Integration:
+# - pre-commit hook (blocking)
+# - make verify-gitleaks (also part of make pre-push-checks / Prow pre-push-checks)
+# - CodeRabbit when gitleaks is enabled (.coderabbit.yaml)
+#
+# Usage:
+#   make verify-gitleaks
+#   pre-commit run gitleaks --all-files
+#   gitleaks detect --source . --config .gitleaks.toml --no-git --verbose
+#
+# Allowlist policy:
+# 1. Prefer fixing real or avoidable findings.
+# 2. Allowlist only justified mocks/fixtures with a short comment.
+# 3. Never disable gitleaks entirely.
+# 4. Keep Makefile GITLEAKS_VERSION (release tag) aligned with the pre-commit
+#    gitleaks commit SHA (# frozen: <same tag>) for the same release.
+
+title = "openshift/rosa"
+
+[extend]
+useDefault = true
+
+# =============================================================================
+# GLOBAL ALLOWLIST
+# =============================================================================
+
+[[allowlists]]
+description = "Exclude generated/vendor/tool directories that are not source inputs"
+condition = "AND"
+
+paths = [
+  # Local tool binaries and build artifacts (not source)
+  '''^bin/''',
+  '''^dist/''',
+  '''^\.bingo/''',
+  '''^vendor/''',
+]
+
+[[allowlists]]
+description = "AWS client unit test fixture uses a non-production Secrets Manager ARN"
+condition = "AND"
+paths = [
+  '''^pkg/aws/client_test\.go$''',
+]
+regexes = [
+  '''arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-testexample''',
+]
+
+# =============================================================================
+# CUSTOM RULES (CLI / ROSA / OpenShift specific)
+# =============================================================================
+
+[[rules]]
+id = "ocm-rhcs-token"
+description = "OCM / RHCS offline or service token assignment"
+regex = '''(?i)(?:ocm|rhcs)[_-]?(?:offline[_-]?)?token\s*[:=]\s*['"]?[A-Za-z0-9._\-]{32,}'''
+tags = ["token", "ocm", "rhcs", "critical"]
+
+[[rules]]
+id = "openshift-pull-secret"
+description = "OpenShift pull secret auth blob"
+regex = '''(?i)pull[_-]?secret.*auth.*[A-Za-z0-9+/]{30,}={0,2}'''
+tags = ["secret", "openshift", "high"]
+
+[[rules]]
+id = "kubeconfig-embedded"
+description = "Embedded kubeconfig with certificate data"
+regex = '''client-certificate-data:\s*[A-Za-z0-9+/]{30,}={0,2}'''
+tags = ["kubeconfig", "certificate", "critical"]
+
+[[rules]]
+id = "private-key-pem"
+description = "PEM-encoded private key"
+regex = '''-----BEGIN\s+(?:RSA\s+|EC\s+|OPENSSH\s+)?PRIVATE KEY-----'''
+tags = ["private-key", "pem", "critical"]
+
+# AWS / GitHub / generic API keys: use gitleaks defaults via [extend] useDefault

@@ -44,18 +44,27 @@ make install-hooks
 
 YOU MUST LET THE LOCAL HOOKS RUN ON EVERY COMMIT AND PUSH. DO NOT BYPASS LOCAL HOOKS.
 
-The hooks perform:
-- `pre-commit`: formats staged Go files (imports + gofmt) and blocks the commit if files were rewritten so you can review/stage updates
+The hooks are configured in `.githooks/` (source of truth for hook entrypoints):
+
+- `pre-commit` / `commit-msg` / `pre-push` stages — see `.githooks/` and `hack/*-hook.sh` for what each hook runs
+- `pre-commit` runs gitleaks (`make verify-gitleaks`) and formats staged Go files (imports + gofmt); it blocks the commit if files were rewritten so you can review/stage updates
 - `commit-msg`: validates the commit message format
-- `pre-push`: runs format-check, build, lint, changed-files coverage, and unit/integration tests
-- `pre-push` runs against committed content and blocks when staged/unstaged tracked changes are present
-- Prow re-runs these checks as required presubmits, so merges are blocked until they pass
-- check runs are fail-fast: execution stops at the first failing step
-- if you hit any bumps when committing, please let us know
+- `pre-push` runs the same checks as `make pre-push-checks` (`make run-checks -- pre-push --list-steps`)
+- `pre-push` runs against committed content and blocks when staged or unstaged tracked changes are present
+- Checks are fail-fast: execution stops at the first failing step
+- Never bypass security hooks. `pre-push-checks` (and Prow `ci/prow/pre-push-checks`) re-runs Gitleaks so PRs remain gated.
 
 Use this aggregated command before pushing:
 ```shell
-make basic-checks                 # format + format-check + build + lint + changed-files coverage + unit/integration tests
+make basic-checks                 # format + format-check + gitleaks + build + lint + changed-files coverage + unit/integration tests
+```
+
+`basic-checks` and `pre-push-checks` run the verification steps defined in
+`hack/run-checks.sh` (wired from the Makefile). To list the current steps without running them:
+
+```shell
+make run-checks -- basic --list-steps
+make run-checks -- pre-push --list-steps
 ```
 
 `basic-checks` forces fresh test execution (no Go test cache) for test steps.
@@ -98,6 +107,18 @@ Renovate) into a private `mktemp` directory when it is not already on `PATH`, an
 download against the upstream `sha256sum.txt` for that release. For local runs, install `jq`
 or rely on that bootstrap. `yq` is optional; the wrapper falls back to awk when `yq` is not
 installed.
+
+`make verify-gitleaks` scans the working tree for hard-coded secrets using the pinned
+[gitleaks](https://github.com/gitleaks/gitleaks) release (`GITLEAKS_VERSION` in the Makefile).
+The pre-commit hook pins the matching commit SHA (`# frozen: <tag>` in
+`.pre-commit-config.yaml`). Configuration lives in `.gitleaks.toml` (extends upstream
+defaults plus CLI-specific rules/allowlists).
+
+The scan is part of `make pre-push-checks` (and therefore Prow `ci/prow/pre-push-checks`) and
+also runs as a blocking pre-commit gate (`make pre-commit-checks`). Prefer fixing findings. For
+justified mocks/fixtures only, add a documented allowlist entry in `.gitleaks.toml` — never
+disable the scan. Renovate is configured to bump the Makefile release tag and the pre-commit SHA
+together.
 
 Commit message checks are performed by the `commit-msg` hook during commits.
 

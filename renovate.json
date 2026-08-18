@@ -7,6 +7,7 @@
   "enabledManagers": [
     "custom.regex",
     "gomod",
+    "pre-commit",
     "tekton",
     "dockerfile"
   ],
@@ -65,8 +66,23 @@
       "datasourceTemplate": "{{datasource}}",
       "depNameTemplate": "{{depName}}",
       "extractVersionTemplate": "{{extractVersion}}"
+    },
+    {
+      "description": "Update gitleaks in Makefile (pair with pre-commit SHA for the same release)",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=github-releases depName=gitleaks/gitleaks\\s+GITLEAKS_VERSION \\?= (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "gitleaks/gitleaks"
     }
   ],
+  "pre-commit": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "description": "govulncheck jq bootstrap",
@@ -77,6 +93,15 @@
         "jqlang/jq"
       ],
       "groupName": "govulncheck-jq"
+    },
+    {
+      "description": "Bump Makefile GITLEAKS_VERSION and pre-commit gitleaks SHA for the same release",
+      "matchPackageNames": [
+        "gitleaks/gitleaks"
+      ],
+      "groupName": "gitleaks",
+      "groupSlug": "gitleaks",
+      "automerge": false
     },
     {
       "description": "Enable automerge Konflux .tekton task updates",

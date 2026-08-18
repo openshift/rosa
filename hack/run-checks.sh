@@ -15,8 +15,8 @@ Usage:
   make run-checks -- <mode> [--dry-run] [--list-steps]
 
 Modes:
-  pre-push                 Steps: format-check, build, lint, coverage, tests
-  basic                    Steps: format, format-check, build, lint, coverage, tests
+  pre-push                 Steps: format-check, gitleaks, build, lint, coverage, tests
+  basic                    Steps: format, format-check, gitleaks, build, lint, coverage, tests
 
 Flags:
   --dry-run                Print planned steps and commands without executing
@@ -75,6 +75,7 @@ declare -a step_commands=()
 case "$mode" in
   pre-push)
     append_step "Format check (imports + gofmt)" "make --no-print-directory fmt-check"
+    append_step "Gitleaks secret scan" "make --no-print-directory verify-gitleaks"
     append_step "Build" "make --no-print-directory rosa"
     append_step "Lint" "make --no-print-directory lint"
     append_step "Coverage (changed files)" "make --no-print-directory coverage-changed-files"
@@ -83,6 +84,7 @@ case "$mode" in
   basic)
     append_step "Format (imports + gofmt)" "make --no-print-directory fmt"
     append_step "Format check (imports + gofmt)" "make --no-print-directory fmt-check"
+    append_step "Gitleaks secret scan" "make --no-print-directory verify-gitleaks"
     append_step "Build" "make --no-print-directory rosa"
     append_step "Lint" "make --no-print-directory lint"
     append_step "Coverage (changed files)" "make --no-print-directory coverage-changed-files"
