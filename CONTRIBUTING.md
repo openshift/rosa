@@ -39,13 +39,17 @@ In this repository, the conventional-commit type still lives inside the required
 
 REQUIRED BEFORE YOUR FIRST COMMIT IN A CLONE:
 ```shell
+# Install pre-commit (required for the gitleaks hook). Examples:
+#   pip install pre-commit
+#   sudo dnf install pre-commit
+#   brew install pre-commit
 make install-hooks
 ```
 
 YOU MUST LET THE LOCAL HOOKS RUN ON EVERY COMMIT AND PUSH. DO NOT BYPASS LOCAL HOOKS.
 
 The hooks perform:
-- `pre-commit`: formats staged Go files (imports + gofmt) and blocks the commit if files were rewritten so you can review/stage updates
+- `pre-commit`: runs gitleaks (`.pre-commit-config.yaml`) and formats staged Go files (imports + gofmt); blocks the commit if files were rewritten so you can review/stage updates
 - `commit-msg`: validates the commit message format
 - `pre-push`: runs format-check, build, lint, changed-files coverage, and unit/integration tests
 - `pre-push` runs against committed content and blocks when staged/unstaged tracked changes are present

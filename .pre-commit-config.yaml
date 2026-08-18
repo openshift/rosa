@@ -1,0 +1,13 @@
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
+repos:
+  # Secrets detection (blocking). Pin to the commit for release tag v8.30.1.
+  # Never SKIP=gitleaks or git commit --no-verify.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # frozen: v8.30.1
+    hooks:
+      - id: gitleaks
+        stages: [pre-commit]
+
+exclude: '^vendor/'
