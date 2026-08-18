@@ -2124,7 +2124,7 @@ var _ = Describe("Create cluster with invalid options will",
 					"--pod-cidr":     "10111.0.0.0/16",
 				}
 				for flag, invalidValue := range illegalCIDRMap {
-					output, _, err := clusterService.Create(clusterName,
+					output, err := clusterService.CreateDryRun(clusterName,
 						flag, invalidValue,
 					)
 					Expect(err).To(HaveOccurred())
@@ -2133,7 +2133,7 @@ var _ = Describe("Create cluster with invalid options will",
 							invalidValue, flag, invalidValue))
 				}
 				By("Check the overlapped CIDR block validation")
-				output, _, err := clusterService.Create(clusterName,
+				output, err := clusterService.CreateDryRun(clusterName,
 					"--service-cidr", "1.0.0.0/16",
 					"--pod-cidr", "1.0.0.0/16",
 				)
@@ -2148,7 +2148,7 @@ var _ = Describe("Create cluster with invalid options will",
 					"--pod-cidr":     "1.0.0.0/28",
 				}
 				for flag, invalidValue := range invalidCIDRMap {
-					output, _, err := clusterService.Create(clusterName,
+					output, err := clusterService.CreateDryRun(clusterName,
 						flag, invalidValue,
 					)
 					Expect(err).To(HaveOccurred())
@@ -2167,7 +2167,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				}
 				By("Check the invalid machine CIDR for multi az")
-				output, _, err = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--multi-az",
 				)
@@ -2176,7 +2176,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("The allowed block size must be between a /16 netmask and /24"))
 
 				By("Check illegal host prefix")
-				output, _, err = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "28",
 				)
@@ -2185,7 +2185,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("Subnet length should be between 23 and 26"))
 
 				By("Check invalid host prefix")
-				output, _, err = clusterService.Create(clusterName,
+				output, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "invalid",
 				)
@@ -2706,7 +2706,7 @@ var _ = Describe("HCP cluster creation negative testing",
 		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
-				clusterName := helper.GenerateRandomName("cluster-73725", 2)
+				clusterName := helper.GenerateRandomName("ocp-73725", 2)
 				By("Create HCP cluster with --no-cni and \"--network-type={OVNKubernetes, OpenshiftSDN}\" at the same time")
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
@@ -2895,9 +2895,10 @@ var _ = Describe("HCP cluster creation negative testing",
 					"--cluster-name":  clusterName,
 					"--domain-prefix": clusterName,
 					"--version":       foundVersion,
-					"--channel-group": cg,
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
+				err = rosalCommand.DeleteFlag("--channel-group", true)
+				Expect(err).ToNot(HaveOccurred())
 				if !rosalCommand.CheckFlagExist("--external-auth-providers-enabled") {
 					rosalCommand.AddFlags("--external-auth-providers-enabled")
 				}
