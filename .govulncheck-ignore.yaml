@@ -12,4 +12,34 @@
 ignored_vulnerabilities:
   - id: GO-2026-5932
     module: golang.org/x/crypto
-    reason: "Transitive dependency on deprecated openpgp package. No fix available — package is unmaintained by design. Not directly imported by ROSA."
+    reason: "Known binary-mode false positive: advisory only affects golang.org/x/crypto/openpgp, which is not imported (source scan is clean). hack/govulncheck-wrapper.sh guards this: the ignore only applies while golang.org/x/crypto/openpgp is absent from the import graph, so a future change that starts using openpgp will surface this finding instead of masking it."
+  - id: GO-2026-5026
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-5942
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-5972
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-6088
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-6089
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-6090
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-6091
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-6218
+    module: stdlib
+    reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-6170
+    module: github.com/lib/pq
+    reason: "No fix available (fixed version: N/A)."
+  - id: GO-2026-6172
+    module: github.com/lib/pq
+    reason: "No fix available (fixed version: N/A)."
