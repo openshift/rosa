@@ -17,6 +17,7 @@ limitations under the License.
 package logout
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -25,23 +26,48 @@ import (
 	rprtr "github.com/openshift/rosa/pkg/reporter"
 )
 
+var args struct {
+	hyperfleet bool
+}
+
 var Cmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Log out",
-	Long:  "Log out, removing the configuration file.",
+	Long:  "Log out, removing the configuration file. Use --hyperfleet to clear only the Platform API configuration.",
 	Run:   run,
 	Args:  cobra.NoArgs,
 }
 
+func init() {
+	Cmd.Flags().BoolVar(&args.hyperfleet, "hyperfleet", false,
+		"Clear the Platform API configuration only, keeping OCM credentials intact")
+}
+
 func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporter()
-	err := runLogout()
+	err := runLogout(reporter, args.hyperfleet)
 	if err != nil {
-		reporter.Errorf("Failed to remove config file: %v", err)
+		reporter.Errorf("Failed to log out: %v", err)
 		os.Exit(1)
 	}
 }
 
-func runLogout() error {
+func runLogout(reporter *rprtr.Object, hyperfleet bool) error {
+	if hyperfleet {
+		cfg, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("failed to load configuration: %v", err)
+		}
+		if cfg == nil || cfg.HyperfleetURL == "" {
+			reporter.Infof("Not logged in to Platform API")
+			return nil
+		}
+		cfg.HyperfleetURL = ""
+		if err = config.Save(cfg); err != nil {
+			return fmt.Errorf("failed to save configuration: %v", err)
+		}
+		reporter.Infof("Logged out from Platform API")
+		return nil
+	}
 	return config.Remove()
 }

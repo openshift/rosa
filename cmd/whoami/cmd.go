@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/object"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -53,8 +54,33 @@ func init() {
 	output.AddFlag(Cmd)
 }
 
+// useAWSOnly reports whether run should call WithAWSOnly rather than WithAWS.
+// It returns true when an effective Platform API URL is present (explicit flag
+// takes precedence over the stored config value) and OCM credentials are absent,
+// structurally invalid, or expired/unarmed.
+func useAWSOnly(cfg *config.Config, cfgErr error, explicitHFURL string) bool {
+	effectiveURL := explicitHFURL
+	if effectiveURL == "" && cfgErr == nil && cfg != nil {
+		effectiveURL = cfg.HyperfleetURL
+	}
+	if effectiveURL == "" {
+		return false
+	}
+	if cfgErr != nil || cfg == nil {
+		return true
+	}
+	armed, err := cfg.Armed()
+	return err != nil || !armed
+}
+
 func run(_ *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS()
+	r := rosa.NewRuntime()
+	cfg, cfgErr := config.Load()
+	if useAWSOnly(cfg, cfgErr, hyperfleet.ExplicitURL()) {
+		r = r.WithAWSOnly()
+	} else {
+		r = r.WithAWS()
+	}
 	err := runWithRuntime(r)
 	r.Cleanup()
 	if err != nil {
@@ -77,65 +103,86 @@ func runWithRuntime(r *rosa.Runtime) error {
 		r.Reporter.Errorf("Failed to load config file: %v", err)
 		return fmt.Errorf("loading config file: %w", err)
 	}
-	if cfg == nil || config.IsNotValid(cfg) {
-		r.Reporter.Errorf("User is not logged in to OCM")
+
+	hfURL := ""
+	if cfg != nil {
+		hfURL = cfg.HyperfleetURL
+	}
+
+	ocmArmed := cfg != nil && !config.IsNotValid(cfg)
+	if ocmArmed {
+		var armed bool
+		armed, err = cfg.Armed()
+		if err != nil {
+			r.Reporter.Errorf("Failed to verify configuration: %v", err)
+			return fmt.Errorf("verifying configuration: %w", err)
+		}
+		ocmArmed = armed
+	}
+
+	if !ocmArmed && hfURL == "" {
+		r.Reporter.Errorf("User is not logged in")
 		return errNotLoggedIn
 	}
 
-	loggedIn, err := cfg.Armed()
-	if err != nil {
-		r.Reporter.Errorf("Failed to verify configuration: %v", err)
-		return fmt.Errorf("verifying configuration: %w", err)
-	}
-	if !loggedIn {
-		r.Reporter.Errorf("User is not logged in to OCM")
-		return errNotLoggedIn
-	}
-
-	if r.OCMClient != nil {
-		err = r.OCMClient.Close()
-		if err != nil {
-			r.Reporter.Errorf("Failed to close existing OCM connection: %v", err)
-			return fmt.Errorf("closing existing OCM connection: %w", err)
-		}
-	}
-
-	r.OCMClient, err = ocm.NewClient().
-		Config(cfg).
-		Logger(r.Logger).
-		Build()
-	if err != nil {
-		r.Reporter.Errorf("Failed to create OCM connection: %v", err)
-		return fmt.Errorf("creating OCM connection: %w", err)
-	}
-
-	account, err := r.OCMClient.GetCurrentAccount()
-	if err != nil {
-		r.Reporter.Errorf("Failed to get current account: %s", err)
-		return fmt.Errorf("getting current account: %w", err)
-	}
-
-	if account == nil {
-		account, err = getAccountDataFromToken(cfg)
-		if err != nil {
-			r.Reporter.Errorf("Failed to get account data from token: %v", err)
-			return fmt.Errorf("getting account data from token: %w", err)
-		}
-	}
 	outputObject := object.Object{
-		"AWS Account ID":        r.Creator.AccountID,
-		"AWS Default Region":    awsRegion,
-		"AWS ARN":               r.Creator.ARN,
-		"OCM API":               cfg.URL,
-		"OCM Account ID":        account.ID(),
-		"OCM Account Name":      fmt.Sprintf("%s %s", account.FirstName(), account.LastName()),
-		"OCM Account Username":  account.Username(),
-		"OCM Account Email":     account.Email(),
-		"OCM Organization ID":   account.Organization().ID(),
-		"OCM Organization Name": account.Organization().Name(),
+		"AWS Account ID":     r.Creator.AccountID,
+		"AWS Default Region": awsRegion,
+		"AWS ARN":            r.Creator.ARN,
 	}
-	if account.Organization().ExternalID() != "" {
-		outputObject["OCM Organization External ID"] = account.Organization().ExternalID()
+
+	if hfURL != "" {
+		outputObject["Platform API"] = hfURL
+	}
+
+	if ocmArmed {
+		if r.OCMClient != nil {
+			err = r.OCMClient.Close()
+			if err != nil {
+				r.Reporter.Errorf("Failed to close existing OCM connection: %v", err)
+				return fmt.Errorf("closing existing OCM connection: %w", err)
+			}
+		}
+
+		r.OCMClient, err = ocm.NewClient().
+			Config(cfg).
+			Logger(r.Logger).
+			Build()
+		if err != nil {
+			if hfURL != "" {
+				// Hyperfleet-only login: stale OCM credentials may be present
+				// but are not required. Degrade gracefully without OCM data.
+				r.Reporter.Warnf("Skipping OCM info (not logged in to OCM): %v", err)
+			} else {
+				r.Reporter.Errorf("Failed to create OCM connection: %v", err)
+				return fmt.Errorf("creating OCM connection: %w", err)
+			}
+		} else {
+			account, err := r.OCMClient.GetCurrentAccount()
+			if err != nil {
+				r.Reporter.Errorf("Failed to get current account: %s", err)
+				return fmt.Errorf("getting current account: %w", err)
+			}
+
+			if account == nil {
+				account, err = getAccountDataFromToken(cfg)
+				if err != nil {
+					r.Reporter.Errorf("Failed to get account data from token: %v", err)
+					return fmt.Errorf("getting account data from token: %w", err)
+				}
+			}
+
+			outputObject["OCM API"] = cfg.URL
+			outputObject["OCM Account ID"] = account.ID()
+			outputObject["OCM Account Name"] = fmt.Sprintf("%s %s", account.FirstName(), account.LastName())
+			outputObject["OCM Account Username"] = account.Username()
+			outputObject["OCM Account Email"] = account.Email()
+			outputObject["OCM Organization ID"] = account.Organization().ID()
+			outputObject["OCM Organization Name"] = account.Organization().Name()
+			if account.Organization().ExternalID() != "" {
+				outputObject["OCM Organization External ID"] = account.Organization().ExternalID()
+			}
+		}
 	}
 
 	if output.HasFlag() {

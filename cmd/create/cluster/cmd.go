@@ -989,6 +989,11 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	if hfEnabled() {
+		hfCreateCluster()
+		return
+	}
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
