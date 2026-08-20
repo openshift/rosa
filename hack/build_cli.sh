@@ -32,3 +32,5 @@ done
 }
 
 build_release
+
+(cd releases && sha256sum -- *.tar.gz *.zip > rosa_SHA256SUMS)
