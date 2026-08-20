@@ -33,4 +33,12 @@ done
 
 build_release
 
-(cd releases && sha256sum -- *.tar.gz *.zip > rosa_SHA256SUMS)
+release_version=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+release_version=${release_version#v}
+
+if [[ ! "$release_version" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+  echo "ERROR: unexpected release_version '${release_version}'" >&2
+  exit 1
+fi
+
+(cd releases && sha256sum -- *.tar.gz *.zip > "rosa_${release_version}_SHA256SUMS")
