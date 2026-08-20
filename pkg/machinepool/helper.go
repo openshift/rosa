@@ -14,6 +14,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/fedramp"
+	"github.com/openshift/rosa/pkg/helper"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/helper/versions"
 	"github.com/openshift/rosa/pkg/interactive"                               //nolint:depguard
@@ -140,10 +141,59 @@ func getSubnetFromUser(cmd *cobra.Command, r *rosa.Runtime, isSubnetSet bool,
 	return subnet, nil
 }
 
+func filterOutNonStandardZoneSubnets(
+	r *rosa.Runtime, subnets []ec2types.Subnet,
+) ([]ec2types.Subnet, error) {
+	var filtered []ec2types.Subnet
+	var excludedSubnetIds []string
+	checkedZones := map[string]string{}
+
+	for _, subnet := range subnets {
+		az := awssdk.ToString(subnet.AvailabilityZone)
+		zoneType, seen := checkedZones[az]
+		if !seen {
+			var err error
+			zoneType, err = r.AWSClient.GetAvailabilityZoneType(az)
+			if err != nil {
+				return nil, err
+			}
+			checkedZones[az] = zoneType
+		}
+		if zoneType == aws.LocalZone || zoneType == aws.WavelengthZone {
+			excludedSubnetIds = append(excludedSubnetIds, awssdk.ToString(subnet.SubnetId))
+		} else {
+			filtered = append(filtered, subnet)
+		}
+	}
+
+	if len(excludedSubnetIds) > 0 {
+		r.Reporter.Warnf("The following subnets were excluded because they are on local zone"+
+			" or wavelength zone: %s", helper.SliceToSortedString(excludedSubnetIds))
+	}
+	return filtered, nil
+}
+
+func getFilteredPrivateSubnets(r *rosa.Runtime, cluster *cmv1.Cluster) ([]ec2types.Subnet, error) {
+	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	if err != nil {
+		return nil, err
+	}
+	if cluster.Hypershift().Enabled() {
+		privateSubnets, err = filterOutNonStandardZoneSubnets(r, privateSubnets)
+		if err != nil {
+			return nil, err
+		}
+		if len(privateSubnets) == 0 {
+			return nil, fmt.Errorf("no private subnets available after excluding local zone" +
+				" and wavelength zone subnets")
+		}
+	}
+	return privateSubnets, nil
+}
+
 // getSubnetOptions gets one of the cluster subnets and returns a slice of formatted VPC's private subnets.
 func getSubnetOptions(r *rosa.Runtime, cluster *cmv1.Cluster) ([]string, error) {
-	// Fetch VPC's subnets
-	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	privateSubnets, err := getFilteredPrivateSubnets(r, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +352,7 @@ func spotMaxPriceValidator(val interface{}) error {
 func getSubnetFromAvailabilityZone(cmd *cobra.Command, r *rosa.Runtime, isAvailabilityZoneSet bool,
 	cluster *cmv1.Cluster, args *mpOpts.CreateMachinepoolUserOptions) (string, error) {
 
-	privateSubnets, err := r.AWSClient.GetVPCPrivateSubnets(cluster.AWS().SubnetIDs()[0])
+	privateSubnets, err := getFilteredPrivateSubnets(r, cluster)
 	if err != nil {
 		return "", err
 	}
