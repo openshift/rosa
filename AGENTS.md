@@ -41,6 +41,8 @@ Use this file as the starting point for repository context. When this file point
   - Test style, generated-file boundaries, validation paths, and PR-readiness checklist use.
 - `guidelines/workflow-conventions.md`
   - Request and Result type naming, construction, optional-value handling, and the lifecycle for reusable workflow functions in `pkg/`.
+- `guidelines/security.md`
+  - Secret handling, gitleaks policy, and credential safety expectations.
 
 ## Codebase Map
 
@@ -121,7 +123,8 @@ When adding or changing a CLI command:
 ## Tests And Verification
 
 - Run `make install-hooks` once per clone before committing.
-- Do not bypass local hooks.
+- Do not bypass local hooks or verification gates (`git commit --no-verify`, `SKIP=gitleaks`).
+- Do not bypass gitleaks; it runs in pre-commit and again in `make pre-push-checks` (Prow). Prefer fixing findings; allowlist only justified mocks in `.gitleaks.toml` (see `guidelines/security.md` and `CONTRIBUTING.md`).
 - Common checks:
   - `make fmt`
   - `make fmt-check`

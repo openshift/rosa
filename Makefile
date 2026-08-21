@@ -21,6 +21,46 @@ include .bingo/Variables.mk
 # Wrapper script entry points used by make convenience targets.
 RUN_CHECKS_SCRIPT := ./hack/run-checks.sh
 
+LOCALBIN ?= $(CURDIR)/bin
+LOCALBIN_ABS := $(abspath $(LOCALBIN))
+# Release tag for the binary used by make verify-gitleaks. Pre-commit pins the
+# matching commit SHA in .pre-commit-config.yaml (# frozen: <same tag>).
+# renovate: datasource=github-releases depName=gitleaks/gitleaks
+GITLEAKS_VERSION ?= v8.30.1
+GITLEAKS_CONFIG ?= .gitleaks.toml
+
+ifeq ($(shell go env GOOS),windows)
+GITLEAKS_BIN_EXT := .exe
+else
+GITLEAKS_BIN_EXT :=
+endif
+
+GITLEAKS := $(LOCALBIN)/gitleaks$(GITLEAKS_BIN_EXT)
+
+$(LOCALBIN):
+	mkdir -p "$(LOCALBIN)"
+
+$(GITLEAKS): $(LOCALBIN)/.gitleaks-$(GITLEAKS_VERSION).stamp
+
+$(LOCALBIN)/.gitleaks-$(GITLEAKS_VERSION).stamp: | $(LOCALBIN)
+	bash hack/install-gitleaks.sh "$(GITLEAKS_VERSION)" "$(LOCALBIN_ABS)"
+	@rm -f "$(LOCALBIN)"/.gitleaks-*.stamp
+	@touch "$@"
+
+.PHONY: ensure-gitleaks-version
+ensure-gitleaks-version: | $(LOCALBIN)
+	@installed_version="$$( \
+		if [ -x "$(GITLEAKS)" ]; then \
+			"$(GITLEAKS)" version 2>/dev/null | awk 'NR==1 {print $$2}'; \
+		fi \
+	)"; \
+	if [ "$$installed_version" != "$(GITLEAKS_VERSION)" ]; then \
+		echo "Installing gitleaks $(GITLEAKS_VERSION) (found: $${installed_version:-none})"; \
+		bash hack/install-gitleaks.sh "$(GITLEAKS_VERSION)" "$(LOCALBIN_ABS)"; \
+		rm -f "$(LOCALBIN)"/.gitleaks-*.stamp; \
+		touch "$(LOCALBIN)/.gitleaks-$(GITLEAKS_VERSION).stamp"; \
+	fi
+
 # Ensure go modules are enabled:
 export GO111MODULE=on
 export GOPROXY=https://proxy.golang.org
@@ -78,6 +118,16 @@ lint: $(GOLANGCI_LINT)
 govulncheck: $(GOVULNCHECK) rosa
 	GOVULNCHECK_BIN="$(GOVULNCHECK)" ./hack/govulncheck.sh
 
+# Secret scan of the working tree (not full git history). Binary version is
+# GITLEAKS_VERSION; pre-commit uses the matching commit SHA. Included in
+# pre-push-checks so Prow enforces it.
+.PHONY: verify-gitleaks gitleaks
+verify-gitleaks: ensure-gitleaks-version
+	@echo "== Gitleaks secret scan (config=$(GITLEAKS_CONFIG), version=$(GITLEAKS_VERSION)) =="
+	@"$(GITLEAKS)" detect --source . --config "$(GITLEAKS_CONFIG)" --no-banner --no-git --redact 100
+
+gitleaks: verify-gitleaks
+
 .PHONY: commits/check
 commits/check:
 	@./hack/commit-msg-verify.sh
@@ -92,6 +142,7 @@ basic-checks:
 
 .PHONY: pre-commit-checks
 pre-commit-checks:
+	@$(MAKE) --no-print-directory verify-gitleaks
 	@$(MAKE) --no-print-directory fmt-staged
 
 .PHONY: pre-push-checks

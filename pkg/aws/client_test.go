@@ -1173,7 +1173,7 @@ var _ = Describe("Client", func() {
 
 	Context("CreateSecretInSecretsManager", func() {
 		It("Returns ARN on success", func() {
-			expectedArn := "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-abc123"
+			expectedArn := "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-testexample"
 
 			mockSecretsManagerAPI.EXPECT().CreateSecret(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, input *secretsmanager.CreateSecretInput,
@@ -1202,7 +1202,7 @@ var _ = Describe("Client", func() {
 	})
 
 	Context("DeleteSecretInSecretsManager", func() {
-		secretArn := "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-abc123"
+		secretArn := "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-testexample"
 
 		It("Returns nil when secret is not found", func() {
 			mockSecretsManagerAPI.EXPECT().DescribeSecret(gomock.Any(), gomock.Any(), gomock.Any()).
