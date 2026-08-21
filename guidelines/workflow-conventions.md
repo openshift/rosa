@@ -5,7 +5,9 @@
 Use this file when designing or modifying reusable workflow functions in the
 core layer (`pkg/`). It defines the type conventions for data that crosses
 the boundary between the CLI layer and core layer, as described in
-[ARCHITECTURE.md](ARCHITECTURE.md#boundary-rules).
+[ARCHITECTURE.md](ARCHITECTURE.md#boundary-rules). For error handling,
+wrapping, and CLI translation conventions, see
+[error-conventions.md](error-conventions.md).
 
 ## Lifecycle
 
@@ -174,34 +176,292 @@ codebase.
 
 ### Validation
 
-The core layer validates the Request before performing any operation. Return
-a descriptive error for invalid input rather than silently correcting it or
-exiting the process.
+Validation is split between the CLI layer and the core layer. Each layer owns
+a distinct set of concerns.
 
-Validation belongs in the same package as the Request type, either as a method
-on the Request or as a standalone function:
+#### Invocation validation (CLI layer)
+
+Invocation validation catches problems that only make sense in the context of
+a CLI command. It runs in the `cmd/` runner before the Request is built.
+
+Invocation validation is responsible for:
+
+- **Flag and argument syntax**: required flags are present, mutually exclusive
+  flags are not combined, positional arguments are well-formed.
+- **Type coercion and parsing**: Cobra handles basic type validation for typed
+  flags (e.g., `IntVar` rejects `"three"`). For string flags with format
+  constraints -- CIDR ranges, version strings, comma-separated key=value
+  pairs -- the CLI layer parses and validates the raw input before building
+  the Request. By the time the Request is constructed, all values should be
+  correctly typed and parsed.
+- **Interactive prompts**: prompting for missing values when interactive mode
+  is enabled.
+- **Environment prerequisites**: the cluster exists, STS is enabled, the
+  caller has the right AWS identity.
+- **Input resolution**: resolving `file://` references to file contents,
+  looking up a cluster name to get an OIDC provider ARN, calling `GetCreator`
+  to determine the AWS partition.
+- **Format-specific checks**: validating that a policy ARN matches the ARN
+  format, so a typo is rejected before the OIDC-provider lookup (an AWS API
+  call) or a `file://` read runs.
 
 ```go
-func (r *CreateMachinePoolRequest) Validate() error {
-    if r.ClusterID == "" {
-        return fmt.Errorf("cluster ID is required")
+// cmd/create/iamserviceaccount/cmd.go (invocation validation)
+
+// Verify the cluster supports this operation
+if cluster.AWS().STS().RoleARN() == "" {
+    return fmt.Errorf("cluster '%s' is not an STS cluster", cluster.Name())
+}
+
+// Validate flag values before building the Request. These checks are
+// duplicated in CreateIAMServiceAccountRequest.Validate() too: pkg/ may
+// eventually be called by something other than this CLI, so the core
+// layer must not assume these checks already ran.
+if len(userOptions.PolicyArns) == 0 && userOptions.InlinePolicy == "" {
+    return &rosaerrors.ValidationError{Message: "at least one policy ARN or inline policy must be specified"}
+}
+for i, policyARN := range userOptions.PolicyArns {
+    if _, err := arn.Parse(policyARN); err != nil {
+        return &rosaerrors.ValidationError{
+            Field:   "PolicyARNs",
+            Message: fmt.Sprintf("policy ARN at index %d is invalid", i),
+            Err:     err,
+        }
     }
-    if r.Name == "" {
-        return fmt.Errorf("machine pool name is required")
+}
+
+// Resolve file:// references before passing to the core layer
+if after, ok := strings.CutPrefix(inlinePolicy, "file://"); ok {
+    policyBytes, err := os.ReadFile(after)
+    // ...
+    inlinePolicy = string(policyBytes)
+}
+```
+
+Note that the ARN check returns `&rosaerrors.ValidationError{...}` rather
+than a plain `fmt.Errorf`, using the same type and wording as the domain
+check it duplicates (see [Classifying validation errors](#classifying-validation-errors)).
+An invocation check that fails fast still needs to be classified as an
+invalid-input error like any other, so the CLI layer can react the same way
+regardless of which layer caught it.
+
+Invocation validation may overlap with domain validation for usability.
+Catching "no policies specified" at the flag level gives the user immediate
+feedback before expensive lookups (OIDC provider, AWS identity) run. The
+domain layer will catch the same condition independently.
+
+#### Domain validation (core layer)
+
+Domain validation protects business invariants that must hold regardless of
+how the workflow is called -- CLI, TUI, test, or automation. It runs inside
+the workflow function via `Validate()` on the Request, before any side
+effects.
+
+Domain validation is responsible for:
+
+- **Required fields**: all fields the workflow needs are present and non-empty.
+- **Domain naming rules**: Kubernetes service account and namespace names
+  follow RFC 1123 / DNS subdomain conventions.
+- **Cross-field constraints**: a role name is required when multiple service
+  accounts share a single role.
+- **Conditional requirements**: GovCloud environments require an account ID
+  and partition.
+- **Value integrity**: optional pointer fields are not empty strings when
+  provided (e.g., `InlinePolicy` is `*string`; `nil` means absent, but a
+  pointer to `""` is invalid).
+
+```go
+// pkg/iamserviceaccount/create.go (domain validation)
+
+func (r *CreateIAMServiceAccountRequest) Validate() error {
+    if r.ClusterName == "" {
+        return fmt.Errorf("cluster name is required")
     }
-    if r.MinReplicas != nil && r.MaxReplicas == nil {
-        return fmt.Errorf("max replicas is required when min replicas is set")
+    for _, sa := range r.ServiceAccounts {
+        if err := ValidateServiceAccountName(sa.Name); err != nil {
+            return fmt.Errorf("invalid service account name %q: %w", sa.Name, err)
+        }
     }
-    if r.MaxReplicas != nil && r.MinReplicas == nil {
-        return fmt.Errorf("min replicas is required when max replicas is set")
+    if r.RoleName == nil && len(r.ServiceAccounts) > 1 {
+        return fmt.Errorf("role name is required when specifying multiple service accounts")
+    }
+    // ...
+}
+```
+
+Domain validation belongs in the same package as the Request type, either as
+a method on the Request or as a standalone function. The workflow function
+calls `Validate()` before performing any operation and must not assume the
+CLI layer validated first.
+
+#### Validator lists
+
+A single linear if-chain works for a handful of invariants, but it gets hard
+to read and to test in isolation as invariants accumulate: an early `return`
+hides every check that comes after it, so a caller only ever sees the first
+violation, and there is no way to exercise one invariant without exercising
+all of the ones before it.
+
+Prefer a list of small, independently testable validator functions once a
+Request has more than a few invariants. Each validator checks exactly one
+concern and returns its own violations as a `[]error` (nil if none), rather
+than pre-joining them with `errors.Join` itself. `Validate()` collects every
+validator's slice into one flat list and calls `errors.Join` exactly once,
+so a caller sees every violation in a single response instead of fixing
+them one at a time, and no validator ends up joining a join:
+
+```go
+// pkg/iamserviceaccount/create.go (domain validation)
+
+var createValidators = []func(*CreateIAMServiceAccountRequest) []error{
+    validateClusterName,
+    validateOIDCProviderARN,
+    validateServiceAccountsPresent,
+    validateServiceAccountIdentifiers,
+    validatePolicies,
+    validateRoleName,
+    validateGovcloud,
+}
+
+func (r *CreateIAMServiceAccountRequest) Validate() error {
+    var errs []error
+    for _, validate := range createValidators {
+        errs = append(errs, validate(r)...)
+    }
+    return errors.Join(errs...)
+}
+
+func validateClusterName(r *CreateIAMServiceAccountRequest) []error {
+    if r.ClusterName == "" {
+        return []error{&rosaerrors.ValidationError{Field: "ClusterName", Message: "cluster name is required"}}
     }
     return nil
 }
 ```
 
-The CLI layer may also validate early (e.g., checking that a required flag is
-present before prompting for additional values), but the core layer must not
-assume the caller validated first.
+A validator that checks more than one thing (e.g. `validateGovcloud`) builds
+its own local `[]error` with plain `append` and returns it directly --
+it never calls `errors.Join` itself. Only `Validate()` calls `errors.Join`,
+over the fully flattened list. Each validator returns
+`&rosaerrors.ValidationError{...}` rather than a plain `fmt.Errorf`; see
+[Classifying validation errors](#classifying-validation-errors) below for
+why and for the full pattern.
+
+`pkg/iamserviceaccount/create.go` implements the full validator list for
+`CreateIAMServiceAccountRequest`. New Request types with more than a few
+invariants should follow the same shape rather than growing a single
+`Validate()` method.
+
+#### Classifying validation errors
+
+A workflow function (e.g. `CreateIAMServiceAccount`) calls `Validate()`
+internally, before performing any side effects. Its caller never calls
+`Validate()` directly, so a plain `error` returned from the workflow function
+does not tell the caller whether the request was invalid (nothing happened)
+or whether a later, operational step failed (e.g. a role was created but
+attaching a policy to it failed). Callers that need to react differently to
+those two cases must be able to tell them apart with `errors.As`, not by
+inspecting message text.
+
+Have individual validator functions return `&rosaerrors.ValidationError{Field,
+Message}` (`pkg/errors`, imported as `rosaerrors` since it shares its name
+with the standard library `errors` package) instead of a plain `fmt.Errorf`:
+
+```go
+func validateClusterName(r *CreateIAMServiceAccountRequest) []error {
+    if r.ClusterName == "" {
+        return []error{&rosaerrors.ValidationError{Field: "ClusterName", Message: "cluster name is required"}}
+    }
+    return nil
+}
+```
+
+`Field` is the request field the check applies to, when it maps to exactly
+one field; leave it empty for a check that spans more than one (see
+`validatePolicies`'s "at least one policy ARN or inline policy is required"
+for an example). `Error()` never renders `Field` — it exists purely as
+structured metadata for a consumer that wants to branch or report on
+*which* field failed (a future `--output json` mode, a REST API, a TUI)
+without parsing the message. Introducing `Field` therefore never changes
+existing user-facing text.
+
+When a check wraps a lower-level error (`ValidateServiceAccountName`,
+`arn.Parse`), set `Err` instead of interpolating the error into `Message`,
+so the cause survives for `errors.Is`/`errors.As`:
+
+```go
+if err := ValidateServiceAccountName(sa.Name); err != nil {
+    errs = append(errs, &rosaerrors.ValidationError{
+        Field:   "ServiceAccounts",
+        Message: fmt.Sprintf("invalid service account name %q", sa.Name),
+        Err:     err,
+    })
+}
+```
+
+Then, at the point a workflow function calls `Validate()` internally, wrap
+its aggregate result the same way — this time with only `Err` set:
+
+```go
+if err := req.Validate(); err != nil {
+    return nil, &rosaerrors.ValidationError{Err: fmt.Errorf("invalid request: %w", err)}
+}
+```
+
+This aggregate wrap guarantees every `Validate()` failure is classified as
+a validation error regardless of what individual checks return, without
+relying on every check remembering to use the typed error. A caller can
+then do:
+
+```go
+var validationErr *rosaerrors.ValidationError
+if errors.As(err, &validationErr) {
+    // invalid input: no side effects occurred
+}
+```
+
+`errors.As` recurses through both the aggregate wrapper and the
+`errors.Join` tree of individual checks automatically, so this one call
+finds a match regardless of which check (or how many) failed.
+
+**`rosaerrors.ValidationError` is shared by every workflow.** Do not define
+a per-workflow type such as `CreateIAMServiceAccountValidationError` or
+`DeleteIAMServiceAccountValidationError` — callers only ever need to know
+"was this input invalid," never which workflow produced it. Only the
+`Validate()` failure path (and the individual checks it runs) return this
+type; a workflow's other failure paths (AWS/OCM calls, network errors) stay
+plain wrapped errors and correctly do not match `*rosaerrors.ValidationError`.
+
+`rosaerrors.ValidationError` is for exactly one condition: "the request was
+invalid." When a caller needs to distinguish some other specific condition —
+not "was input invalid," but something like "this role already exists in a
+different profile" — use a sentinel (`var ErrX = errors.New(...)`) or a small
+typed error carrying data, scoped to that one condition, matching existing
+precedent: `cmd/whoami/cmd.go`'s `errNotLoggedIn`, `cmd/create/ocmrole`'s
+`ErrRoleExistsWrongProfile`, `cmd/initialize/cmd.go`'s `errInitExitZero`.
+Don't create a sentinel or type speculatively for every validator or every
+failure path — only where a caller genuinely needs to branch on it.
+
+#### Intentional duplication
+
+Some checks appear in both layers. This is acceptable when:
+
+- The CLI check provides **early feedback** before expensive operations (API
+  calls, file I/O, interactive prompts).
+- The domain check ensures the **invariant holds for all callers**, not just
+  the CLI.
+
+Do not remove a domain validation just because the CLI also checks the same
+condition. Do not add domain validation solely to catch CLI-specific concerns
+(e.g., flag syntax, interactive mode state).
+
+#### What does not belong in domain validation
+
+- Cobra flag registration errors (handled by Cobra itself).
+- Interactive prompt flow control (`interactive.Enabled()`).
+- Output format selection (`--output json`).
+- File system operations (`file://` resolution, config file reads).
+- AWS or OCM client construction and authentication.
 
 ## Result Types
 
@@ -401,6 +661,21 @@ minimizing method count. Two workflows may need identically-named methods
 each still declares its own interface. Go's structural typing lets one
 concrete client type satisfy every one of these interfaces without them
 referencing each other or the client needing to know they exist.
+
+This is why the *interface declaration* is scoped per workflow, but the
+*concrete client implementation* that satisfies it does not have to be
+written once per workflow. When several workflows need the same
+underlying operations and the only obstacle is a signature mismatch (e.g.
+`pkg/aws.Client.EnsureRole` takes a `reporter.Logger` where a workflow's
+interface expects `context.Context`), write that translation once as a
+small shared type, not as a hand-rolled adapter struct copied into each
+CLI command. `pkg/aws/rolebridge.Client` is this in practice: it adapts
+`aws.Client`'s `EnsureRole`/`AttachRolePolicy`/`PutRolePolicy` to
+`context.Context`-based signatures, and any workflow's
+`<Verb><Resource>Client` interface that needs those same three methods is
+satisfied by it directly, with no per-workflow adapter file. Delete a
+bridge like this once the underlying signature mismatch it exists to paper
+over is fixed at the source.
 
 Do not collapse a workflow's multiple client calls behind one higher-level
 method (e.g., a single `Create(...)` that internally calls `EnsureRole`,
