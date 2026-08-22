@@ -24,9 +24,9 @@ require (
 	github.com/hashicorp/go-version v1.9.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.464
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.465
 	github.com/openshift-online/ocm-common v0.0.45
-	github.com/openshift-online/ocm-sdk-go v0.1.509
+	github.com/openshift-online/ocm-sdk-go v0.1.510
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.0
 	github.com/spf13/cobra v1.10.2
@@ -50,7 +50,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/lib/pq v1.10.5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.464 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.465 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect

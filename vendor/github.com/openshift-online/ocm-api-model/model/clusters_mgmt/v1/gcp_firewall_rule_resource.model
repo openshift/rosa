@@ -25,4 +25,9 @@ resource GcpFirewallRule {
 	// Deletes the firewall rule.
 	method Delete {
 	}
+
+	// Reference to the status of this firewall rule.
+	locator Status {
+		target GcpFirewallRulesStatus
+	}
 }
