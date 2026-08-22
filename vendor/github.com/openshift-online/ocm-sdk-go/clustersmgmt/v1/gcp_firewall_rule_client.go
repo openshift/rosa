@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/openshift-online/ocm-sdk-go/errors"
@@ -67,6 +68,16 @@ func (c *GcpFirewallRuleClient) Get() *GcpFirewallRuleGetRequest {
 		transport: c.transport,
 		path:      c.path,
 	}
+}
+
+// Status returns the target 'gcp_firewall_rules_status' resource.
+//
+// Reference to the status of this firewall rule.
+func (c *GcpFirewallRuleClient) Status() *GcpFirewallRulesStatusClient {
+	return NewGcpFirewallRulesStatusClient(
+		c.transport,
+		path.Join(c.path, "status"),
+	)
 }
 
 // GcpFirewallRulePollRequest is the request for the Poll method.
