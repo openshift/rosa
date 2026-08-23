@@ -395,7 +395,9 @@ var pathTreeData = `{
             }
           },
           "firewall_rules": {
-            "-": null
+            "-": {
+              "status": null
+            }
           },
           "wif_configs": {
             "-": {

@@ -1,3 +1,6 @@
+> ⚠️ _Note_: Auto release has been temporarily disabled. Please see manual release procedure steps in the meantime.
+> Auto-release will be re-enabled after the completion of [ROSAENG-62396](https://redhat.atlassian.net/browse/ROSAENG-62396)
+
 # Contributing to the OCM SDK
 
 ## Releasing a new OCM API Model version
