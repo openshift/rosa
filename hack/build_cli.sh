@@ -35,8 +35,23 @@ done
 
 build_release
 
-# Konflux release-to-github expects a single *_SHA256SUMS manifest.
-(
-  cd releases || exit 1
-  sha256sum rosa_*.tar.gz > "rosa_${release_version}_SHA256SUMS"
-)
+if [[ ! "$release_version" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+  echo "ERROR: unexpected release_version '${release_version}'" >&2
+  exit 1
+fi
+
+cat > "releases/rosa_${release_version}_metadata.json" <<METADATA
+{
+  "product": "Red Hat OpenShift Service on AWS (ROSA) CLI",
+  "version": "${release_version}",
+  "commit": "$(git rev-parse HEAD)",
+  "platforms": [
+    "linux/amd64", "linux/arm64",
+    "darwin/amd64", "darwin/arm64",
+    "windows/amd64", "windows/arm64"
+  ],
+  "formats": ["tar.gz", "zip"]
+}
+METADATA
+
+(cd releases && sha256sum -- *.tar.gz *.zip *.json > "rosa_${release_version}_SHA256SUMS")
