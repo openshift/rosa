@@ -41,4 +41,18 @@ if [[ ! "$release_version" =~ ^[a-zA-Z0-9._-]+$ ]]; then
   exit 1
 fi
 
-(cd releases && sha256sum -- *.tar.gz *.zip > "rosa_${release_version}_SHA256SUMS")
+cat > "releases/rosa_${release_version}_metadata.json" <<METADATA
+{
+  "product": "Red Hat OpenShift Service on AWS (ROSA) CLI",
+  "version": "${release_version}",
+  "commit": "$(git rev-parse HEAD)",
+  "platforms": [
+    "linux/amd64", "linux/arm64",
+    "darwin/amd64", "darwin/arm64",
+    "windows/amd64", "windows/arm64"
+  ],
+  "formats": ["tar.gz", "zip"]
+}
+METADATA
+
+(cd releases && sha256sum -- *.tar.gz *.zip *.json > "rosa_${release_version}_SHA256SUMS")
