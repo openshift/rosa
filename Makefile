@@ -161,6 +161,9 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=pkg/machinepool/machinepool.go -package=machinepool -destination=pkg/machinepool/machinepool_mock.go
 	$(MOCKGEN) -source=pkg/kubeletconfig/config.go -package=kubeletconfig -destination=pkg/kubeletconfig/capability_checker_mock.go
 	$(MOCKGEN) -source=cmd/create/idp/cmd.go -package=mocks -destination=cmd/create/idp/mocks/identityprovider.go
+	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/hyperfleet.go -package=mocks -destination=pkg/hyperfleet/mocks/hyperfleet_mock.go
+	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/platform/bridge_wrappers_generated.go -package=mocks -destination=pkg/hyperfleet/mocks/wrappers_mock.go
+	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-hyperfleet-api/clientset/platform|github.com/openshift-online/rosa-hyperfleet-api/clientset/platform|g' pkg/hyperfleet/mocks/wrappers_mock.go
 
 
 .PHONY: e2e_test
@@ -170,6 +173,28 @@ e2e_test: install
         --timeout 5h \
         -r \
         --focus-file tests/e2e/.* \
+		$(NULL)
+
+# e2e-hyperfleet: runs the hyperfleet Platform API sanity test.
+#
+# Required:
+#   HYPERFLEET_URL  — Platform API v2 base URL
+#
+# Optional:
+#   CLUSTER_NAME       — defaults to hf-e2e-<unix timestamp> (≤18 chars)
+#   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
+.PHONY: e2e-hyperfleet
+e2e-hyperfleet: install
+	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
+	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
+	CLUSTER_NAME="$$name" \
+	OPERATOR_ROLES_PREFIX="$$name" \
+	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
+	ginkgo run \
+		--focus "Hyperfleet sanity" \
+		--timeout 3h \
+		-v \
+		./tests/e2e/ \
 		$(NULL)
 
 .PHONY: generate-docs
