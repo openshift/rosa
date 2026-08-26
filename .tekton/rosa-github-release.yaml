@@ -144,6 +144,8 @@ spec:
         value: $(params.git-url)
       - name: revision
         value: $(params.revision)
+      - name: fetchTags
+        value: "true"
       - name: ociStorage
         value: $(params.output-image).git
       - name: ociArtifactExpiresAfter
