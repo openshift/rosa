@@ -26,6 +26,7 @@ type AzureNodePool struct {
 	fieldSet_        []bool
 	vmSize           string
 	encryptionAtHost *AzureNodePoolEncryptionAtHost
+	image            *AzureNodePoolImage
 	osDisk           *AzureNodePoolOsDisk
 	resourceName     string
 }
@@ -105,12 +106,39 @@ func (o *AzureNodePool) GetEncryptionAtHost() (value *AzureNodePoolEncryptionAtH
 	return
 }
 
+// Image returns the value of the 'image' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// Specifies the Azure Marketplace image to use for the Nodes of the Node Pool.
+// When specified, the provided image is used instead of the default RHCOS image.
+// Optional during creation. Immutable.
+func (o *AzureNodePool) Image() *AzureNodePoolImage {
+	if o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2] {
+		return o.image
+	}
+	return nil
+}
+
+// GetImage returns the value of the 'image' attribute and
+// a flag indicating if the attribute has a value.
+//
+// Specifies the Azure Marketplace image to use for the Nodes of the Node Pool.
+// When specified, the provided image is used instead of the default RHCOS image.
+// Optional during creation. Immutable.
+func (o *AzureNodePool) GetImage() (value *AzureNodePoolImage, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2]
+	if ok {
+		value = o.image
+	}
+	return
+}
+
 // OsDisk returns the value of the 'os_disk' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
 // The configuration for the OS disk used by the nodes in the Node Pool.
 func (o *AzureNodePool) OsDisk() *AzureNodePoolOsDisk {
-	if o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2] {
+	if o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3] {
 		return o.osDisk
 	}
 	return nil
@@ -121,7 +149,7 @@ func (o *AzureNodePool) OsDisk() *AzureNodePoolOsDisk {
 //
 // The configuration for the OS disk used by the nodes in the Node Pool.
 func (o *AzureNodePool) GetOsDisk() (value *AzureNodePoolOsDisk, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2]
+	ok = o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3]
 	if ok {
 		value = o.osDisk
 	}
@@ -143,7 +171,7 @@ func (o *AzureNodePool) GetOsDisk() (value *AzureNodePoolOsDisk, ok bool) {
 // Required during creation.
 // Immutable.
 func (o *AzureNodePool) ResourceName() string {
-	if o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3] {
+	if o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4] {
 		return o.resourceName
 	}
 	return ""
@@ -164,7 +192,7 @@ func (o *AzureNodePool) ResourceName() string {
 // Required during creation.
 // Immutable.
 func (o *AzureNodePool) GetResourceName() (value string, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 3 && o.fieldSet_[3]
+	ok = o != nil && len(o.fieldSet_) > 4 && o.fieldSet_[4]
 	if ok {
 		value = o.resourceName
 	}

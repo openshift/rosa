@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.510 Aug 19 2026
+
+- ROSAENG-13732 | feat: Implement BYO firewall rule endpoint verification
+
 ## 0.1.509 Aug 10 2026
 
 - feat: aro-hcp: allow providing CS Provision Shard ID during cluster creation

@@ -24,6 +24,7 @@ type AzureNodePoolBuilder struct {
 	fieldSet_        []bool
 	vmSize           string
 	encryptionAtHost *AzureNodePoolEncryptionAtHostBuilder
+	image            *AzureNodePoolImageBuilder
 	osDisk           *AzureNodePoolOsDiskBuilder
 	resourceName     string
 }
@@ -31,7 +32,7 @@ type AzureNodePoolBuilder struct {
 // NewAzureNodePool creates a new builder of 'azure_node_pool' objects.
 func NewAzureNodePool() *AzureNodePoolBuilder {
 	return &AzureNodePoolBuilder{
-		fieldSet_: make([]bool, 4),
+		fieldSet_: make([]bool, 5),
 	}
 }
 
@@ -51,7 +52,7 @@ func (b *AzureNodePoolBuilder) Empty() bool {
 // VMSize sets the value of the 'VM_size' attribute to the given value.
 func (b *AzureNodePoolBuilder) VMSize(value string) *AzureNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
 	b.vmSize = value
 	b.fieldSet_[0] = true
@@ -64,7 +65,7 @@ func (b *AzureNodePoolBuilder) VMSize(value string) *AzureNodePoolBuilder {
 // If not specified, Encryption at Host is not enabled.
 func (b *AzureNodePoolBuilder) EncryptionAtHost(value *AzureNodePoolEncryptionAtHostBuilder) *AzureNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
 	b.encryptionAtHost = value
 	if value != nil {
@@ -75,14 +76,17 @@ func (b *AzureNodePoolBuilder) EncryptionAtHost(value *AzureNodePoolEncryptionAt
 	return b
 }
 
-// OsDisk sets the value of the 'os_disk' attribute to the given value.
+// Image sets the value of the 'image' attribute to the given value.
 //
-// Defines the configuration of a Node Pool's OS disk.
-func (b *AzureNodePoolBuilder) OsDisk(value *AzureNodePoolOsDiskBuilder) *AzureNodePoolBuilder {
+// Specifies the Azure Marketplace image to use for the Nodes of the Node Pool.
+// When specified, the provided image is used instead of the default RHCOS image.
+// All four fields must be provided together.
+// Optional during creation. Immutable.
+func (b *AzureNodePoolBuilder) Image(value *AzureNodePoolImageBuilder) *AzureNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
-	b.osDisk = value
+	b.image = value
 	if value != nil {
 		b.fieldSet_[2] = true
 	} else {
@@ -91,13 +95,29 @@ func (b *AzureNodePoolBuilder) OsDisk(value *AzureNodePoolOsDiskBuilder) *AzureN
 	return b
 }
 
+// OsDisk sets the value of the 'os_disk' attribute to the given value.
+//
+// Defines the configuration of a Node Pool's OS disk.
+func (b *AzureNodePoolBuilder) OsDisk(value *AzureNodePoolOsDiskBuilder) *AzureNodePoolBuilder {
+	if len(b.fieldSet_) == 0 {
+		b.fieldSet_ = make([]bool, 5)
+	}
+	b.osDisk = value
+	if value != nil {
+		b.fieldSet_[3] = true
+	} else {
+		b.fieldSet_[3] = false
+	}
+	return b
+}
+
 // ResourceName sets the value of the 'resource_name' attribute to the given value.
 func (b *AzureNodePoolBuilder) ResourceName(value string) *AzureNodePoolBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 4)
+		b.fieldSet_ = make([]bool, 5)
 	}
 	b.resourceName = value
-	b.fieldSet_[3] = true
+	b.fieldSet_[4] = true
 	return b
 }
 
@@ -115,6 +135,11 @@ func (b *AzureNodePoolBuilder) Copy(object *AzureNodePool) *AzureNodePoolBuilder
 		b.encryptionAtHost = NewAzureNodePoolEncryptionAtHost().Copy(object.encryptionAtHost)
 	} else {
 		b.encryptionAtHost = nil
+	}
+	if object.image != nil {
+		b.image = NewAzureNodePoolImage().Copy(object.image)
+	} else {
+		b.image = nil
 	}
 	if object.osDisk != nil {
 		b.osDisk = NewAzureNodePoolOsDisk().Copy(object.osDisk)
@@ -135,6 +160,12 @@ func (b *AzureNodePoolBuilder) Build() (object *AzureNodePool, err error) {
 	object.vmSize = b.vmSize
 	if b.encryptionAtHost != nil {
 		object.encryptionAtHost, err = b.encryptionAtHost.Build()
+		if err != nil {
+			return
+		}
+	}
+	if b.image != nil {
+		object.image, err = b.image.Build()
 		if err != nil {
 			return
 		}
