@@ -220,8 +220,12 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			panic(fmt.Errorf("cannot record data: %s", err.Error()))
 		}
 	}()
-	flags := []string{"-y"}
 	ch.clusterConfig.Name = clusterName
+	if usesRegionalPlatformAPI() {
+		return ch.generateRegionalPlatformCreateFlags(clusterName)
+	}
+
+	flags := []string{"-y"}
 
 	env, err := resourcesHandler.GetCurrentEnv()
 	if err != nil {
@@ -1019,6 +1023,10 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 }
 
 func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
+	if usesRegionalPlatformAPI() {
+		return ch.waitForRegionalPlatformClusterReady(timeoutMin)
+	}
+
 	var err error
 	clusterID := ch.clusterDetail.ClusterID
 	if clusterID == "" {
@@ -1171,11 +1179,16 @@ func (ch *clusterHandler) createClusterByProfileWithoutWaiting() error {
 
 	// Need to do the post step when cluster has no oidcconfig enabled
 	if ch.profile.ClusterConfig.OIDCConfig == "" && ch.profile.ClusterConfig.STS {
-		err = ch.resourcesHandler.PrepareOIDCProviderByCluster(description.ID)
-		if err != nil {
-			return err
+		if usesRegionalPlatformAPI() {
+			prefix := ch.clusterConfig.Aws.Sts.OperatorRolesPrefix
+			err = ch.resourcesHandler.PreparePlatformAPIPostCreateIAM(description.OIDCEndpointURL, prefix)
+		} else {
+			err = ch.resourcesHandler.PrepareOIDCProviderByCluster(description.ID)
+			if err != nil {
+				return err
+			}
+			err = ch.resourcesHandler.PrepareOperatorRolesByCluster(description.ID)
 		}
-		err = ch.resourcesHandler.PrepareOperatorRolesByCluster(description.ID)
 		if err != nil {
 			return err
 		}
@@ -1206,7 +1219,7 @@ func (ch *clusterHandler) CreateCluster(waitForClusterReady bool) (err error) {
 	if err != nil {
 		return err
 	}
-	if ch.profile.ClusterConfig.BYOVPC {
+	if ch.profile.ClusterConfig.BYOVPC && !usesRegionalPlatformAPI() {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", clusterID)
 		ch.reverifyClusterNetwork()
 	}
@@ -1240,7 +1253,7 @@ func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool)
 	clusterService := ch.rosaClient.Cluster
 	output, errDeleteCluster := clusterService.DeleteCluster(clusterID, "-y")
 	if errDeleteCluster != nil {
-		if strings.Contains(output.String(), fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterID)) {
+		if rosacli.ClusterNotFoundMessage(clusterID, output.String()) {
 			log.Logger.Infof("Cluster %s not exists.", clusterID)
 			return nil, true
 		}
@@ -1249,7 +1262,7 @@ func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool)
 	}
 
 	log.Logger.Infof("Waiting for the cluster %s to be uninstalled", clusterID)
-	err := clusterService.WaitForClusterPassUninstalled(clusterID, 2, config.Test.GlobalENV.ClusterWaitingTime)
+	err := clusterService.WaitClusterDeleted(clusterID, 2, config.Test.GlobalENV.ClusterWaitingTime)
 	if err != nil {
 		log.Logger.Errorf("Error happened when waiting cluster uninstall: %s", err.Error())
 		// Fail fast: do not attempt OIDC/provider cleanup while the cluster may
@@ -1259,7 +1272,8 @@ func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool)
 	log.Logger.Infof("Delete cluster %s successfully.", clusterID)
 
 	// Remove OIDC provider only after uninstall completed.
-	if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" {
+	// Platform API clusters use AWS IAM OIDC providers, not OCM oidc-config resources.
+	if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" && !usesRegionalPlatformAPI() {
 		_, err = ch.rosaClient.OCMResource.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
 		if err != nil {
 			log.Logger.Errorf("Error happened when delete oidc provider: %s", err.Error())

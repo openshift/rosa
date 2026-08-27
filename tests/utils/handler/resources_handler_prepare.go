@@ -26,6 +26,8 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
+	rosaconfig "github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/tests/utils/config"
@@ -34,6 +36,18 @@ import (
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
+
+func usesRegionalPlatformAPI() bool {
+	if hyperfleet.Enabled() {
+		return true
+	}
+	cfg, err := rosaconfig.Load()
+	if err != nil || cfg == nil {
+		return false
+	}
+	hyperfleet.SetURL(cfg.HyperfleetURL)
+	return hyperfleet.Enabled()
+}
 
 func (rh *resourcesHandler) PrepareVersion(versionRequirement string,
 	channelGroup string,
@@ -504,6 +518,10 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	admin bool,
 	path string) (
 	ocmRole *rosacli.OCMRole, err error) {
+	if usesRegionalPlatformAPI() {
+		log.Logger.Info("Skipping OCM role prep: regional Platform API client active")
+		return nil, nil
+	}
 	// Assemble flags
 	var flags []string
 	var roleNameEnvInfix string
@@ -598,6 +616,10 @@ func (rh *resourcesHandler) PrepareUserRole(
 	userRolePrefix string,
 	path string) (
 	userole *rosacli.UserRole, err error) {
+	if usesRegionalPlatformAPI() {
+		log.Logger.Info("Skipping user role prep: regional Platform API client active")
+		return nil, nil
+	}
 	// Assemble creation flags
 	var flags []string
 	var roleNameEnvInfix string
