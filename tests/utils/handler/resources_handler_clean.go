@@ -78,7 +78,8 @@ func (rh *resourcesHandler) DeleteCWLogForwardRoleArn() error {
 }
 
 func (rh *resourcesHandler) DeleteHostedZone(hostedZoneID string) error {
-	awsClient, err := rh.GetAWSClient(true)
+	useSharedAccount := rh.awsSharedAccountCredentialsFile != ""
+	awsClient, err := rh.GetAWSClient(useSharedAccount)
 	if err != nil {
 		return err
 	}
