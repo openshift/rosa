@@ -33,13 +33,49 @@ type platformAPIOperatorRole struct {
 }
 
 var platformAPIOperatorRoles = []platformAPIOperatorRole{
-	{suffix: "-ingress", policy: "ROSAIngressOperatorPolicy", sas: []platformAPIServiceAccount{{"openshift-ingress-operator", "ingress-operator"}}},
-	{suffix: "-cloud-controller-manager", policy: "ROSAKubeControllerPolicy", sas: []platformAPIServiceAccount{{"kube-system", "kube-controller-manager"}}},
-	{suffix: "-ebs-csi", policy: "ROSAAmazonEBSCSIDriverOperatorPolicy", sas: []platformAPIServiceAccount{{"openshift-cluster-csi-drivers", "aws-ebs-csi-driver-operator"}, {"openshift-cluster-csi-drivers", "aws-ebs-csi-driver-controller-sa"}}},
-	{suffix: "-image-registry", policy: "ROSAImageRegistryOperatorPolicy", sas: []platformAPIServiceAccount{{"openshift-image-registry", "cluster-image-registry-operator"}, {"openshift-image-registry", "registry"}}},
-	{suffix: "-network-config", policy: "ROSACloudNetworkConfigOperatorPolicy", sas: []platformAPIServiceAccount{{"openshift-cloud-network-config-controller", "cloud-network-config-controller"}}},
-	{suffix: "-control-plane-operator", policy: "ROSAControlPlaneOperatorPolicy", sas: []platformAPIServiceAccount{{"kube-system", "control-plane-operator"}}},
-	{suffix: "-node-pool-management", policy: "ROSANodePoolManagementPolicy", sas: []platformAPIServiceAccount{{"kube-system", "capa-controller-manager"}}},
+	{
+		suffix: "-ingress",
+		policy: "ROSAIngressOperatorPolicy",
+		sas:    []platformAPIServiceAccount{{"openshift-ingress-operator", "ingress-operator"}},
+	},
+	{
+		suffix: "-cloud-controller-manager",
+		policy: "ROSAKubeControllerPolicy",
+		sas:    []platformAPIServiceAccount{{"kube-system", "kube-controller-manager"}},
+	},
+	{
+		suffix: "-ebs-csi",
+		policy: "ROSAAmazonEBSCSIDriverOperatorPolicy",
+		sas: []platformAPIServiceAccount{
+			{"openshift-cluster-csi-drivers", "aws-ebs-csi-driver-operator"},
+			{"openshift-cluster-csi-drivers", "aws-ebs-csi-driver-controller-sa"},
+		},
+	},
+	{
+		suffix: "-image-registry",
+		policy: "ROSAImageRegistryOperatorPolicy",
+		sas: []platformAPIServiceAccount{
+			{"openshift-image-registry", "cluster-image-registry-operator"},
+			{"openshift-image-registry", "registry"},
+		},
+	},
+	{
+		suffix: "-network-config",
+		policy: "ROSACloudNetworkConfigOperatorPolicy",
+		sas: []platformAPIServiceAccount{
+			{"openshift-cloud-network-config-controller", "cloud-network-config-controller"},
+		},
+	},
+	{
+		suffix: "-control-plane-operator",
+		policy: "ROSAControlPlaneOperatorPolicy",
+		sas:    []platformAPIServiceAccount{{"kube-system", "control-plane-operator"}},
+	},
+	{
+		suffix: "-node-pool-management",
+		policy: "ROSANodePoolManagementPolicy",
+		sas:    []platformAPIServiceAccount{{"kube-system", "capa-controller-manager"}},
+	},
 }
 
 func (rh *resourcesHandler) PreparePlatformAPIPostCreateIAM(issuerURL, rolesPrefix string) error {

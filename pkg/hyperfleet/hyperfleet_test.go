@@ -6,9 +6,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
-	"github.com/spf13/cobra"
-
-	reportertest "github.com/openshift/rosa/test/reporter"
 )
 
 func TestHyperfleet(t *testing.T) {
@@ -40,23 +37,22 @@ var _ = Describe("ExtractRegion", func() {
 
 var _ = Describe("CheckRegionConflict", func() {
 	It("returns nil when regions match", func() {
-		r := &reportertest.FakeLogger{}
-		Expect(CheckRegionConflict("us-east-1", "https://abc.execute-api.us-east-1.amazonaws.com", r)).To(Succeed())
+		warn, err := CheckRegionConflict("us-east-1", "https://abc.execute-api.us-east-1.amazonaws.com")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(warn).To(BeEmpty())
 	})
 
 	It("returns an error when explicit region differs from URL region", func() {
-		r := &reportertest.FakeLogger{}
-		err := CheckRegionConflict("us-west-2", "https://abc.execute-api.us-east-1.amazonaws.com", r)
+		_, err := CheckRegionConflict("us-west-2", "https://abc.execute-api.us-east-1.amazonaws.com")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("us-west-2"))
 		Expect(err.Error()).To(ContainSubstring("us-east-1"))
 	})
 
-	It("warns (but does not error) when URL has no extractable region", func() {
-		warned := false
-		r := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warned = true }}
-		Expect(CheckRegionConflict("us-east-1", "https://example.com", r)).To(Succeed())
-		Expect(warned).To(BeTrue())
+	It("returns a warning when URL has no extractable region", func() {
+		warn, err := CheckRegionConflict("us-east-1", "https://example.com")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(warn).To(ContainSubstring("cannot verify region"))
 	})
 })
 
@@ -116,10 +112,8 @@ var _ = Describe("FromFlag", func() {
 		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
 	})
 
-	It("is true after --hyperfleet-url is parsed", func() {
-		cmd := &cobra.Command{}
-		AddFlags(cmd)
-		Expect(cmd.PersistentFlags().Set("hyperfleet-url", "https://abc.execute-api.us-east-1.amazonaws.com")).To(Succeed())
+	It("is true after SetFromFlag", func() {
+		SetFromFlag("https://abc.execute-api.us-east-1.amazonaws.com")
 		Expect(FromFlag()).To(BeTrue())
 		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
 	})

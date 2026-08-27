@@ -77,18 +77,24 @@ func resolvePlatformAPIVersion(profileVersion string) (string, bool) {
 	}
 
 	if profileVersion != "" {
-		log.Logger.Infof("Skipping OCM version lookup for %q; Platform API resolves default (set HYPERFLEET_VERSION to pin)", profileVersion)
+		log.Logger.Infof(
+			"Skipping OCM version lookup for %q; Platform API resolves default (set HYPERFLEET_VERSION to pin)",
+			profileVersion,
+		)
 	}
 	return "", false
 }
 
-func prepareBYOVPCSubnets(rh *resourcesHandler, name string, profile *Profile, cfg *ClusterConfigure.ClusterConfig) (string, error) {
+func prepareBYOVPCSubnets(
+	rh *resourcesHandler, name string, profile *Profile, cfg *ClusterConfigure.ClusterConfig,
+) (string, error) {
 	cidr := constants.DefaultVPCCIDRValue
 	if profile.ClusterConfig.NetworkingSet {
 		cidr = cfg.Networking.MachineCIDR
 	}
 
-	if _, err := rh.PrepareVPC(helper.TrimNameByLength(name, 20), cidr, false, profile.ClusterConfig.SharedVPC); err != nil {
+	vpcName := helper.TrimNameByLength(name, 20)
+	if _, err := rh.PrepareVPC(vpcName, cidr, false, profile.ClusterConfig.SharedVPC); err != nil {
 		return "", err
 	}
 

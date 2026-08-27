@@ -35,7 +35,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/authentication/securestore"
 
 	"github.com/openshift/rosa/pkg/constants"
-	"github.com/openshift/rosa/pkg/debug"
+	"github.com/openshift/rosa/pkg/debug" //nolint:depguard // Connection logger verbosity follows --debug
 	"github.com/openshift/rosa/pkg/properties"
 )
 
