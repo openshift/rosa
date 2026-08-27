@@ -30,6 +30,7 @@ type V1alpha1PublicInterface interface {
 	RESTClient() rest.Interface
 	ClustersGetter
 	NodePoolsGetter
+	OidcConfigsGetter
 }
 
 // V1alpha1PublicClient is used to interact with features provided by the v1alpha1 group.
@@ -43,6 +44,10 @@ func (c *V1alpha1PublicClient) Clusters() ClusterInterface {
 
 func (c *V1alpha1PublicClient) NodePools(namespace string) NodePoolInterface {
 	return newNodePools(c, namespace)
+}
+
+func (c *V1alpha1PublicClient) OidcConfigs() OidcConfigInterface {
+	return newOidcConfigs(c)
 }
 
 // NewForConfig creates a new V1alpha1PublicClient for the given config.

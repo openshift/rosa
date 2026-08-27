@@ -11,17 +11,21 @@ type NodePoolSpecPassthrough struct {
 	// clusterName is the name of the HostedCluster this NodePool belongs to.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +required
 	ClusterName string `json:"clusterName"`
 	// release specifies the OCP release used for this NodePool. It drives the machine ignition configuration (including
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +required
 	Release hypershiftv1beta1.Release `json:"release"`
 	// platform specifies the underlying infrastructure provider for the NodePool
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +required
 	Platform hypershiftv1beta1.NodePoolPlatform `json:"platform"`
 	// replicas is the desired number of nodes the pool should maintain. If unset, the controller default value is 0.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 }

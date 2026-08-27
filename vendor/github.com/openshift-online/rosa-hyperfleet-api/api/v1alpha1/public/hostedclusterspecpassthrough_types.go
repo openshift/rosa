@@ -11,51 +11,56 @@ type HostedClusterSpecPassthrough struct {
 	// release specifies the desired OCP release payload for all the hosted cluster components.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +required
 	Release hypershiftv1beta1.Release `json:"release"`
 	// channel is an identifier for explicitly requesting that a non-default set of updates be applied to this cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
+	// +optional
 	Channel string `json:"channel,omitempty"`
 	// platform specifies the underlying infrastructure provider for the cluster
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +required
 	Platform hypershiftv1beta1.PlatformSpec `json:"platform"`
 	// networking specifies network configuration for the hosted cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +required
 	Networking hypershiftv1beta1.ClusterNetworking `json:"networking"`
 	// autoNode specifies the configuration for automatic node provisioning and lifecycle management.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
 	// +optional
 	AutoNode hypershiftv1beta1.AutoNode `json:"autoNode,omitzero"`
-	// etcd specifies configuration for the control plane etcd cluster. The
-	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=mutable
-	Etcd hypershiftv1beta1.EtcdSpec `json:"etcd"`
 	// issuerURL is an OIDC issuer URL which will be used as the issuer in all
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
+	// +optional
 	IssuerURL string `json:"issuerURL,omitempty"`
 	// configuration specifies configuration for individual OCP components in the
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
-	Configuration *ClusterConfiguration `json:"configuration,omitempty"`
+	// +optional
+	Configuration *hypershiftv1beta1.ClusterConfiguration `json:"configuration,omitempty"`
 	// operatorConfiguration specifies configuration for individual OCP operators in the cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
+	// +optional
 	OperatorConfiguration *hypershiftv1beta1.OperatorConfiguration `json:"operatorConfiguration,omitempty"`
 	// imageContentSources specifies image mirrors that can be used by cluster
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
-	// +kubebuilder:validation:MaxItems=50
+	// +optional
 	ImageContentSources []hypershiftv1beta1.ImageContentSource `json:"imageContentSources,omitempty"`
 	// fips indicates whether this cluster's nodes will be running in FIPS mode.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
+	// +optional
 	FIPS bool `json:"fips"`
 	// pausedUntil is a field that can be used to pause reconciliation on the HostedCluster controller, resulting in any change to the HostedCluster being ignored.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
+	// +optional
 	PausedUntil *string `json:"pausedUntil,omitempty"`
 }

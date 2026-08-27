@@ -148,10 +148,21 @@ type NodePoolInterface interface {
 }
 
 type nodePoolClient struct {
-	inner typedclient.NodePoolInterface
+	inner     typedclient.NodePoolInterface
+	namespace string // parent namespace passed to NodePools(namespace)
 }
 
 func (c *nodePoolClient) Create(ctx context.Context, obj *v1alpha1.NodePool, opts CreateOptions) (*v1alpha1.NodePool, error) {
+	// Always enforce the client namespace in the body so the handler can derive the
+	// parent resource ID. The SigV4 transport strips /namespaces/{value}/ from the
+	// URL before it reaches the server, making the body the only carrier.
+	// A caller-supplied namespace that differs from the client namespace is replaced
+	// rather than silently passed through.
+	if c.namespace != "" && obj.Namespace != c.namespace {
+		routed := obj.DeepCopy()
+		routed.Namespace = c.namespace
+		return c.inner.Create(ctx, routed, metav1.CreateOptions{})
+	}
 	return c.inner.Create(ctx, obj, metav1.CreateOptions{})
 }
 
@@ -230,11 +241,111 @@ func (c *nodePoolClient) WaitUntil(ctx context.Context, id string, condition fun
 	}
 }
 
+// OidcConfigInterface is the platform-scoped client for OidcConfig resources.
+// Only operations and options supported by the Hyperfleet platform API are exposed.
+// Watch is intentionally absent — the platform API does not support the Kubernetes
+// watch stream protocol; use WaitUntil for polling-based synchronization instead.
+type OidcConfigInterface interface {
+	Create(ctx context.Context, obj *v1alpha1.OidcConfig, opts CreateOptions) (*v1alpha1.OidcConfig, error)
+	Update(ctx context.Context, obj *v1alpha1.OidcConfig, opts UpdateOptions) (*v1alpha1.OidcConfig, error)
+	Delete(ctx context.Context, name string, opts DeleteOptions) error
+	Get(ctx context.Context, name string, opts GetOptions) (*v1alpha1.OidcConfig, error)
+	List(ctx context.Context, opts ListOptions) (*v1alpha1.OidcConfigList, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts PatchOptions) (*v1alpha1.OidcConfig, error)
+	// WaitUntil polls until condition(obj) returns true, the resource is absent
+	// (condition is called with nil), or the timeout elapses.
+	WaitUntil(ctx context.Context, id string, condition func(*v1alpha1.OidcConfig) bool, interval, timeout time.Duration) error
+}
+
+type oidcConfigClient struct {
+	inner typedclient.OidcConfigInterface
+}
+
+func (c *oidcConfigClient) Create(ctx context.Context, obj *v1alpha1.OidcConfig, opts CreateOptions) (*v1alpha1.OidcConfig, error) {
+	return c.inner.Create(ctx, obj, metav1.CreateOptions{})
+}
+
+func (c *oidcConfigClient) Get(ctx context.Context, name string, opts GetOptions) (*v1alpha1.OidcConfig, error) {
+	return c.inner.Get(ctx, name, metav1.GetOptions{})
+}
+
+func (c *oidcConfigClient) List(ctx context.Context, opts ListOptions) (*v1alpha1.OidcConfigList, error) {
+	if opts.Limit < 0 || opts.Limit > 100 {
+		return nil, fmt.Errorf("List: Limit must be between 0 and 100, got %d", opts.Limit)
+	}
+	if opts.Offset < 0 {
+		return nil, fmt.Errorf("List: Offset must be non-negative, got %d", opts.Offset)
+	}
+	mo := metav1.ListOptions{Limit: opts.Limit}
+	if opts.Offset > 0 {
+		mo.Continue = strconv.FormatInt(opts.Offset, 10)
+	}
+	return c.inner.List(ctx, mo)
+}
+
+func (c *oidcConfigClient) Update(ctx context.Context, obj *v1alpha1.OidcConfig, opts UpdateOptions) (*v1alpha1.OidcConfig, error) {
+	// The generated client builds the PUT URL using obj.Name (the human-readable
+	// name), but the platform API routes mutations by UID. Setting Name to the
+	// UID on a deep copy ensures the URL is correct without mutating the caller's
+	// object. The name field sent in the request body is ignored by the server —
+	// the update DTO only binds "spec", so the JSON decoder discards everything
+	// else, including any name/id fields.
+	routed := obj.DeepCopy()
+	routed.Name = string(obj.UID)
+	return c.inner.Update(ctx, routed, metav1.UpdateOptions{})
+}
+
+func (c *oidcConfigClient) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts PatchOptions) (*v1alpha1.OidcConfig, error) {
+	return c.inner.Patch(ctx, name, pt, data, metav1.PatchOptions{})
+}
+
+func (c *oidcConfigClient) Delete(ctx context.Context, name string, opts DeleteOptions) error {
+	return c.inner.Delete(ctx, name, metav1.DeleteOptions{})
+}
+
+func (c *oidcConfigClient) WaitUntil(ctx context.Context, id string, condition func(*v1alpha1.OidcConfig) bool, interval, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	poll := func() (bool, error) {
+		obj, err := c.inner.Get(ctx, id, metav1.GetOptions{})
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return condition(nil), nil
+			}
+			// Transient server-side errors are retried; only client errors are fatal.
+			if k8serrors.IsServiceUnavailable(err) || k8serrors.IsServerTimeout(err) || k8serrors.IsInternalError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return condition(obj), nil
+	}
+	if interval <= 0 {
+		return fmt.Errorf("WaitUntil: interval must be positive, got %v", interval)
+	}
+	if done, err := poll(); err != nil || done {
+		return err
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if done, err := poll(); err != nil || done {
+				return err
+			}
+		}
+	}
+}
+
 // V1alpha1PublicInterface is the platform-scoped typed client for the hyperfleet.io/v1alpha1 group.
 type V1alpha1PublicInterface interface {
 	RESTClient() rest.Interface
 	Clusters() ClusterInterface
 	NodePools(namespace string) NodePoolInterface
+	OidcConfigs() OidcConfigInterface
 }
 
 type wrappedV1alpha1 struct {
@@ -255,5 +366,9 @@ func (w *wrappedV1alpha1) Clusters() ClusterInterface {
 }
 
 func (w *wrappedV1alpha1) NodePools(namespace string) NodePoolInterface {
-	return &nodePoolClient{inner: w.inner.NodePools(namespace)}
+	return &nodePoolClient{inner: w.inner.NodePools(namespace), namespace: namespace}
+}
+
+func (w *wrappedV1alpha1) OidcConfigs() OidcConfigInterface {
+	return &oidcConfigClient{inner: w.inner.OidcConfigs()}
 }
