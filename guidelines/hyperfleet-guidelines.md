@@ -46,7 +46,7 @@ idiomatic and testable.
 ```
 pkg/hyperfleet/
   endpoint.go        — URL validation, region extraction, conflict detection
-  flags.go           — flag state (SetURL/FromFlag/Enabled/ExplicitURL/Reset)
+  flags.go           — flag state (SetURL/FromFlag/Enabled/ExplicitURL/Reset); FlagValue is registered in cmd/rosa
   roles.go           — ComputeRolesRef, instance profile helpers
   cluster.go         — ResolveClusterUID (name or UID)
   nodepool.go        — ResolveNodePoolUID

@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
-	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/constants"
@@ -41,9 +40,7 @@ func TestCluster(t *testing.T) {
 
 func parseHyperfleetFlag(url string) {
 	hyperfleet.Reset()
-	cmd := &cobra.Command{}
-	hyperfleet.AddFlags(cmd)
-	Expect(cmd.PersistentFlags().Set("hyperfleet-url", url)).To(Succeed())
+	hyperfleet.SetFromFlag(url)
 }
 
 func clearOCMCredentials() {

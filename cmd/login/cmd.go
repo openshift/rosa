@@ -277,13 +277,9 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		haveReqs = token != ""
 	}
 
-	// Hyperfleet-only login: --hyperfleet-url was supplied on the command line
-	// (not merely seeded from config by PersistentPreRun) and no explicit OCM
-	// credentials are available. SigV4 auth is handled per-request via AWS
-	// credentials, so there is nothing to exchange here. Persist the URL and return.
+	// Hyperfleet-only login: --hyperfleet-url without OCM creds: validate, persist, and return.
 	if hyperfleet.FromFlag() {
-		hfURL := hyperfleet.ExplicitURL()
-		if hfURL != "" {
+		if hfURL := hyperfleet.ExplicitURL(); hfURL != "" {
 			if err := hyperfleet.ValidateURL(hfURL); err != nil {
 				return err
 			}
@@ -463,7 +459,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return fmt.Errorf(
 			"failed to get token; your session might be expired: %v\nget a new offline access token at %s",
-			err, uiTokenPage)
+			err, uiTokenPage,
+		)
 	}
 	reAttempt = false
 	// Save the configuration:
@@ -583,7 +580,8 @@ func Call(cmd *cobra.Command, argv []string, reporter reporter.Logger) error {
 }
 
 func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, token string,
-	runtime *rosa.Runtime) error {
+	runtime *rosa.Runtime,
+) error {
 	if hasFlag ||
 		(cfg.FedRAMP && token == "") ||
 		fedramp.IsGovRegion(arguments.GetRegion()) ||
