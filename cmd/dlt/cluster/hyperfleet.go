@@ -2,7 +2,9 @@ package cluster
 
 import (
 	"os"
+	"time"
 
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
@@ -10,6 +12,11 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+)
+
+const (
+	hfWatchInterval = 30 * time.Second
+	hfWatchTimeout  = 90 * time.Minute
 )
 
 var (
@@ -52,4 +59,17 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 
 	r.Reporter.Infof("Cluster '%s' will start deleting now", clusterKey)
+
+	if !args.watch {
+		return
+	}
+
+	err = clusters.WaitUntil(ctx, clusterID, func(c *v1alpha1.Cluster) bool {
+		return c == nil
+	}, hfWatchInterval, hfWatchTimeout)
+	if err != nil {
+		r.Reporter.Errorf("Failed to watch cluster deletion: %v", err)
+		exitFn(1)
+	}
+	r.Reporter.Infof("Cluster '%s' deleted", clusterKey)
 }

@@ -193,15 +193,26 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 	}
 
 	if aws != nil {
-		ref := aws.RolesRef
-		s += "Operator IAM Roles:\n" +
-			fmt.Sprintf(" - Ingress:                 %s\n", ref.IngressARN) +
-			fmt.Sprintf(" - Image Registry:          %s\n", ref.ImageRegistryARN) +
-			fmt.Sprintf(" - EBS CSI:                 %s\n", ref.StorageARN) +
-			fmt.Sprintf(" - Network Config:          %s\n", ref.NetworkARN) +
-			fmt.Sprintf(" - Cloud Controller:        %s\n", ref.KubeCloudControllerARN) +
-			fmt.Sprintf(" - Control Plane Operator:  %s\n", ref.ControlPlaneOperatorARN) +
-			fmt.Sprintf(" - Node Pool Management:    %s\n", ref.NodePoolManagementARN)
+		var roles []string
+		for _, arn := range []string{
+			aws.RolesRef.IngressARN,
+			aws.RolesRef.ImageRegistryARN,
+			aws.RolesRef.StorageARN,
+			aws.RolesRef.NetworkARN,
+			aws.RolesRef.KubeCloudControllerARN,
+			aws.RolesRef.ControlPlaneOperatorARN,
+			aws.RolesRef.NodePoolManagementARN,
+		} {
+			if arn != "" {
+				roles = append(roles, arn)
+			}
+		}
+		if len(roles) > 0 {
+			s += "Operator IAM Roles:\n"
+			for _, arn := range roles {
+				s += fmt.Sprintf(" - %s\n", arn)
+			}
+		}
 	}
 
 	if len(c.Status.Conditions) > 0 {

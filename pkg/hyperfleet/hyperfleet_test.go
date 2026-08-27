@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
+	"github.com/spf13/cobra"
 
 	reportertest "github.com/openshift/rosa/test/reporter"
 )
@@ -60,8 +61,8 @@ var _ = Describe("CheckRegionConflict", func() {
 })
 
 var _ = Describe("SetURL and Reset", func() {
-	BeforeEach(func() { hyperfleetURL = "" })
-	AfterEach(func() { hyperfleetURL = "" })
+	BeforeEach(Reset)
+	AfterEach(Reset)
 
 	It("sets the URL when empty", func() {
 		SetURL("https://example.execute-api.us-east-1.amazonaws.com")
@@ -81,14 +82,16 @@ var _ = Describe("SetURL and Reset", func() {
 
 	It("Reset clears the URL", func() {
 		hyperfleetURL = "https://something.execute-api.us-east-1.amazonaws.com"
+		urlFromFlag = true
 		Reset()
 		Expect(hyperfleetURL).To(BeEmpty())
+		Expect(FromFlag()).To(BeFalse())
 	})
 })
 
 var _ = Describe("Enabled and ExplicitURL", func() {
-	BeforeEach(func() { hyperfleetURL = "" })
-	AfterEach(func() { hyperfleetURL = "" })
+	BeforeEach(Reset)
+	AfterEach(Reset)
 
 	It("reports disabled when URL is empty", func() {
 		Expect(Enabled()).To(BeFalse())
@@ -98,6 +101,26 @@ var _ = Describe("Enabled and ExplicitURL", func() {
 	It("reports enabled when URL is set", func() {
 		hyperfleetURL = "https://abc.execute-api.us-east-1.amazonaws.com"
 		Expect(Enabled()).To(BeTrue())
+		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
+		Expect(FromFlag()).To(BeFalse())
+	})
+})
+
+var _ = Describe("FromFlag", func() {
+	BeforeEach(Reset)
+	AfterEach(Reset)
+
+	It("is false after SetURL", func() {
+		SetURL("https://abc.execute-api.us-east-1.amazonaws.com")
+		Expect(FromFlag()).To(BeFalse())
+		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
+	})
+
+	It("is true after --hyperfleet-url is parsed", func() {
+		cmd := &cobra.Command{}
+		AddFlags(cmd)
+		Expect(cmd.PersistentFlags().Set("hyperfleet-url", "https://abc.execute-api.us-east-1.amazonaws.com")).To(Succeed())
+		Expect(FromFlag()).To(BeTrue())
 		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
 	})
 })

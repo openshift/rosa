@@ -49,6 +49,21 @@ var _ = Describe("ResolveClusterUID", func() {
 		Expect(uid).To(Equal("cluster-uid-123"))
 	})
 
+	It("returns the UID when the key is already a cluster UID", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, _ := newResolveMocks(ctrl)
+
+		cluster := v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-cluster", UID: types.UID("cluster-uid-123")},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{cluster}}, nil)
+
+		uid, err := ResolveClusterUID(ctx, hf, "cluster-uid-123")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(uid).To(Equal("cluster-uid-123"))
+	})
+
 	It("returns an error when no cluster matches the name", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, _ := newResolveMocks(ctrl)
