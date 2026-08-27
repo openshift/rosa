@@ -38,4 +38,7 @@ type ClusterSpec struct {
 	// passthrough types with per-field visibility and write-mode markers.
 	// +kubebuilder:validation:Required
 	HostedCluster HostedClusterSpecPassthrough `json:"hostedCluster"`
+	// ControlPlaneUpgradePolicy is the control plane upgrade policy defined by the user.
+	// +optional
+	ControlPlaneUpgradePolicy *ControlPlaneUpgradePolicySpec `json:"controlPlaneUpgradePolicy,omitempty"`
 }
