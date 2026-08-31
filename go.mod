@@ -28,7 +28,7 @@ require (
 	github.com/openshift-online/ocm-common v0.0.45
 	github.com/openshift-online/ocm-sdk-go v0.1.510
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/sirupsen/logrus v1.10.1
+	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/zgalor/weberr v0.9.0
@@ -54,7 +54,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
