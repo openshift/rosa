@@ -3110,6 +3110,62 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 			})
 
+		It("to validate cluster creation with --channel flag resolves version correctly - [id:66016]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := helper.GenerateRandomName("ocp-66016", 2)
+				versionService := rosaClient.Version
+
+				By("Get a version available in the candidate channel group")
+				versionList, err := versionService.ListAndReflectJsonVersions(
+					rosacli.VersionChannelGroupCandidate, true)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(versionList).ToNot(BeEmpty())
+
+				candidateVersion := versionList[0].RAWID
+
+				By("Create HCP cluster with --channel and --version using dry-run")
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+					"--version":       candidateVersion,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				if rosalCommand.CheckFlagExist("--channel-group") {
+					err = rosalCommand.DeleteFlag("--channel-group", true)
+					Expect(err).ToNot(HaveOccurred())
+				}
+				if rosalCommand.CheckFlagExist("--channel") {
+					err = rosalCommand.DeleteFlag("--channel", true)
+					Expect(err).ToNot(HaveOccurred())
+				}
+				rosalCommand.AddFlags(
+					"--channel", fmt.Sprintf("candidate-%s",
+						strings.Join(strings.Split(candidateVersion, ".")[:2], ".")),
+					"--dry-run", "-y")
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(
+					fmt.Sprintf("Creating cluster '%s' should succeed", clusterName)))
+			})
+
+		It("to validate --channel and --channel-group are mutually exclusive - [id:66016]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := helper.GenerateRandomName("ocp-66016-excl", 2)
+
+				By("Create cluster with both --channel and --channel-group")
+				_, err := clusterService.CreateDryRun(
+					clusterName,
+					"--channel", "candidate-4.22",
+					"--channel-group", "candidate",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(
+					"if any flags in the group [channel channel-group] are set none of the others can be"))
+			})
+
 		It("to validate hcp creation with registry config via rosacli - [id:76396]",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {

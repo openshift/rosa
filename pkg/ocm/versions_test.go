@@ -237,6 +237,43 @@ var _ = Describe("Versions", Ordered, func() {
 		)
 	})
 
+	Context("when extracting channel group from channel", func() {
+		DescribeTable("Parse correctly channel group from channel string",
+			func(channel string, expected string) {
+				channelGroup := ChannelGroupFromChannel(channel)
+				Expect(channelGroup).To(Equal(expected))
+			},
+			Entry("candidate channel",
+				"candidate-4.22",
+				"candidate",
+			),
+			Entry("eus channel",
+				"eus-4.16",
+				"eus",
+			),
+			Entry("stable channel",
+				"stable-4.20",
+				"stable",
+			),
+			Entry("nightly channel",
+				"nightly-4.15",
+				"nightly",
+			),
+			Entry("fast channel",
+				"fast-4.18",
+				"fast",
+			),
+			Entry("empty channel defaults to stable",
+				"",
+				DefaultChannelGroup,
+			),
+			Entry("channel without hyphen defaults to stable",
+				"candidate",
+				DefaultChannelGroup,
+			),
+		)
+	})
+
 	Context("when upgrading a hosted control plane", func() {
 		DescribeTable("Should validate the requested version with the available upgrades",
 			func(userRequestedVersion string, supportedVersion string, clusterVersion string, expected bool) {

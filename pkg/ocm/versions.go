@@ -242,6 +242,21 @@ func GetNodePoolAvailableUpgrades(nodePool *cmv1.NodePool) []string {
 	return sortVersionsDesc(nodePool.Version().AvailableUpgrades())
 }
 
+// ChannelGroupFromChannel extracts the channel group prefix from a channel string.
+// For example, "candidate-4.22" returns "candidate", "eus-4.16" returns "eus",
+// "stable-4.20" returns "stable". Returns DefaultChannelGroup if the channel
+// string is empty or does not contain a hyphen separator.
+func ChannelGroupFromChannel(channel string) string {
+	if channel == "" {
+		return DefaultChannelGroup
+	}
+	idx := strings.Index(channel, "-")
+	if idx < 0 {
+		return DefaultChannelGroup
+	}
+	return channel[:idx]
+}
+
 func CreateVersionID(version string, channelGroup string) string {
 	versionID := fmt.Sprintf("%s%s", VersionPrefix, version)
 	if channelGroup != DefaultChannelGroup {
