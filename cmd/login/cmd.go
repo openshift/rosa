@@ -277,16 +277,21 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		haveReqs = token != ""
 	}
 
-	// Hyperfleet-only login: --hyperfleet-url was supplied but no explicit OCM credentials
-	// are available from command line or env vars. SigV4 auth is handled per-request via
-	// AWS credentials, so there is nothing to exchange here — just persist the URL and return.
-	if !haveReqs && hyperfleet.ExplicitURL() != "" {
-		cfg.HyperfleetURL = hyperfleet.ExplicitURL()
-		if err = config.Save(cfg); err != nil {
-			return fmt.Errorf("failed to save config file: %v", err)
+	// Hyperfleet-only login: --hyperfleet-url without OCM creds: validate, persist, and return.
+	if hyperfleet.FromFlag() {
+		if hfURL := hyperfleet.ExplicitURL(); hfURL != "" {
+			if err := hyperfleet.ValidateURL(hfURL); err != nil {
+				return err
+			}
+			cfg.HyperfleetURL = hfURL
+			if !haveReqs {
+				if err = config.Save(cfg); err != nil {
+					return fmt.Errorf("failed to save config file: %v", err)
+				}
+				r.Reporter.Infof("Logged in to Platform API: %s", cfg.HyperfleetURL)
+				return nil
+			}
 		}
-		r.Reporter.Infof("Logged in to Platform API: %s", cfg.HyperfleetURL)
-		return nil
 	}
 
 	// Verify configuration file:
@@ -454,15 +459,13 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return fmt.Errorf(
 			"failed to get token; your session might be expired: %v\nget a new offline access token at %s",
-			err, uiTokenPage)
+			err, uiTokenPage,
+		)
 	}
 	reAttempt = false
 	// Save the configuration:
 	cfg.AccessToken = accessToken
 	cfg.RefreshToken = refreshToken
-	if hfURL := hyperfleet.ExplicitURL(); hfURL != "" {
-		cfg.HyperfleetURL = hfURL
-	}
 	err = config.Save(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to save config file: %v", err)
@@ -577,7 +580,8 @@ func Call(cmd *cobra.Command, argv []string, reporter reporter.Logger) error {
 }
 
 func CheckAndLogIntoFedramp(hasFlag, hasAdminFlag bool, cfg *config.Config, token string,
-	runtime *rosa.Runtime) error {
+	runtime *rosa.Runtime,
+) error {
 	if hasFlag ||
 		(cfg.FedRAMP && token == "") ||
 		fedramp.IsGovRegion(arguments.GetRegion()) ||

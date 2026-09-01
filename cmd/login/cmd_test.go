@@ -38,6 +38,19 @@ func TestCluster(t *testing.T) {
 	RunSpecs(t, "Login Suite")
 }
 
+func parseHyperfleetFlag(url string) {
+	hyperfleet.Reset()
+	hyperfleet.SetFromFlag(url)
+}
+
+func clearOCMCredentials() {
+	args.token = ""
+	args.clientID = ""
+	args.clientSecret = ""
+	os.Unsetenv(constants.RosaToken)
+	os.Unsetenv(constants.OcmToken)
+}
+
 var _ = Describe("Validate login command", func() {
 
 	AfterEach(func() {
@@ -202,16 +215,9 @@ var _ = Describe("Login Configuration", Ordered, func() {
 	When("Using --hyperfleet-url without OCM credentials", func() {
 		It("saves HyperfleetURL to config and returns without an OCM token", func() {
 			hfURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
-			hyperfleet.Reset()
-			hyperfleet.SetURL(hfURL)
+			parseHyperfleetFlag(hfURL)
 			DeferCleanup(hyperfleet.Reset)
-
-			// Ensure no implicit credentials are available.
-			args.token = ""
-			args.clientID = ""
-			args.clientSecret = ""
-			os.Unsetenv(constants.RosaToken)
-			os.Unsetenv(constants.OcmToken)
+			clearOCMCredentials()
 
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
 			Expect(err).NotTo(HaveOccurred())
@@ -220,6 +226,59 @@ var _ = Describe("Login Configuration", Ordered, func() {
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(cfg).NotTo(BeNil())
 			Expect(cfg.HyperfleetURL).To(Equal(hfURL))
+		})
+
+		It("rejects a non-HTTPS URL and does not write it to config", func() {
+			Expect(config.Save(&config.Config{})).To(Succeed())
+			parseHyperfleetFlag("http://insecure.example.com")
+			DeferCleanup(hyperfleet.Reset)
+			clearOCMCredentials()
+
+			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("HTTPS"))
+
+			cfg, loadErr := config.Load()
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(cfg.HyperfleetURL).To(BeEmpty())
+		})
+	})
+
+	When("Using --hyperfleet-url with an OCM token", func() {
+		It("rejects a non-HTTPS URL and does not persist it", func() {
+			Expect(config.Save(&config.Config{})).To(Succeed())
+			parseHyperfleetFlag("http://insecure.example.com")
+			DeferCleanup(hyperfleet.Reset)
+
+			claims := MakeClaims()
+			claims["username"] = "test"
+			args.token = MakeTokenObject(claims).Raw
+			args.clientID = ""
+			args.clientSecret = ""
+
+			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("HTTPS"))
+
+			cfg, loadErr := config.Load()
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(cfg.HyperfleetURL).To(BeEmpty())
+		})
+	})
+
+	When("HyperfleetURL is seeded from config without --hyperfleet-url", func() {
+		It("does not skip OCM login", func() {
+			invalidCfg := &config.Config{AccessToken: "not-a-jwt"}
+			Expect(config.Save(invalidCfg)).To(Succeed())
+
+			hyperfleet.Reset()
+			hyperfleet.SetURL("https://test.execute-api.us-east-1.amazonaws.com/prod")
+			DeferCleanup(hyperfleet.Reset)
+			clearOCMCredentials()
+
+			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to verify configuration"))
 		})
 	})
 

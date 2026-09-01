@@ -58,7 +58,12 @@ func init() {
 	fs := root.PersistentFlags()
 	color.AddFlag(root)
 	arguments.AddDebugFlag(fs)
-	hyperfleet.AddFlags(root)
+	fs.Var(
+		hyperfleet.FlagValue{},
+		"hyperfleet-url",
+		"Platform API v2 endpoint URL. When set, commands route to the Platform API instead of OCM.",
+	)
+	_ = fs.MarkHidden("hyperfleet-url")
 
 	// Register the subcommands:
 	commands.RegisterCommands(root)

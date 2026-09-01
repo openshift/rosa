@@ -22,6 +22,7 @@ import (
 var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 	It("by profile",
 		labels.Runtime.Day1,
+		labels.Hyperfleet.Validated,
 		labels.Critical,
 		func() {
 			client := rosacli.NewClient()
@@ -43,6 +44,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 
 	It("to wait for cluster ready",
 		labels.Runtime.Day1Readiness,
+		labels.Hyperfleet.Validated,
 		func() {
 			profile := handler.LoadProfileYamlFileByENV()
 			client := rosacli.NewClient()

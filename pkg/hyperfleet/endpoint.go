@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-
-	"github.com/openshift/rosa/pkg/reporter"
 )
 
 // awsRegionRE matches standard and GovCloud AWS region names within a URL hostname.
@@ -42,18 +40,19 @@ func ExtractRegion(rawURL string) (string, error) {
 }
 
 // CheckRegionConflict returns an error when an explicitly provided region can be
-// compared against the region embedded in rawURL and they differ — a configuration
-// error that would cause SigV4 to sign for the wrong endpoint. When the URL
-// contains no recognizable region (e.g. a VPN or custom endpoint) a warning is
-// emitted instead, since signing with the explicit region may be intentional.
-func CheckRegionConflict(explicitRegion, rawURL string, r reporter.Logger) error {
+// compared against the region embedded in rawURL and they differ. When the URL
+// contains no recognizable region (e.g. a VPN or custom endpoint) it returns a
+// warning string instead: signing with the explicit region may be intentional.
+func CheckRegionConflict(explicitRegion, rawURL string) (warning string, err error) {
 	urlRegion, err := ExtractRegion(rawURL)
 	if err != nil {
-		r.Warnf("cannot verify region for --hyperfleet-url %s; SigV4 will sign with %s", rawURL, explicitRegion)
-		return nil
+		return fmt.Sprintf(
+			"cannot verify region for --hyperfleet-url %s; SigV4 will sign with %s",
+			rawURL, explicitRegion,
+		), nil
 	}
 	if explicitRegion != urlRegion {
-		return fmt.Errorf(
+		return "", fmt.Errorf(
 			//nolint:lll
 			"--region %s does not match region in --hyperfleet-url (%s); use --region %s or omit --region to derive it from the URL",
 			explicitRegion,
@@ -61,5 +60,5 @@ func CheckRegionConflict(explicitRegion, rawURL string, r reporter.Logger) error
 			urlRegion,
 		)
 	}
-	return nil
+	return "", nil
 }

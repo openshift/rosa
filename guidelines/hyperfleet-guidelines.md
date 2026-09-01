@@ -4,7 +4,7 @@ This document describes how the Hyperfleet integration is implemented in the
 ROSA CLI, the patterns to follow when adding or extending commands, and the
 current gap analysis compared to the HCP (Hosted Control Planes) path.
 
-Last audited: 2026-08-13
+Last audited: 2026-08-27
 
 ---
 
@@ -46,8 +46,9 @@ idiomatic and testable.
 ```
 pkg/hyperfleet/
   endpoint.go        — URL validation, region extraction, conflict detection
-  hyperfleet.go      — flag state (SetURL/Enabled/ExplicitURL/Reset), roles ref, instance profile helpers
-  cluster.go         — ResolveClusterUID
+  flags.go           — flag state (SetURL/FromFlag/Enabled/ExplicitURL/Reset); FlagValue is registered in cmd/rosa
+  roles.go           — ComputeRolesRef, instance profile helpers
+  cluster.go         — ResolveClusterUID (name or UID)
   nodepool.go        — ResolveNodePoolUID
   mocks/
     hyperfleet_mock.go   — generated mock for clientset.Interface
@@ -134,9 +135,9 @@ Registered as a persistent hidden flag on the root command in
 
 ### Config persistence
 
-The URL is stored in the ROSA config file under `hyperfleet_url` when the user
-runs `rosa login --hyperfleet-url <url>`. On subsequent commands, the stored
-URL is loaded via:
+`rosa login --hyperfleet-url <url>` requires HTTPS and writes `hyperfleet_url`.
+A URL already in config does not skip OCM login; only the flag does
+(`FromFlag()`). Later commands seed routing from config:
 
 ```go
 // cmd/rosa/main.go PersistentPreRun
@@ -147,8 +148,7 @@ if !hyperfleet.Enabled() {
 }
 ```
 
-`SetURL` is a no-op when the flag is already set, preserving the
-**flag > stored config** precedence.
+`SetURL` is a no-op when the flag is already set (**flag > config**).
 
 ### Logging out
 
@@ -202,11 +202,11 @@ inject a pre-built `*rosa.Runtime` with a mock client.
 
 The Platform API identifies resources by UID (server-assigned), not by the
 human-readable name the user provides. Resolution helpers in `pkg/hyperfleet/`
-list all resources and find the one with the matching name:
+list all resources and match name or UID:
 
 ```go
-// Cluster: name → UID
-hyperfleet.ResolveClusterUID(ctx, client, clusterName) (string, error)
+// Cluster: name or UID → UID
+hyperfleet.ResolveClusterUID(ctx, client, clusterKey) (string, error)
 
 // Node pool: name → UID (scoped to cluster namespace)
 hyperfleet.ResolveNodePoolUID(ctx, client, clusterUID, nodePoolName) (string, error)
@@ -296,9 +296,8 @@ Flow: resolve cluster UID, resolve node pool UID → fetch → update replica co
 
 ### Delete
 
-Both cluster and node pool delete resolve name → UID, confirm via
-`confirm.Confirm()`, then call `.Delete()`. Deletion is asynchronous on the
-server side.
+Resolve name or UID, confirm, then `.Delete()`. Cluster `--watch` polls
+`WaitUntil` until gone (30s / 90m). No Hive uninstall logs.
 
 ---
 
