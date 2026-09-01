@@ -34,7 +34,7 @@ require (
 	github.com/zgalor/weberr v0.9.0
 	go.uber.org/mock v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/apimachinery v0.36.4
+	k8s.io/apimachinery v0.37.0
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -44,7 +44,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.4.1 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -53,7 +53,7 @@ require (
 	github.com/openshift-online/ocm-api-model/model v0.0.465 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
