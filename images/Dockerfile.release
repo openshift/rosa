@@ -11,9 +11,14 @@ RUN curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscl
     ./aws/install && \
     rm -rf awscliv2.zip aws &&\
     aws --version
-RUN curl -sL $(curl -s https://api.github.com/repos/openshift/rosa/releases/latest | jq -r '.assets[] | select(.name == "rosa_Linux_x86_64.tar.gz") | .browser_download_url') --output /usr/bin/rosa.tar.gz && \
-    tar -xzvf /usr/bin/rosa.tar.gz -C /usr/bin && \
-    rm /usr/bin/rosa.tar.gz && \
-    chmod +x /usr/bin/rosa
+RUN RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/openshift/rosa/releases/latest) && \
+    RELEASE_TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name') && \
+    RELEASE_VERSION=${RELEASE_TAG#v} && \
+    curl -fsSL $(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name == "rosa_linux_amd64.zip") | .browser_download_url') --output /usr/bin/rosa_linux_amd64.zip && \
+    curl -fsSL "https://github.com/openshift/rosa/releases/download/${RELEASE_TAG}/rosa_${RELEASE_VERSION}_SHA256SUMS" --output /usr/bin/rosa_SHA256SUMS && \
+    cd /usr/bin && grep 'rosa_linux_amd64.zip' rosa_SHA256SUMS | sha256sum -c - && \
+    unzip -oq rosa_linux_amd64.zip && \
+    rm rosa_linux_amd64.zip rosa_SHA256SUMS && \
+    chmod +x rosa
 RUN rosa verify openshift-client
 WORKDIR /rosa
