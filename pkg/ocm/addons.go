@@ -226,11 +226,15 @@ func (c *Client) GetAvailableAddOns() ([]*AddOnResource, error) {
 
 	// Populate enabled add-ons with if they are available for the current org
 	addOnsResponse.Items().Each(func(addOn *asv1.Addon) bool {
-		addOnResource := &AddOnResource{
-			AddOn: addOn,
-		}
-		// Free add-ons are always available
+		// Free add-ons should remain available even without quota metadata.
 		available := addOn.ResourceCost() == 0
+		addOnResource := &AddOnResource{
+			AddOn:     addOn,
+			Available: available,
+		}
+		if available {
+			addOnResource.AZType = ANY
+		}
 
 		// Only return add-ons for which the org has quota
 		quotaCosts.Each(func(quotaCost *amsv1.QuotaCost) bool {
@@ -296,9 +300,10 @@ func (c *Client) GetClusterAddOns(cluster *cmv1.Cluster) ([]*ClusterAddOn, error
 	// Populate add-on installations with all add-on metadata
 	for _, addOnResource := range addOnResources {
 		// Ensure add-on is compatible with the cluster's availability zones
-		if !(addOnResource.AZType == ANY ||
+		isCompatibleAZ := addOnResource.AZType == ANY ||
 			(cluster.MultiAZ() && addOnResource.AZType == "multi") ||
-			(!cluster.MultiAZ() && addOnResource.AZType == "single")) {
+			(!cluster.MultiAZ() && addOnResource.AZType == "single")
+		if !isCompatibleAZ {
 			continue
 		}
 		clusterAddOn := ClusterAddOn{
