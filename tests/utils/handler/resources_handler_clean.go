@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	elbclassic "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing"
+	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	r53 "github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
@@ -436,4 +439,112 @@ func isAWSAuthorizationError(err error) bool {
 // internal communication zone (suffix: hypershift.local) vs an ingress zone.
 func hostedZoneIsHCPInternal(hostedZoneName string) bool {
 	return strings.HasSuffix(hostedZoneName, hcpInternalHostedZoneSuffix)
+}
+
+// drainVPCLoadBalancers deletes ingress LBs in the VPC and waits for their ENIs
+// to release so DeleteVPCChain can finish. OCM destroy does not call this.
+func (rh *resourcesHandler) drainVPCLoadBalancers(vpcID string, withSharedAccount bool) error {
+	awsClient, err := rh.GetAWSClient(withSharedAccount)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	classic := elbclassic.NewFromConfig(*awsClient.AWSConfig)
+	err = wait.PollUntilContextTimeout(ctx, 10*time.Second, 10*time.Minute, true, func(ctx context.Context) (bool, error) {
+		remaining, err := drainLBs(ctx, classic, awsClient.ElbClient, vpcID)
+		if err != nil || remaining > 0 {
+			return false, err
+		}
+		inUse, err := elbENIsInUse(ctx, awsClient.Ec2Client, vpcID)
+		return !inUse, err
+	})
+	if err != nil {
+		return fmt.Errorf("drain ingress LBs in VPC %s: %w", vpcID, err)
+	}
+	return deleteAvailableENIs(ctx, awsClient.Ec2Client, vpcID)
+}
+
+func drainLBs(ctx context.Context, classic *elbclassic.Client, v2 *elbv2.Client, vpcID string) (int, error) {
+	classicCount, classicErr := drainClassicELBs(ctx, classic, vpcID)
+	v2Count, v2Err := drainV2ELBs(ctx, v2, vpcID)
+	return classicCount + v2Count, errors.Join(classicErr, v2Err)
+}
+
+func elbENIsInUse(ctx context.Context, ec2c aws_client.EC2ClientAPI, vpcID string) (bool, error) {
+	out, err := ec2c.DescribeNetworkInterfaces(ctx, &ec2.DescribeNetworkInterfacesInput{
+		Filters: eniFilters(vpcID, "in-use"),
+	})
+	if err != nil {
+		return false, err
+	}
+	for _, eni := range out.NetworkInterfaces {
+		if strings.HasPrefix(aws.ToString(eni.Description), "ELB ") {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func deleteAvailableENIs(ctx context.Context, ec2c aws_client.EC2ClientAPI, vpcID string) error {
+	out, err := ec2c.DescribeNetworkInterfaces(ctx, &ec2.DescribeNetworkInterfacesInput{
+		Filters: eniFilters(vpcID, "available"),
+	})
+	if err != nil {
+		return err
+	}
+	for _, eni := range out.NetworkInterfaces {
+		_, _ = ec2c.DeleteNetworkInterface(ctx, &ec2.DeleteNetworkInterfaceInput{
+			NetworkInterfaceId: eni.NetworkInterfaceId,
+		})
+	}
+	return nil
+}
+
+func eniFilters(vpcID, status string) []types.Filter {
+	return []types.Filter{
+		{Name: aws.String("vpc-id"), Values: []string{vpcID}},
+		{Name: aws.String("status"), Values: []string{status}},
+	}
+}
+
+func drainClassicELBs(ctx context.Context, classic *elbclassic.Client, vpcID string) (int, error) {
+	remaining := 0
+	var marker *string
+	for {
+		out, err := classic.DescribeLoadBalancers(ctx, &elbclassic.DescribeLoadBalancersInput{Marker: marker})
+		if err != nil {
+			return 0, err
+		}
+		for _, lb := range out.LoadBalancerDescriptions {
+			if aws.ToString(lb.VPCId) != vpcID {
+				continue
+			}
+			remaining++
+			_, _ = classic.DeleteLoadBalancer(ctx, &elbclassic.DeleteLoadBalancerInput{LoadBalancerName: lb.LoadBalancerName})
+		}
+		if marker = out.NextMarker; marker == nil {
+			return remaining, nil
+		}
+	}
+}
+
+func drainV2ELBs(ctx context.Context, v2 *elbv2.Client, vpcID string) (int, error) {
+	remaining := 0
+	var marker *string
+	for {
+		out, err := v2.DescribeLoadBalancers(ctx, &elbv2.DescribeLoadBalancersInput{Marker: marker})
+		if err != nil {
+			return 0, err
+		}
+		for _, lb := range out.LoadBalancers {
+			if aws.ToString(lb.VpcId) != vpcID {
+				continue
+			}
+			remaining++
+			_, _ = v2.DeleteLoadBalancer(ctx, &elbv2.DeleteLoadBalancerInput{LoadBalancerArn: lb.LoadBalancerArn})
+		}
+		if marker = out.NextMarker; marker == nil {
+			return remaining, nil
+		}
+	}
 }
