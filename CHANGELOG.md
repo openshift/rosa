@@ -1,3 +1,74 @@
+## 1.2.65 (02 Sep, 2026)
+
+FEATURES:
+   * Generate release metadata JSON for Konflux (#3486)
+   * Add HCP spot CLI support (#3457)
+   * Adding an option to "rosa version" to show build info (#3435)
+   * Allow partial component route updates (#3403)
+   * Enable --component-routes for HCP clusters (#3376)
+   * Add create-time delete protection to rosa create cluster (#3367)
+   * Add opt-in STS external ID support to ROSA CLI (#3264)
+
+ENHANCEMENTS:
+ * Bug fixes
+   * Disable Renovate bingo updates and restore clean bingo modules (#3447)
+   * Align HCP y-stream upgrade tests with channel flow (#3454)
+   * Add warning message to `verify network` when subnets are in different VPCs (#3459)
+   * Harden ocm client edge cases (#3442)
+   * Fixing output of build info and making release builds include build info (#3438)
+   * Derive policy version from cluster upgrade version (#3431)
+   * Add channel_group to y-stream upgrade profiles (#3412)
+   * Complete delete cluster command coverage (#3373)
+   * Ensure that custom admin passwords are not shown when cluster admin info is printed during creation (#3374)
+   * Add tests for auth, config, and utility commands (#3368)
+   * Align y-stream upgrade tests with channel flow (#3353)
+   * Harden shared VPC e2e teardown and subnet validation (#3341)
+   * Improve ready-state cluster waiting (#3327)
+   * Clarify machine pool image type messaging (#3326)
+   * Update OCP-75603 assertion for new STS external ID error (#3324)
+ * Chores
+   * Add zip archives for Konflux GitHub releases (#3478)
+   * Add GO-2026-5932 to be ignored by govulncheck (#3464)
+   * Updating owners files (#3465)
+   * Add CI integration to enforce environmental boundaries (#3449)
+   * Bump go.mod to 1.26.5 (#3388)
+   * Establish target architecure for separating CLI and core/library logic (#3439)
+   * Remove gitlab.com/c0b/go-ordered-json (#3424)
+   * Remove github.com/google/uuid (#3425)
+   * Remove gopkg.in/yaml.v2 (#3426)
+   * Remove github.com/pkg/errors (#3421)
+   * Remove github.com/PuerkitoBio/goquery (#3422)
+   * Remove github.com/dustin/go-humanize (#3414)
+   * Remove github.com/alessio/shellescape (#3419)
+   * Remove github.com/dchest/validator (#3413)
+   * Remove github.com/nathan-fiscaletti/consolesize-go (#3415)
+   * Remove duplicate Konflux pipelines, keep release-only (#3356)
+   * Fix pre-existing staticcheck issues in files touched by OSDOCS-16406 (#3378)
+   * Remove unused OCM-role API (#3337)
+   * Bump Go to 1.26.3 (#3321)
+   * Bump hashicorp/go-version to v1.9.0 (#3294)
+ * Documentation
+   * Add communication channels and feature process to CONTRIBUTING (#3371)
+   * Expand CLI abbreviations for product documentation compliance (OSDOCS-16406) (#3345)
+   * Include DCO sign-off requirement in CONTRIBUTING.md (#3268)
+ * Other
+   * Add dustman9000 to OWNERS approvers (#3387)
+   * Remove gomodTidy from postUpdateOptions (#3365)
+   * Fix/konflux kubernetes lint (#3281)
+   * Fix/konflux bingo tooling lint (#3282)
+ * Ci
+   * Restore snyk task for prerelease build
+   * Align prerelease pipeline with EC policy
+   * Update tekton task bundle digests to latest trusted versions
+   * Use private mktemp for govulncheck jq bootstrap (#3380)
+   * Bootstrap jq for govulncheck in Prow builder (#3338)
+ * Test
+   * Pick y-1 base when candidate has no DEFAULT (#3455)
+   * Fail-fast destroy when uninstall times out (#3433)
+   * Harden id:70370 inflight-check wait (#3432)
+   * Align OCP-45509 proxy dry-run assertion (#3429)
+   * Replace unavailable dl1.24xlarge instance type in test 72174 (#3407)
+
 ## 1.2.64 (15 Jun, 2026)
 
 FEATURES:
