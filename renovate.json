@@ -7,6 +7,7 @@
   "enabledManagers": [
     "custom.regex",
     "gomod",
+    "pre-commit",
     "tekton",
     "dockerfile"
   ],
@@ -67,6 +68,9 @@
       "extractVersionTemplate": "{{extractVersion}}"
     }
   ],
+  "pre-commit": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "description": "govulncheck jq bootstrap",
@@ -77,6 +81,18 @@
         "jqlang/jq"
       ],
       "groupName": "govulncheck-jq"
+    },
+    {
+      "description": "Bump pre-commit gitleaks SHA",
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "matchDepNames": [
+        "gitleaks/gitleaks"
+      ],
+      "groupName": "gitleaks",
+      "groupSlug": "gitleaks",
+      "automerge": false
     },
     {
       "description": "Enable automerge Konflux .tekton task updates",
