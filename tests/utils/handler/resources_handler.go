@@ -269,7 +269,13 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 	// delete vpc chain
 	if resources.VpcID != "" {
 		log.Logger.Infof("Find prepared vpc id: %s", resources.VpcID)
-		err = rh.DeleteVPCChain(resources.FromSharedAWSAccount != nil && resources.FromSharedAWSAccount.VPC)
+		sharedVPC := resources.FromSharedAWSAccount != nil && resources.FromSharedAWSAccount.VPC
+		if usesRegionalPlatformAPI() {
+			if preErr := rh.drainVPCLoadBalancers(resources.VpcID, sharedVPC); preErr != nil {
+				log.Logger.Warnf("drain VPC load balancers: %v", preErr)
+			}
+		}
+		err = rh.DeleteVPCChain(sharedVPC)
 		success := destroyLog(err, "vpc chain")
 		if success {
 			rh.registerVpcID("", false)
