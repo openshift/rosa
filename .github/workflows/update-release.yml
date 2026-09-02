@@ -1,0 +1,143 @@
+name: Update Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  tag-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate stable release tag
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "❌  Tag '${GITHUB_REF_NAME}' is not a stable release tag"; exit 1; }
+
+  generate-notes:
+    needs: tag-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Find previous stable release tag
+        id: prev-tag
+        run: |
+          git fetch --tags --force
+          CURRENT_TAG="${{ github.ref_name }}"
+          PREV_TAG=$(git tag -l 'v*' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | grep -B1 "^${CURRENT_TAG}$" \
+            | head -1)
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$CURRENT_TAG" ]; then
+            echo "No previous stable tag found for ${CURRENT_TAG}"
+            echo "prev_tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Previous stable tag: $PREV_TAG"
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        if: steps.prev-tag.outputs.prev_tag != ''
+        continue-on-error: true
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: cliff.toml
+          args: --verbose ${{ steps.prev-tag.outputs.prev_tag }}..${{ github.ref_name }} --tag ${{ github.ref_name }} --output release-notes.md
+
+      - name: Upload release notes
+        if: hashFiles('release-notes.md') != ''
+        uses: actions/upload-artifact@6b51ba8106669f0b237e769646acedeb54f0f85f # v4.6.0
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 1
+
+  update-release:
+    needs: [tag-check, generate-notes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: write
+    steps:
+      - name: Download release notes
+        uses: actions/download-artifact@65a9ebb14a12af6434346add6597e1613e92f48d # v4.1.1
+        continue-on-error: true
+        with:
+          name: release-notes
+
+      - name: Wait for GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+
+          release_exists() {
+            local err=""
+            if gh release view "$TAG" --repo "$REPO" --json tagName > /dev/null 2>&1; then
+              return 0
+            fi
+            err=$(gh release view "$TAG" --repo "$REPO" 2>&1 || true)
+            if echo "$err" | grep -qiE 'release not found|HTTP 404|Could not find'; then
+              return 1
+            fi
+            echo "::error::Unexpected error checking release ${TAG}: ${err}"
+            exit 1
+          }
+
+          echo "Waiting for GitHub release ${TAG} to be created by Konflux..."
+          for i in $(seq 1 60); do
+            if release_exists; then
+              echo "Release ${TAG} found after ~$((i * 2)) minutes"
+              exit 0
+            fi
+            echo "Attempt ${i}/60 — release not found yet, waiting 2 minutes..."
+            sleep 120
+          done
+          echo "::warning::Release ${TAG} was not found after 2 hours — skipping release notes update"
+          exit 0
+
+      - name: Update release title and body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+
+          if ! gh release view "$TAG" --repo "$REPO" --json tagName > /dev/null 2>&1; then
+            err=$(gh release view "$TAG" --repo "$REPO" 2>&1 || true)
+            if echo "$err" | grep -qiE 'release not found|HTTP 404|Could not find'; then
+              echo "Release ${TAG} does not exist — nothing to update"
+              exit 0
+            fi
+            echo "::error::Unexpected error checking release ${TAG}: ${err}"
+            exit 1
+          fi
+
+          if [ -f release-notes.md ]; then
+            gh release edit "$TAG" \
+              --repo "$REPO" \
+              --title "$TAG" \
+              --notes-file release-notes.md
+            echo "Updated release ${TAG} with changelog and title"
+          else
+            gh release edit "$TAG" \
+              --repo "$REPO" \
+              --title "$TAG" \
+              --generate-notes
+            echo "Updated release ${TAG} with auto-generated notes (no changelog available)"
+          fi
