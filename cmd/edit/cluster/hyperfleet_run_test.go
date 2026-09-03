@@ -89,7 +89,11 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
-		hf, _ := newEditClusterMocks(ctrl)
+		hf, clusters := newEditClusterMocks(ctrl)
+		// ResolveClusterUID is called before PreRequest validates flags.
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() { runHyperfleetEdit(t.RosaRuntime, makeExpirationCmd(false)) }).To(Panic())
 	})

@@ -23,6 +23,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/hyperfleet"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/machinepool"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/properties"
@@ -46,6 +48,12 @@ func NewCreateMachinePool(spec CreateMachinePoolSpec) CreateMachinePool {
 func NewCreateMachinePoolCommand() *cobra.Command {
 	cmd, options := mpOpts.BuildMachinePoolCreateCommandWithOptions()
 	cmd.Run = dispatch(options)
+	// ── HyperFleet flag sections ─────────────────────────────────────────────
+	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
+		func() { hfpathbind.RegisterNodePoolCreateFlags(cmd, &hfNodePoolInput) },
+		hfpathbind.NodePoolCreatePlatformAPIFlags,
+	)
+	hyperfleet.AddPlatformAPIFlagSection(cmd)
 	return cmd
 }
 

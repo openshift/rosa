@@ -1,0 +1,136 @@
+# pathbind-overrides.yaml — rosa CLI consumer overrides for pathbind-gen --mode=cobra.
+# Merged with pathbind-draft.yaml (from SDK) to generate pkg/hyperfleet/pathbind/*.
+#
+# config: consumer-specific generator settings (all required)
+# resources: per-resource alias entries — only include fields that need cobra flags
+#            or consumer-only derived fields (no SDK path).
+#
+# See docs/api/client-pathbinding.md in rosa-hyperfleet-api for full schema reference.
+
+config:
+  package: pathbind
+  runtimePkg: github.com/openshift/rosa/pkg/rosa
+  runtimeType: "*rosa.Runtime"
+  interactivePkg: github.com/openshift/rosa/pkg/interactive
+
+resources:
+  cluster:
+    aliases:
+      # ── User-settable create flags ──────────────────────────────────────────
+      - path: metadata.name
+        alias: name
+        flag: cluster-name
+        description: "Unique name of the cluster."
+        required: true
+        operations: [create]
+
+      - path: spec.displayName
+        alias: displayName
+        flag: display-name
+        description: "Human-readable display name for the cluster."
+        operations: [create, update]
+
+      - path: spec.hostedCluster.release.image
+        alias: version
+        flag: version
+        description: "OpenShift release image for the cluster."
+        required: true
+        operations: [create]
+
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.subnet.id
+        alias: subnetID
+        type: string
+        flag: subnet-id
+        description: "Subnet ID for the cluster (use instead of --subnet-ids for Platform API clusters)."
+        required: true
+        operations: [create]
+
+      - path: spec.deleteProtection
+        alias: deleteProtection
+        type: "*bool"
+        flag: delete-protection
+        description: "Enable delete protection on the cluster."
+        operations: [create, update]
+
+      - path: spec.expirationTimestamp
+        alias: expirationTimestamp
+        flag: expiration-time
+        description: "Cluster expiration time (RFC3339)."
+        operations: [create, update]
+
+      # ── Derived fields: in struct for PreRequest use, no cobra flag ─────────
+      - path: spec.hostedCluster.platform.aws.region
+        alias: region
+        operations: [create]
+
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.vpc
+        alias: vpc
+        goName: VPC
+        operations: [create]
+
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.zone
+        alias: zone
+        operations: [create]
+
+      # ── Status fields: used by Flatten (read-back), no flag ─────────────────
+      - path: status.phase
+        alias: phase
+        operations: [create, update]
+
+      - path: status.controlPlaneEndpoint.host
+        alias: apiURL
+        goName: APIURL
+        operations: [create, update]
+
+      - path: status.version
+        alias: sdkVersion
+        goName: SDKVersion
+        operations: [create, update]
+
+      # ── Consumer-only derived inputs (no SDK path) ───────────────────────────
+      - alias: operatorRolesPrefix
+        type: string
+        flag: operator-roles-prefix
+        description: "Prefix for all IAM operator role names."
+        required: true
+        operations: [create]
+
+  nodePool:
+    aliases:
+      - path: metadata.name
+        alias: name
+        flag: name
+        description: "Name of the node pool."
+        required: true
+        operations: [create]
+
+      - path: spec.nodePool.replicas
+        alias: replicas
+        type: "*int32"
+        flag: replicas
+        description: "Number of worker nodes."
+        operations: [create, update]
+
+      - path: spec.nodePool.platform.aws.instanceType
+        alias: instanceType
+        flag: instance-type
+        description: "AWS instance type for worker nodes."
+        operations: [create]
+
+      - path: spec.nodePool.platform.aws.subnet.id
+        alias: subnetID
+        goName: SubnetID
+        flag: subnet
+        description: "Subnet ID for the node pool."
+        required: true
+        operations: [create]
+
+      # ── Derived: no flag
+      - path: spec.nodePool.clusterName
+        alias: clusterName
+        operations: [create]
+
+      # ── Status
+      - path: status.phase
+        alias: phase
+        operations: [create, update]

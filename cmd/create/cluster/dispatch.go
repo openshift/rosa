@@ -16,7 +16,7 @@ var (
 
 func dispatch(cmd *cobra.Command, args []string) {
 	if hyperfleetEnabled() {
-		hfCreateCluster()
+		hfCreateCluster(cmd)
 		return
 	}
 	runV1(cmd, args)

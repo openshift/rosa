@@ -41,7 +41,7 @@ func makeCluster(name, uid string) *v1alpha1.Cluster {
 		ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID(uid)},
 		Spec: v1alpha1.ClusterSpec{
 			HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
-				Platform: hypershiftv1beta1.PlatformSpec{
+				Platform: v1alpha1.PlatformSpec{
 					AWS: &hypershiftv1beta1.AWSPlatformSpec{
 						RolesRef: hypershiftv1beta1.AWSRolesRef{
 							NodePoolManagementARN: "arn:aws:iam::123456789:role/cluster1-node-pool-management",
@@ -164,11 +164,14 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+		// Get is called in PostExpand (after subnet validation passes).
 		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil, fmt.Errorf("get failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
-			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{Name: "my-np"}, nil)
+			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
+				Name: "my-np", Subnet: "subnet-abc123",
+			}, nil)
 		}).To(Panic())
 	})
 
@@ -205,7 +208,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		// Get is NOT called when subnet is missing: PreRequest fails before PostExpand.
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {

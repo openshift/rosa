@@ -15,7 +15,7 @@ var _ = Describe("Dispatch", func() {
 	var v2Called bool
 	var originalEnabled func() bool
 	var originalRun func(*cobra.Command, []string)
-	var originalCreate func()
+	var originalCreate func(*cobra.Command)
 
 	BeforeEach(func() {
 		cmd = &cobra.Command{}
@@ -28,7 +28,7 @@ var _ = Describe("Dispatch", func() {
 		runV1 = func(*cobra.Command, []string) {
 			runCalled = true
 		}
-		hfCreateCluster = func() { v2Called = true }
+		hfCreateCluster = func(*cobra.Command) { v2Called = true }
 	})
 
 	AfterEach(func() {

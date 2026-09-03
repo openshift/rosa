@@ -50,7 +50,7 @@ var _ = Describe("runHyperfleetList", func() {
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					Replicas: &replicas,
-					Platform: hypershiftv1beta1.NodePoolPlatform{
+					Platform: v1alpha1.NodePoolPlatform{
 						AWS: &hypershiftv1beta1.AWSNodePoolPlatform{InstanceType: "m5.xlarge"},
 					},
 				},

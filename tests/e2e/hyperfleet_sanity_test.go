@@ -866,14 +866,15 @@ var _ = Describe("Hyperfleet sanity",
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa create machinepool %s", np1Name)
 
-			By("Creating second node pool via CLI")
+			By("Creating second node pool via CLI with Platform API flag --placement-market-type Spot")
 			_, err = rosacli.NewClient().Runner.
 				Cmd("create", "machinepool").
 				CmdFlags("-c", clusterName,
 					"--name", np2Name,
 					"--replicas", "1",
 					"--instance-type", instanceType,
-					"--subnet", subnetID).
+					"--subnet", subnetID,
+					"--placement-market-type", "Spot").
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa create machinepool %s", np2Name)
 
@@ -893,6 +894,16 @@ var _ = Describe("Hyperfleet sanity",
 			GinkgoWriter.Printf("NodePool %s id=%s, NodePool %s id=%s\n", np1Name, np1ID, np2Name, np2ID)
 
 			nodePools := hfClient.HyperfleetV1alpha1().NodePools(clusterID)
+
+			By("Verifying --placement-market-type Spot was forwarded to SDK (no override, auto-derived flag)")
+			np2Get, err := nodePools.Get(ctx, np2ID, platform.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "SDK Get for node pool %s", np2Name)
+			Expect(np2Get.Spec.NodePool.Platform.AWS).NotTo(BeNil(),
+				"node pool %s AWS platform must not be nil", np2Name)
+			Expect(np2Get.Spec.NodePool.Platform.AWS.Placement).NotTo(BeNil(),
+				"node pool %s placement must not be nil when marketType is set", np2Name)
+			Expect(string(np2Get.Spec.NodePool.Platform.AWS.Placement.MarketType)).To(Equal("Spot"),
+				"node pool %s marketType must be Spot as set via --placement-market-type", np2Name)
 
 			By("Waiting for node pool 1 to become Ready")
 			Expect(nodePools.WaitUntil(ctx, np1ID,
@@ -946,6 +957,26 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(np1Map["id"]).To(Equal(np1ID),
 				"CLI describe machinepool id must match node pool UID")
 			GinkgoWriter.Printf("rosa describe machinepool %s output:\n%s\n", np1Name, np1Out.String())
+
+			By("Scaling node pool 1 replicas from 2 to 3 via CLI edit")
+			_, err = rosacli.NewClient().Runner.
+				Cmd("edit", "machinepool", np1Name).
+				CmdFlags("-c", clusterName, "--replicas", "3").
+				Run()
+			Expect(err).NotTo(HaveOccurred(), "rosa edit machinepool %s --replicas 3", np1Name)
+
+			By("Verifying node pool 1 replica count via CLI describe")
+			np1EditOut, err := rosacli.NewClient().Runner.
+				Cmd("describe", "machinepool").
+				CmdFlags("-c", clusterName, "--machinepool", np1Name, "-o", "json").
+				Run()
+			Expect(err).NotTo(HaveOccurred(), "rosa describe machinepool %s after edit", np1Name)
+			var np1EditMap map[string]interface{}
+			Expect(json.Unmarshal(np1EditOut.Bytes(), &np1EditMap)).To(Succeed(),
+				"parsing describe machinepool %s JSON after edit", np1Name)
+			Expect(np1EditMap["replicas"]).To(BeEquivalentTo(3),
+				"node pool %s replicas must be 3 after edit", np1Name)
+			GinkgoWriter.Printf("NodePool %s after edit:\n%s\n", np1Name, np1EditOut.String())
 
 			By("Deleting node pool 2 via CLI")
 			_, err = rosacli.NewClient().Runner.

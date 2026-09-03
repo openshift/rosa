@@ -53,7 +53,7 @@ var _ = Describe("hfClusterToMap", func() {
 				ExpirationTimestamp: &expiry,
 				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					IssuerURL: "https://oidc.example.com/issuer",
-					Platform: hypershiftv1beta1.PlatformSpec{
+					Platform: v1alpha1.PlatformSpec{
 						AWS: &hypershiftv1beta1.AWSPlatformSpec{
 							Region: "us-east-1",
 							RolesRef: hypershiftv1beta1.AWSRolesRef{
@@ -164,7 +164,7 @@ var _ = Describe("hfClusterToString", func() {
 		out := hfClusterToString(&v1alpha1.Cluster{
 			Spec: v1alpha1.ClusterSpec{
 				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
-					Platform: hypershiftv1beta1.PlatformSpec{
+					Platform: v1alpha1.PlatformSpec{
 						AWS: &hypershiftv1beta1.AWSPlatformSpec{
 							RolesRef: hypershiftv1beta1.AWSRolesRef{IngressARN: arn},
 						},

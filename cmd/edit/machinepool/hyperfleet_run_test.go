@@ -121,9 +121,15 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
-		hf, _, _ := newEditMPMocks(ctrl)
+		hf, clusters, nodePools := newEditMPMocks(ctrl)
+		// ResolveClusterUID and ResolveNodePoolUID are called before PreRequest validates flags.
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+		}}}, nil)
 		t.RosaRuntime.HyperFleetClient = hf
-		// Pass cmd with no flags set (replicas not Changed)
 		Expect(func() {
 			runHyperfleetEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np"},
 				makeEditCmd(""), nil)
@@ -165,23 +171,17 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}).To(Panic())
 	})
 
-	setupGetMocks := func(ctrl *gomock.Controller) (*hfmocks.MockNodePoolInterface, *v1alpha1.NodePool) {
+	// setupListOnlyMocks sets up cluster/nodepool List mocks but NOT Get.
+	// Use for tests that fail in PreRequest (before PostExpand calls Get).
+	setupListOnlyMocks := func(ctrl *gomock.Controller) {
 		hf, clusters, nodePools := newEditMPMocks(ctrl)
-		replicas := int32(3)
-		np := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
-			Spec: v1alpha1.NodePoolSpec{
-				NodePool: v1alpha1.NodePoolSpecPassthrough{Replicas: &replicas},
-			},
-		}
+		np := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")}}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
 		t.RosaRuntime.HyperFleetClient = hf
-		return nodePools, np
 	}
 
 	It("rejects negative replica count", func() {
@@ -190,7 +190,8 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
-		setupGetMocks(ctrl)
+		// PreRequest fails before PostExpand — Get is never called.
+		setupListOnlyMocks(ctrl)
 
 		Expect(func() {
 			runHyperfleetEdit(t.RosaRuntime,
@@ -205,7 +206,8 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
-		setupGetMocks(ctrl)
+		// PreRequest fails before PostExpand — Get is never called.
+		setupListOnlyMocks(ctrl)
 
 		Expect(func() {
 			runHyperfleetEdit(t.RosaRuntime,

@@ -16,7 +16,7 @@ var hyperfleetEnabled = hyperfleet.Enabled
 func dispatch(options *mpOpts.CreateMachinepoolUserOptions) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, argv []string) {
 		if hyperfleetEnabled() {
-			hfCreateMachinePool(options, argv)
+			hfCreateMachinePool(options, argv, cmd)
 			return
 		}
 		rosa.DefaultRunner(rosa.RuntimeWithOCM(), CreateMachinepoolRunner(options))(cmd, argv)
