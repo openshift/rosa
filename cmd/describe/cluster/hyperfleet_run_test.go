@@ -45,7 +45,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 			Spec: v1alpha1.ClusterSpec{
 				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					IssuerURL: "https://oidc.example.com",
-					Platform: hypershiftv1beta1.PlatformSpec{
+					Platform: v1alpha1.PlatformSpec{
 						AWS: &hypershiftv1beta1.AWSPlatformSpec{Region: "us-east-1"},
 					},
 				},

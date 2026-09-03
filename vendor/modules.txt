@@ -549,7 +549,7 @@ github.com/openshift-online/ocm-sdk-go/webrca/v1
 # github.com/openshift-online/rosa-hyperfleet-api/api v0.1.7 => github.com/gdbranco/rosa-hyperfleet-api/api v0.1.8-ec.1
 ## explicit; go 1.26.3
 github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public
-# github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.7 => github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.1
+# github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.7 => github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.3
 ## explicit; go 1.26.5
 github.com/openshift-online/rosa-hyperfleet-api/clientset
 github.com/openshift-online/rosa-hyperfleet-api/clientset/generated
@@ -959,4 +959,4 @@ sigs.k8s.io/structured-merge-diff/v6/value
 sigs.k8s.io/yaml
 # github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
 # github.com/openshift-online/rosa-hyperfleet-api/api => github.com/gdbranco/rosa-hyperfleet-api/api v0.1.8-ec.1
-# github.com/openshift-online/rosa-hyperfleet-api/clientset => github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.1
+# github.com/openshift-online/rosa-hyperfleet-api/clientset => github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.3

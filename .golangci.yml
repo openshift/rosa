@@ -99,6 +99,15 @@ linters:
     paths:
       - '(.+)_test\.go'
     rules:
+      - path: pkg/hyperfleet/flaggroup.go
+        linters:
+          - depguard
+          - forbidigo
+      - path: pkg/hyperfleet/pathbind
+        linters:
+          - depguard
+          - lll
+          - gci
       - path: tests/e2e/
         linters:
           - goconst

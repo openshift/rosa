@@ -106,8 +106,8 @@ github.com/fxamacker/cbor/v2 v2.9.3 h1:oQBnFATpNdY8gJHTndDDv5Xl4QqNaz51G5LLEPhng
 github.com/fxamacker/cbor/v2 v2.9.3/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gdbranco/rosa-hyperfleet-api/api v0.1.8-ec.1 h1:HVouIoPmK6R6Dhm7yKtZ6E/x57hcGlMaeSpShxSDzRs=
 github.com/gdbranco/rosa-hyperfleet-api/api v0.1.8-ec.1/go.mod h1:cpCKxdqSOkuvY6WIaIk68w3z0sTtPMNqxXTXYa83SEA=
-github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.1 h1:3r9kRMig84zhotlFk/y44Z3c8gv9zCbq7IsUK37se+w=
-github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.1/go.mod h1:Wj/JKGehxvL2ZOEkYSuWaxz98FZ49temhne2IKRw9WU=
+github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.3 h1:MHbvFmdbI7kuWxWz4SJWMmmnMTbbEj7BBwNhhZ21r7A=
+github.com/gdbranco/rosa-hyperfleet-api/clientset v0.1.8-ec.3/go.mod h1:Wj/JKGehxvL2ZOEkYSuWaxz98FZ49temhne2IKRw9WU=
 github.com/gkampitakis/ciinfo v0.3.2 h1:JcuOPk8ZU7nZQjdUhctuhQofk7BGHuIy0c9Ez8BNhXs=
 github.com/gkampitakis/ciinfo v0.3.2/go.mod h1:1NIwaOcFChN4fa/B0hEBdAb6npDlFL8Bwx4dfRLRqAo=
 github.com/gkampitakis/go-diff v1.3.2 h1:Qyn0J9XJSDTgnsgHRdz9Zp24RaJeKMUHg2+PDZZdC4M=
