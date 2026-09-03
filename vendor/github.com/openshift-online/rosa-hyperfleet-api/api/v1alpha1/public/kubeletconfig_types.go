@@ -7,6 +7,7 @@ import (
 )
 
 // KubeletConfig specifies kubelet configuration with granular markers for customer control.
+// +hyperfleet:upstream-reduced-object=hypershiftv1beta1.KubeletConfig
 type KubeletConfig struct {
 	// +hyperfleet:write-mode=mutable
 	MaxPods *int32 `json:"maxPods,omitempty"`

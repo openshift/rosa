@@ -22,7 +22,7 @@ type HostedClusterSpecPassthrough struct {
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
 	// +required
-	Platform hypershiftv1beta1.PlatformSpec `json:"platform"`
+	Platform PlatformSpec `json:"platform"`
 	// networking specifies network configuration for the hosted cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
@@ -42,7 +42,7 @@ type HostedClusterSpecPassthrough struct {
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
 	// +optional
-	Configuration *hypershiftv1beta1.ClusterConfiguration `json:"configuration,omitempty"`
+	Configuration *ClusterConfiguration `json:"configuration,omitempty"`
 	// operatorConfiguration specifies configuration for individual OCP operators in the cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
