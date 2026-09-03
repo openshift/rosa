@@ -563,8 +563,12 @@ paths:
       summary: Create OIDC config
       description: |
         Create a new OIDC configuration. Specify spec.type as "managed" or "unmanaged".
-        Unmanaged configs require spec.secretArn, spec.installerRoleArn, and spec.issuerUrl.
-        Managed configs must not set those fields.
+        spec.issuerUrl is required for both types: for "managed" configs it is
+        computed by the platform API and any value supplied by the caller is
+        ignored; for "unmanaged" configs it must be supplied by the caller along
+        with spec.secretArn and spec.installerRoleArn. Managed configs must not
+        set spec.secretArn or spec.installerRoleArn. An unmanaged config's
+        spec.issuerUrl must be unique within the account.
 
         Possible error codes:
         - OIDCCONFIGS-MGMT-CREATE-001: Invalid request body
@@ -572,6 +576,7 @@ paths:
         - OIDCCONFIGS-MGMT-CREATE-003: Failed to create OIDC config
         - OIDCCONFIGS-MGMT-CREATE-004: Invalid type value
         - OIDCCONFIGS-MGMT-CREATE-005: Invalid field combination for the given type
+        - OIDCCONFIGS-MGMT-CREATE-006: An OIDC config with this issuerUrl already exists
       operationId: createOidcConfig
       tags:
         - OidcConfigs
@@ -592,6 +597,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -2141,6 +2148,11 @@ components:
               type: string
           hostedCluster:
               $ref: '#/components/schemas/HostedClusterSpecPassthrough'
+          oidcConfigId:
+              description: |-
+                  OidcConfigID selects the OidcConfig-backed issuer flow when set, or the
+                  legacy auto-generated issuer flow when empty. Immutable after creation.
+              type: string
           properties:
               additionalProperties:
                   type: string
@@ -4314,6 +4326,11 @@ components:
                           - platform
                           - release
                       type: object
+                  oidcConfigId:
+                      description: |-
+                          OidcConfigID selects the OidcConfig-backed issuer flow when set, or the
+                          legacy auto-generated issuer flow when empty. Immutable after creation.
+                      type: string
                   properties:
                       additionalProperties:
                           type: string
@@ -4332,6 +4349,13 @@ components:
           status:
               description: ClusterStatus defines the observed state of a Cluster.
               properties:
+                  baseDomain:
+                      description: |-
+                          BaseDomain is the DNS base domain assigned to this cluster via a DNSReservation
+                          (e.g. "f7a3.0.openshiftapps.com", assembled as {prefix}.{shard}.{baseDomain},
+                          where baseDomain is the operator's configured --base-domain).
+                          Empty when not yet reserved. Set by the operator when the DNSReservation is created or claimed.
+                      type: string
                   conditions:
                       description: |-
                           Conditions represent the latest observations of the cluster's state.
@@ -6611,6 +6635,11 @@ components:
                                       - platform
                                       - release
                                   type: object
+                              oidcConfigId:
+                                  description: |-
+                                      OidcConfigID selects the OidcConfig-backed issuer flow when set, or the
+                                      legacy auto-generated issuer flow when empty. Immutable after creation.
+                                  type: string
                               properties:
                                   additionalProperties:
                                       type: string
@@ -6629,6 +6658,13 @@ components:
                       status:
                           description: ClusterStatus defines the observed state of a Cluster.
                           properties:
+                              baseDomain:
+                                  description: |-
+                                      BaseDomain is the DNS base domain assigned to this cluster via a DNSReservation
+                                      (e.g. "f7a3.0.openshiftapps.com", assembled as {prefix}.{shard}.{baseDomain},
+                                      where baseDomain is the operator's configured --base-domain).
+                                      Empty when not yet reserved. Set by the operator when the DNSReservation is created or claimed.
+                                  type: string
                               conditions:
                                   description: |-
                                       Conditions represent the latest observations of the cluster's state.
@@ -8058,6 +8094,13 @@ components:
     ClusterStatus:
       description: ClusterStatus defines the observed state of a Cluster.
       properties:
+          baseDomain:
+              description: |-
+                  BaseDomain is the DNS base domain assigned to this cluster via a DNSReservation
+                  (e.g. "f7a3.0.openshiftapps.com", assembled as {prefix}.{shard}.{baseDomain},
+                  where baseDomain is the operator's configured --base-domain).
+                  Empty when not yet reserved. Set by the operator when the DNSReservation is created or claimed.
+              type: string
           conditions:
               description: |-
                   Conditions represent the latest observations of the cluster's state.
@@ -8290,7 +8333,9 @@ components:
                   issuerUrl:
                       description: |-
                           IssuerUrl is the OIDC issuer URL.
-                          Required for unmanaged configs; set by the controller for managed configs.
+                          Required for both types; computed by platform-api for managed configs,
+                          customer-supplied for unmanaged configs.
+                      minLength: 1
                       type: string
                   secretArn:
                       description: |-
@@ -8305,21 +8350,22 @@ components:
                           - unmanaged
                       type: string
               required:
+                  - issuerUrl
                   - type
               type: object
               x-kubernetes-validations:
                   - message: managed type must not set secretArn or installerRoleArn
                     rule: self.type != 'managed' || (self.secretArn == ” && self.installerRoleArn == ”)
-                  - message: unmanaged type requires secretArn, installerRoleArn, and issuerUrl
-                    rule: self.type != 'unmanaged' || (self.secretArn != ” && self.installerRoleArn != ” && self.issuerUrl != ”)
+                  - message: unmanaged type requires secretArn and installerRoleArn
+                    rule: self.type != 'unmanaged' || (self.secretArn != ” && self.installerRoleArn != ”)
                   - message: spec.type is immutable
                     rule: self.type == oldSelf.type
                   - message: spec.secretArn is immutable
                     rule: self.secretArn == oldSelf.secretArn
                   - message: spec.installerRoleArn is immutable
                     rule: self.installerRoleArn == oldSelf.installerRoleArn
-                  - message: spec.issuerUrl is immutable once set
-                    rule: oldSelf.issuerUrl == ” || self.issuerUrl == oldSelf.issuerUrl
+                  - message: spec.issuerUrl is immutable
+                    rule: self.issuerUrl == oldSelf.issuerUrl
           status:
               description: OidcConfigStatus defines the observed state of an OidcConfig.
               properties:
@@ -8456,7 +8502,9 @@ components:
                               issuerUrl:
                                   description: |-
                                       IssuerUrl is the OIDC issuer URL.
-                                      Required for unmanaged configs; set by the controller for managed configs.
+                                      Required for both types; computed by platform-api for managed configs,
+                                      customer-supplied for unmanaged configs.
+                                  minLength: 1
                                   type: string
                               secretArn:
                                   description: |-
@@ -8471,21 +8519,22 @@ components:
                                       - unmanaged
                                   type: string
                           required:
+                              - issuerUrl
                               - type
                           type: object
                           x-kubernetes-validations:
                               - message: managed type must not set secretArn or installerRoleArn
                                 rule: self.type != 'managed' || (self.secretArn == ” && self.installerRoleArn == ”)
-                              - message: unmanaged type requires secretArn, installerRoleArn, and issuerUrl
-                                rule: self.type != 'unmanaged' || (self.secretArn != ” && self.installerRoleArn != ” && self.issuerUrl != ”)
+                              - message: unmanaged type requires secretArn and installerRoleArn
+                                rule: self.type != 'unmanaged' || (self.secretArn != ” && self.installerRoleArn != ”)
                               - message: spec.type is immutable
                                 rule: self.type == oldSelf.type
                               - message: spec.secretArn is immutable
                                 rule: self.secretArn == oldSelf.secretArn
                               - message: spec.installerRoleArn is immutable
                                 rule: self.installerRoleArn == oldSelf.installerRoleArn
-                              - message: spec.issuerUrl is immutable once set
-                                rule: oldSelf.issuerUrl == ” || self.issuerUrl == oldSelf.issuerUrl
+                              - message: spec.issuerUrl is immutable
+                                rule: self.issuerUrl == oldSelf.issuerUrl
                       status:
                           description: OidcConfigStatus defines the observed state of an OidcConfig.
                           properties:

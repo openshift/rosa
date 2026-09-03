@@ -28,3 +28,27 @@
 - name: capacity-reservation-id
 - name: type
 - name: capacity-reservation-preference
+
+# hyperfleet only commands
+# currently manually set, maybe generate as part of generate-hyperfleet?
+- name: "ami"
+- name: "auto-repair"
+- name: "capacity-reservation-market-type"
+- name: "cluster-name"
+- name: "display-name"
+- name: "encrypted"
+- name: "encryption-key"
+- name: "filters"
+- name: "image"
+- name: "image-type"
+- name: "instance-profile"
+- name: "iops"
+- name: "max-price"
+- name: "placement-market-type"
+- name: "platform-type"
+- name: "preference"
+- name: "resource-tags"
+- name: "root-volume-type"
+- name: "security-groups"
+- name: "size"
+- name: "tenancy"
