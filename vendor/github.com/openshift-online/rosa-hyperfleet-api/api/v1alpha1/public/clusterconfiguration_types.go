@@ -5,6 +5,7 @@ package public
 // ClusterConfiguration specifies configuration for individual OCP components in the cluster.
 // This is a HyperFleet-owned mirror of hypershiftv1beta1.ClusterConfiguration that allows
 // us to add granular markers to nested fields like kubelet config.
+// +hyperfleet:upstream-reduced-object=hypershiftv1beta1.ClusterConfiguration
 type ClusterConfiguration struct {
 	// kubelet contains the configuration for kubelet on nodes.
 	// +hyperfleet:write-mode=service-set
