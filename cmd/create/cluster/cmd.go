@@ -56,6 +56,8 @@ import (
 	"github.com/openshift/rosa/pkg/helper/roles"
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/helper/versions"
+	"github.com/openshift/rosa/pkg/hyperfleet"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -991,6 +993,15 @@ func initFlags(cmd *cobra.Command) {
 	interactive.AddFlag(flags)
 	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
+
+	// ── HyperFleet-specific flags ────────────────────────────────────────────
+	// Registers new HF-only flags (e.g. --display-name, --subnet-id, --delete-protection).
+	// Flags already registered by OCM (e.g. --cluster-name, --version) are silently skipped.
+	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
+		func() { hfpathbind.RegisterClusterCreateFlags(cmd, &hfClusterInput) },
+		hfpathbind.ClusterCreatePlatformAPIFlags,
+	)
+	hyperfleet.AddPlatformAPIFlagSection(cmd)
 }
 
 func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -999,7 +1010,7 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 
 func run(cmd *cobra.Command, _ []string) {
 	if hfEnabled() {
-		hfCreateCluster()
+		hfCreateCluster(cmd)
 		return
 	}
 

@@ -132,8 +132,25 @@ clean:
 		*.sha256 \
 		$(NULL)
 
+PATHBIND_GEN_PKG    := github.com/openshift-online/rosa-hyperfleet-api/clientset/cmd/pathbind-gen
+PATHBIND_GEN_BIN    := /tmp/pathbind-gen-$(shell git rev-parse --short HEAD)
+PATHBIND_DRAFT      := vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/pathbind/pathbind-draft.yaml
+PATHBIND_OVERRIDES  := pkg/hyperfleet/pathbind-overrides.yaml
+PATHBIND_OUT        := pkg/hyperfleet/pathbind
+
+$(PATHBIND_GEN_BIN):
+	GOFLAGS="-mod=mod" go build -o $(PATHBIND_GEN_BIN) $(PATHBIND_GEN_PKG)
+
+.PHONY: generate-hyperfleet
+generate-hyperfleet: $(PATHBIND_GEN_BIN)
+	$(PATHBIND_GEN_BIN) \
+		--mode=cobra \
+		--draft=$(PATHBIND_DRAFT) \
+		--overrides=$(PATHBIND_OVERRIDES) \
+		--output-dir=$(PATHBIND_OUT)
+
 .PHONY: generate
-generate: $(GO_BINDATA) mocks
+generate: $(GO_BINDATA) mocks generate-hyperfleet
 	$(GO_BINDATA) -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 	go generate ./...
 

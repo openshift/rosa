@@ -21,6 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -183,6 +185,13 @@ func NewEditMachinePoolCommand() *cobra.Command {
 
 	output.AddFlag(cmd)
 	ocm.AddClusterFlag(cmd)
+	// ── HyperFleet flag sections ─────────────────────────────────────────────
+	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
+		func() { hfpathbind.RegisterNodePoolUpdateFlags(cmd, &hfNodePoolUpdateInput) },
+		hfpathbind.NodePoolUpdatePlatformAPIFlags,
+	)
+	// AddPlatformAPIFlagSection is called from the edit parent after MarkRegionDeprecated,
+	// since MarkRegionDeprecated overwrites SetHelpFunc and would orphan the wrapper here.
 	return cmd
 }
 
