@@ -2,6 +2,8 @@ package machinepool
 
 import (
 	"fmt"
+	"io"
+	"os"
 
 	"go.uber.org/mock/gomock"
 
@@ -245,7 +247,7 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 
 	BeforeEach(func() {
 		mockClient = mock.NewMockClient(gomock.NewController(GinkgoT()))
-		r = &rosa.Runtime{AWSClient: mockClient}
+		r = &rosa.Runtime{AWSClient: mockClient, Reporter: reporter.CreateReporter()}
 		cmd = &cobra.Command{}
 		az = "us-east-1a"
 		subnetId1 = "subnet-123"
@@ -257,6 +259,7 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 		BeforeEach(func() {
 			privateSubnets = []ec2types.Subnet{{AvailabilityZone: &az, SubnetId: &subnetId1}}
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			cluster = MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateReady)
 				b := cmv1.HypershiftBuilder{}
@@ -278,6 +281,7 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 			args.AvailabilityZone = "us-west-1a"
 			privateSubnets = []ec2types.Subnet{{AvailabilityZone: &az, SubnetId: &subnetId1}}
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			cluster = MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateReady)
 				b := cmv1.HypershiftBuilder{}
@@ -293,34 +297,62 @@ var _ = Describe("getSubnetFromAvailabilityZone functionality", func() {
 			Expect(subnet).To(Equal(""))
 		})
 	})
+
+	When("VPC has local zone subnets for an HCP cluster", func() {
+		BeforeEach(func() {
+			localZoneAz := "us-east-1-atl-1a"
+			localSubnetId := "subnet-local"
+			privateSubnets = []ec2types.Subnet{
+				{AvailabilityZone: &az, SubnetId: &subnetId1},
+				{AvailabilityZone: &localZoneAz, SubnetId: &localSubnetId},
+			}
+			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(localZoneAz).Return("local-zone", nil)
+			cluster = MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+				c.Hypershift(cmv1.NewHypershift().Enabled(true)).
+					Nodes(cmv1.NewClusterNodes().AvailabilityZones(az)).
+					AWS(cmv1.NewAWS().SubnetIDs(subnetId1))
+			})
+		})
+
+		It("excludes local zone subnets and returns only standard AZ subnets", func() {
+			subnet, err := getSubnetFromAvailabilityZone(cmd, r, false, cluster, args)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(subnet).To(Equal(subnetId1))
+		})
+	})
 })
 
 var _ = Describe("getSubnetOptions", func() {
 	var (
 		mockCtrl       *gomock.Controller
 		mockAWS        *mock.MockClient
-		runtime        *rosa.Runtime
+		r              *rosa.Runtime
 		cluster        *cmv1.Cluster
 		subnetIds      []string
+		azs            []string
 		privateSubnets []ec2types.Subnet
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockAWS = mock.NewMockClient(mockCtrl)
-		runtime = &rosa.Runtime{AWSClient: mockAWS}
+		r = &rosa.Runtime{AWSClient: mockAWS, Reporter: reporter.CreateReporter()}
 		subnetIds = []string{"subnet-123", "subnet-456"}
+		azs = []string{"us-east-1a", "us-east-1b"}
 		cluster = MockCluster(func(c *cmv1.ClusterBuilder) {
 			c.State(cmv1.ClusterStateReady)
 			b := cmv1.HypershiftBuilder{}
 			b.Enabled(true)
 			c.Hypershift(&b)
-			c.MultiAZ(true).Nodes(cmv1.NewClusterNodes().AvailabilityZones("us-east-1a", "us-east-1b")).
+			c.MultiAZ(true).Nodes(cmv1.NewClusterNodes().AvailabilityZones(azs...)).
 				AWS(cmv1.NewAWS().SubnetIDs(subnetIds...))
 		})
 		privateSubnets = []ec2types.Subnet{
-			{SubnetId: &subnetIds[0]},
-			{SubnetId: &subnetIds[1]},
+			{SubnetId: &subnetIds[0], AvailabilityZone: &azs[0]},
+			{SubnetId: &subnetIds[1], AvailabilityZone: &azs[1]},
 		}
 	})
 
@@ -331,10 +363,12 @@ var _ = Describe("getSubnetOptions", func() {
 	When("GetVPCPrivateSubnets returns subnets successfully", func() {
 		BeforeEach(func() {
 			mockAWS.EXPECT().GetVPCPrivateSubnets(subnetIds[0]).Return(privateSubnets, nil)
+			mockAWS.EXPECT().GetAvailabilityZoneType("us-east-1a").Return("availability-zone", nil)
+			mockAWS.EXPECT().GetAvailabilityZoneType("us-east-1b").Return("availability-zone", nil)
 		})
 
 		It("returns a slice of subnet options without error", func() {
-			subnetOptions, err := getSubnetOptions(runtime, cluster)
+			subnetOptions, err := getSubnetOptions(r, cluster)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(subnetOptions).To(HaveLen(2))
 		})
@@ -346,9 +380,87 @@ var _ = Describe("getSubnetOptions", func() {
 		})
 
 		It("returns an error and no subnet options", func() {
-			subnetOptions, err := getSubnetOptions(runtime, cluster)
+			subnetOptions, err := getSubnetOptions(r, cluster)
 			Expect(err).To(HaveOccurred())
 			Expect(subnetOptions).To(BeNil())
+		})
+	})
+
+	When("VPC has local zone and wavelength zone subnets for an HCP cluster", func() {
+		var localZoneAz, wavelengthAz string
+
+		BeforeEach(func() {
+			localZoneAz = "us-east-1-atl-1a"
+			wavelengthAz = "us-east-1-wl1-atl-wlz-1"
+			localSubnetId := "subnet-local"
+			wavelengthSubnetId := "subnet-wavelength"
+			allSubnets := make([]ec2types.Subnet, 0, len(privateSubnets)+2)
+			allSubnets = append(allSubnets, privateSubnets...)
+			allSubnets = append(allSubnets,
+				ec2types.Subnet{SubnetId: &localSubnetId, AvailabilityZone: &localZoneAz},
+				ec2types.Subnet{SubnetId: &wavelengthSubnetId, AvailabilityZone: &wavelengthAz},
+			)
+			mockAWS.EXPECT().GetVPCPrivateSubnets(subnetIds[0]).Return(allSubnets, nil)
+			mockAWS.EXPECT().GetAvailabilityZoneType("us-east-1a").Return("availability-zone", nil)
+			mockAWS.EXPECT().GetAvailabilityZoneType("us-east-1b").Return("availability-zone", nil)
+			mockAWS.EXPECT().GetAvailabilityZoneType(localZoneAz).Return("local-zone", nil)
+			mockAWS.EXPECT().GetAvailabilityZoneType(wavelengthAz).Return("wavelength-zone", nil)
+		})
+
+		It("excludes local zone and wavelength zone subnets and warns about it", func() {
+			var subnetOptions []string
+			var err error
+			stderr := captureStderr(func() {
+				subnetOptions, err = getSubnetOptions(r, cluster)
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(subnetOptions).To(HaveLen(2))
+			for _, opt := range subnetOptions {
+				Expect(opt).ToNot(ContainSubstring("subnet-local"))
+				Expect(opt).ToNot(ContainSubstring("subnet-wavelength"))
+			}
+			Expect(stderr).To(ContainSubstring("[subnet-local, subnet-wavelength]"))
+		})
+	})
+
+	When("all subnets are in non-standard zones for an HCP cluster", func() {
+		BeforeEach(func() {
+			localZoneAz := "us-east-1-atl-1a"
+			localSubnetId1 := "subnet-local1"
+			localSubnetId2 := "subnet-local2"
+			allLocalSubnets := []ec2types.Subnet{
+				{SubnetId: &localSubnetId1, AvailabilityZone: &localZoneAz},
+				{SubnetId: &localSubnetId2, AvailabilityZone: &localZoneAz},
+			}
+			mockAWS.EXPECT().GetVPCPrivateSubnets(subnetIds[0]).Return(allLocalSubnets, nil)
+			mockAWS.EXPECT().GetAvailabilityZoneType(localZoneAz).Return("local-zone", nil)
+		})
+
+		It("returns an error instead of panicking", func() {
+			subnetOptions, err := getSubnetOptions(r, cluster)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(
+				"no private subnets available after excluding local zone and wavelength zone subnets"))
+			Expect(subnetOptions).To(BeNil())
+		})
+	})
+
+	When("cluster is classic (not HCP)", func() {
+		BeforeEach(func() {
+			cluster = MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.State(cmv1.ClusterStateReady)
+				c.Hypershift(cmv1.NewHypershift().Enabled(false))
+				c.MultiAZ(false).
+					Nodes(cmv1.NewClusterNodes().AvailabilityZones("us-east-1a")).
+					AWS(cmv1.NewAWS().SubnetIDs(subnetIds...))
+			})
+			mockAWS.EXPECT().GetVPCPrivateSubnets(subnetIds[0]).Return(privateSubnets, nil)
+		})
+
+		It("does not filter any subnets", func() {
+			subnetOptions, err := getSubnetOptions(r, cluster)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(subnetOptions).To(HaveLen(2))
 		})
 	})
 })
@@ -1282,3 +1394,20 @@ var _ = Describe("ValidateImageType", func() {
 		Expect(err).To(HaveOccurred())
 	})
 })
+
+func captureStderr(function func()) string {
+	r, w, err := os.Pipe()
+	Expect(err).ToNot(HaveOccurred())
+	oldStderr := os.Stderr
+	os.Stderr = w
+	defer func() {
+		os.Stderr = oldStderr
+	}()
+
+	function()
+
+	Expect(w.Close()).To(Succeed())
+	stderr, err := io.ReadAll(r)
+	Expect(err).ToNot(HaveOccurred())
+	return string(stderr)
+}

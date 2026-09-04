@@ -1581,6 +1581,7 @@ var _ = Describe("NodePools", func() {
 
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("you must supply a valid instance type"))
@@ -1778,6 +1779,7 @@ var _ = Describe("NodePools", func() {
 
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
 			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
 			machineType, err := mtBuilder.Build()
@@ -1832,6 +1834,7 @@ var _ = Describe("NodePools", func() {
 				[]*cmv1.Version{versionObj})))
 
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
 
 			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
@@ -1911,6 +1914,7 @@ var _ = Describe("NodePools", func() {
 				[]*cmv1.Version{versionObj})))
 
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
 
 			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
@@ -1995,6 +1999,7 @@ var _ = Describe("NodePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
 				[]*cmv1.Version{versionObj})))
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
 			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
 			machineType, err := mtBuilder.Build()
@@ -2314,6 +2319,7 @@ var _ = Describe("NodePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList(
 				[]*cmv1.Version{versionObj})))
 			mockClient.EXPECT().GetVPCPrivateSubnets(gomock.Any()).Return(privateSubnets, nil)
+			mockClient.EXPECT().GetAvailabilityZoneType(az).Return("availability-zone", nil)
 			mockClient.EXPECT().GetSubnetAvailabilityZone(subnet).Return(az, nil)
 			mtBuilder := cmv1.NewMachineType().ID("t3.small").Name("t3.small")
 			machineType, err := mtBuilder.Build()
