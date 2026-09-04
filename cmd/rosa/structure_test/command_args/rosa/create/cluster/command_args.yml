@@ -82,6 +82,7 @@
 - name: disable-scp-checks
 - name: disable-workload-monitoring
 - name: enable-delete-protection
+- name: notification-contacts
 - name: watch
 - name: dry-run
 - name: fake-cluster

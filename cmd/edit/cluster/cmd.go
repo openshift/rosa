@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/clusterregistryconfig"
+	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/helper/autonode"
@@ -42,12 +43,14 @@ import (
 )
 
 const enableDeleteProtectionFlagName = "enable-delete-protection"
+const notificationContactsFlagName = "notification-contacts"
 
 var args struct {
 	// Basic options
 	expirationTime         string
 	expirationDuration     time.Duration
 	enableDeleteProtection bool
+	notificationContacts   []string
 
 	// Networking options
 	private                   bool
@@ -134,6 +137,14 @@ func initFlags(cmd *cobra.Command) {
 		false,
 		"Enable or disable cluster delete protection against accidental deletion. "+
 			"Use '--enable-delete-protection=false' to disable.",
+	)
+	flags.StringSliceVar(
+		&args.notificationContacts,
+		notificationContactsFlagName,
+		nil,
+		"Comma-separated list of OCM account usernames or email addresses to receive "+
+			"cluster notification emails. All contacts must belong to the same Red Hat "+
+			"organization as the cluster. Pass an empty value to remove all notification contacts.",
 	)
 	// Cluster expiration is not supported in production
 	flags.MarkHidden("expiration-time")
@@ -292,7 +303,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
 			"registry-config-allowed-registries-for-import", "enable-delete-protection", "spot-termination-queue-url",
-			"channel-group", "network-type", "channel"} {
+			"channel-group", "network-type", "channel", notificationContactsFlagName} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
@@ -851,6 +862,75 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			r.Reporter.Errorf("Failed to update cluster delete protection: %v", err)
 			os.Exit(1)
 		}
+	}
+
+	// Notification Contacts
+	var notificationContacts []string
+	updateNotificationContacts := cmd.Flags().Changed(notificationContactsFlagName)
+	if updateNotificationContacts {
+		notificationContacts = args.notificationContacts
+	}
+	showNotificationContactsPrompt := false
+	if !updateNotificationContacts && interactive.Enabled() {
+		if cmd.Flags().Changed("interactive") {
+			showNotificationContactsPrompt = true
+		} else {
+			cfg, cfgErr := config.Load()
+			if cfgErr == nil && cfg.ClientID != "" {
+				showNotificationContactsPrompt = true
+			}
+		}
+	}
+	if showNotificationContactsPrompt {
+		updateValue, err := interactive.GetBool(interactive.Input{
+			Question: "Update notification contacts",
+			Default:  false,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value: %v", err)
+			os.Exit(1)
+		}
+		updateNotificationContacts = updateValue
+	}
+	if updateNotificationContacts && interactive.Enabled() {
+		promptDefault := strings.Join(notificationContacts, ",")
+		if !cmd.Flags().Changed(notificationContactsFlagName) {
+			currentContacts, err := r.OCMClient.GetSubscriptionNotificationContacts(
+				cmd.Context(), cluster.Subscription().ID())
+			if err != nil {
+				r.Reporter.Errorf("Could not fetch current notification contacts: %v", err)
+				os.Exit(1)
+			}
+			promptDefault = strings.Join(currentContacts, ",")
+		}
+		ncInput, err := interactive.GetString(interactive.Input{
+			Question: "Notification contact usernames or emails (comma-separated)",
+			Help:     cmd.Flags().Lookup(notificationContactsFlagName).Usage,
+			Default:  promptDefault,
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid value for notification contacts: %v", err)
+			os.Exit(1)
+		}
+		notificationContacts = helper.HandleEmptyStringOnSlice(strings.Split(ncInput, ","))
+	}
+	if updateNotificationContacts {
+		subID := cluster.Subscription().ID()
+		if subID == "" {
+			r.Reporter.Errorf("Cluster subscription ID is not available. " +
+				"Notification contacts could not be updated.")
+			os.Exit(1)
+		}
+		contacts := notificationContacts
+		if len(contacts) == 1 &&
+			(contacts[0] == input.DoubleQuotesToRemove || contacts[0] == "") {
+			contacts = []string{}
+		}
+		if err := r.OCMClient.UpdateSubscriptionNotificationContacts(cmd.Context(), subID, contacts); err != nil {
+			r.Reporter.Errorf("Failed to update notification contacts: %v", err)
+			os.Exit(1)
+		}
+		r.Reporter.Infof("Updated notification contacts for cluster '%s'", clusterKey)
 	}
 
 	// SDN -> OVN Migration
