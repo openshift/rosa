@@ -29,7 +29,7 @@ Target location: `pkg/` (stable, exported). Each entry shows **target name** wit
 | `pkg/clusterregistryconfig` | Needs split | Registry config spec building for hosted clusters and validation rules. |
 | `pkg/constants` | Needs split | Environment variable names (`ROSA_TOKEN`, `AWS_PROFILE`, `OCM_CONFIG`, etc.). OIDC flag-name and help-message constants in `oidc_constants.go` are CLI-specific and should be separated. |
 | `pkg/externalauthprovider` | Needs split | External auth provider creation via OCM, URL validation, and claim mapping logic. |
-| `pkg/fedramp` | Needs split | FedRAMP/GovCloud environment configuration: URL and token endpoint mappings per environment. |
+| `pkg/fedramp` | Needs split | FedRAMP/GovCloud environment configuration: URL and token endpoint mappings per environment, and GovCloud account-field validation. |
 | `pkg/utils` (`pkg/helper`) | Needs split | General-purpose utilities: random labels, string/slice operations, shell quoting, file saving, `IsBYOVPC` check. |
 | `pkg/utils/urlutil` (`pkg/helper/url`) | Clean | URL validation utilities: credential character checks, IPv6 literal host detection. |
 | `pkg/utils/fileutil` (`pkg/input`) | Needs split | YAML/JSON file unmarshalling and input helpers. |
@@ -47,6 +47,7 @@ Target location: `pkg/` (stable, exported). Each entry shows **target name** wit
 | `pkg/machinepool` | Needs split | Machine pool and node pool CRUD via OCM, replica/autoscaling validation, spot instance logic, root disk sizing, version compatibility checks. Most entangled package. |
 | `pkg/properties` | Clean | OCM cluster property key constants (`rosa_cli_version`, `fake_cluster`, etc.). |
 | `pkg/version` | Needs split | Version retrieval from mirror.openshift.com, comparison logic, cache-backed version list. Reusable API for TUIs, automation, and other non-CLI consumers. Cobra-accepting functions (`ShouldRunCheck`) and `output.HasFlag()` checks move to `internal/cli/`. |
+| `pkg/errors` | Clean | Shared `ValidationError` type (`Field`, `Message`, `Err`) distinguishing invalid input from operational failures across `Request.Validate()`-based workflows. No dependencies of its own; imported under the `rosaerrors` alias since it shares its name with the standard library `errors` package. |
 
 ## Private Core Implementation
 
@@ -77,6 +78,7 @@ Target location: `cmd/` (commands) or `internal/cli/` (shared CLI code). Each en
 | `internal/cli/commandbuilder` (`pkg/aws/commandbuilder`) | Builds human-readable AWS CLI command strings (e.g., `aws iam create-role ...`) for "manual mode" output. |
 | `internal/cli/commandbuilder/roles` (`pkg/aws/commandbuilder/helper/roles`) | Generates manual-mode AWS CLI commands for operator roles. |
 | `internal/cli/commands` (`pkg/commands`) | Single-function command registry wiring all subcommands onto root `cobra.Command`. |
+| `internal/cli/rolebridge` (`pkg/aws/rolebridge`) | Adapts `aws.Client`'s reporter.Logger-based `EnsureRole`/`AttachRolePolicy` (and context-free `PutRolePolicy`) to `context.Context`-based signatures, so workflow packages can declare `context.Context`-based client interfaces without depending on `pkg/reporter`. Temporary: delete once those `aws.Client` methods stop taking a `reporter.Logger`. |
 | `internal/cli/debug` (`pkg/debug`) | Adds the `--debug` pflag and tracks its boolean state. |
 | `internal/cli/interactive` (`pkg/interactive`) | `survey`-based `GetString`, `GetBool`, `GetInt`, `GetOption`, `GetPassword`, validation combinators, `--interactive` pflag. |
 | `internal/cli/interactive/confirm` (`pkg/interactive/confirm`) | `--yes` flag and confirmation prompts using `survey`. |
@@ -142,7 +144,7 @@ rule; this section lists only what must move.
 
 | Target | Extract to CLI Layer |
 |--------|----------------------|
-| `internal/core/aws` (`pkg/aws`) | `os.Exit` (7 sites via `CreateNewClientOrExit` and `helpers.go`), `fedramp.Enabled()` (3 sites), `fmt.Printf` error output (4 sites). |
+| `internal/core/aws` (`pkg/aws`) | `os.Exit` (7 sites via `CreateNewClientOrExit` and `helpers.go`), `fedramp.Enabled()` (3 sites), `fmt.Printf` error output (4 sites). `EnsureRole`/`AttachRolePolicy` take a `reporter.Logger` parameter and call it directly; move to returning structured progress data and let the CLI layer report it, once callers no longer depend on the current signature (`pkg/aws/rolebridge` bridges this in the meantime). |
 | `internal/core/ocm` (`pkg/ocm`) | Cobra `--cluster` flag with shell completion, `reporter.IsTerminal()`, `output.HasFlag()`, `os.Exit(1)` (2 sites), `CreateNewClientOrExit`. |
 | `internal/core/policy` (`pkg/policy`) | `reporter.Logger` parameter on `AutoAttachArbitraryPolicy`. `ManualAttachArbitraryPolicy` and `ManualDetachArbitraryPolicy` generate `aws iam ...` command strings for terminal display; move to `internal/cli/`. `AutoDetachArbitraryPolicy` returns human-readable status messages; return structured results instead. |
 | `internal/core/sharedvpcroles` (`pkg/roles`) | `rosa.Runtime` and `arguments` (CLI flag package) dependencies. |

@@ -27,12 +27,11 @@ import (
 // it calls, not a method added here. See "Client Interfaces Are Scoped Per
 // Workflow, Not Per Package" in guidelines/workflow-conventions.md.
 //
-// TODO: It is not yet implemented or wired up anywhere; the CLI command in
-// cmd/create/iamserviceaccount still calls aws.Client directly. When that
-// command is migrated to call IAMServiceAccountService, the CLI layer will
-// provide an adapter around aws.Client (which passes reporter.Logger
-// through to EnsureRole and AttachRolePolicy) so that the core workflows
-// stay free of reporter and CLI dependencies.
+// cmd/create/iamserviceaccount wires this up with pkg/aws/rolebridge.Client,
+// which adapts aws.Client's reporter.Logger-based EnsureRole/AttachRolePolicy
+// to this context.Context-based interface so this core workflow package
+// stays free of reporter and CLI dependencies. rolebridge is shared by any
+// workflow needing these same IAM operations -- see its package doc.
 type CreateIAMServiceAccountClient interface {
 	// EnsureRole creates or updates an IAM role with the given trust policy and tags.
 	EnsureRole(ctx context.Context, name string, policy string, permissionsBoundary string,
