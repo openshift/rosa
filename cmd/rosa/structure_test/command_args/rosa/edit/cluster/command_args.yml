@@ -3,6 +3,7 @@
 - name: expiration-time
 - name: expiration
 - name: enable-delete-protection
+- name: notification-contacts
 - name: private
 - name: disable-workload-monitoring
 - name: http-proxy
