@@ -120,6 +120,22 @@ When adding or changing a CLI command:
 - Prefer placing business logic in `pkg/` and keeping Cobra command files thin.
 - Review similar commands in the same area before adding new flags, validation, or flow control.
 
+## Hyperfleet Dispatch Pattern
+
+Each command that supports the Platform API (hyperfleet) path uses a `dispatch` function
+as the Cobra `Run:` entrypoint. The dispatch checks `hyperfleet.Enabled()` and routes to
+either the v2 runner or the original v1 `run()` function.
+
+When adding hyperfleet support to a command:
+
+- Implement the v2 logic in a separate `run_v2.go` file inside the command package.
+  Use the name `runV2` for the entrypoint function. Avoid using product names like
+  "hyperfleet" in file or function names under `cmd/` — use `v2` instead.
+- Replace the stub error in `dispatch.go` with a call to `runV2`.
+- Do not modify the original `run()` function or add hyperfleet conditionals inside it.
+- Keep the v2 runner self-contained: it should build its own runtime
+  (e.g., `NewRuntime().WithHyperFleet()`) without affecting the v1 path.
+
 ## Tests And Verification
 
 - Run `make install-hooks` once per clone before committing.
