@@ -47,7 +47,7 @@ var Cmd = &cobra.Command{
 	Long:  "Delete cluster.",
 	Example: `  # Delete a cluster named "mycluster"
   rosa delete cluster --cluster=mycluster`,
-	Run:  run,
+	Run:  dispatch,
 	Args: cobra.NoArgs,
 }
 

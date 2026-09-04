@@ -103,7 +103,7 @@ func makeCmd() *cobra.Command {
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
-		Run:  run,
+		Run:  dispatch,
 		Args: cobra.NoArgs,
 	}
 }
