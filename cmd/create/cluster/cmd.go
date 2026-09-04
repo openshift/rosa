@@ -50,6 +50,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/clusterregistryconfig"
+	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/helper"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
@@ -105,6 +106,7 @@ const (
 	privateLinkFlagName            = "private-link"
 	privateFlagName                = "private"
 	enableDeleteProtectionFlagName = "enable-delete-protection"
+	notificationContactsFlagName   = "notification-contacts"
 )
 
 var args struct {
@@ -139,6 +141,7 @@ var args struct {
 	flavour                   string
 	disableWorkloadMonitoring bool
 	enableDeleteProtection    bool
+	notificationContacts      []string
 	ec2MetadataHttpTokens     string
 
 	//Encryption
@@ -729,6 +732,14 @@ func initFlags(cmd *cobra.Command) {
 		enableDeleteProtectionFlagName,
 		false,
 		"Enable cluster delete protection against accidental deletion after the cluster is created.",
+	)
+	flags.StringSliceVar(
+		&args.notificationContacts,
+		notificationContactsFlagName,
+		nil,
+		"Comma-separated list of OCM account usernames or email addresses to receive "+
+			"cluster notification emails. All contacts must belong to the same Red Hat "+
+			"organization as the cluster.",
 	)
 
 	flags.BoolVarP(
@@ -3142,6 +3153,34 @@ func run(cmd *cobra.Command, _ []string) {
 		args.enableDeleteProtection = enableDeleteProtection
 	}
 
+	notificationContacts := args.notificationContacts
+	showNotificationContactsPrompt := false
+	if interactive.Enabled() && cmd.Flags().Changed("interactive") {
+		showNotificationContactsPrompt = true
+	} else if interactive.Enabled() {
+		cfg, cfgErr := config.Load()
+		if cfgErr == nil && cfg.ClientID != "" {
+			showNotificationContactsPrompt = true
+		}
+	}
+	if showNotificationContactsPrompt {
+		ncInput, err := interactive.GetString(interactive.Input{
+			Question: "Notification contact usernames or emails (comma-separated, leave empty to skip)",
+			Help:     cmd.Flags().Lookup(notificationContactsFlagName).Usage,
+			Default:  strings.Join(notificationContacts, ","),
+		})
+		if err != nil {
+			r.Reporter.Errorf("Expected a valid notification-contacts value: %v", err)
+			os.Exit(1)
+		}
+		if ncInput != "" {
+			notificationContacts = helper.HandleEmptyStringOnSlice(strings.Split(ncInput, ","))
+		} else {
+			notificationContacts = nil
+		}
+		args.notificationContacts = notificationContacts
+	}
+
 	// Cluster-wide proxy configuration
 	if (subnetsProvided || (useExistingVPC && !enableProxy)) && interactive.Enabled() {
 		enableProxy, err = interactive.GetBool(interactive.Input{
@@ -3716,6 +3755,26 @@ func run(cmd *cobra.Command, _ []string) {
 		if err := r.OCMClient.UpdateClusterDeleteProtection(cluster.ID(), deleteProtection); err != nil {
 			r.Reporter.Errorf(
 				"Cluster '%s' was created but delete protection could not be enabled: %v",
+				cluster.ID(),
+				err,
+			)
+			os.Exit(1)
+		}
+	}
+
+	if len(notificationContacts) > 0 {
+		subID := cluster.Subscription().ID()
+		if subID == "" {
+			r.Reporter.Errorf(
+				"Cluster '%s' was created but notification contacts could not be set: "+
+					"subscription ID is not available",
+				cluster.ID(),
+			)
+			os.Exit(1)
+		}
+		if err := r.OCMClient.UpdateSubscriptionNotificationContacts(cmd.Context(), subID, notificationContacts); err != nil {
+			r.Reporter.Errorf(
+				"Cluster '%s' was created but notification contacts could not be set: %v",
 				cluster.ID(),
 				err,
 			)
@@ -4343,6 +4402,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 	if args.enableDeleteProtection {
 		command += " --enable-delete-protection"
+	}
+	if len(args.notificationContacts) > 0 {
+		command += fmt.Sprintf(" --notification-contacts %s", strings.Join(args.notificationContacts, ","))
 	}
 	if userSelectedAvailabilityZones {
 		command += fmt.Sprintf(" --availability-zones %s", strings.Join(spec.AvailabilityZones, ","))

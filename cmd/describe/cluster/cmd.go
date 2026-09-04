@@ -122,6 +122,15 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	var notificationContactUsernames []string
+	if subscriptionExists {
+		contacts, err := r.OCMClient.GetSubscriptionNotificationContacts(cmd.Context(), cluster.Subscription().ID())
+		if err != nil {
+			r.Reporter.Debugf("Failed to get notification contacts: %s", err)
+		}
+		notificationContactUsernames = contacts
+	}
+
 	if !isHypershift {
 		scheduledUpgrade, upgradeState, err = r.OCMClient.GetScheduledUpgrade(cluster.ID())
 		if err != nil {
@@ -134,6 +143,9 @@ func run(cmd *cobra.Command, argv []string) {
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
+			}
+			if len(notificationContactUsernames) > 0 {
+				f["notification_contacts"] = notificationContactUsernames
 			}
 			err = output.Print(f)
 			if err != nil {
@@ -154,6 +166,9 @@ func run(cmd *cobra.Command, argv []string) {
 			if err != nil {
 				r.Reporter.Errorf("%s", err)
 				os.Exit(1)
+			}
+			if len(notificationContactUsernames) > 0 {
+				f["notification_contacts"] = notificationContactUsernames
 			}
 			err = output.Print(f)
 			if err != nil {
@@ -447,6 +462,11 @@ func run(cmd *cobra.Command, argv []string) {
 		deleteProtection = EnabledOutput
 	}
 
+	notificationContactsDisplay := ""
+	if len(notificationContactUsernames) > 0 {
+		notificationContactsDisplay = output.PrintStringSlice(notificationContactUsernames)
+	}
+
 	str = fmt.Sprintf("%s"+
 		"State:                      %s %s\n"+
 		"Private:                    %s\n"+
@@ -457,6 +477,13 @@ func run(cmd *cobra.Command, argv []string) {
 		isPrivate,
 		deleteProtection,
 		cluster.CreationTimestamp().Format("Jan _2 2006 15:04:05 MST"))
+
+	if notificationContactsDisplay != "" {
+		str = fmt.Sprintf("%s"+
+			"Notification Contacts:      %s\n",
+			str,
+			notificationContactsDisplay)
+	}
 
 	if !isHypershift {
 		str = fmt.Sprintf("%s"+
