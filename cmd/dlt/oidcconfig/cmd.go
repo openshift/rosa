@@ -75,6 +75,10 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	if hfEnabled() {
+		hfDeleteOidcConfig()
+		return
+	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
