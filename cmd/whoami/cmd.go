@@ -132,7 +132,7 @@ func runWithRuntime(r *rosa.Runtime) error {
 	}
 
 	if hfURL != "" {
-		outputObject["Platform API"] = hfURL
+		outputObject["HFT API"] = hfURL
 	}
 
 	if ocmArmed {

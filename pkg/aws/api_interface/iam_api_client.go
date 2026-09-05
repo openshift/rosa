@@ -129,6 +129,18 @@ type IamApiClient interface {
 		params *iam.ListInstanceProfilesForRoleInput, optFns ...func(*iam.Options),
 	) (*iam.ListInstanceProfilesForRoleOutput, error)
 
+	GetInstanceProfile(ctx context.Context,
+		params *iam.GetInstanceProfileInput, optFns ...func(*iam.Options),
+	) (*iam.GetInstanceProfileOutput, error)
+
+	CreateInstanceProfile(ctx context.Context,
+		params *iam.CreateInstanceProfileInput, optFns ...func(*iam.Options),
+	) (*iam.CreateInstanceProfileOutput, error)
+
+	AddRoleToInstanceProfile(ctx context.Context,
+		params *iam.AddRoleToInstanceProfileInput, optFns ...func(*iam.Options),
+	) (*iam.AddRoleToInstanceProfileOutput, error)
+
 	ListRolePolicies(ctx context.Context,
 		params *iam.ListRolePoliciesInput, optFns ...func(*iam.Options),
 	) (*iam.ListRolePoliciesOutput, error)

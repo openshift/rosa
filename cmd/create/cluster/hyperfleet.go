@@ -105,6 +105,14 @@ func (h *hyperfleetClusterCreate) PreRequest(
 		return fmt.Errorf("--subnet-id (or --subnet-ids) is required")
 	}
 
+	// OIDC config ID is optional but recommended
+	oidcConfigID := args.oidcConfigId
+	if oidcConfigID == "" {
+		r.Reporter.Warnf("--oidc-config-id not provided, cluster will use auto-generated OIDC config")
+	} else {
+		r.Reporter.Infof("Using OIDC config ID: %s", oidcConfigID)
+	}
+
 	// Derive VPC ID and availability zone from the subnet.
 	subnetOut, err := h.describeSubnets(ctx, r.AWSConfig, input.SubnetID)
 	if err != nil {
@@ -121,6 +129,7 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	if input.Zone == "" {
 		return fmt.Errorf("subnet %q has no availability zone", input.SubnetID)
 	}
+
 	input.Region = r.Region
 	return nil
 }

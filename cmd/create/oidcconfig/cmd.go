@@ -135,6 +135,10 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	if hfEnabled() {
+		hfCreateOidcConfig()
+		return
+	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

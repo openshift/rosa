@@ -41,6 +41,26 @@ func (m *MockIamApiClient) EXPECT() *MockIamApiClientMockRecorder {
 	return m.recorder
 }
 
+// AddRoleToInstanceProfile mocks base method.
+func (m *MockIamApiClient) AddRoleToInstanceProfile(ctx context.Context, params *iam.AddRoleToInstanceProfileInput, optFns ...func(*iam.Options)) (*iam.AddRoleToInstanceProfileOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "AddRoleToInstanceProfile", varargs...)
+	ret0, _ := ret[0].(*iam.AddRoleToInstanceProfileOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AddRoleToInstanceProfile indicates an expected call of AddRoleToInstanceProfile.
+func (mr *MockIamApiClientMockRecorder) AddRoleToInstanceProfile(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRoleToInstanceProfile", reflect.TypeOf((*MockIamApiClient)(nil).AddRoleToInstanceProfile), varargs...)
+}
+
 // AttachRolePolicy mocks base method.
 func (m *MockIamApiClient) AttachRolePolicy(ctx context.Context, params *iam.AttachRolePolicyInput, optFns ...func(*iam.Options)) (*iam.AttachRolePolicyOutput, error) {
 	m.ctrl.T.Helper()
@@ -99,6 +119,26 @@ func (mr *MockIamApiClientMockRecorder) CreateAccessKey(ctx, params any, optFns 
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAccessKey", reflect.TypeOf((*MockIamApiClient)(nil).CreateAccessKey), varargs...)
+}
+
+// CreateInstanceProfile mocks base method.
+func (m *MockIamApiClient) CreateInstanceProfile(ctx context.Context, params *iam.CreateInstanceProfileInput, optFns ...func(*iam.Options)) (*iam.CreateInstanceProfileOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateInstanceProfile", varargs...)
+	ret0, _ := ret[0].(*iam.CreateInstanceProfileOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateInstanceProfile indicates an expected call of CreateInstanceProfile.
+func (mr *MockIamApiClientMockRecorder) CreateInstanceProfile(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInstanceProfile", reflect.TypeOf((*MockIamApiClient)(nil).CreateInstanceProfile), varargs...)
 }
 
 // CreateOpenIDConnectProvider mocks base method.
@@ -359,6 +399,26 @@ func (mr *MockIamApiClientMockRecorder) DetachRolePolicy(ctx, params any, optFns
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DetachRolePolicy", reflect.TypeOf((*MockIamApiClient)(nil).DetachRolePolicy), varargs...)
+}
+
+// GetInstanceProfile mocks base method.
+func (m *MockIamApiClient) GetInstanceProfile(ctx context.Context, params *iam.GetInstanceProfileInput, optFns ...func(*iam.Options)) (*iam.GetInstanceProfileOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetInstanceProfile", varargs...)
+	ret0, _ := ret[0].(*iam.GetInstanceProfileOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetInstanceProfile indicates an expected call of GetInstanceProfile.
+func (mr *MockIamApiClientMockRecorder) GetInstanceProfile(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInstanceProfile", reflect.TypeOf((*MockIamApiClient)(nil).GetInstanceProfile), varargs...)
 }
 
 // GetOpenIDConnectProvider mocks base method.
