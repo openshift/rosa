@@ -11,14 +11,22 @@ permissions:
 jobs:
   tag-check:
     runs-on: ubuntu-latest
+    outputs:
+      is_stable: ${{ steps.check.outputs.is_stable }}
     steps:
-      - name: Validate stable release tag
+      - name: Check if tag is a stable release
+        id: check
         run: |
-          set -euo pipefail
-          [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-            || { echo "❌  Tag '${GITHUB_REF_NAME}' is not a stable release tag"; exit 1; }
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "✅  Tag '${GITHUB_REF_NAME}' is a stable release tag"
+            echo "is_stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "⏭️  Tag '${GITHUB_REF_NAME}' is not a stable release tag — skipping changelog"
+            echo "is_stable=false" >> "$GITHUB_OUTPUT"
+          fi
   update-changelog:
     needs: tag-check
+    if: needs.tag-check.outputs.is_stable == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
