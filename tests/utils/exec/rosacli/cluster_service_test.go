@@ -360,6 +360,24 @@ exit 1
 	})
 })
 
+var _ = Describe("ClusterNotFoundMessage", func() {
+	const clusterKey = "a29141c0-09a6-47a9-8b8c-9ae283bb1721"
+
+	It("matches OCM cluster-not-found output", func() {
+		message := fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterKey)
+		Expect(ClusterNotFoundMessage(clusterKey, message)).To(BeTrue())
+	})
+
+	It("matches Platform API cluster-not-found output", func() {
+		message := fmt.Sprintf("ERR: cluster '%s' not found", clusterKey)
+		Expect(ClusterNotFoundMessage(clusterKey, message)).To(BeTrue())
+	})
+
+	It("returns false for unrelated errors", func() {
+		Expect(ClusterNotFoundMessage(clusterKey, "Failed to delete cluster")).To(BeFalse())
+	})
+})
+
 func prependPathEnv(prefix string) []string {
 	envs := os.Environ()
 	for index, env := range envs {

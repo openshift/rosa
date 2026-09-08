@@ -14,12 +14,9 @@ import (
 // +kubebuilder:resource:scope=Namespaced
 // +kubebuilder:subresource:status
 // +genclient
-// +wire:field=name,meta=name
-// +wire:field=id,meta=uid
-// +wire:field=resource_version,meta=resourceVersion
-// +wire:field=generation,meta=generation
-// +wire:watch=disabled
-// +wire:wait
+// +genclient:nonNamespaced
+// +bridge:watch=disabled
+// +bridge:wait
 type Cluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

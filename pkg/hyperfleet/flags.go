@@ -1,21 +1,33 @@
 package hyperfleet
 
-import "github.com/spf13/cobra"
+var (
+	hyperfleetURL string
+	urlFromFlag   bool
+)
 
-var hyperfleetURL string
+// FlagValue is a pflag.Value for --hyperfleet-url. Register it from cmd/, not here:
+// pkg/hyperfleet is core and cannot import cobra.
+type FlagValue struct{}
 
-func AddFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVar(
-		&hyperfleetURL,
-		"hyperfleet-url",
-		"",
-		"Platform API v2 endpoint URL. When set, commands route to the Platform API instead of OCM.",
-	)
-	_ = cmd.PersistentFlags().MarkHidden("hyperfleet-url")
+func (FlagValue) String() string { return hyperfleetURL }
+func (FlagValue) Type() string   { return "string" }
+func (FlagValue) Set(v string) error {
+	hyperfleetURL = v
+	urlFromFlag = true
+	return nil
 }
 
 func Enabled() bool       { return hyperfleetURL != "" }
 func ExplicitURL() string { return hyperfleetURL }
+
+// FromFlag reports whether --hyperfleet-url was passed on the command line,
+// as opposed to seeded from config via SetURL.
+func FromFlag() bool { return urlFromFlag }
+
+// SetFromFlag records a command-line --hyperfleet-url (tests and flag parsing).
+func SetFromFlag(url string) {
+	_ = FlagValue{}.Set(url)
+}
 
 // SetURL seeds the hyperfleet URL from an external source (e.g. stored config)
 // when the --hyperfleet-url flag was not passed explicitly. A flag value always
@@ -28,4 +40,7 @@ func SetURL(url string) {
 }
 
 // Reset clears the hyperfleet URL back to the zero value.
-func Reset() { hyperfleetURL = "" }
+func Reset() {
+	hyperfleetURL = ""
+	urlFromFlag = false
+}

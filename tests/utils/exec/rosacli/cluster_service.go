@@ -650,15 +650,27 @@ func waitForClusterReadyStatus(
 	return err
 }
 
-func isClusterNotFoundErr(clusterID string, err error) bool {
-	if err == nil {
+// ClusterNotFoundMessage reports whether CLI output indicates the cluster no longer exists.
+// OCM and Platform API v2 use different wording for the same condition.
+func ClusterNotFoundMessage(clusterKey, message string) bool {
+	if clusterKey == "" || message == "" {
 		return false
 	}
+	notFoundPatterns := []string{
+		fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterKey),
+		fmt.Sprintf("Cluster '%s' not found", clusterKey),
+		fmt.Sprintf("cluster '%s' not found", clusterKey),
+	}
+	for _, pattern := range notFoundPatterns {
+		if strings.Contains(message, pattern) {
+			return true
+		}
+	}
+	return false
+}
 
-	message := err.Error()
-	return strings.Contains(message,
-		fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterID)) ||
-		strings.Contains(message, fmt.Sprintf("Cluster '%s' not found", clusterID))
+func isClusterNotFoundErr(clusterID string, err error) bool {
+	return err != nil && ClusterNotFoundMessage(clusterID, err.Error())
 }
 
 func provisioningDetails(description *ClusterDescription) []string {
@@ -753,10 +765,7 @@ func (c *clusterService) WaitForClusterPassUninstalled(clusterID string, interva
 	for time.Now().Before(endTime) {
 		output, err := c.DescribeCluster(clusterID)
 		if err != nil {
-			if strings.Contains(output.String(),
-				fmt.Sprintf("There is no cluster with identifier or name '%s'", clusterID)) ||
-				strings.Contains(output.String(),
-					fmt.Sprintf("Cluster '%s' not found", clusterID)) {
+			if ClusterNotFoundMessage(clusterID, output.String()) {
 				log.Logger.Infof("Cluster %s has been deleted.", clusterID)
 				return nil
 			}

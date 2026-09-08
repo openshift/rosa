@@ -6,8 +6,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
-
-	reportertest "github.com/openshift/rosa/test/reporter"
 )
 
 func TestHyperfleet(t *testing.T) {
@@ -39,29 +37,28 @@ var _ = Describe("ExtractRegion", func() {
 
 var _ = Describe("CheckRegionConflict", func() {
 	It("returns nil when regions match", func() {
-		r := &reportertest.FakeLogger{}
-		Expect(CheckRegionConflict("us-east-1", "https://abc.execute-api.us-east-1.amazonaws.com", r)).To(Succeed())
+		warn, err := CheckRegionConflict("us-east-1", "https://abc.execute-api.us-east-1.amazonaws.com")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(warn).To(BeEmpty())
 	})
 
 	It("returns an error when explicit region differs from URL region", func() {
-		r := &reportertest.FakeLogger{}
-		err := CheckRegionConflict("us-west-2", "https://abc.execute-api.us-east-1.amazonaws.com", r)
+		_, err := CheckRegionConflict("us-west-2", "https://abc.execute-api.us-east-1.amazonaws.com")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("us-west-2"))
 		Expect(err.Error()).To(ContainSubstring("us-east-1"))
 	})
 
-	It("warns (but does not error) when URL has no extractable region", func() {
-		warned := false
-		r := &reportertest.FakeLogger{WarnFn: func(string, ...any) { warned = true }}
-		Expect(CheckRegionConflict("us-east-1", "https://example.com", r)).To(Succeed())
-		Expect(warned).To(BeTrue())
+	It("returns a warning when URL has no extractable region", func() {
+		warn, err := CheckRegionConflict("us-east-1", "https://example.com")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(warn).To(ContainSubstring("cannot verify region"))
 	})
 })
 
 var _ = Describe("SetURL and Reset", func() {
-	BeforeEach(func() { hyperfleetURL = "" })
-	AfterEach(func() { hyperfleetURL = "" })
+	BeforeEach(Reset)
+	AfterEach(Reset)
 
 	It("sets the URL when empty", func() {
 		SetURL("https://example.execute-api.us-east-1.amazonaws.com")
@@ -81,14 +78,16 @@ var _ = Describe("SetURL and Reset", func() {
 
 	It("Reset clears the URL", func() {
 		hyperfleetURL = "https://something.execute-api.us-east-1.amazonaws.com"
+		urlFromFlag = true
 		Reset()
 		Expect(hyperfleetURL).To(BeEmpty())
+		Expect(FromFlag()).To(BeFalse())
 	})
 })
 
 var _ = Describe("Enabled and ExplicitURL", func() {
-	BeforeEach(func() { hyperfleetURL = "" })
-	AfterEach(func() { hyperfleetURL = "" })
+	BeforeEach(Reset)
+	AfterEach(Reset)
 
 	It("reports disabled when URL is empty", func() {
 		Expect(Enabled()).To(BeFalse())
@@ -98,6 +97,24 @@ var _ = Describe("Enabled and ExplicitURL", func() {
 	It("reports enabled when URL is set", func() {
 		hyperfleetURL = "https://abc.execute-api.us-east-1.amazonaws.com"
 		Expect(Enabled()).To(BeTrue())
+		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
+		Expect(FromFlag()).To(BeFalse())
+	})
+})
+
+var _ = Describe("FromFlag", func() {
+	BeforeEach(Reset)
+	AfterEach(Reset)
+
+	It("is false after SetURL", func() {
+		SetURL("https://abc.execute-api.us-east-1.amazonaws.com")
+		Expect(FromFlag()).To(BeFalse())
+		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
+	})
+
+	It("is true after SetFromFlag", func() {
+		SetFromFlag("https://abc.execute-api.us-east-1.amazonaws.com")
+		Expect(FromFlag()).To(BeTrue())
 		Expect(ExplicitURL()).To(Equal("https://abc.execute-api.us-east-1.amazonaws.com"))
 	})
 })

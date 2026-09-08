@@ -178,10 +178,14 @@ func (r *Runtime) WithHyperFleet() *Runtime {
 			return r
 		}
 	} else {
-		if err := hyperfleet.CheckRegionConflict(region, rawURL, r.Reporter); err != nil {
+		warn, err := hyperfleet.CheckRegionConflict(region, rawURL)
+		if err != nil {
 			r.Reporter.Errorf("%v", err)
 			hfExitFn(1)
 			return r
+		}
+		if warn != "" {
+			r.Reporter.Warnf("%s", warn)
 		}
 	}
 

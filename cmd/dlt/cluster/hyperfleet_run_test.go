@@ -41,7 +41,11 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		t = test.NewTestRuntime()
 		origConfirm := confirmFn
 		confirmFn = func(string, ...interface{}) bool { return true }
-		DeferCleanup(func() { confirmFn = origConfirm })
+		args.watch = false
+		DeferCleanup(func() {
+			confirmFn = origConfirm
+			args.watch = false
+		})
 	})
 
 	It("deletes a cluster successfully", func() {
@@ -107,6 +111,39 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		}}}, nil)
 		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(fmt.Errorf("delete failed"))
 
+		t.RosaRuntime.HyperFleetClient = hf
+		Expect(func() { runHyperfleetDelete(t.RosaRuntime, testCmd()) }).To(Panic())
+	})
+
+	It("watches until the cluster is gone when --watch is set", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters := newDltClusterMocks(ctrl)
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil)
+		clusters.EXPECT().WaitUntil(gomock.Any(), "cluster-uid", gomock.Any(), hfWatchInterval, hfWatchTimeout).Return(nil)
+
+		args.watch = true
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleetDelete(t.RosaRuntime, testCmd())
+	})
+
+	It("fails when --watch polling fails", func() {
+		orig := exitFn
+		exitFn = func(_ int) { panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters := newDltClusterMocks(ctrl)
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil)
+		clusters.EXPECT().WaitUntil(gomock.Any(), "cluster-uid", gomock.Any(), hfWatchInterval, hfWatchTimeout).
+			Return(fmt.Errorf("timeout"))
+
+		args.watch = true
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() { runHyperfleetDelete(t.RosaRuntime, testCmd()) }).To(Panic())
 	})

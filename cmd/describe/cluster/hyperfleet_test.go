@@ -157,3 +157,22 @@ var _ = Describe("hfClusterToMap", func() {
 		Expect(roles).To(BeEmpty())
 	})
 })
+
+var _ = Describe("hfClusterToString", func() {
+	It("lists operator role ARNs like OCM describe output", func() {
+		arn := "arn:aws:iam::123456789012:role/my-cluster-ingress"
+		out := hfClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
+					Platform: hypershiftv1beta1.PlatformSpec{
+						AWS: &hypershiftv1beta1.AWSPlatformSpec{
+							RolesRef: hypershiftv1beta1.AWSRolesRef{IngressARN: arn},
+						},
+					},
+				},
+			},
+		})
+		Expect(out).To(ContainSubstring("Operator IAM Roles:\n - " + arn + "\n"))
+		Expect(out).NotTo(ContainSubstring("Ingress:"))
+	})
+})

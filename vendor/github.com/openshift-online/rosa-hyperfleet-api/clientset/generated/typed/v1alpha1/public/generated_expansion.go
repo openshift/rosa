@@ -21,3 +21,5 @@ package public
 type ClusterExpansion interface{}
 
 type NodePoolExpansion interface{}
+
+type OidcConfigExpansion interface{}

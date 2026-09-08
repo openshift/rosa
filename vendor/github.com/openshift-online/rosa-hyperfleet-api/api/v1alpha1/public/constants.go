@@ -13,6 +13,15 @@ const (
 	ClusterPhaseDeleting            ClusterPhase = "Deleting"
 )
 
+// ControlPlaneUpgradeType identifies the source of a control plane upgrade request.
+// +kubebuilder:validation:Enum=UserInitiated;ServiceInitiated
+type ControlPlaneUpgradeType string
+
+const (
+	UserInitiated    ControlPlaneUpgradeType = "UserInitiated"
+	ServiceInitiated ControlPlaneUpgradeType = "ServiceInitiated"
+)
+
 // ManifestPhase represents the lifecycle phase of a Manifest.
 // +kubebuilder:validation:Enum=Syncing;Applied;Deleting
 type ManifestPhase string
@@ -34,6 +43,16 @@ const (
 	NodePoolPhaseDeleting          NodePoolPhase = "Deleting"
 )
 
+// OidcConfigPhase represents the lifecycle phase of an OidcConfig.
+// +kubebuilder:validation:Enum=Pending;Ready;Error
+type OidcConfigPhase string
+
+const (
+	OidcConfigPhasePending OidcConfigPhase = "Pending"
+	OidcConfigPhaseReady   OidcConfigPhase = "Ready"
+	OidcConfigPhaseError   OidcConfigPhase = "Error"
+)
+
 // PlacementPhase represents the lifecycle phase of a Placement.
 // +kubebuilder:validation:Enum=Pending;Bound
 type PlacementPhase string
@@ -41,4 +60,22 @@ type PlacementPhase string
 const (
 	PlacementPhasePending PlacementPhase = "Pending"
 	PlacementPhaseBound   PlacementPhase = "Bound"
+)
+
+// ScheduleUpgradeType indicates the type of schedule for the control plane upgrade.
+// +kubebuilder:validation:Enum=Manual;Automatic
+type ScheduleUpgradeType string
+
+const (
+	ManualSchedule    ScheduleUpgradeType = "Manual"
+	AutomaticSchedule ScheduleUpgradeType = "Automatic"
+)
+
+// UpgradeScopeType indicates if an automatic upgrade support only patch upgrades or patch and minor upgrades.
+// +kubebuilder:validation:Enum=PatchOnly;PatchAndMinor
+type UpgradeScopeType string
+
+const (
+	PatchOnly     UpgradeScopeType = "PatchOnly"
+	PatchAndMinor UpgradeScopeType = "PatchAndMinor"
 )
