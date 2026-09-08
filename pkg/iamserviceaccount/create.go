@@ -17,10 +17,14 @@ package iamserviceaccount
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
+
+	rosaerrors "github.com/openshift/rosa/pkg/errors"
+	"github.com/openshift/rosa/pkg/fedramp"
 )
 
 // CreateIAMServiceAccountRequest contains the resolved inputs for creating
@@ -50,58 +54,142 @@ type CreateIAMServiceAccountRequest struct {
 	IsGovcloud bool
 }
 
+// createValidators enforces each domain invariant for
+// CreateIAMServiceAccountRequest independently. Keeping each check as a
+// small, separately testable function makes it easy to see which invariants
+// exist and to add or remove one without touching the others. Each
+// validator returns its own violations directly (nil if none), rather than
+// pre-joining them, so Validate() can build one flat list and call
+// errors.Join exactly once instead of nesting a join inside a join.
+var createValidators = []func(*CreateIAMServiceAccountRequest) []error{
+	validateClusterName,
+	validateOIDCProviderARN,
+	validateServiceAccountsPresent,
+	validateServiceAccountIdentifiers,
+	validatePolicies,
+	validateRoleName,
+	validateGovcloud,
+}
+
 // Validate checks that the request contains all required fields and that
-// service account names and namespaces are syntactically valid.
+// service account names and namespaces are syntactically valid. It runs
+// every validator in createValidators and joins their errors, so a caller
+// sees every violation at once instead of fixing them one at a time.
 func (r *CreateIAMServiceAccountRequest) Validate() error {
+	var errs []error
+	for _, validate := range createValidators {
+		errs = append(errs, validate(r)...)
+	}
+	return errors.Join(errs...)
+}
+
+func validateClusterName(r *CreateIAMServiceAccountRequest) []error {
 	if r.ClusterName == "" {
-		return fmt.Errorf("cluster name is required")
+		return []error{&rosaerrors.ValidationError{Field: "ClusterName", Message: "cluster name is required"}}
 	}
+	return nil
+}
+
+func validateOIDCProviderARN(r *CreateIAMServiceAccountRequest) []error {
 	if r.OIDCProviderARN == "" {
-		return fmt.Errorf("OIDC provider ARN is required")
+		return []error{&rosaerrors.ValidationError{Field: "OIDCProviderARN", Message: "OIDC provider ARN is required"}}
 	}
+	return nil
+}
+
+func validateServiceAccountsPresent(r *CreateIAMServiceAccountRequest) []error {
 	if len(r.ServiceAccounts) == 0 {
-		return fmt.Errorf("at least one service account is required")
-	}
-	for _, sa := range r.ServiceAccounts {
-		if err := ValidateServiceAccountName(sa.Name); err != nil {
-			return fmt.Errorf("invalid service account name %q: %w", sa.Name, err)
-		}
-		if err := ValidateNamespaceName(sa.Namespace); err != nil {
-			return fmt.Errorf("invalid namespace %q for service account %q: %w", sa.Namespace, sa.Name, err)
-		}
-	}
-	if len(r.PolicyARNs) == 0 && r.InlinePolicy == nil {
-		return fmt.Errorf("at least one policy ARN or inline policy is required")
-	}
-	if r.InlinePolicy != nil && *r.InlinePolicy == "" {
-		return fmt.Errorf("inline policy must not be empty when provided")
-	}
-	if r.InlinePolicy != nil && !json.Valid([]byte(*r.InlinePolicy)) {
-		return fmt.Errorf("inline policy must be valid JSON")
-	}
-	for i, policyARN := range r.PolicyARNs {
-		if policyARN == "" {
-			return fmt.Errorf("policy ARN at index %d is empty", i)
-		}
-		if _, err := arn.Parse(policyARN); err != nil {
-			return fmt.Errorf("policy ARN at index %d is invalid: %w", i, err)
-		}
-	}
-	if r.RoleName != nil && strings.TrimSpace(*r.RoleName) == "" {
-		return fmt.Errorf("role name must not be blank when provided")
-	}
-	if r.RoleName == nil && len(r.ServiceAccounts) > 1 {
-		return fmt.Errorf("role name is required when specifying multiple service accounts")
-	}
-	if r.IsGovcloud {
-		if r.AccountID == "" {
-			return fmt.Errorf("account ID is required for GovCloud environments")
-		}
-		if r.Partition == "" {
-			return fmt.Errorf("partition is required for GovCloud environments")
+		return []error{
+			&rosaerrors.ValidationError{Field: "ServiceAccounts", Message: "at least one service account is required"},
 		}
 	}
 	return nil
+}
+
+func validateServiceAccountIdentifiers(r *CreateIAMServiceAccountRequest) []error {
+	var errs []error
+	for _, sa := range r.ServiceAccounts {
+		if err := ValidateServiceAccountName(sa.Name); err != nil {
+			errs = append(errs, &rosaerrors.ValidationError{
+				Field:   "ServiceAccounts",
+				Message: fmt.Sprintf("invalid service account name %q", sa.Name),
+				Err:     err,
+			})
+		}
+		if err := ValidateNamespaceName(sa.Namespace); err != nil {
+			errs = append(errs, &rosaerrors.ValidationError{
+				Field:   "ServiceAccounts",
+				Message: fmt.Sprintf("invalid namespace %q for service account %q", sa.Namespace, sa.Name),
+				Err:     err,
+			})
+		}
+	}
+	return errs
+}
+
+func validatePolicies(r *CreateIAMServiceAccountRequest) []error {
+	var errs []error
+	if len(r.PolicyARNs) == 0 && r.InlinePolicy == nil {
+		errs = append(errs, &rosaerrors.ValidationError{
+			Message: "at least one policy ARN or inline policy is required",
+		})
+	}
+	if r.InlinePolicy != nil {
+		if *r.InlinePolicy == "" {
+			errs = append(errs, &rosaerrors.ValidationError{
+				Field: "InlinePolicy", Message: "inline policy must not be empty when provided",
+			})
+		} else if !json.Valid([]byte(*r.InlinePolicy)) {
+			errs = append(errs, &rosaerrors.ValidationError{
+				Field: "InlinePolicy", Message: "inline policy must be valid JSON",
+			})
+		}
+	}
+	for i, policyARN := range r.PolicyARNs {
+		if policyARN == "" {
+			errs = append(errs, &rosaerrors.ValidationError{
+				Field:   "PolicyARNs",
+				Message: fmt.Sprintf("policy ARN at index %d is empty", i),
+			})
+			continue
+		}
+		parsed, err := arn.Parse(policyARN)
+		if err != nil {
+			errs = append(errs, &rosaerrors.ValidationError{
+				Field:   "PolicyARNs",
+				Message: fmt.Sprintf("policy ARN at index %d is invalid", i),
+				Err:     err,
+			})
+			continue
+		}
+		if parsed.Service != "iam" || !strings.HasPrefix(parsed.Resource, "policy/") ||
+			strings.HasSuffix(parsed.Resource, "/") {
+			errs = append(errs, &rosaerrors.ValidationError{
+				Field:   "PolicyARNs",
+				Message: fmt.Sprintf("policy ARN at index %d is not an IAM policy ARN", i),
+			})
+		}
+	}
+	return errs
+}
+
+func validateRoleName(r *CreateIAMServiceAccountRequest) []error {
+	var errs []error
+	if r.RoleName != nil && strings.TrimSpace(*r.RoleName) == "" {
+		errs = append(errs, &rosaerrors.ValidationError{
+			Field: "RoleName", Message: "role name must not be blank when provided",
+		})
+	}
+	if r.RoleName == nil && len(r.ServiceAccounts) > 1 {
+		errs = append(errs, &rosaerrors.ValidationError{
+			Field: "RoleName", Message: "role name is required when specifying multiple service accounts",
+		})
+	}
+	return errs
+}
+
+func validateGovcloud(r *CreateIAMServiceAccountRequest) []error {
+	return fedramp.ValidateGovCloudFields(r.IsGovcloud, r.AccountID, r.Partition)
 }
 
 // CreateIAMServiceAccountResult contains the structured outcome of creating
@@ -134,7 +222,7 @@ func (s *Service) CreateIAMServiceAccount(
 ) (*CreateIAMServiceAccountResult, error) {
 	// Validate the request
 	if err := req.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, &rosaerrors.ValidationError{Err: fmt.Errorf("invalid request: %w", err)}
 	}
 
 	// Generate role name if not provided

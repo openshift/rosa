@@ -21,6 +21,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	rosaerrors "github.com/openshift/rosa/pkg/errors"
 )
 
 // mockCreateIAMServiceAccountClient is a test double for CreateIAMServiceAccountClient
@@ -96,6 +98,47 @@ func expectNoClientCalls(client *mockCreateIAMServiceAccountClient) {
 	Expect(client.ensureRoleCalls).To(BeEmpty())
 	Expect(client.attachRolePolicyCalls).To(BeEmpty())
 	Expect(client.putRolePolicyCalls).To(BeEmpty())
+}
+
+// flattenLeafErrors returns the individual violations inside err, peeling
+// through the single-cause wrapping layers a workflow function adds around
+// Validate()'s result (the aggregate *rosaerrors.ValidationError, then its
+// fmt.Errorf "invalid request: %w" wrap) to reach the errors.Join underneath.
+// Validate() builds that join from one flat list (see createValidators in
+// create.go), so there is exactly one Unwrap() []error to expand -- never a
+// join nested inside another join -- and no recursion is needed.
+func flattenLeafErrors(err error) []error {
+	for err != nil {
+		if joined, ok := err.(interface{ Unwrap() []error }); ok {
+			return joined.Unwrap()
+		}
+		wrapped, ok := err.(interface{ Unwrap() error })
+		if !ok {
+			break
+		}
+		// A type can implement Unwrap() error yet have nothing to unwrap
+		// (e.g. a *rosaerrors.ValidationError leaf with no cause set) --
+		// that err is itself the leaf, not an empty branch.
+		inner := wrapped.Unwrap()
+		if inner == nil {
+			break
+		}
+		err = inner
+	}
+	if err == nil {
+		return nil
+	}
+	return []error{err}
+}
+
+// soleValidationError returns the single *rosaerrors.ValidationError leaf
+// expected in err, for tests that assert on Field.
+func soleValidationError(err error) *rosaerrors.ValidationError {
+	leaves := flattenLeafErrors(err)
+	ExpectWithOffset(1, leaves).To(HaveLen(1))
+	validationErr, ok := leaves[0].(*rosaerrors.ValidationError)
+	ExpectWithOffset(1, ok).To(BeTrue(), "expected a *rosaerrors.ValidationError leaf, got: %T", leaves[0])
+	return validationErr
 }
 
 var _ = Describe("CreateIAMServiceAccount", func() {
@@ -265,6 +308,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cluster name is required"))
+			Expect(soleValidationError(err).Field).To(Equal("ClusterName"))
 			expectNoClientCalls(client)
 		})
 
@@ -273,6 +317,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("OIDC provider ARN is required"))
+			Expect(soleValidationError(err).Field).To(Equal("OIDCProviderARN"))
 			expectNoClientCalls(client)
 		})
 
@@ -281,6 +326,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("at least one service account is required"))
+			Expect(soleValidationError(err).Field).To(Equal("ServiceAccounts"))
 			expectNoClientCalls(client)
 		})
 
@@ -290,6 +336,25 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("at least one policy ARN or inline policy is required"))
+			// This check spans two fields (PolicyARNs, InlinePolicy), so it
+			// intentionally carries no single Field.
+			Expect(soleValidationError(err).Field).To(BeEmpty())
+			expectNoClientCalls(client)
+		})
+
+		It("should report every violation when multiple invariants are broken", func() {
+			req.ClusterName = ""
+			req.OIDCProviderARN = ""
+			req.PolicyARNs = nil
+			req.InlinePolicy = nil
+			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("cluster name is required"))
+			Expect(err.Error()).To(ContainSubstring("OIDC provider ARN is required"))
+			Expect(err.Error()).To(ContainSubstring("at least one policy ARN or inline policy is required"))
+
+			leaves := flattenLeafErrors(err)
+			Expect(leaves).To(HaveLen(3), "expected exactly the three broken invariants, got: %v", leaves)
 			expectNoClientCalls(client)
 		})
 
@@ -298,6 +363,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("policy ARN at index 1 is empty"))
+			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
 			expectNoClientCalls(client)
 		})
 
@@ -307,6 +373,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("inline policy must not be empty when provided"))
+			Expect(soleValidationError(err).Field).To(Equal("InlinePolicy"))
 			expectNoClientCalls(client)
 		})
 
@@ -315,7 +382,43 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is invalid"))
+			validationErr := soleValidationError(err)
+			Expect(validationErr.Field).To(Equal("PolicyARNs"))
+			Expect(validationErr.Err).To(HaveOccurred(), "the arn.Parse cause must be preserved, not flattened into the message")
 			expectNoClientCalls(client)
+		})
+
+		It("should reject request with a non-IAM-policy ARN", func() {
+			req.PolicyARNs = []string{"arn:aws:s3:::my-bucket"}
+			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
+			expectNoClientCalls(client)
+		})
+
+		It("should reject a policy ARN with no policy name after 'policy/'", func() {
+			req.PolicyARNs = []string{"arn:aws:iam::123456789012:policy/"}
+			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
+			expectNoClientCalls(client)
+		})
+
+		It("should reject a policy ARN with a trailing slash", func() {
+			req.PolicyARNs = []string{"arn:aws:iam::123456789012:policy/MyPolicy/"}
+			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
+			expectNoClientCalls(client)
+		})
+
+		It("should accept a policy ARN with a path-scoped policy name", func() {
+			req.PolicyARNs = []string{"arn:aws:iam::123456789012:policy/team/MyPolicy"}
+			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should reject request with invalid JSON inline policy", func() {
@@ -324,6 +427,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("inline policy must be valid JSON"))
+			Expect(soleValidationError(err).Field).To(Equal("InlinePolicy"))
 			expectNoClientCalls(client)
 		})
 
@@ -334,6 +438,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid service account name"))
+			Expect(soleValidationError(err).Field).To(Equal("ServiceAccounts"))
 			expectNoClientCalls(client)
 		})
 
@@ -344,6 +449,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid namespace"))
+			Expect(soleValidationError(err).Field).To(Equal("ServiceAccounts"))
 			expectNoClientCalls(client)
 		})
 
@@ -354,6 +460,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("account ID is required for GovCloud"))
+			Expect(soleValidationError(err).Field).To(Equal("AccountID"))
 			expectNoClientCalls(client)
 		})
 
@@ -364,6 +471,21 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("partition is required for GovCloud"))
+			Expect(soleValidationError(err).Field).To(Equal("Partition"))
+			expectNoClientCalls(client)
+		})
+
+		It("should report both GovCloud violations when account ID and partition are empty", func() {
+			req.IsGovcloud = true
+			req.AccountID = ""
+			req.Partition = ""
+			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("account ID is required for GovCloud"))
+			Expect(err.Error()).To(ContainSubstring("partition is required for GovCloud"))
+
+			leaves := flattenLeafErrors(err)
+			Expect(leaves).To(HaveLen(2), "expected both GovCloud violations, got: %v", leaves)
 			expectNoClientCalls(client)
 		})
 
@@ -376,6 +498,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("role name is required when specifying multiple service accounts"))
+			Expect(soleValidationError(err).Field).To(Equal("RoleName"))
 			expectNoClientCalls(client)
 		})
 
@@ -385,6 +508,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("role name must not be blank when provided"))
+			Expect(soleValidationError(err).Field).To(Equal("RoleName"))
 			expectNoClientCalls(client)
 		})
 
@@ -397,6 +521,17 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.InlinePolicyName).ToNot(BeEmpty())
 			Expect(client.attachRolePolicyCalls).To(BeEmpty())
+		})
+
+		It("should classify a Validate() failure as a rosaerrors.ValidationError", func() {
+			req.ClusterName = ""
+
+			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
+			Expect(err).To(HaveOccurred())
+
+			var validationErr *rosaerrors.ValidationError
+			Expect(errors.As(err, &validationErr)).To(BeTrue())
+			expectNoClientCalls(client)
 		})
 	})
 
@@ -411,6 +546,11 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(errors.Is(err, errEnsureRole)).To(BeTrue())
 			Expect(err.Error()).To(ContainSubstring("failed to create role"))
+
+			// An operational AWS failure must not be mistaken for an invalid
+			// request: it happens only after Validate() already succeeded.
+			var validationErr *rosaerrors.ValidationError
+			Expect(errors.As(err, &validationErr)).To(BeFalse())
 
 			// Should not attempt to attach policies after role creation fails
 			Expect(client.attachRolePolicyCalls).To(BeEmpty())

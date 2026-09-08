@@ -43,6 +43,8 @@ Use this file as the starting point for repository context. When this file point
   - Request and Result type naming, construction, optional-value handling, and the lifecycle for reusable workflow functions in `pkg/`.
 - `guidelines/security.md`
   - Secret handling, gitleaks policy, and credential safety expectations.
+- `guidelines/error-conventions.md`
+  - Error handling at the CLI/core boundary: wrapping, typed errors, CLI translation, exit codes, and diagnostic context.
 
 ## Codebase Map
 

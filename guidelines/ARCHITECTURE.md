@@ -189,6 +189,7 @@ around them.
 | Business logic (create pool, validate labels, build OCM request) | `pkg/` | `machinepool.CreateMachinePool(...)` |
 | Request/Result types (workflow boundary contract) | `pkg/` | `machinepool.CreateMachinePoolRequest`, `CreateMachinePoolResult` |
 | Domain types and validation | `pkg/` | `machinepool.MachinePool`, `ValidateLabels` |
+| Shared error types (CLI/core boundary) | `pkg/` | `errors.ValidationError` |
 | Constants (tag keys, property keys, env var names) | `pkg/` | `aws/tags`, `properties`, `constants` |
 | AWS SDK operations | `internal/core/` | `aws.Client.CreateRole(...)` |
 | OCM API operations | `internal/core/` | `ocm.Client.CreateCluster(...)` |
