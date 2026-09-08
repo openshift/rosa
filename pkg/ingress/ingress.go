@@ -9,8 +9,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/output"
-	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/output" //nolint:depguard
+	"github.com/openshift/rosa/pkg/rosa"   //nolint:depguard
 )
 
 type IngressService interface {
@@ -33,7 +33,7 @@ func (i ingress) DescribeIngress(r *rosa.Runtime, cluster *cmv1.Cluster, ingress
 	if output.HasFlag() {
 		err = output.Print(ingress)
 		if err != nil {
-			return fmt.Errorf("Failed to output ingress '%s': %v", ingressKey, err)
+			return fmt.Errorf("failed to output ingress '%s': %v", ingressKey, err)
 		}
 		return nil
 	}
@@ -45,7 +45,7 @@ func (i ingress) DescribeIngress(r *rosa.Runtime, cluster *cmv1.Cluster, ingress
 	for _, key := range keys {
 		ingressOutput += fmt.Sprintf("%s: %s\n", key, strings.Repeat(" ", minWidth-len(key))+entries[key])
 	}
-	fmt.Print(ingressOutput)
+	fmt.Print(ingressOutput) //nolint:forbidigo
 	return nil
 }
 
@@ -61,10 +61,7 @@ func getMinWidth(keys []string) int {
 }
 
 func generateEntriesOutput(cluster *cmv1.Cluster, ingress *cmv1.Ingress) map[string]string {
-	private := false
-	if ingress.Listening() == cmv1.ListeningMethodInternal {
-		private = true
-	}
+	private := ingress.Listening() == cmv1.ListeningMethodInternal
 	entries := map[string]string{
 		"ID":         ingress.ID(),
 		"Cluster ID": cluster.ID(),
@@ -97,8 +94,6 @@ func generateEntriesOutput(cluster *cmv1.Cluster, ingress *cmv1.Ingress) map[str
 	sort.Strings(componentKeys)
 	for _, component := range componentKeys {
 		value := ingress.ComponentRoutes()[component]
-		keys := helper.MapKeys(entries)
-		minWidth := getMinWidth(keys)
 		depth := 4
 		componentRouteEntries := map[string]string{
 			"Hostname":       value.Hostname(),
@@ -108,11 +103,12 @@ func generateEntriesOutput(cluster *cmv1.Cluster, ingress *cmv1.Ingress) map[str
 		depth *= 2
 		paramKeys := helper.MapKeys(componentRouteEntries)
 		sort.Strings(paramKeys)
+		paramMinWidth := getMinWidth(paramKeys)
 		for _, param := range paramKeys {
 			componentRoutes += fmt.Sprintf(
 				"%s: %s\n",
 				strings.Repeat(" ", depth)+param,
-				strings.Repeat(" ", minWidth-len(param)-depth)+componentRouteEntries[param],
+				strings.Repeat(" ", paramMinWidth-len(param))+componentRouteEntries[param],
 			)
 		}
 	}
