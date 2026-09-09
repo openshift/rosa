@@ -34,6 +34,8 @@ import (
 	"github.com/openshift/rosa/pkg/helper/autonode"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
+	"github.com/openshift/rosa/pkg/hyperfleet"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -262,6 +264,16 @@ func initFlags(cmd *cobra.Command) {
 	)
 
 	cmd.MarkFlagsMutuallyExclusive("channel", "channel-group")
+
+	// ── HyperFleet-specific flags ────────────────────────────────────────────
+	// Registers new HF-only flags (e.g. --display-name, --delete-protection).
+	// Flags already registered by OCM (e.g. --expiration-time) are silently skipped.
+	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
+		func() { hfpathbind.RegisterClusterUpdateFlags(cmd, &hfClusterUpdateInput) },
+		hfpathbind.ClusterUpdatePlatformAPIFlags,
+	)
+	// AddPlatformAPIFlagSection is called from the edit parent after MarkRegionDeprecated,
+	// since MarkRegionDeprecated overwrites SetHelpFunc and would orphan the wrapper here.
 }
 
 func init() {

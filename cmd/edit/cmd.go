@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/rosa/cmd/edit/service"
 	"github.com/openshift/rosa/cmd/edit/tuningconfigs"
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 )
@@ -72,4 +73,9 @@ func init() {
 		logForwarderCommand, machinepoolCommand, tuningconfigs.Cmd,
 	}
 	arguments.MarkRegionDeprecated(Cmd, globallyAvailableCommands)
+
+	// MarkRegionDeprecated overwrites SetHelpFunc on each command; re-apply
+	// the Platform API flag section wrapper so it runs on top of that.
+	hyperfleet.AddPlatformAPIFlagSection(cluster.Cmd)
+	hyperfleet.AddPlatformAPIFlagSection(machinepoolCommand)
 }

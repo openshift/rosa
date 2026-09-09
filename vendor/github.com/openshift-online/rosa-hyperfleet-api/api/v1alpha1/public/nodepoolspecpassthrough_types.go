@@ -22,7 +22,7 @@ type NodePoolSpecPassthrough struct {
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
 	// +required
-	Platform hypershiftv1beta1.NodePoolPlatform `json:"platform"`
+	Platform NodePoolPlatform `json:"platform"`
 	// replicas is the desired number of nodes the pool should maintain. If unset, the controller default value is 0.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable

@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	"github.com/spf13/cobra"
 
 	pkgaws "github.com/openshift/rosa/pkg/aws"
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -25,7 +26,7 @@ import (
 var _ = Describe("hyperfleet dispatch", func() {
 	var (
 		origEnabled    func() bool
-		origRunCluster func()
+		origRunCluster func(*cobra.Command)
 	)
 
 	BeforeEach(func() {
@@ -41,7 +42,7 @@ var _ = Describe("hyperfleet dispatch", func() {
 	It("routes to hfCreateCluster when hyperfleet is enabled", func() {
 		called := false
 		hfEnabled = func() bool { return true }
-		hfCreateCluster = func() { called = true }
+		hfCreateCluster = func(*cobra.Command) { called = true }
 
 		run(nil, nil)
 
