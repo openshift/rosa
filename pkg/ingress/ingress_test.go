@@ -55,26 +55,25 @@ var _ = Describe("Retrieve map of entries for output", func() {
 
 var _ = Describe("Describe ingress", func() {
 	const (
-		ingressOutput = `Cluster ID:                 123
-Component Routes:           
-    console: 
-        Hostname:           console-hostname
-        TLS Secret Ref:     console-secret
-    downloads: 
-        Hostname:           downloads-hostname
-        TLS Secret Ref:     downloads-secret
-    oauth: 
-        Hostname:           oauth-hostname
-        TLS Secret Ref:     oauth-secret
-Default:                    true
-Excluded Namespaces:        [excluded-ns-1, excluded-ns-2]
-ID:                         a1b1
-LB-Type:                    nlb
-Namespace Ownership Policy: Strict
-Private:                    false
-Route Selectors:            map[route-1:selector-1 route-2:selector-2]
-Wildcard Policy:            WildcardsAllowed
-`
+		ingressOutput = "Cluster ID:                 123\n" +
+			"Component Routes:           \n" +
+			"    console: \n" +
+			"        Hostname:       console-hostname\n" +
+			"        TLS Secret Ref: console-secret\n" +
+			"    downloads: \n" +
+			"        Hostname:       downloads-hostname\n" +
+			"        TLS Secret Ref: downloads-secret\n" +
+			"    oauth: \n" +
+			"        Hostname:       oauth-hostname\n" +
+			"        TLS Secret Ref: oauth-secret\n" +
+			"Default:                    true\n" +
+			"Excluded Namespaces:        [excluded-ns-1, excluded-ns-2]\n" +
+			"ID:                         a1b1\n" +
+			"LB-Type:                    nlb\n" +
+			"Namespace Ownership Policy: Strict\n" +
+			"Private:                    false\n" +
+			"Route Selectors:            map[route-1:selector-1 route-2:selector-2]\n" +
+			"Wildcard Policy:            WildcardsAllowed\n"
 	)
 	It("Ingress found", func() {
 		// Full diff for long string to help debugging
@@ -112,6 +111,45 @@ Wildcard Policy:            WildcardsAllowed
 		stdout, err := t.StdOutReader.Read()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(stdout).To(Equal(ingressOutput))
+	})
+
+	It("Ingress found with component routes and no optional fields", func() {
+		format.TruncatedDiff = false
+		expectedOutput := "Cluster ID:       123\n" +
+			"Component Routes: \n" +
+			"    downloads: \n" +
+			"        Hostname:       downloads.banana.company.com\n" +
+			"        TLS Secret Ref: downloads-tls-secret\n" +
+			"Default:          true\n" +
+			"ID:               a1q0\n" +
+			"LB-Type:          nlb\n" +
+			"Private:          false\n"
+		ingress, err := cmv1.NewIngress().
+			ID("a1q0").
+			Default(true).
+			Listening(cmv1.ListeningMethodExternal).
+			LoadBalancerType(cmv1.LoadBalancerFlavorNlb).
+			ComponentRoutes(map[string]*cmv1.ComponentRouteBuilder{
+				"downloads": cmv1.NewComponentRoute().
+					Hostname("downloads.banana.company.com").
+					TlsSecretRef("downloads-tls-secret"),
+			}).Build()
+		Expect(err).To(BeNil())
+		ingressResponse := test.FormatIngressList([]*cmv1.Ingress{ingress})
+		t := test.NewTestRuntime()
+		t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, ingressResponse))
+		err = t.StdOutReader.Record()
+		Expect(err).ToNot(HaveOccurred())
+		mockReadyCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+			c.ID("123")
+			c.Region(cmv1.NewCloudRegion().ID(aws.DefaultRegion))
+			c.State(cmv1.ClusterStateReady)
+		})
+		err = NewIngressService().DescribeIngress(t.RosaRuntime, mockReadyCluster, "apps")
+		Expect(err).ToNot(HaveOccurred())
+		stdout, err := t.StdOutReader.Read()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stdout).To(Equal(expectedOutput))
 	})
 
 })

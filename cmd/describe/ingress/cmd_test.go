@@ -18,46 +18,44 @@ import (
 
 var _ = Describe("Describe ingress", func() {
 	const (
-		ingressOutput = `Cluster ID:                 123
-Component Routes:           
-    console: 
-        Hostname:           console-hostname
-        TLS Secret Ref:     console-secret
-    downloads: 
-        Hostname:           downloads-hostname
-        TLS Secret Ref:     downloads-secret
-    oauth: 
-        Hostname:           oauth-hostname
-        TLS Secret Ref:     oauth-secret
-Default:                    true
-Excluded Namespaces:        [excluded-ns-1, excluded-ns-2]
-ID:                         a1b1
-LB-Type:                    nlb
-Namespace Ownership Policy: Strict
-Private:                    false
-Route Selectors:            map[route-1:selector-1 route-2:selector-2]
-Wildcard Policy:            WildcardsAllowed
-`
-		privateIngressOutput = `Cluster ID:                 123
-Component Routes:           
-    console: 
-        Hostname:           console-hostname
-        TLS Secret Ref:     console-secret
-    downloads: 
-        Hostname:           downloads-hostname
-        TLS Secret Ref:     downloads-secret
-    oauth: 
-        Hostname:           oauth-hostname
-        TLS Secret Ref:     oauth-secret
-Default:                    true
-Excluded Namespaces:        [excluded-ns-1, excluded-ns-2]
-ID:                         a1b1
-LB-Type:                    nlb
-Namespace Ownership Policy: Strict
-Private:                    true
-Route Selectors:            map[route-1:selector-1 route-2:selector-2]
-Wildcard Policy:            WildcardsAllowed
-`
+		ingressOutput = "Cluster ID:                 123\n" +
+			"Component Routes:           \n" +
+			"    console: \n" +
+			"        Hostname:       console-hostname\n" +
+			"        TLS Secret Ref: console-secret\n" +
+			"    downloads: \n" +
+			"        Hostname:       downloads-hostname\n" +
+			"        TLS Secret Ref: downloads-secret\n" +
+			"    oauth: \n" +
+			"        Hostname:       oauth-hostname\n" +
+			"        TLS Secret Ref: oauth-secret\n" +
+			"Default:                    true\n" +
+			"Excluded Namespaces:        [excluded-ns-1, excluded-ns-2]\n" +
+			"ID:                         a1b1\n" +
+			"LB-Type:                    nlb\n" +
+			"Namespace Ownership Policy: Strict\n" +
+			"Private:                    false\n" +
+			"Route Selectors:            map[route-1:selector-1 route-2:selector-2]\n" +
+			"Wildcard Policy:            WildcardsAllowed\n"
+		privateIngressOutput = "Cluster ID:                 123\n" +
+			"Component Routes:           \n" +
+			"    console: \n" +
+			"        Hostname:       console-hostname\n" +
+			"        TLS Secret Ref: console-secret\n" +
+			"    downloads: \n" +
+			"        Hostname:       downloads-hostname\n" +
+			"        TLS Secret Ref: downloads-secret\n" +
+			"    oauth: \n" +
+			"        Hostname:       oauth-hostname\n" +
+			"        TLS Secret Ref: oauth-secret\n" +
+			"Default:                    true\n" +
+			"Excluded Namespaces:        [excluded-ns-1, excluded-ns-2]\n" +
+			"ID:                         a1b1\n" +
+			"LB-Type:                    nlb\n" +
+			"Namespace Ownership Policy: Strict\n" +
+			"Private:                    true\n" +
+			"Route Selectors:            map[route-1:selector-1 route-2:selector-2]\n" +
+			"Wildcard Policy:            WildcardsAllowed\n"
 	)
 	Context("describe", func() {
 		// Full diff for long string to help debugging
