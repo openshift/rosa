@@ -68,11 +68,17 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
-
-	mode, err := interactive.GetMode()
+	err := runWithRuntime(r, cmd)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	mode, err := interactive.GetMode()
+	if err != nil {
+		return fmt.Errorf("%s", err)
 	}
 
 	clusterKey := r.GetClusterKey()
@@ -80,8 +86,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
 	if err != nil {
-		r.Reporter.Errorf("Error getting latest version: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting latest version: %s", err)
 	}
 
 	/**
@@ -92,7 +97,7 @@ func run(cmd *cobra.Command, _ []string) {
 		availableUpgrades := ocm.GetAvailableUpgradesByCluster(cluster)
 		if len(availableUpgrades) == 0 {
 			r.Reporter.Warnf("There are no available upgrades")
-			os.Exit(0)
+			return nil
 		}
 		// Check that the version is valid
 		validVersion := false
@@ -103,55 +108,47 @@ func run(cmd *cobra.Command, _ []string) {
 			}
 		}
 		if !validVersion {
-			r.Reporter.Errorf("Expected a valid version to upgrade the cluster")
-			os.Exit(1)
+			return fmt.Errorf("expected a valid version to upgrade the cluster")
 		}
 	}
 
 	operatorRoles, hasOperatorRoles := cluster.AWS().STS().GetOperatorIAMRoles()
 	if !hasOperatorRoles || len(operatorRoles) == 0 {
-		r.Reporter.Errorf("Cluster '%s' doesn't have any operator roles associated with it",
+		return fmt.Errorf("cluster '%s' doesn't have any operator roles associated with it",
 			clusterKey)
-		os.Exit(1)
 	}
 
 	prefix, err := aws.GetPrefixFromInstallerAccountRole(cluster)
 	if err != nil {
-		r.Reporter.Errorf("Error getting account role prefix for the cluster '%s'",
+		return fmt.Errorf("error getting account role prefix for the cluster '%s'",
 			clusterKey)
-		os.Exit(1)
 	}
 	unifiedPath, err := aws.GetPathFromAccountRole(cluster, aws.AccountRoles[aws.InstallerAccountRole].Name)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid path for '%s': %v", cluster.AWS().STS().RoleARN(), err)
 	}
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine OCM environment: %v", err)
 	}
 
 	managedPolicies := cluster.AWS().STS().ManagedPolicies()
 
 	credRequests, err := r.OCMClient.GetCredRequests(cluster.Hypershift().Enabled())
 	if err != nil {
-		r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting operator credential request from OCM %s", err)
 	}
 
 	policies, err := r.OCMClient.GetPolicies("OperatorRole")
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid role creation mode: %s", err)
 	}
 
 	if managedPolicies {
 		mode, err = handleModeFlag(cmd, mode)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return fmt.Errorf("%s", err)
 		}
 
 		hostedCPPolicies := aws.IsHostedCPManagedPolicies(cluster)
@@ -159,13 +156,12 @@ func run(cmd *cobra.Command, _ []string) {
 		err = roles.ValidateOperatorRolesManagedPolicies(r, cluster, credRequests, policies, mode, prefix, unifiedPath,
 			args.upgradeVersion, hostedCPPolicies)
 		if err != nil {
-			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("failed while validating managed policies: %v", err)
 		}
 
 		r.Reporter.Infof("Cluster '%s' operator roles have attached managed policies. "+
 			"An upgrade isn't needed", cluster.Name())
-		os.Exit(0)
+		return nil
 	}
 
 	isAccountRoleUpgradeNeed := false
@@ -175,21 +171,18 @@ func run(cmd *cobra.Command, _ []string) {
 	isAccountRoleUpgradeNeed, err = r.AWSClient.IsUpgradedNeededForAccountRolePolicies(
 		prefix, latestPolicyVersion)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return fmt.Errorf("%s", err)
 	}
 	if isAccountRoleUpgradeNeed {
-		r.Reporter.Infof("Account roles with prefix '%s' need to be upgraded before operator roles. "+
-			"Roles can be upgraded with the following command :"+
-			"\n\n\trosa upgrade account-roles --prefix %s\n", prefix, prefix)
-		os.Exit(1)
+		return fmt.Errorf("account roles with prefix '%s' need to be upgraded before operator roles, "+
+			"roles can be upgraded with the following command:"+
+			" rosa upgrade account-roles --prefix %s", prefix, prefix)
 	}
 
 	isOperatorPolicyUpgradeNeeded, err := r.AWSClient.IsUpgradedNeededForOperatorRolePoliciesUsingPrefix(prefix,
 		r.Creator.Partition, r.Creator.AccountID, latestPolicyVersion, credRequests, unifiedPath)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return fmt.Errorf("%s", err)
 	}
 
 	version := args.upgradeVersion
@@ -200,13 +193,12 @@ func run(cmd *cobra.Command, _ []string) {
 	//Check if the upgrade is needed for the operators
 	missingRolesInCS, err := r.OCMClient.FindMissingOperatorRolesForUpgrade(cluster, version, credRequests)
 	if err != nil {
-		r.Reporter.Errorf("Error finding operator roles for upgrade '%s'", err)
-		os.Exit(1)
+		return fmt.Errorf("error finding operator roles for upgrade '%s'", err)
 	}
 
 	if len(missingRolesInCS) <= 0 && !isOperatorPolicyUpgradeNeeded {
 		r.Reporter.Infof("Operator roles associated with the cluster '%s' are already up-to-date.", cluster.ID())
-		os.Exit(0)
+		return nil
 	}
 
 	if len(missingRolesInCS) > 0 || isOperatorPolicyUpgradeNeeded {
@@ -215,26 +207,24 @@ func run(cmd *cobra.Command, _ []string) {
 
 	mode, err = handleModeFlag(cmd, mode)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return fmt.Errorf("%s", err)
 	}
 
 	if isOperatorPolicyUpgradeNeeded {
 		err = upgradeOperatorPolicies(mode, r, prefix, isAccountRoleUpgradeNeed,
 			policies, env, latestPolicyVersion, credRequests, cluster, unifiedPath)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return fmt.Errorf("%s", err)
 		}
 	}
 
 	if len(missingRolesInCS) > 0 {
 		err = roles.CreateMissingRoles(r, missingRolesInCS, cluster, mode, prefix, policies, unifiedPath, false)
 		if err != nil {
-			r.Reporter.Errorf("Error creating operator roles: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("error creating operator roles: %s", err)
 		}
 	}
+	return nil
 }
 
 func upgradeOperatorPolicies(mode string, r *rosa.Runtime,
