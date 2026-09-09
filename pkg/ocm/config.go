@@ -88,6 +88,9 @@ func GetEnv() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if cfg == nil {
+		return Production, nil
+	}
 
 	urlAliases := URLAliases
 	if cfg.FedRAMP {
