@@ -9,6 +9,9 @@ oses=(darwin linux windows)
 mkdir -p releases
 
 build_release() {
+release_version=$(git describe --tags --exact-match 2>/dev/null || true)
+release_version=${release_version#v}
+
 for os in "${oses[@]}"
 do
   for arch in "${archs[@]}"
@@ -19,7 +22,7 @@ do
     fi
     tmpdir=$(mktemp -d)
     trap 'rm -rf "$tmpdir"' EXIT
-    GOOS="${os}" GOARCH="${arch}" go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(git rev-parse --short HEAD)" -o "${tmpdir}/rosa${extension}" ./cmd/rosa
+    GOOS="${os}" GOARCH="${arch}" go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(git rev-parse --short HEAD)${release_version:+ -X github.com/openshift/rosa/pkg/info.DefaultVersion=${release_version}}" -o "${tmpdir}/rosa${extension}" ./cmd/rosa
     tar -czf "releases/rosa_${os}_${arch}.tar.gz" -C "${tmpdir}" "rosa${extension}"
     (
       cd "${tmpdir}" && \
