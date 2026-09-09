@@ -200,6 +200,7 @@ e2e_test: install
 # Optional:
 #   CLUSTER_NAME       — defaults to hf-e2e-<unix timestamp> (≤18 chars)
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
+#   LABEL_FILTER       — ginkgo label filter (defaults to "hyperfleet-validated")
 .PHONY: e2e-hyperfleet
 e2e-hyperfleet: install
 	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
@@ -208,7 +209,7 @@ e2e-hyperfleet: install
 	OPERATOR_ROLES_PREFIX="$$name" \
 	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
 	ginkgo run \
-		--focus "Hyperfleet sanity" \
+		--label-filter "$${LABEL_FILTER:-hyperfleet-validated}" \
 		--timeout 3h \
 		-v \
 		./tests/e2e/ \
