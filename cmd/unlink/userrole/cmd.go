@@ -14,6 +14,7 @@ limitations under the License.
 package userrole
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -63,20 +64,27 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	var err error
-	r := rosa.NewRuntime().WithOCM()
-	defer r.Cleanup()
-
 	if len(argv) > 0 {
 		args.roleArn = argv[0]
 	}
+
+	r := rosa.NewRuntime().WithOCM()
+	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	var err error
 
 	accountID := args.accountID
 	if accountID == "" {
 		currentAccount, err := r.OCMClient.GetCurrentAccount()
 		if err != nil {
-			r.Reporter.Errorf("Error getting current account: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("error getting current account: %v", err)
 		}
 		accountID = currentAccount.ID()
 	}
@@ -103,32 +111,29 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid user role ARN to unlink from the current account: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid user role ARN to unlink from the current account: %s", err)
 		}
 	}
 	if roleArn != "" {
 		err = aws.ARNValidator(roleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid user role ARN to unlink from the current account: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid user role ARN to unlink from the current account: %s", err)
 		}
 	}
 	if !confirm.Prompt(true, "Unlink the '%s' role from the current account '%s'?", roleArn, accountID) {
-		os.Exit(0)
+		return nil
 	}
 
 	err = r.OCMClient.UnlinkUserRoleFromAccount(accountID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			r.Reporter.Errorf("Only organization admin or the user that owns this account '%s' can run this command. "+
-				"Please ask someone with adequate permissions to run the following command \n\n"+
-				"\t rosa unlink user-role --role-arn %s --account-id %s", accountID, roleArn, accountID)
-			os.Exit(1)
+			return fmt.Errorf("only organization admin or the user that owns this account '%s' can run this command, "+
+				"please ask someone with adequate permissions to run the following command: "+
+				"rosa unlink user-role --role-arn %s --account-id %s", accountID, roleArn, accountID)
 		}
-		r.Reporter.Errorf("Unable to unlink role ARN '%s' from the account id : '%s' : %v",
+		return fmt.Errorf("unable to unlink role ARN '%s' from the account id : '%s' : %v",
 			roleArn, accountID, err)
-		os.Exit(1)
 	}
 	r.Reporter.Infof("Successfully unlinked role ARN '%s' from account '%s'", roleArn, accountID)
+	return nil
 }
