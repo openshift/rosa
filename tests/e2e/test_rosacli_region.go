@@ -99,7 +99,7 @@ var _ = Describe("Region",
 			labels.Low, labels.Runtime.OCMResources,
 			func() {
 				By("List the available instance-types with the region flag")
-				typesList := []string{"m7i.xlarge", "g4ad.16xlarge", "c5.xlarge"}
+				typesList := []string{"m7i.xlarge", "g5.xlarge", "c5.xlarge"}
 				region := "us-west-2"
 				accountRolePrefix := fmt.Sprintf("QEAuto-accr72174-%s", time.Now().UTC().Format("20060102"))
 				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
