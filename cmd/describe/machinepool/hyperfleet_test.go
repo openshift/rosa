@@ -25,7 +25,7 @@ func buildTestNodePool() *v1alpha1.NodePool {
 			NodePool: v1alpha1.NodePoolSpecPassthrough{
 				Replicas: &replicas,
 				Release:  hypershiftv1beta1.Release{Image: "v4.17.0-ec.2"},
-				Platform: hypershiftv1beta1.NodePoolPlatform{
+				Platform: v1alpha1.NodePoolPlatform{
 					AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
 						InstanceType: "m5.xlarge",
 					},

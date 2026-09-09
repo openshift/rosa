@@ -22,7 +22,7 @@ type HostedClusterSpecPassthrough struct {
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
 	// +required
-	Platform hypershiftv1beta1.PlatformSpec `json:"platform"`
+	Platform PlatformSpec `json:"platform"`
 	// networking specifies network configuration for the hosted cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
@@ -30,19 +30,19 @@ type HostedClusterSpecPassthrough struct {
 	Networking hypershiftv1beta1.ClusterNetworking `json:"networking"`
 	// autoNode specifies the configuration for automatic node provisioning and lifecycle management.
 	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=service-set
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	AutoNode hypershiftv1beta1.AutoNode `json:"autoNode,omitzero"`
 	// issuerURL is an OIDC issuer URL which will be used as the issuer in all
 	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=mutable
+	// +hyperfleet:write-mode=service-set
 	// +optional
 	IssuerURL string `json:"issuerURL,omitempty"`
 	// configuration specifies configuration for individual OCP components in the
-	// +k8s:openapi-gen=true
+	// +k8s:openapi-gen=false
 	// +hyperfleet:write-mode=service-set
 	// +optional
-	Configuration *hypershiftv1beta1.ClusterConfiguration `json:"configuration,omitempty"`
+	Configuration *ClusterConfiguration `json:"configuration,omitempty"`
 	// operatorConfiguration specifies configuration for individual OCP operators in the cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set

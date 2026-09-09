@@ -59,7 +59,7 @@ type oidcConfigs struct {
 func newOidcConfigs(c *V1alpha1PublicClient) *oidcConfigs {
 	return &oidcConfigs{
 		gentype.NewClientWithList[*v1alpha1public.OidcConfig, *v1alpha1public.OidcConfigList](
-			"oidcconfigs",
+			"oidc_configs",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",

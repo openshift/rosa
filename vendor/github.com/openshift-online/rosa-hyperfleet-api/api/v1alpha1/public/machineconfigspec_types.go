@@ -3,6 +3,7 @@
 package public
 
 // MachineConfigSpec specifies machine-level configuration.
+// +hyperfleet:upstream-reduced-object=hypershiftv1beta1.MachineConfigSpec
 type MachineConfigSpec struct {
 	// +openshift:enable:FeatureGate=HyperFleetMachineConfig
 	// +hyperfleet:write-mode=immutable
