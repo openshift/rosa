@@ -164,9 +164,6 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
-
-	// Allow the command to be called programmatically
 	isProgmaticallyCalled := false
 	if len(argv) == 3 && !cmd.Flag("cluster").Changed {
 		ocm.SetClusterKey(argv[0])
@@ -179,6 +176,16 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 	}
 
+	err := runWithRuntime(r, cmd, isProgmaticallyCalled)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, isProgmaticallyCalled bool) error {
+	rosa.HostedClusterOnlyFlag(r, cmd, vpcEndpointRoleArnFlag)
+
 	var isHcpSharedVpc bool
 	var err error
 	if !args.hostedCp {
@@ -187,36 +194,31 @@ func run(cmd *cobra.Command, argv []string) {
 		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.sharedVpcRoleArn,
 			vpcEndpointRoleArnFlag, hostedZoneRoleArnFlag)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 	}
 
 	if args.vpcEndpointRoleArn != "" {
 		err = aws.ARNValidator(args.vpcEndpointRoleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", vpcEndpointRoleArnFlag, err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for %s: %s", vpcEndpointRoleArnFlag, err)
 		}
 	}
 	if args.sharedVpcRoleArn != "" {
 		err = aws.ARNValidator(args.sharedVpcRoleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", hostedZoneRoleArnFlag, err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for %s: %s", hostedZoneRoleArnFlag, err)
 		}
 	}
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine OCM environment: %v", err)
 	}
 
 	mode, err := interactive.GetMode()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	// Determine if interactive mode is needed
@@ -225,31 +227,26 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if !cmd.Flag("cluster").Changed && !cmd.Flag(PrefixFlag).Changed && !isProgmaticallyCalled {
-		r.Reporter.Errorf("Either a cluster key for STS cluster or an operator roles prefix must be specified.")
-		os.Exit(1)
+		return fmt.Errorf("either a cluster key for STS cluster or an operator roles prefix must be specified")
 	}
 
 	if cmd.Flag("cluster").Changed && cmd.Flag(PrefixFlag).Changed {
-		r.Reporter.Errorf("A cluster key for STS cluster and an operator roles prefix " +
-			"cannot be specified alongside each other.")
-		os.Exit(1)
+		return fmt.Errorf("a cluster key for STS cluster and an operator roles prefix " +
+			"cannot be specified alongside each other")
 	}
 
 	if cmd.Flag("cluster").Changed && cmd.Flag(OidcConfigIdFlag).Changed {
-		r.Reporter.Errorf("A cluster key for STS cluster and an OIDC configuration ID " +
-			"cannot be specified alongside each other.")
-		os.Exit(1)
+		return fmt.Errorf("a cluster key for STS cluster and an OIDC configuration ID " +
+			"cannot be specified alongside each other")
 	}
 
 	if !args.hostedCp && args.installerRoleArn != "" {
 		managedPolicies, err := r.AWSClient.HasManagedPolicies(args.installerRoleArn)
 		if err != nil {
-			r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to determine if cluster has managed policies: %v", err)
 		}
 		if managedPolicies {
-			r.Reporter.Errorf("The managed policies are not supported for classic operator-roles.")
-			os.Exit(1)
+			return fmt.Errorf("the managed policies are not supported for classic operator-roles")
 		}
 	}
 
@@ -259,15 +256,13 @@ func run(cmd *cobra.Command, argv []string) {
 	}
 
 	if args.forcePolicyCreation && mode != interactive.ModeAuto {
-		r.Reporter.Warnf("Forcing creation of policies only works in auto mode")
-		os.Exit(1)
+		return fmt.Errorf("forcing creation of policies only works in auto mode")
 	}
 
 	if interactive.Enabled() && !isProgmaticallyCalled {
 		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid role creation mode: %s", err)
 		}
 	}
 
@@ -286,8 +281,7 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for permissions boundary: %s", err)
 		}
 	}
 
@@ -301,8 +295,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 
 		if !isHcpSharedVpc {
@@ -322,8 +315,7 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 	}
 	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud {
@@ -337,60 +329,52 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 	}
 
 	if permissionsBoundary != "" {
 		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for permissions boundary: %s", err)
 		}
 	}
 
 	policies, err := r.OCMClient.GetPolicies("OperatorRole")
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid role creation mode: %s", err)
 	}
 
 	if args.prefix != "" {
 		if args.oidcConfigId == "" {
-			r.Reporter.Errorf("%s is mandatory for %s param flow.", OidcConfigIdFlag, PrefixFlag)
-			os.Exit(1)
+			return fmt.Errorf("%s is mandatory for %s param flow", OidcConfigIdFlag, PrefixFlag)
 		}
 
 		if args.installerRoleArn == "" {
-			r.Reporter.Errorf("%s is mandatory for %s param flow.", InstallerRoleArnFlag, PrefixFlag)
-			os.Exit(1)
+			return fmt.Errorf("%s is mandatory for %s param flow", InstallerRoleArnFlag, PrefixFlag)
 		}
 		channelGroup := args.channelGroup
 		latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelGroup)
 		if err != nil {
-			r.Reporter.Errorf("Error getting latest version: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("error getting latest version: %s", err)
 		}
 		err = HandleOperatorRoleCreationByPrefix(r, env, permissionsBoundary,
 			mode, policies, latestPolicyVersion, isHcpSharedVpc)
 		if err != nil {
-			r.Reporter.Errorf("Error creating operator roles: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("error creating operator roles: %s", err)
 		}
-		return
+		return nil
 	}
 	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
 	if err != nil {
-		r.Reporter.Errorf("Error getting latest version: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting latest version: %s", err)
 	}
 	err = handleOperatorRoleCreationByClusterKey(r, env, permissionsBoundary,
 		mode, policies, latestPolicyVersion, isHcpSharedVpc)
 	if err != nil {
-		r.Reporter.Errorf("Error creating operator roles: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error creating operator roles: %s", err)
 	}
+	return nil
 }
 
 func convertV1OperatorIAMRoleIntoOcmOperatorIamRole(
