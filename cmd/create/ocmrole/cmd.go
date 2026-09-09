@@ -125,24 +125,27 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
-
-	mode, err := interactive.GetMode()
-	if err != nil {
+	if err := runWithRuntime(r, cmd); err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	mode, err := interactive.GetMode()
+	if err != nil {
+		return err
 	}
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine OCM environment: %v", err)
 	}
 
 	// Determine if Classic ROSA managed policies are enabled
 	isManagedSet := cmd.Flags().Changed("managed-policies") || cmd.Flags().Changed("mp")
 	if roles.ClassicManagedPoliciesUnsupportedInEnv(isManagedSet, args.managed, env) {
-		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
-		os.Exit(1)
+		return fmt.Errorf("classic ROSA managed policies are not supported in this environment")
 	}
 	managedPolicies := args.managed
 
@@ -168,17 +171,14 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role prefix: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid role prefix: %s", err)
 		}
 	}
 	if len(prefix) > 32 {
-		r.Reporter.Errorf("Expected a prefix with no more than 32 characters")
-		os.Exit(1)
+		return fmt.Errorf("expected a prefix with no more than 32 characters")
 	}
 	if !aws.RoleNameRE.MatchString(prefix) {
-		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
-		os.Exit(1)
+		return fmt.Errorf("expected a valid role prefix matching %s", aws.RoleNameRE.String())
 	}
 
 	profile := internalocmrole.DetermineProfile(args.admin, args.noConsole)
@@ -186,8 +186,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if interactive.Enabled() && profile == internalocmrole.ProfileStandard {
 		profile, err = promptProfile(cmd, profile)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid --admin value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid --admin value: %s", err)
 		}
 	}
 
@@ -206,16 +205,14 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for permissions boundary: %s", err)
 		}
 	}
 
 	if permissionsBoundary != "" {
 		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for permissions boundary: %s", err)
 		}
 	}
 
@@ -230,50 +227,43 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid path: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid path: %s", err)
 		}
 	}
 
 	if path != "" && !aws.ARNPath.MatchString(path) {
-		r.Reporter.Errorf("The specified value for path is invalid. " +
-			"It must begin and end with '/' and contain only alphanumeric characters and/or '/' characters.")
-		os.Exit(1)
+		return fmt.Errorf("the specified value for path is invalid, " +
+			"it must begin and end with '/' and contain only alphanumeric characters and/or '/' characters")
 	}
 
 	if interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid role creation mode: %s", err)
 		}
 	}
 
 	// Get current OCM org account:
 	orgID, externalID, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
-		r.Reporter.Errorf("Failed to get organization account: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to get organization account: %v", err)
 	}
 
 	roleNameRequested := aws.GetOCMRoleName(prefix, aws.OCMRole, externalID)
 
 	existsOnOCM, _, selectedARN, err := r.OCMClient.CheckRoleExists(orgID, roleNameRequested, r.Creator.AccountID)
 	if err != nil {
-		r.Reporter.Errorf("Error checking existing ocm-role: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("error checking existing ocm-role: %v", err)
 	}
 	if existsOnOCM {
-		r.Reporter.Errorf("Only one ocm-role can be created per AWS account '%s' per organization '%s'.\n"+
-			"In order to create a new ocm-role, you have to unlink the ocm-role '%s'.\n",
+		return fmt.Errorf("only one ocm-role can be created per AWS account '%s' per organization '%s', "+
+			"in order to create a new ocm-role, you have to unlink the ocm-role '%s'",
 			r.Creator.AccountID, orgID, selectedARN)
-		os.Exit(1)
 	}
 
 	policies, err := r.OCMClient.GetPolicies("OCMRole")
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid role creation mode: %s", err)
 	}
 
 	// Validate no-console policy availability before any operations
@@ -283,9 +273,8 @@ func run(cmd *cobra.Command, _ []string) {
 		// For managed policies, validate ARN exists
 		// For customer-managed policies, validate Details exists (ARN is constructed later)
 		if !ok || (managedPolicies && policy.ARN() == "") || (!managedPolicies && policy.Details() == "") {
-			r.Reporter.Errorf("There was an error creating the ocm role: " +
+			return fmt.Errorf("there was an error creating the ocm role: " +
 				"the no-console OCM role profile is not yet enabled for your Organization")
-			os.Exit(1)
 		}
 	}
 
@@ -295,11 +284,13 @@ func run(cmd *cobra.Command, _ []string) {
 		roleARN, err := createRoles(r, prefix, roleNameRequested, path, permissionsBoundary,
 			orgID, env, profile, policies, managedPolicies)
 		if err != nil {
-			r.Reporter.Errorf("There was an error creating the ocm role: %s", err)
 			r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 				ocm.Response: ocm.Failure,
 			})
-			os.Exit(1)
+			return fmt.Errorf("there was an error creating the ocm role: %s", err)
+		}
+		if roleARN == "" {
+			return nil
 		}
 		r.OCMClient.LogEvent("ROSACreateOCMRoleModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
@@ -315,11 +306,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		err = generateOcmRolePolicyFiles(r, env, orgID, profile, policies)
 		if err != nil {
-			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateOCMRoleModeManual", map[string]string{
 				ocm.Response: ocm.Failure,
 			})
-			os.Exit(1)
+			return fmt.Errorf("there was an error generating the policy files: %s", err)
 		}
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("All policy files saved to the current directory")
@@ -339,15 +329,14 @@ func run(cmd *cobra.Command, _ []string) {
 			policies,
 		)
 		if err != nil {
-			r.Reporter.Errorf("Failed to generate commands for manual mode: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to generate commands for manual mode: %v", err)
 		}
 
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
-		os.Exit(1)
+		return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 	}
+	return nil
 }
 
 func promptProfile(cmd *cobra.Command, curr internalocmrole.RoleProfile) (internalocmrole.RoleProfile, error) {
@@ -529,7 +518,7 @@ func createRoles(r *rosa.Runtime, prefix string, roleName string, rolePath strin
 	policies map[string]*cmv1.AWSSTSPolicy, managedPolicies bool,
 ) (string, error) {
 	if !confirm.Prompt(true, "Create the '%s' role?", roleName) {
-		os.Exit(0)
+		return "", nil
 	}
 
 	roleARN, exists, err := checkRoleExists(r, roleName, profile, interactive.ModeAuto, rolePath)
