@@ -17,14 +17,12 @@ limitations under the License.
 package accountroles
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/cmd/login"
-	"github.com/openshift/rosa/cmd/verify/oc"
-	"github.com/openshift/rosa/cmd/verify/quota"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -173,13 +171,20 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
-func run(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime().WithAWS()
-
-	mode, err := interactive.GetMode()
+func run(cmd *cobra.Command, _ []string) {
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	mode, err := interactive.GetMode()
+	if err != nil {
+		return err
 	}
 
 	var isHcpSharedVpc bool
@@ -190,47 +195,31 @@ func run(cmd *cobra.Command, argv []string) {
 		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.route53RoleArn,
 			vpcEndpointRoleArnFlag, route53RoleArnFlag)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 	}
 
 	if args.vpcEndpointRoleArn != "" {
 		err = aws.ARNValidator(args.vpcEndpointRoleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", vpcEndpointRoleArnFlag, err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for %s: %s", vpcEndpointRoleArnFlag, err)
 		}
 	}
 	if args.route53RoleArn != "" {
 		err = aws.ARNValidator(args.route53RoleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for %s: %s", route53RoleArnFlag, err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for %s: %s", route53RoleArnFlag, err)
 		}
 	}
 
-	// If necessary, call `login` as part of `init`. We do this before
-	// other validations to get the prompt out of the way before performing
-	// longer checks.
-	err = login.Call(cmd, argv, r.Reporter)
-	if err != nil {
-		r.Reporter.Errorf("Failed to login to OCM: %v", err)
-		os.Exit(1)
-	}
-	r.WithOCM()
-	defer r.Cleanup()
-
 	env, err := ocm.GetEnv()
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine OCM environment: %v", err)
 	}
 
 	managedPolicies := args.managed
 	if args.forcePolicyCreation && managedPolicies {
-		r.Reporter.Warnf("Forcing creation of policies only works for unmanaged policies")
-		os.Exit(1)
+		return fmt.Errorf("forcing creation of policies only works for unmanaged policies")
 	}
 
 	if args.hostedCP && cmd.Flags().Changed("version") {
@@ -252,14 +241,12 @@ func run(cmd *cobra.Command, argv []string) {
 			isManagedSet = false
 			managedPolicies = false
 		} else {
-			r.Reporter.Errorf("Setting `hosted-cp` as unmanaged policies is not supported")
-			os.Exit(1)
+			return fmt.Errorf("setting `hosted-cp` as unmanaged policies is not supported")
 		}
 	}
 
 	if roles.ClassicManagedPoliciesUnsupportedInEnv(isManagedSet, args.managed, env) {
-		r.Reporter.Errorf("Classic ROSA managed policies are not supported in this environment")
-		os.Exit(1)
+		return fmt.Errorf("classic ROSA managed policies are not supported in this environment")
 	}
 
 	// Validate AWS credentials for current user
@@ -269,23 +256,15 @@ func run(cmd *cobra.Command, argv []string) {
 	ok, err := r.AWSClient.ValidateCredentials()
 	if err != nil {
 		r.OCMClient.LogEvent("ROSAInitCredentialsFailed", nil)
-		r.Reporter.Errorf("Error validating AWS credentials: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("error validating AWS credentials: %v", err)
 	}
 	if !ok {
 		r.OCMClient.LogEvent("ROSAInitCredentialsInvalid", nil)
-		r.Reporter.Errorf("AWS credentials are invalid")
-		os.Exit(1)
+		return fmt.Errorf("AWS credentials are invalid")
 	}
 	if r.Reporter.IsTerminal() {
 		r.Reporter.Infof("AWS credentials are valid!")
 	}
-
-	// Validate AWS quota
-	// Call `verify quota` as part of init
-	quota.Cmd.Run(cmd, argv)
-	// Verify version of `oc`
-	oc.Cmd.Run(cmd, argv)
 
 	// Determine if interactive mode is needed
 	if !interactive.Enabled() && (!cmd.Flags().Changed("mode")) {
@@ -300,8 +279,7 @@ func run(cmd *cobra.Command, argv []string) {
 	channelGroup := args.channelGroup
 	policyVersion, err := r.OCMClient.GetPolicyVersion(version, channelGroup)
 	if err != nil {
-		r.Reporter.Errorf("Error getting version: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting version: %s", err)
 	}
 
 	r.Reporter.Debugf("Creating account roles compatible with OpenShift versions up to %s", policyVersion)
@@ -319,21 +297,17 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role prefix: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid role prefix: %s", err)
 		}
 	}
 	if len(prefix) > 32 {
-		r.Reporter.Errorf("Expected a prefix with no more than 32 characters")
-		os.Exit(1)
+		return fmt.Errorf("expected a prefix with no more than 32 characters")
 	}
 	if !aws.RoleNameRE.MatchString(prefix) {
-		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
-		os.Exit(1)
+		return fmt.Errorf("expected a valid role prefix matching %s", aws.RoleNameRE.String())
 	}
 	if !args.hostedCP && strings.HasSuffix(prefix, "-HCP") {
-		r.Reporter.Errorf("The '-HCP' suffix is reserved for hosted CP managed policies")
-		os.Exit(1)
+		return fmt.Errorf("the '-HCP' suffix is reserved for hosted CP managed policies")
 	}
 
 	permissionsBoundary := args.permissionsBoundary
@@ -347,16 +321,14 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for permissions boundary: %s", err)
 		}
 	}
 
 	if permissionsBoundary != "" {
 		err = aws.ARNValidator(permissionsBoundary)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid policy ARN for permissions boundary: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid policy ARN for permissions boundary: %s", err)
 		}
 	}
 
@@ -371,15 +343,13 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid path: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid path: %s", err)
 		}
 	}
 
 	if path != "" && !aws.ARNPath.MatchString(path) {
-		r.Reporter.Errorf("The specified value for path is invalid. " +
-			"It must begin and end with '/' and contain only alphanumeric characters and/or '/' characters.")
-		os.Exit(1)
+		return fmt.Errorf("the specified value for path is invalid, " +
+			"it must begin and end with '/' and contain only alphanumeric characters and/or '/' characters")
 	}
 
 	if interactive.Enabled() && !cmd.Flags().Changed("external-id") {
@@ -393,33 +363,28 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid STS external ID: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid STS external ID: %s", err)
 		}
 	}
 
 	if err := validateAccountRolesSTSExternalID(args.externalID); err != nil {
-		r.Reporter.Errorf("Expected a valid STS external ID: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid STS external ID: %s", err)
 	}
 
 	if interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "Role creation mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid role creation mode: %s", err)
 		}
 	}
 
 	if args.forcePolicyCreation && mode != interactive.ModeAuto {
-		r.Reporter.Warnf("Forcing creation of policies only works in auto mode")
-		os.Exit(1)
+		return fmt.Errorf("forcing creation of policies only works in auto mode")
 	}
 
 	policies, err := r.OCMClient.GetPolicies("AccountRole")
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid role creation mode: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid role creation mode: %s", err)
 	}
 
 	createClassic := args.classic
@@ -431,8 +396,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 		isClassicValueSet = true
 	}
@@ -447,8 +411,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: false,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 		isHostedCPValueSet = true
 	}
@@ -462,8 +425,7 @@ func run(cmd *cobra.Command, argv []string) {
 			Required: createHostedCP,
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 
 		if !isHcpSharedVpc {
@@ -483,8 +445,7 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 	}
 	if interactive.Enabled() && isHcpSharedVpc && !r.Creator.IsGovcloud && createHostedCP {
@@ -498,8 +459,7 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid value: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid value: %s", err)
 		}
 	}
 
@@ -510,8 +470,7 @@ func run(cmd *cobra.Command, argv []string) {
 		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.route53RoleArn,
 			vpcEndpointRoleArnFlag, route53RoleArnFlag)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 	}
 
@@ -519,20 +478,18 @@ func run(cmd *cobra.Command, argv []string) {
 		isHcpSharedVpc, err = roles.ValidateSharedVpcInputs(args.vpcEndpointRoleArn, args.route53RoleArn,
 			vpcEndpointRoleArnFlag, route53RoleArnFlag)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 	}
 
 	rolesCreator, createRoles := initCreator(r, managedPolicies, createClassic, createHostedCP,
 		isClassicValueSet, isHostedCPValueSet)
 	if !createRoles {
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize account role creator")
 	}
 
 	if fedramp.Enabled() && isHcpSharedVpc {
-		_ = r.Reporter.Errorf("HCP shared VPC not supported while using a govcloud region")
-		os.Exit(1)
+		return fmt.Errorf("HCP shared VPC not supported while using a govcloud region")
 	}
 
 	input := buildRolesCreationInput(prefix, permissionsBoundary, r.Creator.AccountID, env, policies,
@@ -542,19 +499,18 @@ func run(cmd *cobra.Command, argv []string) {
 	case interactive.ModeAuto:
 		err = rolesCreator.createRoles(r, input)
 		if err != nil {
-			r.Reporter.Errorf("There was an error creating the account roles: %s", err)
 			if strings.Contains(err.Error(), "Throttling") {
 				r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 					ocm.Response:   ocm.Failure,
 					ocm.Version:    policyVersion,
 					ocm.IsThrottle: "true",
 				})
-				os.Exit(1)
+				return fmt.Errorf("there was an error creating the account roles: %s", err)
 			}
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 				ocm.Response: ocm.Failure,
 			})
-			os.Exit(1)
+			return fmt.Errorf("there was an error creating the account roles: %s", err)
 		}
 		r.OCMClient.LogEvent("ROSACreateAccountRolesModeAuto", map[string]string{
 			ocm.Response: ocm.Success,
@@ -564,16 +520,14 @@ func run(cmd *cobra.Command, argv []string) {
 		err = aws.GenerateAccountRolePolicyFiles(r.Reporter, env, policies, rolesCreator.skipPermissionFiles(),
 			rolesCreator.getAccountRolesMap(), r.Creator.Partition, args.externalID)
 		if err != nil {
-			r.Reporter.Errorf("There was an error generating the policy files: %s", err)
 			r.OCMClient.LogEvent("ROSACreateAccountRolesModeManual", map[string]string{
 				ocm.Response: ocm.Failure,
 			})
-			os.Exit(1)
+			return fmt.Errorf("there was an error generating the policy files: %s", err)
 		}
 		err = rolesCreator.printCommands(r, input)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("All policy files saved to the current directory")
@@ -582,9 +536,10 @@ func run(cmd *cobra.Command, argv []string) {
 			ocm.Version: policyVersion,
 		})
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
-		os.Exit(1)
+		return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 	}
+
+	return nil
 }
 
 func validateAccountRolesSTSExternalID(externalID string) error {
