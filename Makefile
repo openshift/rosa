@@ -37,9 +37,13 @@ export CGO_ENABLED=0
 # Unset GOFLAG for CI and ensure we've got nothing accidently set
 unexport GOFLAGS
 
+# Version from the exact tag on HEAD; empty (uses the fallback in pkg/info/info.go)
+# when HEAD is not tagged.
+VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null | sed 's/^v//')
+
 .PHONY: rosa
 rosa:
-	go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD)" ./cmd/rosa
+	go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD) $(if $(VERSION),-X github.com/openshift/rosa/pkg/info.DefaultVersion=$(VERSION),)" ./cmd/rosa
 
 .PHONY: test
 test:
@@ -55,7 +59,7 @@ coverage-changed-files:
 
 .PHONY: install
 install:
-	go install -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD)" ./cmd/rosa
+	go install -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD) $(if $(VERSION),-X github.com/openshift/rosa/pkg/info.DefaultVersion=$(VERSION),)" ./cmd/rosa
 
 .PHONY: fmt
 fmt: $(GCI)
