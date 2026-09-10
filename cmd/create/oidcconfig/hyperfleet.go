@@ -40,15 +40,6 @@ var (
 	}
 )
 
-// runHyperfleetCreate is a thin wrapper for direct test invocation without a real cobra.Command.
-func runHyperfleetCreate(r *rosa.Runtime) {
-	if err := hfpathbind.RunCreateOidcConfig(context.Background(), r, nil, &hfOidcConfigInput,
-		&hyperfleetOidcConfigCreate{},
-	); err != nil {
-		hfExitFn(1)
-	}
-}
-
 // hyperfleetOidcConfigCreate implements hfpathbind.OidcConfigCreateHandler for rosa create oidcconfig.
 type hyperfleetOidcConfigCreate struct {
 	// interactive prompting for required fields
