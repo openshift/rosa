@@ -12,7 +12,6 @@ var _ = Describe("hyperfleet dispatch", func() {
 		origHfListOperatorRoles func()
 
 		enabledCalled bool
-		exitCode      *int
 		listCalled    bool
 	)
 
@@ -22,16 +21,13 @@ var _ = Describe("hyperfleet dispatch", func() {
 		origHfListOperatorRoles = hfListOperatorRoles
 
 		enabledCalled = false
-		exitCode = nil
 		listCalled = false
 
 		hfEnabled = func() bool {
 			enabledCalled = true
 			return true
 		}
-		hfExitFn = func(code int) {
-			exitCode = &code
-		}
+		hfExitFn = func(int) {}
 		hfListOperatorRoles = func() {
 			listCalled = true
 		}
