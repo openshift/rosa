@@ -2566,7 +2566,7 @@ var _ = Describe("Classic cluster creation negative testing",
 
 				errAndFlagMap := map[string][]string{
 					"error validating log-verbosity: " +
-						"number must be greater or equal" +
+						"number must be greater or equal " +
 						"to zero": {"--autoscaler-log-verbosity", "-2"},
 
 					"error validating utilization-threshold: expecting" +
