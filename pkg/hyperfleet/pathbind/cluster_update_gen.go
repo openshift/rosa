@@ -204,7 +204,7 @@ func (GeneratedClusterUpdatePrompt) Prompt(ctx context.Context, r *rosa.Runtime,
 	return nil
 }
 
-// normalizeClusterUpdateInput clears numeric pointer fields that were pre-allocated by
+// normalizeClusterUpdateInput clears pointer flag fields that were pre-allocated by
 // cobra but not actually set by the user. This allows pathbind.Expand to distinguish
 // between "not set" (nil) and "explicitly set to zero".
 func normalizeClusterUpdateInput(cmd *cobra.Command, input *ClusterUpdateInput) {
@@ -212,6 +212,10 @@ func normalizeClusterUpdateInput(cmd *cobra.Command, input *ClusterUpdateInput) 
 		return
 	}
 
+	if cmd.Flags().Lookup("delete-protection") != nil && !cmd.Flag("delete-protection").Changed &&
+		input.DeleteProtection != nil {
+		input.DeleteProtection = nil
+	}
 	if cmd.Flags().Lookup("container-log-max-files") != nil && !cmd.Flag("container-log-max-files").Changed &&
 		input.ContainerLogMaxFiles != nil {
 		input.ContainerLogMaxFiles = nil
@@ -240,9 +244,17 @@ func normalizeClusterUpdateInput(cmd *cobra.Command, input *ClusterUpdateInput) 
 		input.RegistryPullQPS != nil {
 		input.RegistryPullQPS = nil
 	}
+	if cmd.Flags().Lookup("serialize-image-pulls") != nil && !cmd.Flag("serialize-image-pulls").Changed &&
+		input.SerializeImagePulls != nil {
+		input.SerializeImagePulls = nil
+	}
 	if cmd.Flags().Lookup("port") != nil && !cmd.Flag("port").Changed &&
 		input.Port != nil {
 		input.Port = nil
+	}
+	if cmd.Flags().Lookup("multi-arch") != nil && !cmd.Flag("multi-arch").Changed &&
+		input.MultiArch != nil {
+		input.MultiArch = nil
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 // +kubebuilder:subresource:status
 // +genclient
 // +genclient:nonNamespaced
+// +resourceName=oidc_configs
 // +bridge:field=id,meta=name
 // +bridge:field=resource_version,meta=resourceVersion
 // +bridge:field=generation,meta=generation

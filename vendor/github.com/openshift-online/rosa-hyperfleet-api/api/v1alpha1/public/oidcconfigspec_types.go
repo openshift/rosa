@@ -4,20 +4,22 @@ package public
 
 // OidcConfigSpec defines the desired state of an OidcConfig.
 // +kubebuilder:validation:XValidation:rule="self.type != 'managed' || (self.secretArn == ” && self.installerRoleArn == ”)",message="managed type must not set secretArn or installerRoleArn"
-// +kubebuilder:validation:XValidation:rule="self.type != 'unmanaged' || (self.secretArn != ” && self.installerRoleArn != ” && self.issuerUrl != ”)",message="unmanaged type requires secretArn, installerRoleArn, and issuerUrl"
+// +kubebuilder:validation:XValidation:rule="self.type != 'unmanaged' || (self.secretArn != ” && self.installerRoleArn != ”)",message="unmanaged type requires secretArn and installerRoleArn"
 // +kubebuilder:validation:XValidation:rule="self.type == oldSelf.type",message="spec.type is immutable"
 // +kubebuilder:validation:XValidation:rule="self.secretArn == oldSelf.secretArn",message="spec.secretArn is immutable"
 // +kubebuilder:validation:XValidation:rule="self.installerRoleArn == oldSelf.installerRoleArn",message="spec.installerRoleArn is immutable"
-// +kubebuilder:validation:XValidation:rule="oldSelf.issuerUrl == ” || self.issuerUrl == oldSelf.issuerUrl",message="spec.issuerUrl is immutable once set"
+// +kubebuilder:validation:XValidation:rule="self.issuerUrl == oldSelf.issuerUrl",message="spec.issuerUrl is immutable"
 type OidcConfigSpec struct {
 	// Type is the OIDC configuration mode.
 	// +kubebuilder:validation:Enum=managed;unmanaged
 	// +hyperfleet:write-mode=immutable
 	Type string `json:"type"`
 	// IssuerUrl is the OIDC issuer URL.
-	// Required for unmanaged configs; set by the controller for managed configs.
+	// Required for both types; computed by platform-api for managed configs,
+	// customer-supplied for unmanaged configs.
 	// +hyperfleet:write-mode=immutable
-	// +optional
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
 	IssuerUrl string `json:"issuerUrl"`
 	// SecretArn is the ARN of the customer's Secrets Manager secret containing the RSA private key.
 	// Required for unmanaged configs; must be empty for managed configs.

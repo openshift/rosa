@@ -23,6 +23,21 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.hostedCluster.autoNode.provisionerConfig.karpenter.aws.roleARN
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoNode.provisionerConfig.karpenter.platform
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoNode.provisionerConfig.name
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.hostedCluster.configuration.kubelet.containerLogMaxFiles
               goType: integer(int32)
               operations:
@@ -92,11 +107,6 @@ resources:
                 - create
             - path: spec.hostedCluster.imageContentSources
               goType: array
-              operations:
-                - create
-                - update
-            - path: spec.hostedCluster.issuerURL
-              goType: string
               operations:
                 - create
                 - update
@@ -254,6 +264,10 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.oidcConfigId
+              goType: string
+              operations:
+                - create
             - path: spec.properties
               goType: map
               operations:

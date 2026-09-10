@@ -114,7 +114,7 @@ func (GeneratedNodePoolUpdatePrompt) Prompt(ctx context.Context, r *rosa.Runtime
 	return nil
 }
 
-// normalizeNodePoolUpdateInput clears numeric pointer fields that were pre-allocated by
+// normalizeNodePoolUpdateInput clears pointer flag fields that were pre-allocated by
 // cobra but not actually set by the user. This allows pathbind.Expand to distinguish
 // between "not set" (nil) and "explicitly set to zero".
 func normalizeNodePoolUpdateInput(cmd *cobra.Command, input *NodePoolUpdateInput) {
@@ -122,6 +122,14 @@ func normalizeNodePoolUpdateInput(cmd *cobra.Command, input *NodePoolUpdateInput
 		return
 	}
 
+	if cmd.Flags().Lookup("auto-repair") != nil && !cmd.Flag("auto-repair").Changed &&
+		input.AutoRepair != nil {
+		input.AutoRepair = nil
+	}
+	if cmd.Flags().Lookup("encrypted") != nil && !cmd.Flag("encrypted").Changed &&
+		input.Encrypted != nil {
+		input.Encrypted = nil
+	}
 	if cmd.Flags().Lookup("iops") != nil && !cmd.Flag("iops").Changed &&
 		input.Iops != nil {
 		input.Iops = nil
