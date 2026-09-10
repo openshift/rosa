@@ -168,7 +168,12 @@ type Client interface {
 	GetOpenIDConnectProviderByClusterIdTag(clusterID string) (string, error)
 	GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
-	EnsureInstanceProfile(reporter reporter.Logger, instanceProfileName string, roleName string, tagList map[string]string) error
+	EnsureInstanceProfile(
+		reporter reporter.Logger,
+		instanceProfileName string,
+		roleName string,
+		tagList map[string]string,
+	) error
 	IsUpgradedNeededForAccountRolePolicies(rolePrefix string, version string) (bool, error)
 	IsUpgradedNeededForAccountRolePoliciesUsingCluster(clusterID *cmv1.Cluster, version string) (bool, error)
 	IsUpgradedNeededForOperatorRolePoliciesUsingCluster(

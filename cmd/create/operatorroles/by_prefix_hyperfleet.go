@@ -189,7 +189,7 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
 			var trustPolicy string
 			if spec.IsWorkerRole {
 				// EC2 trust policy for worker role
-				trustPolicy = fmt.Sprintf(`{
+				trustPolicy = `{
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
@@ -198,7 +198,7 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
     },
     "Action": "sts:AssumeRole"
   }]
-}`)
+}`
 			} else {
 				// OIDC trust policy for operator roles
 				trustPolicy = fmt.Sprintf(`{
@@ -216,7 +216,14 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
       }
     }
   }]
-}`, r.Creator.Partition, r.Creator.AccountID, oidcIssuerDomain, oidcIssuerDomain, spec.ServiceAccount, oidcIssuerDomain)
+}`,
+					r.Creator.Partition,
+					r.Creator.AccountID,
+					oidcIssuerDomain,
+					oidcIssuerDomain,
+					spec.ServiceAccount,
+					oidcIssuerDomain,
+				)
 			}
 
 			r.Reporter.Debugf("Creating role '%s'", roleName)
@@ -303,7 +310,14 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
       }
     }
   }]
-}'`, r.Creator.Partition, r.Creator.AccountID, oidcIssuerDomain, oidcIssuerDomain, spec.ServiceAccount, oidcIssuerDomain)
+}'`,
+					r.Creator.Partition,
+					r.Creator.AccountID,
+					oidcIssuerDomain,
+					oidcIssuerDomain,
+					spec.ServiceAccount,
+					oidcIssuerDomain,
+				)
 			}
 
 			// Build tags

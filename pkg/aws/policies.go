@@ -1223,7 +1223,12 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 
 // EnsureInstanceProfile creates an instance profile if it doesn't exist and associates it with the role.
 // For worker roles, the instance profile must exist for EC2 instances to assume the IAM role.
-func (c *awsClient) EnsureInstanceProfile(reporter reporter.Logger, instanceProfileName string, roleName string, tagList map[string]string) error {
+func (c *awsClient) EnsureInstanceProfile(
+	reporter reporter.Logger,
+	instanceProfileName string,
+	roleName string,
+	tagList map[string]string,
+) error {
 	// Check if instance profile already exists
 	_, err := c.iamClient.GetInstanceProfile(context.Background(), &iam.GetInstanceProfileInput{
 		InstanceProfileName: aws.String(instanceProfileName),

@@ -77,7 +77,10 @@ func runHyperfleetCreateNetwork(r *rosa.Runtime, userOptions *opts.NetworkUserOp
 	case interactive.ModeManual:
 		r.Reporter.Infof(helper.ManualModeHelperMessage(parsedParams, parsedTags))
 		r.Reporter.Infof("\nTo create the network stack manually, save the template below and use:")
-		r.Reporter.Infof("  aws cloudformation create-stack --stack-name %s --template-body file://template.yaml --parameters ...", parsedParams["Name"])
+		r.Reporter.Infof(
+			"  aws cloudformation create-stack --stack-name %s --template-body file://template.yaml --parameters ...",
+			parsedParams["Name"],
+		)
 		fmt.Println("\nCloudFormation Template:")
 		fmt.Println("---")
 		fmt.Println(CloudFormationHCPTemplateFile)
@@ -101,6 +104,9 @@ func runHyperfleetCreateNetwork(r *rosa.Runtime, userOptions *opts.NetworkUserOp
 
 		r.Reporter.Infof("Network stack created successfully")
 		r.Reporter.Infof("Use the following to get stack outputs:")
-		r.Reporter.Infof("  aws cloudformation describe-stacks --stack-name %s --query 'Stacks[0].Outputs'", parsedParams["Name"])
+		r.Reporter.Infof(
+			"  aws cloudformation describe-stacks --stack-name %s --query 'Stacks[0].Outputs'",
+			parsedParams["Name"],
+		)
 	}
 }
