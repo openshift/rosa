@@ -70,7 +70,7 @@ func PercentageValidator(val interface{}) error {
 	}
 
 	if number >= 1 || number <= 0 || math.IsNaN(number) {
-		return fmt.Errorf("expecting a floating-point number greater than 0 and less than 1")
+		return fmt.Errorf("expecting a floating-point number greater than 0 and less than 1, got %v", number)
 	}
 
 	return nil

@@ -705,11 +705,19 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
 								"error validating utilization-threshold: "+
-								"expecting a floating-point number greater than 0 and less than 1",
+								"expecting a floating-point number greater than 0 and less than 1, got -1",
 								clusterID): {"--scale-down-utilization-threshold", "-1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
 								"error validating utilization-threshold: "+
-								"expecting a floating-point number greater than 0 and less than 1",
+								"expecting a floating-point number greater than 0 and less than 1, got 0",
+								clusterID): {"--scale-down-utilization-threshold", "0"},
+							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1, got 1",
+								clusterID): {"--scale-down-utilization-threshold", "1"},
+							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1, got 2",
 								clusterID): {"--scale-down-utilization-threshold", "2"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
 								"error validating delay-after-delete: time: "+
@@ -864,11 +872,19 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 								"error validating utilization-threshold: "+
-								"expecting a floating-point number greater than 0 and less than 1",
+								"expecting a floating-point number greater than 0 and less than 1, got -1",
 								clusterID): {"--scale-down-utilization-threshold", "-1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 								"error validating utilization-threshold: "+
-								"expecting a floating-point number greater than 0 and less than 1",
+								"expecting a floating-point number greater than 0 and less than 1, got 0",
+								clusterID): {"--scale-down-utilization-threshold", "0"},
+							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1, got 1",
+								clusterID): {"--scale-down-utilization-threshold", "1"},
+							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
+								"error validating utilization-threshold: "+
+								"expecting a floating-point number greater than 0 and less than 1, got 2",
 								clusterID): {"--scale-down-utilization-threshold", "2"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 								"error validating delay-after-delete: time: "+
