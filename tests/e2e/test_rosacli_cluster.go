@@ -2571,7 +2571,7 @@ var _ = Describe("Classic cluster creation negative testing",
 
 					"error validating utilization-threshold: expecting" +
 						" a floating-point number greater than 0 and less" +
-						" than 1": {"--autoscaler-scale-down-utilization-threshold", "1.3"},
+						" than 1, got 1.3": {"--autoscaler-scale-down-utilization-threshold", "1.3"},
 
 					"error validating delay-after-add: " +
 						"time: invalid duration \"e\"": {"--autoscaler-scale-down-delay-after-add", "e"},
