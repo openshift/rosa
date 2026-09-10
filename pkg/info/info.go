@@ -18,9 +18,12 @@ limitations under the License.
 
 package info
 
-const DefaultVersion = "1.2.64"
+// DefaultVersion is the CLI version. For release builds it is overridden via
+// -ldflags with the value derived from the git tag. The fallback here is kept
+// current by an automated post-release workflow.
+var DefaultVersion = "1.2.65"
 
-// Build contains the short Git SHA of the CLI at the point it was build. Set via `-ldflags` at build time
+// Build contains the short Git SHA of the CLI at the point it was built. Set via `-ldflags` at build time.
 var Build = "local"
 
 const DefaultUserAgent = "ROSACLI"
