@@ -77,6 +77,12 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	// Dispatch to hyperfleet v2 if enabled
+	if hfEnabled() {
+		hfListOperatorRoles()
+		return
+	}
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

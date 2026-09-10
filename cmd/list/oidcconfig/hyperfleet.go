@@ -20,7 +20,7 @@ var (
 	hfEnabled         = hyperfleet.Enabled
 	hfExitFn          = func(code int) { os.Exit(code) }
 	hfListOidcConfigs = func() {
-		r := rosa.NewRuntime().WithHyperFleet()
+		r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
 		defer r.Cleanup()
 		runHyperfleetList(r)
 	}
@@ -52,11 +52,11 @@ func runHyperfleetList(r *rosa.Runtime) {
 		configs := make([]map[string]interface{}, 0, len(oidcConfigList.Items))
 		for _, config := range oidcConfigList.Items {
 			configs = append(configs, map[string]interface{}{
-				"id":              config.Name,
-				"type":            config.Spec.Type,
-				"issuer_url":      getIssuerUrl(&config),
-				"secret_arn":      config.Spec.SecretArn,
-				"installer_role":  config.Spec.InstallerRoleArn,
+				"id":             config.Name,
+				"type":           config.Spec.Type,
+				"issuer_url":     getIssuerUrl(&config),
+				"secret_arn":     config.Spec.SecretArn,
+				"installer_role": config.Spec.InstallerRoleArn,
 			})
 		}
 		err = output.Print(configs)

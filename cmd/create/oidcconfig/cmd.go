@@ -112,6 +112,14 @@ func init() {
 	interactive.AddFlag(flags)
 	arguments.AddRegionFlag(flags)
 	output.AddFlag(Cmd)
+
+	// ── HyperFleet-specific flags ────────────────────────────────────────────
+	// Registers new HF-only flags. Flags already registered by OCM are silently skipped.
+	// hyperfleet.RegisterAndMarkPlatformAPIFlags(Cmd,
+	// 	func() { hfpathbind.RegisterOidcConfigCreateFlags(Cmd, &hfOidcConfigInput) },
+	// 	hfpathbind.OidcConfigCreatePlatformAPIFlags,
+	// )
+	// hyperfleet.AddPlatformAPIFlagSection(Cmd)
 }
 
 func checkInteractiveModeNeeded(cmd *cobra.Command) {
@@ -136,7 +144,7 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 
 func run(cmd *cobra.Command, _ []string) {
 	if hfEnabled() {
-		hfCreateOidcConfig()
+		hfCreateOidcConfig(cmd)
 		return
 	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()

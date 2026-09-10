@@ -106,11 +106,11 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	}
 
 	// OIDC config ID is optional but recommended
-	oidcConfigID := args.oidcConfigId
-	if oidcConfigID == "" {
+	if args.oidcConfigId == "" {
 		r.Reporter.Warnf("--oidc-config-id not provided, cluster will use auto-generated OIDC config")
 	} else {
-		r.Reporter.Infof("Using OIDC config ID: %s", oidcConfigID)
+		r.Reporter.Infof("Using OIDC config ID: %s", args.oidcConfigId)
+		input.OidcConfigId = args.oidcConfigId
 	}
 
 	// Derive VPC ID and availability zone from the subnet.
