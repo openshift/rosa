@@ -201,15 +201,24 @@ e2e_test: install
 #   CLUSTER_NAME       — defaults to hf-e2e-<unix timestamp> (≤18 chars)
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
 #   LABEL_FILTER       — ginkgo label filter (defaults to "hyperfleet-validated")
+#   FOCUS              — focus on specific test descriptions (e.g., "Cluster preparation")
+#   TEST_PROFILE       — test profile name from tests/ci/data/profiles/*.yaml
+#   TEST_PROFILE_DIR   — directory containing profile YAML files
+#   WORKSPACE          — ROSA repo root directory
 .PHONY: e2e-hyperfleet
 e2e-hyperfleet: install
 	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
-	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
-	CLUSTER_NAME="$$name" \
-	OPERATOR_ROLES_PREFIX="$$name" \
-	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
+	export HYPERFLEET_URL="$${HYPERFLEET_URL}"; \
+	export CLUSTER_NAME="$$name"; \
+	export OPERATOR_ROLES_PREFIX="$$name"; \
+	export AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}"; \
+	export TEST_PROFILE="$${TEST_PROFILE}"; \
+	export TEST_PROFILE_DIR="$${TEST_PROFILE_DIR}"; \
+	export WORKSPACE="$${WORKSPACE}"; \
+	export GOTOOLCHAIN=auto \
 	ginkgo run \
 		--label-filter "$${LABEL_FILTER:-hyperfleet-validated}" \
+		$${ROSA_CLI_FOCUS:+--focus "$$ROSA_CLI_FOCUS"} \
 		--timeout 3h \
 		-v \
 		./tests/e2e/ \
