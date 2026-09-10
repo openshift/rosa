@@ -1221,6 +1221,71 @@ func (c *awsClient) GetInstanceProfilesForRole(r string) ([]string, error) {
 	return instanceProfiles, nil
 }
 
+// EnsureInstanceProfile creates an instance profile if it doesn't exist and associates it with the role.
+// For worker roles, the instance profile must exist for EC2 instances to assume the IAM role.
+func (c *awsClient) EnsureInstanceProfile(reporter reporter.Logger, instanceProfileName string, roleName string, tagList map[string]string) error {
+	// Check if instance profile already exists
+	_, err := c.iamClient.GetInstanceProfile(context.Background(), &iam.GetInstanceProfileInput{
+		InstanceProfileName: aws.String(instanceProfileName),
+	})
+
+	if err != nil {
+		if awserr.IsNoSuchEntityException(err) {
+			// Instance profile doesn't exist, create it
+			reporter.Debugf("Creating instance profile '%s'", instanceProfileName)
+			_, err = c.iamClient.CreateInstanceProfile(context.Background(), &iam.CreateInstanceProfileInput{
+				InstanceProfileName: aws.String(instanceProfileName),
+				Tags:                getTags(tagList),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create instance profile '%s': %w", instanceProfileName, err)
+			}
+			reporter.Infof("Created instance profile '%s'", instanceProfileName)
+		} else {
+			return fmt.Errorf("failed to check if instance profile exists: %w", err)
+		}
+	} else {
+		reporter.Debugf("Instance profile '%s' already exists", instanceProfileName)
+	}
+
+	// Check if the role is already associated with the instance profile
+	profiles, err := c.iamClient.ListInstanceProfilesForRole(context.Background(),
+		&iam.ListInstanceProfilesForRoleInput{
+			RoleName: aws.String(roleName),
+		})
+	if err != nil && !awserr.IsNoSuchEntityException(err) {
+		return fmt.Errorf("failed to list instance profiles for role '%s': %w", roleName, err)
+	}
+
+	// Check if this specific instance profile is already associated
+	alreadyAssociated := false
+	if profiles != nil {
+		for _, profile := range profiles.InstanceProfiles {
+			if aws.ToString(profile.InstanceProfileName) == instanceProfileName {
+				alreadyAssociated = true
+				break
+			}
+		}
+	}
+
+	if !alreadyAssociated {
+		// Add role to instance profile
+		reporter.Debugf("Adding role '%s' to instance profile '%s'", roleName, instanceProfileName)
+		_, err = c.iamClient.AddRoleToInstanceProfile(context.Background(), &iam.AddRoleToInstanceProfileInput{
+			InstanceProfileName: aws.String(instanceProfileName),
+			RoleName:            aws.String(roleName),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to add role to instance profile: %w", err)
+		}
+		reporter.Infof("Added role '%s' to instance profile '%s'", roleName, instanceProfileName)
+	} else {
+		reporter.Debugf("Role '%s' is already associated with instance profile '%s'", roleName, instanceProfileName)
+	}
+
+	return nil
+}
+
 func (c *awsClient) DeleteAccountRole(roleName string, prefix string, managedPolicies bool,
 	deleteHcpSharedVpcPolicies bool,
 ) error {

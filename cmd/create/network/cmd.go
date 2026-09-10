@@ -24,7 +24,15 @@ const defaultTemplate = "rosa-quickstart-default-vpc"
 
 func NewNetworkCommand() *cobra.Command {
 	cmd, options := opts.BuildNetworkCommandWithOptions()
-	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCMAndAWS(), NetworkRunner(options))
+	cmd.Run = func(cmd *cobra.Command, argv []string) {
+		// Dispatch to hyperfleet v2 if enabled
+		if hfEnabled() {
+			hfCreateNetwork(options, argv)
+			return
+		}
+		// Otherwise use v1 flow with OCM
+		rosa.DefaultRunner(rosa.RuntimeWithOCMAndAWS(), NetworkRunner(options))(cmd, argv)
+	}
 	interactive.AddModeFlag(cmd)
 
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {

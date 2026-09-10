@@ -590,26 +590,6 @@ func (m *validateOpListKeyPolicies) HandleInitialize(ctx context.Context, in mid
 	return next.HandleInitialize(ctx, in)
 }
 
-type validateOpListKeyRotations struct {
-}
-
-func (*validateOpListKeyRotations) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpListKeyRotations) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*ListKeyRotationsInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpListKeyRotationsInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
 type validateOpListResourceTags struct {
 }
 
@@ -725,26 +705,6 @@ func (m *validateOpRevokeGrant) HandleInitialize(ctx context.Context, in middlew
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpRevokeGrantInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
-type validateOpRotateKeyOnDemand struct {
-}
-
-func (*validateOpRotateKeyOnDemand) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpRotateKeyOnDemand) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*RotateKeyOnDemandInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpRotateKeyOnDemandInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -1066,10 +1026,6 @@ func addOpListKeyPoliciesValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListKeyPolicies{}, middleware.After)
 }
 
-func addOpListKeyRotationsValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpListKeyRotations{}, middleware.After)
-}
-
 func addOpListResourceTagsValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListResourceTags{}, middleware.After)
 }
@@ -1092,10 +1048,6 @@ func addOpReplicateKeyValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpRevokeGrantValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpRevokeGrant{}, middleware.After)
-}
-
-func addOpRotateKeyOnDemandValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpRotateKeyOnDemand{}, middleware.After)
 }
 
 func addOpScheduleKeyDeletionValidationMiddleware(stack *middleware.Stack) error {
@@ -1669,21 +1621,6 @@ func validateOpListKeyPoliciesInput(v *ListKeyPoliciesInput) error {
 	}
 }
 
-func validateOpListKeyRotationsInput(v *ListKeyRotationsInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "ListKeyRotationsInput"}
-	if v.KeyId == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
 func validateOpListResourceTagsInput(v *ListResourceTagsInput) error {
 	if v == nil {
 		return nil
@@ -1783,21 +1720,6 @@ func validateOpRevokeGrantInput(v *RevokeGrantInput) error {
 	}
 	if v.GrantId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("GrantId"))
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
-func validateOpRotateKeyOnDemandInput(v *RotateKeyOnDemandInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "RotateKeyOnDemandInput"}
-	if v.KeyId == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

@@ -161,6 +161,11 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
+	if hfEnabled() {
+		hfCreateOperatorRoles()
+		return
+	}
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
