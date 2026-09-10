@@ -6,116 +6,121 @@ import (
 	"os"
 	"strings"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/hyperfleet"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
+// hfOidcConfigInput is the backing store for all hyperfleet-specific create oidcconfig flags.
+var hfOidcConfigInput hfpathbind.OidcConfigCreateInput
+
 // hfEnabled, hfExitFn, and hfCreateOidcConfig are package-level
 // vars so tests can stub the hyperfleet dispatch path.
 var (
-	hfEnabled          = hyperfleet.Enabled
-	hfExitFn           = func(code int) { os.Exit(code) }
-	hfCreateOidcConfig = func() {
-		r := rosa.NewRuntime().WithAWS().WithHyperFleet()
+	hfEnabled = hyperfleet.Enabled
+	hfExitFn  = func(code int) { os.Exit(code) }
+
+	hfCreateOidcConfig = func(cmd *cobra.Command) {
+		r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
 		defer r.Cleanup()
-		runHyperfleetCreate(r)
+		if err := hfpathbind.RunCreateOidcConfig(context.Background(), r, cmd, &hfOidcConfigInput,
+			&hyperfleetOidcConfigCreate{},
+		); err != nil {
+			r.Reporter.Errorf("Failed to create OIDC config: %v", err)
+			hfExitFn(1)
+		}
 	}
 )
 
-// runHyperfleetCreate creates an OIDC Config via the Platform API v2.
+// runHyperfleetCreate is a thin wrapper for direct test invocation without a real cobra.Command.
 func runHyperfleetCreate(r *rosa.Runtime) {
-	ctx := context.Background()
-
-	// Get mode for OIDC provider creation
-	mode, err := interactive.GetMode()
-	if err != nil {
-		r.Reporter.Errorf("%s", err)
+	if err := hfpathbind.RunCreateOidcConfig(context.Background(), r, nil, &hfOidcConfigInput,
+		&hyperfleetOidcConfigCreate{},
+	); err != nil {
 		hfExitFn(1)
-		return
+	}
+}
+
+// hyperfleetOidcConfigCreate implements hfpathbind.OidcConfigCreateHandler for rosa create oidcconfig.
+type hyperfleetOidcConfigCreate struct {
+	// interactive prompting for required fields
+	hfpathbind.GeneratedOidcConfigCreatePrompt
+}
+
+func (h *hyperfleetOidcConfigCreate) PreRequest(
+	ctx context.Context,
+	r *rosa.Runtime,
+	input *hfpathbind.OidcConfigCreateInput,
+) error {
+	// Bridge flags that conflict with OCM v1 registrations (if any)
+	// input.Name comes from --name (or could be from --prefix)
+	if input.Name == "" && args.userPrefix != "" {
+		input.Name = args.userPrefix
 	}
 
-	// Validate required fields based on managed/unmanaged mode
-	oidcConfigType := "managed"
-	if !args.managed {
-		oidcConfigType = "unmanaged"
-	}
-
-	// For unmanaged configs, validate required fields
-	// if !args.managed {
-	// 	if args.installerRoleArn == "" {
-	// 		r.Reporter.Errorf("--installer-role-arn is required for unmanaged OIDC configs")
-	// 		hfExitFn(1)
-	// 		return
-	// 	}
-	// }
-
-	// Build OIDC Config spec
-	spec := v1alpha1.OidcConfigSpec{
-		Type: oidcConfigType,
-	}
-
-	// For unmanaged configs, set the required fields
-	if !args.managed {
-		spec.InstallerRoleArn = args.installerRoleArn
-		// Note: SecretArn and IssuerUrl will be set by the platform-api/operator
-		// based on the S3 bucket and secrets manager resources created
-	}
-
-	// Generate a unique name if prefix is provided
-	configName := ""
-	if args.userPrefix != "" {
-		// Use prefix for the config name
-		configName = args.userPrefix
-	}
-
-	// Debug: Log the API call details
-	r.Reporter.Debugf("Creating OIDC config via Platform API")
-	r.Reporter.Debugf("  Resource Path: /api/v0/oidc_configs")
-	r.Reporter.Debugf("  Config Name: '%s'", configName)
-	r.Reporter.Debugf("  Config Type: %s", oidcConfigType)
-	if !args.managed {
-		r.Reporter.Debugf("  Installer Role ARN: %s", args.installerRoleArn)
-	}
-	r.Reporter.Debugf("  Platform API Host: %s", r.HyperFleetClient)
-
-	oidcConfig, err := r.HyperFleetClient.HyperfleetV1alpha1().OidcConfigs().Create(
-		ctx,
-		&v1alpha1.OidcConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: configName,
-			},
-			Spec: spec,
-		},
-		platform.CreateOptions{},
-	)
-	if err != nil {
-		r.Reporter.Debugf("Platform API error: %v", err)
-		r.Reporter.Debugf("This likely means the /oidc_configs route is not implemented in the Platform API backend")
-		r.Reporter.Errorf("Failed to create OIDC config: %v", err)
-		hfExitFn(1)
-		return
-	}
-
-	if output.HasFlag() {
-		err = output.Print(oidcConfig)
-		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			hfExitFn(1)
+	// Set OIDC config type based on --managed flag
+	if args.managed {
+		input.Type = "managed"
+	} else {
+		input.Type = "unmanaged"
+		// For unmanaged configs, installer role ARN is required
+		if args.installerRoleArn == "" {
+			return fmt.Errorf("--installer-role-arn is required for unmanaged OIDC configs")
 		}
-		hfExitFn(0)
-		return
+		input.InstallerRoleArn = args.installerRoleArn
 	}
 
+	r.Reporter.Debugf("Creating OIDC config via Platform API")
+	r.Reporter.Debugf("  Config Name: '%s'", input.Name)
+	r.Reporter.Debugf("  Config Type: %s", input.Type)
+	if !args.managed {
+		r.Reporter.Debugf("  Installer Role ARN: %s", input.InstallerRoleArn)
+	}
+
+	return nil
+}
+
+func (h *hyperfleetOidcConfigCreate) PostExpand(
+	_ context.Context,
+	r *rosa.Runtime,
+	input *hfpathbind.OidcConfigCreateInput,
+	obj *v1alpha1.OidcConfig,
+) error {
+	// Nothing additional to set - pathbind.Expand handles the field mapping
+	return nil
+}
+
+func (h *hyperfleetOidcConfigCreate) PostResponse(
+	ctx context.Context,
+	r *rosa.Runtime,
+	oidcConfig *v1alpha1.OidcConfig,
+) error {
+	// Create OIDC provider FIRST (before output flag check)
+	// This ensures AWS side effects happen regardless of output format
+	if oidcConfig.Spec.IssuerUrl != "" {
+		mode, err := interactive.GetMode()
+		if err != nil {
+			return err
+		}
+		if err := createOidcProvider(ctx, r, oidcConfig, mode); err != nil {
+			return fmt.Errorf("failed to create OIDC provider: %v", err)
+		}
+	}
+
+	// Handle output flag - json output only changes how we print, not what we do
+	if output.HasFlag() {
+		return output.Print(oidcConfig)
+	}
+
+	// Report creation success
 	r.Reporter.Infof("OIDC config '%s' created successfully", oidcConfig.Name)
 	r.Reporter.Infof("  Type: %s", oidcConfig.Spec.Type)
 	if oidcConfig.Spec.IssuerUrl != "" {
@@ -125,15 +130,7 @@ func runHyperfleetCreate(r *rosa.Runtime) {
 		r.Reporter.Infof("  Secret ARN: %s", oidcConfig.Spec.SecretArn)
 	}
 
-	// Wait for thumbprint to be available and create OIDC provider
-	if oidcConfig.Spec.IssuerUrl != "" {
-		err = createOidcProvider(ctx, r, oidcConfig, mode)
-		if err != nil {
-			r.Reporter.Errorf("Failed to create OIDC provider: %v", err)
-			hfExitFn(1)
-			return
-		}
-	}
+	return nil
 }
 
 // createOidcProvider creates the AWS OIDC provider for the given OIDC config

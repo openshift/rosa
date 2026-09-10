@@ -78,6 +78,12 @@ func init() {
 
 // run lists operator roles after validating the requested version across supported topologies.
 func run(cmd *cobra.Command, _ []string) {
+	// Dispatch to hyperfleet v2 if enabled
+	if hfEnabled() {
+		hfListOperatorRoles()
+		return
+	}
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

@@ -36,7 +36,7 @@ var (
 	hfEnabled          = hyperfleet.Enabled
 	hfExitFn           = func(code int) { os.Exit(code) }
 	hfDeleteOidcConfig = func() {
-		r := rosa.NewRuntime().WithAWS().WithHyperFleet()
+		r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
 		defer r.Cleanup()
 		runHyperfleetDeleteOidcConfig(r)
 	}

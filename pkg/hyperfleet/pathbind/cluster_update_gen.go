@@ -15,6 +15,9 @@ type ClusterUpdateInput struct {
 	DeleteProtection               *bool  `hfsdk:"spec.deleteProtection"`
 	DisplayName                    string `hfsdk:"spec.displayName"`
 	ExpirationTimestamp            string `hfsdk:"spec.expirationTimestamp"`
+	RoleARN                        string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.aws.roleARN"`
+	Platform                       string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.platform"`
+	ProvisionerConfigName          string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.name"`
 	ContainerLogMaxFiles           *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxFiles"`
 	ContainerLogMaxSize            string `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxSize"`
 	ImageGCHighThresholdPercent    *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.imageGCHighThresholdPercent"`
@@ -27,7 +30,6 @@ type ClusterUpdateInput struct {
 	SerializeImagePulls            *bool  `hfsdk:"spec.hostedCluster.configuration.kubelet.serializeImagePulls"`
 	StreamingConnectionIdleTimeout string `hfsdk:"spec.hostedCluster.configuration.kubelet.streamingConnectionIdleTimeout"`
 	ImageContentSources            string `hfsdk:"spec.hostedCluster.imageContentSources"`
-	IssuerURL                      string `hfsdk:"spec.hostedCluster.issuerURL"`
 	AllocateNodeCIDRs              string `hfsdk:"spec.hostedCluster.networking.allocateNodeCIDRs"`
 	AdvertiseAddress               string `hfsdk:"spec.hostedCluster.networking.apiServer.advertiseAddress"`
 	AllowedCIDRBlocks              string `hfsdk:"spec.hostedCluster.networking.apiServer.allowedCIDRBlocks"`
@@ -63,6 +65,9 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"delete-protection",
 	"display-name",
 	"expiration-time",
+	"role-arn",
+	"platform",
+	"provisioner-config-name",
 	"container-log-max-files",
 	"container-log-max-size",
 	"image-gc-high-threshold-percent",
@@ -75,7 +80,6 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"serialize-image-pulls",
 	"streaming-connection-idle-timeout",
 	"image-content-sources",
-	"issuer-url",
 	"allocate-node-cidrs",
 	"advertise-address",
 	"allowed-cidr-blocks",
@@ -118,6 +122,9 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "expiration-time", func() {
 		f.StringVar(&input.ExpirationTimestamp, "expiration-time", "", "Cluster expiration time (RFC3339).")
 	})
+	registerIfNew(f, "role-arn", func() { f.StringVar(&input.RoleARN, "role-arn", "", "") })
+	registerIfNew(f, "platform", func() { f.StringVar(&input.Platform, "platform", "", "") })
+	registerIfNew(f, "provisioner-config-name", func() { f.StringVar(&input.ProvisionerConfigName, "provisioner-config-name", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
 		input.ContainerLogMaxFiles = new(int32)
 		f.Int32Var(input.ContainerLogMaxFiles, "container-log-max-files", 0, "")
@@ -147,7 +154,6 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 		f.StringVar(&input.StreamingConnectionIdleTimeout, "streaming-connection-idle-timeout", "", "")
 	})
 	registerIfNew(f, "image-content-sources", func() { f.StringVar(&input.ImageContentSources, "image-content-sources", "", "") })
-	registerIfNew(f, "issuer-url", func() { f.StringVar(&input.IssuerURL, "issuer-url", "", "") })
 	registerIfNew(f, "allocate-node-cidrs", func() { f.StringVar(&input.AllocateNodeCIDRs, "allocate-node-cidrs", "", "") })
 	registerIfNew(f, "advertise-address", func() { f.StringVar(&input.AdvertiseAddress, "advertise-address", "", "") })
 	registerIfNew(f, "allowed-cidr-blocks", func() { f.StringVar(&input.AllowedCIDRBlocks, "allowed-cidr-blocks", "", "") })

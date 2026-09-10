@@ -8,6 +8,7 @@ import (
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 
+	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -21,7 +22,7 @@ var (
 	hfEnabled             = hyperfleet.Enabled
 	hfExitFn              = func(code int) { os.Exit(code) }
 	hfCreateOperatorRoles = func() {
-		r := rosa.NewRuntime().WithAWS().WithHyperFleet()
+		r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
 		defer r.Cleanup()
 		runHyperfleetCreateOperatorRoles(r)
 	}
@@ -116,7 +117,7 @@ func getHCPOperatorRoles() []operatorRoleSpec {
 			Description:       "Manages worker node pools",
 		},
 		{
-			Name:         "ROSA-Worker-Role",
+			Name:           "ROSA-Worker-Role",
 			ServiceAccount: "", // EC2 service principal, not OIDC
 			ManagedPolicyArns: []string{
 				"arn:aws:iam::aws:policy/service-role/ROSAWorkerInstancePolicy",
@@ -268,61 +269,82 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
 	case interactive.ModeManual:
 		r.Reporter.Infof("Run the following AWS CLI commands to create the operator roles:\n")
 
+		commands := []string{}
 		for _, spec := range operatorRoles {
 			roleName := fmt.Sprintf("%s-%s", args.prefix, spec.Name)
 
-			fmt.Printf("\n# Create %s\n", spec.Description)
-			fmt.Printf("aws iam create-role --role-name %s \\\n", roleName)
-			fmt.Printf("  --description '%s' \\\n", spec.Description)
-
+			var trustPolicy string
 			if spec.IsWorkerRole {
 				// EC2 trust policy
-				fmt.Printf("  --assume-role-policy-document '{\n")
-				fmt.Printf("    \"Version\": \"2012-10-17\",\n")
-				fmt.Printf("    \"Statement\": [{\n")
-				fmt.Printf("      \"Effect\": \"Allow\",\n")
-				fmt.Printf("      \"Principal\": {\n")
-				fmt.Printf("        \"Service\": \"ec2.amazonaws.com\"\n")
-				fmt.Printf("      },\n")
-				fmt.Printf("      \"Action\": \"sts:AssumeRole\"\n")
-				fmt.Printf("    }]\n")
-				fmt.Printf("  }' \\\n")
+				trustPolicy = `'{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Service": "ec2.amazonaws.com"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}'`
 			} else {
 				// OIDC trust policy
-				fmt.Printf("  --assume-role-policy-document '{\n")
-				fmt.Printf("    \"Version\": \"2012-10-17\",\n")
-				fmt.Printf("    \"Statement\": [{\n")
-				fmt.Printf("      \"Effect\": \"Allow\",\n")
-				fmt.Printf("      \"Principal\": {\n")
-				fmt.Printf("        \"Federated\": \"arn:%s:iam::%s:oidc-provider/%s\"\n", r.Creator.Partition, r.Creator.AccountID, oidcIssuerDomain)
-				fmt.Printf("      },\n")
-				fmt.Printf("      \"Action\": \"sts:AssumeRoleWithWebIdentity\",\n")
-				fmt.Printf("      \"Condition\": {\n")
-				fmt.Printf("        \"StringEquals\": {\n")
-				fmt.Printf("          \"%s:sub\": \"%s\",\n", oidcIssuerDomain, spec.ServiceAccount)
-				fmt.Printf("          \"%s:aud\": \"openshift\"\n", oidcIssuerDomain)
-				fmt.Printf("        }\n")
-				fmt.Printf("      }\n")
-				fmt.Printf("    }]\n")
-				fmt.Printf("  }' \\\n")
+				trustPolicy = fmt.Sprintf(`'{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:%s:iam::%s:oidc-provider/%s"
+    },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "%s:sub": "%s",
+        "%s:aud": "openshift"
+      }
+    }
+  }]
+}'`, r.Creator.Partition, r.Creator.AccountID, oidcIssuerDomain, oidcIssuerDomain, spec.ServiceAccount, oidcIssuerDomain)
 			}
 
-			fmt.Printf("  --tags Key=red-hat-managed,Value=true Key=rosa.hypershift,Value=true Key=rosa_managed_policies,Value=true\n")
+			// Build tags
+			roleTags := map[string]string{
+				tags.RedHatManaged:      helper.True,
+				tags.HypershiftPolicies: helper.True,
+				common.ManagedPolicies:  helper.True,
+			}
+
+			// Create role command
+			commands = append(commands, fmt.Sprintf("# Create %s", spec.Description))
+			createRoleCmd := awscb.NewIAMCommandBuilder().
+				SetCommand(awscb.CreateRole).
+				AddParam(awscb.RoleName, roleName).
+				AddParam(awscb.AssumeRolePolicyDocument, trustPolicy).
+				AddTags(roleTags).
+				Build()
+			commands = append(commands, createRoleCmd)
 
 			// Attach managed policies
 			for _, policyArn := range spec.ManagedPolicyArns {
-				fmt.Printf("\naws iam attach-role-policy --role-name %s \\\n", roleName)
-				fmt.Printf("  --policy-arn %s\n", policyArn)
+				attachPolicyCmd := awscb.NewIAMCommandBuilder().
+					SetCommand(awscb.AttachRolePolicy).
+					AddParam(awscb.RoleName, roleName).
+					AddParam(awscb.PolicyArn, policyArn).
+					Build()
+				commands = append(commands, attachPolicyCmd)
 			}
 
 			// Create instance profile for worker role
 			if spec.IsWorkerRole {
-				fmt.Printf("\naws iam create-instance-profile --instance-profile-name %s\n", roleName)
-				fmt.Printf("aws iam add-role-to-instance-profile --instance-profile-name %s --role-name %s\n", roleName, roleName)
+				// Note: create-instance-profile and add-role-to-instance-profile are not
+				// currently supported by commandbuilder, so we build them manually
+				commands = append(commands,
+					fmt.Sprintf("aws iam create-instance-profile --instance-profile-name %s", roleName),
+					fmt.Sprintf("aws iam add-role-to-instance-profile --instance-profile-name %s --role-name %s", roleName, roleName),
+				)
 			}
 		}
 
-		fmt.Println()
+		fmt.Println(awscb.JoinCommands(commands))
 
 	default:
 		r.Reporter.Errorf("Invalid mode: %s", mode)
