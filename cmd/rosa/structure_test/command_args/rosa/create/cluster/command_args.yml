@@ -120,6 +120,8 @@
 
 # hyperfleet only commands
 # currently manually set, maybe generate as part of generate-hyperfleet?
+- name: "platform"
+- name: "provisioner-config-name"
 - name: "delete-protection"
 - name: "display-name"
 - name: "container-log-max-files"
@@ -137,7 +139,6 @@
 - name: "system-reserved"
 - name: "allowed-kernel-arguments"
 - name: "image-content-sources"
-- name: "issuer-url"
 - name: "allocate-node-cidrs"
 - name: "advertise-address"
 - name: "allowed-cidr-blocks"

@@ -31,6 +31,9 @@
 
 # hyperfleet only commands
 # currently manually set, maybe generate as part of generate-hyperfleet?
+- name: "role-arn"
+- name: "platform"
+- name: "provisioner-config-name"
 - name: "delete-protection"
 - name: "display-name"
 - name: "container-log-max-files"
@@ -45,7 +48,6 @@
 - name: "serialize-image-pulls"
 - name: "streaming-connection-idle-timeout"
 - name: "image-content-sources"
-- name: "issuer-url"
 - name: "allocate-node-cidrs"
 - name: "advertise-address"
 - name: "allowed-cidr-blocks"
