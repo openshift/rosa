@@ -83,7 +83,7 @@ func runHyperfleetCreateNetwork(r *rosa.Runtime, userOptions *opts.NetworkUserOp
 		)
 		fmt.Println("\nCloudFormation Template:")
 		fmt.Println("---")
-		fmt.Println(CloudFormationHCPTemplateFile)
+		fmt.Print(CloudFormationHCPTemplateFile)
 		return
 
 	default:
