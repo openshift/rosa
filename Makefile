@@ -214,6 +214,7 @@ e2e-hyperfleet: install
 	}; \
 	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
 	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
+	TEST_PROFILE="$(TEST_PROFILE)" \
 	CLUSTER_NAME="$$name" \
 	OPERATOR_ROLES_PREFIX="$$name" \
 	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \

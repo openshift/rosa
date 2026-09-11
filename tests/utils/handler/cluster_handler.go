@@ -195,6 +195,9 @@ func (ch *clusterHandler) GetResourcesHandler() ResourcesHandler {
 
 // GenerateClusterCreateFlags will generate cluster creation flags
 func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
+	if usesHyperfleet() {
+		return ch.generateHyperfleetCreateFlags()
+	}
 	resourcesHandler := ch.resourcesHandler
 	if ch.profile.ClusterConfig.NameLength == 0 {
 		ch.profile.ClusterConfig.NameLength = constants.DefaultNameLength //Set to a default value when it is not set
@@ -218,9 +221,6 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		}
 	}()
 	ch.clusterConfig.Name = clusterName
-	if usesHyperfleet() {
-		return ch.generateHyperfleetCreateFlags(clusterName)
-	}
 
 	flags := []string{"-y"}
 
