@@ -152,6 +152,51 @@ var _ = Describe("ListOperatorRoles", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(roles).To(HaveLen(1))
 	})
+
+	It("Retrieves hyperfleet v2 operator roles by role_prefix tag", func() {
+		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			&iam.ListRolesOutput{
+				IsTruncated: false,
+				Roles: []iamtypes.Role{
+					{
+						RoleName: aws.String("hf-e2e-ingress"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+			&iam.ListRoleTagsOutput{
+				IsTruncated: false,
+				Tags: []iamtypes.Tag{
+					{
+						Key:   aws.String(tags.HypershiftPolicies),
+						Value: aws.String(tags.True),
+					},
+					{
+						Key:   aws.String(tags.RolePrefix),
+						Value: aws.String("hf-e2e"),
+					},
+					{
+						Key:   aws.String(common.ManagedPolicies),
+						Value: aws.String("true"),
+					},
+				},
+			}, nil)
+		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), gomock.Any()).Return(
+			&iam.ListAttachedRolePoliciesOutput{
+				IsTruncated: false,
+				AttachedPolicies: []iamtypes.AttachedPolicy{
+					{
+						PolicyName: aws.String("AmazonEBSCSIDriverPolicy"),
+					},
+				},
+			}, nil)
+		roles, err := client.ListOperatorRoles("", "", "hf-e2e")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(roles).To(HaveLen(1))
+		Expect(roles["hf-e2e"]).To(HaveLen(1))
+		Expect(roles["hf-e2e"][0].RoleName).To(Equal("hf-e2e-ingress"))
+		Expect(roles["hf-e2e"][0].ManagedPolicy).To(BeTrue())
+	})
 })
 
 var _ = Describe("mapToAccountRoles", func() {
@@ -652,6 +697,9 @@ var _ = Describe("Cluster Roles/Policies", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 	It("Test DeleteOperatorRole", func() {
+		mockIamAPI.EXPECT().ListInstanceProfilesForRole(gomock.Any(), &iam.ListInstanceProfilesForRoleInput{
+			RoleName: aws.String(operatorRole),
+		}).Return(&iam.ListInstanceProfilesForRoleOutput{}, nil)
 		mockIamAPI.EXPECT().ListAttachedRolePolicies(gomock.Any(), &iam.ListAttachedRolePoliciesInput{
 			RoleName: aws.String(operatorRole),
 		}).Return(operatorRoleAttachedPolicies, nil).MaxTimes(2)

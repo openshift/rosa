@@ -56,19 +56,21 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 		spin.Start()
 	}
 
-	// Get operator roles from AWS by prefix
-	// Note: In hyperfleet mode, we can't get credRequests from OCM, so we'll list all roles
-	// matching the prefix pattern and let AWS APIs handle the filtering
-	foundOperatorRoles, err := r.AWSClient.GetOperatorRolesFromAccountByPrefix(args.prefix, nil)
-	if err != nil {
-		if spin != nil {
-			spin.Stop()
+	var foundOperatorRoles []string
+	for _, roleName := range hyperfleet.OperatorRoleNames(args.prefix) {
+		exists, _, err := r.AWSClient.CheckRoleExists(roleName)
+		if err != nil {
+			if spin != nil {
+				spin.Stop()
+			}
+			r.Reporter.Errorf("There was a problem retrieving the Operator Roles from AWS: %v", err)
+			hfExitFn(1)
+			return
 		}
-		r.Reporter.Errorf("There was a problem retrieving the Operator Roles from AWS: %v", err)
-		hfExitFn(1)
-		return
+		if exists {
+			foundOperatorRoles = append(foundOperatorRoles, roleName)
+		}
 	}
-
 	if spin != nil {
 		spin.Stop()
 	}

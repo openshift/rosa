@@ -17,7 +17,7 @@ import (
 
 const rosaAutoConfirmFlag = "-y" // skip interactive rosa prompts in FVT
 
-func (ch *clusterHandler) generateRegionalPlatformCreateFlags(clusterName string) ([]string, error) {
+func (ch *clusterHandler) generateHyperfleetCreateFlags(clusterName string) ([]string, error) {
 	flags := []string{rosaAutoConfirmFlag}
 
 	if v, ok := resolvePlatformAPIVersion(ch.profile.Version); ok {
@@ -34,6 +34,29 @@ func (ch *clusterHandler) generateRegionalPlatformCreateFlags(clusterName string
 	flags = append(flags, "--operator-roles-prefix", prefix)
 	ch.clusterConfig.Sts = true
 	ch.clusterConfig.Aws = &ClusterConfigure.AWS{Sts: ClusterConfigure.Sts{OperatorRolesPrefix: prefix}}
+
+	if ch.profile.ClusterConfig.OIDCConfig != "" {
+		oidcConfigPrefix := helper.TrimNameByLength(clusterName, constants.MaxOIDCConfigPrefixLength)
+		log.Logger.Infof("Preparing %s OIDC config with prefix %s for Platform API",
+			ch.profile.ClusterConfig.OIDCConfig, oidcConfigPrefix)
+		oidcConfigID, err := ch.resourcesHandler.PrepareOIDCConfig(
+			ch.profile.ClusterConfig.OIDCConfig, "", oidcConfigPrefix,
+		)
+		if err != nil {
+			return flags, err
+		}
+		flags = append(flags, "--oidc-config-id", oidcConfigID)
+		ch.clusterConfig.Aws.Sts.OidcConfigID = oidcConfigID
+
+		if !ch.profile.ClusterConfig.ManualCreationMode {
+			err = ch.resourcesHandler.PrepareOperatorRolesByOIDCConfig(
+				prefix, oidcConfigID, "", "", "", true, ch.profile.ChannelGroup,
+			)
+			if err != nil {
+				return flags, err
+			}
+		}
+	}
 
 	if ch.profile.ClusterConfig.BYOVPC {
 		subnetIDs, err := prepareBYOVPCSubnets(ch.resourcesHandler, clusterName, ch.profile, ch.clusterConfig)
@@ -122,7 +145,7 @@ func preparePlatformAPIPreCreateInfra(rh *resourcesHandler, clusterName string) 
 	return rh.preparePlatformAPIWorkerSecurityGroup(clusterName)
 }
 
-func (ch *clusterHandler) waitForRegionalPlatformClusterReady(timeoutMin int) error {
+func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 	clusterKey := ch.clusterDetail.ClusterName
 	if clusterKey == "" {
 		clusterKey = ch.profile.ClusterConfig.Name

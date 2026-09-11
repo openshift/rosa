@@ -141,6 +141,14 @@ type IamApiClient interface {
 		params *iam.AddRoleToInstanceProfileInput, optFns ...func(*iam.Options),
 	) (*iam.AddRoleToInstanceProfileOutput, error)
 
+	RemoveRoleFromInstanceProfile(ctx context.Context,
+		params *iam.RemoveRoleFromInstanceProfileInput, optFns ...func(*iam.Options),
+	) (*iam.RemoveRoleFromInstanceProfileOutput, error)
+
+	DeleteInstanceProfile(ctx context.Context,
+		params *iam.DeleteInstanceProfileInput, optFns ...func(*iam.Options),
+	) (*iam.DeleteInstanceProfileOutput, error)
+
 	ListRolePolicies(ctx context.Context,
 		params *iam.ListRolePoliciesInput, optFns ...func(*iam.Options),
 	) (*iam.ListRolePoliciesOutput, error)

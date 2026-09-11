@@ -270,7 +270,7 @@ func (rh *resourcesHandler) DestroyResources() (errors []error) {
 	if resources.VpcID != "" {
 		log.Logger.Infof("Find prepared vpc id: %s", resources.VpcID)
 		sharedVPC := resources.FromSharedAWSAccount != nil && resources.FromSharedAWSAccount.VPC
-		if usesRegionalPlatformAPI() {
+		if usesHyperfleet() {
 			if preErr := rh.drainVPCLoadBalancers(resources.VpcID, sharedVPC); preErr != nil {
 				log.Logger.Warnf("drain VPC load balancers: %v", preErr)
 			}

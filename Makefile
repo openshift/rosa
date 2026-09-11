@@ -192,24 +192,32 @@ e2e_test: install
         --focus-file tests/e2e/.* \
 		$(NULL)
 
-# e2e-hyperfleet: runs the hyperfleet Platform API sanity test.
+# e2e-hyperfleet: hyperfleet e2e via ginkgo --label-filter.
+#
+# Labels (see tests/ci/labels/hyperfleet.go):
+#   hyperfleet-validated — day1 FVT (profile-driven cluster prep; needs TEST_PROFILE)
+#   hyperfleet-sanity    — full CLI/SDK lifecycle spec (self-contained; no TEST_PROFILE)
 #
 # Required:
 #   HYPERFLEET_URL  — Platform API v2 base URL
+#   TEST_PROFILE    — e.g. rosa-hyperfleet-basic (for hyperfleet-validated only)
 #
 # Optional:
 #   CLUSTER_NAME       — defaults to hf-e2e-<unix timestamp> (≤18 chars)
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
-#   LABEL_FILTER       — ginkgo label filter (defaults to "hyperfleet-validated")
+#   LABEL_FILTER       — defaults to hyperfleet-validated; use hyperfleet-sanity for sanity
 .PHONY: e2e-hyperfleet
 e2e-hyperfleet: install
+	@test -n "$${HYPERFLEET_URL}" || { \
+		echo "HYPERFLEET_URL is required (see guidelines/hyperfleet-guidelines.md)"; \
+		exit 1; \
+	}; \
 	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
 	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
 	CLUSTER_NAME="$$name" \
 	OPERATOR_ROLES_PREFIX="$$name" \
 	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
-	ginkgo run \
-		--label-filter "$${LABEL_FILTER:-hyperfleet-validated}" \
+	ginkgo run --label-filter "$${LABEL_FILTER:-hyperfleet-validated}" \
 		--timeout 3h \
 		-v \
 		./tests/e2e/ \

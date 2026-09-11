@@ -94,24 +94,20 @@ func (h *hyperfleetOidcConfigCreate) PostResponse(
 	r *rosa.Runtime,
 	oidcConfig *v1alpha1.OidcConfig,
 ) error {
-	// Create OIDC provider FIRST (before output flag check)
-	// This ensures AWS side effects happen regardless of output format
 	if oidcConfig.Spec.IssuerUrl != "" {
 		mode, err := interactive.GetMode()
 		if err != nil {
 			return err
 		}
-		if err := createOidcProvider(ctx, r, oidcConfig, mode); err != nil {
+		if err := createOidcProviderFn(ctx, r, oidcConfig, mode); err != nil {
 			return fmt.Errorf("failed to create OIDC provider: %v", err)
 		}
 	}
 
-	// Handle output flag - json output only changes how we print, not what we do
 	if output.HasFlag() {
 		return output.Print(oidcConfig)
 	}
 
-	// Report creation success
 	r.Reporter.Infof("OIDC config '%s' created successfully", oidcConfig.Name)
 	r.Reporter.Infof("  Type: %s", oidcConfig.Spec.Type)
 	if oidcConfig.Spec.IssuerUrl != "" {
@@ -123,6 +119,8 @@ func (h *hyperfleetOidcConfigCreate) PostResponse(
 
 	return nil
 }
+
+var createOidcProviderFn = createOidcProvider
 
 // createOidcProvider creates the AWS OIDC provider for the given OIDC config
 func createOidcProvider(ctx context.Context, r *rosa.Runtime, oidcConfig *v1alpha1.OidcConfig, mode string) error {
@@ -145,14 +143,14 @@ func createOidcProvider(ctx context.Context, r *rosa.Runtime, oidcConfig *v1alph
 		r.Reporter.Debugf("Failed to verify if OIDC provider exists: %s", err)
 	}
 	if oidcProviderExists {
-		r.Reporter.Infof("OIDC provider already exists")
+		oidcProviderLogf(r, "OIDC provider already exists")
 		return nil
 	}
 
 	switch mode {
 	case interactive.ModeAuto:
 		// Create the OIDC provider in AWS
-		r.Reporter.Infof("Creating OIDC provider using '%s'", r.Creator.ARN)
+		oidcProviderLogf(r, "Creating OIDC provider using '%s'", r.Creator.ARN)
 		oidcProviderARN, err := r.AWSClient.CreateOpenIDConnectProvider(
 			oidcConfig.Spec.IssuerUrl,
 			thumbprint,
@@ -161,7 +159,7 @@ func createOidcProvider(ctx context.Context, r *rosa.Runtime, oidcConfig *v1alph
 		if err != nil {
 			return fmt.Errorf("failed to create OIDC provider: %v", err)
 		}
-		r.Reporter.Infof("Created OIDC provider with ARN '%s'", oidcProviderARN)
+		oidcProviderLogf(r, "Created OIDC provider with ARN '%s'", oidcProviderARN)
 
 	case interactive.ModeManual:
 		// Print manual commands
@@ -169,14 +167,26 @@ func createOidcProvider(ctx context.Context, r *rosa.Runtime, oidcConfig *v1alph
 		if err != nil {
 			return fmt.Errorf("failed to build OIDC provider commands: %v", err)
 		}
-		r.Reporter.Infof("Run the following commands to create the OIDC provider:\n")
-		fmt.Println(commands)
+		oidcProviderLogf(r, "Run the following commands to create the OIDC provider:\n")
+		if output.HasFlag() {
+			r.Reporter.Debugf("%s", commands)
+		} else {
+			fmt.Println(commands)
+		}
 
 	default:
 		return fmt.Errorf("invalid mode: %s", mode)
 	}
 
 	return nil
+}
+
+func oidcProviderLogf(r *rosa.Runtime, format string, args ...any) {
+	if output.HasFlag() {
+		r.Reporter.Debugf(format, args...)
+		return
+	}
+	r.Reporter.Infof(format, args...)
 }
 
 // buildOidcProviderCommands builds the AWS CLI commands for manual OIDC provider creation
