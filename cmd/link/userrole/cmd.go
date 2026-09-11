@@ -17,6 +17,7 @@ limitations under the License.
 package userrole
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -66,19 +67,27 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	var err error
-	r := rosa.NewRuntime().WithAWS().WithOCM()
-	defer r.Cleanup()
-
 	if len(argv) > 0 {
 		args.roleArn = argv[0]
 	}
 
+	r := rosa.NewRuntime().WithAWS().WithOCM()
+	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	var err error
+
 	accountID := args.accountID
 	if accountID == "" {
-		currentAccount, err := r.OCMClient.GetCurrentAccount()
-		if err != nil {
-			r.Reporter.Errorf("Error getting current account: %v", err)
+		currentAccount, getAccountErr := r.OCMClient.GetCurrentAccount()
+		if getAccountErr != nil {
+			r.Reporter.Errorf("Error getting current account: %v", getAccountErr)
 		}
 		accountID = currentAccount.ID()
 	}
@@ -105,44 +114,39 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid user role ARN to link to a current account: %s", err)
 		}
 	}
 	if roleArn != "" {
 		err = aws.ARNValidator(roleArn)
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid user role ARN to link to a current account: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid user role ARN to link to a current account: %s", err)
 		}
 	}
 
 	role, err := r.AWSClient.GetRoleByARN(roleArn)
 	if err != nil {
-		r.Reporter.Errorf("There was a problem checking if role '%s' exists: %v", roleArn, err)
-		os.Exit(1)
+		return fmt.Errorf("there was a problem checking if role '%s' exists: %v", roleArn, err)
 	}
 
 	if *role.Arn != roleArn {
-		r.Reporter.Errorf("The role with '%s' cannot be found", roleArn)
-		os.Exit(1)
+		return fmt.Errorf("the role with '%s' cannot be found", roleArn)
 	}
 
 	if !confirm.Prompt(true, "Link the '%s' role with account '%s'?", roleArn, accountID) {
-		os.Exit(0)
+		return nil
 	}
 
 	err = r.OCMClient.LinkAccountRole(accountID, roleArn)
 	if err != nil {
 		if errors.GetType(err) == errors.Forbidden || strings.Contains(err.Error(), "ACCT-MGMT-11") {
-			r.Reporter.Errorf("Only organization admin or the user that owns this account '%s' can run this command. "+
-				"Please ask someone with adequate permissions to run the following command \n\n"+
-				"\t rosa link user-role --role-arn %s --account-id %s", accountID, roleArn, accountID)
-			os.Exit(1)
+			return fmt.Errorf("only organization admin or the user that owns this account '%s' can run this command, "+
+				"please ask someone with adequate permissions to run the following command: "+
+				"rosa link user-role --role-arn %s --account-id %s", accountID, roleArn, accountID)
 		}
-		r.Reporter.Errorf("Unable to link role ARN '%s' with the account id : '%s' : %v",
+		return fmt.Errorf("unable to link role ARN '%s' with the account id : '%s' : %v",
 			args.roleArn, accountID, err)
-		os.Exit(1)
 	}
 	r.Reporter.Infof("Successfully linked role ARN '%s' with account '%s'", roleArn, accountID)
+	return nil
 }
