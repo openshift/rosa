@@ -196,7 +196,7 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "Service": "ec2.amazonaws.com"
+      "Service": ["ec2.amazonaws.com"]
     },
     "Action": "sts:AssumeRole"
   }]
@@ -290,7 +290,7 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "Service": "ec2.amazonaws.com"
+      "Service": ["ec2.amazonaws.com"]
     },
     "Action": "sts:AssumeRole"
   }]

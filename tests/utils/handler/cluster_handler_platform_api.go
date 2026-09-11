@@ -17,7 +17,14 @@ import (
 
 const rosaAutoConfirmFlag = "-y" // skip interactive rosa prompts in FVT
 
-func (ch *clusterHandler) generateHyperfleetCreateFlags(clusterName string) ([]string, error) {
+func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
+	clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
+	if clusterName == "" || len(clusterName) > 18 {
+		return nil, fmt.Errorf("CLUSTER_NAME is required and must be ≤18 chars")
+	}
+	ch.profile.ClusterConfig.Name = clusterName
+	ch.clusterConfig.Name = clusterName
+
 	flags := []string{rosaAutoConfirmFlag}
 
 	if v, ok := resolvePlatformAPIVersion(ch.profile.Version); ok {
@@ -87,7 +94,7 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags(clusterName string) ([]s
 		flags = append(flags, "--compute-machine-type", t)
 		ch.clusterConfig.Nodes.ComputeInstanceType = t
 	}
-	return flags, nil
+	return flags, ch.saveToFile()
 }
 
 func resolvePlatformAPIVersion(profileVersion string) (string, bool) {
