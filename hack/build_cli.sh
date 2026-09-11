@@ -10,6 +10,21 @@ release_version=${release_version#v}
 
 mkdir -p releases
 
+# CDN (Content Gateway) uses the basename of source paths from the RPA.
+# Legacy mirror names must be produced at build time; filename: in the RPA
+# is ignored for CGW pushes.
+cdn_archive_name() {
+  case "${1}/${2}" in
+    linux/amd64) echo "rosa-linux.tar.gz" ;;
+    linux/arm64) echo "rosa-linux-arm64.tar.gz" ;;
+    darwin/amd64) echo "rosa-macosx.tar.gz" ;;
+    darwin/arm64) echo "rosa-macos-arm64.tar.gz" ;;
+    windows/amd64) echo "rosa-windows.tar.gz" ;;
+    windows/arm64) echo "rosa-windows-arm64.tar.gz" ;;
+    *) echo "rosa_${1}_${2}.tar.gz" ;;
+  esac
+}
+
 build_release() {
 for os in "${oses[@]}"
 do
@@ -22,7 +37,8 @@ do
     tmpdir=$(mktemp -d)
     trap 'rm -rf "$tmpdir"' EXIT
     GOOS="${os}" GOARCH="${arch}" go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(git rev-parse --short HEAD)${release_version:+ -X github.com/openshift/rosa/pkg/info.DefaultVersion=${release_version}}" -o "${tmpdir}/rosa${extension}" ./cmd/rosa
-    tar -czf "releases/rosa_${os}_${arch}.tar.gz" -C "${tmpdir}" "rosa${extension}"
+    archive_name=$(cdn_archive_name "${os}" "${arch}")
+    tar -czf "releases/${archive_name}" -C "${tmpdir}" "rosa${extension}"
     (
       cd "${tmpdir}" && \
       zip -r "${OLDPWD}/releases/rosa_${os}_${arch}.zip" "rosa${extension}"
