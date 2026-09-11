@@ -2,7 +2,7 @@
 # Use with: TEST_PROFILE=rosa-hyperfleet-basic
 # Login: rosa login --hyperfleet-url $HYPERFLEET_URL
 #
-# Day1 create from this profile still needs handler work (GenerateClusterCreateFlags).
+# Day1 create uses the hyperfleet handler (oidc_config: managed).
 profiles:
   - as: rosa-hyperfleet-basic
     version: latest
@@ -27,9 +27,7 @@ profiles:
       tag_enabled: false
       etcd_kms: false
       fips: false
-      # Empty = no OCM OIDC config resource. HyperFleet uses issuer on describe
-      # and IAM OIDC provider in AWS — not rosa create/list oidc-config.
-      oidc_config: ""
+      oidc_config: managed
       auditlog_forward: false
       admin_enabled: false
       volume_size: 75

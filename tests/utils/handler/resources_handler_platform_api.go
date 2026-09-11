@@ -97,7 +97,7 @@ func (rh *resourcesHandler) PreparePlatformAPIPostCreateIAM(issuerURL, rolesPref
 	}
 
 	ctx := context.Background()
-	log.Logger.Info("Creating IAM OIDC provider for regional Platform API cluster")
+	log.Logger.Info("Creating IAM OIDC provider for hyperfleet cluster")
 	_, err = awsClient.IamClient.CreateOpenIDConnectProvider(ctx, &iam.CreateOpenIDConnectProviderInput{
 		Url:            awssdk.String(issuerURL),
 		ClientIDList:   []string{"openshift"},

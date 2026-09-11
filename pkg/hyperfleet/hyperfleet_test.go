@@ -142,6 +142,17 @@ var _ = Describe("ComputeInstanceProfile", func() {
 	})
 })
 
+var _ = Describe("OperatorRoleNames", func() {
+	It("prefixes every hyperfleet v2 role suffix", func() {
+		const prefix = "hf-e2e-1"
+		names := OperatorRoleNames(prefix)
+		Expect(names).To(HaveLen(len(OperatorRoleSuffixes())))
+		for i, suffix := range OperatorRoleSuffixes() {
+			Expect(names[i]).To(Equal(prefix + "-" + suffix))
+		}
+	})
+})
+
 var _ = Describe("InstanceProfileFromRolesRef", func() {
 	It("extracts prefix from NodePoolManagementARN and returns the instance profile name", func() {
 		ref := hypershiftv1beta1.AWSRolesRef{

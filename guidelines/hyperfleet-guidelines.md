@@ -545,16 +545,29 @@ hosted-zone preparation path added alongside the shared-VPC one. Networking
 
 ---
 
-## End-to-End Test
+## End-to-End Tests
+
+Hyperfleet e2e uses two Ginkgo labels (`tests/ci/labels/hyperfleet.go`):
+
+| Label | Specs | Needs `TEST_PROFILE` |
+|-------|-------|----------------------|
+| `hyperfleet-sanity` | Full CLI/SDK lifecycle in `hyperfleet_sanity_test.go` | No |
+| `hyperfleet-validated` | Profile-driven day1 FVT in `e2e_setup_test.go` | Yes (`rosa-hyperfleet-basic`) |
+
+Default `make e2e-hyperfleet` runs `hyperfleet-validated`. Set
+`LABEL_FILTER=hyperfleet-sanity` for the sanity spec.
+
+### Sanity spec
 
 **File:** `tests/e2e/hyperfleet_sanity_test.go`
-**Label:** `"Hyperfleet sanity"` (Ginkgo focus string used by `make e2e-hyperfleet`)
+**Ginkgo label:** `hyperfleet-sanity` (`labels.Hyperfleet.Sanity`)
 **Timeout:** 3 hours
 
 ### Running the test
 
 ```sh
-make e2e-hyperfleet HYPERFLEET_URL=https://<id>.execute-api.<region>.amazonaws.com/<stage>
+make e2e-hyperfleet HYPERFLEET_URL=https://<id>.execute-api.<region>.amazonaws.com/<stage> \
+  LABEL_FILTER=hyperfleet-sanity
 ```
 
 Optional environment variables:
@@ -562,6 +575,7 @@ Optional environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `HYPERFLEET_URL` | — (required) | Platform API v2 base URL |
+| `LABEL_FILTER` | `hyperfleet-validated` | Set to `hyperfleet-sanity` for this spec |
 | `CLUSTER_NAME` | `hf-e2e-<unix timestamp>` | Cluster name (≤ 18 chars — namespace constraint) |
 | `OPERATOR_ROLES_PREFIX` | same as `CLUSTER_NAME` | IAM roles prefix |
 | `AWS_DEFAULT_REGION` | derived from URL | Fallback region when URL has no region in hostname |

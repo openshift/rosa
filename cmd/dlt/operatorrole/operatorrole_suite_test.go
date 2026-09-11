@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDeleteOperatorRole(t *testing.T) {
+func TestOperatorRole(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Delete operator-roles suite")
+	RunSpecs(t, "Delete operator role suite")
 }
