@@ -322,7 +322,7 @@ var _ = Describe("whoami command", func() {
 		Expect(stdout).To(ContainSubstring("OCM Account Username:"))
 	})
 
-	It("Shows Platform API URL when logged in with hyperfleet only (no OCM)", func() {
+	It("Shows V2 API URL when logged in with hyperfleet only (no OCM)", func() {
 		hfURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
 		saveConfig(&config.Config{HyperfleetURL: hfURL})
 
@@ -331,7 +331,7 @@ var _ = Describe("whoami command", func() {
 				return runWithRuntime(r)
 			}, t.RosaRuntime, Cmd)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(stdout).To(ContainSubstring("Platform API"))
+		Expect(stdout).To(ContainSubstring("V2 API"))
 		Expect(stdout).To(ContainSubstring(hfURL))
 		Expect(stdout).NotTo(ContainSubstring("OCM API"))
 	})

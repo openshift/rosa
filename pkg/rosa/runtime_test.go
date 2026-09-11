@@ -113,6 +113,9 @@ var _ = Describe("WithHyperFleet", func() {
 	})
 
 	It("exits when URL has no extractable region", func() {
+		GinkgoT().Setenv("AWS_REGION", "")
+		GinkgoT().Setenv("AWS_DEFAULT_REGION", "")
+
 		hfExplicitURL = func() string { return "https://example.com/api" }
 
 		r := &Runtime{Reporter: fakeRept}
