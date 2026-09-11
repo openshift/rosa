@@ -17,11 +17,15 @@ limitations under the License.
 package ocm
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	idputils "github.com/openshift-online/ocm-common/pkg/idp/utils"
@@ -817,6 +821,132 @@ func (c *Client) UpdateClusterDeleteProtection(clusterId string, deleteProtectio
 		return handleErr(response.Error(), err)
 	}
 	return nil
+}
+
+// UpdateSubscriptionNotificationContacts performs a diff against the current notification contacts
+// on a subscription and issues POST/DELETE calls to reconcile to the desired set.
+func (c *Client) UpdateSubscriptionNotificationContacts(
+	ctx context.Context, subscriptionID string, contacts []string,
+) error {
+	basePath := fmt.Sprintf("/api/accounts_mgmt/v1/subscriptions/%s/notification_contacts", subscriptionID)
+
+	currentContacts, err := c.fetchNotificationContacts(ctx, basePath)
+	if err != nil {
+		return err
+	}
+
+	current := make(map[string]string, len(currentContacts))
+	for _, c := range currentContacts {
+		current[c.Username] = c.ID
+	}
+
+	seen := make(map[string]bool, len(contacts))
+	deduplicated := make([]string, 0, len(contacts))
+	for _, u := range contacts {
+		u = strings.TrimSpace(u)
+		if u != "" && !seen[u] {
+			seen[u] = true
+			deduplicated = append(deduplicated, u)
+		}
+	}
+
+	for _, username := range deduplicated {
+		if _, exists := current[username]; !exists {
+			body, err := json.Marshal(map[string]string{"account_identifier": username})
+			if err != nil {
+				return fmt.Errorf("can't marshal notification contact '%s': %v", username, err)
+			}
+			resp, err := c.ocm.Post().Path(basePath).Bytes(body).SendContext(ctx)
+			if err != nil {
+				return fmt.Errorf("can't add notification contact '%s': %v", username, err)
+			}
+			if resp.Status() >= 400 {
+				return fmt.Errorf("can't add notification contact '%s': HTTP %d: %s",
+					username, resp.Status(), resp.String())
+			}
+		}
+	}
+
+	for username, accountID := range current {
+		if !seen[username] {
+			deletePath := fmt.Sprintf("%s/%s", basePath, accountID)
+			resp, err := c.ocm.Delete().Path(deletePath).SendContext(ctx)
+			if err != nil {
+				return fmt.Errorf("can't remove notification contact '%s': %v", username, err)
+			}
+			if resp.Status() >= 400 {
+				return fmt.Errorf("can't remove notification contact '%s': HTTP %d", username, resp.Status())
+			}
+		}
+	}
+
+	return nil
+}
+
+// GetSubscriptionNotificationContacts returns the usernames of all notification contacts on the
+// given subscription ordered by username, or nil if none exist.
+func (c *Client) GetSubscriptionNotificationContacts(
+	ctx context.Context, subscriptionID string,
+) ([]string, error) {
+	basePath := fmt.Sprintf("/api/accounts_mgmt/v1/subscriptions/%s/notification_contacts", subscriptionID)
+
+	contacts, err := c.fetchNotificationContacts(ctx, basePath)
+	if err != nil {
+		return nil, err
+	}
+	if len(contacts) == 0 {
+		return nil, nil
+	}
+	usernames := make([]string, 0, len(contacts))
+	for _, c := range contacts {
+		usernames = append(usernames, c.Username)
+	}
+	sort.Strings(usernames)
+	return usernames, nil
+}
+
+type notificationContactResponse struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
+
+type notificationContactListResponse struct {
+	Items []notificationContactResponse `json:"items"`
+	Size  int                           `json:"size"`
+}
+
+// fetchNotificationContacts returns all notification contacts at the given API path, paginating
+// through all results.
+func (c *Client) fetchNotificationContacts(ctx context.Context, path string) ([]notificationContactResponse, error) {
+	const pageSize = 100
+	var result []notificationContactResponse
+	page := 1
+	for {
+		resp, err := c.ocm.Get().Path(path).
+			Parameter("page", page).
+			Parameter("size", pageSize).
+			SendContext(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can't read notification contacts: %v", err)
+		}
+		if resp.Status() >= 400 {
+			return nil, fmt.Errorf("can't read notification contacts: HTTP %d: %s", resp.Status(), resp.String())
+		}
+		var listResp notificationContactListResponse
+		if err := json.Unmarshal(resp.Bytes(), &listResp); err != nil {
+			return nil, fmt.Errorf("can't parse notification contacts response: %v", err)
+		}
+		for _, item := range listResp.Items {
+			if item.Username != "" && item.ID != "" {
+				result = append(result, item)
+			}
+		}
+		if listResp.Size < pageSize {
+			break
+		}
+		page++
+	}
+	return result, nil
 }
 
 // EnsureNoPendingClusters ensures that no clusters are pending in the account. For non-STS clusters,
