@@ -929,6 +929,30 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 	return c.mapToAccountRoles(version, roles)
 }
 
+var prefixOperatorRoleRE = regexp.MustCompile(`(?i)(?P<Prefix>[\w+=,.@-]+)-(openshift|kube-system)`)
+
+// operatorRoleListPrefix returns the operator-roles prefix for OCM (openshift/kube-system suffix)
+// or hyperfleet v2 (HypershiftPolicies + role_prefix tags) roles.
+func operatorRoleListPrefix(roleName string, roleTags []iamtypes.Tag) string {
+	if matches := prefixOperatorRoleRE.FindStringSubmatch(roleName); len(matches) > 0 {
+		return strings.ToLower(matches[prefixOperatorRoleRE.SubexpIndex("Prefix")])
+	}
+	if !common.IamResourceHasTag(roleTags, tags.HypershiftPolicies, tags.True) {
+		return ""
+	}
+	rolePrefix := ""
+	for _, tag := range roleTags {
+		if aws.ToString(tag.Key) == tags.RolePrefix {
+			rolePrefix = aws.ToString(tag.Value)
+			break
+		}
+	}
+	if rolePrefix == "" || !strings.HasPrefix(roleName, rolePrefix+"-") {
+		return ""
+	}
+	return strings.ToLower(rolePrefix)
+}
+
 func (c *awsClient) ListOperatorRoles(targetVersion string,
 	targetClusterId string, targetPrefix string,
 ) (map[string][]OperatorRoleDetail, error) {
@@ -937,24 +961,21 @@ func (c *awsClient) ListOperatorRoles(targetVersion string,
 	if err != nil {
 		return operatorMap, err
 	}
-	prefixOperatorRoleRE := regexp.MustCompile(`(?i)(?P<Prefix>[\w+=,.@-]+)-(openshift|kube-system)`)
 	for _, role := range roles {
 		operatorRole := OperatorRoleDetail{}
-		matches := prefixOperatorRoleRE.FindStringSubmatch(*role.RoleName)
-		if len(matches) == 0 {
-			continue
-		}
-		prefixIndex := prefixOperatorRoleRE.SubexpIndex("Prefix")
-		foundPrefix := strings.ToLower(matches[prefixIndex])
-		if _, mapOk := operatorMap[foundPrefix]; !mapOk {
-			operatorMap[foundPrefix] = []OperatorRoleDetail{}
-		}
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(),
 			&iam.ListRoleTagsInput{
 				RoleName: role.RoleName,
 			})
 		if err != nil {
 			return operatorMap, err
+		}
+		foundPrefix := operatorRoleListPrefix(aws.ToString(role.RoleName), listRoleTagsOutput.Tags)
+		if foundPrefix == "" {
+			continue
+		}
+		if _, mapOk := operatorMap[foundPrefix]; !mapOk {
+			operatorMap[foundPrefix] = []OperatorRoleDetail{}
 		}
 		skip := false
 		for _, tag := range listRoleTagsOutput.Tags {
@@ -1140,6 +1161,9 @@ func (c *awsClient) DeleteOperatorRole(roleName string, managedPolicies bool,
 			return sharedVpcPoliciesNotDeleted, err
 		}
 	}
+	if err := c.DeleteInstanceProfilesForRole(roleName); err != nil {
+		return sharedVpcPoliciesNotDeleted, err
+	}
 	err = c.DeleteRole(*role)
 	if err != nil {
 		return sharedVpcPoliciesNotDeleted, err
@@ -1200,6 +1224,34 @@ func (c *awsClient) DeleteRole(role string) error {
 		}
 		return err
 	}
+	return nil
+}
+
+func (c *awsClient) DeleteInstanceProfilesForRole(roleName string) error {
+	profileNames, err := c.GetInstanceProfilesForRole(roleName)
+	if err != nil {
+		return err
+	}
+
+	for _, profileName := range profileNames {
+		_, err = c.iamClient.RemoveRoleFromInstanceProfile(context.Background(),
+			&iam.RemoveRoleFromInstanceProfileInput{
+				InstanceProfileName: aws.String(profileName),
+				RoleName:            aws.String(roleName),
+			})
+		if err != nil && !awserr.IsNoSuchEntityException(err) {
+			return err
+		}
+
+		_, err = c.iamClient.DeleteInstanceProfile(context.Background(),
+			&iam.DeleteInstanceProfileInput{
+				InstanceProfileName: aws.String(profileName),
+			})
+		if err != nil && !awserr.IsNoSuchEntityException(err) {
+			return err
+		}
+	}
+
 	return nil
 }
 

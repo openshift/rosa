@@ -71,54 +71,45 @@ type operatorRoleSpec struct {
 	IsWorkerRole      bool // True for worker node role
 }
 
-// getHCPOperatorRoles returns the list of operator roles needed for a hosted cluster
 func getHCPOperatorRoles() []operatorRoleSpec {
-	return []operatorRoleSpec{
-		{
-			Name:              "ingress",
+	specs := map[string]operatorRoleSpec{
+		hyperfleet.SuffixIngress: {
 			ServiceAccount:    "system:serviceaccount:openshift-ingress-operator:ingress-operator",
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAIngressOperatorPolicy"},
 			Description:       "Manages AWS ELBs/NLBs for OpenShift routes",
 		},
-		{
-			Name:              "cloud-controller-manager",
+		hyperfleet.SuffixCloudControllerManager: {
 			ServiceAccount:    "system:serviceaccount:kube-system:kube-controller-manager",
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAKubeControllerPolicy"},
 			Description:       "Manages load balancers and node lifecycle",
 		},
-		{
-			Name:              "ebs-csi",
+		hyperfleet.SuffixEBSCSI: {
 			ServiceAccount:    "system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa",
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAAmazonEBSCSIDriverOperatorPolicy"},
 			Description:       "Creates and attaches EBS volumes",
 		},
-		{
-			Name:              "image-registry",
+		hyperfleet.SuffixImageRegistry: {
 			ServiceAccount:    "system:serviceaccount:openshift-image-registry:registry",
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAImageRegistryOperatorPolicy"},
 			Description:       "S3 access for the internal container image registry",
 		},
-		{
-			Name:              "network-config",
+		hyperfleet.SuffixNetworkConfig: {
 			ServiceAccount:    "system:serviceaccount:openshift-cloud-network-config-controller:cloud-credentials",
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSACloudNetworkConfigOperatorPolicy"},
 			Description:       "Manages ENIs and cloud networking configuration",
 		},
-		{
-			Name:              "control-plane-operator",
+		hyperfleet.SuffixControlPlaneOperator: {
 			ServiceAccount:    "system:serviceaccount:kube-system:control-plane-operator",
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAControlPlaneOperatorPolicy"},
 			Description:       "Control plane operator managing hosted cluster lifecycle",
 		},
-		{
-			Name:              "node-pool-management",
+		hyperfleet.SuffixNodePoolManagement: {
 			ServiceAccount:    "system:serviceaccount:kube-system:capa-controller-manager",
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSANodePoolManagementPolicy"},
 			Description:       "Manages worker node pools",
 		},
-		{
-			Name:           "ROSA-Worker-Role",
-			ServiceAccount: "", // EC2 service principal, not OIDC
+		hyperfleet.SuffixWorkerRole: {
+			ServiceAccount: "",
 			ManagedPolicyArns: []string{
 				"arn:aws:iam::aws:policy/service-role/ROSAWorkerInstancePolicy",
 				"arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
@@ -127,6 +118,17 @@ func getHCPOperatorRoles() []operatorRoleSpec {
 			IsWorkerRole: true,
 		},
 	}
+
+	roles := make([]operatorRoleSpec, len(hyperfleet.OperatorRoleSuffixes()))
+	for i, suffix := range hyperfleet.OperatorRoleSuffixes() {
+		spec, ok := specs[suffix]
+		if !ok {
+			panic("missing HCP operator role spec for suffix " + suffix)
+		}
+		spec.Name = suffix
+		roles[i] = spec
+	}
+	return roles
 }
 
 // runHyperfleetCreateOperatorRoles creates operator roles for hyperfleet v2 clusters.
@@ -194,7 +196,7 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "Service": "ec2.amazonaws.com"
+      "Service": ["ec2.amazonaws.com"]
     },
     "Action": "sts:AssumeRole"
   }]
@@ -288,7 +290,7 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "Service": "ec2.amazonaws.com"
+      "Service": ["ec2.amazonaws.com"]
     },
     "Action": "sts:AssumeRole"
   }]

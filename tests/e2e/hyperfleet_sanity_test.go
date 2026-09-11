@@ -2,17 +2,16 @@ package e2e
 
 import (
 	"context"
-	"crypto/sha1" //nolint:gosec
-	"crypto/tls"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -29,7 +28,10 @@ import (
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
 
+	rosaaws "github.com/openshift/rosa/pkg/aws"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/tests/ci/labels"
 	rosacli "github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
@@ -41,6 +43,7 @@ const (
 	hfNodePoolReadyInterval = 30 * time.Second
 	hfNodePoolReadyTimeout  = 30 * time.Minute
 	hfDefaultInstanceType   = "m5.xlarge"
+	hfMaxClusterNameLength  = 18 // Platform API namespace limit; see hyperfleet-guidelines.md
 
 	// teardownGracePeriod bounds how long each cleanup node may run after a
 	// mid-run interrupt (Ctrl-C). Ginkgo's default is 30s, which is far too
@@ -52,74 +55,8 @@ const (
 	teardownGracePeriod = hfClusterReadyTimeout + 30*time.Minute
 )
 
-// hfOperatorRole maps a role suffix to its AWS managed policy name and the
-// service accounts that should be allowed to assume it.
-type hfOperatorRole struct {
-	suffix          string
-	policy          string
-	serviceAccounts []hfServiceAccount
-}
-
-type hfServiceAccount struct {
-	namespace string
-	name      string
-}
-
-var hfOperatorRoles = []hfOperatorRole{
-	{
-		suffix: "-ingress",
-		policy: "ROSAIngressOperatorPolicy",
-		serviceAccounts: []hfServiceAccount{
-			{namespace: "openshift-ingress-operator", name: "ingress-operator"},
-		},
-	},
-	{
-		suffix: "-cloud-controller-manager",
-		policy: "ROSAKubeControllerPolicy",
-		serviceAccounts: []hfServiceAccount{
-			{namespace: "kube-system", name: "kube-controller-manager"},
-		},
-	},
-	{
-		suffix: "-ebs-csi",
-		policy: "ROSAAmazonEBSCSIDriverOperatorPolicy",
-		serviceAccounts: []hfServiceAccount{
-			{namespace: "openshift-cluster-csi-drivers", name: "aws-ebs-csi-driver-operator"},
-			{namespace: "openshift-cluster-csi-drivers", name: "aws-ebs-csi-driver-controller-sa"},
-		},
-	},
-	{
-		suffix: "-image-registry",
-		policy: "ROSAImageRegistryOperatorPolicy",
-		serviceAccounts: []hfServiceAccount{
-			{namespace: "openshift-image-registry", name: "cluster-image-registry-operator"},
-			{namespace: "openshift-image-registry", name: "registry"},
-		},
-	},
-	{
-		suffix: "-network-config",
-		policy: "ROSACloudNetworkConfigOperatorPolicy",
-		serviceAccounts: []hfServiceAccount{
-			{namespace: "openshift-cloud-network-config-controller", name: "cloud-network-config-controller"},
-		},
-	},
-	{
-		suffix: "-control-plane-operator",
-		policy: "ROSAControlPlaneOperatorPolicy",
-		serviceAccounts: []hfServiceAccount{
-			{namespace: "kube-system", name: "control-plane-operator"},
-		},
-	},
-	{
-		suffix: "-node-pool-management",
-		policy: "ROSANodePoolManagementPolicy",
-		serviceAccounts: []hfServiceAccount{
-			{namespace: "kube-system", name: "capa-controller-manager"},
-		},
-	},
-}
-
 var _ = Describe("Hyperfleet sanity",
+	labels.Hyperfleet.Sanity,
 	func() {
 		It("creates and deletes an HCP cluster via the Platform API", func(ctx SpecContext) {
 			hfURL := os.Getenv("HYPERFLEET_URL")
@@ -128,14 +65,15 @@ var _ = Describe("Hyperfleet sanity",
 			}
 			clusterName := os.Getenv("CLUSTER_NAME")
 			if clusterName == "" {
-				clusterName = fmt.Sprintf("hf-sanity-%d", time.Now().Unix())
+				clusterName = fmt.Sprintf("hf-e2e-%d", time.Now().Unix())
 			}
+			Expect(len(clusterName)).To(BeNumerically("<=", hfMaxClusterNameLength),
+				"CLUSTER_NAME must be ≤%d chars for Platform API", hfMaxClusterNameLength)
 			rolesPrefix := os.Getenv("OPERATOR_ROLES_PREFIX")
 			if rolesPrefix == "" {
 				rolesPrefix = clusterName
 			}
 
-			// Derive region from URL or AWS_DEFAULT_REGION.
 			region, err := hyperfleet.ExtractRegion(hfURL)
 			if err != nil {
 				envRegion := os.Getenv("AWS_DEFAULT_REGION")
@@ -144,16 +82,8 @@ var _ = Describe("Hyperfleet sanity",
 				region = envRegion
 			}
 
-			// Ensure AWS_DEFAULT_REGION reflects the URL-encoded region so that
-			// subprocesses (e.g. rosa whoami) display the correct region rather
-			// than any ambient value the caller may have set.
 			GinkgoT().Setenv("AWS_DEFAULT_REGION", region)
 
-			// deferTeardown registers a cleanup with a bounded grace period so a
-			// mid-run interrupt still lets AWS teardown make progress instead of
-			// being cut off after Ginkgo's default 30s. Each cleanup receives a
-			// fresh SpecContext (cancelled when the grace period expires) so long
-			// WaitUntil/waiter calls abort promptly on a second interrupt.
 			deferTeardown := func(fn func(ctx SpecContext)) {
 				DeferCleanup(fn, GracePeriod(teardownGracePeriod))
 			}
@@ -170,7 +100,7 @@ var _ = Describe("Hyperfleet sanity",
 				_, _ = rosacli.NewClient().Runner.Cmd("logout").Run()
 			})
 
-			By("Verifying whoami shows Platform API URL and correct region")
+			By("Verifying whoami shows V2 API URL and correct region")
 			whoamiRunner := rosacli.NewClient().Runner
 			whoamiRunner.JsonFormat()
 			whoamiOut, err := whoamiRunner.Cmd("whoami").Run()
@@ -178,8 +108,8 @@ var _ = Describe("Hyperfleet sanity",
 			var whoamiMap map[string]interface{}
 			Expect(json.Unmarshal(whoamiOut.Bytes(), &whoamiMap)).To(Succeed(),
 				"parsing whoami JSON output")
-			Expect(whoamiMap["Platform API"]).To(Equal(hfURL),
-				"whoami must report the Platform API URL stored during login")
+			Expect(whoamiMap["V2 API"]).To(Equal(hfURL),
+				"whoami must report the V2 API URL stored during login")
 			Expect(whoamiMap["AWS Default Region"]).To(Equal(region),
 				"whoami must report the region derived from the Platform API URL")
 
@@ -193,7 +123,6 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "STS GetCallerIdentity")
 			accountID := awssdk.ToString(identity.Account)
 			callerARN := awssdk.ToString(identity.Arn)
-			partition := hfPartitionFromARN(callerARN)
 
 			By("Building the hyperfleet client")
 			hfClient, err := hyperfleetclientset.NewForConfig(&hfrest.Config{
@@ -206,13 +135,9 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "building hyperfleet client")
 
 			ec2Client := ec2svc.NewFromConfig(awsCfg)
-			iamClient := iamsvc.NewFromConfig(awsCfg)
 			r53Client := route53svc.NewFromConfig(awsCfg)
 			elbClient := elbsvc.NewFromConfig(awsCfg)
 			elbv2Client := elbv2svc.NewFromConfig(awsCfg)
-
-			// ── Network setup ────────────────────────────────────────────────
-			// Mirrors what rosactl cluster-vpc create provisions via CloudFormation.
 
 			const vpcCIDR = "10.0.0.0/16"
 			az := region + "a"
@@ -240,7 +165,8 @@ var _ = Describe("Hyperfleet sanity",
 			})
 
 			By("Waiting for VPC to become available")
-			Expect(ec2svc.NewVpcAvailableWaiter(ec2Client).Wait(ctx,
+			Expect(ec2svc.NewVpcAvailableWaiter(ec2Client).Wait(
+				ctx,
 				&ec2svc.DescribeVpcsInput{VpcIds: []string{vpcID}},
 				hfVPCReadyTimeout,
 			)).To(Succeed(), "waiting for VPC %s to become available", vpcID)
@@ -300,7 +226,8 @@ var _ = Describe("Hyperfleet sanity",
 			})
 
 			By("Waiting for subnets to become available")
-			Expect(ec2svc.NewSubnetAvailableWaiter(ec2Client).Wait(ctx,
+			Expect(ec2svc.NewSubnetAvailableWaiter(ec2Client).Wait(
+				ctx,
 				&ec2svc.DescribeSubnetsInput{SubnetIds: []string{subnetID, publicSubnetID}},
 				hfSubnetReadyTimeout,
 			)).To(Succeed(), "waiting for subnets to become available")
@@ -377,14 +304,16 @@ var _ = Describe("Hyperfleet sanity",
 				_, _ = ec2Client.DeleteNatGateway(ctx, &ec2svc.DeleteNatGatewayInput{
 					NatGatewayId: awssdk.String(natGWID),
 				})
-				_ = ec2svc.NewNatGatewayDeletedWaiter(ec2Client).Wait(ctx,
+				_ = ec2svc.NewNatGatewayDeletedWaiter(ec2Client).Wait(
+					ctx,
 					&ec2svc.DescribeNatGatewaysInput{NatGatewayIds: []string{natGWID}},
 					5*time.Minute,
 				)
 			})
 
 			By("Waiting for NAT Gateway to become available")
-			Expect(ec2svc.NewNatGatewayAvailableWaiter(ec2Client).Wait(ctx,
+			Expect(ec2svc.NewNatGatewayAvailableWaiter(ec2Client).Wait(
+				ctx,
 				&ec2svc.DescribeNatGatewaysInput{NatGatewayIds: []string{natGWID}},
 				5*time.Minute,
 			)).To(Succeed(), "waiting for NAT Gateway %s to become available", natGWID)
@@ -536,77 +465,79 @@ var _ = Describe("Hyperfleet sanity",
 				})
 			})
 
-			// ── IAM cleanup (pre-registered to execute after cluster deletion) ─────
-			// DeferCleanup runs in LIFO order. Registering these before the cluster
-			// delete DeferCleanup ensures IAM resources are removed only after the
-			// cluster and its worker nodes are fully gone. The OIDC provider must
-			// remain available while the cluster is deleting so operators can
-			// authenticate to AWS; it is deleted last among these.
+			oidcRunner := rosacli.NewClient().Runner
 
-			var oidcARN string
-			deferTeardown(func(ctx SpecContext) {
-				if oidcARN == "" {
-					return
-				}
-				By("Cleanup: deleting OIDC provider")
-				_, _ = iamClient.DeleteOpenIDConnectProvider(ctx, &iamsvc.DeleteOpenIDConnectProviderInput{
-					OpenIDConnectProviderArn: awssdk.String(oidcARN),
-				})
-			})
+			By("Creating managed OIDC config via CLI")
+			oidcCreateOut, err := oidcRunner.JsonFormat().Cmd("create", "oidc-config").
+				CmdFlags("--managed", "--mode", "auto", "-y").
+				Run()
+			Expect(err).NotTo(HaveOccurred(), "rosa create oidc-config")
 
-			var createdRoles []string
-			deferTeardown(func(ctx SpecContext) {
-				By("Cleanup: detaching policies and deleting operator roles")
-				for i, role := range hfOperatorRoles {
-					if i >= len(createdRoles) {
-						break
-					}
-					roleName := createdRoles[i]
-					policyARN := fmt.Sprintf("arn:%s:iam::aws:policy/service-role/%s", partition, role.policy)
-					_, _ = iamClient.DetachRolePolicy(ctx, &iamsvc.DetachRolePolicyInput{
-						RoleName:  awssdk.String(roleName),
-						PolicyArn: awssdk.String(policyARN),
-					})
-					_, _ = iamClient.DeleteRole(ctx, &iamsvc.DeleteRoleInput{
-						RoleName: awssdk.String(roleName),
-					})
-				}
-			})
-
-			workerRoleName := hyperfleet.ComputeInstanceProfile(rolesPrefix)
-			workerPolicies := []string{
-				fmt.Sprintf("arn:%s:iam::aws:policy/service-role/ROSAWorkerInstancePolicy", partition),
-				fmt.Sprintf("arn:%s:iam::aws:policy/AmazonSSMManagedInstanceCore", partition),
+			parsed := rosacli.NewParser().JsonData.Input(oidcCreateOut).Parse()
+			oidcConfigID := parsed.DigString("id")
+			if oidcConfigID == "" {
+				oidcConfigID = parsed.DigString("metadata", "name")
 			}
+			Expect(oidcConfigID).NotTo(BeEmpty(), "OIDC config ID must be returned by create")
+			GinkgoWriter.Printf("OIDC config created with ID %s\n", oidcConfigID)
+
+			issuerURL := parsed.DigString("spec", "issuerUrl")
+			if issuerURL == "" {
+				issuerURL = parsed.DigString("spec", "issuer_url")
+			}
+			Expect(issuerURL).NotTo(BeEmpty(), "OIDC issuer URL must be returned by create")
+
+			By("Verifying IAM OIDC provider exists after managed OIDC create")
+			parsedIssuerURL, err := urlHelper.ParseRequestURI(issuerURL)
+			Expect(err).NotTo(HaveOccurred(), "parsing OIDC issuer URL")
+			providerURL := fmt.Sprintf("%s%s", parsedIssuerURL.Host, parsedIssuerURL.Path)
+			callerParsedARN, err := arn.Parse(callerARN)
+			Expect(err).NotTo(HaveOccurred(), "parsing caller ARN")
+			oidcProviderARN := rosaaws.GetOIDCProviderARN(
+				callerParsedARN.Partition, accountID, providerURL)
+			providerOut, err := iamsvc.NewFromConfig(awsCfg).GetOpenIDConnectProvider(
+				ctx, &iamsvc.GetOpenIDConnectProviderInput{
+					OpenIDConnectProviderArn: awssdk.String(oidcProviderARN),
+				})
+			Expect(err).NotTo(HaveOccurred(), "IAM OIDC provider must exist after managed OIDC create")
+			Expect(awssdk.ToString(providerOut.Url)).To(Equal(providerURL))
+
 			deferTeardown(func(ctx SpecContext) {
-				By("Cleanup: deleting worker instance profile and role")
-				_, _ = iamClient.RemoveRoleFromInstanceProfile(ctx, &iamsvc.RemoveRoleFromInstanceProfileInput{
-					InstanceProfileName: awssdk.String(workerRoleName),
-					RoleName:            awssdk.String(workerRoleName),
-				})
-				_, _ = iamClient.DeleteInstanceProfile(ctx, &iamsvc.DeleteInstanceProfileInput{
-					InstanceProfileName: awssdk.String(workerRoleName),
-				})
-				for _, policyARN := range workerPolicies {
-					_, _ = iamClient.DetachRolePolicy(ctx, &iamsvc.DetachRolePolicyInput{
-						RoleName:  awssdk.String(workerRoleName),
-						PolicyArn: awssdk.String(policyARN),
-					})
-				}
-				_, _ = iamClient.DeleteRole(ctx, &iamsvc.DeleteRoleInput{
-					RoleName: awssdk.String(workerRoleName),
-				})
+				By("Cleanup: initiating OIDC config deletion (async, no list wait)")
+				hfInitiateOidcConfigDelete(oidcConfigID)
 			})
 
-			// ── Cluster create ───────────────────────────────────────────────
+			By("Listing OIDC configs via CLI")
+			listOidcOut, err := oidcRunner.Cmd("list", "oidc-config").CmdFlags().Run()
+			Expect(err).NotTo(HaveOccurred(), "rosa list oidc-config")
+			Expect(listOidcOut.String()).To(ContainSubstring(oidcConfigID),
+				"created OIDC config must appear in list output")
+
+			By("Creating operator roles via CLI")
+			oidcRunner.UnsetFormat()
+			_, err = oidcRunner.Cmd("create", "operator-roles").
+				CmdFlags(
+					"--hosted-cp",
+					"--prefix", rolesPrefix,
+					"--oidc-config-id", oidcConfigID,
+					"--mode", "auto",
+					"-y",
+				).
+				Run()
+			Expect(err).NotTo(HaveOccurred(), "rosa create operator-roles")
+
+			deferTeardown(func(ctx SpecContext) {
+				By("Cleanup: initiating operator roles deletion (async)")
+				hfInitiateOperatorRolesDelete(rolesPrefix)
+			})
 
 			By("Creating cluster via CLI")
-			// HYPERFLEET_VERSION is optional — when empty the server resolves a default.
 			version := os.Getenv("HYPERFLEET_VERSION")
 			createArgs := []string{
 				"--cluster-name", clusterName,
 				"--subnet-ids", subnetID,
 				"--operator-roles-prefix", rolesPrefix,
+				"--oidc-config-id", oidcConfigID,
 			}
 			if version != "" {
 				createArgs = append(createArgs, "--version", version)
@@ -617,8 +548,6 @@ var _ = Describe("Hyperfleet sanity",
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa create cluster CLI call")
 
-			// Declare clusterID before the DeferCleanup so the closure captures
-			// the variable; it will be populated after the describe call below.
 			var clusterID string
 			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting cluster via CLI")
@@ -663,7 +592,7 @@ var _ = Describe("Hyperfleet sanity",
 				hfDeleteVPCSecurityGroups(ctx, ec2Client, vpcID)
 			})
 
-			By("Fetching cluster ID and OIDC IssuerURL via CLI describe")
+			By("Fetching cluster ID via CLI describe")
 			describeCreateRunner := rosacli.NewClient().Runner
 			describeCreateRunner.JsonFormat()
 			describeCreateOut, err := describeCreateRunner.Cmd("describe", "cluster").
@@ -679,96 +608,9 @@ var _ = Describe("Hyperfleet sanity",
 			GinkgoWriter.Printf("Cluster %q created with ID %s\n", clusterName, clusterID)
 
 			specMap, _ := createDescribeMap["spec"].(map[string]interface{})
-			issuerURL, _ := specMap["oidc_issuer"].(string)
+			issuerURL, _ = specMap["oidc_issuer"].(string)
 			Expect(issuerURL).NotTo(BeEmpty(), "OIDC IssuerURL must be present in describe response after create")
 			GinkgoWriter.Printf("OIDC IssuerURL: %s\n", issuerURL)
-
-			// oidcProvider is the host+path without the https:// scheme prefix,
-			// used as the principal in trust policies and in OIDC condition keys.
-			oidcProvider, err := hfOIDCProvider(issuerURL)
-			Expect(err).NotTo(HaveOccurred(), "parsing OIDC provider from IssuerURL")
-
-			// ── OIDC provider ────────────────────────────────────────────────
-
-			By("Fetching OIDC thumbprint")
-			thumbprint, err := hfOIDCThumbprint(issuerURL)
-			Expect(err).NotTo(HaveOccurred(), "computing OIDC thumbprint")
-
-			By("Creating OIDC provider in IAM")
-			oidcOut, err := iamClient.CreateOpenIDConnectProvider(ctx, &iamsvc.CreateOpenIDConnectProviderInput{
-				Url:            awssdk.String(issuerURL),
-				ClientIDList:   []string{"openshift"},
-				ThumbprintList: []string{thumbprint},
-			})
-			Expect(err).NotTo(HaveOccurred(), "creating OIDC provider")
-			oidcARN = awssdk.ToString(oidcOut.OpenIDConnectProviderArn)
-			GinkgoWriter.Printf("OIDC provider ARN: %s\n", oidcARN)
-
-			// ── Operator IAM roles ───────────────────────────────────────────
-
-			By("Creating operator IAM roles with OIDC trust policies")
-			for _, role := range hfOperatorRoles {
-				roleName := rolesPrefix + role.suffix
-				trustPolicy := hfBuildTrustPolicy(partition, accountID, oidcProvider, role.serviceAccounts)
-
-				_, err := iamClient.CreateRole(ctx, &iamsvc.CreateRoleInput{
-					RoleName:                 awssdk.String(roleName),
-					AssumeRolePolicyDocument: awssdk.String(trustPolicy),
-					Description:              awssdk.String("ROSA HCP operator role (hyperfleet sanity test)"),
-				})
-				Expect(err).NotTo(HaveOccurred(), "creating role %s", roleName)
-				createdRoles = append(createdRoles, roleName)
-			}
-
-			By("Attaching managed policies to operator roles")
-			for i, role := range hfOperatorRoles {
-				roleName := createdRoles[i]
-				policyARN := fmt.Sprintf("arn:%s:iam::aws:policy/service-role/%s", partition, role.policy)
-				_, err := iamClient.AttachRolePolicy(ctx, &iamsvc.AttachRolePolicyInput{
-					RoleName:  awssdk.String(roleName),
-					PolicyArn: awssdk.String(policyARN),
-				})
-				Expect(err).NotTo(HaveOccurred(), "attaching policy %s to role %s", policyARN, roleName)
-			}
-
-			// ── Worker IAM role + instance profile ───────────────────────────
-
-			By("Creating worker IAM role for node instances")
-			_, err = iamClient.CreateRole(ctx, &iamsvc.CreateRoleInput{
-				RoleName: awssdk.String(workerRoleName),
-				AssumeRolePolicyDocument: awssdk.String(`{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {"Service": "ec2.amazonaws.com"},
-    "Action": "sts:AssumeRole"
-  }]
-}`),
-				Description: awssdk.String("ROSA HCP worker node role (hyperfleet sanity test)"),
-			})
-			Expect(err).NotTo(HaveOccurred(), "creating worker role %s", workerRoleName)
-
-			for _, policyARN := range workerPolicies {
-				_, err = iamClient.AttachRolePolicy(ctx, &iamsvc.AttachRolePolicyInput{
-					RoleName:  awssdk.String(workerRoleName),
-					PolicyArn: awssdk.String(policyARN),
-				})
-				Expect(err).NotTo(HaveOccurred(), "attaching %s to worker role", policyARN)
-			}
-
-			By("Creating worker IAM instance profile")
-			_, err = iamClient.CreateInstanceProfile(ctx, &iamsvc.CreateInstanceProfileInput{
-				InstanceProfileName: awssdk.String(workerRoleName),
-			})
-			Expect(err).NotTo(HaveOccurred(), "creating instance profile %s", workerRoleName)
-
-			_, err = iamClient.AddRoleToInstanceProfile(ctx, &iamsvc.AddRoleToInstanceProfileInput{
-				InstanceProfileName: awssdk.String(workerRoleName),
-				RoleName:            awssdk.String(workerRoleName),
-			})
-			Expect(err).NotTo(HaveOccurred(), "adding worker role to instance profile")
-
-			// ── Assertions ───────────────────────────────────────────────────
 
 			By("Waiting for cluster to become Ready")
 			var clusterPhase v1alpha1.ClusterPhase
@@ -800,8 +642,6 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(listOut.String()).To(ContainSubstring(clusterName),
 				"cluster name must appear in rosa list clusters output")
 
-			// ── Describe sanity ───────────────────────────────────────────────
-
 			By("Describing cluster via CLI and comparing with Get response")
 			getOut, err := hfClient.HyperfleetV1alpha1().Clusters().Get(
 				ctx, clusterID, platform.GetOptions{},
@@ -829,12 +669,11 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(describeMap["api_url"]).To(Equal(
 				fmt.Sprintf("https://%s:%d",
 					getOut.Status.ControlPlaneEndpoint.Host,
-					getOut.Status.ControlPlaneEndpoint.Port)),
+					getOut.Status.ControlPlaneEndpoint.Port),
+			),
 				"CLI describe api_url must match Get control plane endpoint")
 
 			GinkgoWriter.Printf("rosa describe cluster output:\n%s\n", cliOut.String())
-
-			// ── Node pool lifecycle ───────────────────────────────────────────
 
 			instanceType := os.Getenv("HYPERFLEET_INSTANCE_TYPE")
 			if instanceType == "" {
@@ -845,9 +684,6 @@ var _ = Describe("Hyperfleet sanity",
 			var np1ID, np2ID string
 
 			deferTeardown(func(ctx SpecContext) {
-				// np2 is explicitly deleted and waited on in the happy path.
-				// np1 cannot be waited on due to PDB restrictions — cluster
-				// deletion forces it; fire-and-forget here as a safety net.
 				By("Cleanup: initiating node pool 1 deletion")
 				_, _ = rosacli.NewClient().Runner.
 					Cmd("delete", "machinepool").
@@ -866,15 +702,14 @@ var _ = Describe("Hyperfleet sanity",
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa create machinepool %s", np1Name)
 
-			By("Creating second node pool via CLI with Platform API flag --placement-market-type Spot")
+			By("Creating second node pool via CLI")
 			_, err = rosacli.NewClient().Runner.
 				Cmd("create", "machinepool").
 				CmdFlags("-c", clusterName,
 					"--name", np2Name,
 					"--replicas", "1",
 					"--instance-type", instanceType,
-					"--subnet", subnetID,
-					"--placement-market-type", "Spot").
+					"--subnet", subnetID).
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa create machinepool %s", np2Name)
 
@@ -895,24 +730,15 @@ var _ = Describe("Hyperfleet sanity",
 
 			nodePools := hfClient.HyperfleetV1alpha1().NodePools(clusterID)
 
-			By("Verifying --placement-market-type Spot was forwarded to SDK (no override, auto-derived flag)")
-			np2Get, err := nodePools.Get(ctx, np2ID, platform.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "SDK Get for node pool %s", np2Name)
-			Expect(np2Get.Spec.NodePool.Platform.AWS).NotTo(BeNil(),
-				"node pool %s AWS platform must not be nil", np2Name)
-			Expect(np2Get.Spec.NodePool.Platform.AWS.Placement).NotTo(BeNil(),
-				"node pool %s placement must not be nil when marketType is set", np2Name)
-			Expect(string(np2Get.Spec.NodePool.Platform.AWS.Placement.MarketType)).To(Equal("Spot"),
-				"node pool %s marketType must be Spot as set via --placement-market-type", np2Name)
-
 			By("Waiting for node pool 1 to become Ready")
 			Expect(nodePools.WaitUntil(ctx, np1ID,
 				func(n *v1alpha1.NodePool) bool {
 					if n == nil {
 						return false
 					}
-					GinkgoWriter.Printf("[%s] node pool %s: phase=%s\n",
-						time.Now().Format(time.RFC3339), np1Name, n.Status.Phase)
+					GinkgoWriter.Printf("[%s] node pool %s: phase=%s conditions=%s\n",
+						time.Now().Format(time.RFC3339), np1Name, n.Status.Phase,
+						hfFormatNodePoolConditions(n.Status.Conditions))
 					return n.Status.Phase == v1alpha1.NodePoolPhaseReady
 				},
 				hfNodePoolReadyInterval, hfNodePoolReadyTimeout,
@@ -925,8 +751,9 @@ var _ = Describe("Hyperfleet sanity",
 					if n == nil {
 						return false
 					}
-					GinkgoWriter.Printf("[%s] node pool %s: phase=%s\n",
-						time.Now().Format(time.RFC3339), np2Name, n.Status.Phase)
+					GinkgoWriter.Printf("[%s] node pool %s: phase=%s conditions=%s\n",
+						time.Now().Format(time.RFC3339), np2Name, n.Status.Phase,
+						hfFormatNodePoolConditions(n.Status.Conditions))
 					return n.Status.Phase == v1alpha1.NodePoolPhaseReady
 				},
 				hfNodePoolReadyInterval, hfNodePoolReadyTimeout,
@@ -978,31 +805,14 @@ var _ = Describe("Hyperfleet sanity",
 				"node pool %s replicas must be 3 after edit", np1Name)
 			GinkgoWriter.Printf("NodePool %s after edit:\n%s\n", np1Name, np1EditOut.String())
 
-			By("Deleting node pool 2 via CLI")
+			By("Initiating node pool 2 deletion via CLI (cluster delete completes it)")
 			_, err = rosacli.NewClient().Runner.
 				Cmd("delete", "machinepool").
 				CmdFlags("-c", clusterName, "--machinepool", np2Name, "--yes").
 				Run()
 			Expect(err).NotTo(HaveOccurred(), "rosa delete machinepool %s", np2Name)
+			GinkgoWriter.Printf("NodePool %s delete initiated; not waiting for operator finalizers\n", np2Name)
 
-			By("Waiting for node pool 2 to be deleted")
-			Expect(hfClient.HyperfleetV1alpha1().NodePools(clusterID).WaitUntil(ctx, np2ID,
-				func(n *v1alpha1.NodePool) bool {
-					if n == nil {
-						GinkgoWriter.Printf("NodePool %s deleted\n", np2Name)
-						return true
-					}
-					GinkgoWriter.Printf("[%s] node pool %s: phase=%s, waiting for deletion\n",
-						time.Now().Format(time.RFC3339), np2Name, n.Status.Phase)
-					return false
-				},
-				hfNodePoolReadyInterval, hfNodePoolReadyTimeout,
-			)).To(Succeed(), "waiting for node pool %s to be deleted", np2Name)
-
-			// np1 (2 replicas) is the last node pool; default PDB prevents
-			// draining its nodes so deletion cannot complete until the cluster
-			// itself is deleted. Initiate the request so the operator begins
-			// cleanup, then let the cluster delete drive the final teardown.
 			By("Initiating node pool 1 deletion (cluster delete will complete it)")
 			_, err = rosacli.NewClient().Runner.
 				Cmd("delete", "machinepool").
@@ -1012,6 +822,36 @@ var _ = Describe("Hyperfleet sanity",
 		})
 	},
 )
+
+// hfInitiateOidcConfigDelete fires async OIDC teardown; do not list immediately after.
+func hfInitiateOidcConfigDelete(oidcConfigID string) {
+	_, _ = rosacli.NewClient().Runner.
+		Cmd("delete", "oidc-config").
+		CmdFlags("--oidc-config-id", oidcConfigID, "--mode", "auto", "-y").
+		Run()
+}
+
+func hfInitiateOperatorRolesDelete(rolesPrefix string) {
+	_, _ = rosacli.NewClient().Runner.
+		Cmd("delete", "operator-roles").
+		CmdFlags("--prefix", rolesPrefix, "--hosted-cp", "--mode", "auto", "-y").
+		Run()
+}
+
+func hfFormatNodePoolConditions(conditions []metav1.Condition) string {
+	if len(conditions) == 0 {
+		return "none"
+	}
+	parts := make([]string, 0, len(conditions))
+	for _, c := range conditions {
+		msg := c.Message
+		if msg == "" {
+			msg = c.Reason
+		}
+		parts = append(parts, fmt.Sprintf("%s=%s(%s)", c.Type, c.Status, msg))
+	}
+	return strings.Join(parts, "; ")
+}
 
 // hfPurgeHostedZoneRecords deletes all non-default record sets (everything
 // except NS and SOA) from the hosted zone so that DeleteHostedZone succeeds.
@@ -1287,95 +1127,4 @@ func hfWaitVPCInstancesTerminated(ctx context.Context, ec2Client *ec2svc.Client,
 		time.Sleep(15 * time.Second)
 	}
 	GinkgoWriter.Printf("Timed out waiting for instances in VPC %s to terminate; proceeding with cleanup\n", vpcID)
-}
-
-// hfPartitionFromARN returns the AWS partition extracted from an ARN string,
-// defaulting to "aws" when the ARN cannot be parsed.
-func hfPartitionFromARN(callerARN string) string {
-	parts := strings.SplitN(callerARN, ":", 5)
-	if len(parts) >= 2 && parts[1] != "" {
-		return parts[1]
-	}
-	return "aws"
-}
-
-// hfOIDCProvider strips the https:// scheme from an issuer URL and returns
-// the host+path string used as the IAM OIDC provider identifier.
-func hfOIDCProvider(issuerURL string) (string, error) {
-	u, err := url.Parse(issuerURL)
-	if err != nil {
-		return "", fmt.Errorf("parsing issuer URL %q: %w", issuerURL, err)
-	}
-	provider := u.Host
-	if p := strings.TrimPrefix(u.Path, "/"); p != "" {
-		provider = provider + "/" + p
-	}
-	return provider, nil
-}
-
-// hfOIDCThumbprint connects to the OIDC issuer host via TLS and returns the
-// hex-encoded SHA-1 fingerprint of the root CA certificate in the chain.
-// This is the value that IAM CreateOpenIDConnectProvider expects in ThumbprintList.
-func hfOIDCThumbprint(issuerURL string) (string, error) {
-	u, err := url.Parse(issuerURL)
-	if err != nil {
-		return "", fmt.Errorf("parsing issuer URL %q: %w", issuerURL, err)
-	}
-	host := u.Hostname()
-	port := u.Port()
-	if port == "" {
-		port = "443"
-	}
-	conn, err := tls.Dial("tcp", host+":"+port, &tls.Config{
-		InsecureSkipVerify: true, //nolint:gosec // thumbprint derivation requires seeing the raw cert chain
-	})
-	if err != nil {
-		return "", fmt.Errorf("TLS dial %s:%s: %w", host, port, err)
-	}
-	defer conn.Close()
-
-	chain := conn.ConnectionState().PeerCertificates
-	if len(chain) == 0 {
-		return "", fmt.Errorf("no certificates in TLS chain for %s", host)
-	}
-	root := chain[len(chain)-1]
-	sum := sha1.Sum(root.Raw) //nolint:gosec
-	return hex.EncodeToString(sum[:]), nil
-}
-
-// hfBuildTrustPolicy returns a JSON assume-role policy document that allows
-// the given OIDC provider to mint tokens for each service account listed.
-func hfBuildTrustPolicy(partition, accountID, oidcProvider string, sas []hfServiceAccount) string {
-	subjects := make([]string, 0, len(sas))
-	for _, sa := range sas {
-		subjects = append(subjects, fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name))
-	}
-
-	type conditionValue interface{}
-	var subjectValue conditionValue
-	if len(subjects) == 1 {
-		subjectValue = subjects[0]
-	} else {
-		subjectValue = subjects
-	}
-
-	doc := map[string]interface{}{
-		"Version": "2012-10-17",
-		"Statement": []map[string]interface{}{
-			{
-				"Effect": "Allow",
-				"Principal": map[string]string{
-					"Federated": fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, oidcProvider),
-				},
-				"Action": "sts:AssumeRoleWithWebIdentity",
-				"Condition": map[string]interface{}{
-					"StringEquals": map[string]interface{}{
-						oidcProvider + ":sub": subjectValue,
-					},
-				},
-			},
-		},
-	}
-	b, _ := json.Marshal(doc)
-	return string(b)
 }

@@ -168,6 +168,7 @@ type Client interface {
 	GetOpenIDConnectProviderByClusterIdTag(clusterID string) (string, error)
 	GetOpenIDConnectProviderByOidcEndpointUrl(oidcEndpointUrl string) (string, error)
 	GetInstanceProfilesForRole(role string) ([]string, error)
+	DeleteInstanceProfilesForRole(roleName string) error
 	EnsureInstanceProfile(
 		reporter reporter.Logger,
 		instanceProfileName string,

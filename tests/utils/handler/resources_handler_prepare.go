@@ -34,7 +34,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-func usesRegionalPlatformAPI() bool {
+func usesHyperfleet() bool {
 	if hyperfleet.Enabled() {
 		return true
 	}
@@ -504,8 +504,8 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	admin bool,
 	path string) (
 	ocmRole *rosacli.OCMRole, err error) {
-	if usesRegionalPlatformAPI() {
-		log.Logger.Info("Skipping OCM role prep: regional Platform API client active")
+	if usesHyperfleet() {
+		log.Logger.Info("Skipping OCM role prep: hyperfleet client active")
 		return nil, nil
 	}
 	// Assemble flags
@@ -602,8 +602,8 @@ func (rh *resourcesHandler) PrepareUserRole(
 	userRolePrefix string,
 	path string) (
 	userole *rosacli.UserRole, err error) {
-	if usesRegionalPlatformAPI() {
-		log.Logger.Info("Skipping user role prep: regional Platform API client active")
+	if usesHyperfleet() {
+		log.Logger.Info("Skipping user role prep: hyperfleet client active")
 		return nil, nil
 	}
 	// Assemble creation flags
@@ -906,7 +906,14 @@ func (rh *resourcesHandler) PrepareOIDCConfig(
 		return oidcConfigID, err
 	}
 	parser := rosacli.NewParser()
-	oidcConfigID = parser.JsonData.Input(output).Parse().DigString("id")
+	parsed := parser.JsonData.Input(output).Parse()
+	oidcConfigID = parsed.DigString("id")
+	if oidcConfigID == "" {
+		oidcConfigID = parsed.DigString("metadata", "name")
+	}
+	if oidcConfigID == "" {
+		return "", fmt.Errorf("OIDC config ID not found in create output")
+	}
 	err = rh.registerOIDCConfigID(oidcConfigID)
 	return oidcConfigID, err
 }

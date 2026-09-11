@@ -261,6 +261,26 @@ func (mr *MockIamApiClientMockRecorder) DeleteAccessKey(ctx, params any, optFns 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAccessKey", reflect.TypeOf((*MockIamApiClient)(nil).DeleteAccessKey), varargs...)
 }
 
+// DeleteInstanceProfile mocks base method.
+func (m *MockIamApiClient) DeleteInstanceProfile(ctx context.Context, params *iam.DeleteInstanceProfileInput, optFns ...func(*iam.Options)) (*iam.DeleteInstanceProfileOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteInstanceProfile", varargs...)
+	ret0, _ := ret[0].(*iam.DeleteInstanceProfileOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteInstanceProfile indicates an expected call of DeleteInstanceProfile.
+func (mr *MockIamApiClientMockRecorder) DeleteInstanceProfile(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteInstanceProfile", reflect.TypeOf((*MockIamApiClient)(nil).DeleteInstanceProfile), varargs...)
+}
+
 // DeleteOpenIDConnectProvider mocks base method.
 func (m *MockIamApiClient) DeleteOpenIDConnectProvider(ctx context.Context, params *iam.DeleteOpenIDConnectProviderInput, optFns ...func(*iam.Options)) (*iam.DeleteOpenIDConnectProviderOutput, error) {
 	m.ctrl.T.Helper()
@@ -819,6 +839,26 @@ func (mr *MockIamApiClientMockRecorder) PutRolePolicy(ctx, params any, optFns ..
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutRolePolicy", reflect.TypeOf((*MockIamApiClient)(nil).PutRolePolicy), varargs...)
+}
+
+// RemoveRoleFromInstanceProfile mocks base method.
+func (m *MockIamApiClient) RemoveRoleFromInstanceProfile(ctx context.Context, params *iam.RemoveRoleFromInstanceProfileInput, optFns ...func(*iam.Options)) (*iam.RemoveRoleFromInstanceProfileOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "RemoveRoleFromInstanceProfile", varargs...)
+	ret0, _ := ret[0].(*iam.RemoveRoleFromInstanceProfileOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveRoleFromInstanceProfile indicates an expected call of RemoveRoleFromInstanceProfile.
+func (mr *MockIamApiClientMockRecorder) RemoveRoleFromInstanceProfile(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRoleFromInstanceProfile", reflect.TypeOf((*MockIamApiClient)(nil).RemoveRoleFromInstanceProfile), varargs...)
 }
 
 // SimulatePrincipalPolicy mocks base method.

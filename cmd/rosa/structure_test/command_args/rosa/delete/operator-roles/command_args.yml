@@ -1,5 +1,6 @@
 - name: cluster
 - name: delete-hcp-shared-vpc-policies
+- name: hosted-cp
 - name: mode
 - name: prefix
 - name: profile

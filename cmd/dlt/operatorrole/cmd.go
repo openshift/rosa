@@ -40,11 +40,13 @@ import (
 
 const (
 	PrefixFlag                         = "prefix"
+	HostedCpFlag                       = "hosted-cp"
 	deleteHcpSharedVpcPoliciesFlagName = "delete-hcp-shared-vpc-policies"
 )
 
 var args struct {
 	prefix                     string
+	hostedCp                   bool
 	deleteHcpSharedVpcPolicies bool
 }
 
@@ -70,6 +72,13 @@ func init() {
 	)
 
 	flags.BoolVar(
+		&args.hostedCp,
+		HostedCpFlag,
+		false,
+		"Indicates whether to delete hosted control planes operator roles when using --prefix option.",
+	)
+
+	flags.BoolVar(
 		&args.deleteHcpSharedVpcPolicies,
 		deleteHcpSharedVpcPoliciesFlagName,
 		false,
@@ -86,7 +95,6 @@ const (
 )
 
 func run(cmd *cobra.Command, _ []string) {
-	// Dispatch to hyperfleet v2 if enabled
 	if hfEnabled() {
 		hfDeleteOperatorRoles()
 		return

@@ -195,6 +195,9 @@ func (ch *clusterHandler) GetResourcesHandler() ResourcesHandler {
 
 // GenerateClusterCreateFlags will generate cluster creation flags
 func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
+	if usesHyperfleet() {
+		return ch.generateHyperfleetCreateFlags()
+	}
 	resourcesHandler := ch.resourcesHandler
 	if ch.profile.ClusterConfig.NameLength == 0 {
 		ch.profile.ClusterConfig.NameLength = constants.DefaultNameLength //Set to a default value when it is not set
@@ -218,9 +221,6 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		}
 	}()
 	ch.clusterConfig.Name = clusterName
-	if usesRegionalPlatformAPI() {
-		return ch.generateRegionalPlatformCreateFlags(clusterName)
-	}
 
 	flags := []string{"-y"}
 
@@ -1014,8 +1014,8 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 }
 
 func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
-	if usesRegionalPlatformAPI() {
-		return ch.waitForRegionalPlatformClusterReady(timeoutMin)
+	if usesHyperfleet() {
+		return ch.waitForHyperfleetClusterReady(timeoutMin)
 	}
 
 	var err error
@@ -1170,7 +1170,7 @@ func (ch *clusterHandler) createClusterByProfileWithoutWaiting() error {
 
 	// Need to do the post step when cluster has no oidcconfig enabled
 	if ch.profile.ClusterConfig.OIDCConfig == "" && ch.profile.ClusterConfig.STS {
-		if usesRegionalPlatformAPI() {
+		if usesHyperfleet() {
 			prefix := ch.clusterConfig.Aws.Sts.OperatorRolesPrefix
 			err = ch.resourcesHandler.PreparePlatformAPIPostCreateIAM(description.OIDCEndpointURL, prefix)
 		} else {
@@ -1210,7 +1210,7 @@ func (ch *clusterHandler) CreateCluster(waitForClusterReady bool) (err error) {
 	if err != nil {
 		return err
 	}
-	if ch.profile.ClusterConfig.BYOVPC && !usesRegionalPlatformAPI() {
+	if ch.profile.ClusterConfig.BYOVPC && !usesHyperfleet() {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", clusterID)
 		ch.reverifyClusterNetwork()
 	}
@@ -1264,7 +1264,7 @@ func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool)
 
 	// Remove OIDC provider only after uninstall completed.
 	// Platform API clusters use AWS IAM OIDC providers, not OCM oidc-config resources.
-	if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" && !usesRegionalPlatformAPI() {
+	if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" && !usesHyperfleet() {
 		_, err = ch.rosaClient.OCMResource.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
 		if err != nil {
 			log.Logger.Errorf("Error happened when delete oidc provider: %s", err.Error())

@@ -875,6 +875,20 @@ func (mr *MockClientMockRecorder) GetInstanceProfilesForRole(role any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInstanceProfilesForRole", reflect.TypeOf((*MockClient)(nil).GetInstanceProfilesForRole), role)
 }
 
+// DeleteInstanceProfilesForRole mocks base method.
+func (m *MockClient) DeleteInstanceProfilesForRole(roleName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteInstanceProfilesForRole", roleName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteInstanceProfilesForRole indicates an expected call of DeleteInstanceProfilesForRole.
+func (mr *MockClientMockRecorder) DeleteInstanceProfilesForRole(roleName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteInstanceProfilesForRole", reflect.TypeOf((*MockClient)(nil).DeleteInstanceProfilesForRole), roleName)
+}
+
 // GetLocalAWSAccessKeys mocks base method.
 func (m *MockClient) GetLocalAWSAccessKeys() (*AccessKey, error) {
 	m.ctrl.T.Helper()
