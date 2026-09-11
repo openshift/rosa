@@ -38,7 +38,7 @@ var Cmd = &cobra.Command{
 	Example: `  # List all clusters
   rosa list clusters`,
 	Args: cobra.NoArgs,
-	Run:  run,
+	Run:  dispatch,
 }
 
 const clusterCount = 1000

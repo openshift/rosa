@@ -47,7 +47,7 @@ func NewDescribeMachinePoolCommand() *cobra.Command {
 		Aliases: []string{alias},
 		Example: example,
 		Args:    cobra.MaximumNArgs(1),
-		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeMachinePoolRunner(options)),
+		Run:     dispatch(options),
 	}
 
 	flags := cmd.Flags()
@@ -75,7 +75,7 @@ func DescribeMachinePoolRunner(userOptions *DescribeMachinepoolUserOptions) rosa
 		clusterKey := runtime.GetClusterKey()
 		cluster := runtime.FetchCluster()
 		if cluster.State() != cmv1.ClusterStateReady {
-			return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey)
+			return fmt.Errorf("Cluster '%s' is not yet ready", clusterKey) //nolint:staticcheck
 		}
 
 		service := machinepool.NewMachinePoolService()

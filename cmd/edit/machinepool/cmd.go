@@ -53,7 +53,7 @@ func NewEditMachinePoolCommand() *cobra.Command {
 		Aliases: aliases,
 		Example: example,
 		Args:    machinepool.NewMachinepoolArgsFunction(false),
-		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), EditMachinePoolRunner(options)),
+		Run:     dispatch(options),
 	}
 
 	flags := cmd.Flags()

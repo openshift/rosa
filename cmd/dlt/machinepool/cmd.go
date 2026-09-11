@@ -48,7 +48,7 @@ func NewDeleteMachinePoolCommand() *cobra.Command {
 		Short:   short,
 		Long:    long,
 		Example: example,
-		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DeleteMachinePoolRunner(options)),
+		Run:     dispatch(options),
 		Args:    cobra.MaximumNArgs(1),
 	}
 	flags := cmd.Flags()
@@ -79,7 +79,7 @@ func DeleteMachinePoolRunner(userOptions *DeleteMachinepoolUserOptions) rosa.Com
 		service := machinepool.NewMachinePoolService()
 		err = service.DeleteMachinePool(runtime, options.Machinepool(), clusterKey, cluster)
 		if err != nil {
-			return fmt.Errorf("Error deleting machinepool: %v", err)
+			return fmt.Errorf("Error deleting machinepool: %v", err) //nolint:staticcheck
 		}
 		return nil
 	}
