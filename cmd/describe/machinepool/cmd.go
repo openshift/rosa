@@ -47,13 +47,7 @@ func NewDescribeMachinePoolCommand() *cobra.Command {
 		Aliases: []string{alias},
 		Example: example,
 		Args:    cobra.MaximumNArgs(1),
-		Run: func(c *cobra.Command, argv []string) {
-			if hfEnabled() {
-				hfDescribeMachinePool(options, argv)
-				return
-			}
-			rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeMachinePoolRunner(options))(c, argv)
-		},
+		Run:     dispatch(options),
 	}
 
 	flags := cmd.Flags()

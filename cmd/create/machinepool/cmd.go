@@ -47,13 +47,7 @@ func NewCreateMachinePool(spec CreateMachinePoolSpec) CreateMachinePool {
 
 func NewCreateMachinePoolCommand() *cobra.Command {
 	cmd, options := mpOpts.BuildMachinePoolCreateCommandWithOptions()
-	cmd.Run = func(c *cobra.Command, argv []string) {
-		if hfEnabled() {
-			hfCreateMachinePool(options, argv, cmd)
-			return
-		}
-		rosa.DefaultRunner(rosa.RuntimeWithOCM(), CreateMachinepoolRunner(options))(c, argv)
-	}
+	cmd.Run = dispatch(options)
 	// ── HyperFleet flag sections ─────────────────────────────────────────────
 	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
 		func() { hfpathbind.RegisterNodePoolCreateFlags(cmd, &hfNodePoolInput) },
