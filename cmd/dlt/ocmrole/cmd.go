@@ -64,23 +64,27 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
+	if len(argv) > 0 {
+		args.roleARN = argv[0]
+	}
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
-
-	mode, err := interactive.GetMode()
-	if err != nil {
+	if err := runWithRuntime(r, cmd); err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	mode, err := interactive.GetMode()
+	if err != nil {
+		return err
 	}
 
 	orgID, _, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
-		r.Reporter.Errorf("Error getting organization account: %v", err)
-		os.Exit(1)
-	}
-
-	if len(argv) > 0 {
-		args.roleARN = argv[0]
+		return fmt.Errorf("error getting organization account: %v", err)
 	}
 
 	// Determine if interactive mode is needed
@@ -109,57 +113,49 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid ocm role ARN to delete from the current organization: %s", err)
 		}
 	}
 
 	err = aws.ARNValidator(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid ocm role ARN to delete from the current organization: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid ocm role ARN to delete from the current organization: %s", err)
 	}
 
 	err = r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	managedPolicies, err := r.AWSClient.HasManagedPolicies(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine if cluster has managed policies: %v", err)
 	}
 
 	if !confirm.Prompt(true, "Delete '%s' ocm role?", roleARN) {
-		os.Exit(0)
+		return nil
 	}
 
 	linkedRoles, err := r.OCMClient.GetOrganizationLinkedOCMRoles(orgID)
 	if err != nil {
-		r.Reporter.Errorf("An error occurred while trying to get the organization linked roles: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("an error occurred while trying to get the organization linked roles: %s", err)
 	}
 	isLinked := helper.Contains(linkedRoles, roleARN)
 
 	if interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		mode, err = interactive.GetOptionMode(cmd, mode, "OCM role deletion mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid OCM role deletion mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid OCM role deletion mode: %s", err)
 		}
 	}
 
 	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	if !aws.IsOCMRole(&roleName) {
-		r.Reporter.Errorf("Role '%s' is not an OCM role", roleName)
-		os.Exit(1)
+		return fmt.Errorf("role '%s' is not an OCM role", roleName)
 	}
 
 	roleExistOnAWS, existingRoleARN, err := r.AWSClient.CheckRoleExists(roleName)
@@ -170,7 +166,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Warnf("the ARN %s does not exist. Nothing to delete", roleARN)
 	} else if existingRoleARN != roleARN {
 		r.Reporter.Warnf("role with same name but different ARN exists. Existing role ARN: %s", existingRoleARN)
-		os.Exit(1)
+		return fmt.Errorf("role with same name but different ARN exists. Existing role ARN: %s", existingRoleARN)
 	}
 
 	switch mode {
@@ -185,8 +181,7 @@ func run(cmd *cobra.Command, argv []string) {
 		if roleExistOnAWS {
 			err := r.AWSClient.DeleteOCMRole(roleName, managedPolicies)
 			if err != nil {
-				r.Reporter.Errorf("There was an error deleting the OCM role: %s", err)
-				os.Exit(1)
+				return fmt.Errorf("there was an error deleting the OCM role: %s", err)
 			}
 			r.Reporter.Infof("Successfully deleted the OCM role")
 		}
@@ -194,8 +189,7 @@ func run(cmd *cobra.Command, argv []string) {
 		r.OCMClient.LogEvent("ROSADeleteOCMRoleModeManual", nil)
 		commands, err := buildCommands(roleName, roleARN, isLinked, r.AWSClient, roleExistOnAWS, managedPolicies)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 		if r.Reporter.IsTerminal() {
 			if roleExistOnAWS {
@@ -206,9 +200,9 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
-		os.Exit(1)
+		return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 	}
+	return nil
 }
 
 func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws.Client,
