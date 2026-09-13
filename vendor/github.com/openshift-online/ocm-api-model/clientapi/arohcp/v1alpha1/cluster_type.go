@@ -490,7 +490,7 @@ func (o *Cluster) GetAutoNode() (value *ClusterAutoNode, ok bool) {
 // Autoscaler returns the value of the 'autoscaler' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
-// Link to an optional _ClusterAutoscaler_ that is coupled with the cluster.
+// The optional _ClusterAutoscaler_ that is coupled with the cluster.
 func (o *Cluster) Autoscaler() *ClusterAutoscaler {
 	if o != nil && len(o.fieldSet_) > 15 && o.fieldSet_[15] {
 		return o.autoscaler
@@ -501,7 +501,7 @@ func (o *Cluster) Autoscaler() *ClusterAutoscaler {
 // GetAutoscaler returns the value of the 'autoscaler' attribute and
 // a flag indicating if the attribute has a value.
 //
-// Link to an optional _ClusterAutoscaler_ that is coupled with the cluster.
+// The optional _ClusterAutoscaler_ that is coupled with the cluster.
 func (o *Cluster) GetAutoscaler() (value *ClusterAutoscaler, ok bool) {
 	ok = o != nil && len(o.fieldSet_) > 15 && o.fieldSet_[15]
 	if ok {

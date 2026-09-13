@@ -3,6 +3,10 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.511 Sept 9 2026
+
+- ARO-21548 | feat: Support specifying Azure marketplace images
+
 ## 0.1.510 Aug 19 2026
 
 - ROSAENG-13732 | feat: Implement BYO firewall rule endpoint verification
