@@ -676,7 +676,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"error validating max-cores: number must be greater or equal to zero",
 								clusterID): {"--min-cores", "1", "--max-cores", "-1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"error validating cores range: max value must be greater or equal than min value 10.",
+								"error validating cores range: max value must be greater or equal than min value 10",
 								clusterID): {"--min-cores", "10", "--max-cores", "8"},
 							"Error: if any flags in the group [min-memory max-memory] " +
 								"are set they must all be set; " +
@@ -691,7 +691,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"error validating max-memory: number must be greater or equal to zero",
 								clusterID): {"--min-memory", "1", "--max-memory", "-1"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
-								"error validating memory range: max value must be greater or equal than min value 10.",
+								"error validating memory range: max value must be greater or equal than min value 10",
 								clusterID): {"--min-memory", "10", "--max-memory", "8"},
 							"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
 								"strconv.ParseBool: parsing \"ty\": " +
@@ -843,7 +843,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"error validating max-cores: number must be greater or equal to zero",
 								clusterID): {"--min-cores", "1", "--max-cores", "-1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"error validating cores range: max value must be greater or equal than min value 10.",
+								"error validating cores range: max value must be greater or equal than min value 10",
 								clusterID): {"--min-cores", "10", "--max-cores", "8"},
 							"Error: if any flags in the group [min-memory max-memory] " +
 								"are set they must all be set; " +
@@ -858,7 +858,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"error validating max-memory: number must be greater or equal to zero",
 								clusterID): {"--min-memory", "1", "--max-memory", "-1"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-								"error validating memory range: max value must be greater or equal than min value 10.",
+								"error validating memory range: max value must be greater or equal than min value 10",
 								clusterID): {"--min-memory", "10", "--max-memory", "8"},
 							"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
 								"strconv.ParseBool: parsing \"ty\": " +
@@ -1018,7 +1018,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"error validating max-cores: number must be greater or equal to zero",
 						clusterID): {"--min-cores", "1", "--max-cores", "-1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"error validating cores range: max value must be greater or equal than min value 10.",
+						"error validating cores range: max value must be greater or equal than min value 10",
 						clusterID): {"--min-cores", "10", "--max-cores", "8"},
 					"Error: if any flags in the group [min-memory max-memory] " +
 						"are set they must all be set; " +
@@ -1033,7 +1033,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"error validating max-memory: number must be greater or equal to zero",
 						clusterID): {"--min-memory", "1", "--max-memory", "-1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
-						"error validating memory range: max value must be greater or equal than min value 10.",
+						"error validating memory range: max value must be greater or equal than min value 10",
 						clusterID): {"--min-memory", "10", "--max-memory", "8"},
 					"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
 						"strconv.ParseBool: parsing \"ty\": " +
@@ -1047,11 +1047,19 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 						"error validating utilization-threshold: "+
-						"expecting a floating-point number greater than 0 and less than 1",
+						"expecting a floating-point number greater than 0 and less than 1, got -1",
 						clusterID): {"--scale-down-utilization-threshold", "-1"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 						"error validating utilization-threshold: "+
-						"expecting a floating-point number greater than 0 and less than 1",
+						"expecting a floating-point number greater than 0 and less than 1, got 0",
+						clusterID): {"--scale-down-utilization-threshold", "0"},
+					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
+						"error validating utilization-threshold: "+
+						"expecting a floating-point number greater than 0 and less than 1, got 1",
+						clusterID): {"--scale-down-utilization-threshold", "1"},
+					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
+						"error validating utilization-threshold: "+
+						"expecting a floating-point number greater than 0 and less than 1, got 2",
 						clusterID): {"--scale-down-utilization-threshold", "2"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 						"error validating delay-after-delete: time: "+
