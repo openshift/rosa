@@ -53,6 +53,7 @@ else
         -ignore "**/Dockerfile" \
         -ignore "**/*.Dockerfile" \
         -ignore "**/vendor/**" \
-        -ignore "**/mock_*.go" \
+        -ignore "**/*_mock.go" \
+        -ignore "assets/bindata.go" \
         .
 fi

@@ -25,6 +25,7 @@ The repository is moving toward a two-layer architecture that cleanly separates 
 
 The strict test for where code belongs: **would this logic be equally useful in a TUI, a headless program, a CLI, or a REST API?** If the answer is no, it belongs in the CLI layer.
 
+<!-- vale off -->
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                       CLI Layer                              │
@@ -65,13 +66,14 @@ The strict test for where code belongs: **would this logic be equally useful in 
 │  │ - domain   │  │ - AWS client │                            │
 │  │   types    │  │ - OCM client │                            │
 │  │ - service  │  │ - config     │                            │
-│  │   operations│  │ - logging    │                            │
+│  │   ops      │  │ - logging    │                            │
 │  │ - valid-   │  │ - caching    │                            │
 │  │   ation    │  │ - version    │                            │
 │  │ - consts   │  │   checks     │                            │
 │  └────────────┘  └──────────────┘                            │
 └──────────────────────────────────────────────────────────────┘
 ```
+<!-- vale on -->
 
 ### Directory Responsibilities
 

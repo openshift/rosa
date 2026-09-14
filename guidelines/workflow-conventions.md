@@ -202,7 +202,7 @@ Invocation validation is responsible for:
   looking up a cluster name to get an OIDC provider ARN, calling `GetCreator`
   to determine the AWS partition.
 - **Format-specific checks**: validating that a policy ARN matches the ARN
-format, so a typing error is rejected before the OIDC-provider lookup (an AWS API
+  format, so a typo is rejected before the OIDC-provider lookup (an AWS API
   call) or a `file://` read runs.
 
 ```go

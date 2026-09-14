@@ -25,6 +25,7 @@ while IFS= read -r file_path; do
     Dockerfile|*/Dockerfile|*.Dockerfile) continue ;;
     vendor/*|*/vendor/*) continue ;;
     mock_*.go|*/mock_*.go) continue ;;
+    assets/bindata.go) continue ;;
   esac
 
   filtered_staged_files+="$file_path"$'\n'

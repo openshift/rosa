@@ -52,6 +52,7 @@ The hooks are configured in `.pre-commit-config.yaml` and perform:
 - `pre-commit`: checks merge conflicts and YAML syntax, runs gitleaks, formats staged Go files (imports + gofmt), and adds Apache 2.0 license headers to staged files missing them
 - `commit-msg`: validates the commit message format
 - `pre-push`: runs format-check, build, lint, documentation lint (Vale), license checks, changed-files coverage, and unit/integration tests
+- Installing Vale locally requires a C compiler because the Makefile builds it with `CGO_ENABLED=1`.
 - `pre-push` runs against committed content and blocks when staged/unstaged tracked changes are present
 - Prow re-runs these checks as required presubmits, so merges are blocked until they pass
 - check runs are fail-fast: execution stops at the first failing step

@@ -1,3 +1,6 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package network
 
 // This file is used for binary builds

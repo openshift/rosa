@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 
 # govulncheck.sh - Run source and binary vulnerability scans for the ROSA CLI.
 #

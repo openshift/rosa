@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 
 # Check to ensure we have the `jira` CLI installed and accessible from the $PATH
 if ! [ -x "$(command -v jira)" ]; then

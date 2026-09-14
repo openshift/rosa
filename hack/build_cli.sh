@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 set -euo pipefail
 
 #This script invoked via a make target by the Dockerfile
