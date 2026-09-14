@@ -11,7 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
@@ -112,7 +114,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", defaultName))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", defaultName))
 
 				By("Create network with default CF template and setting specific AvailabilityZones param")
 				stackName1 := helper.GenerateRandomName("ocp-81295", 3)
@@ -157,7 +160,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName1))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName1))
 
 				By("Create network with default CF template with params which AvailabilityZoneCount>len(AvailabilityZones)")
 				stackName2 := helper.GenerateRandomName("ocp-81295", 3)
@@ -203,7 +207,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName2))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName2))
 
 				By("Create network with default CF template with params which AvailabilityZoneCount<len(AvailabilityZones)")
 				stackName3 := helper.GenerateRandomName("ocp-81295", 3)
@@ -251,7 +256,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName3))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName3))
 			})
 		It("should be created with local template successfully - [id:77140]",
 			labels.High, labels.Runtime.OCMResources,
@@ -307,15 +313,17 @@ var _ = Describe("Network Resources",
 
 				By("Create network resources by passing template name and all parameters")
 				stackName1 := helper.GenerateRandomName("ocp-77140", 3)
+				customVpcCidr := "10.0.0.0/20"
 				paramNameFlag := fmt.Sprintf("--param=Name=%s", stackName1)
 				paramRegionFlag := fmt.Sprintf("--param=Region=%s", region)
+				paramVpcCidrFlag := fmt.Sprintf("--param=VpcCidr=%s", customVpcCidr)
 				output, err := networkResourcesService.CreateNetworkResources(false, templateDirName,
 					paramNameFlag,
 					paramRegionFlag,
 					"--template-dir", templateDirPath,
 					"--param=AvailabilityZoneCount=4",
 					"--param=Tags=Key1=Value1,Key2=Value2",
-					"--param=VpcCidr=10.0.0.0/20",
+					paramVpcCidrFlag,
 					"--param=AZ1=us-west-2a",
 					"--param=AZ2=us-west-2c",
 					"--param=AZ3=us-west-2b",
@@ -337,6 +345,38 @@ var _ = Describe("Network Resources",
 				subnets, err := awsClient.ListSubnetByVpcID(createdVPCID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(subnets)).To(Equal(8))
+
+				By("Check the security group ingress CIDR matches the custom VpcCidr param")
+				stackResources, err := awsClient.StackFormationClient.DescribeStackResources(context.TODO(),
+					&cloudformation.DescribeStackResourcesInput{StackName: &stackName1})
+				Expect(err).ToNot(HaveOccurred())
+
+				var securityGroupPhysicalID string
+				for _, resource := range stackResources.StackResources {
+					if resource.LogicalResourceId != nil && *resource.LogicalResourceId == "SecurityGroup" &&
+						resource.ResourceType != nil && *resource.ResourceType == "AWS::EC2::SecurityGroup" {
+						securityGroupPhysicalID = *resource.PhysicalResourceId
+						break
+					}
+				}
+				Expect(securityGroupPhysicalID).ToNot(BeEmpty(), "expected to find the SecurityGroup resource in the stack")
+
+				securityGroups, err := awsClient.ListSecurityGroups(createdVPCID)
+				Expect(err).ToNot(HaveOccurred())
+
+				sgIndex := -1
+				for i, sg := range securityGroups {
+					if sg.GroupId != nil && *sg.GroupId == securityGroupPhysicalID {
+						sgIndex = i
+						break
+					}
+				}
+				Expect(sgIndex).To(BeNumerically(">=", 0), "expected to find the template's security group by physical ID")
+
+				templateSecurityGroup := securityGroups[sgIndex]
+				Expect(templateSecurityGroup.IpPermissions).ToNot(BeEmpty())
+				Expect(templateSecurityGroup.IpPermissions[0].IpRanges).ToNot(BeEmpty())
+				Expect(*templateSecurityGroup.IpPermissions[0].IpRanges[0].CidrIp).To(Equal(customVpcCidr))
 
 				By("Delete the cloudformation created in previous step")
 				params := cloudformation.DeleteStackInput{
@@ -362,7 +402,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName1))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName1))
 
 				By("Try to create network by setting OCM_TEMPLATE_DIR env variable")
 				err = os.Setenv("OCM_TEMPLATE_DIR", templateDirPath)
@@ -374,7 +415,7 @@ var _ = Describe("Network Resources",
 					paramRegionFlag,
 					"--param=AvailabilityZoneCount=4",
 					"--param=Tags=Key1=Value1,Key2=Value2",
-					"--param=VpcCidr=10.0.0.0/20",
+					paramVpcCidrFlag,
 					"--param=AZ1=us-west-2a",
 					"--param=AZ2=us-west-2c",
 					"--param=AZ3=us-west-2b",
@@ -409,7 +450,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName2))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName2))
 
 				By("Try to override 'OCM_TEMPLATE_DIR' env variable using --template-dir flag")
 				err = os.Setenv("OCM_TEMPLATE_DIR", "/fake/dir")
@@ -450,7 +492,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName3))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName3))
 
 				By("Create network using manual mode")
 				stackName4 := helper.GenerateRandomName("ocp-77140", 3)
@@ -514,7 +557,8 @@ var _ = Describe("Network Resources",
 						}
 						return false, nil
 					})
-				helper.AssertWaitPollNoErr(err, fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName4))
+				helper.AssertWaitPollNoErr(err,
+					fmt.Sprintf("The stack formation named %s is not deleted within 10 minutes", stackName4))
 			})
 
 		It("should be validated successfully - [id:77159]",
