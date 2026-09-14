@@ -310,7 +310,7 @@ return fmt.Errorf("failed to put inline policy %s on role %s: %w", policyDocumen
 return fmt.Errorf("failed to authenticate with token %s: %w", token, err)
 ```
 
-### Reporter for non-fatal messages
+### Reporter for non-unrecoverable messages
 
 Use `reporter.Infof` and `reporter.Debugf` in the CLI layer for progress
 messages, warnings, and diagnostic output that are not errors:
@@ -321,7 +321,7 @@ r.Reporter.Debugf("Trust policy attached for OIDC provider '%s'", req.OIDCProvid
 ```
 
 The core layer must not call reporter methods. If the core layer needs to
-surface non-fatal warnings, return them as structured data in the Result
+surface non-unrecoverable warnings, return them as structured data in the Result
 type (see [workflow-conventions.md](workflow-conventions.md#what-a-result-contains)).
 
 ## Review Prompts

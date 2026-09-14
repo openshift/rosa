@@ -2,7 +2,7 @@
 
 This project contains the `rosa` command line tool that simplifies the use of Red Hat OpenShift Service on AWS, also known as _ROSA_.
 
-## Quickstart guide
+## Quick start guide
 
 Refer to the official ROSA documentation: https://access.redhat.com/products/red-hat-openshift-service-aws
 
@@ -61,7 +61,7 @@ make install
 NOTE: If you don't have `$GOPATH/bin` in your `$PATH` you need to add it or move `rosa` to a standard system directory eg. for Linux/OSX:
 
 ```
-sudo mv $GOPATH/bin/rosa /usr/local/bin
+sudo install -m 0755 "$GOPATH/bin/rosa" /usr/local/bin/rosa
 ```
 ## Try the ROSA cli from binary
 
@@ -93,7 +93,7 @@ $ cat ~/.docker/config.json | jq '.auths["registry.ci.openshift.org"]'
 ## Secure Credentials Storage
 The `OCM_KEYRING` environment variable provides the ability to store the ROSA 
 configuration containing your authentication tokens in your OS keyring. This is provided
-as an alternative to storing the configuration in plain-text on your system. 
+as an alternative to storing the configuration in plain text on your system.
 `OCM_KEYRING` will override all other token or configuration related flags.
 
 `OCM_KEYRING` supports the following keyrings:

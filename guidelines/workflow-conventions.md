@@ -202,7 +202,7 @@ Invocation validation is responsible for:
   looking up a cluster name to get an OIDC provider ARN, calling `GetCreator`
   to determine the AWS partition.
 - **Format-specific checks**: validating that a policy ARN matches the ARN
-  format, so a typo is rejected before the OIDC-provider lookup (an AWS API
+format, so a typing error is rejected before the OIDC-provider lookup (an AWS API
   call) or a `file://` read runs.
 
 ```go
@@ -638,7 +638,7 @@ When the same verb and resource is served by independent backend trees (for
 example, separate v1 and v2 command/runner stacks), do not force one Request
 type to cover both. Give each tree its own Request and Result types, even
 with identical names, and let Go package namespacing disambiguate them (e.g.,
-`rosav1.CreateIAMServiceAccountRequest` vs.
+`rosav1.CreateIAMServiceAccountRequest` versus
 `rosav2.CreateIAMServiceAccountRequest`). Each type still follows the naming,
 construction, and validation conventions in this document independently
 within its own tree.
@@ -762,7 +762,7 @@ As the codebase migrates toward the target architecture, existing
 `*UserOptions` and `*Options` types remain in the CLI layer (`cmd/` or
 `internal/cli/`). New Request and Result types are added in `pkg/` as
 workflows are extracted. There is no need to rename existing types; the naming
-difference (`UserOptions` vs. `Request`) reinforces which layer owns each
+difference (`UserOptions` versus `Request`) reinforces which layer owns each
 type.
 
 ## Review Prompts

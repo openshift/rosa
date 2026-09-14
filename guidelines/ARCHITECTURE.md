@@ -65,7 +65,7 @@ The strict test for where code belongs: **would this logic be equally useful in 
 │  │ - domain   │  │ - AWS client │                            │
 │  │   types    │  │ - OCM client │                            │
 │  │ - service  │  │ - config     │                            │
-│  │   ops      │  │ - logging    │                            │
+│  │   operations│  │ - logging    │                            │
 │  │ - valid-   │  │ - caching    │                            │
 │  │   ation    │  │ - version    │                            │
 │  │ - consts   │  │   checks     │                            │

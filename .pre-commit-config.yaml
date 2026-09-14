@@ -1,13 +1,76 @@
 # Copyright Red Hat
 # SPDX-License-Identifier: Apache-2.0
 
+default_stages: [pre-commit, commit-msg, pre-push]
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
 repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+        name: Check for merge conflict strings
+        stages: [pre-commit]
+      - id: check-yaml
+        name: Check YAML syntax
+        stages: [pre-commit]
+        exclude: '(^tests/tf-manifests/|(^|/)cloudformation\.yaml$)'
+
   # Secrets detection (blocking). Pin to the commit for release tag v8.30.1.
-  # Never SKIP=gitleaks or git commit --no-verify.
+  # The local wrapper rejects SKIP=gitleaks before invoking this hook.
   - repo: https://github.com/gitleaks/gitleaks
     rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # frozen: v8.30.1
     hooks:
       - id: gitleaks
+        alias: gitleaks-scan
         stages: [pre-commit]
 
+  - repo: local
+    hooks:
+      - id: gitleaks-fail-closed
+        name: Run gitleaks without bypasses
+        entry: ./hack/gitleaks-pre-commit.sh
+        language: script
+        stages: [pre-commit]
+        pass_filenames: false
+
+  # Local repository-specific hooks
+  - repo: local
+    hooks:
+      # Pre-commit stage: formatting and licensing
+      - id: fmt-staged
+        name: Format staged Go files
+        description: Runs gci + gofmt on staged Go files
+        entry: make fmt-staged
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+
+      - id: license-add-staged
+        name: Add license headers to staged files
+        description: Adds Apache 2.0 license headers to staged files missing them
+        entry: make license-add-staged
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+
+      # Commit-msg stage: validate commit message format
+      - id: commit-msg-verify
+        name: Validate commit message format
+        description: "Ensures commit messages follow the JIRA-123 | type(scope): message format"
+        entry: ./hack/commit-msg-verify.sh
+        language: script
+        stages: [commit-msg]
+
+      # Pre-push stage: comprehensive checks before push
+      - id: pre-push-checks
+        name: Run pre-push checks
+        description: Runs format-check, build, lint, docs-lint, license-check, coverage, and tests
+        entry: ./hack/pre-push-hook.sh
+        language: script
+        stages: [pre-push]
+        pass_filenames: false
+
 exclude: '^vendor/'
+fail_fast: true

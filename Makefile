@@ -16,6 +16,11 @@
 
 include .bingo/Variables.mk
 
+VALE_VERSION ?= v3.21.0
+ADDLICENSE_VERSION ?= v1.2.0
+VALE := $(GOBIN)/vale
+ADDLICENSE := $(GOBIN)/addlicense
+
 .DEFAULT_GOAL := rosa
 
 # Wrapper script entry points used by make convenience targets.
@@ -76,6 +81,20 @@ LINT_NEW_FROM_REV_FLAG := $(if $(LINT_NEW_FROM_REV),--new-from-rev=$(LINT_NEW_FR
 lint: $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run --timeout 15m0s $(LINT_OUTPUT_FLAGS) $(LINT_NEW_FROM_REV_FLAG) ./...
 
+$(VALE):
+	CGO_ENABLED=1 GOBIN="$(GOBIN)" go install github.com/vale-cli/vale/v3/cmd/vale@$(VALE_VERSION)
+
+$(ADDLICENSE):
+	GOBIN="$(GOBIN)" go install github.com/google/addlicense@$(ADDLICENSE_VERSION)
+
+.PHONY: vale
+vale: $(VALE)
+
+.PHONY: docs-lint
+docs-lint: $(VALE)
+	"$(VALE)" --minAlertLevel=error --glob='!.vale.ini' --glob='!vendor/**' .
+>>>>>>> a2d803bc9 (ROSAENG-6524 | chore: add license and documentation checks)
+
 .PHONY: govulncheck
 govulncheck: $(GOVULNCHECK) rosa
 	GOVULNCHECK_BIN="$(GOVULNCHECK)" ./hack/govulncheck.sh
@@ -86,7 +105,33 @@ commits/check:
 
 .PHONY: install-hooks
 install-hooks:
-	@./hack/install-git-hooks.sh
+	@if ! command -v pre-commit &> /dev/null; then \
+		echo "Error: pre-commit is not installed."; \
+		echo "See https://pre-commit.com/#install for installation instructions"; \
+		exit 1; \
+	fi
+	@hooks_path=$$(git config --local core.hooksPath 2>/dev/null || true); \
+	if [ "$$hooks_path" = ".githooks" ]; then \
+		echo "Detected legacy core.hooksPath=.githooks (from the old hook system)."; \
+		echo "Unsetting it so pre-commit hooks are picked up correctly..."; \
+		git config --unset core.hooksPath; \
+	fi
+	@pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+	@echo "Installed pre-commit hooks (pre-commit, commit-msg, pre-push). YOU MUST RUN THESE HOOKS ON EVERY COMMIT AND PUSH."
+
+.PHONY: license-check
+license-check: $(ADDLICENSE)
+	@echo "Checking for missing license headers..."
+	@ADDLICENSE="$(ADDLICENSE)" bash scripts/add-license-header.sh -check
+
+.PHONY: license-add
+license-add: $(ADDLICENSE)
+	@echo "Adding license headers to files..."
+	@ADDLICENSE="$(ADDLICENSE)" bash scripts/add-license-header.sh
+
+.PHONY: license-add-staged
+license-add-staged: $(ADDLICENSE)
+	@ADDLICENSE="$(ADDLICENSE)" ./hack/license-add-staged.sh
 
 .PHONY: basic-checks
 basic-checks:
@@ -95,6 +140,7 @@ basic-checks:
 .PHONY: pre-commit-checks
 pre-commit-checks:
 	@$(MAKE) --no-print-directory fmt-staged
+	@$(MAKE) --no-print-directory license-add-staged
 
 .PHONY: pre-push-checks
 pre-push-checks:
