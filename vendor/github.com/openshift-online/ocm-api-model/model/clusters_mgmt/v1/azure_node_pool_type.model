@@ -16,33 +16,38 @@ limitations under the License.
 
 // Representation of azure node pool specific parameters.
 struct AzureNodePool {
-    // ResourceName is the Azure Resource Name of the NodePool.
-    // ResourceName must be within the Azure Resource Group Name of the parent
-    // Cluster it belongs to.
-    // ResourceName must be located in the same Azure Location as the parent
-    // Cluster it belongs to.
-    // ResourceName must be located in the same Azure Subscription as the parent
-    // Cluster it belongs to.
-    // ResourceName must belong to the same Microsoft Entra Tenant ID as the parent
-    // Cluster it belongs to.
-    // Required during creation.
-    // Immutable.
-    ResourceName String
+	// ResourceName is the Azure Resource Name of the NodePool.
+	// ResourceName must be within the Azure Resource Group Name of the parent
+	// Cluster it belongs to.
+	// ResourceName must be located in the same Azure Location as the parent
+	// Cluster it belongs to.
+	// ResourceName must be located in the same Azure Subscription as the parent
+	// Cluster it belongs to.
+	// ResourceName must belong to the same Microsoft Entra Tenant ID as the parent
+	// Cluster it belongs to.
+	// Required during creation.
+	// Immutable.
+	ResourceName String
 
-    // The Azure Virtual Machine size identifier used for the
-    // Nodes of the Node Pool.
-    // Availability of VM sizes are dependent on the Azure Location
-    // of the parent Cluster.
-    // Required during creation.
-    VMSize String
+	// The Azure Virtual Machine size identifier used for the
+	// Nodes of the Node Pool.
+	// Availability of VM sizes are dependent on the Azure Location
+	// of the parent Cluster.
+	// Required during creation.
+	VMSize String
 
-    // EncryptionAtHost contains Encryption At Host disk encryption configuration.
-    // When enabled, it enhances Azure Disk Storage Server-Side Encryption to ensure that all temporary disks
-    // and disk caches are encrypted at rest and flow encrypted to the Storage clusters.
-    // If not specified, Encryption at Host is not enabled.
-    // Immutable.
-    EncryptionAtHost AzureNodePoolEncryptionAtHost
+	// EncryptionAtHost contains Encryption At Host disk encryption configuration.
+	// When enabled, it enhances Azure Disk Storage Server-Side Encryption to ensure that all temporary disks
+	// and disk caches are encrypted at rest and flow encrypted to the Storage clusters.
+	// If not specified, Encryption at Host is not enabled.
+	// Immutable.
+	EncryptionAtHost AzureNodePoolEncryptionAtHost
 
-    // The configuration for the OS disk used by the nodes in the Node Pool.
-    OsDisk AzureNodePoolOsDisk
+	// The configuration for the OS disk used by the nodes in the Node Pool.
+	OsDisk AzureNodePoolOsDisk
+
+	// Specifies the Azure Marketplace image to use for the Nodes of the Node Pool.
+	// When specified, the provided image is used instead of the default RHCOS image.
+	// Optional during creation. Immutable.
+	Image AzureNodePoolImage
 }
