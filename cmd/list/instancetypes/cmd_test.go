@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
@@ -183,6 +184,9 @@ var _ = Describe("list instance-types", func() {
 ID             CATEGORY               CPU_CORES  MEMORY
 g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 `
+		explicitRoleRegionSuccessOutput = `ID             CATEGORY               CPU_CORES  MEMORY
+g4dn.12xlarge  accelerated_computing  48         192.0 GiB
+`
 		mockAwsClient *aws.MockClient
 	)
 
@@ -216,6 +220,7 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		Expect(err).To(BeNil())
 		ocmClient := ocm.NewClientWithConnection(connection)
 
+		interactive.SetEnabled(false)
 		cmd = makeCmd()
 		initFlags(cmd)
 
@@ -230,10 +235,6 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		ctrl := gomock.NewController(GinkgoT())
 		mockAwsClient = aws.NewMockClient(ctrl)
 		r.AWSClient = mockAwsClient
-		mockAwsClient.EXPECT().GetAWSAccessKeys().Return(&aws.AccessKey{
-			AccessKeyID:     "abc123",
-			SecretAccessKey: "abc123",
-		}, nil).AnyTimes()
 
 		DeferCleanup(r.Cleanup)
 	})
@@ -285,6 +286,30 @@ g4dn.12xlarge  accelerated_computing  48         192.0 GiB
 		Expect(err).To(BeNil())
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal(regionSuccessOutput))
+	})
+
+	It("Succeeds with --region and explicit --role-arn without calling FindRoleARNs", func() {
+
+		cmd.Flags().Set("region", "us-east-1")
+		cmd.Flags().Set("role-arn", "explicit_installer_arn")
+
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, regionsSuccess),
+		)
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, machinesSuccess),
+		)
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, currentAccount),
+		)
+		apiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, orgQuota),
+		)
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(explicitRoleRegionSuccessOutput))
 	})
 
 	It("Handles unknown --region", func() {

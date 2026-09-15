@@ -145,7 +145,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 				)
 		}
 		var availabilityZones []string
-		roleArn := ""
+		roleArn := args.installerRoleArn
 		regionList, _, err := r.OCMClient.GetRegionList(false, args.installerRoleArn, args.externalId, "",
 			r.AWSClient, args.hostedClusterEnabled, false)
 		if err != nil {
