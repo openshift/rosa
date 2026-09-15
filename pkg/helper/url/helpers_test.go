@@ -168,5 +168,14 @@ var _ = Describe("Parse helpers", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("invalid IP-literal"))
 		})
+
+		// Regression test for a nil-pointer panic (ROSAENG-5904): callers that
+		// discard this error and dereference the returned *url.URL unconditionally
+		// crash when parsing an empty OIDC issuer URL (e.g. no oidc-configs exist).
+		It("rejects an empty URL", func() {
+			parsedURL, err := ParseRequestURI("")
+			Expect(err).To(HaveOccurred())
+			Expect(parsedURL).To(BeNil())
+		})
 	})
 })
