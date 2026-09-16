@@ -51,7 +51,21 @@ var _ = Describe("verify oc", func() {
 		Expect(reporter.infos[1]).To(ContainSubstring("4.14.0"), "expected success info to mention the detected version")
 	})
 
-	It("Warns when oc version is not 4.x", func() {
+	It("Reports correct version when 5.x is installed", func() {
+		reporter := &mockReporter{terminal: true}
+		getVersion := func(context.Context) ([]byte, error) {
+			return []byte("Client Version: 5.0.0\n"), nil
+		}
+
+		runVerifyOC(context.Background(), reporter, getVersion)
+
+		Expect(reporter.warns).To(BeEmpty(), "expected no warnings for supported 5.x version")
+		Expect(reporter.errs).To(BeEmpty(), "expected no errors for supported 5.x version")
+		Expect(reporter.infos).To(HaveLen(2), "expected start and success info messages in terminal mode")
+		Expect(reporter.infos[1]).To(ContainSubstring("5.0.0"), "expected success info to mention the detected version")
+	})
+
+	It("Warns when oc version is not 4.x or 5.x", func() {
 		reporter := &mockReporter{terminal: true}
 		getVersion := func(context.Context) ([]byte, error) {
 			return []byte("Client Version: 3.11.0\n"), nil
