@@ -15,7 +15,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/helper"
-	. "github.com/openshift/rosa/tests/utils/log"
+	. "github.com/openshift/rosa/tests/utils/log" //nolint:staticcheck
 )
 
 type MachinePoolService interface {
@@ -128,6 +128,7 @@ type NodePoolList struct {
 type NodePoolDescription struct {
 	ID          string `yaml:"ID,omitempty"`
 	ClusterID   string `yaml:"Cluster ID,omitempty"`
+	State       string `yaml:"State,omitempty"`
 	AutoScaling string `yaml:"Autoscaling,omitempty"`
 	// autoscale enabled nodepool return `[]interface{}`, which interface{} here is map[string]string
 	// autoscale disabled nodepool return `int`
@@ -246,7 +247,9 @@ func (m *machinepoolService) ReflectMachinePoolList(result bytes.Buffer) (mpl Ma
 }
 
 // Pasrse the result of 'rosa list machinepool' to MachinePoolList struct
-func (m *machinepoolService) ListAndReflectMachinePools(clusterID string, flags ...string) (mpl MachinePoolList, err error) {
+func (m *machinepoolService) ListAndReflectMachinePools(
+	clusterID string, flags ...string,
+) (mpl MachinePoolList, err error) {
 	mpl = MachinePoolList{}
 	output, err := m.ListMachinePool(clusterID, flags...)
 	if err != nil {

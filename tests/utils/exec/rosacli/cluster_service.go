@@ -365,7 +365,7 @@ func (c *clusterService) GetClusterVersion(clusterID string) (clusterVersion con
 		return
 	}
 
-	if clusterConfig.Version.RawID != "" {
+	if clusterConfig.Version != nil && clusterConfig.Version.RawID != "" {
 		clusterVersion = *clusterConfig.Version
 	} else {
 		// Else retrieve from cluster description

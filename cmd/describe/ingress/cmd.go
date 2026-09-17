@@ -3,11 +3,13 @@ package ingress
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -30,8 +32,14 @@ func NewDescribeIngressCommand() *cobra.Command {
 		Use:     use,
 		Short:   short,
 		Example: example,
-		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeIngressRunner(options)),
 		Args:    cobra.MaximumNArgs(1),
+		Run: func(c *cobra.Command, argv []string) {
+			if hyperfleet.Enabled() {
+				fmt.Fprintln(os.Stderr, "HyperFleet Platform API does not expose ingress resources")
+				os.Exit(1)
+			}
+			rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeIngressRunner(options))(c, argv)
+		},
 	}
 
 	flags := cmd.Flags()

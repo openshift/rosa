@@ -176,7 +176,23 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 	}
 
 	obj.Spec.NodePool.Platform.Type = hypershiftv1beta1.AWSPlatform
-	obj.Spec.NodePool.Platform.AWS.InstanceProfile = instanceProfile
+	aws := obj.Spec.NodePool.Platform.AWS
+	aws.InstanceProfile = instanceProfile
+
+	if h.userOptions.RootDiskSize == "" {
+		return nil
+	}
+	if aws.RootVolume != nil && aws.RootVolume.Size != 0 {
+		return fmt.Errorf("--disk-size and --size cannot be used together")
+	}
+	size, err := ocm.ParseDiskSizeToGigibyte(h.userOptions.RootDiskSize)
+	if err != nil {
+		return fmt.Errorf("invalid --disk-size: %w", err)
+	}
+	if aws.RootVolume == nil {
+		aws.RootVolume = &hypershiftv1beta1.Volume{}
+	}
+	aws.RootVolume.Size = int64(size)
 	return nil
 }
 

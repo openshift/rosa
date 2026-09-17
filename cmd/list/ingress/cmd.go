@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -38,7 +39,13 @@ var Cmd = &cobra.Command{
 	Long:    "List API and ingress endpoints for a cluster.",
 	Example: `  # List all routes on a cluster named "mycluster"
   rosa list ingresses --cluster=mycluster`,
-	Run:  run,
+	Run: func(cmd *cobra.Command, args []string) {
+		if hyperfleet.Enabled() {
+			fmt.Fprintln(os.Stderr, "HyperFleet Platform API does not expose ingress resources")
+			os.Exit(1)
+		}
+		run(cmd, args)
+	},
 	Args: cobra.NoArgs,
 }
 

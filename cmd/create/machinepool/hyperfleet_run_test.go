@@ -76,6 +76,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
 				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
 				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
+				Expect(np.Spec.NodePool.Platform.AWS.RootVolume.Size).To(Equal(int64(75)))
 				return created, nil
 			})
 
@@ -85,6 +86,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			Replicas:     2,
 			InstanceType: "m5.xlarge",
 			Subnet:       "subnet-abc123",
+			RootDiskSize: "75GiB",
 		}, nil)
 	})
 
@@ -216,5 +218,56 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 				Name: "my-np",
 			}, nil)
 		}).To(Panic())
+	})
+
+	It("fails when --disk-size is invalid", func() {
+		orig := exitFn
+		exitFn = func(_ int) { panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, _ := newCreateMPMocks(ctrl)
+		cluster := makeCluster("cluster1", "cluster-uid")
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+
+		t.RosaRuntime.HyperFleetClient = hf
+		Expect(func() {
+			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
+				Name:         "my-np",
+				Subnet:       "subnet-abc123",
+				RootDiskSize: "invalid",
+			}, nil)
+		}).To(Panic())
+	})
+
+	It("returns error when --disk-size and --size conflict", func() {
+		h := &hyperfleetNodePoolCreate{
+			userOptions: &mpOpts.CreateMachinepoolUserOptions{
+				RootDiskSize: "75GiB",
+			},
+			clusterKey: "cluster1",
+			clusterUID: "cluster-uid",
+		}
+		obj := &v1alpha1.NodePool{
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Platform: v1alpha1.NodePoolPlatform{
+						AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
+							RootVolume: &hypershiftv1beta1.Volume{Size: 50},
+						},
+					},
+				},
+			},
+		}
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, _ := newCreateMPMocks(ctrl)
+		cluster := makeCluster("cluster1", "cluster-uid")
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).To(MatchError(ContainSubstring("--disk-size and --size cannot be used together")))
 	})
 })
