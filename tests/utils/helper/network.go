@@ -24,7 +24,7 @@ func ExtractCreateStackCommand(output string) (string, error) {
 	if match != "" {
 		return strings.TrimSpace(match), nil
 	}
-	return "", fmt.Errorf("It failed to extract command to create cloudformation")
+	return "", fmt.Errorf("it failed to extract command to create cloudformation")
 }
 func TemplateWithoutRegionParam() string {
 	templateContent := `AWSTemplateFormatVersion: '2010-09-09'
@@ -688,7 +688,7 @@ Resources:
         - IpProtocol: -1
           FromPort: 0
           ToPort: 0
-          CidrIp: "10.0.0.0/16"
+          CidrIp: !Ref VpcCidr
       SecurityGroupEgress:
         - IpProtocol: -1
           FromPort: 0
