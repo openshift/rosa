@@ -64,7 +64,7 @@ func runDownloadOC(
 	extension := extensionForGOOS(goos)
 
 	filename := fmt.Sprintf("openshift-client-%s.%s", platform, extension)
-	downloadURL := fmt.Sprintf("https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/%s", filename)
+	downloadURL := fmt.Sprintf("https://mirror.openshift.com/pub/openshift-v5/clients/ocp/latest/%s", filename)
 
 	reporter.Infof("Downloading %s", downloadURL)
 
