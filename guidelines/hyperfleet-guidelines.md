@@ -547,15 +547,28 @@ hosted-zone preparation path added alongside the shared-VPC one. Networking
 
 ## End-to-End Tests
 
-Hyperfleet e2e uses two Ginkgo labels (`tests/ci/labels/hyperfleet.go`):
+Hyperfleet e2e Ginkgo labels (`tests/ci/labels/hyperfleet.go`):
 
 | Label | Specs | Needs `TEST_PROFILE` |
 |-------|-------|----------------------|
 | `hyperfleet-sanity` | Full CLI/SDK lifecycle in `hyperfleet_sanity_test.go` | No |
 | `hyperfleet-validated` | Profile-driven day1 FVT in `e2e_setup_test.go` | Yes (`rosa-hyperfleet-basic`) |
+| `hyperfleet-na` | OCM/v1 checks that v2 does not replicate; excluded by the HyperFleet harness | — |
+| `hyperfleet-deferred` | Should pass on Hyperfleet once CLI/API passthrough gaps close; excluded by the HyperFleet harness | — |
 
 Default `make e2e-hyperfleet` runs `hyperfleet-validated`. Set
 `LABEL_FILTER=hyperfleet-sanity` for the sanity spec.
+
+**Day1-post on an existing Hyperfleet cluster** (after day1 wrote
+`tests/output/<TEST_PROFILE>/`): use a filter that matches CI-style exclusions.
+A bare `day1-post` filter still runs specs tagged `Exclude`.
+
+```sh
+ginkgo run --label-filter 'day1-post&&!Exclude&&!hyperfleet-na&&!hyperfleet-deferred' tests/e2e/
+```
+
+Omit `!hyperfleet-deferred` only when you intentionally allow known passthrough
+debt while debugging; merge gates should keep it.
 
 ### Sanity spec
 

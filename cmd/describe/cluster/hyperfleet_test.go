@@ -99,13 +99,15 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("maps all core fields", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c)
+		m := hfClusterToMap(c, "")
 
 		Expect(m["id"]).To(Equal("cluster-uid-123"))
 		Expect(m["name"]).To(Equal("my-cluster"))
 		Expect(m["control_plane"]).To(Equal("ROSA Service Hosted"))
 		Expect(m["state"]).To(Equal("Ready"))
-		Expect(m["version"]).To(Equal("4.17.0"))
+		version, ok := m["version"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(version["raw_id"]).To(Equal("4.17.0"))
 		Expect(m["region"]).To(Equal("us-east-1"))
 		Expect(m["vpc"]).To(Equal("vpc-def456"))
 		Expect(m["subnet"]).To(Equal("subnet-abc123"))
@@ -115,7 +117,7 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("maps spec fields", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c)
+		m := hfClusterToMap(c, "")
 
 		spec, ok := m["spec"].(map[string]interface{})
 		Expect(ok).To(BeTrue())
@@ -129,7 +131,7 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("maps conditions", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c)
+		m := hfClusterToMap(c, "")
 
 		conds, ok := m["conditions"].([]map[string]interface{})
 		Expect(ok).To(BeTrue())
@@ -140,14 +142,14 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("includes expiration when set", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c)
+		m := hfClusterToMap(c, "")
 		Expect(m).To(HaveKey("expiration"))
 	})
 
 	It("handles nil AWS spec gracefully", func() {
 		c := buildCluster()
 		c.Spec.HostedCluster.Platform.AWS = nil
-		m := hfClusterToMap(c)
+		m := hfClusterToMap(c, "")
 		Expect(m).NotTo(HaveKey("region"))
 		Expect(m).NotTo(HaveKey("vpc"))
 		Expect(m).NotTo(HaveKey("subnet"))
@@ -155,6 +157,38 @@ var _ = Describe("hfClusterToMap", func() {
 		spec := m["spec"].(map[string]interface{})
 		roles := spec["roles_ref"].(map[string]string)
 		Expect(roles).To(BeEmpty())
+	})
+
+	It("maps nodes.compute_machine_type from default node pool instance type", func() {
+		c := buildCluster()
+		m := hfClusterToMap(c, "m5.xlarge")
+		nodes, ok := m["nodes"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		cmt, ok := nodes["compute_machine_type"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(cmt["id"]).To(Equal("m5.xlarge"))
+	})
+
+	It("omits EC2 metadata tokens when the API omits them", func() {
+		c := buildCluster()
+		m := hfClusterToMap(c, "")
+		aws := m["aws"].(map[string]interface{})
+		Expect(aws).NotTo(HaveKey("ec2_metadata_http_tokens"))
+		Expect(hfClusterToString(c)).NotTo(ContainSubstring("EC2 Metadata Http Tokens:"))
+	})
+})
+
+var _ = Describe("hfDefaultNodePoolInstanceTypeFromList", func() {
+	It("does not treat a non-worker pool as the default", func() {
+		list := &v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
+			ObjectMeta: metav1.ObjectMeta{Name: "custom"},
+			Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
+				Platform: v1alpha1.NodePoolPlatform{
+					AWS: &hypershiftv1beta1.AWSNodePoolPlatform{InstanceType: "m7i.xlarge"},
+				},
+			}},
+		}}}
+		Expect(hfDefaultNodePoolInstanceTypeFromList(list)).To(BeEmpty())
 	})
 })
 

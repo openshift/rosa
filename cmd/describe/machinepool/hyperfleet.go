@@ -80,11 +80,13 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 	}
 	instanceType := ""
 	subnetID := ""
+	diskSize := ""
 	if np.Spec.NodePool.Platform.AWS != nil {
 		instanceType = np.Spec.NodePool.Platform.AWS.InstanceType
 		if np.Spec.NodePool.Platform.AWS.Subnet.ID != nil {
 			subnetID = *np.Spec.NodePool.Platform.AWS.Subnet.ID
 		}
+		diskSize = hyperfleet.FormatNodePoolDiskSize(np.Spec.NodePool.Platform.AWS)
 	}
 
 	conditions := make([]map[string]interface{}, 0, len(np.Status.Conditions))
@@ -104,6 +106,7 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 		"replicas":     replicas,
 		"instanceType": instanceType,
 		"subnet":       subnetID,
+		"disk_size":    diskSize,
 		"version":      np.Spec.NodePool.Release.Image,
 		"created_at":   np.CreationTimestamp.UTC().Format(time.RFC3339),
 		"conditions":   conditions,
@@ -117,11 +120,13 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 	}
 	instanceType := ""
 	subnetID := ""
+	diskSize := ""
 	if np.Spec.NodePool.Platform.AWS != nil {
 		instanceType = np.Spec.NodePool.Platform.AWS.InstanceType
 		if np.Spec.NodePool.Platform.AWS.Subnet.ID != nil {
 			subnetID = *np.Spec.NodePool.Platform.AWS.Subnet.ID
 		}
+		diskSize = hyperfleet.FormatNodePoolDiskSize(np.Spec.NodePool.Platform.AWS)
 	}
 
 	s := fmt.Sprintf("\n"+
@@ -132,6 +137,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		"Replicas:                   %d\n"+
 		"Instance Type:              %s\n"+
 		"Subnet:                     %s\n"+
+		"Disk Size:                             %s\n"+
 		"Version:                    %s\n"+
 		"Created:                    %s\n",
 		np.Name,
@@ -141,6 +147,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		replicas,
 		instanceType,
 		subnetID,
+		diskSize,
 		np.Spec.NodePool.Release.Image,
 		np.CreationTimestamp.UTC().Format("2006-01-02 15:04:05 UTC"),
 	)

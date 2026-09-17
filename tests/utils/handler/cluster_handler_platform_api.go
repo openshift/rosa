@@ -31,6 +31,15 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 		flags = append(flags, "--version", v)
 		ch.clusterConfig.Version = &ClusterConfigure.Version{RawID: v, VersionRequirement: v}
 	}
+	if ch.profile.ChannelGroup != "" {
+		if ch.clusterConfig.Version == nil {
+			ch.clusterConfig.Version = &ClusterConfigure.Version{}
+		}
+		ch.clusterConfig.Version.ChannelGroup = ch.profile.ChannelGroup
+	}
+	if ch.profile.Version != "" && ch.clusterConfig.Version != nil {
+		ch.clusterConfig.Version.VersionRequirement = ch.profile.Version
+	}
 
 	if r := ch.profile.Region; r != "" {
 		flags = append(flags, "--region", r)
@@ -93,6 +102,9 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 	if t := pc.InstanceType; t != "" {
 		flags = append(flags, "--compute-machine-type", t)
 		ch.clusterConfig.Nodes.ComputeInstanceType = t
+	}
+	if pc.VolumeSize != 0 {
+		ch.clusterConfig.WorkerDiskSize = fmt.Sprintf("%dGiB", pc.VolumeSize)
 	}
 	return flags, ch.saveToFile()
 }
@@ -181,6 +193,10 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 		switch phase {
 		case string(v1alpha1.ClusterPhaseReady):
 			log.Logger.Infof("Cluster %s is ready now.", clusterKey)
+			if err := ch.createHyperfleetNodePoolsAfterReady(); err != nil {
+				return err
+			}
+			ch.recordHyperfleetClusterVersion(clusterKey)
 			return nil
 		case string(v1alpha1.ClusterPhaseDeleting):
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready", clusterKey, phase)
@@ -193,4 +209,132 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 	}
 
 	return fmt.Errorf("timeout for cluster ready waiting after %d mins", timeoutMin)
+}
+
+func hyperfleetNodePoolReplicas(pc *ClusterConfig, poolCount int) (int, error) {
+	if pc.Autoscale {
+		return 0, errors.New("HyperFleet e2e setup does not support autoscaled default node pools")
+	}
+	n := 2
+	if poolCount > 1 {
+		n = 1
+	}
+	if pc.WorkerPoolReplicas != 0 {
+		n = pc.WorkerPoolReplicas
+	}
+	return n, nil
+}
+
+func (ch *clusterHandler) createHyperfleetNodePoolsAfterReady() error {
+	clusterKey := ch.clusterDetail.ClusterID
+	if clusterKey == "" {
+		clusterKey = ch.clusterDetail.ClusterName
+	}
+	if clusterKey == "" {
+		return errors.New("missing cluster key for node pool creation")
+	}
+
+	pc := ch.profile.ClusterConfig
+	instanceType := pc.InstanceType
+	if instanceType == "" {
+		instanceType = "m5.xlarge"
+	}
+	if ch.clusterConfig.Subnets == nil {
+		return fmt.Errorf("no private subnets in cluster-config; cannot create node pools")
+	}
+	subnets := helper.ParseCommaSeparatedStrings(ch.clusterConfig.Subnets.PrivateSubnetIds)
+	if len(subnets) == 0 {
+		return fmt.Errorf("no private subnets in cluster-config; cannot create node pools")
+	}
+
+	poolNames := []string{"workers"}
+	if pc.MultiAZ && len(subnets) > 1 {
+		poolNames = make([]string, 0, len(subnets))
+		for i := range subnets {
+			poolNames = append(poolNames, fmt.Sprintf("workers-%d", i))
+		}
+	}
+	replicas, err := hyperfleetNodePoolReplicas(pc, len(poolNames))
+	if err != nil {
+		return err
+	}
+
+	mp := ch.rosaClient.MachinePool
+	for i, name := range poolNames {
+		subnet := subnets[i]
+		flags := []string{
+			"--replicas", fmt.Sprintf("%d", replicas),
+			"--instance-type", instanceType,
+			"--subnet", subnet,
+			"-y",
+		}
+		if ch.clusterConfig.WorkerDiskSize != "" {
+			flags = append(flags, "--disk-size", ch.clusterConfig.WorkerDiskSize)
+		}
+		log.Logger.Infof("Creating Hyperfleet node pool %s on subnet %s", name, subnet)
+		if _, err := mp.CreateMachinePool(clusterKey, name, flags...); err != nil {
+			if strings.Contains(err.Error(), "already exists") {
+				log.Logger.Infof("Hyperfleet node pool %s already exists, continuing", name)
+				continue
+			}
+			return fmt.Errorf("create node pool %q: %w", name, err)
+		}
+	}
+
+	return ch.waitForHyperfleetNodePools(clusterKey, poolNames)
+}
+
+func (ch *clusterHandler) waitForHyperfleetNodePools(clusterKey string, poolNames []string) error {
+	end := time.Now().Add(20 * time.Minute)
+	var lastErr error
+	for time.Now().Before(end) {
+		lastErr = nil
+		allReady := true
+		for _, name := range poolNames {
+			out, err := ch.rosaClient.MachinePool.DescribeMachinePool(clusterKey, name)
+			if err != nil {
+				lastErr = err
+				allReady = false
+				break
+			}
+			nodePool, err := ch.rosaClient.MachinePool.ReflectNodePoolDescription(out)
+			if err != nil {
+				lastErr = err
+				allReady = false
+				break
+			}
+			if nodePool.State != string(v1alpha1.NodePoolPhaseReady) {
+				allReady = false
+				break
+			}
+		}
+		if allReady {
+			log.Logger.Infof("Hyperfleet node pools ready: %d", len(poolNames))
+			return nil
+		}
+		time.Sleep(30 * time.Second)
+	}
+	if lastErr != nil {
+		return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s: %w", len(poolNames), clusterKey, lastErr)
+	}
+	return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s", len(poolNames), clusterKey)
+}
+
+func (ch *clusterHandler) recordHyperfleetClusterVersion(clusterKey string) {
+	v, err := ch.rosaClient.Cluster.GetClusterVersion(clusterKey)
+	if err != nil {
+		log.Logger.Warnf("Could not read cluster version for cluster-config: %v", err)
+		return
+	}
+	if v.RawID == "" {
+		return
+	}
+	ch.clusterConfig.Version = &v
+	if ch.profile.ChannelGroup != "" {
+		ch.clusterConfig.Version.ChannelGroup = ch.profile.ChannelGroup
+	}
+	if ch.profile.Version != "" {
+		ch.clusterConfig.Version.VersionRequirement = ch.profile.Version
+	}
+	_ = ch.saveToFile()
 }

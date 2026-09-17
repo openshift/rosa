@@ -6,6 +6,7 @@ import (
 
 	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
 // ResolveNodePoolUID looks up a node pool by human-readable name within the
@@ -23,4 +24,12 @@ func ResolveNodePoolUID(
 		}
 	}
 	return "", fmt.Errorf("node pool '%s' not found", nodePoolName)
+}
+
+// FormatNodePoolDiskSize returns the disk size column for list/describe output.
+func FormatNodePoolDiskSize(aws *hypershiftv1beta1.AWSNodePoolPlatform) string {
+	if aws == nil || aws.RootVolume == nil || aws.RootVolume.Size <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d GiB", aws.RootVolume.Size)
 }

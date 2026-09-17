@@ -28,6 +28,7 @@ func buildTestNodePool() *v1alpha1.NodePool {
 				Platform: v1alpha1.NodePoolPlatform{
 					AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
 						InstanceType: "m5.xlarge",
+						RootVolume:   &hypershiftv1beta1.Volume{Size: 75},
 					},
 				},
 			},
@@ -82,6 +83,7 @@ var _ = Describe("hfNodePoolToMap", func() {
 		Expect(m["state"]).To(Equal("Ready"))
 		Expect(m["replicas"]).To(Equal(int32(3)))
 		Expect(m["instanceType"]).To(Equal("m5.xlarge"))
+		Expect(m["disk_size"]).To(Equal("75 GiB"))
 		Expect(m["version"]).To(Equal("v4.17.0-ec.2"))
 		Expect(m["created_at"]).To(Equal("2026-06-15T10:30:00Z"))
 	})
@@ -135,6 +137,7 @@ var _ = Describe("hfNodePoolToString", func() {
 		Expect(s).To(ContainSubstring("Ready"))
 		Expect(s).To(ContainSubstring("3"))
 		Expect(s).To(ContainSubstring("m5.xlarge"))
+		Expect(s).To(ContainSubstring("Disk Size:                             75 GiB"))
 		Expect(s).To(ContainSubstring("v4.17.0-ec.2"))
 		Expect(s).To(ContainSubstring("2026-06-15"))
 	})

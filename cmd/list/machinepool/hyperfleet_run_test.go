@@ -2,6 +2,8 @@ package machinepool
 
 import (
 	"fmt"
+	"io"
+	"os"
 
 	"go.uber.org/mock/gomock"
 
@@ -40,31 +42,46 @@ var _ = Describe("runHyperfleetList", func() {
 		t = test.NewTestRuntime()
 	})
 
+	captureStdout := func(f func()) string {
+		r, w, _ := os.Pipe()
+		orig := os.Stdout
+		os.Stdout = w
+		f()
+		w.Close()
+		os.Stdout = orig
+		out, _ := io.ReadAll(r)
+		return string(out)
+	}
+
 	It("lists node pools when they exist", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newListMPMocks(ctrl)
 
-		replicas := int32(2)
-		np := v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
-			Spec: v1alpha1.NodePoolSpec{
-				NodePool: v1alpha1.NodePoolSpecPassthrough{
-					Replicas: &replicas,
-					Platform: v1alpha1.NodePoolPlatform{
-						AWS: &hypershiftv1beta1.AWSNodePoolPlatform{InstanceType: "m5.xlarge"},
-					},
-				},
-			},
-			Status: v1alpha1.NodePoolStatus{Phase: v1alpha1.NodePoolPhaseReady},
-		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
-			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{np}}, nil)
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
+				ObjectMeta: metav1.ObjectMeta{Name: "np1", UID: types.UID("np-uid-1")},
+				Spec: v1alpha1.NodePoolSpec{
+					NodePool: v1alpha1.NodePoolSpecPassthrough{
+						Platform: v1alpha1.NodePoolPlatform{
+							AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
+								RootVolume: &hypershiftv1beta1.Volume{Size: 75},
+							},
+						},
+					},
+				},
+				Status: v1alpha1.NodePoolStatus{Phase: v1alpha1.NodePoolPhaseReady},
+			}}}, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
-		runHyperfleetList(t.RosaRuntime)
+		stdout := captureStdout(func() { runHyperfleetList(t.RosaRuntime) })
+
+		Expect(stdout).To(ContainSubstring("DISK SIZE"))
+		Expect(stdout).To(ContainSubstring("75 GiB"))
+		Expect(stdout).To(ContainSubstring("np1"))
+		Expect(stdout).To(ContainSubstring("np-uid-1"))
 	})
 
 	It("prints a message when there are no node pools", func() {
