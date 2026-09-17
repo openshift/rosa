@@ -160,6 +160,16 @@
       ]
     },
     {
+      "description": "golang.org/x/ packages",
+      "groupName": "golang.org/x",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchPackageNames": [
+        "/^golang\\.org\\/x\\//"
+      ]
+    },
+    {
       "description": "Kubernetes client libraries",
       "groupName": "kubernetes",
       "matchManagers": [
