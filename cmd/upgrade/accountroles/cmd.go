@@ -100,6 +100,14 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		_ = r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	reporter := r.Reporter
 	awsClient := r.AWSClient
 	ocmClient := r.OCMClient
@@ -107,8 +115,7 @@ func run(cmd *cobra.Command, _ []string) {
 	skipInteractive := false
 	mode, err := interactive.GetMode()
 	if err != nil {
-		reporter.Errorf("%s", err)
-		os.Exit(1)
+		return fmt.Errorf("%s", err)
 	}
 	prefix := args.prefix
 
@@ -117,14 +124,12 @@ func run(cmd *cobra.Command, _ []string) {
 	channelGroup := args.channelGroup
 	policyVersion, err := ocmClient.GetPolicyVersion(version, channelGroup)
 	if err != nil {
-		reporter.Errorf("Error getting version: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting version: %s", err)
 	}
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		reporter.Errorf("Failed to determine OCM environment: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine OCM environment: %v", err)
 	}
 
 	var role aws.AccountRole
@@ -137,49 +142,42 @@ func run(cmd *cobra.Command, _ []string) {
 	roleARN, err := awsClient.GetAccountRoleARN(prefix, role.Name)
 	if err != nil {
 		if args.hostedCP {
-			r.Reporter.Errorf("Failed to get hosted CP account roles ARN: %v. "+
-				"To upgrade classic account roles run the command without the '--hosted-cp' flag", err)
-		} else {
-			r.Reporter.Errorf("Failed to get classic account roles ARN: %v. "+
-				"To upgrade hosted CP account roles use the '--hosted-cp' flag", err)
+			return fmt.Errorf("failed to get hosted CP account roles ARN: %v, "+
+				"to upgrade classic account roles run the command without the '--hosted-cp' flag", err)
 		}
-		os.Exit(1)
+		return fmt.Errorf("failed to get classic account roles ARN: %v, "+
+			"to upgrade hosted CP account roles use the '--hosted-cp' flag", err)
 	}
 
 	managedPolicies, err := awsClient.HasManagedPolicies(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine if the role has managed policies: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine if the role has managed policies: %v", err)
 	}
 
 	if managedPolicies {
 		hostedCPPolicies, err := awsClient.HasHostedCPPolicies(roleARN)
 		if err != nil {
-			r.Reporter.Errorf("Failed to determine if the role has hosted CP managed policies: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to determine if the role has hosted CP managed policies: %v", err)
 		}
 
 		if hostedCPPolicies && !args.hostedCP {
-			r.Reporter.Errorf("Role with ARN '%s' has hosted CP managed policies, "+
+			return fmt.Errorf("role with ARN '%s' has hosted CP managed policies, "+
 				"please run the command with the flag '--hosted-cp'", roleARN)
-			os.Exit(1)
 		}
 
 		err = roles.ValidateAccountRolesManagedPolicies(r, prefix, hostedCPPolicies)
 		if err != nil {
-			r.Reporter.Errorf("Failed while validating managed policies: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("failed while validating managed policies: %v", err)
 		}
 
-		r.Reporter.Infof("Account roles with the prefix '%s' have attached managed policies. "+
+		reporter.Infof("Account roles with the prefix '%s' have attached managed policies. "+
 			"An upgrade isn't needed", prefix)
-		return
+		return nil
 	}
 
 	creator, err := awsClient.GetCreator()
 	if err != nil {
-		reporter.Errorf("Failed to get IAM credentials: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to get IAM credentials: %s", err)
 	}
 
 	var spin *spinner.Spinner
@@ -193,9 +191,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	isUpgradeNeedForAccountRolePolicies, err := awsClient.IsUpgradedNeededForAccountRolePolicies(prefix, policyVersion)
 	if err != nil {
-		reporter.Errorf("%s", err)
 		LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
-		os.Exit(1)
+		if spin != nil {
+			spin.Stop()
+		}
+		return fmt.Errorf("%s", err)
 	}
 
 	if spin != nil {
@@ -204,13 +204,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if !isUpgradeNeedForAccountRolePolicies {
 		reporter.Infof("Account roles with the prefix '%s' are already up-to-date.", prefix)
-		os.Exit(0)
+		return nil
 	}
 
 	policyPath, err := getAccountPolicyPath(awsClient, prefix)
 	if err != nil {
-		reporter.Errorf("Error trying to determine the path for the account policies. Error: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("error trying to determine the path for the account policies: %v", err)
 	}
 
 	// Determine if interactive mode is needed
@@ -221,15 +220,13 @@ func run(cmd *cobra.Command, _ []string) {
 	if interactive.Enabled() && !skipInteractive {
 		mode, err = interactive.GetOptionMode(cmd, mode, "Account role upgrade mode")
 		if err != nil {
-			reporter.Errorf("Expected a valid Account role upgrade mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid Account role upgrade mode: %s", err)
 		}
 		interactive.SetModeKey(mode)
 	}
 	policies, err := ocmClient.GetPolicies("")
 	if err != nil {
-		reporter.Errorf("Expected a valid role creation mode: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error fetching account role policies: %s", err)
 	}
 
 	switch mode {
@@ -240,16 +237,14 @@ func run(cmd *cobra.Command, _ []string) {
 				policyVersion, policyPath, isVersionChosen)
 			if err != nil {
 				LogError(roles.RosaUpgradeAccRolesModeAuto, ocmClient, policyVersion, err, reporter)
-				reporter.Errorf("Error upgrading the role polices: %s", err)
-				os.Exit(1)
+				return fmt.Errorf("error upgrading the role policies: %s", err)
 			}
 		}
 	case interactive.ModeManual:
 		if isUpgradeNeedForAccountRolePolicies {
 			err = aws.GenerateAccountRolePolicyFiles(reporter, env, policies, false, aws.AccountRoles, creator.Partition, "")
 			if err != nil {
-				reporter.Errorf("There was an error generating the policy files: %s", err)
-				os.Exit(1)
+				return fmt.Errorf("there was an error generating the policy files: %s", err)
 			}
 		}
 		if reporter.IsTerminal() {
@@ -262,9 +257,9 @@ func run(cmd *cobra.Command, _ []string) {
 		fmt.Println(commands)
 
 	default:
-		reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
-		os.Exit(1)
+		return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 	}
+	return nil
 }
 
 func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter reporter.Logger) {

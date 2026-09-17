@@ -206,6 +206,16 @@ var _ = Describe("Gateway URL Resolution", func() {
 			Expect(env).To(Equal("production"))
 		})
 
+		It("Returns production when no config file exists", func() {
+			origConfig := os.Getenv("OCM_CONFIG")
+			os.Setenv("OCM_CONFIG", "/tmp/nonexistent-ocm-config.json")
+			defer os.Setenv("OCM_CONFIG", origConfig)
+
+			env, err := GetEnv()
+			Expect(err).To(BeNil())
+			Expect(env).To(Equal(Production))
+		})
+
 		It("Fails for invalid URL", func() {
 			url := "https://urlthatfails.com"
 			cfg := &config.Config{}
