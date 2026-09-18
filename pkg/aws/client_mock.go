@@ -254,6 +254,20 @@ func (mr *MockClientMockRecorder) DeleteInlineRolePolicies(roleName any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteInlineRolePolicies", reflect.TypeOf((*MockClient)(nil).DeleteInlineRolePolicies), roleName)
 }
 
+// DeleteInstanceProfilesForRole mocks base method.
+func (m *MockClient) DeleteInstanceProfilesForRole(roleName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteInstanceProfilesForRole", roleName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteInstanceProfilesForRole indicates an expected call of DeleteInstanceProfilesForRole.
+func (mr *MockClientMockRecorder) DeleteInstanceProfilesForRole(roleName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteInstanceProfilesForRole", reflect.TypeOf((*MockClient)(nil).DeleteInstanceProfilesForRole), roleName)
+}
+
 // DeleteOCMRole mocks base method.
 func (m *MockClient) DeleteOCMRole(roleARN string, managedPolicies bool) error {
 	m.ctrl.T.Helper()
@@ -873,20 +887,6 @@ func (m *MockClient) GetInstanceProfilesForRole(role string) ([]string, error) {
 func (mr *MockClientMockRecorder) GetInstanceProfilesForRole(role any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInstanceProfilesForRole", reflect.TypeOf((*MockClient)(nil).GetInstanceProfilesForRole), role)
-}
-
-// DeleteInstanceProfilesForRole mocks base method.
-func (m *MockClient) DeleteInstanceProfilesForRole(roleName string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteInstanceProfilesForRole", roleName)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteInstanceProfilesForRole indicates an expected call of DeleteInstanceProfilesForRole.
-func (mr *MockClientMockRecorder) DeleteInstanceProfilesForRole(roleName any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteInstanceProfilesForRole", reflect.TypeOf((*MockClient)(nil).DeleteInstanceProfilesForRole), roleName)
 }
 
 // GetLocalAWSAccessKeys mocks base method.

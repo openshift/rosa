@@ -405,7 +405,7 @@ paths:
 
     post:
       summary: Create nodepool
-      description: Create a new nodepool for the authenticated user
+      description: Create a new nodepool for the authenticated user. AWS root volume size defaults to 300 GiB when omitted.
       operationId: createUserNodePool
       tags:
         - NodePools
@@ -441,6 +441,11 @@ paths:
         schema:
           type: string
         description: NodePool ID
+      - name: clusterId
+        in: query
+        schema:
+          type: string
+        description: Parent cluster ID used to scope duplicate NodePool names
 
     get:
       summary: Get nodepool details
