@@ -10,12 +10,14 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -37,6 +39,7 @@ var _ = Describe("Upgrade operator-roles", func() {
 		It("returns error when cluster has no operator roles", func() {
 			cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
 				c.State(cmv1.ClusterStateReady)
+				c.Hypershift(cmv1.NewHypershift().Enabled(true))
 				c.AWS(cmv1.NewAWS().STS(
 					cmv1.NewSTS().
 						RoleARN("arn:aws:iam::123456789012:role/ManagedOpenShift-Installer-Role"),
@@ -51,8 +54,13 @@ var _ = Describe("Upgrade operator-roles", func() {
 				Enabled(true).ROSAEnabled(true).ChannelGroup("stable")
 			versionObj, err := v.Build()
 			Expect(err).NotTo(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
-				test.FormatVersionList([]*cmv1.Version{versionObj})))
+			t.ApiServer.AppendHandlers(ghttp.CombineHandlers(
+				func(_ http.ResponseWriter, request *http.Request) {
+					Expect(request.URL.Query().Get("product")).To(Equal(ocm.HcpProduct),
+						"expected hosted operator-role upgrades to request product=hcp")
+				},
+				RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})),
+			))
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
 			Expect(err).To(HaveOccurred())

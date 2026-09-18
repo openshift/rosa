@@ -160,6 +160,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
+// run creates operator roles using the topology selected by flags or cluster metadata.
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
@@ -354,7 +355,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, isProgmaticallyCalled b
 			return fmt.Errorf("%s is mandatory for %s param flow", InstallerRoleArnFlag, PrefixFlag)
 		}
 		channelGroup := args.channelGroup
-		latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelGroup)
+		latestPolicyVersion, err := getLatestVersion(r.OCMClient, channelGroup, args.hostedCp)
 		if err != nil {
 			return fmt.Errorf("error getting latest version: %s", err)
 		}
@@ -365,7 +366,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, isProgmaticallyCalled b
 		}
 		return nil
 	}
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
+	latestPolicyVersion, err := getLatestVersion(
+		r.OCMClient, cluster.Version().ChannelGroup(), cluster.Hypershift().Enabled())
 	if err != nil {
 		return fmt.Errorf("error getting latest version: %s", err)
 	}
@@ -375,6 +377,19 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, isProgmaticallyCalled b
 		return fmt.Errorf("error creating operator roles: %s", err)
 	}
 	return nil
+}
+
+// getLatestVersion returns the latest policy version compatible with the selected topology.
+func getLatestVersion(ocmClient *ocm.Client, channelGroup string, hostedCP bool) (string, error) {
+	product := ""
+	if hostedCP {
+		product = ocm.HcpProduct
+	}
+	latestVersion, err := ocmClient.GetLatestVersionWithProduct(product, channelGroup)
+	if err != nil {
+		return "", err
+	}
+	return latestVersion, nil
 }
 
 func convertV1OperatorIAMRoleIntoOcmOperatorIamRole(

@@ -75,6 +75,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+// runWithRuntime upgrades operator roles using versions compatible with the cluster topology.
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	mode, err := interactive.GetMode()
 	if err != nil {
@@ -84,7 +85,12 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
 
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
+	product := ""
+	if cluster.Hypershift().Enabled() {
+		product = ocm.HcpProduct
+	}
+	latestPolicyVersion, err := r.OCMClient.GetLatestVersionWithProduct(
+		product, cluster.Version().ChannelGroup())
 	if err != nil {
 		return fmt.Errorf("error getting latest version: %s", err)
 	}
