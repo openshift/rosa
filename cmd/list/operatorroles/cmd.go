@@ -80,7 +80,7 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	versionList, err := ocm.GetVersionMinorList(r.OCMClient)
+	versionList, err := ocm.GetVersionMinorListForProducts(r.OCMClient, "", ocm.HcpProduct)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)

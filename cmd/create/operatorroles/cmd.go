@@ -367,7 +367,7 @@ func run(cmd *cobra.Command, argv []string) {
 			os.Exit(1)
 		}
 		channelGroup := args.channelGroup
-		latestPolicyVersion, err := r.OCMClient.GetLatestVersion(channelGroup)
+		latestPolicyVersion, err := getLatestVersion(r.OCMClient, channelGroup, args.hostedCp)
 		if err != nil {
 			r.Reporter.Errorf("Error getting latest version: %s", err)
 			os.Exit(1)
@@ -380,7 +380,8 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		return
 	}
-	latestPolicyVersion, err := r.OCMClient.GetLatestVersion(cluster.Version().ChannelGroup())
+	latestPolicyVersion, err := getLatestVersion(
+		r.OCMClient, cluster.Version().ChannelGroup(), cluster.Hypershift().Enabled())
 	if err != nil {
 		r.Reporter.Errorf("Error getting latest version: %s", err)
 		os.Exit(1)
@@ -391,6 +392,18 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Error creating operator roles: %s", err)
 		os.Exit(1)
 	}
+}
+
+func getLatestVersion(ocmClient *ocm.Client, channelGroup string, hostedCP bool) (string, error) {
+	product := ""
+	if hostedCP {
+		product = ocm.HcpProduct
+	}
+	latestVersion, err := ocmClient.GetLatestVersionWithProduct(product, channelGroup)
+	if err != nil {
+		return "", err
+	}
+	return latestVersion, nil
 }
 
 func convertV1OperatorIAMRoleIntoOcmOperatorIamRole(
