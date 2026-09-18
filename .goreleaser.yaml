@@ -10,6 +10,7 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -X github.com/openshift/rosa/pkg/info.Build={{ .ShortCommit }}
+      - -X github.com/openshift/rosa/pkg/info.DefaultVersion={{ .Version }}
     goos:
       - linux
       - windows
