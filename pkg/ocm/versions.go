@@ -184,11 +184,18 @@ func GetVersionID(cluster *cmv1.Cluster) string {
 }
 
 func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
-	response, err := c.ocm.ClustersMgmt().V1().
+	return c.GetAvailableUpgradesWithProduct("", versionID)
+}
+
+func (c *Client) GetAvailableUpgradesWithProduct(product string, versionID string) ([]string, error) {
+	request := c.ocm.ClustersMgmt().V1().
 		Versions().
 		Version(versionID).
-		Get().
-		Send()
+		Get()
+	if product != "" {
+		request.Parameter("product", product)
+	}
+	response, err := request.Send()
 	if err != nil {
 		return nil, handleErr(response.Error(), err)
 	}
@@ -198,11 +205,14 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 
 	for _, v := range version.AvailableUpgrades() {
 		id := CreateVersionID(v, version.ChannelGroup())
-		resp, err := c.ocm.ClustersMgmt().V1().
+		request := c.ocm.ClustersMgmt().V1().
 			Versions().
 			Version(id).
-			Get().
-			Send()
+			Get()
+		if product != "" {
+			request.Parameter("product", product)
+		}
+		resp, err := request.Send()
 		if err != nil {
 			return nil, handleErr(response.Error(), err)
 		}
@@ -216,7 +226,15 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 }
 
 func (c *Client) GetAvailableChannels(versionID string) ([]string, error) {
-	resp, err := c.ocm.ClustersMgmt().V1().Versions().Version(versionID).Get().Send()
+	return c.GetAvailableChannelsWithProduct("", versionID)
+}
+
+func (c *Client) GetAvailableChannelsWithProduct(product string, versionID string) ([]string, error) {
+	request := c.ocm.ClustersMgmt().V1().Versions().Version(versionID).Get()
+	if product != "" {
+		request.Parameter("product", product)
+	}
+	resp, err := request.Send()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch version '%s' by ID: %w", versionID, err)
 	}
@@ -276,7 +294,11 @@ func GetRawVersionId(versionId string) string {
 
 // Get a list of all STS-supported minor versions
 func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
-	vs, err := ocmClient.GetVersions("", false)
+	return GetVersionMinorListWithProduct(ocmClient, "")
+}
+
+func GetVersionMinorListWithProduct(ocmClient *Client, product string) (versionList []string, err error) {
+	vs, err := ocmClient.GetVersionsWithProduct(product, "", false)
 	if err != nil {
 		err = fmt.Errorf("failed to retrieve versions: %s", err)
 		return
@@ -306,11 +328,16 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 }
 
 func (c *Client) GetLatestVersion(channelGroup string) (version string, err error) {
-	return c.getFirstVersion(channelGroup, false)
+	return c.GetLatestVersionWithProduct("", channelGroup)
 }
 
-func (c *Client) getFirstVersion(channelGroup string, defaultFirst bool) (version string, err error) {
-	response, err := c.GetVersions(channelGroup, defaultFirst)
+func (c *Client) GetLatestVersionWithProduct(product string, channelGroup string) (version string, err error) {
+	return c.getFirstVersionWithProduct(product, channelGroup, false)
+}
+
+func (c *Client) getFirstVersionWithProduct(product string, channelGroup string,
+	defaultFirst bool) (version string, err error) {
+	response, err := c.GetVersionsWithProduct(product, channelGroup, defaultFirst)
 	if err != nil {
 		return "", err
 	}

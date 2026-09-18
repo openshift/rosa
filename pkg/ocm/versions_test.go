@@ -144,6 +144,107 @@ var _ = Describe("OCMClient", func() {
 		})
 	})
 
+	Context("product-aware version helpers", func() {
+		const versionListResponse = `{
+			"kind":"VersionList",
+			"page":1,
+			"size":1,
+			"total":1,
+			"items":[{"id":"openshift-v5.0.0-candidate","raw_id":"5.0.0","channel_group":"candidate","rosa_enabled":true}]
+		}`
+
+		appendVersionListHandler := func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
+					},
+					RespondWithJSON(http.StatusOK, versionListResponse),
+				),
+			)
+		}
+
+		It("gets minor versions for the requested product", func() {
+			appendVersionListHandler()
+
+			versions, err := GetVersionMinorListWithProduct(ocmClient, HcpProduct)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(versions).To(ConsistOf("5.0"))
+		})
+
+		It("gets the latest version for the requested product", func() {
+			appendVersionListHandler()
+
+			version, err := ocmClient.GetLatestVersionWithProduct(HcpProduct, "candidate")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(version).To(Equal("5.0"))
+		})
+
+		It("gets the version list for the requested product", func() {
+			appendVersionListHandler()
+
+			versions, err := ocmClient.GetVersionsListWithProduct(HcpProduct, "candidate", false)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(versions).To(ConsistOf("5.0"))
+		})
+
+		It("validates a policy version for the requested product", func() {
+			appendVersionListHandler()
+
+			version, err := ocmClient.GetPolicyVersionWithProduct(HcpProduct, "5.0", "candidate")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(version).To(Equal("5.0"))
+		})
+
+		It("gets available channels for the requested product", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v5.0.0-candidate"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
+					},
+					RespondWithJSON(http.StatusOK, `{"available_channels":["candidate-5.0"]}`),
+				),
+			)
+
+			channels, err := ocmClient.GetAvailableChannelsWithProduct(
+				HcpProduct, "openshift-v5.0.0-candidate")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(channels).To(HaveExactElements("candidate-5.0"))
+		})
+
+		It("gets available upgrades for the requested product", func() {
+			verifyProduct := func(_ http.ResponseWriter, request *http.Request) {
+				Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
+			}
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v5.0.0-candidate"),
+					verifyProduct,
+					RespondWithJSON(http.StatusOK,
+						`{"raw_id":"5.0.0","channel_group":"candidate","available_upgrades":["5.1.0"]}`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v5.1.0-candidate"),
+					verifyProduct,
+					RespondWithJSON(http.StatusOK, `{"raw_id":"5.1.0","rosa_enabled":true}`),
+				),
+			)
+
+			upgrades, err := ocmClient.GetAvailableUpgradesWithProduct(
+				HcpProduct, "openshift-v5.0.0-candidate")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(upgrades).To(HaveExactElements("5.1.0"))
+		})
+	})
+
 	Context("Describe version list", func() {
 		It("Expects a version list", func() {
 			apiServer.AppendHandlers(

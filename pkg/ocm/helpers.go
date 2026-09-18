@@ -898,15 +898,20 @@ func (c *Client) CheckUpgradeClusterVersion(
 }
 
 func (c *Client) GetPolicyVersion(userRequestedVersion string, channelGroup string) (string, error) {
+	return c.GetPolicyVersionWithProduct("", userRequestedVersion, channelGroup)
+}
+
+func (c *Client) GetPolicyVersionWithProduct(product string, userRequestedVersion string,
+	channelGroup string) (string, error) {
 	if userRequestedVersion == "" {
-		version, err := c.GetLatestVersion(channelGroup)
+		version, err := c.GetLatestVersionWithProduct(product, channelGroup)
 		if err != nil {
 			return userRequestedVersion, err
 		}
 		return version, nil
 	}
 
-	versionList, err := c.GetVersionsList(channelGroup, false)
+	versionList, err := c.GetVersionsListWithProduct(product, channelGroup, false)
 	if err != nil {
 		err := fmt.Errorf("%v", err)
 		return userRequestedVersion, err
@@ -942,7 +947,12 @@ func ParseVersion(version string) (string, error) {
 }
 
 func (c *Client) GetVersionsList(channelGroup string, defaultFirst bool) ([]string, error) {
-	response, err := c.GetVersions(channelGroup, defaultFirst)
+	return c.GetVersionsListWithProduct("", channelGroup, defaultFirst)
+}
+
+func (c *Client) GetVersionsListWithProduct(product string, channelGroup string,
+	defaultFirst bool) ([]string, error) {
+	response, err := c.GetVersionsWithProduct(product, channelGroup, defaultFirst)
 	if err != nil {
 		err := fmt.Errorf("error getting versions: %s", err)
 		return make([]string, 0), err
