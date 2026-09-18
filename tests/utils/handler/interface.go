@@ -1,3 +1,6 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package handler
 
 // Profile will map the profile settings from the profile yaml file

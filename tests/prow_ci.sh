@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 
 # override_rosacli_build will override rosacli build for the coming testing with dicated $ROSACLI_BUILD
 override_rosacli_build () {

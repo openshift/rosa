@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 
 # govulncheck-wrapper.sh - Run govulncheck while ignoring specified vulnerabilities.
 #

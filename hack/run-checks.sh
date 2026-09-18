@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 
 set -euo pipefail
 
@@ -15,8 +18,8 @@ Usage:
   make run-checks -- <mode> [--dry-run] [--list-steps]
 
 Modes:
-  pre-push                 Steps: format-check, build, lint, coverage, tests
-  basic                    Steps: format, format-check, build, lint, coverage, tests
+  pre-push                 Steps: format-check, build, lint, docs-lint, license-check, coverage, tests
+  basic                    Steps: format, format-check, build, lint, docs-lint, license-check, coverage, tests
 
 Flags:
   --dry-run                Print planned steps and commands without executing
@@ -77,6 +80,8 @@ case "$mode" in
     append_step "Format check (imports + gofmt)" "make --no-print-directory fmt-check"
     append_step "Build" "make --no-print-directory rosa"
     append_step "Lint" "make --no-print-directory lint"
+    append_step "Documentation lint (Vale)" "make --no-print-directory docs-lint"
+    append_step "License header check" "make --no-print-directory license-check"
     append_step "Coverage (changed files)" "make --no-print-directory coverage-changed-files"
     append_step "Unit and integration tests" "make --no-print-directory test GO_TEST_FLAGS='-count=1'"
     ;;
@@ -85,6 +90,8 @@ case "$mode" in
     append_step "Format check (imports + gofmt)" "make --no-print-directory fmt-check"
     append_step "Build" "make --no-print-directory rosa"
     append_step "Lint" "make --no-print-directory lint"
+    append_step "Documentation lint (Vale)" "make --no-print-directory docs-lint"
+    append_step "License header check" "make --no-print-directory license-check"
     append_step "Coverage (changed files)" "make --no-print-directory coverage-changed-files"
     append_step "Unit and integration tests" "make --no-print-directory test GO_TEST_FLAGS='-count=1'"
     ;;
