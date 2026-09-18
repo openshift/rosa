@@ -68,6 +68,8 @@ func (c *Client) GetVersions(channelGroup string, defaultFirst bool) (versions [
 	return c.GetVersionsWithProduct("", channelGroup, defaultFirst)
 }
 
+// GetVersionsWithProduct returns enabled ROSA versions for the requested product and channel group.
+// An empty product preserves the default OCM version-query behavior.
 func (c *Client) GetVersionsWithProduct(product string, channelGroup string,
 	defaultFirst bool) (versions []*cmv1.Version, err error) {
 	collection := c.ocm.ClustersMgmt().V1().Versions()
@@ -184,12 +186,23 @@ func GetVersionID(cluster *cmv1.Cluster) string {
 }
 
 func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
-	response, err := c.ocm.ClustersMgmt().V1().
+	return c.GetAvailableUpgradesWithProduct("", versionID)
+}
+
+// GetAvailableUpgradesWithProduct returns ROSA-enabled upgrade candidates for a product-specific version.
+func (c *Client) GetAvailableUpgradesWithProduct(product string, versionID string) ([]string, error) {
+	request := c.ocm.ClustersMgmt().V1().
 		Versions().
 		Version(versionID).
-		Get().
-		Send()
+		Get()
+	if product != "" {
+		request.Parameter("product", product)
+	}
+	response, err := request.Send()
 	if err != nil {
+		if response == nil {
+			return nil, fmt.Errorf("failed to fetch version '%s': %w", versionID, err)
+		}
 		return nil, handleErr(response.Error(), err)
 	}
 
@@ -198,13 +211,19 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 
 	for _, v := range version.AvailableUpgrades() {
 		id := CreateVersionID(v, version.ChannelGroup())
-		resp, err := c.ocm.ClustersMgmt().V1().
+		request := c.ocm.ClustersMgmt().V1().
 			Versions().
 			Version(id).
-			Get().
-			Send()
+			Get()
+		if product != "" {
+			request.Parameter("product", product)
+		}
+		resp, err := request.Send()
 		if err != nil {
-			return nil, handleErr(response.Error(), err)
+			if resp == nil {
+				return nil, fmt.Errorf("failed to fetch available upgrade version '%s': %w", id, err)
+			}
+			return nil, handleErr(resp.Error(), err)
 		}
 		if resp.Body().ROSAEnabled() {
 			// Prepend versions so that the latest one shows up first
@@ -216,7 +235,16 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 }
 
 func (c *Client) GetAvailableChannels(versionID string) ([]string, error) {
-	resp, err := c.ocm.ClustersMgmt().V1().Versions().Version(versionID).Get().Send()
+	return c.GetAvailableChannelsWithProduct("", versionID)
+}
+
+// GetAvailableChannelsWithProduct returns the channels for a product-specific version.
+func (c *Client) GetAvailableChannelsWithProduct(product string, versionID string) ([]string, error) {
+	request := c.ocm.ClustersMgmt().V1().Versions().Version(versionID).Get()
+	if product != "" {
+		request.Parameter("product", product)
+	}
+	resp, err := request.Send()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch version '%s' by ID: %w", versionID, err)
 	}
@@ -276,7 +304,31 @@ func GetRawVersionId(versionId string) string {
 
 // Get a list of all STS-supported minor versions
 func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
-	vs, err := ocmClient.GetVersions("", false)
+	return GetVersionMinorListWithProduct(ocmClient, "")
+}
+
+// GetVersionMinorListForProducts returns the deduplicated STS-supported minor versions across products.
+func GetVersionMinorListForProducts(ocmClient *Client, products ...string) (versionList []string, err error) {
+	minorSet := make(map[string]struct{})
+	for _, product := range products {
+		minorVersions, err := GetVersionMinorListWithProduct(ocmClient, product)
+		if err != nil {
+			return nil, err
+		}
+		for _, minorVersion := range minorVersions {
+			minorSet[minorVersion] = struct{}{}
+		}
+	}
+
+	for minorVersion := range minorSet {
+		versionList = append(versionList, minorVersion)
+	}
+	return versionList, nil
+}
+
+// GetVersionMinorListWithProduct returns the STS-supported minor versions for a product.
+func GetVersionMinorListWithProduct(ocmClient *Client, product string) (versionList []string, err error) {
+	vs, err := ocmClient.GetVersionsWithProduct(product, "", false)
 	if err != nil {
 		err = fmt.Errorf("failed to retrieve versions: %s", err)
 		return
@@ -306,11 +358,17 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 }
 
 func (c *Client) GetLatestVersion(channelGroup string) (version string, err error) {
-	return c.getFirstVersion(channelGroup, false)
+	return c.GetLatestVersionWithProduct("", channelGroup)
 }
 
-func (c *Client) getFirstVersion(channelGroup string, defaultFirst bool) (version string, err error) {
-	response, err := c.GetVersions(channelGroup, defaultFirst)
+// GetLatestVersionWithProduct returns the latest enabled ROSA minor version for a product and channel group.
+func (c *Client) GetLatestVersionWithProduct(product string, channelGroup string) (version string, err error) {
+	return c.getFirstVersionWithProduct(product, channelGroup, false)
+}
+
+func (c *Client) getFirstVersionWithProduct(product string, channelGroup string,
+	defaultFirst bool) (version string, err error) {
+	response, err := c.GetVersionsWithProduct(product, channelGroup, defaultFirst)
 	if err != nil {
 		return "", err
 	}
