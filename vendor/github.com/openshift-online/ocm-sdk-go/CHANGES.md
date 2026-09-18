@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.512 Sept 14 2026
+
+- chore: bump ocm-api-model to v0.0.468
+  - feat(arohcp): Embed full ClusterAutoscaler in cluster instead of link (ARO-28376)
+  - ARO-29491 | feat: add key_vault_type field to AzureKmsEncryption for Managed HSM support
+
 ## 0.1.511 Sept 9 2026
 
 - ARO-21548 | feat: Support specifying Azure marketplace images

@@ -23,9 +23,10 @@ package v1alpha1 // github.com/openshift-online/ocm-api-model/clientapi/arohcp/v
 //
 // Contains the necessary attributes to support KMS encryption for Azure based clusters.
 type AzureKmsEncryption struct {
-	fieldSet_  []bool
-	activeKey  *AzureKmsKey
-	visibility AzureKmsEncryptionVisibility
+	fieldSet_    []bool
+	activeKey    *AzureKmsKey
+	keyVaultType AzureKmsEncryptionKeyVaultType
+	visibility   AzureKmsEncryptionVisibility
 }
 
 // Empty returns true if the object is empty, i.e. no attribute has a value.
@@ -66,6 +67,37 @@ func (o *AzureKmsEncryption) GetActiveKey() (value *AzureKmsKey, ok bool) {
 	return
 }
 
+// KeyVaultType returns the value of the 'key_vault_type' attribute, or
+// the zero value of the type if the attribute doesn't have a value.
+//
+// key_vault_type defines the Azure service that hosts the KMS key.
+// Accepted values are `key_vault` and `managed_hsm`.
+// Defaults to `key_vault` if not set.
+// Applies to the whole KMS configuration rather than to an individual key,
+// and is immutable once the cluster has been created.
+func (o *AzureKmsEncryption) KeyVaultType() AzureKmsEncryptionKeyVaultType {
+	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
+		return o.keyVaultType
+	}
+	return AzureKmsEncryptionKeyVaultType("")
+}
+
+// GetKeyVaultType returns the value of the 'key_vault_type' attribute and
+// a flag indicating if the attribute has a value.
+//
+// key_vault_type defines the Azure service that hosts the KMS key.
+// Accepted values are `key_vault` and `managed_hsm`.
+// Defaults to `key_vault` if not set.
+// Applies to the whole KMS configuration rather than to an individual key,
+// and is immutable once the cluster has been created.
+func (o *AzureKmsEncryption) GetKeyVaultType() (value AzureKmsEncryptionKeyVaultType, ok bool) {
+	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
+	if ok {
+		value = o.keyVaultType
+	}
+	return
+}
+
 // Visibility returns the value of the 'visibility' attribute, or
 // the zero value of the type if the attribute doesn't have a value.
 //
@@ -73,7 +105,7 @@ func (o *AzureKmsEncryption) GetActiveKey() (value *AzureKmsKey, ok bool) {
 // Accepted values are `public` and `private`.
 // Defaults to `public` if not set.
 func (o *AzureKmsEncryption) Visibility() AzureKmsEncryptionVisibility {
-	if o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1] {
+	if o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2] {
 		return o.visibility
 	}
 	return AzureKmsEncryptionVisibility("")
@@ -86,7 +118,7 @@ func (o *AzureKmsEncryption) Visibility() AzureKmsEncryptionVisibility {
 // Accepted values are `public` and `private`.
 // Defaults to `public` if not set.
 func (o *AzureKmsEncryption) GetVisibility() (value AzureKmsEncryptionVisibility, ok bool) {
-	ok = o != nil && len(o.fieldSet_) > 1 && o.fieldSet_[1]
+	ok = o != nil && len(o.fieldSet_) > 2 && o.fieldSet_[2]
 	if ok {
 		value = o.visibility
 	}

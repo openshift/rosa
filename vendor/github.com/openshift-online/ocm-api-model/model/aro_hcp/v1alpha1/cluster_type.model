@@ -115,8 +115,8 @@ class Cluster {
 	// Proxy.
 	Proxy Proxy
 
-	// Link to an optional _ClusterAutoscaler_ that is coupled with the cluster.
-	link Autoscaler ClusterAutoscaler
+	// The optional _ClusterAutoscaler_ that is coupled with the cluster.
+	Autoscaler ClusterAutoscaler
 
 	// Additional trust bundle.
 	AdditionalTrustBundle String
