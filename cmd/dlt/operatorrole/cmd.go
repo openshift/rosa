@@ -88,11 +88,17 @@ const (
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
-
-	mode, err := interactive.GetMode()
+	err := runWithRuntime(r, cmd)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
+	}
+}
+
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	mode, err := interactive.GetMode()
+	if err != nil {
+		return err
 	}
 
 	// Determine if interactive mode is needed
@@ -101,15 +107,13 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if !cmd.Flag("cluster").Changed && !cmd.Flag(PrefixFlag).Changed {
-		r.Reporter.Errorf("Either a cluster key or a prefix must be specified.")
-		os.Exit(1)
+		return fmt.Errorf("either a cluster key or a prefix must be specified")
 	}
 
 	if interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "Operator roles deletion mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid operator role deletion mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid operator role deletion mode: %s", err)
 		}
 	}
 
@@ -126,12 +130,10 @@ func run(cmd *cobra.Command, _ []string) {
 		sub, err := r.OCMClient.GetClusterUsingSubscription(clusterKey, r.Creator)
 		if err != nil {
 			if errors.GetType(err) == errors.Conflict {
-				r.Reporter.Errorf("More than one cluster found with the same name '%s'. Please "+
+				return fmt.Errorf("more than one cluster found with the same name '%s', please "+
 					"use cluster ID instead", clusterKey)
-				os.Exit(1)
 			}
-			r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
-			os.Exit(1)
+			return fmt.Errorf("error validating cluster '%s': %v", clusterKey, err)
 		}
 		if sub != nil {
 			clusterKey = sub.ClusterID()
@@ -139,18 +141,15 @@ func run(cmd *cobra.Command, _ []string) {
 		cluster, err := r.OCMClient.GetCluster(clusterKey, r.Creator)
 		if err != nil {
 			if errors.GetType(err) != errors.NotFound {
-				r.Reporter.Errorf("Error validating cluster '%s': %v", clusterKey, err)
-				os.Exit(1)
+				return fmt.Errorf("error validating cluster '%s': %v", clusterKey, err)
 			} else if sub == nil {
-				r.Reporter.Errorf("Failed to get cluster '%s': %v", r.ClusterKey, err)
-				os.Exit(1)
+				return fmt.Errorf("failed to get cluster '%s': %v", r.ClusterKey, err)
 			}
 		}
 
 		if cluster != nil && cluster.ID() != "" {
-			r.Reporter.Errorf("Cluster '%s' is in '%s' state. Operator roles can be deleted only for the "+
+			return fmt.Errorf("cluster '%s' is in '%s' state, operator roles can be deleted only for the "+
 				"uninstalled clusters", cluster.ID(), cluster.State())
-			os.Exit(1)
 		}
 		isHypershift := false
 		if cluster != nil {
@@ -166,8 +165,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		credRequests, err := r.OCMClient.GetCredRequests(isHypershift)
 		if err != nil {
-			r.Reporter.Errorf("Error getting operator credential request from OCM %s", err)
-			os.Exit(1)
+			return fmt.Errorf("error getting operator credential request from OCM %s", err)
 		}
 		foundOperatorRoles, _ = r.AWSClient.GetOperatorRolesFromAccountByClusterID(sub.ClusterID(), credRequests)
 	} else {
@@ -178,26 +176,23 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		hasClusterUsingOperatorRolesPrefix, err := r.OCMClient.HasAClusterUsingOperatorRolesPrefix(args.prefix)
 		if err != nil {
-			r.Reporter.Errorf("There was a problem checking if any clusters"+
+			return fmt.Errorf("there was a problem checking if any clusters"+
 				" are using Operator Roles Prefix '%s' : %v", args.prefix, err)
-			os.Exit(1)
 		}
 		if hasClusterUsingOperatorRolesPrefix {
 			if spin != nil {
 				spin.Stop()
 			}
-			r.Reporter.Errorf("There are clusters using Operator Roles Prefix '%s', can't delete the IAM roles", args.prefix)
-			os.Exit(1)
+			return fmt.Errorf("there are clusters using Operator Roles Prefix '%s', "+
+				"can't delete the IAM roles", args.prefix)
 		}
 		credRequests, err := r.OCMClient.GetAllCredRequests()
 		if err != nil {
-			r.Reporter.Errorf("Error getting operator credential request from OCM %v", err)
-			os.Exit(1)
+			return fmt.Errorf("error getting operator credential request from OCM %v", err)
 		}
 		foundOperatorRoles, err = r.AWSClient.GetOperatorRolesFromAccountByPrefix(args.prefix, credRequests)
 		if err != nil {
-			r.Reporter.Errorf("There was a problem retrieving the Operator Roles from AWS: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("there was a problem retrieving the Operator Roles from AWS: %v", err)
 		}
 	}
 
@@ -212,7 +207,7 @@ func run(cmd *cobra.Command, _ []string) {
 			noRoleOutput = fmt.Sprintf("%s for cluster '%s'", noRoleOutput, clusterKey)
 		}
 		r.Reporter.Infof("%s", noRoleOutput)
-		return
+		return nil
 	}
 	if spin != nil {
 		spin.Stop()
@@ -220,13 +215,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	_, roleARN, err := r.AWSClient.CheckRoleExists(foundOperatorRoles[0])
 	if err != nil {
-		r.Reporter.Errorf("Failed to get '%s' role ARN", foundOperatorRoles[0])
-		os.Exit(1)
+		return fmt.Errorf("failed to get '%s' role ARN", foundOperatorRoles[0])
 	}
 	managedPolicies, err := r.AWSClient.HasManagedPolicies(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Failed to determine if cluster has managed policies: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to determine if cluster has managed policies: %v", err)
 	}
 
 	errOccured := false
@@ -280,8 +273,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.OCMClient.LogEvent("ROSADeleteOperatorroleModeManual", nil)
 		policyMap, arbitraryPolicyMap, err := r.AWSClient.GetOperatorRolePolicies(foundOperatorRoles)
 		if err != nil {
-			r.Reporter.Errorf("There was an error getting the policy: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("there was an error getting the policy: %v", err)
 		}
 
 		// Get HCP shared vpc policy details if the user is deleting roles related to HCP shared vpc
@@ -303,9 +295,10 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
-		os.Exit(1)
+		return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 	}
+
+	return nil
 }
 
 func buildCommand(r *rosa.Runtime, roleNames []string, policyMap map[string][]string,
