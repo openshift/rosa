@@ -2,14 +2,19 @@ package roles
 
 import (
 	"errors"
+	"net/http"
 
 	"go.uber.org/mock/gomock"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	awsmock "github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 var _ = Describe("resolvePolicyVersionForUpgrade", func() {
@@ -38,6 +43,48 @@ var _ = Describe("resolvePolicyVersionForUpgrade", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(policyVersion).To(BeEmpty())
 		Expect(chosen).To(BeFalse())
+	})
+})
+
+var _ = Describe("getPolicyVersion", func() {
+	var t *test.TestingRuntime
+
+	BeforeEach(func() {
+		t = test.NewTestRuntime()
+	})
+
+	It("requests HCP versions for hosted control plane clusters", func() {
+		version, err := cmv1.NewVersion().
+			ID("openshift-v5.0.0-candidate").
+			RawID("5.0.0").
+			Enabled(true).
+			ROSAEnabled(true).
+			ChannelGroup("candidate").
+			Build()
+		Expect(err).NotTo(HaveOccurred())
+		t.ApiServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+				func(_ http.ResponseWriter, request *http.Request) {
+					Expect(request.URL.Query().Get("product")).To(Equal(ocm.HcpProduct))
+				},
+				RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{version})),
+			),
+		)
+
+		policyVersion, err := getPolicyVersion(t.RosaRuntime.OCMClient, "5.0", "candidate", true)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(policyVersion).To(Equal("5.0"))
+	})
+
+	It("returns version lookup errors", func() {
+		t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusInternalServerError,
+			`{"kind":"Error","code":"CLUSTERS-MGMT-500","reason":"internal error"}`))
+
+		_, err := getPolicyVersion(t.RosaRuntime.OCMClient, "5.0", "candidate", true)
+
+		Expect(err).To(HaveOccurred())
 	})
 })
 
