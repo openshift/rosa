@@ -173,6 +173,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
+// run validates the selected account-role topologies and creates their IAM resources.
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS()
 
@@ -233,11 +234,6 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
-	if args.hostedCP && cmd.Flags().Changed("version") {
-		r.Reporter.Warnf("Setting `version` flag for hosted CP managed policies has no effect, " +
-			"any supported ROSA version can be installed with managed policies")
-	}
-
 	isClassicValueSet := cmd.Flags().Changed("classic")
 	isHostedCPValueSet := cmd.Flags().Changed("hosted-cp")
 
@@ -296,16 +292,6 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Infof("Creating account roles")
 	}
 
-	version := args.version
-	channelGroup := args.channelGroup
-	policyVersion, err := r.OCMClient.GetPolicyVersion(version, channelGroup)
-	if err != nil {
-		r.Reporter.Errorf("Error getting version: %s", err)
-		os.Exit(1)
-	}
-
-	r.Reporter.Debugf("Creating account roles compatible with OpenShift versions up to %s", policyVersion)
-
 	prefix := args.prefix
 	if interactive.Enabled() {
 		prefix, err = interactive.GetString(interactive.Input{
@@ -331,11 +317,6 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
 		os.Exit(1)
 	}
-	if !args.hostedCP && strings.HasSuffix(prefix, "-HCP") {
-		r.Reporter.Errorf("The '-HCP' suffix is reserved for hosted CP managed policies")
-		os.Exit(1)
-	}
-
 	permissionsBoundary := args.permissionsBoundary
 	if interactive.Enabled() {
 		permissionsBoundary, err = interactive.GetString(interactive.Input{
@@ -452,6 +433,25 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		isHostedCPValueSet = true
 	}
+
+	hcpOnly := createHostedCP && !createClassic
+	if hcpOnly && cmd.Flags().Changed("version") {
+		r.Reporter.Warnf("Setting `version` flag for hosted CP managed policies has no effect, " +
+			"any supported ROSA version can be installed with managed policies")
+	}
+	if !hcpOnly && strings.HasSuffix(prefix, "-HCP") {
+		r.Reporter.Errorf("The '-HCP' suffix is reserved for hosted CP managed policies")
+		os.Exit(1)
+	}
+
+	policyVersion, err := getPolicyVersion(
+		r.OCMClient, args.version, args.channelGroup, createClassic, createHostedCP)
+	if err != nil {
+		r.Reporter.Errorf("Error getting version: %s", err)
+		os.Exit(1)
+	}
+
+	r.Reporter.Debugf("Creating account roles compatible with OpenShift versions up to %s", policyVersion)
 
 	if interactive.Enabled() && createHostedCP {
 		isHcpSharedVpc, err = interactive.GetBool(interactive.Input{
@@ -585,6 +585,21 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
+}
+
+// getPolicyVersion validates a shared policy version after account-role topology selection.
+// HCP-only creation uses the HCP product; Classic and dual-topology creation use the default product.
+func getPolicyVersion(ocmClient *ocm.Client, version string, channelGroup string,
+	createClassic bool, createHostedCP bool) (string, error) {
+	product := ""
+	if createHostedCP && !createClassic {
+		product = ocm.HcpProduct
+	}
+	policyVersion, err := ocmClient.GetPolicyVersionWithProduct(product, version, channelGroup)
+	if err != nil {
+		return "", err
+	}
+	return policyVersion, nil
 }
 
 func validateAccountRolesSTSExternalID(externalID string) error {
