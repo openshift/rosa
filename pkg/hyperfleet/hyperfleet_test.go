@@ -170,3 +170,12 @@ var _ = Describe("InstanceProfileFromRolesRef", func() {
 		Expect(InstanceProfileFromRolesRef(hypershiftv1beta1.AWSRolesRef{})).To(BeEmpty())
 	})
 })
+
+var _ = Describe("FormatNodePoolDiskSize", func() {
+	It("prints stored size and omits a missing volume", func() {
+		Expect(FormatNodePoolDiskSize(&hypershiftv1beta1.AWSNodePoolPlatform{
+			RootVolume: &hypershiftv1beta1.Volume{Size: 75},
+		})).To(Equal("75 GiB"))
+		Expect(FormatNodePoolDiskSize(nil)).To(BeEmpty())
+	})
+})

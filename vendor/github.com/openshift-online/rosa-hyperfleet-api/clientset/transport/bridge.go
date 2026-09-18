@@ -19,6 +19,7 @@ package transport
 import (
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // Adapter wraps an inner RoundTripper. It adjusts pagination query parameters
@@ -37,8 +38,29 @@ func NewAdapter(inner http.RoundTripper) *Adapter {
 // then forwards the request and response unchanged. The platform-api speaks
 // K8s-native JSON (metav1.Status errors, ObjectMeta responses) end-to-end.
 func (a *Adapter) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = a.adaptNodePoolScope(req)
 	req = a.adaptListQuery(req)
 	return a.inner.RoundTrip(req)
+}
+
+// adaptNodePoolScope converts the generated client's namespace path into the
+// clusterId query understood by the Platform API. Removing the namespace path
+// also keeps SigV4 authentication scoped to the configured AWS account.
+func (a *Adapter) adaptNodePoolScope(req *http.Request) *http.Request {
+	match := namespaceRE.FindStringSubmatchIndex(req.URL.Path)
+	if match == nil || !strings.HasPrefix(req.URL.Path[match[1]:], "/nodepools") {
+		return req
+	}
+
+	namespace := req.URL.Path[match[2]:match[3]]
+	req = req.Clone(req.Context())
+	req.URL.Path = req.URL.Path[:match[0]] + req.URL.Path[match[1]:]
+	req.URL.RawPath = ""
+	query := req.URL.Query()
+	// Callers pass cluster UID or "cluster-<UID>"; the API wants the bare UUID.
+	query.Set("clusterId", strings.TrimPrefix(namespace, "cluster-"))
+	req.URL.RawQuery = query.Encode()
+	return req
 }
 
 // adaptListQuery translates the Kubernetes-style ?continue=N query parameter to

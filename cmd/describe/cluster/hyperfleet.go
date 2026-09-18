@@ -9,6 +9,7 @@ import (
 
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -54,7 +55,12 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 	}
 
 	if output.HasFlag() {
-		m := hfClusterToMap(cluster)
+		instanceType := ""
+		list, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterID).List(ctx, platform.ListOptions{})
+		if err == nil {
+			instanceType = hfDefaultNodePoolInstanceTypeFromList(list)
+		}
+		m := hfClusterToMap(cluster, instanceType)
 		if err := output.Print(m); err != nil {
 			r.Reporter.Errorf("%s", err)
 			exitFn(1)
@@ -65,9 +71,22 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 	fmt.Print(hfClusterToString(cluster))
 }
 
+func hfDefaultNodePoolInstanceTypeFromList(list *v1alpha1.NodePoolList) string {
+	for i := range list.Items {
+		np := &list.Items[i]
+		if np.Spec.NodePool.Platform.AWS == nil {
+			continue
+		}
+		if np.Name == "workers" || strings.HasPrefix(np.Name, "workers-") {
+			return np.Spec.NodePool.Platform.AWS.InstanceType
+		}
+	}
+	return ""
+}
+
 // hfClusterToMap converts a hyperfleet Cluster to a generic map suitable for
 // JSON/YAML structured output, mirroring the shape of formatClusterHypershift.
-func hfClusterToMap(c *v1alpha1.Cluster) map[string]interface{} {
+func hfClusterToMap(c *v1alpha1.Cluster, defaultNodePoolInstanceType string) map[string]interface{} {
 	aws := c.Spec.HostedCluster.Platform.AWS
 
 	rolesRef := map[string]string{}
@@ -82,16 +101,29 @@ func hfClusterToMap(c *v1alpha1.Cluster) map[string]interface{} {
 		rolesRef["nodePoolManagementARN"] = ref.NodePoolManagementARN
 	}
 
+	apiURL := hfAPIURL(c)
+	apiListening := hfAPIListening(aws)
+
 	m := map[string]interface{}{
 		"id":            string(c.UID),
 		"name":          c.Name,
 		"control_plane": "ROSA Service Hosted",
 		"state":         string(c.Status.Phase),
 		"created_at":    c.CreationTimestamp.UTC().Format(time.RFC3339),
+		"hypershift": map[string]interface{}{
+			"enabled": true,
+		},
 		"spec": map[string]interface{}{
 			"oidc_issuer": c.Spec.HostedCluster.IssuerURL,
 			"roles_ref":   rolesRef,
 		},
+		"private": apiListening == "internal",
+	}
+	if apiURL != "" || apiListening != "" {
+		m["api"] = map[string]interface{}{
+			"url":       apiURL,
+			"listening": apiListening,
+		}
 	}
 
 	if aws != nil {
@@ -102,15 +134,39 @@ func hfClusterToMap(c *v1alpha1.Cluster) map[string]interface{} {
 				m["subnet"] = *aws.CloudProviderConfig.Subnet.ID
 			}
 		}
+		stsMap := map[string]interface{}{
+			"enabled":           true,
+			"oidc_endpoint_url": c.Spec.HostedCluster.IssuerURL,
+		}
+		if c.Spec.OidcConfigID != "" {
+			stsMap["oidc_config"] = map[string]interface{}{
+				"id":         c.Spec.OidcConfigID,
+				"issuer_url": c.Spec.HostedCluster.IssuerURL,
+				"reusable":   false,
+				"managed":    true,
+			}
+		}
+		awsMap := map[string]interface{}{"sts": stsMap}
+		if c.Spec.Properties != nil {
+			if tokens := c.Spec.Properties["ec2_metadata_http_tokens"]; tokens != "" {
+				awsMap["ec2_metadata_http_tokens"] = tokens
+			}
+		}
+		m["aws"] = awsMap
 	}
 
 	if c.Status.Version != "" {
-		m["version"] = c.Status.Version
+		channel := ""
+		if c.Spec.Properties != nil {
+			channel = c.Spec.Properties["channel_group"]
+		}
+		m["version"] = map[string]interface{}{
+			"raw_id":        c.Status.Version,
+			"channel_group": channel,
+		}
 	}
-	if c.Status.ControlPlaneEndpoint.Host != "" {
-		m["api_url"] = fmt.Sprintf("https://%s:%d",
-			c.Status.ControlPlaneEndpoint.Host,
-			c.Status.ControlPlaneEndpoint.Port)
+	if apiURL != "" {
+		m["api_url"] = apiURL
 	}
 	if c.Status.PlacementRef != nil {
 		m["management_cluster"] = c.Status.PlacementRef.ManagementCluster
@@ -129,6 +185,14 @@ func hfClusterToMap(c *v1alpha1.Cluster) map[string]interface{} {
 		})
 	}
 	m["conditions"] = conditions
+
+	if defaultNodePoolInstanceType != "" {
+		m["nodes"] = map[string]interface{}{
+			"compute_machine_type": map[string]interface{}{
+				"id": defaultNodePoolInstanceType,
+			},
+		}
+	}
 
 	return m
 }
@@ -151,11 +215,14 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 		}
 	}
 
-	apiURL := ""
-	if c.Status.ControlPlaneEndpoint.Host != "" {
-		apiURL = fmt.Sprintf("https://%s:%d",
-			c.Status.ControlPlaneEndpoint.Host,
-			c.Status.ControlPlaneEndpoint.Port)
+	apiURL := hfAPIURL(c)
+	oidcLine := c.Spec.HostedCluster.IssuerURL
+	if c.Spec.OidcConfigID != "" && oidcLine != "" {
+		oidcLine += " (Managed)"
+	}
+	fips := "Disabled"
+	if c.Spec.HostedCluster.FIPS {
+		fips = "Enabled"
 	}
 
 	s := fmt.Sprintf("\n"+
@@ -169,7 +236,8 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 		"Subnet:                     %s\n"+
 		"OIDC Endpoint URL:          %s\n"+
 		"State:                      %s\n"+
-		"Created:                    %s\n",
+		"Private:                    %s\n"+
+		"FIPS mode:                  %s\n",
 		c.Name,
 		string(c.UID),
 		"ROSA Service Hosted",
@@ -178,10 +246,18 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 		region,
 		vpc,
 		subnet,
-		c.Spec.HostedCluster.IssuerURL,
+		oidcLine,
 		string(c.Status.Phase),
-		c.CreationTimestamp.UTC().Format("2006-01-02 15:04:05 UTC"),
+		output.PrintBool(hfAPIListening(aws) == "internal"),
+		fips,
 	)
+	if c.Spec.Properties != nil {
+		if tokens := c.Spec.Properties["ec2_metadata_http_tokens"]; tokens != "" {
+			s += fmt.Sprintf("EC2 Metadata Http Tokens:   %s\n", tokens)
+		}
+	}
+	s += fmt.Sprintf("Created:                    %s\n",
+		c.CreationTimestamp.UTC().Format("2006-01-02 15:04:05 UTC"))
 
 	if c.Status.PlacementRef != nil {
 		s += fmt.Sprintf("Management Cluster:         %s\n", c.Status.PlacementRef.ManagementCluster)
@@ -225,6 +301,22 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 	}
 
 	return s
+}
+
+func hfAPIURL(c *v1alpha1.Cluster) string {
+	if c.Status.ControlPlaneEndpoint.Host == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://%s:%d",
+		c.Status.ControlPlaneEndpoint.Host,
+		c.Status.ControlPlaneEndpoint.Port)
+}
+
+func hfAPIListening(aws *hypershiftv1beta1.AWSPlatformSpec) string {
+	if aws != nil && aws.EndpointAccess == hypershiftv1beta1.Private {
+		return "internal"
+	}
+	return "external"
 }
 
 // conditionSummary returns a concise reason+message string for a condition row.

@@ -20,12 +20,18 @@ import (
 	"github.com/openshift/rosa/pkg/test"
 )
 
-func newDescribeClusterMocks(ctrl *gomock.Controller) (*hfmocks.MockInterface, *hfmocks.MockClusterInterface) {
+func newDescribeClusterMocks(ctrl *gomock.Controller, clusterUID string) (*hfmocks.MockInterface, *hfmocks.MockClusterInterface) {
 	hf := hfmocks.NewMockInterface(ctrl)
 	v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 	clusters := hfmocks.NewMockClusterInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
 	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
+	if clusterUID != "" {
+		nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
+		v1.EXPECT().NodePools(clusterUID).Return(nodePools).AnyTimes()
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).
+			Return(&v1alpha1.NodePoolList{}, nil).AnyTimes()
+	}
 	return hf, clusters
 }
 
@@ -38,7 +44,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 
 	It("describes a cluster on the success path (text output)", func() {
 		ctrl := gomock.NewController(GinkgoT())
-		hf, clusters := newDescribeClusterMocks(ctrl)
+		hf, clusters := newDescribeClusterMocks(ctrl, "cluster-uid")
 
 		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
@@ -62,7 +68,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 
 	It("resolves cluster key from argv when cluster flag is not set", func() {
 		ctrl := gomock.NewController(GinkgoT())
-		hf, clusters := newDescribeClusterMocks(ctrl)
+		hf, clusters := newDescribeClusterMocks(ctrl, "cluster-uid")
 
 		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
@@ -82,7 +88,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		DeferCleanup(func() { output.SetOutput("") })
 
 		ctrl := gomock.NewController(GinkgoT())
-		hf, clusters := newDescribeClusterMocks(ctrl)
+		hf, clusters := newDescribeClusterMocks(ctrl, "cluster-uid")
 
 		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
@@ -103,7 +109,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		DeferCleanup(func() { ocm.SetClusterKey("cluster1") })
 
 		ctrl := gomock.NewController(GinkgoT())
-		hf, _ := newDescribeClusterMocks(ctrl)
+		hf, _ := newDescribeClusterMocks(ctrl, "")
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() { runHyperfleetDescribe(t.RosaRuntime, nil, nil) }).To(Panic())
 	})
@@ -114,7 +120,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
-		hf, clusters := newDescribeClusterMocks(ctrl)
+		hf, clusters := newDescribeClusterMocks(ctrl, "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{}, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
@@ -127,7 +133,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
-		hf, clusters := newDescribeClusterMocks(ctrl)
+		hf, clusters := newDescribeClusterMocks(ctrl, "cluster-uid")
 		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}

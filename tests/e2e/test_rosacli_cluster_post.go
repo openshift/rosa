@@ -306,6 +306,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
+				labels.Hyperfleet.Deferred,
 				func() {
 					private := constants.No
 					ingressPrivate := "false"
@@ -328,6 +329,7 @@ var _ = Describe("Healthy check",
 				})
 			It("with API private and ingress pravate works on hosted-cp cluster - [id:83155]",
 				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
+				labels.Hyperfleet.Deferred,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
@@ -412,6 +414,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with private will work - [id:75526]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
+				labels.Hyperfleet.Deferred,
 				func() {
 					private := constants.No
 					ingressPrivate := "false"
@@ -447,6 +450,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with subnets will work - [id:37176]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
+				labels.Hyperfleet.Deferred,
 				func() {
 					By("Check the creation command help")
 					output, _, err := clusterService.Create("cluster-37176", "-h")
@@ -566,6 +570,7 @@ var _ = Describe("Healthy check",
 
 			It("rosa hcp cluster creation support imdsv2 - [id:75114]",
 				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Hyperfleet.Deferred,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
@@ -634,6 +639,7 @@ var _ = Describe("Healthy check",
 					}
 				})
 			It("with use-local-credentials will work - [id:65900]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
+				labels.Hyperfleet.NotApplicable,
 				func() {
 					By("Check that the 'use_local_credentials' property matches the profile")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -643,6 +649,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with policy path will work - [id:75525]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
+				labels.Hyperfleet.NotApplicable,
 				func() {
 					if profile.AccountRoleConfig == nil || profile.AccountRoleConfig.Path == "" {
 						Skip("No account-role path defined. Skipping ...")
@@ -929,6 +936,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 			})
 		It("to verify sts cluster is created successfully - [id:41822]",
 			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Check the cluster is STS cluster")
 				profile := handler.LoadProfileYamlFileByENV()
@@ -1056,6 +1064,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 			})
 		It("to verify billing account settings- [id:73141]",
 			labels.Critical, labels.Runtime.Day1Post,
+			labels.Hyperfleet.Deferred,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 
