@@ -71,8 +71,10 @@ fmt-check: $(GCI)
 	@test -z "$$($(GCI) list -s standard -s default -s "prefix(k8s)" -s "prefix(sigs.k8s)" -s "prefix(github.com)" -s "prefix(gitlab)" -s "prefix(github.com/openshift/rosa)" --custom-order --skip-generated --skip-vendor cmd pkg tests)"
 
 .PHONY: lint
+LINT_NEW_FROM_REV ?= $(PULL_BASE_SHA)
+LINT_NEW_FROM_REV_FLAG := $(if $(LINT_NEW_FROM_REV),--new-from-rev=$(LINT_NEW_FROM_REV))
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --timeout 15m0s $(LINT_OUTPUT_FLAGS) ./...
+	$(GOLANGCI_LINT) run --timeout 15m0s $(LINT_OUTPUT_FLAGS) $(LINT_NEW_FROM_REV_FLAG) ./...
 
 .PHONY: govulncheck
 govulncheck: $(GOVULNCHECK) rosa
