@@ -24,4 +24,11 @@ struct AzureKmsEncryption {
 	// Accepted values are `public` and `private`.
 	// Defaults to `public` if not set.
 	Visibility AzureKmsEncryptionVisibility
+
+	// key_vault_type defines the Azure service that hosts the KMS key.
+	// Accepted values are `key_vault` and `managed_hsm`.
+	// Defaults to `key_vault` if not set.
+	// Applies to the whole KMS configuration rather than to an individual key,
+	// and is immutable once the cluster has been created.
+	KeyVaultType AzureKmsEncryptionKeyVaultType
 }

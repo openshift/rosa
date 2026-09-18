@@ -21,15 +21,16 @@ package v1alpha1 // github.com/openshift-online/ocm-api-model/clientapi/arohcp/v
 
 // Contains the necessary attributes to support KMS encryption for Azure based clusters.
 type AzureKmsEncryptionBuilder struct {
-	fieldSet_  []bool
-	activeKey  *AzureKmsKeyBuilder
-	visibility AzureKmsEncryptionVisibility
+	fieldSet_    []bool
+	activeKey    *AzureKmsKeyBuilder
+	keyVaultType AzureKmsEncryptionKeyVaultType
+	visibility   AzureKmsEncryptionVisibility
 }
 
 // NewAzureKmsEncryption creates a new builder of 'azure_kms_encryption' objects.
 func NewAzureKmsEncryption() *AzureKmsEncryptionBuilder {
 	return &AzureKmsEncryptionBuilder{
-		fieldSet_: make([]bool, 2),
+		fieldSet_: make([]bool, 3),
 	}
 }
 
@@ -51,7 +52,7 @@ func (b *AzureKmsEncryptionBuilder) Empty() bool {
 // Contains the necessary attributes to support KMS encryption key for Azure based clusters
 func (b *AzureKmsEncryptionBuilder) ActiveKey(value *AzureKmsKeyBuilder) *AzureKmsEncryptionBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 2)
+		b.fieldSet_ = make([]bool, 3)
 	}
 	b.activeKey = value
 	if value != nil {
@@ -62,15 +63,27 @@ func (b *AzureKmsEncryptionBuilder) ActiveKey(value *AzureKmsKeyBuilder) *AzureK
 	return b
 }
 
+// KeyVaultType sets the value of the 'key_vault_type' attribute to the given value.
+//
+// AzureKmsEncryptionKeyVaultType defines the Azure service that hosts the KMS key.
+func (b *AzureKmsEncryptionBuilder) KeyVaultType(value AzureKmsEncryptionKeyVaultType) *AzureKmsEncryptionBuilder {
+	if len(b.fieldSet_) == 0 {
+		b.fieldSet_ = make([]bool, 3)
+	}
+	b.keyVaultType = value
+	b.fieldSet_[1] = true
+	return b
+}
+
 // Visibility sets the value of the 'visibility' attribute to the given value.
 //
 // AzureKmsEncryptionVisibility defines the visibility of the Azure KMS key vault.
 func (b *AzureKmsEncryptionBuilder) Visibility(value AzureKmsEncryptionVisibility) *AzureKmsEncryptionBuilder {
 	if len(b.fieldSet_) == 0 {
-		b.fieldSet_ = make([]bool, 2)
+		b.fieldSet_ = make([]bool, 3)
 	}
 	b.visibility = value
-	b.fieldSet_[1] = true
+	b.fieldSet_[2] = true
 	return b
 }
 
@@ -88,6 +101,7 @@ func (b *AzureKmsEncryptionBuilder) Copy(object *AzureKmsEncryption) *AzureKmsEn
 	} else {
 		b.activeKey = nil
 	}
+	b.keyVaultType = object.keyVaultType
 	b.visibility = object.visibility
 	return b
 }
@@ -105,6 +119,7 @@ func (b *AzureKmsEncryptionBuilder) Build() (object *AzureKmsEncryption, err err
 			return
 		}
 	}
+	object.keyVaultType = b.keyVaultType
 	object.visibility = b.visibility
 	return
 }
