@@ -297,6 +297,24 @@ func GetVersionMinorList(ocmClient *Client) (versionList []string, err error) {
 	return GetVersionMinorListWithProduct(ocmClient, "")
 }
 
+func GetVersionMinorListForProducts(ocmClient *Client, products ...string) (versionList []string, err error) {
+	minorSet := make(map[string]struct{})
+	for _, product := range products {
+		minorVersions, err := GetVersionMinorListWithProduct(ocmClient, product)
+		if err != nil {
+			return nil, err
+		}
+		for _, minorVersion := range minorVersions {
+			minorSet[minorVersion] = struct{}{}
+		}
+	}
+
+	for minorVersion := range minorSet {
+		versionList = append(versionList, minorVersion)
+	}
+	return versionList, nil
+}
+
 func GetVersionMinorListWithProduct(ocmClient *Client, product string) (versionList []string, err error) {
 	vs, err := ocmClient.GetVersionsWithProduct(product, "", false)
 	if err != nil {

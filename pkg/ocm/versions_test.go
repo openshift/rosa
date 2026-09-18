@@ -174,6 +174,33 @@ var _ = Describe("OCMClient", func() {
 			Expect(versions).To(ConsistOf("5.0"))
 		})
 
+		It("gets minor versions across requested products", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("product")).To(BeEmpty())
+					},
+					RespondWithJSON(http.StatusOK, `{
+						"kind":"VersionList","page":1,"size":1,"total":1,
+						"items":[{"id":"openshift-v4.11.0","raw_id":"4.11.0","channel_group":"stable","rosa_enabled":true}]
+					}`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("product")).To(Equal(HcpProduct))
+					},
+					RespondWithJSON(http.StatusOK, versionListResponse),
+				),
+			)
+
+			versions, err := GetVersionMinorListForProducts(ocmClient, "", HcpProduct)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(versions).To(ConsistOf("4.11", "5.0"))
+		})
+
 		It("gets the latest version for the requested product", func() {
 			appendVersionListHandler()
 
