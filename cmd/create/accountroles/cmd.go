@@ -298,7 +298,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 	version := args.version
 	channelGroup := args.channelGroup
-	policyVersion, err := r.OCMClient.GetPolicyVersion(version, channelGroup)
+	policyVersion, err := getPolicyVersion(r.OCMClient, version, channelGroup, args.hostedCP)
 	if err != nil {
 		r.Reporter.Errorf("Error getting version: %s", err)
 		os.Exit(1)
@@ -585,6 +585,19 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
 		os.Exit(1)
 	}
+}
+
+func getPolicyVersion(ocmClient *ocm.Client, version string, channelGroup string,
+	hostedCP bool) (string, error) {
+	product := ""
+	if hostedCP {
+		product = ocm.HcpProduct
+	}
+	policyVersion, err := ocmClient.GetPolicyVersionWithProduct(product, version, channelGroup)
+	if err != nil {
+		return "", err
+	}
+	return policyVersion, nil
 }
 
 func validateAccountRolesSTSExternalID(externalID string) error {
