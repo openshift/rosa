@@ -23,6 +23,11 @@ type HostedClusterSpecPassthrough struct {
 	// +hyperfleet:write-mode=mutable
 	// +required
 	Platform PlatformSpec `json:"platform"`
+	// dns specifies the DNS configuration for the hosted cluster ingress.
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
+	// +optional
+	DNS hypershiftv1beta1.DNSSpec `json:"dns,omitempty"`
 	// networking specifies network configuration for the hosted cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable

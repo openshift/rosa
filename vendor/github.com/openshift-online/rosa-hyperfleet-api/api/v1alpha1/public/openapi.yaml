@@ -2646,6 +2646,72 @@ components:
                                               type: array
                                       type: object
                               type: object
+                          dns:
+                              description: dns specifies the DNS configuration for the hosted cluster ingress.
+                              properties:
+                                  baseDomain:
+                                      description: |-
+                                          baseDomain is the base domain of the hosted cluster.
+                                          It will be used to configure ingress in the hosted cluster through the subdomain baseDomainPrefix.baseDomain.
+                                          If baseDomainPrefix is omitted, the hostedCluster.name will be used as the subdomain.
+                                          Once set, this field is immutable.
+                                          When the value is the empty string "", the controller might default to a value depending on the platform.
+                                      maxLength: 253
+                                      type: string
+                                      x-kubernetes-validations:
+                                          - message: baseDomain must be a valid domain name (e.g., example, example.com, sub.example.com)
+                                            rule: self == "" || self.matches('^(?:(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}|[a-zA-Z0-9-]+)$')
+                                          - message: baseDomain is immutable
+                                            rule: oldSelf == "" || self == oldSelf
+                                  baseDomainPrefix:
+                                      description: |-
+                                          baseDomainPrefix is the base domain prefix for the hosted cluster ingress.
+                                          It will be used to configure ingress in the hosted cluster through the subdomain baseDomainPrefix.baseDomain.
+                                          If baseDomainPrefix is omitted, the hostedCluster.name will be used as the subdomain.
+                                          Set baseDomainPrefix to an empty string "", if you don't want a prefix at all (not even hostedCluster.name) to be prepended to baseDomain.
+                                          This field is immutable.
+                                      maxLength: 253
+                                      type: string
+                                      x-kubernetes-validations:
+                                          - message: baseDomainPrefix must be a valid domain name (e.g., example, example.com, sub.example.com)
+                                            rule: self == "" || self.matches('^(?:(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}|[a-zA-Z0-9-]+)$')
+                                          - message: baseDomainPrefix is immutable
+                                            rule: self == oldSelf
+                                  privateZoneID:
+                                      description: |-
+                                          privateZoneID is the Hosted Zone ID where all the DNS records that are only available internally to the cluster exist.
+                                          This field is optional and mainly leveraged in cloud environments where the DNS records for the .baseDomain are created by controllers in this zone.
+                                          Once set, this value is immutable.
+                                          On Azure, this is a full Azure resource ID for a Private DNS Zone in the format:
+                                            /subscriptions/{subscriptionID}/resourceGroups/{resourceGroup}/providers/Microsoft.Network/privateDnsZones/{zoneName}
+                                          The maximum length of 265 is derived from Azure resource naming limits
+                                          (see https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules):
+                                            /subscriptions/ (15) + UUID (36) + /resourceGroups/ (16) + resource group name (90)
+                                      maxLength: 265
+                                      minLength: 1
+                                      type: string
+                                      x-kubernetes-validations:
+                                          - message: privateZoneID is immutable
+                                            rule: oldSelf == "" || self == oldSelf
+                                  publicZoneID:
+                                      description: |-
+                                          publicZoneID is the Hosted Zone ID where all the DNS records that are publicly accessible to the internet exist.
+                                          This field is optional and mainly leveraged in cloud environments where the DNS records for the .baseDomain are created by controllers in this zone.
+                                          Once set, this value is immutable.
+                                          On Azure, this is a full Azure resource ID for a DNS Zone in the format:
+                                            /subscriptions/{subscriptionID}/resourceGroups/{resourceGroup}/providers/Microsoft.Network/dnsZones/{zoneName}
+                                          The maximum length of 258 is derived from Azure resource naming limits
+                                          (see https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules):
+                                            /subscriptions/ (15) + UUID (36) + /resourceGroups/ (16) + resource group name (90)
+                                      maxLength: 258
+                                      minLength: 1
+                                      type: string
+                                      x-kubernetes-validations:
+                                          - message: publicZoneID is immutable
+                                            rule: oldSelf == "" || self == oldSelf
+                              required:
+                                  - baseDomain
+                              type: object
                           fips:
                               description: fips indicates whether this cluster's nodes will be running in FIPS mode.
                               type: boolean
@@ -4954,6 +5020,72 @@ components:
                                                           maxItems: 128
                                                           type: array
                                                   type: object
+                                          type: object
+                                      dns:
+                                          description: dns specifies the DNS configuration for the hosted cluster ingress.
+                                          properties:
+                                              baseDomain:
+                                                  description: |-
+                                                      baseDomain is the base domain of the hosted cluster.
+                                                      It will be used to configure ingress in the hosted cluster through the subdomain baseDomainPrefix.baseDomain.
+                                                      If baseDomainPrefix is omitted, the hostedCluster.name will be used as the subdomain.
+                                                      Once set, this field is immutable.
+                                                      When the value is the empty string "", the controller might default to a value depending on the platform.
+                                                  maxLength: 253
+                                                  type: string
+                                                  x-kubernetes-validations:
+                                                      - message: baseDomain must be a valid domain name (e.g., example, example.com, sub.example.com)
+                                                        rule: self == "" || self.matches('^(?:(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}|[a-zA-Z0-9-]+)$')
+                                                      - message: baseDomain is immutable
+                                                        rule: oldSelf == "" || self == oldSelf
+                                              baseDomainPrefix:
+                                                  description: |-
+                                                      baseDomainPrefix is the base domain prefix for the hosted cluster ingress.
+                                                      It will be used to configure ingress in the hosted cluster through the subdomain baseDomainPrefix.baseDomain.
+                                                      If baseDomainPrefix is omitted, the hostedCluster.name will be used as the subdomain.
+                                                      Set baseDomainPrefix to an empty string "", if you don't want a prefix at all (not even hostedCluster.name) to be prepended to baseDomain.
+                                                      This field is immutable.
+                                                  maxLength: 253
+                                                  type: string
+                                                  x-kubernetes-validations:
+                                                      - message: baseDomainPrefix must be a valid domain name (e.g., example, example.com, sub.example.com)
+                                                        rule: self == "" || self.matches('^(?:(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}|[a-zA-Z0-9-]+)$')
+                                                      - message: baseDomainPrefix is immutable
+                                                        rule: self == oldSelf
+                                              privateZoneID:
+                                                  description: |-
+                                                      privateZoneID is the Hosted Zone ID where all the DNS records that are only available internally to the cluster exist.
+                                                      This field is optional and mainly leveraged in cloud environments where the DNS records for the .baseDomain are created by controllers in this zone.
+                                                      Once set, this value is immutable.
+                                                      On Azure, this is a full Azure resource ID for a Private DNS Zone in the format:
+                                                        /subscriptions/{subscriptionID}/resourceGroups/{resourceGroup}/providers/Microsoft.Network/privateDnsZones/{zoneName}
+                                                      The maximum length of 265 is derived from Azure resource naming limits
+                                                      (see https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules):
+                                                        /subscriptions/ (15) + UUID (36) + /resourceGroups/ (16) + resource group name (90)
+                                                  maxLength: 265
+                                                  minLength: 1
+                                                  type: string
+                                                  x-kubernetes-validations:
+                                                      - message: privateZoneID is immutable
+                                                        rule: oldSelf == "" || self == oldSelf
+                                              publicZoneID:
+                                                  description: |-
+                                                      publicZoneID is the Hosted Zone ID where all the DNS records that are publicly accessible to the internet exist.
+                                                      This field is optional and mainly leveraged in cloud environments where the DNS records for the .baseDomain are created by controllers in this zone.
+                                                      Once set, this value is immutable.
+                                                      On Azure, this is a full Azure resource ID for a DNS Zone in the format:
+                                                        /subscriptions/{subscriptionID}/resourceGroups/{resourceGroup}/providers/Microsoft.Network/dnsZones/{zoneName}
+                                                      The maximum length of 258 is derived from Azure resource naming limits
+                                                      (see https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules):
+                                                        /subscriptions/ (15) + UUID (36) + /resourceGroups/ (16) + resource group name (90)
+                                                  maxLength: 258
+                                                  minLength: 1
+                                                  type: string
+                                                  x-kubernetes-validations:
+                                                      - message: publicZoneID is immutable
+                                                        rule: oldSelf == "" || self == oldSelf
+                                          required:
+                                              - baseDomain
                                           type: object
                                       fips:
                                           description: fips indicates whether this cluster's nodes will be running in FIPS mode.
@@ -7888,6 +8020,9 @@ components:
               type: string
           configuration:
               $ref: '#/components/schemas/ClusterConfiguration'
+          dns:
+              description: dns specifies the DNS configuration for the hosted cluster ingress.
+              type: object
           fips:
               description: fips indicates whether this cluster's nodes will be running in FIPS mode.
               type: boolean
