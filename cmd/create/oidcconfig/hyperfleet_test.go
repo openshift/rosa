@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/output"
@@ -35,7 +36,9 @@ var _ = Describe("hyperfleetOidcConfigCreate PostResponse", func() {
 		interactive.SetModeKey(interactive.ModeAuto)
 
 		cfg := &v1alpha1.OidcConfig{
-			Name: "test-id",
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-id",
+			},
 			Spec: v1alpha1.OidcConfigSpec{
 				Type:      "managed",
 				IssuerUrl: "https://example.cloudfront.net/test-id",

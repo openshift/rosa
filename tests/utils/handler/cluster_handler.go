@@ -589,8 +589,7 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 
 		ch.clusterConfig.Autoscaler = autoscaler
 	}
-	if ch.profile.ClusterConfig.NetworkingSet || usesHyperfleet() {
-		log.Logger.Info("✅ Passing in networking defaults")
+	if ch.profile.ClusterConfig.NetworkingSet {
 		networking := &ClusterConfigure.Networking{
 			MachineCIDR: "10.0.0.0/16",
 			PodCIDR:     "10.128.0.0/14",

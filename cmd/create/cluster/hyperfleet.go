@@ -131,6 +131,12 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	}
 
 	input.Region = r.Region
+
+	// Convert individual networking flags to JSON format if provided
+	if err := convertNetworkingFlags(input); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -149,4 +155,44 @@ func (h *hyperfleetClusterCreate) PostExpand(
 func (h *hyperfleetClusterCreate) PostResponse(_ context.Context, r *rosa.Runtime, cluster *v1alpha1.Cluster) error {
 	r.Reporter.Infof("Cluster %q created with ID %q", cluster.Name, string(cluster.UID))
 	return nil
+}
+
+// convertNetworkingFlags converts individual networking flags (--machine-cidr, --service-cidr,
+// --pod-cidr, --host-prefix) into the JSON format expected by the V2 API.
+func convertNetworkingFlags(input *hfpathbind.ClusterCreateInput) error {
+	// Only convert if the JSON flags are not already set
+	if input.MachineNetwork == "" && !isEmptyCIDR(&args.machineCIDR) {
+		input.MachineNetwork = fmt.Sprintf(`[{"cidr":"%s"}]`, args.machineCIDR.String())
+	}
+
+	if input.ServiceNetwork == "" && !isEmptyCIDR(&args.serviceCIDR) {
+		input.ServiceNetwork = fmt.Sprintf(`[{"cidr":"%s"}]`, args.serviceCIDR.String())
+	}
+
+	if input.ClusterNetwork == "" && !isEmptyCIDR(&args.podCIDR) {
+		// ClusterNetwork includes both CIDR and hostPrefix
+		hostPrefix := args.hostPrefix
+		if hostPrefix == 0 {
+			hostPrefix = 23 // default host prefix
+		}
+		input.ClusterNetwork = fmt.Sprintf(`[{"cidr":"%s","hostPrefix":%d}]`, args.podCIDR.String(), hostPrefix)
+	}
+
+	// Set network type if not already set
+	if input.NetworkType == "" && args.networkType != "" {
+		input.NetworkType = args.networkType
+	}
+
+	// Set allowed CIDR blocks (default to open if not specified)
+	if input.AllowedCIDRBlocks == "" {
+		input.AllowedCIDRBlocks = `["0.0.0.0/0"]`
+	}
+
+	return nil
+}
+
+// isEmptyCIDR checks if a CIDR is empty (all zeros)
+func isEmptyCIDR(cidr interface{ String() string }) bool {
+	s := cidr.String()
+	return s == "" || s == "<nil>"
 }

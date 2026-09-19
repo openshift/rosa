@@ -99,7 +99,7 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("maps all core fields", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c, "")
+		m := hfClusterToMap(c, nil, nil, "")
 
 		Expect(m["id"]).To(Equal("cluster-uid-123"))
 		Expect(m["name"]).To(Equal("my-cluster"))
@@ -117,7 +117,7 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("maps spec fields", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c, "")
+		m := hfClusterToMap(c, nil, nil, "")
 
 		spec, ok := m["spec"].(map[string]interface{})
 		Expect(ok).To(BeTrue())
@@ -131,7 +131,7 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("maps conditions", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c, "")
+		m := hfClusterToMap(c, nil, nil, "")
 
 		conds, ok := m["conditions"].([]map[string]interface{})
 		Expect(ok).To(BeTrue())
@@ -142,14 +142,14 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("includes expiration when set", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c, "")
+		m := hfClusterToMap(c, nil, nil, "")
 		Expect(m).To(HaveKey("expiration"))
 	})
 
 	It("handles nil AWS spec gracefully", func() {
 		c := buildCluster()
 		c.Spec.HostedCluster.Platform.AWS = nil
-		m := hfClusterToMap(c, "")
+		m := hfClusterToMap(c, nil, nil, "")
 		Expect(m).NotTo(HaveKey("region"))
 		Expect(m).NotTo(HaveKey("vpc"))
 		Expect(m).NotTo(HaveKey("subnet"))
@@ -161,7 +161,7 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("maps nodes.compute_machine_type from default node pool instance type", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c, "m5.xlarge")
+		m := hfClusterToMap(c, nil, nil, "m5.xlarge")
 		nodes, ok := m["nodes"].(map[string]interface{})
 		Expect(ok).To(BeTrue())
 		cmt, ok := nodes["compute_machine_type"].(map[string]interface{})
@@ -171,10 +171,10 @@ var _ = Describe("hfClusterToMap", func() {
 
 	It("omits EC2 metadata tokens when the API omits them", func() {
 		c := buildCluster()
-		m := hfClusterToMap(c, "")
+		m := hfClusterToMap(c, nil, nil, "")
 		aws := m["aws"].(map[string]interface{})
 		Expect(aws).NotTo(HaveKey("ec2_metadata_http_tokens"))
-		Expect(hfClusterToString(c)).NotTo(ContainSubstring("EC2 Metadata Http Tokens:"))
+		Expect(hfClusterToString(c, nil, nil)).NotTo(ContainSubstring("EC2 Metadata Http Tokens:"))
 	})
 })
 
@@ -205,7 +205,7 @@ var _ = Describe("hfClusterToString", func() {
 					},
 				},
 			},
-		})
+		}, nil, nil)
 		Expect(out).To(ContainSubstring("Operator IAM Roles:\n - " + arn + "\n"))
 		Expect(out).NotTo(ContainSubstring("Ingress:"))
 	})
