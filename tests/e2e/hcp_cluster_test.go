@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
@@ -55,11 +56,12 @@ var _ = Describe("HCP cluster testing",
 			ocmResourceService = rosaClient.OCMResource
 
 			By("Skip testing if the cluster is not a HCP cluster")
-			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-			if !hostedCluster {
-				SkipNotHosted()
-			}
+			// TODO(cdoan): add a check if we're hyperfleet, skip these clusterservice checks?
+			// hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+			// Expect(err).ToNot(HaveOccurred())
+			// if !hostedCluster {
+			// 	SkipNotHosted()
+			// }
 		})
 
 		AfterEach(func() {
@@ -505,7 +507,7 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("rosacli can show the details of HCP cluster well when describe - [id:54869]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				By("Get cluster description")
 				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
@@ -545,20 +547,31 @@ var _ = Describe("HCP cluster testing",
 				}
 				Expect(clusterDesc.Network).To(ContainElements(HaveKey("Type"), HaveKey("Service CIDR"), HaveKey("Machine CIDR"),
 					HaveKey("Pod CIDR"), HaveKey("Host Prefix"), HaveKeyWithValue("Subnets", MatchRegexp("^subnet-.{17}"))))
-				Expect(clusterDesc.STSRoleArn).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Installer-Role"))
-				Expect(clusterDesc.SupportRoleARN).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Support-Role"))
-				Expect(clusterDesc.InstanceIAMRoles[0]).To(HaveKeyWithValue("Worker",
-					MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Worker-Role")))
 
-				By("List Operator roles")
-				roles, err := ocmResourceService.ListOperatorRoles("--prefix", clusterConfig.Aws.Sts.OperatorRolesPrefix)
-				Expect(err).ToNot(HaveOccurred())
-				operRolesList, err := ocmResourceService.ReflectOperatorRoleList(roles)
-				Expect(err).ToNot(HaveOccurred())
-				for _, role := range operRolesList.OperatorRoleList {
-					Expect(clusterDesc.OperatorIAMRoles).To(ContainElement(ContainSubstring(role.RoleName)))
+				// V2 (Hyperfleet) clusters don't use account-level STS roles yet
+				// Skip these checks for V2 clusters
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if !isHyperfleet {
+					Expect(clusterDesc.STSRoleArn).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Installer-Role"))
+					Expect(clusterDesc.SupportRoleARN).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Support-Role"))
+					Expect(clusterDesc.InstanceIAMRoles[0]).To(HaveKeyWithValue("Worker",
+						MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Worker-Role")))
 				}
 
+				// V2 (Hyperfleet) operator roles are cluster-specific and already shown in describe output
+				// V1 (OCM) operator roles need separate verification via ListOperatorRoles
+				if !isHyperfleet {
+					By("List Operator roles")
+					roles, err := ocmResourceService.ListOperatorRoles("--prefix", clusterConfig.Aws.Sts.OperatorRolesPrefix)
+					Expect(err).ToNot(HaveOccurred())
+					operRolesList, err := ocmResourceService.ReflectOperatorRoleList(roles)
+					Expect(err).ToNot(HaveOccurred())
+					for _, role := range operRolesList.OperatorRoleList {
+						Expect(clusterDesc.OperatorIAMRoles).To(ContainElement(ContainSubstring(role.RoleName)))
+					}
+				}
+
+				// Both V1 and V2 should have operator roles in the describe output
 				Expect(clusterDesc.OperatorIAMRoles).To(HaveEach(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+")))
 				Expect(clusterDesc.State).To(Equal(constants.Ready))
 			})

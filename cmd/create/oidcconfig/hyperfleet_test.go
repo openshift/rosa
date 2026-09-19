@@ -36,7 +36,9 @@ var _ = Describe("hyperfleetOidcConfigCreate PostResponse", func() {
 		interactive.SetModeKey(interactive.ModeAuto)
 
 		cfg := &v1alpha1.OidcConfig{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-id"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-id",
+			},
 			Spec: v1alpha1.OidcConfigSpec{
 				Type:      "managed",
 				IssuerUrl: "https://example.cloudfront.net/test-id",
