@@ -47,6 +47,25 @@ var _ = Describe("classifyClusterState", func() {
 	})
 })
 
+var _ = Describe("Hyperfleet node pool setup", func() {
+	It("uses configured replicas on every pool", func() {
+		n, err := hyperfleetNodePoolReplicas(&ClusterConfig{WorkerPoolReplicas: 3}, 3)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(Equal(3))
+	})
+
+	It("uses the ROSA single-AZ default", func() {
+		n, err := hyperfleetNodePoolReplicas(&ClusterConfig{}, 1)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(Equal(2))
+	})
+
+	It("rejects unsupported autoscaling profiles", func() {
+		_, err := hyperfleetNodePoolReplicas(&ClusterConfig{Autoscale: true}, 1)
+		Expect(err).To(MatchError("HyperFleet e2e setup does not support autoscaled default node pools"))
+	})
+})
+
 var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 	AfterEach(func() {
 		hyperfleet.Reset()

@@ -235,8 +235,9 @@ func waitForAvailableYStreamUpgrade(
 	}
 
 	timeoutErr := fmt.Errorf(
-		"timeout after %s waiting for y-stream upgrade target for cluster %s "+
+		"%w: timeout after %s waiting for y-stream upgrade target for cluster %s "+
 			"(version=%s, current channel=%q, desired channel=%q)",
+		pollErr,
 		waitTimeout,
 		clusterID,
 		preparation.ClusterVersion,

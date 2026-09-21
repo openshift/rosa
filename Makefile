@@ -213,12 +213,13 @@ e2e-hyperfleet: install
 		exit 1; \
 	}; \
 	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
+	filter=$${LABEL_FILTER:-hyperfleet-validated}; \
 	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
 	TEST_PROFILE="$(TEST_PROFILE)" \
 	CLUSTER_NAME="$$name" \
 	OPERATOR_ROLES_PREFIX="$$name" \
 	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
-	ginkgo run --label-filter "$${LABEL_FILTER:-hyperfleet-validated}" \
+	ginkgo run --label-filter "($$filter) && !hyperfleet-na && !hyperfleet-deferred" \
 		--timeout 3h \
 		-v \
 		./tests/e2e/ \

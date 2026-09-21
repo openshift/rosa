@@ -51,7 +51,7 @@ func runHyperfleetList(r *rosa.Runtime) {
 	}
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tNAME\tREPLICAS\tINSTANCE TYPE\tSUBNET\tSTATE\n")
+	fmt.Fprintf(writer, "ID\tNAME\tREPLICAS\tINSTANCE TYPE\tSUBNET\tDISK SIZE\tSTATE\n")
 	for _, np := range list.Items {
 		replicas := int32(0)
 		if np.Spec.NodePool.Replicas != nil {
@@ -65,12 +65,14 @@ func runHyperfleetList(r *rosa.Runtime) {
 				subnetID = *np.Spec.NodePool.Platform.AWS.Subnet.ID
 			}
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%d\t%s\t%s\t%s\n",
+		diskSize := hyperfleet.FormatNodePoolDiskSize(np.Spec.NodePool.Platform.AWS)
+		fmt.Fprintf(writer, "%s\t%s\t%d\t%s\t%s\t%s\t%s\n",
 			string(np.UID),
 			np.Name,
 			replicas,
 			instanceType,
 			subnetID,
+			diskSize,
 			string(np.Status.Phase),
 		)
 	}
