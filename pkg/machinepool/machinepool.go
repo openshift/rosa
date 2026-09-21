@@ -36,7 +36,10 @@ import (
 )
 
 const (
-	clusterAutoscalerLimitMessage = "Cluster Autoscaler limit (MaxNodes)"
+	clusterAutoscalerLimitMessage          = "Cluster Autoscaler limit (MaxNodes)"
+	missingOIDCProviderIssuerURLReason     = "The OIDC provider with issuer URL "
+	missingOIDCProviderAWSAccountReason    = " is missing from account "
+	oidcProviderRecoveryCommandDescription = "To recreate the OIDC provider, run:"
 )
 
 var fetchMessage string = "Fetching %s '%s' for cluster '%s'"
@@ -505,7 +508,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 
 	createdMachinePool, err := r.OCMClient.CreateMachinePool(cluster.ID(), machinePool)
 	if err != nil {
-		return fmt.Errorf("failed to add machine pool to cluster '%s': %v", clusterKey, err)
+		return newMachinePoolCreationError(err, clusterKey, false)
 	}
 
 	if output.HasFlag() {
@@ -1217,7 +1220,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 
 	createResult, err := r.OCMClient.CreateNodePoolWithWarnings(cluster.ID(), nodePool)
 	if err != nil {
-		return fmt.Errorf("failed to add machine pool to hosted cluster '%s': %v", clusterKey, err)
+		return newMachinePoolCreationError(err, clusterKey, true)
 	}
 	createdNodePool := createResult.NodePool
 	for _, warning := range createResult.Warnings {
@@ -1242,6 +1245,27 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	}
 
 	return nil
+}
+
+func newMachinePoolCreationError(err error, clusterKey string, hostedControlPlane bool) error {
+	clusterType := "cluster"
+	if hostedControlPlane {
+		clusterType = "hosted cluster"
+	}
+
+	creationErr := fmt.Errorf("failed to add machine pool to %s '%s': %w", clusterType, clusterKey, err)
+	return addMissingOIDCProviderGuidance(creationErr, clusterKey)
+}
+
+func addMissingOIDCProviderGuidance(err error, clusterKey string) error {
+	if err == nil ||
+		!strings.Contains(err.Error(), missingOIDCProviderIssuerURLReason) ||
+		!strings.Contains(err.Error(), missingOIDCProviderAWSAccountReason) {
+		return err
+	}
+
+	return fmt.Errorf("%w\n%s\nrosa create oidc-provider --cluster %s",
+		err, oidcProviderRecoveryCommandDescription, clusterKey)
 }
 
 // ListMachinePools lists all machinepools (or, nodepools if hypershift) in a cluster
