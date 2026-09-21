@@ -26,7 +26,7 @@ require (
 	github.com/onsi/gomega v1.43.1
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.468
 	github.com/openshift-online/ocm-common v0.0.45
-	github.com/openshift-online/ocm-sdk-go v0.1.512
+	github.com/openshift-online/ocm-sdk-go v0.1.513
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2

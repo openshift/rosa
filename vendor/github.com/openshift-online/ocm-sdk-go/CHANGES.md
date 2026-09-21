@@ -3,6 +3,14 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.513 Sep 17 2026
+
+- ROSAENG-62396 | test: trigger automate sdk release
+- ROSAENG-62396 | fix: automate sdk release - edge case address
+- ROSAENG-62396 | fix: automate sdk release - edge case address
+- ROSAENG-62396 | fix: automate sdk release
+
+
 ## 0.1.512 Sept 14 2026
 
 - chore: bump ocm-api-model to v0.0.468
