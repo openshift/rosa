@@ -107,7 +107,7 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 		ch.clusterConfig.WorkerDiskSize = fmt.Sprintf("%dGiB", pc.VolumeSize)
 	}
 
-	log.Logger.Info("✅ V2 Add Networking defaults.")
+	log.Logger.Info("V2 Add Networking defaults.")
 	// V2 always set networking defaults
 	networking := &ClusterConfigure.Networking{
 		MachineCIDR: "10.0.0.0/16",
@@ -122,7 +122,7 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 		"--host-prefix", networking.HostPrefix,
 	)
 	ch.clusterConfig.Networking = networking
-	log.Logger.Info("✅ V2 Add Networking.Type")
+	log.Logger.Info("V2 Add Networking.Type")
 	ch.clusterConfig.Networking.Type = "OVNKubernetes"
 
 	return flags, ch.saveToFile()
