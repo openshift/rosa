@@ -37,7 +37,8 @@ var _ = Describe("Validate build command", func() {
 
 	BeforeEach(func() {
 		clusterConfig = ocm.Spec{
-			Name: "cluster-name",
+			Name:  "cluster-name",
+			IsSTS: true,
 		}
 		operatorRolesPrefix = "prefix"
 		expectedOperatorRolePath = "operator-role-path"
@@ -215,13 +216,26 @@ var _ = Describe("Validate build command", func() {
 		})
 
 		When("Regular STS cluster (non-HCP)", func() {
-			It("should include --sts but not --hosted-cp", func() {
+			It("should not include --sts or --non-sts or --hosted-cp", func() {
 				clusterConfig.IsSTS = true
 				clusterConfig.Hypershift.Enabled = false
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
 					defaultMachinePoolLabels, argsDotProperties)
-				Expect(command).To(ContainSubstring("--sts"))
+				Expect(command).NotTo(ContainSubstring("--sts"))
+				Expect(command).NotTo(ContainSubstring("--non-sts"))
+				Expect(command).NotTo(ContainSubstring("--hosted-cp"))
+			})
+		})
+
+		When("Non-STS non-HCP cluster (IAM mode)", func() {
+			It("should include --non-sts but not --hosted-cp", func() {
+				clusterConfig.IsSTS = false
+				clusterConfig.Hypershift.Enabled = false
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(ContainSubstring("--non-sts"))
 				Expect(command).NotTo(ContainSubstring("--hosted-cp"))
 			})
 		})
@@ -357,6 +371,74 @@ var _ = Describe("Create cluster command flags", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mock.IsHostedCP(hcpCluster)).To(BeTrue(),
 			"HCP cluster must pass the spot-termination-queue-url guard")
+	})
+})
+
+var _ = Describe("resolveSTSMode", func() {
+	var cmd *cobra.Command
+
+	BeforeEach(func() {
+		cmd = makeCmd()
+		initFlags(cmd)
+		args.sts = true
+		args.nonSts = false
+		args.roleARN = ""
+	})
+
+	It("defaults to STS when no flags are set", func() {
+		isSTS, isIAM, err := resolveSTSMode(cmd, false)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(isSTS).To(BeTrue())
+		Expect(isIAM).To(BeFalse())
+	})
+
+	It("selects IAM when --non-sts is passed", func() {
+		args.nonSts = true
+		isSTS, isIAM, err := resolveSTSMode(cmd, false)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(isSTS).To(BeFalse())
+		Expect(isIAM).To(BeTrue())
+	})
+
+	It("selects IAM when --mint-mode is passed", func() {
+		args.nonSts = true
+		isSTS, isIAM, err := resolveSTSMode(cmd, false)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(isSTS).To(BeFalse())
+		Expect(isIAM).To(BeTrue())
+	})
+
+	It("errors when --sts and --non-sts are both explicitly set", func() {
+		Expect(cmd.Flags().Set("sts", "true")).To(Succeed())
+		args.nonSts = true
+		_, _, err := resolveSTSMode(cmd, false)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("can't use both STS and mint mode"))
+	})
+
+	It("selects IAM when --sts=false is explicitly passed", func() {
+		Expect(cmd.Flags().Set("sts", "false")).To(Succeed())
+		isSTS, isIAM, err := resolveSTSMode(cmd, false)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(isSTS).To(BeFalse())
+		Expect(isIAM).To(BeTrue())
+	})
+
+	It("always selects STS for HCP clusters", func() {
+		args.nonSts = false
+		isSTS, isIAM, err := resolveSTSMode(cmd, true)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(isSTS).To(BeTrue())
+		Expect(isIAM).To(BeFalse())
+	})
+
+	It("selects STS when --role-arn is provided", func() {
+		args.sts = false
+		args.roleARN = "arn:aws:iam::123456789012:role/my-role"
+		isSTS, isIAM, err := resolveSTSMode(cmd, false)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(isSTS).To(BeTrue())
+		Expect(isIAM).To(BeFalse())
 	})
 })
 
