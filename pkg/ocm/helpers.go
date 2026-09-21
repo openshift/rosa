@@ -68,6 +68,10 @@ const (
 	OCMRoleLabel  = "sts_ocm_role"
 	USERRoleLabel = "sts_user_role"
 
+	// ocmRoleAdvisoryURL backs the CLI warning shown to organizations that
+	// have not yet linked an OCM role, per https://access.redhat.com/articles/7137057.
+	ocmRoleAdvisoryURL = "https://access.redhat.com/articles/7137057"
+
 	MaxClusterNameLength         = 54
 	MaxClusterDomainPrefixLength = 15
 
@@ -620,6 +624,55 @@ func (c *Client) CheckIfAWSAccountExists(orgID string, awsAccountID string) (boo
 		}
 	}
 	return exists, existingARN, selectedARN, nil
+}
+
+// isOCMRoleCompliant reports whether awsAccountID has a properly configured OCM role linked to
+// the current organization. A role is only considered properly configured when its ARN both
+// belongs to awsAccountID and ends in "-OCM-Role-$EXTERNAL_ORG_ID", matching the criteria
+// documented at https://access.redhat.com/articles/7137057. The second return value is false
+// when the check could not be completed (e.g. forbidden, no organization); callers should treat
+// that as "skip warning" rather than "non-compliant".
+func (c *Client) isOCMRoleCompliant(reporter reporter.Logger, awsAccountID string) (compliant bool, checked bool) {
+	orgID, externalID, err := c.GetCurrentOrganization()
+	if err != nil {
+		reporter.Debugf("Failed to check OCM role linkage for account '%s': %v", awsAccountID, err)
+		return false, false
+	}
+	linked, _, selectedARN, err := c.CheckIfAWSAccountExists(orgID, awsAccountID)
+	if err != nil {
+		if errors.GetType(err) == errors.Forbidden {
+			reporter.Debugf("Skipping OCM role linkage check for account '%s': %v", awsAccountID, err)
+			return false, false
+		}
+		reporter.Debugf("Failed to check OCM role linkage for account '%s': %v", awsAccountID, err)
+		return false, false
+	}
+	return linked && strings.HasSuffix(selectedARN, fmt.Sprintf("-%s-Role-%s", aws.OCMRole, externalID)), true
+}
+
+// WarnIfOCMRoleNotLinked prints a non-fatal warning, phrased for an action on an existing
+// cluster, if the current organization does not have a properly configured OCM role linked for
+// awsAccountID. This never blocks or prompts, so scripted usage is unaffected.
+func (c *Client) WarnIfOCMRoleNotLinked(reporter reporter.Logger, awsAccountID string) {
+	compliant, checked := c.isOCMRoleCompliant(reporter, awsAccountID)
+	if checked && !compliant {
+		reporter.Warnf("Missing or unlinked OCM role: The organization that owns this cluster does not " +
+			"currently have an OCM Role configured for the AWS account the cluster is deployed to. " +
+			"The OCM role will soon be required. Learn more: " + ocmRoleAdvisoryURL)
+	}
+}
+
+// WarnIfOCMRoleNotLinkedForAccount prints a non-fatal warning, phrased for an account-level
+// action taken before any cluster exists (e.g. `create cluster`), if the current organization
+// does not have a properly configured OCM role linked for awsAccountID. This never blocks or
+// prompts, so scripted usage is unaffected.
+func (c *Client) WarnIfOCMRoleNotLinkedForAccount(reporter reporter.Logger, awsAccountID string) {
+	compliant, checked := c.isOCMRoleCompliant(reporter, awsAccountID)
+	if checked && !compliant {
+		reporter.Warnf("Your organization does not currently have an OCM Role configured for the AWS "+
+			"account %s. The OCM role will soon be required. Learn more: %s",
+			awsAccountID, ocmRoleAdvisoryURL)
+	}
 }
 
 /*

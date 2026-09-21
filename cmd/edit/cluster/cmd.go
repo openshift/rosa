@@ -282,6 +282,7 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	r.OCMClient.WarnIfOCMRoleNotLinked(r.Reporter, r.Creator.AccountID)
 	err := runWithRuntime(r, cmd)
 	if err != nil {
 		r.Reporter.Errorf(err.Error())

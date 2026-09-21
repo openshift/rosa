@@ -69,6 +69,8 @@ func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	r.OCMClient.WarnIfOCMRoleNotLinked(r.Reporter, r.Creator.AccountID)
+
 	clusterKey := r.GetClusterKey()
 
 	cluster := r.FetchCluster()
