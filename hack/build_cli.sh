@@ -24,6 +24,11 @@ cdn_archive_name() {
 }
 
 build_release() {
+# Resolve exact tag on HEAD (stable or prerelease). Prerelease builds
+# intentionally report the prerelease version (e.g. 1.2.66-rc1).
+release_version=$(git describe --tags --exact-match 2>/dev/null || true)
+release_version=${release_version#v}
+
 for os in "${oses[@]}"
 do
   for arch in "${archs[@]}"
@@ -34,7 +39,7 @@ do
     fi
     tmpdir=$(mktemp -d)
     trap 'rm -rf "$tmpdir"' EXIT
-    GOOS="${os}" GOARCH="${arch}" go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(git rev-parse --short HEAD)" -o "${tmpdir}/rosa${extension}" ./cmd/rosa
+    GOOS="${os}" GOARCH="${arch}" go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(git rev-parse --short HEAD)${release_version:+ -X github.com/openshift/rosa/pkg/info.DefaultVersion=${release_version}}" -o "${tmpdir}/rosa${extension}" ./cmd/rosa
     archive_name=$(cdn_archive_name "${os}" "${arch}")
     tar -czf "releases/${archive_name}" -C "${tmpdir}" "rosa${extension}"
     (
