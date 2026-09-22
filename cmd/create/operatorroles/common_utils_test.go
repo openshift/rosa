@@ -31,13 +31,12 @@ var _ = Describe("Create dns domain", func() {
 		runtime = rosa.NewRuntime()
 		mockClient = aws.NewMockClient(ctrl)
 		runtime.AWSClient = mockClient
-		mockClient.EXPECT().GetCreator().Return(&aws.Creator{Partition: testPartition}, nil)
+		runtime.Creator = &aws.Creator{
+			Partition: testPartition,
+			AccountID: "123123123123",
+		}
 
 		mockClient.EXPECT().IsPolicyExists(gomock.Any()).Return(nil, nil).AnyTimes()
-
-		creator, err := runtime.AWSClient.GetCreator()
-		Expect(err).ToNot(HaveOccurred())
-		runtime.Creator = creator
 	})
 	AfterEach(func() {
 		ctrl.Finish()
@@ -80,10 +79,6 @@ var _ = Describe("validateIngressOperatorPolicyOverride", func() {
 		runtime = rosa.NewRuntime()
 		mockClient = aws.NewMockClient(ctrl)
 		runtime.AWSClient = mockClient
-		mockClient.EXPECT().GetCreator().Return(&aws.Creator{Partition: "aws"}, nil)
-		creator, err := runtime.AWSClient.GetCreator()
-		Expect(err).ToNot(HaveOccurred())
-		runtime.Creator = creator
 	})
 
 	AfterEach(func() {
@@ -130,6 +125,26 @@ var _ = Describe("validateIngressOperatorPolicyOverride", func() {
 			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
 			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when a later statement has an unexpected shared VPC role ARN", func() {
+			differentArn := "arn:aws:iam::111111111111:role/other-role"
+			doc := fmt.Sprintf(`{
+				"Version": "2012-10-17",
+				"Statement": [{
+					"Effect": "Allow",
+					"Action": "s3:GetObject",
+					"Resource": "arn:aws:s3:::my-bucket/*"
+				}, {
+					"Effect": "Allow",
+					"Action": "sts:AssumeRole",
+					"Resource": "%s"
+				}]
+			}`, differentArn)
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unexpected shared VPC role ARN"))
 		})
 
 		It("returns error when policy has different shared VPC role ARN", func() {

@@ -1,3 +1,6 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package roles
 
 import (
@@ -62,6 +65,34 @@ var _ = Describe("GetInstallerRoleArn", func() {
 		GetInstallerRoleArn(runtime, cmd, "", "4.14", finder)
 		Expect(capturedRoleType).To(Equal(aws.InstallerAccountRole))
 		Expect(capturedMinVersion).To(Equal("4.14"))
+	})
+
+	It("selects the first role when multiple roles have no default prefix and --yes", func() {
+		firstArn := "arn:aws:iam::123456789012:role/custom-one-Installer-Role"
+		secondArn := "arn:aws:iam::123456789012:role/custom-two-Installer-Role"
+
+		finder := func(roleType string, minVersion string) ([]string, error) {
+			return []string{firstArn, secondArn}, nil
+		}
+
+		Expect(cmd.Flags().Set("yes", "true")).To(Succeed())
+		result := GetInstallerRoleArn(runtime, cmd, "", "", finder)
+		Expect(result).To(Equal(firstArn))
+	})
+
+	It("ignores malformed role ARNs and selects the default-prefixed role with --yes", func() {
+		role := aws.AccountRoles[aws.InstallerAccountRole]
+		defaultPrefixArn := fmt.Sprintf(
+			"arn:aws:iam::123456789012:role/%s-%s-Role", aws.DefaultPrefix, role.Name,
+		)
+
+		finder := func(roleType string, minVersion string) ([]string, error) {
+			return []string{"not-an-arn", defaultPrefixArn}, nil
+		}
+
+		Expect(cmd.Flags().Set("yes", "true")).To(Succeed())
+		result := GetInstallerRoleArn(runtime, cmd, "", "", finder)
+		Expect(result).To(Equal(defaultPrefixArn))
 	})
 
 	It("prioritizes the role with default prefix when multiple roles and --yes", func() {

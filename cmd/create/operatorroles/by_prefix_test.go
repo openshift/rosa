@@ -1,3 +1,6 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package operatorroles
 
 import (
@@ -22,13 +25,6 @@ var _ = Describe("create operator-roles by prefix", func() {
 		runtime = rosa.NewRuntime()
 		mockClient = aws.NewMockClient(ctrl)
 		runtime.AWSClient = mockClient
-		mockClient.EXPECT().GetCreator().Return(&aws.Creator{
-			Partition: "aws",
-			AccountID: "123456789012",
-		}, nil)
-		creator, err := runtime.AWSClient.GetCreator()
-		Expect(err).ToNot(HaveOccurred())
-		runtime.Creator = creator
 
 		interactive.SetEnabled(false)
 		args = struct {
@@ -114,7 +110,9 @@ var _ = Describe("create operator-roles by prefix", func() {
 			Expect(roleList).To(HaveLen(1))
 			Expect(roleList[0].Name()).To(Equal("cloud-credentials"))
 			Expect(roleList[0].Namespace()).To(Equal("openshift-cloud-credential-operator"))
-			Expect(roleList[0].RoleARN()).ToNot(BeEmpty())
+			Expect(roleList[0].RoleARN()).To(Equal(aws.ComputeOperatorRoleArn(
+				"test-prefix", operator, creator, "",
+			)))
 		})
 
 		It("converts multiple credential requests", func() {
@@ -144,6 +142,19 @@ var _ = Describe("create operator-roles by prefix", func() {
 			)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(roleList).To(HaveLen(2))
+
+			rolesByName := map[string]*cmv1.OperatorIAMRole{}
+			for _, role := range roleList {
+				rolesByName[role.Name()] = role
+			}
+			Expect(rolesByName["cred1"].Namespace()).To(Equal("ns1"))
+			Expect(rolesByName["cred1"].RoleARN()).To(Equal(aws.ComputeOperatorRoleArn(
+				"multi-prefix", op1, creator, "/path/",
+			)))
+			Expect(rolesByName["cred2"].Namespace()).To(Equal("ns2"))
+			Expect(rolesByName["cred2"].RoleARN()).To(Equal(aws.ComputeOperatorRoleArn(
+				"multi-prefix", op2, creator, "/path/",
+			)))
 		})
 
 		It("returns empty list when no credential requests provided", func() {
