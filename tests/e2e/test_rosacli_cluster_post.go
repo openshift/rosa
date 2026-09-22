@@ -365,7 +365,8 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("with compute_machine_type will work - [id:75150]",
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					By("Check compute machine type")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -374,7 +375,8 @@ var _ = Describe("Healthy check",
 						Equal(clusterConfig.Nodes.ComputeInstanceType))
 				})
 
-			It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("with multiAZ will work - [id:75535]",
+				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
@@ -625,7 +627,8 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("cluster is multiarch - [id:75108]",
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					By("Check cluster is multiarch")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
