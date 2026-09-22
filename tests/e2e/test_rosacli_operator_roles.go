@@ -13,6 +13,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+
 	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck
@@ -53,7 +54,6 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			By("Get the cluster id")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
-
 			By("Get the default dir")
 			defaultDir = rosaClient.Runner.GetDir()
 		})
@@ -67,7 +67,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("to delete in-used operator-roles and byo oidc-config  [id:74761]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, func() {
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.InProgress, func() {
 				By("Get cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -86,7 +86,12 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				rosaClient.Runner.UnsetFormat()
 				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
 				oidcConfigID := jsonData.DigString("aws", "sts", "oidc_config", "id")
-				operatorRolePrefix := jsonData.DigString("aws", "sts", "operator_role_prefix")
+				// Note: Field name is "operator_roles_prefix" (with 's'), not "operator_role_prefix"
+				operatorRolePrefix := jsonData.DigString("aws", "sts", "operator_roles_prefix")
+
+				if operatorRolePrefix == "" {
+					operatorRolePrefix = clusterConfig.Aws.Sts.OperatorRolesPrefix
+				}
 
 				By("Delete in-used operator roles by prefix in auto mode")
 				_, err = ocmResourceService.DeleteOperatorRoles(
