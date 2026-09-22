@@ -36,8 +36,15 @@ var _ = Describe("Edit OIDC config",
 		})
 
 		It("can create/list/delete BYO oidc config in auto mode - [id:57570]",
-			labels.High, labels.Runtime.OCMResources,
+			labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.Validated,
 			func() {
+
+				if os.Getenv("HYPERFLEET_URL") != "" {
+					// is hyperfleet v2
+					helper_v2_oidc_configs(rosaClient, ocmResourceService)
+					return
+				}
+
 				defer func() {
 					By("make sure that all oidc configs created during the testing")
 					if len(oidcConfigIDsNeedToClean) > 0 {
@@ -344,3 +351,63 @@ var _ = Describe("Register ummanaged oidc config testing",
 			oidcConfigID = foundOIDCConfig.ID
 		})
 	})
+
+// helper_v2_oidc_configs tests V2 OIDC config creation
+// NOTE: V2 doesn't use account-roles (that's V1/OCM only), so we only test managed OIDC configs
+func helper_v2_oidc_configs(rosaClient *rosacli.Client, ocmResourceService rosacli.OCMResourceService) {
+	var (
+		oidcConfigIDsNeedToClean []string
+		managedOIDCConfigID      string
+	)
+
+	defer func() {
+		By("Clean up V2 OIDC configs")
+		if len(oidcConfigIDsNeedToClean) > 0 {
+			for _, id := range oidcConfigIDsNeedToClean {
+				By(fmt.Sprintf("Delete OIDC config: %s", id))
+				// rosa delete oidc-config --oidc-config-id <id> --mode auto -y
+				output, err := ocmResourceService.DeleteOIDCConfig(
+					"--oidc-config-id", id,
+					"--mode", "auto",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).Should(Or(
+					ContainSubstring("Successfully deleted"),
+					ContainSubstring("deleted successfully"),
+				))
+			}
+		}
+	}()
+
+	By("Create V2 managed OIDC config in auto mode")
+	// rosa create oidc-config --mode auto -y
+	// NOTE: Managed OIDC configs don't require installer-role-arn (V2 doesn't use account-roles)
+	output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+	Expect(err).To(BeNil())
+	textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+	Expect(textData).Should(Or(
+		ContainSubstring("created successfully"),
+		ContainSubstring("OIDC config"),
+	))
+
+	By("List OIDC configs to find the created config")
+	// rosa list oidc-config
+	oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
+	Expect(err).To(BeNil())
+
+	// V2 uses "TYPE" column (not "MANAGED"), and the table parser won't populate the Managed field
+	// Just grab the first config since we just created it
+	Expect(len(oidcConfigList.OIDCConfigList)).To(BeNumerically(">", 0), "No OIDC configs found after creation")
+	managedOIDCConfigID = oidcConfigList.OIDCConfigList[0].ID
+	oidcConfigIDsNeedToClean = append(oidcConfigIDsNeedToClean, managedOIDCConfigID)
+
+	By("Verify OIDC config was created")
+	foundOIDCConfig := oidcConfigList.OIDCConfig(managedOIDCConfigID)
+	Expect(foundOIDCConfig).NotTo(Equal(rosacli.OIDCConfig{}))
+	Expect(foundOIDCConfig.ID).To(Equal(managedOIDCConfigID))
+	Expect(foundOIDCConfig.IssuerUrl).NotTo(BeEmpty())
+
+	By("V2 OIDC config test completed successfully")
+}
