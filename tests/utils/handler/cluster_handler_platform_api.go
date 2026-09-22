@@ -106,6 +106,25 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 	if pc.VolumeSize != 0 {
 		ch.clusterConfig.WorkerDiskSize = fmt.Sprintf("%dGiB", pc.VolumeSize)
 	}
+
+	log.Logger.Info("V2 Add Networking defaults.")
+	// V2 always set networking defaults
+	networking := &ClusterConfigure.Networking{
+		MachineCIDR: "10.0.0.0/16",
+		PodCIDR:     "10.128.0.0/14",
+		ServiceCIDR: "172.31.0.0/24",
+		HostPrefix:  "23",
+	}
+	flags = append(flags,
+		"--machine-cidr", networking.MachineCIDR, // Placeholder, it should be vpc CIDR
+		"--service-cidr", networking.ServiceCIDR,
+		"--pod-cidr", networking.PodCIDR,
+		"--host-prefix", networking.HostPrefix,
+	)
+	ch.clusterConfig.Networking = networking
+	log.Logger.Info("V2 Add Networking.Type")
+	ch.clusterConfig.Networking.Type = "OVNKubernetes"
+
 	return flags, ch.saveToFile()
 }
 
@@ -190,17 +209,19 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 		ch.clusterDetail.InfraID = description.InfraID
 
 		phase := strings.TrimSpace(description.State)
-		switch phase {
-		case string(v1alpha1.ClusterPhaseReady):
+		// Normalize to lowercase for case-insensitive comparison (V2 API returns lowercase)
+		phaseLower := strings.ToLower(phase)
+		switch phaseLower {
+		case strings.ToLower(string(v1alpha1.ClusterPhaseReady)):
 			log.Logger.Infof("Cluster %s is ready now.", clusterKey)
 			if err := ch.createHyperfleetNodePoolsAfterReady(); err != nil {
 				return err
 			}
 			ch.recordHyperfleetClusterVersion(clusterKey)
 			return nil
-		case string(v1alpha1.ClusterPhaseDeleting):
+		case strings.ToLower(string(v1alpha1.ClusterPhaseDeleting)):
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready", clusterKey, phase)
-		case string(v1alpha1.ClusterPhaseWaitingForPlacement), string(v1alpha1.ClusterPhaseProvisioning), "":
+		case strings.ToLower(string(v1alpha1.ClusterPhaseWaitingForPlacement)), strings.ToLower(string(v1alpha1.ClusterPhaseProvisioning)), "":
 			log.Logger.Infof("Cluster %s phase is %q, waiting for Ready", clusterKey, phase)
 			time.Sleep(2 * time.Minute)
 		default:

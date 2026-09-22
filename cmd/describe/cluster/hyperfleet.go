@@ -12,6 +12,7 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -22,11 +23,65 @@ var (
 	hfEnabled         = hyperfleet.Enabled
 	exitFn            = func(code int) { os.Exit(code) }
 	hfDescribeCluster = func(cmd *cobra.Command, argv []string) {
-		r := rosa.NewRuntime().WithHyperFleet()
+		r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
 		defer r.Cleanup()
 		runHyperfleetDescribe(r, cmd, argv)
 	}
 )
+
+// deriveNodePoolAvailabilityZones queries AWS to determine availability zones from nodepool subnet IDs.
+// NOTE: V1 (OCM) stores AZ directly on nodepool.AvailabilityZone().
+// V2 (Hyperfleet) stores only subnet ID, requiring AWS lookup.
+// TODO: Consider adding AZ field to Hyperfleet NodePool status to avoid AWS API calls during describe.
+func deriveNodePoolAvailabilityZones(ctx context.Context, r *rosa.Runtime, cluster *v1alpha1.Cluster, npList *v1alpha1.NodePoolList) map[string]struct{} {
+	azMap := make(map[string]struct{})
+	if npList == nil || len(npList.Items) == 0 {
+		return azMap
+	}
+
+	// Get cluster region
+	if cluster.Spec.HostedCluster.Platform.AWS == nil || cluster.Spec.HostedCluster.Platform.AWS.Region == "" {
+		r.Reporter.Warnf("Cluster region not available, cannot determine data plane availability")
+		return azMap
+	}
+	clusterRegion := cluster.Spec.HostedCluster.Platform.AWS.Region
+
+	// Create a region-specific AWS client if the cluster region differs from the current client region
+	// This ensures subnet queries work correctly
+	awsClient := r.AWSClient
+	if r.AWSClient != nil && r.AWSClient.GetRegion() != clusterRegion {
+		// Create a new AWS client for the cluster's region
+		regionClient, err := aws.NewClient().
+			Logger(r.Logger).
+			Region(clusterRegion).
+			Build()
+		if err != nil {
+			r.Reporter.Warnf("Failed to create AWS client for region %s: %v", clusterRegion, err)
+			return azMap
+		}
+		awsClient = regionClient
+	}
+
+	// Query AWS to get availability zone for each nodepool's subnet
+	for _, np := range npList.Items {
+		if np.Spec.NodePool.Platform.AWS != nil &&
+			np.Spec.NodePool.Platform.AWS.Subnet.ID != nil &&
+			*np.Spec.NodePool.Platform.AWS.Subnet.ID != "" {
+
+			subnetID := *np.Spec.NodePool.Platform.AWS.Subnet.ID
+			az, err := awsClient.GetSubnetAvailabilityZone(subnetID)
+			if err != nil {
+				r.Reporter.Warnf("Failed to get availability zone for subnet %s: %v", subnetID, err)
+				continue
+			}
+			if az != "" {
+				azMap[az] = struct{}{}
+			}
+		}
+	}
+
+	return azMap
+}
 
 func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 	ctx := context.Background()
@@ -54,13 +109,25 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 		exitFn(1)
 	}
 
+	// Get nodepools to determine data plane availability
+	nodePools := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(string(cluster.UID))
+	npList, err := nodePools.List(ctx, platform.ListOptions{})
+	if err != nil {
+		r.Reporter.Warnf("Failed to list nodepools: %v", err)
+		npList = nil
+	}
+
+	// Derive availability zones from subnet IDs
+	// NOTE: V1 (OCM) stores AZ directly on nodepool; V2 (Hyperfleet) requires AWS subnet lookup
+	// TODO: Consider adding AZ field to Hyperfleet NodePool status to avoid AWS API calls
+	dataPlaneAZs := deriveNodePoolAvailabilityZones(ctx, r, cluster, npList)
+
 	if output.HasFlag() {
 		instanceType := ""
-		list, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterID).List(ctx, platform.ListOptions{})
-		if err == nil {
-			instanceType = hfDefaultNodePoolInstanceTypeFromList(list)
+		if npList != nil {
+			instanceType = hfDefaultNodePoolInstanceTypeFromList(npList)
 		}
-		m := hfClusterToMap(cluster, instanceType)
+		m := hfClusterToMap(cluster, dataPlaneAZs, npList, instanceType)
 		if err := output.Print(m); err != nil {
 			r.Reporter.Errorf("%s", err)
 			exitFn(1)
@@ -68,7 +135,7 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 		return
 	}
 
-	fmt.Print(hfClusterToString(cluster))
+	fmt.Print(hfClusterToString(cluster, dataPlaneAZs, npList))
 }
 
 func hfDefaultNodePoolInstanceTypeFromList(list *v1alpha1.NodePoolList) string {
@@ -86,7 +153,7 @@ func hfDefaultNodePoolInstanceTypeFromList(list *v1alpha1.NodePoolList) string {
 
 // hfClusterToMap converts a hyperfleet Cluster to a generic map suitable for
 // JSON/YAML structured output, mirroring the shape of formatClusterHypershift.
-func hfClusterToMap(c *v1alpha1.Cluster, defaultNodePoolInstanceType string) map[string]interface{} {
+func hfClusterToMap(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, npList *v1alpha1.NodePoolList, defaultNodePoolInstanceType string) map[string]interface{} {
 	aws := c.Spec.HostedCluster.Platform.AWS
 
 	rolesRef := map[string]string{}
@@ -104,11 +171,46 @@ func hfClusterToMap(c *v1alpha1.Cluster, defaultNodePoolInstanceType string) map
 	apiURL := hfAPIURL(c)
 	apiListening := hfAPIListening(aws)
 
+	networking := map[string]interface{}{}
+	net := c.Spec.HostedCluster.Networking
+	if net.NetworkType != "" {
+		networking["network_type"] = net.NetworkType
+	}
+	if len(net.ClusterNetwork) > 0 {
+		networking["cluster_network"] = net.ClusterNetwork
+	}
+	if len(net.ServiceNetwork) > 0 {
+		networking["service_network"] = net.ServiceNetwork
+	}
+	if len(net.MachineNetwork) > 0 {
+		networking["machine_network"] = net.MachineNetwork
+	}
+	if net.APIServer != nil {
+		apiServer := map[string]interface{}{}
+		if net.APIServer.AdvertiseAddress != nil && *net.APIServer.AdvertiseAddress != "" {
+			apiServer["advertise_address"] = *net.APIServer.AdvertiseAddress
+		}
+		if net.APIServer.Port != nil && *net.APIServer.Port != 0 {
+			apiServer["port"] = *net.APIServer.Port
+		}
+		if len(net.APIServer.AllowedCIDRBlocks) > 0 {
+			apiServer["allowed_cidr_blocks"] = net.APIServer.AllowedCIDRBlocks
+		}
+		if len(apiServer) > 0 {
+			networking["api_server"] = apiServer
+		}
+	}
+
+	// Format DNS as a single string to match OCM-based cluster describe output
+	// The test expects DNS to be a string, not a nested object
+	// Use Status.BaseDomain which is populated by the operator
+	dnsString := c.Status.BaseDomain
+
 	m := map[string]interface{}{
 		"id":            string(c.UID),
 		"name":          c.Name,
 		"control_plane": "ROSA Service Hosted",
-		"state":         string(c.Status.Phase),
+		"state":         strings.ToLower(string(c.Status.Phase)), // Normalize to lowercase to match V1 (OCM)
 		"created_at":    c.CreationTimestamp.UTC().Format(time.RFC3339),
 		"hypershift": map[string]interface{}{
 			"enabled": true,
@@ -124,6 +226,13 @@ func hfClusterToMap(c *v1alpha1.Cluster, defaultNodePoolInstanceType string) map
 			"url":       apiURL,
 			"listening": apiListening,
 		}
+	}
+
+	if dnsString != "" {
+		m["dns"] = dnsString
+	}
+	if len(networking) > 0 {
+		m["networking"] = networking
 	}
 
 	if aws != nil {
@@ -199,7 +308,7 @@ func hfClusterToMap(c *v1alpha1.Cluster, defaultNodePoolInstanceType string) map
 
 // hfClusterToString formats a hyperfleet Cluster as a human-readable string,
 // following the same label-alignment style as rosa describe cluster.
-func hfClusterToString(c *v1alpha1.Cluster) string {
+func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, npList *v1alpha1.NodePoolList) string {
 	aws := c.Spec.HostedCluster.Platform.AWS
 
 	region := ""
@@ -225,11 +334,18 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 		fips = "Enabled"
 	}
 
+	// Format DNS string
+	dnsStr := c.Status.BaseDomain
+	if dnsStr == "" {
+		dnsStr = "Not ready"
+	}
+
 	s := fmt.Sprintf("\n"+
 		"Name:                       %s\n"+
 		"ID:                         %s\n"+
 		"Control Plane:              %s\n"+
 		"OpenShift Version:          %s\n"+
+		"DNS:                        %s\n"+
 		"API URL:                    %s\n"+
 		"Region:                     %s\n"+
 		"VPC:                        %s\n"+
@@ -242,12 +358,13 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 		string(c.UID),
 		"ROSA Service Hosted",
 		c.Status.Version,
+		dnsStr,
 		apiURL,
 		region,
 		vpc,
 		subnet,
 		oidcLine,
-		string(c.Status.Phase),
+		strings.ToLower(string(c.Status.Phase)), // Normalize to lowercase to match V1 (OCM)
 		output.PrintBool(hfAPIListening(aws) == "internal"),
 		fips,
 	)
@@ -267,6 +384,85 @@ func hfClusterToString(c *v1alpha1.Cluster) string {
 		s += fmt.Sprintf("Expiration:                 %s\n",
 			c.Spec.ExpirationTimestamp.UTC().Format("2006-01-02 15:04:05 UTC"))
 	}
+
+	// Availability - HCP control plane is always MultiAZ
+	// Data plane depends on nodepool subnet availability zones
+	dataPlaneAvailability := "SingleAZ"
+	if len(dataPlaneAZs) > 1 {
+		dataPlaneAvailability = "MultiAZ"
+	} else if len(dataPlaneAZs) == 0 {
+		// No AZ information available (e.g., AWS query failed or no nodepools)
+		dataPlaneAvailability = "Unknown"
+	}
+	s += fmt.Sprintf("Availability:\n"+
+		" - Control Plane:           MultiAZ\n"+
+		" - Data Plane:              %s\n",
+		dataPlaneAvailability)
+
+	// Nodes section - aggregate compute node information from nodepools
+	// NOTE: V2 API doesn't yet expose:
+	//   - Autoscaling configuration (min/max replicas) in NodePoolSpecPassthrough
+	//   - Current replicas in NodePoolStatus
+	// V1 (OCM) shows both desired and current replicas, plus autoscaling range
+	// TODO: Update when V2 API exposes status.replicas and autoscaling fields to match V1
+	if npList != nil && len(npList.Items) > 0 {
+		desiredNodes := int32(0)
+		for _, np := range npList.Items {
+			if np.Spec.NodePool.Replicas != nil {
+				desiredNodes += *np.Spec.NodePool.Replicas
+			}
+		}
+		// Show desired only until V2 API exposes current replicas in status
+		s += fmt.Sprintf("Nodes:\n"+
+			" - Compute (desired):       %d\n",
+			desiredNodes)
+	}
+
+	// Network section - format to match V1 (OCM) output for test compatibility
+	// The test expects: Type, Service CIDR, Machine CIDR, Pod CIDR, Host Prefix, Subnets
+	net := c.Spec.HostedCluster.Networking
+
+	// Extract network values with defaults
+	networkType := net.NetworkType
+	serviceCIDR := ""
+	if len(net.ServiceNetwork) > 0 {
+		serviceCIDR = net.ServiceNetwork[0].CIDR.String()
+	}
+	machineCIDR := ""
+	if len(net.MachineNetwork) > 0 {
+		machineCIDR = net.MachineNetwork[0].CIDR.String()
+	}
+	podCIDR := ""
+	hostPrefix := int32(0)
+	if len(net.ClusterNetwork) > 0 {
+		podCIDR = net.ClusterNetwork[0].CIDR.String()
+		hostPrefix = net.ClusterNetwork[0].HostPrefix
+	}
+
+	// Get subnet from cluster AWS config
+	subnetID := ""
+	if aws != nil && aws.CloudProviderConfig != nil && aws.CloudProviderConfig.Subnet != nil && aws.CloudProviderConfig.Subnet.ID != nil {
+		subnetID = *aws.CloudProviderConfig.Subnet.ID
+	}
+
+	// Build Network section in V1 format
+	s += "Network:\n"
+	// Always include Type - default to empty string if not set
+	s += fmt.Sprintf(" - Type:                    %s\n", networkType)
+	s += fmt.Sprintf(" - Service CIDR:            %s\n", serviceCIDR)
+	s += fmt.Sprintf(" - Machine CIDR:            %s\n", machineCIDR)
+	s += fmt.Sprintf(" - Pod CIDR:                %s\n", podCIDR)
+	if hostPrefix != 0 {
+		s += fmt.Sprintf(" - Host Prefix:             /%d\n", hostPrefix)
+	}
+	if subnetID != "" {
+		s += fmt.Sprintf(" - Subnets:                 %s\n", subnetID)
+	}
+
+	// NOTE: Account-level STS roles (Installer, Support, Worker) are not used in V2 yet
+	// V1 (OCM) shows: Role (STS) ARN, Support Role ARN, Instance IAM Roles
+	// V2 (Hyperfleet) doesn't require these account-level roles
+	// These sections are intentionally omitted for V2 clusters
 
 	if aws != nil {
 		var roles []string

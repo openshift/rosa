@@ -259,6 +259,7 @@ func (in *HostedClusterSpecPassthrough) DeepCopyInto(out *HostedClusterSpecPasst
 	*out = *in
 	out.Release = in.Release
 	in.Platform.DeepCopyInto(&out.Platform)
+	in.DNS.DeepCopyInto(&out.DNS)
 	in.Networking.DeepCopyInto(&out.Networking)
 	out.AutoNode = in.AutoNode
 	if in.Configuration != nil {
