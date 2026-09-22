@@ -52,18 +52,18 @@ var _ = Describe("hyperfleet dispatch", func() {
 	var origDescribe func(*DescribeMachinepoolUserOptions, []string)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origDescribe = hfDescribeMachinePool
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfDescribeMachinePool = origDescribe
 	})
 
 	It("routes to hfDescribeMachinePool when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfDescribeMachinePool = func(_ *DescribeMachinepoolUserOptions, _ []string) { called = true }
 
 		cmd := NewDescribeMachinePoolCommand()

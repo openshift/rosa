@@ -13,18 +13,18 @@ var _ = Describe("hyperfleet dispatch", func() {
 	var origCreate func(*mpOpts.CreateMachinepoolUserOptions, []string, *cobra.Command)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origCreate = hfCreateMachinePool
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfCreateMachinePool = origCreate
 	})
 
 	It("routes to hfCreateMachinePool when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfCreateMachinePool = func(_ *mpOpts.CreateMachinepoolUserOptions, _ []string, _ *cobra.Command) { called = true }
 
 		cmd := NewCreateMachinePoolCommand()

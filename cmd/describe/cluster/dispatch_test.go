@@ -1,8 +1,9 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package cluster
 
 import (
-	"os"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
@@ -13,31 +14,26 @@ import (
 var _ = Describe("Dispatch", func() {
 	var cmd *cobra.Command
 	var runCalled bool
-	var exitCalled bool
-	var exitCode int
+	var v2Called bool
+	var origV2 func(*cobra.Command, []string)
 
 	BeforeEach(func() {
 		cmd = &cobra.Command{}
 		runCalled = false
-		exitCalled = false
-		exitCode = 0
+		v2Called = false
+		origV2 = hfDescribeCluster
 
-		// Override v1 runner to avoid actual execution
 		runV1 = func(*cobra.Command, []string) {
 			runCalled = true
 		}
-
-		// Override exit function
-		exitWithError = func() {
-			exitCalled = true
-			exitCode = 1
+		hfDescribeCluster = func(*cobra.Command, []string) {
+			v2Called = true
 		}
 	})
 
 	AfterEach(func() {
-		// Reset to production defaults
 		runV1 = run
-		exitWithError = func() { os.Exit(1) }
+		hfDescribeCluster = origV2
 		hyperfleetEnabled = hyperfleet.Enabled
 	})
 
@@ -49,11 +45,7 @@ var _ = Describe("Dispatch", func() {
 		It("should call the v1 run function", func() {
 			dispatch(cmd, []string{})
 			Expect(runCalled).To(BeTrue())
-		})
-
-		It("should not call exit", func() {
-			dispatch(cmd, []string{})
-			Expect(exitCalled).To(BeFalse())
+			Expect(v2Called).To(BeFalse())
 		})
 	})
 
@@ -67,10 +59,9 @@ var _ = Describe("Dispatch", func() {
 			Expect(runCalled).To(BeFalse())
 		})
 
-		It("should call exit with status 1", func() {
+		It("should call the v2 runner", func() {
 			dispatch(cmd, []string{})
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(1))
+			Expect(v2Called).To(BeTrue())
 		})
 	})
 })

@@ -27,8 +27,7 @@ const clusterNamespacePrefix = "cluster-"
 var hfNodePoolInput hfpathbind.NodePoolCreateInput
 
 var (
-	hfEnabled = hyperfleet.Enabled
-	exitFn    = func(code int) { os.Exit(code) }
+	exitFn              = func(code int) { os.Exit(code) }
 
 	hfCreateMachinePool = func(userOptions *mpOpts.CreateMachinepoolUserOptions, argv []string, cmd *cobra.Command) {
 		r := rosa.NewRuntime().WithHyperFleet()

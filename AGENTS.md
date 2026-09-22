@@ -122,14 +122,14 @@ When adding or changing a CLI command:
 
 Each command that supports the Platform API (hyperfleet) path uses a `dispatch` function
 as the Cobra `Run:` entrypoint. The dispatch checks `hyperfleet.Enabled()` and routes to
-either the v2 runner (once implemented) or the original v1 `run()` function. Until a v2
-runner exists, the enabled path reports an unsupported-command error and exits.
+either the v2 runner or the original v1 `run()` function. Until a v2 runner exists, the
+enabled path reports an unsupported-command error and exits. Cluster and machinepool
+commands on this branch already route to existing v2 handlers from `dispatch.go`.
 
 When adding hyperfleet support to a command:
 
 - Implement the v2 logic in a separate `run_v2.go` file inside the command package.
-  Use the name `runV2` for the entrypoint function. Avoid using product names like
-  "hyperfleet" in file or function names under `cmd/` — use `v2` instead.
+  Use the name `runV2` for the entrypoint function.
 - Replace the stub error in `dispatch.go` with a call to `runV2`.
 - Do not modify the original `run()` function or add hyperfleet conditionals inside it.
 - Keep the v2 runner self-contained: it should build its own runtime

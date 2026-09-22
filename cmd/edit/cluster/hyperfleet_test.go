@@ -13,21 +13,21 @@ var _ = Describe("hyperfleet dispatch", func() {
 	)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origEditCluster = hfEditCluster
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfEditCluster = origEditCluster
 	})
 
 	It("routes to hfEditCluster when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfEditCluster = func(_ *cobra.Command) { called = true }
 
-		run(makeCmd(), nil)
+		dispatch(makeCmd(), nil)
 
 		Expect(called).To(BeTrue())
 	})

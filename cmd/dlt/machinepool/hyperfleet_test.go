@@ -11,18 +11,18 @@ var _ = Describe("hyperfleet dispatch", func() {
 	var origDelete func(*cobra.Command, *DeleteMachinepoolUserOptions, []string)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origDelete = hfDeleteMachinePool
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfDeleteMachinePool = origDelete
 	})
 
 	It("routes to hfDeleteMachinePool when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfDeleteMachinePool = func(_ *cobra.Command, _ *DeleteMachinepoolUserOptions, _ []string) { called = true }
 
 		cmd := NewDeleteMachinePoolCommand()

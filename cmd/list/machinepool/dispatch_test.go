@@ -1,32 +1,18 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package machinepool
 
 import (
-	"os"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 )
 
 var _ = Describe("Dispatch", func() {
-	var exitCalled bool
-	var exitCode int
-
-	BeforeEach(func() {
-		exitCalled = false
-		exitCode = 0
-
-		// Override exit function
-		exitWithError = func() {
-			exitCalled = true
-			exitCode = 1
-		}
-	})
-
 	AfterEach(func() {
-		// Reset to production defaults
-		exitWithError = func() { os.Exit(1) }
 		hyperfleetEnabled = hyperfleet.Enabled
 	})
 
@@ -39,28 +25,29 @@ var _ = Describe("Dispatch", func() {
 			runner := dispatch()
 			Expect(runner).NotTo(BeNil())
 		})
-
-		It("should not call exit", func() {
-			dispatch()
-			Expect(exitCalled).To(BeFalse())
-		})
 	})
 
 	Context("when hyperfleet is enabled", func() {
+		var origList func(*cobra.Command, []string)
+
 		BeforeEach(func() {
 			hyperfleetEnabled = func() bool { return true }
+			origList = hfListMachinePools
 		})
 
-		It("should call exit with status 1", func() {
-			dispatch()
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(1))
+		AfterEach(func() {
+			hfListMachinePools = origList
 		})
 
-		It("should return nil instead of a runner", func() {
+		It("should return a runner that calls the v2 handler", func() {
+			called := false
+			hfListMachinePools = func(*cobra.Command, []string) {
+				called = true
+			}
 			runner := dispatch()
-			Expect(exitCalled).To(BeTrue())
-			Expect(runner).To(BeNil())
+			Expect(runner).NotTo(BeNil())
+			runner(&cobra.Command{}, []string{})
+			Expect(called).To(BeTrue())
 		})
 	})
 })
