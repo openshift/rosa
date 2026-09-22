@@ -16,6 +16,36 @@ config:
 resources:
   cluster:
     aliases:
+      # Complex passthrough values retain their existing JSON-string Cobra representation.
+      - path: spec.hostedCluster.configuration.kubelet.kubeReserved
+        type: string
+      - path: spec.hostedCluster.configuration.kubelet.systemReserved
+        type: string
+      - path: spec.hostedCluster.configuration.machineConfig.allowedKernelArguments
+        type: string
+      - path: spec.hostedCluster.imageContentSources
+        type: string
+      - path: spec.hostedCluster.networking.apiServer.allowedCIDRBlocks
+        type: string
+      - path: spec.hostedCluster.networking.clusterNetwork
+        type: string
+      - path: spec.hostedCluster.networking.machineNetwork
+        type: string
+      - path: spec.hostedCluster.networking.serviceNetwork
+        type: string
+      - path: spec.hostedCluster.platform.aws.additionalAllowedPrincipals
+        type: string
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.subnet.filters
+        type: string
+      - path: spec.hostedCluster.platform.aws.resourceTags
+        type: string
+      - path: spec.hostedCluster.platform.aws.serviceEndpoints
+        type: string
+      - path: spec.properties
+        type: string
+      - path: spec.tags
+        type: string
+
       # ── User-settable create flags ──────────────────────────────────────────
       - path: metadata.name
         alias: name
@@ -97,6 +127,15 @@ resources:
 
   nodePool:
     aliases:
+      - path: spec.labels
+        type: string
+      - path: spec.nodePool.platform.aws.resourceTags
+        type: string
+      - path: spec.nodePool.platform.aws.securityGroups
+        type: string
+      - path: spec.nodePool.platform.aws.subnet.filters
+        type: string
+
       - path: metadata.name
         alias: name
         flag: name
