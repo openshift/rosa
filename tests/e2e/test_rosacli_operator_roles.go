@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-
 	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck
