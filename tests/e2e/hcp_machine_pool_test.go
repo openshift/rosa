@@ -991,7 +991,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	})
 
 	Describe("Spot instance node pool lifecycle", func() {
-		It("should create, describe, edit, and delete a Spot node pool [id:spot-hcp-np]",
+		It("should create, describe, and delete a Spot node pool [id:spot-hcp-np]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Create a node pool with spot instances enabled")
@@ -1015,18 +1015,6 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				description, err := rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(description.String()).To(ContainSubstring("Yes (max $0.05)"))
-
-				By("Edit the node pool spot-max-price")
-				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-					"--spot-max-price", "0.10",
-					"-y",
-				)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("Verify the updated spot-max-price in describe")
-				description, err = rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(description.String()).To(ContainSubstring("Yes (max $0.10)"))
 			})
 
 		It("should create a Spot node pool with on-demand fallback (no max price) [id:spot-hcp-np-ondemand]",

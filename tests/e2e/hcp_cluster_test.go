@@ -950,8 +950,13 @@ var _ = Describe("hosted-cp cluster creation",
 			It("should edit cluster with spot-termination-queue-url and verify enhanced mode [id:spot-hcp-cluster]",
 				labels.Medium, labels.Runtime.Day2,
 				func() {
+					By("Get the cluster region")
+					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+
 					By("Edit the cluster with a spot-termination-queue-url")
-					queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-termination-queue"
+					queueURL := fmt.Sprintf("https://sqs.%s.amazonaws.com/123456789012/rosa-spot-termination-queue",
+						clusterDescription.Region)
 					out, err := clusterService.EditCluster(
 						clusterID,
 						"--spot-termination-queue-url", queueURL,
