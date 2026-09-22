@@ -299,6 +299,20 @@ func makeCmd() *cobra.Command {
 	}
 }
 
+// resolveSTSMode determines whether the cluster should use STS or IAM mode
+// based on the flags the user provided. STS is the default.
+func resolveSTSMode(cmd *cobra.Command, isHostedCP bool) (isSTS bool, isIAM bool, err error) {
+	stsExplicit := cmd.Flags().Changed("sts")
+	isSTS = (args.sts && (stsExplicit || !args.nonSts)) ||
+		args.roleARN != "" || fedramp.Enabled() || isHostedCP
+	isIAM = (stsExplicit && !isSTS) || args.nonSts
+
+	if isSTS && isIAM {
+		return false, false, fmt.Errorf("can't use both STS and mint mode at the same time")
+	}
+	return isSTS, isIAM, nil
+}
+
 func init() {
 	initFlags(Cmd)
 }
@@ -341,8 +355,9 @@ func initFlags(cmd *cobra.Command) {
 	flags.BoolVar(
 		&args.sts,
 		"sts",
-		false,
-		"Use AWS Security Token Service (STS) instead of IAM credentials to deploy your cluster.",
+		true,
+		"Use AWS Security Token Service (STS) to deploy your cluster. This is the default. "+
+			"Use --non-sts or --mint-mode to deploy without STS.",
 	)
 	flags.BoolVar(
 		&args.nonSts,
@@ -1367,36 +1382,13 @@ func run(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// all hosted clusters are sts
-	isSTS := args.sts || args.roleARN != "" || fedramp.Enabled() || isHostedCP
-	isIAM := (cmd.Flags().Changed("sts") && !isSTS) || args.nonSts
-
-	if isSTS && isIAM {
-		r.Reporter.Errorf("Can't use both STS and mint mode at the same time.")
+	isSTS, isIAM, err := resolveSTSMode(cmd, isHostedCP)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
-	if interactive.Enabled() && (!isSTS && !isIAM) {
-		isSTS, err = interactive.GetBool(interactive.Input{
-			Question: "Deploy cluster using AWS STS",
-			Help:     cmd.Flags().Lookup("sts").Usage,
-			Default:  true,
-			Required: true,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid --sts value: %s", err)
-			os.Exit(1)
-		}
-		isIAM = !isSTS
-	}
-
 	isSTS = isSTS || awsCreator.IsSTS
-
-	if r.Reporter.IsTerminal() && !isHostedCP {
-		r.Reporter.Warnf("In a future release STS will be the default mode.")
-		r.Reporter.Warnf("--sts flag won't be necessary if you wish to use STS.")
-		r.Reporter.Warnf("--non-sts/--mint-mode flag will be necessary if you do not wish to use STS.")
-	}
 
 	permissionsBoundary := args.operatorRolesPermissionsBoundary
 	if permissionsBoundary != "" {
@@ -4238,13 +4230,11 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	}
 
 	if spec.IsSTS {
-		// HCP clusters are STS by default, so we only add --sts for non-HCP STS clusters
-		if !spec.Hypershift.Enabled {
-			command += " --sts"
-		}
 		if spec.Mode != "" {
 			command += fmt.Sprintf(" --mode %s", spec.Mode)
 		}
+	} else if !spec.Hypershift.Enabled {
+		command += " --non-sts"
 	}
 	if spec.ClusterAdminUser != "" {
 		argAdded := false
