@@ -362,7 +362,7 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
+			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					By("Check compute machine type")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -371,7 +371,7 @@ var _ = Describe("Healthy check",
 						Equal(clusterConfig.Nodes.ComputeInstanceType))
 				})
 
-			It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
+			It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
@@ -607,7 +607,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("rosa cluster with fips enabled can be created successfully - [id:46312]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					output, err := clusterService.DescribeCluster(clusterID)
 					Expect(err).ToNot(HaveOccurred())
@@ -622,7 +622,7 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
+			It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					By("Check cluster is multiarch")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -883,7 +883,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 		})
 
 		It("to verify byo oidc cluster is created successfully - [id:59530]",
-			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -935,8 +935,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 		It("to verify sts cluster is created successfully - [id:41822]",
-			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
-			labels.Hyperfleet.NotApplicable,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Check the cluster is STS cluster")
 				profile := handler.LoadProfileYamlFileByENV()
@@ -967,7 +966,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 
 			})
 		It("to verify cluster with the operator-roles attaching managed policy is created successfully - [id:57410]",
-			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				// Till now, only HCP clusters operator roles are attaching managed policies
 				By("Skip is the cluster is not HCP cluster")

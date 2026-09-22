@@ -279,7 +279,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 
 	Describe("validation testing", func() {
 		It("to validate create/list/describe/delete break_glass_credentials can work well - [id:73018]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create/list/revoke break-glass-credential to non-HCP cluster")
 				hosted, err := clusterService.IsHostedCPCluster(clusterID)
@@ -400,7 +400,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 			})
 
 		It("to validate create/list/delete idp and user/admin to external_auth_config cluster can work well - [id:71946]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				By("Skip testing if the cluster is not a HCP cluster")
 				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
@@ -467,7 +467,7 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 			})
 
 		It("to validate HCP cluster creation/list with external auth - [id:72602]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create non HCP cluster with external_auths")
 				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
