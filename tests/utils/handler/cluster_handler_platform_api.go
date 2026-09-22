@@ -221,7 +221,8 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 			return nil
 		case strings.ToLower(string(v1alpha1.ClusterPhaseDeleting)):
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready", clusterKey, phase)
-		case strings.ToLower(string(v1alpha1.ClusterPhaseWaitingForPlacement)), strings.ToLower(string(v1alpha1.ClusterPhaseProvisioning)), "":
+		case strings.ToLower(string(v1alpha1.ClusterPhaseWaitingForPlacement)),
+			strings.ToLower(string(v1alpha1.ClusterPhaseProvisioning)), "":
 			log.Logger.Infof("Cluster %s phase is %q, waiting for Ready", clusterKey, phase)
 			time.Sleep(2 * time.Minute)
 		default:
