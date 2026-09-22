@@ -68,7 +68,7 @@ func runVerifyOC(ctx context.Context, reporter rprtr.Logger, getVersion func(con
 	}
 
 	version := strings.Replace(strings.Split(string(output), "\n")[0], "\n", "", 1)
-	isCorrectVersion, err := regexp.Match(`\W4.\d*`, output)
+	isCorrectVersion, err := regexp.Match(`\W[45].\d*`, output)
 	if err != nil {
 		reporter.Errorf("Failed to parse OpenShift Client version: %v", err)
 		return
