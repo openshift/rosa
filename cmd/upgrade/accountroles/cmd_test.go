@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
@@ -73,8 +74,13 @@ var _ = Describe("Upgrade account-roles", func() {
 				Enabled(true).ROSAEnabled(true).ChannelGroup("stable")
 			versionObj, err := v.Build()
 			Expect(err).NotTo(HaveOccurred())
-			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
-				test.FormatVersionList([]*cmv1.Version{versionObj})))
+			t.ApiServer.AppendHandlers(ghttp.CombineHandlers(
+				func(_ http.ResponseWriter, request *http.Request) {
+					Expect(request.URL.Query().Get("product")).To(Equal(ocm.HcpProduct),
+						"expected hosted account-role upgrades to request product=hcp")
+				},
+				RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})),
+			))
 
 			args.hostedCP = true
 			mockClient.EXPECT().GetAccountRoleARN("test-prefix",

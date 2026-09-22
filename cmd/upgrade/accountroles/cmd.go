@@ -107,6 +107,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+// runWithRuntime upgrades account roles using versions compatible with the selected topology.
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	reporter := r.Reporter
 	awsClient := r.AWSClient
@@ -122,7 +123,11 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	version := args.version
 	isVersionChosen := version != ""
 	channelGroup := args.channelGroup
-	policyVersion, err := ocmClient.GetPolicyVersion(version, channelGroup)
+	product := ""
+	if args.hostedCP {
+		product = ocm.HcpProduct
+	}
+	policyVersion, err := ocmClient.GetPolicyVersionWithProduct(product, version, channelGroup)
 	if err != nil {
 		return fmt.Errorf("error getting version: %s", err)
 	}
