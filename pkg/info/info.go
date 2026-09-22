@@ -20,7 +20,8 @@ package info
 
 // DefaultVersion is the CLI version. For release builds it is overridden via
 // -ldflags with the value derived from the git tag. The fallback here is kept
-// current by an automated post-release workflow.
+// current by Renovate after GitHub releases.
+// renovate: datasource=github-releases depName=openshift/rosa versioning=semver
 var DefaultVersion = "1.2.65"
 
 // Build contains the short Git SHA of the CLI at the point it was built. Set via `-ldflags` at build time.

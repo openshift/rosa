@@ -66,6 +66,19 @@
       "datasourceTemplate": "{{datasource}}",
       "depNameTemplate": "{{depName}}",
       "extractVersionTemplate": "{{extractVersion}}"
+    },
+    {
+      "description": "Update DefaultVersion from ROSA GitHub Releases",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^pkg\\/info\\/info\\.go$/"
+      ],
+      "matchStrings": [
+        "// renovate: datasource=github-releases depName=openshift/rosa versioning=semver\\s+(?:const|var) DefaultVersion\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "openshift/rosa",
+      "versioningTemplate": "semver"
     }
   ],
   "pre-commit": {
@@ -81,6 +94,17 @@
         "jqlang/jq"
       ],
       "groupName": "govulncheck-jq"
+    },
+    {
+      "description": "Bump DefaultVersion one day after a ROSA GitHub release",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "openshift/rosa"
+      ],
+      "minimumReleaseAge": "1 day",
+      "groupName": "default-rosa-version"
     },
     {
       "description": "Bump pre-commit gitleaks SHA",
