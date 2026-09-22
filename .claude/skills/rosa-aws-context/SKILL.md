@@ -20,7 +20,7 @@ Use this skill when:
 5. Validate AWS CLI install, profile, and config guidance against official AWS CLI documentation before editing examples.
 6. Prefer existing AWS helper functions and client wrappers over ad-hoc SDK usage.
 7. Do not silently bump AWS SDK or related dependency versions; if a bump is required, call it out explicitly, explain why, and validate downstream impact.
-8. Do not hardcode credentials or add logging that exposes secret material.
+8. Do not hard code credentials or add logging that exposes secret material.
 9. If code behavior and official docs appear to disagree, surface the mismatch explicitly instead of guessing.
 
 ## Verification

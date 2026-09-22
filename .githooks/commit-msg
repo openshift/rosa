@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
 
-repo_root=$(git rev-parse --show-toplevel)
-bash "$repo_root/hack/commit-msg-hook.sh" "$@"
+echo "Commit blocked: this clone uses the legacy .githooks path. Run 'make install-hooks' to migrate to pre-commit hooks." >&2
+exit 1

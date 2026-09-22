@@ -1,0 +1,38 @@
+---
+extends: spelling
+level: warning
+link: https://redhat-documentation.github.io/vale-at-red-hat/reference-guide.html#spelling
+message: "Verify the word '%s'. It is not in the American English or Red Hat terminology spelling dictionaries used by Vale."
+action:
+  name: suggest
+  params:
+    - spellings
+scope:
+  - heading
+  - sentence
+  - list
+  - alt
+  - table.header
+  - table.cell
+  - table.caption
+  - figure.caption
+dicpath: RedHat/dictionaries
+dictionaries:
+  - en_US-RedHat
+append: true
+# Ignore words
+filters:
+  # Words starting with Py, e.g., 'PyYAML'
+  - '[pP]y.*\b'
+  # PascalCase
+  - '([A-Z]+[a-z]+){2,}\b'
+  - '([A-Z]+[a-z]+[A-Z]+){1,}\b'
+  - '([A-Z]+[A-Z]+[a-z]+){1,}\b'
+  # camelCase
+  - '([a-z]+)([A-Z]+[a-z]+){1,}\b'
+  # Underscore words
+  - '([a-zA-Z0-9_]+_[a-zA-Z0-9_]+)+\b'
+  # Dotted technology names, e.g., 'node.js', 'Vert.x'
+  - '\w+\.\w+'
+  # I/O (slash breaks hunspell affix parsing)
+  - 'I/O'

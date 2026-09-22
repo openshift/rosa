@@ -1,3 +1,6 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package ocm
 
 import cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"

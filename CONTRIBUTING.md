@@ -39,7 +39,7 @@ In this repository, the conventional-commit type still lives inside the required
 
 REQUIRED BEFORE YOUR FIRST COMMIT IN A CLONE:
 ```shell
-# Install pre-commit (required for the gitleaks hook). Examples:
+# Install pre-commit. Examples:
 #   pip install pre-commit
 #   sudo dnf install pre-commit
 #   brew install pre-commit
@@ -48,14 +48,20 @@ make install-hooks
 
 YOU MUST LET THE LOCAL HOOKS RUN ON EVERY COMMIT AND PUSH. DO NOT BYPASS LOCAL HOOKS.
 
-The hooks perform:
-- `pre-commit`: runs gitleaks (`.pre-commit-config.yaml`) and formats staged Go files (imports + gofmt); blocks the commit if files were rewritten so you can review/stage updates
+The hooks are configured in `.pre-commit-config.yaml` and perform:
+- `pre-commit`: checks merge conflicts and YAML syntax, runs gitleaks, formats staged Go files (imports + gofmt), and adds Apache 2.0 license headers to staged files missing them
 - `commit-msg`: validates the commit message format
-- `pre-push`: runs format-check, build, lint, changed-files coverage, and unit/integration tests
+- `pre-push`: runs format-check, build, lint, documentation lint (Vale), license checks, changed-files coverage, and unit/integration tests
+- Installing Vale locally requires a C compiler because the Makefile builds it with `CGO_ENABLED=1`.
 - `pre-push` runs against committed content and blocks when staged/unstaged tracked changes are present
 - Prow re-runs these checks as required presubmits, so merges are blocked until they pass
 - check runs are fail-fast: execution stops at the first failing step
 - if you hit any bumps when committing, please let us know
+
+To manually run all hooks on all files:
+```shell
+pre-commit run --all-files
+```
 
 Use this aggregated command before pushing:
 ```shell

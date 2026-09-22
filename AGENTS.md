@@ -20,10 +20,10 @@ Use this file as the starting point for repository context. When this file point
   - Supported local build, test, format, and generation commands.
 - `.github/pull_request_template.md`
   - Required PR structure, validation notes, and reviewer-facing checklist.
-- `.githooks/pre-commit`, `.githooks/pre-push`, `.githooks/commit-msg`
-  - Hook entrypoints used by local git workflow.
-- `hack/pre-commit-hook.sh`, `hack/pre-push-hook.sh`, `hack/commit-msg-hook.sh`, `hack/commit-msg-verify.sh`
-  - Exact local validation and commit-message behavior.
+- `.pre-commit-config.yaml`
+  - Pre-commit, commit-message, and pre-push hook configuration.
+- `hack/pre-push-hook.sh`, `hack/commit-msg-verify.sh`
+  - Exact local validation and commit-message behavior used by the configured hooks.
 - `cmd/rosa/structure_test/command_structure.yml`
   - CLI command tree contract.
 - `cmd/rosa/structure_test/command_args/**/command_args.yml`
