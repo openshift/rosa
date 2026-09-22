@@ -33,7 +33,12 @@ var (
 // NOTE: V1 (OCM) stores AZ directly on nodepool.AvailabilityZone().
 // V2 (Hyperfleet) stores only subnet ID, requiring AWS lookup.
 // TODO: Consider adding AZ field to Hyperfleet NodePool status to avoid AWS API calls during describe.
-func deriveNodePoolAvailabilityZones(ctx context.Context, r *rosa.Runtime, cluster *v1alpha1.Cluster, npList *v1alpha1.NodePoolList) map[string]struct{} {
+func deriveNodePoolAvailabilityZones(
+	ctx context.Context,
+	r *rosa.Runtime,
+	cluster *v1alpha1.Cluster,
+	npList *v1alpha1.NodePoolList,
+) map[string]struct{} {
 	azMap := make(map[string]struct{})
 	if npList == nil || len(npList.Items) == 0 {
 		return azMap
@@ -153,7 +158,12 @@ func hfDefaultNodePoolInstanceTypeFromList(list *v1alpha1.NodePoolList) string {
 
 // hfClusterToMap converts a hyperfleet Cluster to a generic map suitable for
 // JSON/YAML structured output, mirroring the shape of formatClusterHypershift.
-func hfClusterToMap(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, npList *v1alpha1.NodePoolList, defaultNodePoolInstanceType string) map[string]interface{} {
+func hfClusterToMap(
+	c *v1alpha1.Cluster,
+	dataPlaneAZs map[string]struct{},
+	npList *v1alpha1.NodePoolList,
+	defaultNodePoolInstanceType string,
+) map[string]interface{} {
 	aws := c.Spec.HostedCluster.Platform.AWS
 
 	rolesRef := map[string]string{}
@@ -219,7 +229,8 @@ func hfClusterToMap(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, npLis
 			"oidc_issuer": c.Spec.HostedCluster.IssuerURL,
 			"roles_ref":   rolesRef,
 		},
-		"private": apiListening == "internal",
+		"private":           apiListening == "internal",
+		"delete_protection": hfDeleteProtectionEnabled(c),
 	}
 	if apiURL != "" || apiListening != "" {
 		m["api"] = map[string]interface{}{
@@ -265,13 +276,9 @@ func hfClusterToMap(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, npLis
 	}
 
 	if c.Status.Version != "" {
-		channel := ""
-		if c.Spec.Properties != nil {
-			channel = c.Spec.Properties["channel_group"]
-		}
 		m["version"] = map[string]interface{}{
 			"raw_id":        c.Status.Version,
-			"channel_group": channel,
+			"channel_group": hfChannelGroup(c),
 		}
 	}
 	if apiURL != "" {
@@ -333,6 +340,10 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 	if c.Spec.HostedCluster.FIPS {
 		fips = "Enabled"
 	}
+	deleteProtection := "Disabled"
+	if hfDeleteProtectionEnabled(c) {
+		deleteProtection = "Enabled"
+	}
 
 	// Format DNS string
 	dnsStr := c.Status.BaseDomain
@@ -345,6 +356,7 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 		"ID:                         %s\n"+
 		"Control Plane:              %s\n"+
 		"OpenShift Version:          %s\n"+
+		"Channel Group:              %s\n"+
 		"DNS:                        %s\n"+
 		"API URL:                    %s\n"+
 		"Region:                     %s\n"+
@@ -353,11 +365,13 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 		"OIDC Endpoint URL:          %s\n"+
 		"State:                      %s\n"+
 		"Private:                    %s\n"+
+		"Delete Protection:          %s\n"+
 		"FIPS mode:                  %s\n",
 		c.Name,
 		string(c.UID),
 		"ROSA Service Hosted",
 		c.Status.Version,
+		hfChannelGroup(c),
 		dnsStr,
 		apiURL,
 		region,
@@ -366,6 +380,7 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 		oidcLine,
 		strings.ToLower(string(c.Status.Phase)), // Normalize to lowercase to match V1 (OCM)
 		output.PrintBool(hfAPIListening(aws) == "internal"),
+		deleteProtection,
 		fips,
 	)
 	if c.Spec.Properties != nil {
@@ -441,7 +456,10 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 
 	// Get subnet from cluster AWS config
 	subnetID := ""
-	if aws != nil && aws.CloudProviderConfig != nil && aws.CloudProviderConfig.Subnet != nil && aws.CloudProviderConfig.Subnet.ID != nil {
+	if aws != nil &&
+		aws.CloudProviderConfig != nil &&
+		aws.CloudProviderConfig.Subnet != nil &&
+		aws.CloudProviderConfig.Subnet.ID != nil {
 		subnetID = *aws.CloudProviderConfig.Subnet.ID
 	}
 
@@ -513,6 +531,20 @@ func hfAPIListening(aws *hypershiftv1beta1.AWSPlatformSpec) string {
 		return "internal"
 	}
 	return "external"
+}
+
+func hfDeleteProtectionEnabled(c *v1alpha1.Cluster) bool {
+	return c.Spec.DeleteProtection != nil && *c.Spec.DeleteProtection
+}
+
+func hfChannelGroup(c *v1alpha1.Cluster) string {
+	if c.Spec.HostedCluster.Channel != "" {
+		return c.Spec.HostedCluster.Channel
+	}
+	if c.Spec.Properties != nil {
+		return c.Spec.Properties["channel_group"]
+	}
+	return ""
 }
 
 // conditionSummary returns a concise reason+message string for a condition row.

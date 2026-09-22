@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -48,11 +49,22 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 		exitFn(1)
 	}
 
+	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
+	cluster, err := clusters.Get(ctx, clusterID, platform.GetOptions{})
+	if err != nil {
+		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
+		exitFn(1)
+	}
+
+	if err := ensureHyperfleetDeleteProtectionDisabled(cluster, clusterKey); err != nil {
+		r.Reporter.Errorf("%v", err)
+		exitFn(1)
+	}
+
 	if !confirmFn("delete cluster %s", clusterKey) {
 		return
 	}
 
-	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
 	if err = clusters.Delete(ctx, clusterID, platform.DeleteOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		exitFn(1)
@@ -72,4 +84,15 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 		exitFn(1)
 	}
 	r.Reporter.Infof("Cluster '%s' deleted", clusterKey)
+}
+
+// ensureHyperfleetDeleteProtectionDisabled returns an error if delete protection is enabled.
+func ensureHyperfleetDeleteProtectionDisabled(cluster *v1alpha1.Cluster, clusterKey string) error {
+	if cluster.Spec.DeleteProtection != nil && *cluster.Spec.DeleteProtection {
+		return fmt.Errorf(
+			"delete protection is active on cluster '%s', "+
+				"to disable it run 'rosa edit cluster -c %s --delete-protection=false'",
+			clusterKey, clusterKey)
+	}
+	return nil
 }

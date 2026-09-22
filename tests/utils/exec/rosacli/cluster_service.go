@@ -776,8 +776,10 @@ func (c *clusterService) WaitForClusterPassUninstalled(clusterID string, interva
 		if err != nil {
 			return err
 		}
-		if strings.Contains(desc.State, constants.Uninstalling) {
-			time.Sleep(time.Duration(interval))
+		if desc.State == "" ||
+			strings.Contains(desc.State, constants.Uninstalling) ||
+			strings.Contains(strings.ToLower(desc.State), "deleting") {
+			time.Sleep(time.Duration(interval) * time.Second)
 			continue
 		}
 		return fmt.Errorf("cluster %s is in status of %s which won't be deleted, stop waiting", clusterID, desc.State)

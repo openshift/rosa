@@ -74,6 +74,20 @@ func runHyperfleetDeleteOidcConfig(r *rosa.Runtime) {
 		return
 	}
 
+	inUse, err := hyperfleet.HasClusterUsingOidcConfigID(ctx, r.HyperFleetClient, args.oidcConfigId)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC config '%s': %v",
+			args.oidcConfigId, err)
+		hfExitFn(1)
+		return
+	}
+	if inUse {
+		r.Reporter.Errorf("There are clusters using OIDC config '%s', can't delete the OIDC config",
+			args.oidcConfigId)
+		hfExitFn(1)
+		return
+	}
+
 	r.Reporter.Infof("Deleting OIDC config '%s' (Type: %s)", oidcConfig.Name, oidcConfig.Spec.Type)
 
 	// Delete OIDC provider from AWS if issuer URL exists

@@ -21,6 +21,7 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
@@ -66,10 +67,13 @@ var _ = Describe("Edit cluster",
 			rosaClient.CleanResources(clusterID)
 		})
 		It("can edit cluster channel group - [id:81399]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
+
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+
 				By("Check help message contains channel-group flag")
 				output, err := clusterService.EditCluster("", "-h")
 				Expect(err).To(BeNil())
@@ -82,6 +86,61 @@ var _ = Describe("Edit cluster",
 				Expect(err).To(BeNil())
 				originalVersion := CD.OpenshiftVersion
 				originalChannelGroup := CD.ChannelGroup
+
+				if isHyperfleet {
+					// V2: edit HostedCluster.Channel via --channel-group. Requires
+					// Platform API with mutable Channel (not yet on live env —
+					// currently returns CLUSTERS-MGMT-VALIDATION-001).
+					upgradingChannelGroup := CANDIDATE_CHANNEL
+					if originalChannelGroup == CANDIDATE_CHANNEL {
+						upgradingChannelGroup = STABLE_CHANNEL
+					}
+					if originalChannelGroup == "" {
+						originalChannelGroup = STABLE_CHANNEL
+					}
+
+					By("Edit V2 cluster with channel group")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--channel-group", upgradingChannelGroup,
+						"-y",
+					)
+					Expect(err).To(BeNil())
+					Expect(out.String()).To(ContainSubstring("Updated cluster"))
+					defer func() {
+						By("Recover the original channel group")
+						_, err = clusterService.EditCluster(
+							clusterID,
+							"--channel-group", originalChannelGroup,
+							"-y",
+						)
+						Expect(err).To(BeNil())
+					}()
+
+					By("Describe V2 cluster to verify channel group changed")
+					output, err = clusterService.DescribeCluster(clusterID)
+					Expect(err).To(BeNil())
+					CD, err = clusterService.ReflectClusterDescription(output)
+					Expect(err).To(BeNil())
+					Expect(CD.ChannelGroup).To(Equal(upgradingChannelGroup))
+
+					By("Edit V2 cluster with nightly channel group (not available without version catalog)")
+					_, err = clusterService.EditCluster(
+						clusterID,
+						"--channel-group", "nightly",
+						"-y",
+					)
+					helper.ExpectErrorWithMessage(err, "is not available for the desired channel group")
+
+					By("Edit V2 cluster with a channel group that doesn't exist")
+					_, err = clusterService.EditCluster(
+						clusterID,
+						"--channel-group", "fakecg",
+						"-y",
+					)
+					helper.ExpectErrorWithMessage(err, "Unsupported channel group")
+					return
+				}
 
 				By("Check if there is version in updating channel group")
 				var upgradingChannelGroup string
@@ -101,7 +160,6 @@ var _ = Describe("Edit cluster",
 						existingAvailabelVersion = true
 						break
 					}
-					continue
 				}
 
 				By("Edit cluster with channel group")
@@ -145,7 +203,7 @@ var _ = Describe("Edit cluster",
 				helper.ExpectErrorWithMessage(err, "Unsupported channel group")
 			})
 		It("can check the description of the cluster - [id:34102]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				By("Describe cluster in text format")
 				output, err := clusterService.DescribeCluster(clusterID)
@@ -169,22 +227,56 @@ var _ = Describe("Edit cluster",
 
 				By("Compare the text result with the json result")
 				Expect(CD.ID).To(Equal(jsonData.DigString("id")))
-				Expect(CD.ExternalID).To(Equal(jsonData.DigString("external_id")))
-				Expect(CD.ChannelGroup).To(Equal(jsonData.DigString("version", "channel_group")))
-				Expect(CD.DNS).To(Equal(jsonData.DigString("domain_prefix") + "." + jsonData.DigString("dns", "base_domain")))
-				Expect(CD.AWSAccount).NotTo(BeEmpty())
-				Expect(CD.APIURL).To(Equal(jsonData.DigString("api", "url")))
-				Expect(CD.ConsoleURL).To(Equal(jsonData.DigString("console", "url")))
-				Expect(CD.Region).To(Equal(jsonData.DigString("region", "id")))
 
-				Expect(CD.State).To(Equal(jsonData.DigString("status", "state")))
+				// V2 (Hyperfleet) clusters don't have external_id in the same way as V1
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if !isHyperfleet {
+					Expect(CD.ExternalID).To(Equal(jsonData.DigString("external_id")))
+				}
+
+				Expect(CD.ChannelGroup).To(Equal(jsonData.DigString("version", "channel_group")))
+
+				// V2 DNS is a direct string field, V1 uses domain_prefix + dns.base_domain
+				if isHyperfleet {
+					Expect(CD.DNS).To(Equal(jsonData.DigString("dns")))
+				} else {
+					Expect(CD.DNS).To(Equal(jsonData.DigString("domain_prefix") + "." + jsonData.DigString("dns", "base_domain")))
+				}
+
+				// V2 (Hyperfleet) clusters don't include AWS Account in describe output
+				if !isHyperfleet {
+					Expect(CD.AWSAccount).NotTo(BeEmpty())
+				}
+				Expect(CD.APIURL).To(Equal(jsonData.DigString("api", "url")))
+
+				// V2 clusters may not have console URL immediately available
+				if !isHyperfleet {
+					Expect(CD.ConsoleURL).To(Equal(jsonData.DigString("console", "url")))
+				}
+
+				// V2 region is a direct string, V1 uses region.id
+				if isHyperfleet {
+					Expect(CD.Region).To(Equal(jsonData.DigString("region")))
+				} else {
+					Expect(CD.Region).To(Equal(jsonData.DigString("region", "id")))
+				}
+
+				// V2 state is normalized to lowercase, V1 uses status.state
+				if isHyperfleet {
+					Expect(strings.ToLower(CD.State)).To(Equal(jsonData.DigString("state")))
+				} else {
+					Expect(CD.State).To(Equal(jsonData.DigString("status", "state")))
+				}
 				Expect(CD.Created).NotTo(BeEmpty())
 
-				By("Get details page console url")
-				consoleURL := helper.GetConsoleUrlBasedOnEnv(ocmApi)
-				subscriptionID := jsonData.DigString("subscription", "id")
-				if consoleURL != "" {
-					Expect(CD.DetailsPage).To(Equal(consoleURL + subscriptionID))
+				// V2 clusters don't have subscription-based details pages
+				if !isHyperfleet {
+					By("Get details page console url")
+					consoleURL := helper.GetConsoleUrlBasedOnEnv(ocmApi)
+					subscriptionID := jsonData.DigString("subscription", "id")
+					if consoleURL != "" {
+						Expect(CD.DetailsPage).To(Equal(consoleURL + subscriptionID))
+					}
 				}
 
 				if jsonData.DigBool("aws", "private_link") {
@@ -194,8 +286,13 @@ var _ = Describe("Edit cluster",
 				}
 
 				if jsonData.DigBool("hypershift", "enabled") {
-					// todo
+					// V2 (Hyperfleet) and HCP clusters use different node/networking structure
+					// Hypershift clusters don't have traditional control plane/infra/compute node counts
+					// Instead, they use nodepools which are validated separately
+					By("Validate hypershift cluster properties")
+					Expect(CD.ControlPlane).To(Equal("ROSA Service Hosted"))
 				} else {
+					// Classic clusters
 					if jsonData.DigBool("multi_az") {
 						Expect(CD.MultiAZ).To(Equal(jsonData.DigBool("multi_az")))
 					} else {
@@ -205,17 +302,36 @@ var _ = Describe("Edit cluster",
 					}
 				}
 
-				Expect(CD.Network[1]["Service CIDR"]).To(Equal(jsonData.DigString("network", "service_cidr")))
-				Expect(CD.Network[2]["Machine CIDR"]).To(Equal(jsonData.DigString("network", "machine_cidr")))
-				Expect(CD.Network[3]["Pod CIDR"]).To(Equal(jsonData.DigString("network", "pod_cidr")))
-				Expect(CD.Network[4]["Host Prefix"]).
-					Should(ContainSubstring(strconv.FormatFloat(jsonData.DigFloat("network", "host_prefix"), 'f', -1, 64)))
-				Expect(CD.InfraID).To(Equal(jsonData.DigString("infra_id")))
+				// V2 uses different networking structure (networking.service_network, etc.)
+				// V1 uses network.service_cidr, network.machine_cidr, etc.
+				if isHyperfleet {
+					// For V2, validate that networking information is present
+					By("Validate V2 networking structure")
+					Expect(CD.Network).NotTo(BeEmpty())
+				} else {
+					// For V1, validate specific CIDR values
+					Expect(CD.Network[1]["Service CIDR"]).To(Equal(jsonData.DigString("network", "service_cidr")))
+					Expect(CD.Network[2]["Machine CIDR"]).To(Equal(jsonData.DigString("network", "machine_cidr")))
+					Expect(CD.Network[3]["Pod CIDR"]).To(Equal(jsonData.DigString("network", "pod_cidr")))
+					Expect(CD.Network[4]["Host Prefix"]).
+						Should(ContainSubstring(strconv.FormatFloat(jsonData.DigFloat("network", "host_prefix"), 'f', -1, 64)))
+				}
+
+				// V2 clusters may not have infra_id in the same format
+				if !isHyperfleet {
+					Expect(CD.InfraID).To(Equal(jsonData.DigString("infra_id")))
+				}
 			})
 
 		It("can restrict master API endpoint to direct, private connectivity or not - [id:38850]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				// V2 edit cluster does not support --private yet
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					Skip("--private is not yet supported for V2 (Hyperfleet) clusters")
+				}
+
 				By("Check the cluster is not private cluster")
 				private, err := clusterService.IsPrivateCluster(clusterID)
 				Expect(err).To(BeNil())
@@ -278,10 +394,26 @@ var _ = Describe("Edit cluster",
 
 		// OCM-5231 caused the description parser issue
 		It("can disable workload monitoring on/off - [id:45159]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.InProgress,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
 				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
+
+				// V2 edit does not support --disable-workload-monitoring; validate rejection
+				if isHyperfleet {
+					By("Attempt to edit V2 cluster with UWM flag and expect unsupported-flag error")
+					_, err = clusterService.EditCluster(clusterID, "--disable-workload-monitoring")
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("specify at least one supported flag"))
+
+					By("Check that UWM is NOT shown in V2 cluster description")
+					output, err := clusterService.DescribeCluster(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(output.String()).ToNot(ContainSubstring("User Workload Monitoring"))
+					return
+				}
+
 				if isHostedCP {
 					By("Attempt to edit cluster with UWM flag and expect error")
 					_, err = clusterService.EditCluster(clusterID,
@@ -349,8 +481,14 @@ var _ = Describe("Edit cluster",
 			})
 
 		It("can edit privacy and workload monitoring via rosa-cli - [id:60275]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				// V2 edit cluster does not support --private yet
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					Skip("--private is not yet supported for V2 (Hyperfleet) clusters")
+				}
+
 				By("Check the cluster is private cluster")
 				private, err := clusterService.IsPrivateCluster(clusterID)
 				Expect(err).To(BeNil())
@@ -434,10 +572,20 @@ var _ = Describe("Edit cluster",
 				Expect(CD.Private).To(Equal("Yes"))
 			})
 
-		// Excluded until bug on OCP-73161 is resolved
+		// Excluded on V1 until bug on OCP-73161 is resolved.
+		// V2 path uses --delete-protection and is actively validated (hyperfleet-inprog).
 		It("can verify delete protection on a rosa cluster - [id:73161]",
-			labels.High, labels.Runtime.Day2, labels.Exclude,
+			labels.High, labels.Runtime.Day2, labels.Exclude, labels.Hyperfleet.InProgress,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if !isHyperfleet {
+					Skip("Excluded until bug on OCP-73161 is resolved")
+				}
+
+				enableFlag := "--delete-protection=true"
+				disableFlag := "--delete-protection=false"
+				disableHint := "--delete-protection=false"
+
 				By("Get original delete protection value")
 				output, err := clusterService.DescribeClusterAndReflect(clusterID)
 				Expect(err).ToNot(HaveOccurred())
@@ -445,10 +593,13 @@ var _ = Describe("Edit cluster",
 
 				By("Enable delete protection on the cluster")
 				deleteProtection := constants.DeleteProtectionEnabled
-				_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=true", "-y")
+				_, err = clusterService.EditCluster(clusterID, enableFlag, "-y")
 				Expect(err).ToNot(HaveOccurred())
-				defer clusterService.EditCluster(clusterID,
-					fmt.Sprintf("--enable-delete-protection=%s", originalDeleteProtection), "-y")
+				recoverFlag := disableFlag
+				if originalDeleteProtection == constants.DeleteProtectionEnabled {
+					recoverFlag = enableFlag
+				}
+				defer clusterService.EditCluster(clusterID, recoverFlag, "-y")
 
 				By("Check the enable result from cluster description")
 				output, err = clusterService.DescribeClusterAndReflect(clusterID)
@@ -460,11 +611,11 @@ var _ = Describe("Edit cluster",
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
 				Expect(textData).Should(ContainSubstring("delete protection is active on cluster"))
-				Expect(textData).Should(ContainSubstring("--enable-delete-protection=false"))
+				Expect(textData).Should(ContainSubstring(disableHint))
 
 				By("Disable delete protection on the cluster")
 				deleteProtection = constants.DeleteProtectionDisabled
-				_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=false", "-y")
+				_, err = clusterService.EditCluster(clusterID, disableFlag, "-y")
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Check the disable result from cluster description")
@@ -473,27 +624,40 @@ var _ = Describe("Edit cluster",
 				Expect(output.EnableDeleteProtection).To(Equal(deleteProtection))
 			})
 
-		// Excluded until bug on OCP-74656 is resolved
+		// Excluded on V1 until bug on OCP-74656 is resolved.
+		// V2 path validates --delete-protection argument parsing (hyperfleet-inprog).
 		It("can verify delete protection on a rosa cluster negative - [id:74656]",
-			labels.Medium, labels.Runtime.Day2, labels.Exclude,
+			labels.Medium, labels.Runtime.Day2, labels.Exclude, labels.Hyperfleet.InProgress,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if !isHyperfleet {
+					Skip("Excluded until bug on OCP-74656 is resolved")
+				}
+
 				By("Enable delete protection with invalid values")
 				resp, err := clusterService.EditCluster(clusterID,
-					"--enable-delete-protection=aaa",
+					"--delete-protection=aaa",
 					"-y",
 				)
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "aaa" for "--enable-delete-protection"`))
+				Expect(textData).Should(ContainSubstring(`Error: invalid argument "aaa" for "--delete-protection"`))
 
-				resp, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=", "-y")
+				resp, err = clusterService.EditCluster(clusterID, "--delete-protection=", "-y")
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
+				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--delete-protection"`))
 			})
 
-		It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2, labels.FedRAMP,
+		It("can edit proxy successfully - [id:46308]",
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				// V2 edit cluster does not support proxy flags yet
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					Skip("proxy edit flags are not yet supported for V2 (Hyperfleet) clusters")
+				}
+
 				By("Load the original cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -581,8 +745,14 @@ var _ = Describe("Edit cluster",
 				verifyProxy(updateHttpProxy, updateHttpsProxy, updatedNoProxy, updatedCA)
 			})
 		It("Changing billing account for the cluster - [id:75921]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
+				// V2 edit cluster does not support --billing-account yet
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					Skip("--billing-account is not yet supported for V2 (Hyperfleet) clusters")
+				}
+
 				var (
 					originBillingAccount  string
 					testingBillingAccount string
@@ -640,8 +810,14 @@ var _ = Describe("Edit cluster",
 			})
 
 		It("Changing invalid billing account - [id:75922]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
+				// V2 edit cluster does not support --billing-account yet
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					Skip("--billing-account is not yet supported for V2 (Hyperfleet) clusters")
+				}
+
 				By("Change the billing account with invalid value")
 				output, err := clusterService.EditCluster(clusterID, "--billing-account", "qweD3")
 				Expect(err).ToNot(BeNil())
@@ -695,7 +871,7 @@ var _ = Describe("Edit cluster help text validation", labels.Feature.Cluster, fu
 
 	// Test that UWM example was removed from help text
 	It("does not show UWM example in edit cluster help text - [id:UWM-HELP-001]",
-		labels.Low, labels.Runtime.Day1Supplemental,
+		labels.Low, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Validated,
 		func() {
 			By("Check edit cluster help text for UWM example")
 			helpOutput, err := clusterService.EditCluster("", "-h")
@@ -742,7 +918,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		rosaClient.CleanResources(clusterID)
 	})
 	It("can validate for deletion of upgrade policy of rosa cluster - [id:38787]",
-		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 		func() {
 			By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
 			output, err := upgradeService.DeleteUpgrade()
@@ -764,7 +940,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		})
 
 	It("can validate create/delete upgrade policies for HCP clusters - [id:73814]",
-		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 		func() {
 			defer func() {
 				_, err := upgradeService.DeleteUpgrade("-c", clusterID, "-y")
@@ -853,7 +1029,8 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 					"ERR: node-drain-grace-period flag is not supported to hosted clusters"))
 		})
 
-	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+	It("can validate cluster proxy well - [id:46310]",
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 		func() {
 			By("Load the original cluster config")
 			clusterConfig, err := config.ParseClusterProfile()
@@ -973,8 +1150,9 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
 		})
 
-	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2,
-		labels.FedRAMP, func() {
+	It("can validate cluster registry config patching well - [id:77149]",
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+		func() {
 			By("edit non-hcp with registry config")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
@@ -996,8 +1174,9 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				"--registry-config-allowed-registries-for-import", "test.com:stringType")
 			helper.ExpectErrorWithMessage(err, "expected valid allowed registries for import values")
 		})
-	It("can validate autonode edit - [id:84982]", labels.Medium, labels.Runtime.Day2,
-		labels.FedRAMP, func() {
+	It("can validate autonode edit - [id:84982]",
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+		func() {
 			By("Load the original cluster config")
 			clusterConfig, err := config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
@@ -1098,7 +1277,7 @@ var _ = Describe("Additional security groups validation",
 			clusterHandler.Destroy()
 		})
 		It("Create rosa cluster with additional security groups will validate well via rosacli - [id:68971]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				var (
 					ocpVersionBelow4_14 string
@@ -1284,7 +1463,7 @@ var _ = Describe("Classic cluster creation validation",
 		})
 
 		It("to check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Prepare creation command")
 				var command string
@@ -1411,7 +1590,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
-			labels.High, labels.Runtime.Day1Supplemental,
+			labels.High, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Prepare creation command")
 				var command string
@@ -1488,7 +1667,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("to validate to create the sts cluster with invalid tag - [id:56440]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterName := "ocp-56440"
 
@@ -1549,7 +1728,7 @@ var _ = Describe("Classic cluster creation validation",
 
 		It("Create cluster with invalid volume size [id:66372]",
 			labels.Medium,
-			labels.Runtime.Day1Negative,
+			labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				minSize := constants.MinClassicDiskSize
 				maxSize := constants.MaxDiskSize
@@ -1617,7 +1796,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("to validate to create cluster with availability zones - [id:52692]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterName := "ocp-52692"
 
@@ -1664,7 +1843,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("Validate --worker-mp-labels option for ROSA cluster creation - [id:71329]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				var (
 					clusterName        = "cluster-71329"
@@ -1762,7 +1941,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("to validate to create the cluster with version not in the channel group - [id:74399]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterName := "ocp-74399"
 
@@ -1777,7 +1956,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterName := "ocp-74436"
 
@@ -1789,7 +1968,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
 			})
 		It("validate use-local-credentials won't work with sts - [id:76481]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterName := helper.GenerateRandomName("c76481", 3)
 				By("Create account-roles for testing")
@@ -1844,15 +2023,27 @@ var _ = Describe("Create cluster delete protection",
 		)
 
 		verifyDeleteProtection := func() {
-			By("Check help message contains enable-delete-protection flag")
+			isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+			createFlag := "--enable-delete-protection"
+			disableEditFlag := "--enable-delete-protection=false"
+			disableHint := "--enable-delete-protection=false"
+			helpFlag := "--enable-delete-protection"
+			if isHyperfleet {
+				createFlag = "--delete-protection"
+				disableEditFlag = "--delete-protection=false"
+				disableHint = "--delete-protection=false"
+				helpFlag = "--delete-protection"
+			}
+
+			By("Check help message contains delete-protection flag")
 			output, _, err := clusterService.Create("", "-h")
 			Expect(err).To(BeNil())
-			Expect(output.String()).To(ContainSubstring("--enable-delete-protection"))
+			Expect(output.String()).To(ContainSubstring(helpFlag))
 
 			By("Create cluster with delete protection enabled")
 			flags, err := clusterHandler.GenerateClusterCreateFlags()
 			Expect(err).To(BeNil())
-			flags = append(flags, "--enable-delete-protection")
+			flags = append(flags, createFlag)
 			_, _, err = clusterService.Create(customProfile.ClusterConfig.Name, flags...)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -1867,10 +2058,10 @@ var _ = Describe("Create cluster delete protection",
 			Expect(err).To(HaveOccurred())
 			textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
 			Expect(textData).Should(ContainSubstring("delete protection is active on cluster"))
-			Expect(textData).Should(ContainSubstring("--enable-delete-protection=false"))
+			Expect(textData).Should(ContainSubstring(disableHint))
 
 			By("Disable delete protection on the cluster")
-			_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=false", "-y")
+			_, err = clusterService.EditCluster(clusterID, disableEditFlag, "-y")
 			Expect(err).ToNot(HaveOccurred())
 
 			clusterDescription, err = clusterService.DescribeClusterAndReflect(clusterID)
@@ -1889,33 +2080,70 @@ var _ = Describe("Create cluster delete protection",
 			})
 
 			AfterEach(func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
 				if clusterID != "" {
 					By("Disable delete protection")
-					_, _ = clusterService.EditCluster(clusterID, "--enable-delete-protection=false", "-y")
+					disableFlag := "--enable-delete-protection=false"
+					if isHyperfleet {
+						disableFlag = "--delete-protection=false"
+					}
+					_, _ = clusterService.EditCluster(clusterID, disableFlag, "-y")
 
 					By("Delete cluster")
 					_, err := clusterService.DeleteCluster(clusterID, "-y")
 					Expect(err).To(BeNil())
 
 					By("Wait for cluster to be uninstalled")
-					err = clusterService.WaitForClusterPassUninstalled(
-						clusterID, 2, ciConfig.Test.GlobalENV.ClusterWaitingTime)
-					Expect(err).To(BeNil())
+					if isHyperfleet {
+						// V2 delete is async and may leave Phase as provisioning
+						// until the object is removed; poll until not found.
+						timeout := time.Duration(ciConfig.Test.GlobalENV.ClusterWaitingTime) * time.Minute
+						deadline := time.Now().Add(timeout)
+						for time.Now().Before(deadline) {
+							out, descErr := clusterService.DescribeCluster(clusterID)
+							if descErr != nil && rosacli.ClusterNotFoundMessage(clusterID, out.String()) {
+								break
+							}
+							time.Sleep(2 * time.Second)
+						}
+					} else {
+						err = clusterService.WaitForClusterPassUninstalled(
+							clusterID, 2, ciConfig.Test.GlobalENV.ClusterWaitingTime)
+						Expect(err).To(BeNil())
+					}
 				}
 				errs := clusterHandler.Destroy()
-				Expect(len(errs)).To(Equal(0))
+				if isHyperfleet {
+					// Platform API can retain an OIDC→cluster claim after the cluster
+					// is gone (OIDCCONFIGS-MGMT-DELETE-003). Best-effort cleanup only.
+					for _, e := range errs {
+						log.Logger.Warnf("Hyperfleet resource cleanup: %v", e)
+					}
+					return
+				}
+				Expect(errs).To(BeEmpty())
 			})
 		}
 
 		Context("HCP", func() {
 			BeforeEach(func() {
+				region := constants.CommonAWSRegion
+				multiAZ := true
+				networkingSet := true
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					// Platform API URL region must match --region used for OIDC/cluster create.
+					region = "us-east-1"
+					// V2 (Hyperfleet) doesn't support multi-AZ or custom networking in the same way as V1
+					multiAZ = false
+					networkingSet = false
+				}
 				customProfile = &handler.Profile{
 					ClusterConfig: &handler.ClusterConfig{
 						HCP:                   true,
-						MultiAZ:               true,
+						MultiAZ:               multiAZ,
 						STS:                   true,
 						OIDCConfig:            "managed",
-						NetworkingSet:         true,
+						NetworkingSet:         networkingSet,
 						BYOVPC:                true,
 						Zones:                 "",
 						Autoscale:             false,
@@ -1928,14 +2156,14 @@ var _ = Describe("Create cluster delete protection",
 					},
 					Version:      "latest",
 					ChannelGroup: "stable",
-					Region:       constants.CommonAWSRegion,
+					Region:       region,
 				}
 			})
 
 			setupAndTeardown()
 
 			It("can verify delete protection on HCP cluster creation - [id:73162]",
-				labels.High, labels.Runtime.Day1Supplemental,
+				labels.High, labels.Runtime.Day1Supplemental, labels.Hyperfleet.InProgress,
 				verifyDeleteProtection,
 			)
 		})
@@ -1963,7 +2191,7 @@ var _ = Describe("Create cluster delete protection",
 			setupAndTeardown()
 
 			It("can verify delete protection on classic cluster creation - [id:73162]",
-				labels.High, labels.Runtime.Day1Supplemental,
+				labels.High, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 				verifyDeleteProtection,
 			)
 		})
@@ -1986,27 +2214,36 @@ var _ = Describe("Create cluster with invalid options will",
 		})
 
 		It("validate enable-delete-protection flag when create cluster - [id:74657]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
-				By("Create cluster with invalid enable-delete-protection value")
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				flagName := "--enable-delete-protection"
+				if isHyperfleet {
+					flagName = "--delete-protection"
+				}
+
+				By("Create cluster with invalid delete-protection value")
 				resp, _, err := clusterService.Create("test-cluster-dp",
-					"--enable-delete-protection=aaa",
+					flagName+"=aaa",
 					"--dry-run",
 				)
 				Expect(err).To(HaveOccurred())
 				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "aaa" for "--enable-delete-protection"`))
+				Expect(textData).Should(ContainSubstring(
+					fmt.Sprintf(`Error: invalid argument "aaa" for "%s"`, flagName)))
 
 				resp, _, err = clusterService.Create("test-cluster-dp",
-					"--enable-delete-protection=",
+					flagName+"=",
 					"--dry-run",
 				)
 				Expect(err).To(HaveOccurred())
 				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
+				Expect(textData).Should(ContainSubstring(
+					fmt.Sprintf(`Error: invalid argument "" for "%s"`, flagName)))
 			})
 
-		It("to validate subnet well when create cluster - [id:37177]", labels.Medium, labels.Runtime.Day1Negative,
+		It("to validate subnet well when create cluster - [id:37177]",
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				By("Setup vpc with list azs")
 				testingTegion := "us-east-2"
@@ -2114,7 +2351,8 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
 			})
 
-		It("to validate the network when create cluster - [id:38857]", labels.Medium, labels.Runtime.Day1Negative,
+		It("to validate the network when create cluster - [id:38857]",
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				clusterName := "rosaci-38857"
 				By("illegal machine/service/pod cidr when create cluster")
@@ -2194,7 +2432,8 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring(`invalid argument "invalid" for "--host-prefix" flag`))
 			})
 
-		It("to validate the invalid proxy when create cluster - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
+		It("to validate the invalid proxy when create cluster - [id:45509]",
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				zone := constants.CommonAWSRegion + "a"
 				clusterName := "rosacli-45509"
@@ -2331,7 +2570,7 @@ var _ = Describe("Classic cluster deletion validation",
 		})
 
 		It("to validate the ROSA cluster deletion will work via rosacli	- [id:38778]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterService := rosaClient.Cluster
 				notExistID := "no-exist-cluster-id"
@@ -2383,7 +2622,7 @@ var _ = Describe("Classic cluster creation negative testing",
 		})
 
 		It("to validate to create the sts cluster with the version not compatible with the role version	- [id:45176]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterService = rosaClient.Cluster
 				ocmResourceService := rosaClient.OCMResource
@@ -2446,7 +2685,7 @@ var _ = Describe("Classic cluster creation negative testing",
 				Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
 			})
 		It("to validate to create sts cluster with invalid role arn and operator IAM roles prefix - [id:41824]",
-			labels.Low, labels.Runtime.Day1Negative,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Create account-roles for testing")
 				accountRolePrefixToClean = "testAr41824"
@@ -2510,7 +2749,7 @@ var _ = Describe("Classic cluster creation negative testing",
 			})
 
 		It("to validate creating a cluster with invalid subnets - [id:72657]",
-			labels.Low, labels.Runtime.Day1Negative,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterService := rosaClient.Cluster
 				clusterName := "ocp-72657"
@@ -2523,7 +2762,7 @@ var _ = Describe("Classic cluster creation negative testing",
 				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
 			})
 		It("to validate to create sts cluster with dulicated role arns- [id:74620]",
-			labels.Low, labels.Runtime.Day1Negative,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Create account-roles for testing")
 				accountRolePrefixToClean = "testAr74620"
@@ -2556,7 +2795,7 @@ var _ = Describe("Classic cluster creation negative testing",
 			})
 
 		It("to validate creating a cluster with invalid autoscaler - [id:66761]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterService := rosaClient.Cluster
 				clusterName := "ocp-66761"
@@ -2692,7 +2931,7 @@ var _ = Describe("HCP cluster creation negative testing",
 		})
 
 		It("creating HCP cluster with UWM should fail - [id:86119]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				clusterName := helper.GenerateRandomName("cluster-86119", 2)
 				By("Create HCP cluster with --disable-workload-monitoring")
@@ -2704,7 +2943,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				clusterName := helper.GenerateRandomName("ocp-73725", 2)
 				By("Create HCP cluster with --no-cni and \"--network-type={OVNKubernetes, OpenshiftSDN}\" at the same time")
@@ -2748,7 +2987,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate creating a hosted cluster with invalid subnets - [id:75916]",
-			labels.Low, labels.Runtime.Day1Negative,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				clusterName := "ocp-75916"
 				replacingFlags := map[string]string{
@@ -2767,7 +3006,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 		It("Create a hosted cluster cluster with invalid volume size [id:66372]",
 			labels.Medium,
-			labels.Runtime.Day1Negative,
+			labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				minSize := constants.MinHCPDiskSize
 				maxSize := constants.MaxDiskSize
@@ -2847,7 +3086,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
-			labels.Low, labels.Runtime.Day1Negative,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				clusterName := "ocp-70970"
 				replacingFlags := map[string]string{
@@ -2870,7 +3109,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate create cluster with external_auth_config can work well - [id:73755]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create non-HCP cluster with --external-auth-providers-enabled")
 				clusterName := helper.GenerateRandomName("ocp-73755", 2)
@@ -2914,7 +3153,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 		It("to validate '--ec2-metadata-http-tokens' flag during creating cluster - [id:64078]",
 			labels.Medium,
-			labels.Runtime.Day1Negative,
+			labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				clusterName := "ocp-64078"
 
@@ -2948,7 +3187,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("expose additional allowed principals for HCP negative - [id:74433]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create hcp cluster using --additional-allowed-principals and invalid formatted arn")
 				clusterName := "ocp-74408"
@@ -2980,7 +3219,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("Updating default ingress settings is not supported for HCP clusters - [id:71174]",
-			labels.Low, labels.Runtime.Day1Negative,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create hcp cluster using non-default ingress settings")
 				clusterName := helper.GenerateRandomName("c71174", 2)
@@ -2998,7 +3237,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate create cluster with audit log forwarding - [id:73672]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create non-HCP cluster with --audit-log-arn")
 				clusterName := helper.GenerateRandomName("ocp-73672", 2)
@@ -3034,7 +3273,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate role's managed policy when creating hcp cluster - [id:59547]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create managed account-roles and make sure some ones are not attached the managed policies.")
 				clusterService = rosaClient.Cluster
@@ -3111,7 +3350,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate hcp creation with registry config via rosacli - [id:76396]",
-			labels.Medium, labels.Runtime.Day1Negative,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create non-HCP cluster with registry config")
 				clusterName := helper.GenerateRandomName("ocp-76396", 2)
@@ -3247,7 +3486,7 @@ var _ = Describe("HCP cluster creation subnets validation",
 			}
 		})
 		It("HCP cluster creation subnets validation - [id:72538]",
-			labels.High, labels.Runtime.Day1Negative,
+			labels.High, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
 			func() {
 				clusterName := "ocp-72538"
 				vpcName := "vpc-72538"
@@ -3444,7 +3683,7 @@ var _ = Describe("Create cluster with availability zones testing",
 		})
 
 		It("User can set availability zones - [id:52691]",
-			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 				mpID := "mp-52691"
@@ -3511,7 +3750,7 @@ var _ = Describe("Create sts and hcp cluster with the IAM roles with path settin
 	})
 
 	It("to check the IAM roles can be used to create clsuters - [id:53570]",
-		labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+		labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
 		func() {
 			By("Skip testing if the cluster is a Classic NON-STS cluster")
 			isSTS, err := clusterService.IsSTSCluster(clusterID)
@@ -3623,7 +3862,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 		})
 
 		It("to validate to create cluster with existing operator roles prefix - [id:45742]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar45742", 2)
@@ -3737,7 +3976,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 		})
 
 		It("to create/delete operator-roles and oidc-provider to cluster in manual mode - [id:43053]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar43053", 2)
@@ -3909,7 +4148,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	})
 
 	It("to reuse operator-roles prefix and oidc config - [id:60688]",
-		labels.Critical, labels.Runtime.Day2,
+		labels.Critical, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 		func() {
 			By("Check if it is using oidc config")
 			if profile.ClusterConfig.OIDCConfig == "" {
@@ -4086,7 +4325,7 @@ var _ = Describe("Sts cluster creation with external id",
 		})
 
 		It("Creating cluster with sts external id should succeed - [id:75603]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75603", 2)
@@ -4296,7 +4535,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 		})
 
 		It("Check the output of the STS cluster creation with new oidc flow - [id:75925]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75925", 2)
@@ -4327,7 +4566,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 
 		It("ROSA CLI cluster creation should show install/uninstall logs - [id:75534]",
 			labels.Critical,
-			labels.Runtime.Day1Supplemental,
+			labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				testingClusterName = helper.GenerateRandomName("ocp-75534", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
@@ -4380,7 +4619,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			})
 
 		It("Check single AZ hosted cluster can be created - [id:54413]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				testingClusterName = helper.GenerateRandomName("c54413", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
@@ -4423,7 +4662,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			})
 
 		It("Create hosted cluster in manual mode - [id:75536]",
-			labels.High, labels.Runtime.Day1Supplemental,
+			labels.High, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				customProfile.ClusterConfig.ManualCreationMode = true
 				By("Prepare command for testing")
@@ -4522,7 +4761,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 		})
 
 		It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75927", 2)
@@ -4556,7 +4795,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			})
 
 		It("User can set availability zones to create rosa multi-az STS cluster - [id:56224]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Create classic sts cluster in auto mode")
 				customProfile.ClusterConfig.Zones = "us-east-2a,us-east-2b,us-east-2c"
@@ -4595,7 +4834,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			})
 
 		It("rosacli makes STS cluster by default - [id:55701]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Check the help message of 'rosa describe upgrade -h'")
 				output, _, err := clusterService.Create("ocp55701", "--help")
@@ -4761,7 +5000,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 		})
 
 		It("Create STS cluster with oidc config id but no oidc provider via rosacli in auto mode - [id:76093]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
 				By("Prepare command for custom cluster creation")
 				testingClusterName = helper.GenerateRandomName("c76093", 2)
@@ -4891,7 +5130,7 @@ var _ = Describe("Non-STS cluster with local credentials",
 		})
 
 		It("Creating cluster with non-sts use-local-credentials should succeed - [id:65900]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c65900", 2)

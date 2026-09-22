@@ -54,6 +54,9 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(&v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}, nil)
 		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
@@ -66,6 +69,9 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(&v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}, nil)
 		// Delete must NOT be called — omitting the expectation enforces this via gomock.
 
 		confirmFn = func(string, ...interface{}) bool { return false }
@@ -109,7 +115,30 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(&v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}, nil)
 		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(fmt.Errorf("delete failed"))
+
+		t.RosaRuntime.HyperFleetClient = hf
+		Expect(func() { runHyperfleetDelete(t.RosaRuntime, testCmd()) }).To(Panic())
+	})
+
+	It("fails when delete protection is enabled", func() {
+		orig := exitFn
+		exitFn = func(_ int) { panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters := newDltClusterMocks(ctrl)
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		enabled := true
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(&v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+			Spec:       v1alpha1.ClusterSpec{DeleteProtection: &enabled},
+		}, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() { runHyperfleetDelete(t.RosaRuntime, testCmd()) }).To(Panic())
@@ -121,6 +150,9 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(&v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}, nil)
 		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil)
 		clusters.EXPECT().WaitUntil(gomock.Any(), "cluster-uid", gomock.Any(), hfWatchInterval, hfWatchTimeout).Return(nil)
 
@@ -139,6 +171,9 @@ var _ = Describe("runHyperfleetDelete (cluster)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(&v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}, nil)
 		clusters.EXPECT().Delete(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil)
 		clusters.EXPECT().WaitUntil(gomock.Any(), "cluster-uid", gomock.Any(), hfWatchInterval, hfWatchTimeout).
 			Return(fmt.Errorf("timeout"))
