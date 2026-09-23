@@ -43,7 +43,81 @@ func (rh *resourcesHandler) DeleteVPCChain(withSharedAccount bool) error {
 		rh.vpc.VpcID = rh.resources.VpcID
 	}
 	rh.vpc.AWSClient = awsclient
+
+	if withSharedAccount {
+		if err := rh.deleteForeignOwnedSecurityGroups(); err != nil {
+			log.Logger.Warnf("Pre-cleanup of foreign-owned security groups failed, continuing: %s", err)
+		}
+	}
+
+	if err := waitForVPCEndpointENIsCleared(awsclient, rh.resources.VpcID); err != nil {
+		log.Logger.Warnf("Waiting for VPC endpoint network interfaces to clear failed, continuing: %s", err)
+	}
+
 	return rh.vpc.DeleteVPCChain(true)
+}
+
+// deleteForeignOwnedSecurityGroups deletes any security groups in the shared VPC that
+// were created under the primary/cluster account rather than the shared/prefix account
+// that owns the VPC. In a RAM-shared VPC, the VPC owner can list every security group in
+// its VPC but cannot delete ones created by the other account ("...the provided object is
+// not owned by you"), and the vendored security-group sweep in DeleteVPCChain aborts on
+// the first such group, blocking the rest of the VPC-chain teardown (ENIs, subnets, VPC).
+func (rh *resourcesHandler) deleteForeignOwnedSecurityGroups() error {
+	primaryClient, err := rh.GetAWSClient(false)
+	if err != nil {
+		return err
+	}
+	return deleteForeignOwnedSecurityGroupsWithClient(primaryClient, rh.resources.VpcID)
+}
+
+func deleteForeignOwnedSecurityGroupsWithClient(primaryClient *aws_client.AWSClient, vpcID string) error {
+	sgs, err := primaryClient.ListSecurityGroups(vpcID)
+	if err != nil {
+		return err
+	}
+	for _, sg := range sgs {
+		if _, err := primaryClient.DeleteSecurityGroup(*sg.GroupId); err != nil && !isAWSAuthorizationError(err) {
+			log.Logger.Warnf("Delete security group %s with primary account failed: %s", *sg.GroupId, err)
+		}
+	}
+	return nil
+}
+
+// waitForVPCEndpointENIsCleared deletes any VPC endpoints for the VPC and waits for
+// their backing network interfaces to be released by AWS before the caller proceeds
+// to delete security groups, ENIs, subnets, and the VPC itself. AWS detaches
+// interface-endpoint ENIs asynchronously after DeleteVpcEndpoints returns, so running
+// the rest of the teardown chain immediately after causes DependencyViolation and
+// "currently in use" failures on the security group, ENIs, subnets, and VPC.
+func waitForVPCEndpointENIsCleared(awsclient *aws_client.AWSClient, vpcID string) error {
+	return waitForVPCEndpointENIsClearedWithTimeout(awsclient, vpcID, 15*time.Second, 5*time.Minute)
+}
+
+func waitForVPCEndpointENIsClearedWithTimeout(
+	awsclient *aws_client.AWSClient, vpcID string, interval, timeout time.Duration,
+) error {
+	if err := awsclient.DeleteVPCEndpoints(vpcID); err != nil {
+		return err
+	}
+	return wait.PollUntilContextTimeout(
+		context.TODO(),
+		interval,
+		timeout,
+		true,
+		func(ctx context.Context) (bool, error) {
+			enis, err := awsclient.DescribeNetWorkInterface(vpcID)
+			if err != nil {
+				return false, err
+			}
+			for _, eni := range enis {
+				if eni.InterfaceType == types.NetworkInterfaceTypeVpcEndpoint {
+					return false, nil
+				}
+			}
+			return true, nil
+		},
+	)
 }
 
 func (rh *resourcesHandler) DeleteKMSKey(etcdKMS bool) (err error) {
