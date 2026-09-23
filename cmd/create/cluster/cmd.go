@@ -630,7 +630,8 @@ func initFlags(cmd *cobra.Command) {
 		&args.computeMachineType,
 		"compute-machine-type",
 		"",
-		"Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node.",
+		"Instance type for the compute nodes. Determines the amount of memory and vCPU allocated to each compute node. "+
+			"When omitted for hosted control plane clusters, the service default is used (m7i.xlarge).",
 	)
 
 	flags.IntVar(
@@ -2751,15 +2752,22 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf(fmt.Sprintf("%s", err))
 		os.Exit(1)
 	}
+	availableComputeMachineTypeIDs := computeMachineTypeList.GetAvailableIDs(multiAZ).IDs()
 	if computeMachineType == "" {
-		computeMachineType = defaultComputeMachineType
+		// HCP: omit the classic flavour default (m5.xlarge) so CS applies rosaHcpDefaults.
+		computeMachineType = resolveComputeMachineTypeDefault(isHostedCP, defaultComputeMachineType)
 	}
 	if interactive.Enabled() {
+		interactiveDefault := computeMachineType
+		if interactiveDefault == "" {
+			interactiveDefault = interactiveComputeMachineTypeDefault(
+				isHostedCP, defaultComputeMachineType, availableComputeMachineTypeIDs)
+		}
 		computeMachineType, err = interactive.GetOption(interactive.Input{
 			Question: "Compute nodes instance type",
 			Help:     cmd.Flags().Lookup("compute-machine-type").Usage,
-			Options:  computeMachineTypeList.GetAvailableIDs(multiAZ).IDs(),
-			Default:  computeMachineType,
+			Options:  availableComputeMachineTypeIDs,
+			Default:  interactiveDefault,
 		})
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid machine type: %s", err)
