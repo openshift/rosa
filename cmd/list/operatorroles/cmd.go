@@ -76,11 +76,12 @@ func init() {
 	output.AddFlag(Cmd)
 }
 
+// run lists operator roles after validating the requested version across supported topologies.
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
-	versionList, err := ocm.GetVersionMinorList(r.OCMClient)
+	versionList, err := ocm.GetVersionMinorListForProducts(r.OCMClient, "", ocm.HcpProduct)
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
