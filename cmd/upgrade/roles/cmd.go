@@ -105,6 +105,7 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
+// run upgrades account and operator roles using versions compatible with the cluster topology.
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
@@ -200,7 +201,8 @@ func run(cmd *cobra.Command, argv []string) {
 		reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	policyVersion, err = ocmClient.GetPolicyVersion(policyVersion, channelGroup)
+	policyVersion, err = getPolicyVersion(
+		ocmClient, policyVersion, channelGroup, cluster.Hypershift().Enabled())
 	if err != nil {
 		reporter.Errorf("Error getting version: %s", err)
 		os.Exit(1)
@@ -503,6 +505,16 @@ func run(cmd *cobra.Command, argv []string) {
 			"\trosa upgrade cluster --cluster %s\n", cluster.ID())
 		os.Exit(0)
 	}
+}
+
+// getPolicyVersion validates an upgrade policy version against the cluster topology.
+func getPolicyVersion(ocmClient *ocm.Client, version string, channelGroup string,
+	hostedCP bool) (string, error) {
+	product := ""
+	if hostedCP {
+		product = ocm.HcpProduct
+	}
+	return ocmClient.GetPolicyVersionWithProduct(product, version, channelGroup)
 }
 
 func LogError(key string, ocmClient *ocm.Client, defaultPolicyVersion string, err error, reporter reporter.Logger) {
