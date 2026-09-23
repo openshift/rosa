@@ -607,6 +607,9 @@ func (rh *resourcesHandler) GetAWSClient(useSharedAccount bool) (*aws_client.AWS
 		}
 		return aws_client.CreateAWSClient("", rh.resources.Region, rh.awsSharedAccountCredentialsFile)
 	}
+	if rh.awsCredentialsFile != "" {
+		return aws_client.CreateAWSClient("", rh.resources.Region, rh.awsCredentialsFile)
+	}
 	return aws_client.CreateAWSClient("", rh.resources.Region)
 }
 
