@@ -4,6 +4,8 @@
 package operatorroles
 
 import (
+	"fmt"
+
 	"go.uber.org/mock/gomock"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -29,13 +31,12 @@ var _ = Describe("Create dns domain", func() {
 		runtime = rosa.NewRuntime()
 		mockClient = aws.NewMockClient(ctrl)
 		runtime.AWSClient = mockClient
-		mockClient.EXPECT().GetCreator().Return(&aws.Creator{Partition: testPartition}, nil)
+		runtime.Creator = &aws.Creator{
+			Partition: testPartition,
+			AccountID: "123123123123",
+		}
 
 		mockClient.EXPECT().IsPolicyExists(gomock.Any()).Return(nil, nil).AnyTimes()
-
-		creator, err := runtime.AWSClient.GetCreator()
-		Expect(err).ToNot(HaveOccurred())
-		runtime.Creator = creator
 	})
 	AfterEach(func() {
 		ctrl.Finish()
@@ -58,6 +59,136 @@ var _ = Describe("Create dns domain", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(arn).To(Equal(""))
 			})
+		})
+	})
+})
+
+var _ = Describe("validateIngressOperatorPolicyOverride", func() {
+	var ctrl *gomock.Controller
+	var runtime *rosa.Runtime
+	var mockClient *aws.MockClient
+
+	const (
+		testPolicyArn    = "arn:aws:iam::123456789012:policy/test-policy"
+		testSharedVpcArn = "arn:aws:iam::999888777666:role/shared-vpc-role"
+		testInstallerPfx = "my-prefix"
+	)
+
+	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+		runtime = rosa.NewRuntime()
+		mockClient = aws.NewMockClient(ctrl)
+		runtime.AWSClient = mockClient
+	})
+
+	AfterEach(func() {
+		ctrl.Finish()
+	})
+
+	When("the policy does not exist", func() {
+		It("returns nil without further checks", func() {
+			mockClient.EXPECT().IsPolicyExists(testPolicyArn).Return(nil, fmt.Errorf("NoSuchEntity"))
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	When("the policy exists", func() {
+		BeforeEach(func() {
+			mockClient.EXPECT().IsPolicyExists(testPolicyArn).Return(nil, nil)
+		})
+
+		It("returns error when GetDefaultPolicyDocument fails", func() {
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).
+				Return("", fmt.Errorf("access denied"))
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("access denied"))
+		})
+
+		It("returns error when policy document is invalid JSON", func() {
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).
+				Return("not-json", nil)
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns nil when policy has matching shared VPC role ARN", func() {
+			doc := fmt.Sprintf(`{
+				"Version": "2012-10-17",
+				"Statement": [{
+					"Effect": "Allow",
+					"Action": "sts:AssumeRole",
+					"Resource": "%s"
+				}]
+			}`, testSharedVpcArn)
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when a later statement has an unexpected shared VPC role ARN", func() {
+			differentArn := "arn:aws:iam::111111111111:role/other-role"
+			doc := fmt.Sprintf(`{
+				"Version": "2012-10-17",
+				"Statement": [{
+					"Effect": "Allow",
+					"Action": "s3:GetObject",
+					"Resource": "arn:aws:s3:::my-bucket/*"
+				}, {
+					"Effect": "Allow",
+					"Action": "sts:AssumeRole",
+					"Resource": "%s"
+				}]
+			}`, differentArn)
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unexpected shared VPC role ARN"))
+		})
+
+		It("returns error when policy has different shared VPC role ARN", func() {
+			differentArn := "arn:aws:iam::111111111111:role/other-role"
+			doc := fmt.Sprintf(`{
+				"Version": "2012-10-17",
+				"Statement": [{
+					"Effect": "Allow",
+					"Action": "sts:AssumeRole",
+					"Resource": "%s"
+				}]
+			}`, differentArn)
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unexpected shared VPC role ARN"))
+		})
+
+		It("returns nil when policy has no sts:AssumeRole statement", func() {
+			doc := `{
+				"Version": "2012-10-17",
+				"Statement": [{
+					"Effect": "Allow",
+					"Action": "s3:GetObject",
+					"Resource": "arn:aws:s3:::my-bucket/*"
+				}]
+			}`
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns nil when policy has Deny effect with sts:AssumeRole", func() {
+			doc := fmt.Sprintf(`{
+				"Version": "2012-10-17",
+				"Statement": [{
+					"Effect": "Deny",
+					"Action": "sts:AssumeRole",
+					"Resource": "%s"
+				}]
+			}`, "arn:aws:iam::111111111111:role/other-role")
+			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
+			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
