@@ -21,10 +21,9 @@ import (
 // RegisterClusterCreateFlags binds cobra flags to its fields; runHyperfleet reads from it.
 var hfClusterInput hfpathbind.ClusterCreateInput
 
-// hfEnabled, hfExitFn, hfDescribeSubnets, and hfCreateCluster are package-level
-// vars so tests can stub the hyperfleet dispatch path without real AWS calls.
+// hfExitFn, hfDescribeSubnets, and hfCreateCluster are package-level
+// vars so tests can stub the hyperfleet path without real AWS calls.
 var (
-	hfEnabled = hyperfleet.Enabled
 	hfExitFn  = func(code int) { os.Exit(code) }
 
 	hfDescribeSubnets = func(

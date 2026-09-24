@@ -292,7 +292,7 @@ func makeCmd() *cobra.Command {
 
   # Create a cluster in the us-east-2 region
   rosa create cluster --cluster-name=mycluster --region=us-east-2`,
-		Run:  run,
+		Run:  dispatch,
 		Args: cobra.NoArgs,
 	}
 }
@@ -1009,11 +1009,6 @@ func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string)
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	if hfEnabled() {
-		hfCreateCluster(cmd)
-		return
-	}
-
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 

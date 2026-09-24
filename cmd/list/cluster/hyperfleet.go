@@ -8,7 +8,6 @@ import (
 
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -21,7 +20,6 @@ type clusterListItem struct {
 }
 
 var (
-	hfEnabled      = hyperfleet.Enabled
 	hfListClusters = func() {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()

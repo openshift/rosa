@@ -11,18 +11,18 @@ var _ = Describe("hyperfleet dispatch", func() {
 	var origList func(*cobra.Command, []string)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origList = hfListMachinePools
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfListMachinePools = origList
 	})
 
 	It("routes to hfListMachinePools when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfListMachinePools = func(_ *cobra.Command, _ []string) { called = true }
 
 		cmd := NewListMachinePoolCommand()
