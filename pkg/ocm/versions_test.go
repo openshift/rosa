@@ -312,6 +312,48 @@ var _ = Describe("OCMClient", func() {
 			Expect(err).To(MatchError(ContainSubstring("candidate unavailable")),
 				"expected the candidate request's OCM error reason to be preserved")
 		})
+
+		It("checks version EOL for the HCP topology", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("search")).To(ContainSubstring("hosted_control_plane_enabled = 't'"),
+							"expected the HCP EOL-check request to restrict the search to HCP-enabled versions")
+					},
+					RespondWithJSON(http.StatusOK, `{
+						"kind":"VersionList","page":1,"size":1,"total":1,
+						"items":[{"id":"openshift-v5.0.0-candidate","raw_id":"5.0.0","channel_group":"candidate",
+							"end_of_life_timestamp":"2000-01-01T00:00:00Z"}]
+					}`),
+				),
+			)
+
+			err := ocmClient.IsVersionCloseToEol(CloseToEolDays, "5.0.0", "candidate", true)
+
+			Expect(err).To(MatchError(ContainSubstring("will no longer be supported")),
+				"expected the HCP EOL check to flag the near-EOL version")
+		})
+
+		It("omits the hosted_control_plane_enabled filter for the classic topology", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions"),
+					func(_ http.ResponseWriter, request *http.Request) {
+						Expect(request.URL.Query().Get("search")).NotTo(ContainSubstring("hosted_control_plane_enabled"),
+							"expected the classic EOL-check request to omit the HCP-enabled filter")
+					},
+					RespondWithJSON(http.StatusOK, `{
+						"kind":"VersionList","page":1,"size":1,"total":1,
+						"items":[{"id":"openshift-v4.11.0","raw_id":"4.11.0","channel_group":"stable"}]
+					}`),
+				),
+			)
+
+			err := ocmClient.IsVersionCloseToEol(CloseToEolDays, "4.11.0", "stable", false)
+
+			Expect(err).NotTo(HaveOccurred(), "expected the classic EOL check to succeed for a supported version")
+		})
 	})
 
 	Context("Describe version list", func() {
