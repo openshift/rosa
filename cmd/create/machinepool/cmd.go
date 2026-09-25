@@ -61,6 +61,7 @@ func CreateMachinepoolRunner(userOptions *mpOpts.CreateMachinepoolUserOptions) r
 		})
 
 		cluster := r.FetchCluster()
+		r.OCMClient.WarnIfOCMRoleNotLinked(r.Reporter, r.Creator.AccountID)
 		if err := machinepool.ValidateClusterState(cluster, clusterKey); err != nil {
 			return err
 		}

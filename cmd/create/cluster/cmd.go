@@ -1028,6 +1028,8 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	r.OCMClient.WarnIfOCMRoleNotLinkedForAccount(r.Reporter, r.Creator.AccountID)
+
 	// Validate mode
 	mode, err := interactive.GetMode()
 	if err != nil {
