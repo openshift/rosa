@@ -33,6 +33,11 @@ import (
 // MakeTokenObject generates a token with the claims resulting from merging the default claims and
 // the claims explicitly given.
 func MakeTokenObject(claims jwt.MapClaims) *jwt.Token {
+	return MakeTokenObjectWithMethod(jwt.SigningMethodRS256, claims)
+}
+
+// MakeTokenObjectWithMethod is like MakeTokenObject but signs with the given method (e.g. RS512).
+func MakeTokenObjectWithMethod(method jwt.SigningMethod, claims jwt.MapClaims) *jwt.Token {
 	merged := jwt.MapClaims{}
 	for name, value := range MakeClaims() {
 		merged[name] = value
@@ -44,7 +49,7 @@ func MakeTokenObject(claims jwt.MapClaims) *jwt.Token {
 			merged[name] = value
 		}
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, merged)
+	token := jwt.NewWithClaims(method, merged)
 	token.Header["kid"] = "123"
 	var err error
 	token.Raw, err = token.SignedString(jwtPrivateKey)

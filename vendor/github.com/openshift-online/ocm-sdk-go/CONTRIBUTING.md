@@ -1,6 +1,3 @@
-> ⚠️ _Note_: Auto release has been temporarily disabled. Please see manual release procedure steps in the meantime.
-> Auto-release will be re-enabled after the completion of [ROSAENG-62396](https://redhat.atlassian.net/browse/ROSAENG-62396)
-
 # Contributing to the OCM SDK
 
 ## Releasing a new OCM API Model version
@@ -47,14 +44,14 @@ make update
 
 ### Automated (recommended)
 
-When a new ocm-api-model release is published, a GitHub Action automatically:
+When a new ocm-api-model release is published, the **sync-from-model** workflow automatically:
 
 1. Receives a `repository_dispatch` event from ocm-api-model
 2. Bumps the ocm-api-model dependency using `./hack/update-model.sh`
 3. Regenerates the SDK using `make update`
-4. Opens a PR with the changes
+4. Creates a PR (e.g., `sync-model/v0.0.468`) with the changes
 
-Review and merge the auto-generated PR. On merge, a new SDK version tag is created automatically.
+Review and merge the auto-generated PR. This triggers the release process described below.
 
 ### Manual
 
@@ -77,33 +74,69 @@ necessary. It is *highly recommended* that new endpoints have a new example crea
 
 ### Automated (recommended)
 
-On merge to main, a GitHub Action automatically bumps the patch version and pushes a new tag. The existing `publish-release` workflow then creates the GitHub Release.
+The SDK release process is fully automated through a 3-stage workflow:
 
-### Manual
+#### Stage 1: Code changes merge to main
+When any PR that modifies Go code (`*.go`), `go.mod`, or `go.sum` is merged to main (including sync-from-model PRs), the release process begins automatically.
 
-Releasing a new version requires submitting an MR for review/merge with an update to the `Version` constant in
-[version.go](version.go). Additionally, update the [CHANGES.md](CHANGES.md) file to include the new version and
-describe all changes included.
+#### Stage 2: Version bump PR creation
+The **auto-version-bump** workflow automatically:
 
-Below is an example CHANGES.md update:
+1. Calculates the next patch version (e.g., `v0.1.513`)
+2. Updates `version.go` with the new version
+3. Updates `CHANGES.md` with all commits since the last release
+4. Creates a PR (e.g., `release-v0.1.513`) with these changes
 
-```
-== 0.1.39 Oct 7 2019
+**Action required:** Review and merge the version bump PR.
 
-- Update to model 0.0.9:
-  - Add `type` attribute to the `ResourceQuota` type.
-  - Add `config_managed` attribute to the `RoleBinding` type.
-```
+If multiple PRs merge to main before the version bump PR is merged, the workflow intelligently updates the existing version bump PR with all accumulated changes rather than creating duplicate PRs.
 
-Submit an MR for review/merge with the CHANGES.md and version.go update.
+#### Stage 3: Tag and release creation
+When the version bump PR is merged, the **auto-tag-and-release** workflow automatically:
 
-Finally, create and submit a new tag with the new version following the below example:
+1. Extracts the version from `version.go`
+2. Creates a git tag (e.g., `v0.1.513`)
+3. Creates a GitHub Release with the changelog from `CHANGES.md`
 
-```shell
-git checkout main
-git pull
-git tag -a -m 'Release 0.1.39' v0.1.39
-git push origin v0.1.39
-```
+**No action required** — the tag and release are created automatically.
 
-Note that a repository administrator may need to push the tag to the repository due to access restrictions.
+### Summary
+- **Code PR** → merge → **auto-version-bump creates PR** → merge → **tag & release created automatically**
+- Only 2 manual merges required; final release is fully automated
+- Works with any code change, not just model syncs
+
+### Manual (fallback)
+
+If the automated workflow is unavailable, you can manually release a new version:
+
+1. **Update version.go**: Increment the `Version` constant (e.g., `"0.1.513"`)
+
+2. **Update CHANGES.md**: Add a new section with the version and changes:
+   ```markdown
+   ## 0.1.513 Sep 18 2026
+
+   - Update to model 0.0.468:
+     - Add `type` attribute to the `ResourceQuota` type.
+     - Add `config_managed` attribute to the `RoleBinding` type.
+   ```
+
+3. **Create a PR** with these changes:
+   ```shell
+   git checkout -b release-v0.1.513
+   git add version.go CHANGES.md
+   git commit -m "chore: bump version to v0.1.513"
+   git push origin release-v0.1.513
+   # Create PR and merge after review
+   ```
+
+4. **Create and push the tag**:
+   ```shell
+   git checkout main
+   git pull
+   git tag -a -m 'Release v0.1.513' v0.1.513
+   git push origin v0.1.513
+   ```
+
+5. **Create the GitHub Release** manually using the tag and changelog from CHANGES.md
+
+Note that a repository administrator may need to push the tag due to access restrictions.

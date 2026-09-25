@@ -3,6 +3,12 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.514 Sep 22 2026
+
+- ROSAENG-65574 | fix: restrict JWT signing methods via ValidMethods
+- docs: update CONTRIBUTING.md with new automated release workflow
+
+
 ## 0.1.513 Sep 17 2026
 
 - ROSAENG-62396 | test: trigger automate sdk release
