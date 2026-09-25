@@ -313,6 +313,69 @@ func resolveSTSMode(cmd *cobra.Command, isHostedCP bool) (isSTS bool, isIAM bool
 	return isSTS, isIAM, nil
 }
 
+// classicOnlyBoolFlags lists boolean flags that signal classic architecture
+// only when their effective value is true.
+var classicOnlyBoolFlags = []string{
+	"non-sts",
+	"mint-mode",
+	privateLinkFlagName,
+	"disable-workload-monitoring",
+}
+
+// classicOnlyValueFlags lists flags where any non-default value signals classic
+// architecture (string and string-slice flags).
+var classicOnlyValueFlags = []string{
+	interactiveSgs.InfraSecurityGroupFlag,
+	interactiveSgs.ControlPlaneSecurityGroupFlag,
+	"controlplane-iam-role-arn",
+	"master-iam-role",
+	arguments.NewDefaultMPLabelsFlag,
+	ingress.DefaultIngressRouteSelectorFlag,
+	ingress.DefaultIngressExcludedNamespacesFlag,
+	ingress.DefaultIngressWildcardPolicyFlag,
+	ingress.DefaultIngressNamespaceOwnershipPolicyFlag,
+	"availability-zones",
+}
+
+// classicOnlyFlagsChanged returns the names of all classic-only flags
+// that the user explicitly set to a value that implies classic architecture.
+// Boolean flags are only included when their effective value is true.
+// --sts=false is treated as a classic-only signal because HCP requires STS.
+func classicOnlyFlagsChanged(cmd *cobra.Command) []string {
+	var changed []string
+	for _, flag := range classicOnlyBoolFlags {
+		f := cmd.Flags().Lookup(flag)
+		if f != nil && f.Changed && f.Value.String() == "true" {
+			changed = append(changed, "--"+flag)
+		}
+	}
+	if cmd.Flags().Changed("sts") && !args.sts {
+		changed = append(changed, "--sts=false")
+	}
+	for _, flag := range classicOnlyValueFlags {
+		f := cmd.Flags().Lookup(flag)
+		if f != nil && f.Changed && f.Value.String() != f.DefValue {
+			changed = append(changed, "--"+flag)
+		}
+	}
+	return changed
+}
+
+// resolveHostedCPDefault determines the interactive prompt behavior for
+// the Hosted Control Plane question. It returns the default value to
+// present and whether the prompt should be shown at all. When the user
+// has set a classic-only flag without explicitly setting --hosted-cp,
+// the prompt is skipped and the default is false.
+func resolveHostedCPDefault(cmd *cobra.Command, isHostedCP bool) (defaultVal bool, showPrompt bool) {
+	if !cmd.Flags().Changed("hosted-cp") && len(classicOnlyFlagsChanged(cmd)) > 0 {
+		return false, false
+	}
+	if cmd.Flags().Changed("hosted-cp") {
+		return isHostedCP, true
+	}
+	return true, true
+}
+
 func init() {
 	initFlags(Cmd)
 }
@@ -1052,15 +1115,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	// validate flags for cluster admin and private ingress/private API
 	isHostedCP := args.hostedClusterEnabled
-	if isHostedCP {
-		if cmd.Flags().Changed("disable-workload-monitoring") {
-			r.Reporter.Errorf(arguments.UwmNotSupportedMessage)
-			os.Exit(1)
-		}
-		validateHcpFlags(cmd, r.Reporter)
-	}
 
 	supportedRegions, err := r.OCMClient.GetDatabaseRegionList()
 	if err != nil {
@@ -1178,16 +1233,36 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if interactive.Enabled() {
-		isHostedCP, err = interactive.GetBool(interactive.Input{
-			Question: "Deploy cluster with Hosted Control Plane",
-			Help:     cmd.Flags().Lookup("hosted-cp").Usage,
-			Default:  isHostedCP,
-			Required: false,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
+		hcpDefault, showPrompt := resolveHostedCPDefault(cmd, isHostedCP)
+		if !showPrompt {
+			incompatibleFlags := classicOnlyFlagsChanged(cmd)
+			verb := "is"
+			if len(incompatibleFlags) > 1 {
+				verb = "are"
+			}
+			r.Reporter.Infof("Using classic architecture because %s %s not compatible "+
+				"with Hosted Control Plane clusters",
+				strings.Join(incompatibleFlags, ", "), verb)
+		} else {
+			isHostedCP, err = interactive.GetBool(interactive.Input{
+				Question: "Deploy cluster with Hosted Control Plane",
+				Help:     cmd.Flags().Lookup("hosted-cp").Usage,
+				Default:  hcpDefault,
+				Required: false,
+			})
+			if err != nil {
+				r.Reporter.Errorf("Expected a valid --hosted-cp value: %s", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if isHostedCP {
+		if cmd.Flags().Changed("disable-workload-monitoring") {
+			r.Reporter.Errorf(arguments.UwmNotSupportedMessage)
 			os.Exit(1)
 		}
+		validateHcpFlags(cmd, r.Reporter)
 	}
 
 	if isHostedCP && r.Reporter.IsTerminal() {
