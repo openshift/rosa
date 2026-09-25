@@ -50,15 +50,22 @@ func runHyperfleetDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUser
 		exitFn(1)
 	}
 
-	nodePoolID, err := hyperfleet.ResolveNodePoolUID(ctx, r.HyperFleetClient, clusterUID, nodePoolName)
+	nodePools, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).
+		List(ctx, platform.ListOptions{})
 	if err != nil {
-		r.Reporter.Errorf("%v", err)
+		r.Reporter.Errorf("Failed to list node pools for cluster '%s': %v", clusterKey, err)
 		exitFn(1)
 	}
 
-	np, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).Get(ctx, nodePoolID, platform.GetOptions{})
-	if err != nil {
-		r.Reporter.Errorf("Failed to get node pool '%s': %v", nodePoolName, err)
+	var np *v1alpha1.NodePool
+	for i := range nodePools.Items {
+		if nodePools.Items[i].Name == nodePoolName {
+			np = &nodePools.Items[i]
+			break
+		}
+	}
+	if np == nil {
+		r.Reporter.Errorf("Node pool '%s' not found in cluster '%s'", nodePoolName, clusterKey)
 		exitFn(1)
 	}
 
