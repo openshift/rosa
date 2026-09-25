@@ -1486,22 +1486,6 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	httpTokens := args.ec2MetadataHttpTokens
-	if httpTokens == "" {
-		httpTokens = string(v1.Ec2MetadataHttpTokensOptional)
-	}
-	if interactive.Enabled() {
-		httpTokens, err = interactive.GetOption(interactive.Input{
-			Question: "Configure the use of IMDSv2 for ec2 instances",
-			Options:  []string{string(v1.Ec2MetadataHttpTokensOptional), string(v1.Ec2MetadataHttpTokensRequired)},
-			Help:     cmd.Flags().Lookup(Ec2MetadataHttpTokensFlag).Usage,
-			Required: true,
-			Default:  httpTokens,
-		})
-		if err != nil {
-			r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
-			os.Exit(1)
-		}
-	}
 	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
 		r.Reporter.Errorf("Expected a valid http tokens value : %v", err)
 		os.Exit(1)
@@ -1509,6 +1493,10 @@ func run(cmd *cobra.Command, _ []string) {
 	if err := ocm.ValidateHttpTokensVersion(ocm.GetVersionMinor(version), httpTokens); err != nil {
 		r.Reporter.Errorf(err.Error())
 		os.Exit(1)
+	}
+	if isHostedCP && httpTokens != "" {
+		r.Reporter.Infof("Setting --ec2-metadata-http-tokens only applies to the initial machine pool. " +
+			"Use --ec2-metadata-http-tokens on 'rosa create machinepool' to configure additional machine pools.")
 	}
 
 	// warn if mode is used for non sts cluster

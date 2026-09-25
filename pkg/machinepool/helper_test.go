@@ -964,6 +964,17 @@ var _ = Describe("CreateAwsNodePoolBuilder", func() {
 		Expect(built.Tags()).To(Equal(awsTags))
 		Expect(built.RootVolume().Size()).To(Equal(300))
 	})
+
+	It("does not set Ec2MetadataHttpTokens when httpTokens is empty", func() {
+		instanceType := "t2.micro"
+		size := 300
+
+		builder := createAwsNodePoolBuilder(instanceType, nil, "", nil, &size)
+		built, err := builder.Build()
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(built.Ec2MetadataHttpTokens())).To(BeEmpty())
+	})
 })
 
 var _ = Describe("getVpcIdFromSubnet Function", func() {

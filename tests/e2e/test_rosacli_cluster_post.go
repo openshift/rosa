@@ -586,7 +586,7 @@ var _ = Describe("Healthy check",
 
 					By("Check the cluster description value to match cluster profile configuration")
 					if profile.ClusterConfig.Ec2MetadataHttpTokens == "" {
-						Expect(clusterIMDSv2Value).To(Equal(constants.DefaultEc2MetadataHttpTokens))
+						Expect(clusterIMDSv2Value).ToNot(BeEmpty())
 					} else {
 						Expect(clusterIMDSv2Value).To(Equal(profile.ClusterConfig.Ec2MetadataHttpTokens))
 					}

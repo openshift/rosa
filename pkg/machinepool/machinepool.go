@@ -953,22 +953,6 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 	}
 
 	httpTokens := args.EC2MetadataHttpTokens
-	if httpTokens == "" {
-		httpTokens = string(cmv1.Ec2MetadataHttpTokensOptional)
-	}
-	if interactive.Enabled() {
-		httpTokens, err = interactive.GetOption(interactive.Input{
-			Question: "Configure the use of IMDSv2 for ec2 instances",
-			Options:  []string{string(cmv1.Ec2MetadataHttpTokensOptional), string(cmv1.Ec2MetadataHttpTokensRequired)},
-			Help:     cmd.Flags().Lookup("ec2-metadata-http-tokens").Usage,
-			Required: true,
-			Default:  httpTokens,
-		})
-		if err != nil {
-			return fmt.Errorf("expected a valid http tokens value : %v", err)
-		}
-	}
-
 	if err = ocm.ValidateHttpTokensValue(httpTokens); err != nil {
 		return fmt.Errorf("expected a valid http tokens value : %v", err)
 	}

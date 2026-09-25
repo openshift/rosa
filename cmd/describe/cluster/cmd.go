@@ -353,11 +353,8 @@ func run(cmd *cobra.Command, argv []string) {
 		str = fmt.Sprintf("%s"+"Additional trust bundle:    REDACTED\n", str)
 	}
 
-	if cluster.AWS().Ec2MetadataHttpTokens() != "" {
+	if !isHypershift && cluster.AWS().Ec2MetadataHttpTokens() != "" {
 		str = fmt.Sprintf("%s"+"EC2 Metadata Http Tokens:   %s\n", str, cluster.AWS().Ec2MetadataHttpTokens())
-	} else {
-		// show default value for clusters that didn't set it.
-		str = fmt.Sprintf("%s"+"EC2 Metadata Http Tokens:   %s\n", str, cmv1.Ec2MetadataHttpTokensOptional)
 	}
 
 	if cluster.AWS().STS().RoleARN() != "" {
