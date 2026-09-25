@@ -40,6 +40,7 @@ const (
 	hfSubnetReadyTimeout    = 2 * time.Minute
 	hfClusterReadyInterval  = 30 * time.Second
 	hfClusterReadyTimeout   = 90 * time.Minute
+	hfVPCDeleteTimeout      = 2 * time.Minute
 	hfNodePoolReadyInterval = 30 * time.Second
 	hfNodePoolReadyTimeout  = 30 * time.Minute
 	hfDefaultInstanceType   = "m5.xlarge"
@@ -157,11 +158,7 @@ var _ = Describe("Hyperfleet sanity",
 			vpcID := awssdk.ToString(vpcOut.Vpc.VpcId)
 			deferTeardown(func(ctx SpecContext) {
 				By("Cleanup: deleting VPC")
-				if _, err := ec2Client.DeleteVpc(ctx, &ec2svc.DeleteVpcInput{VpcId: awssdk.String(vpcID)}); err != nil {
-					GinkgoWriter.Printf("Failed to delete VPC %s: %v\n", vpcID, err)
-					return
-				}
-				hfWaitVPCDeleted(ctx, ec2Client, vpcID, 2*time.Minute)
+				hfDeleteVPC(ctx, ec2Client, vpcID)
 			})
 
 			By("Waiting for VPC to become available")
@@ -664,7 +661,7 @@ var _ = Describe("Hyperfleet sanity",
 				"CLI describe id must match cluster UID")
 			Expect(describeMap["name"]).To(Equal(clusterName),
 				"CLI describe name must match cluster name")
-			Expect(describeMap["state"]).To(Equal(string(v1alpha1.ClusterPhaseReady)),
+			Expect(describeMap["state"]).To(Equal(strings.ToLower(string(v1alpha1.ClusterPhaseReady))),
 				"CLI describe state must be Ready")
 			Expect(describeMap["api_url"]).To(Equal(
 				fmt.Sprintf("https://%s:%d",
@@ -1067,6 +1064,35 @@ func hfDeleteVPCSecurityGroups(ctx context.Context, ec2Client *ec2svc.Client, vp
 			GinkgoWriter.Printf("Failed to delete security group %s: %v\n", sgID, delErr)
 		} else {
 			GinkgoWriter.Printf("Deleted security group %s (%s)\n", sgID, awssdk.ToString(sg.GroupName))
+		}
+	}
+}
+
+// hfDeleteVPC retries while AWS releases asynchronous VPC dependencies.
+func hfDeleteVPC(ctx context.Context, ec2Client *ec2svc.Client, vpcID string) {
+	deadline := time.Now().Add(hfVPCDeleteTimeout)
+	for {
+		_, err := ec2Client.DeleteVpc(ctx, &ec2svc.DeleteVpcInput{VpcId: awssdk.String(vpcID)})
+		if err == nil {
+			hfWaitVPCDeleted(ctx, ec2Client, vpcID, hfVPCDeleteTimeout)
+			return
+		}
+
+		if !strings.Contains(err.Error(), "DependencyViolation") || !time.Now().Before(deadline) {
+			GinkgoWriter.Printf("Failed to delete VPC %s: %v\n", vpcID, err)
+			return
+		}
+
+		GinkgoWriter.Printf("VPC %s still has dependencies, retrying deletion\n", vpcID)
+		hfDeleteAvailableENIs(ctx, ec2Client, vpcID)
+		hfDeleteVPCSecurityGroups(ctx, ec2Client, vpcID)
+
+		timer := time.NewTimer(10 * time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
 		}
 	}
 }
