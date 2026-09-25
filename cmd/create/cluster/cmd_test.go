@@ -908,6 +908,182 @@ var _ = Describe("validateUniqueIamRoleArnsForStsCluster()", func() {
 	})
 })
 
+var _ = Describe("classicOnlyFlagsChanged", func() {
+	var cmd *cobra.Command
+
+	BeforeEach(func() {
+		cmd = &cobra.Command{Use: "cluster"}
+		initFlags(cmd)
+	})
+
+	It("returns empty when no flags are set", func() {
+		Expect(classicOnlyFlagsChanged(cmd)).To(BeEmpty())
+	})
+
+	It("returns empty when only --hosted-cp is set", func() {
+		Expect(cmd.Flags().Set("hosted-cp", "true")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(BeEmpty())
+	})
+
+	It("detects --non-sts when true", func() {
+		Expect(cmd.Flags().Set("non-sts", "true")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--non-sts"))
+	})
+
+	It("ignores --non-sts when false", func() {
+		Expect(cmd.Flags().Set("non-sts", "false")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(BeEmpty())
+	})
+
+	It("detects --mint-mode when true", func() {
+		Expect(cmd.Flags().Set("mint-mode", "true")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--mint-mode"))
+	})
+
+	It("detects --private-link when true", func() {
+		Expect(cmd.Flags().Set("private-link", "true")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--private-link"))
+	})
+
+	It("ignores --private-link when false", func() {
+		Expect(cmd.Flags().Set("private-link", "false")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(BeEmpty())
+	})
+
+	It("detects --sts=false", func() {
+		Expect(cmd.Flags().Set("sts", "false")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--sts=false"))
+	})
+
+	It("ignores --sts=true", func() {
+		Expect(cmd.Flags().Set("sts", "true")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(BeEmpty())
+	})
+
+	It("detects --additional-infra-security-group-ids", func() {
+		Expect(cmd.Flags().Set("additional-infra-security-group-ids", "sg-123")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--additional-infra-security-group-ids"))
+	})
+
+	It("detects --additional-control-plane-security-group-ids", func() {
+		Expect(cmd.Flags().Set("additional-control-plane-security-group-ids", "sg-123")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--additional-control-plane-security-group-ids"))
+	})
+
+	It("detects --disable-workload-monitoring", func() {
+		Expect(cmd.Flags().Set("disable-workload-monitoring", "true")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--disable-workload-monitoring"))
+	})
+
+	It("detects --controlplane-iam-role-arn", func() {
+		Expect(cmd.Flags().Set("controlplane-iam-role-arn", "arn:aws:iam::123456789012:role/role")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--controlplane-iam-role-arn"))
+	})
+
+	It("detects --master-iam-role", func() {
+		Expect(cmd.Flags().Set("master-iam-role", "arn:aws:iam::123456789012:role/role")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--master-iam-role"))
+	})
+
+	It("detects --worker-mp-labels", func() {
+		Expect(cmd.Flags().Set("worker-mp-labels", "key=value")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--worker-mp-labels"))
+	})
+
+	It("ignores --worker-mp-labels when empty", func() {
+		Expect(cmd.Flags().Set("worker-mp-labels", "")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(BeEmpty())
+	})
+
+	It("detects --default-ingress-route-selector", func() {
+		Expect(cmd.Flags().Set("default-ingress-route-selector", "route=external")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--default-ingress-route-selector"))
+	})
+
+	It("detects --default-ingress-excluded-namespaces", func() {
+		Expect(cmd.Flags().Set("default-ingress-excluded-namespaces", "ns1")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--default-ingress-excluded-namespaces"))
+	})
+
+	It("detects --default-ingress-wildcard-policy", func() {
+		Expect(cmd.Flags().Set("default-ingress-wildcard-policy", "WildcardsAllowed")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--default-ingress-wildcard-policy"))
+	})
+
+	It("detects --default-ingress-namespace-ownership-policy", func() {
+		Expect(cmd.Flags().Set("default-ingress-namespace-ownership-policy", "Strict")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--default-ingress-namespace-ownership-policy"))
+	})
+
+	It("detects --availability-zones", func() {
+		Expect(cmd.Flags().Set("availability-zones", "us-east-1a")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--availability-zones"))
+	})
+
+	It("ignores --availability-zones when empty", func() {
+		Expect(cmd.Flags().Set("availability-zones", "")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(BeEmpty())
+	})
+
+	It("returns all classic-only flags when multiple are set", func() {
+		Expect(cmd.Flags().Set("non-sts", "true")).To(Succeed())
+		Expect(cmd.Flags().Set("private-link", "true")).To(Succeed())
+		Expect(classicOnlyFlagsChanged(cmd)).To(ConsistOf("--non-sts", "--private-link"))
+	})
+})
+
+var _ = Describe("resolveHostedCPDefault", func() {
+	var cmd *cobra.Command
+
+	BeforeEach(func() {
+		cmd = &cobra.Command{Use: "cluster"}
+		initFlags(cmd)
+	})
+
+	It("defaults to HCP with prompt shown when no flags are set", func() {
+		defaultVal, showPrompt := resolveHostedCPDefault(cmd, false)
+		Expect(defaultVal).To(BeTrue())
+		Expect(showPrompt).To(BeTrue())
+	})
+
+	It("respects explicit --hosted-cp=true", func() {
+		Expect(cmd.Flags().Set("hosted-cp", "true")).To(Succeed())
+		defaultVal, showPrompt := resolveHostedCPDefault(cmd, true)
+		Expect(defaultVal).To(BeTrue())
+		Expect(showPrompt).To(BeTrue())
+	})
+
+	It("respects explicit --hosted-cp=false", func() {
+		Expect(cmd.Flags().Set("hosted-cp", "false")).To(Succeed())
+		defaultVal, showPrompt := resolveHostedCPDefault(cmd, false)
+		Expect(defaultVal).To(BeFalse())
+		Expect(showPrompt).To(BeTrue())
+	})
+
+	It("skips prompt and defaults to classic when a classic-only flag is set", func() {
+		Expect(cmd.Flags().Set("non-sts", "true")).To(Succeed())
+		defaultVal, showPrompt := resolveHostedCPDefault(cmd, false)
+		Expect(defaultVal).To(BeFalse())
+		Expect(showPrompt).To(BeFalse())
+	})
+
+	It("skips prompt and defaults to classic when multiple classic-only flags are set", func() {
+		Expect(cmd.Flags().Set("non-sts", "true")).To(Succeed())
+		Expect(cmd.Flags().Set("private-link", "true")).To(Succeed())
+		defaultVal, showPrompt := resolveHostedCPDefault(cmd, false)
+		Expect(defaultVal).To(BeFalse())
+		Expect(showPrompt).To(BeFalse())
+	})
+
+	It("shows prompt when --hosted-cp is set alongside a classic-only flag", func() {
+		Expect(cmd.Flags().Set("hosted-cp", "true")).To(Succeed())
+		Expect(cmd.Flags().Set("private-link", "true")).To(Succeed())
+		defaultVal, showPrompt := resolveHostedCPDefault(cmd, true)
+		Expect(defaultVal).To(BeTrue())
+		Expect(showPrompt).To(BeTrue())
+	})
+})
+
 func mustParseCIDR(s string) *net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	Expect(err).To(BeNil())
