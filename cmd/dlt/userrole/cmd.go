@@ -63,17 +63,22 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
+	if len(argv) > 0 {
+		args.roleARN = argv[0]
+	}
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
-
-	mode, err := interactive.GetMode()
-	if err != nil {
+	if err := runWithRuntime(r, cmd); err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
+}
 
-	if len(argv) > 0 {
-		args.roleARN = argv[0]
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	mode, err := interactive.GetMode()
+	if err != nil {
+		return err
 	}
 
 	// Determine if interactive mode is needed
@@ -102,52 +107,45 @@ func run(cmd *cobra.Command, argv []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid user role ARN to delete from the current AWS account: %s", err)
 		}
 	}
 
 	err = aws.ARNValidator(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("Expected a valid user role ARN to delete from the current AWS account: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("expected a valid user role ARN to delete from the current AWS account: %s", err)
 	}
 
 	err = r.AWSClient.ValidateRoleARNAccountIDMatchCallerAccountID(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	if !confirm.Prompt(true, "Delete the '%s' role from the AWS account?", roleARN) {
-		os.Exit(0)
+		return nil
 	}
 
 	currentAccount, err := r.OCMClient.GetCurrentAccount()
 	if err != nil {
-		r.Reporter.Errorf("Error getting current account: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting current account: %v", err)
 	}
 
 	linkedRoles, err := r.OCMClient.GetAccountLinkedUserRoles(currentAccount.ID())
 	if err != nil {
-		r.Reporter.Errorf("An error occurred while trying to get the account linked roles")
-		os.Exit(1)
+		return fmt.Errorf("an error occurred while trying to get the account linked roles")
 	}
 	isLinked := helper.Contains(linkedRoles, roleARN)
 
 	if interactive.Enabled() && !cmd.Flags().Changed("mode") {
 		mode, err = interactive.GetOptionMode(cmd, mode, "User role deletion mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role deletion mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid role deletion mode: %s", err)
 		}
 	}
 
 	roleName, err := aws.GetResourceIdFromARN(roleARN)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	roleExistOnAWS, existingRoleARN, err := r.AWSClient.CheckRoleExists(roleName)
@@ -158,17 +156,15 @@ func run(cmd *cobra.Command, argv []string) {
 		r.Reporter.Warnf("the ARN %s does not exist. Nothing to delete", roleARN)
 	} else if existingRoleARN != roleARN {
 		r.Reporter.Warnf("role with same name but different ARN exists. Existing role ARN: %s", existingRoleARN)
-		os.Exit(1)
+		return fmt.Errorf("role with same name but different ARN exists. Existing role ARN: %s", existingRoleARN)
 	}
 
 	isUserRole, err := r.AWSClient.IsUserRole(&roleName)
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 	if !isUserRole {
-		r.Reporter.Errorf("Role '%s' is not a user role", roleName)
-		os.Exit(1)
+		return fmt.Errorf("role '%s' is not a user role", roleName)
 	}
 
 	switch mode {
@@ -183,25 +179,23 @@ func run(cmd *cobra.Command, argv []string) {
 		}
 		err := r.AWSClient.DeleteUserRole(roleName)
 		if err != nil {
-			r.Reporter.Errorf("There was an error deleting the user role: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("there was an error deleting the user role: %s", err)
 		}
 		r.Reporter.Infof("Successfully deleted the user role")
 	case interactive.ModeManual:
 		r.OCMClient.LogEvent("ROSADeleteUserMRoleModeManual", nil)
 		commands, err := buildCommands(roleName, roleARN, isLinked, r.AWSClient)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the user role:\n")
 		}
 		fmt.Println(commands)
 	default:
-		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
-		os.Exit(1)
+		return fmt.Errorf("invalid mode. Allowed values are %s", interactive.Modes)
 	}
+	return nil
 }
 
 func buildCommands(roleName string, roleARN string, isLinked bool, awsClient aws.Client) (string, error) {
