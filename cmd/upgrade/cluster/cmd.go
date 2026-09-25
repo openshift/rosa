@@ -60,7 +60,7 @@ var nodeDrainOptions = []string{
 var Cmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Upgrade cluster",
-	Long: "Upgrade cluster to a new available version. Use '--dry-run' to acknowledge any gates prior to attempting" +
+	Long: "Upgrade cluster to a new available version. Use '--dry-run' to acknowledge any gates before attempting" +
 		" an upgrade",
 	Example: `  # Interactively schedule an upgrade on the cluster named "mycluster"
   rosa upgrade cluster --cluster=mycluster --interactive
@@ -68,7 +68,7 @@ var Cmd = &cobra.Command{
   # Schedule a cluster upgrade within the hour
   rosa upgrade cluster -c mycluster --version 4.12.20
 
-  # Check if any gates need to be acknowledged prior to attempting an upgrading
+  # Check if any gates need to be acknowledged before attempting an upgrade
   rosa upgrade cluster -c mycluster --version 4.12.20 --dry-run`,
 	Run:  run,
 	Args: cobra.NoArgs,
