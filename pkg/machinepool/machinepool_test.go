@@ -5,6 +5,7 @@ package machinepool
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +39,13 @@ import (
 
 var policyBuilder cmv1.NodePoolUpgradePolicyBuilder
 var date time.Time
+
+const (
+	missingOIDCProviderErrorReason = "The OIDC provider with issuer URL https://oidc.example.com is missing " +
+		"from account 123456789012."
+	missingOIDCProviderErrorResponse = `{"kind":"Error","id":"400","code":"CLUSTERS-MGMT-400",` +
+		`"reason":"The OIDC provider with issuer URL https://oidc.example.com is missing from account 123456789012."}`
+)
 
 var _ = Describe("Machinepool and nodepool", func() {
 	var (
@@ -990,6 +998,44 @@ var _ = Describe("Utility Functions", func() {
 	})
 })
 
+var _ = Describe("Missing OIDC provider guidance", func() {
+	It("adds the recovery command to Classic machine pool creation errors", func() {
+		originalErr := errors.New(missingOIDCProviderErrorReason)
+
+		result := newMachinePoolCreationError(originalErr, "test-cluster", false)
+
+		Expect(errors.Is(result, originalErr)).To(BeTrue())
+		Expect(result.Error()).To(ContainSubstring(
+			"failed to add machine pool to cluster 'test-cluster'"))
+		Expect(result.Error()).To(ContainSubstring(missingOIDCProviderErrorReason))
+		Expect(result.Error()).To(ContainSubstring(
+			"rosa create oidc-provider --cluster test-cluster"))
+	})
+
+	It("adds the recovery command to HCP node pool creation errors", func() {
+		originalErr := errors.New(missingOIDCProviderErrorReason)
+
+		result := newMachinePoolCreationError(originalErr, "test-cluster", true)
+
+		Expect(errors.Is(result, originalErr)).To(BeTrue())
+		Expect(result.Error()).To(ContainSubstring(
+			"failed to add machine pool to hosted cluster 'test-cluster'"))
+		Expect(result.Error()).To(ContainSubstring(missingOIDCProviderErrorReason))
+		Expect(result.Error()).To(ContainSubstring(
+			"rosa create oidc-provider --cluster test-cluster"))
+	})
+
+	It("does not add guidance to unrelated creation errors", func() {
+		originalErr := errors.New("status is 400 and code is 'CLUSTERS-MGMT-400': node pool is not ready")
+
+		result := newMachinePoolCreationError(originalErr, "test-cluster", true)
+
+		Expect(errors.Is(result, originalErr)).To(BeTrue())
+		Expect(result.Error()).To(ContainSubstring(originalErr.Error()))
+		Expect(result.Error()).ToNot(ContainSubstring("rosa create oidc-provider"))
+	})
+})
+
 func returnMockCluster(version string) *cmv1.Cluster {
 	region := "us-east-1"
 	subnet := "subnet-12345"
@@ -1419,9 +1465,15 @@ var _ = Describe("MachinePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(acc)))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
+			t.ApiServer.RouteToHandler(http.MethodPost,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/machine_pools", cluster.ID()),
+				RespondWithJSON(http.StatusBadRequest, missingOIDCProviderErrorResponse))
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to add machine pool to cluster"))
+			Expect(err.Error()).To(ContainSubstring(missingOIDCProviderErrorReason))
+			Expect(err.Error()).To(ContainSubstring(
+				"rosa create oidc-provider --cluster test-cluster-key"))
 		})
 		It("Successfully create a machine pool", func() {
 			machinePool := &machinePool{}
@@ -1801,9 +1853,15 @@ var _ = Describe("NodePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatTuningConfigList([]*cmv1.TuningConfig{})))
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatKubeletConfigList([]*cmv1.KubeletConfig{})))
+			t.ApiServer.RouteToHandler(http.MethodPost,
+				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
+				RespondWithJSON(http.StatusBadRequest, missingOIDCProviderErrorResponse))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to add machine pool to hosted cluster"))
+			Expect(err.Error()).To(ContainSubstring(missingOIDCProviderErrorReason))
+			Expect(err.Error()).To(ContainSubstring(
+				"rosa create oidc-provider --cluster test-cluster-key"))
 		})
 		It("Successfully creates a node pool with capacity-reservation-id", func() {
 			machinePool := &machinePool{}
