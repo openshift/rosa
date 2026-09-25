@@ -39,7 +39,7 @@ Subnet:
 Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
-EC2 Metadata Http Tokens:              optional
+EC2 Metadata Http Tokens:              required
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       
@@ -68,7 +68,7 @@ Subnet:
 Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
-EC2 Metadata Http Tokens:              optional
+EC2 Metadata Http Tokens:              required
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       
@@ -99,7 +99,7 @@ Subnet:
 Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
-EC2 Metadata Http Tokens:              optional
+EC2 Metadata Http Tokens:              required
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       
@@ -129,7 +129,7 @@ Subnet:
 Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
-EC2 Metadata Http Tokens:              optional
+EC2 Metadata Http Tokens:              required
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       
@@ -159,7 +159,7 @@ Subnet:
 Spot instances:                        No
 Disk Size:                             300 GiB
 Version:                               4.12.24
-EC2 Metadata Http Tokens:              optional
+EC2 Metadata Http Tokens:              required
 Autorepair:                            No
 Tuning configs:                        
 Kubelet configs:                       
@@ -176,6 +176,7 @@ Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
 
 	describeYamlWithUpgradeOutput = `availability_zone: us-east-1a
 aws_node_pool:
+  ec2_metadata_http_tokens: required
   instance_type: m5.xlarge
   kind: AWSNodePool
   root_volume:
@@ -546,7 +547,9 @@ var _ = Describe("Upgrade machine pool", func() {
 // formatNodePool simulates the output of APIs for a fake node pool
 func formatNodePool() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
-	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").RootVolume(cmv1.NewAWSVolume().Size(300))
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").
+		Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokensRequired).
+		RootVolume(cmv1.NewAWSVolume().Size(300))
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
@@ -560,6 +563,7 @@ func formatNodePool() string {
 func formatNodePoolWithTags() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
 	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").Tags(map[string]string{"foo": "bar"}).
+		Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokensRequired).
 		RootVolume(cmv1.NewAWSVolume().Size(300))
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
@@ -573,9 +577,11 @@ func formatNodePoolWithTags() string {
 // formatNodePoolWithCapacityReservation simulates the output of APIs for a fake node pool with a Capacity Reservation ID
 func formatNodePoolWithCapacityReservation() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
-	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").RootVolume(cmv1.NewAWSVolume().
-		Size(300)).CapacityReservation(cmv1.NewAWSCapacityReservation().Id("test-id").
-		MarketType(cmv1.MarketTypeOnDemand))
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").
+		Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokensRequired).
+		RootVolume(cmv1.NewAWSVolume().Size(300)).
+		CapacityReservation(cmv1.NewAWSCapacityReservation().Id("test-id").
+			MarketType(cmv1.MarketTypeOnDemand))
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
@@ -589,9 +595,11 @@ func formatNodePoolWithCapacityReservation() string {
 // with a Capacity Reservation Preference only (no ID)
 func formatNodePoolWithCapacityReservationPreference() string {
 	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
-	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").RootVolume(cmv1.NewAWSVolume().
-		Size(300)).CapacityReservation(cmv1.NewAWSCapacityReservation().
-		Preference(cmv1.CapacityReservationPreferenceOpen))
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").
+		Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokensRequired).
+		RootVolume(cmv1.NewAWSVolume().Size(300)).
+		CapacityReservation(cmv1.NewAWSCapacityReservation().
+			Preference(cmv1.CapacityReservationPreferenceOpen))
 	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
 	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).

@@ -88,8 +88,8 @@ func PrintNodePoolSpot(aws *cmv1.AWSNodePool) string {
 }
 
 func PrintEC2MetadataHttpTokens(aws *cmv1.AWSNodePool) cmv1.Ec2MetadataHttpTokens {
-	if aws == nil || aws.Ec2MetadataHttpTokens() == "" {
-		return cmv1.Ec2MetadataHttpTokensOptional
+	if aws == nil {
+		return ""
 	}
 
 	return aws.Ec2MetadataHttpTokens()

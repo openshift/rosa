@@ -1675,7 +1675,21 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(res.String()).To(ContainSubstring("--ec2-metadata-http-tokens"))
 
-				imdsv2Values := []string{"",
+				By("Create a machinepool without --ec2-metadata-http-tokens to verify server-side default")
+				mpNameDefault := helper.GenerateRandomName("ocp-75227", 3)
+				output, err := machinePoolService.CreateMachinePool(clusterID,
+					mpNameDefault,
+					"--replicas", "3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(
+						ContainSubstring(
+							"Machine pool '%s' created successfully on hosted cluster '%s'", mpNameDefault, clusterID))
+				npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, mpNameDefault)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(npDesc.EC2MetadataHttpTokens).ToNot(BeEmpty())
+
+				imdsv2Values := []string{
 					constants.OptionalEc2MetadataHttpTokens,
 					constants.RequiredEc2MetadataHttpTokens}
 
@@ -1695,16 +1709,12 @@ var _ = Describe("Edit nodepool",
 					By("Describe the machinepool to check ec2 metadata http tokens value is set correctly")
 					npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, machinePool_Name)
 					Expect(err).ToNot(HaveOccurred())
-					if imdsv2Value == "" {
-						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(constants.DefaultEc2MetadataHttpTokens))
-					} else {
-						Expect(npDesc.EC2MetadataHttpTokens).To(Equal(imdsv2Value))
-					}
+					Expect(npDesc.EC2MetadataHttpTokens).To(Equal(imdsv2Value))
 				}
 
 				By("Try to create machinepool to the cluster by setting invalid value of --ec2-metadata-http-tokens")
 				machinePool_Name := helper.GenerateRandomName("ocp-75227", 3)
-				output, err := machinePoolService.CreateMachinePool(clusterID,
+				output, err = machinePoolService.CreateMachinePool(clusterID,
 					machinePool_Name,
 					"--replicas", "3",
 					"--ec2-metadata-http-tokens", "invalid")

@@ -252,7 +252,9 @@ func createAwsNodePoolBuilder(
 		awsNpBuilder.Tags(awsTags)
 	}
 
-	awsNpBuilder.Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokens(httpTokens))
+	if httpTokens != "" {
+		awsNpBuilder.Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokens(httpTokens))
+	}
 
 	if rootDiskSize != nil {
 		awsNpBuilder.RootVolume(cmv1.NewAWSVolume().Size(*rootDiskSize))
