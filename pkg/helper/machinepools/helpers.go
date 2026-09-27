@@ -205,18 +205,19 @@ func taintValidator(val interface{}) error {
 	return fmt.Errorf("can only validate strings, got %v", val)
 }
 
-func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string) map[string]string {
+func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string, allowEmptyValues bool) map[string]string {
 	// Custom tags for AWS resources
 	tags := inputTags
 	tagsList := map[string]string{}
+	tagOpts := aws.UserTagOptions{AllowEmptyValues: allowEmptyValues}
 	if interactive.Enabled() {
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
 			Help:     cmd.Flags().Lookup("tags").Usage,
 			Default:  strings.Join(tags, ","),
 			Validators: []interactive.Validator{
-				aws.UserTagValidator,
-				aws.UserTagDuplicateValidator,
+				aws.UserTagValidator(tagOpts),
+				aws.UserTagDuplicateValidator(tagOpts),
 			},
 		})
 		if err != nil {
@@ -224,21 +225,35 @@ func GetAwsTags(cmd *cobra.Command, r *rosa.Runtime, inputTags []string) map[str
 			os.Exit(1) //nolint:forbidigo
 		}
 		if len(tagsInput) > 0 {
-			tags = strings.Split(tagsInput, ",")
+			tags = aws.SplitUserTagList(tagsInput)
 		}
 	}
 	if len(tags) > 0 {
-		if err := aws.UserTagValidator(tags); err != nil {
+		var err error
+		tagsList, err = aws.ParseUserTags(tags, tagOpts)
+		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1) //nolint:forbidigo
 		}
-		delim := aws.GetTagsDelimiter(tags)
-		for _, tag := range tags {
-			t := strings.Split(tag, delim)
-			tagsList[t[0]] = strings.TrimSpace(t[1])
-		}
 	}
+	reportUserTagsShellReplayHints(r, tagsList)
 	return tagsList
+}
+
+// reportUserTagsShellReplayHints prints Unix and Windows cmd.exe --tags quoting guidance
+// when interactive create collected tags that need FormatUserTag double quotes.
+func reportUserTagsShellReplayHints(r *rosa.Runtime, tagsList map[string]string) {
+	if !interactive.Enabled() || len(tagsList) == 0 {
+		return
+	}
+	joined := aws.FormatUserTagsList(tagsList)
+	tip := aws.UserTagsCmdExeReplayTip(joined)
+	if tip == "" {
+		return
+	}
+	r.Reporter.Infof("To pass these tags on the command line (bash/zsh/PowerShell): --tags %s",
+		aws.QuoteUserTagsForUnixShell(joined))
+	r.Reporter.Infof("%s", tip)
 }
 
 func GetLabelMap(cmd *cobra.Command, r *rosa.Runtime, existingLabels map[string]string,

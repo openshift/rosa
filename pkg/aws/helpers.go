@@ -284,49 +284,214 @@ func resolveSTSRole(ARN arn.ARN) (*string, error) {
 	return nil, fmt.Errorf("ARN %s doesn't appear to have a a resource-id that confirms to an STS user", ARN.String())
 }
 
-func UserTagValidator(input interface{}) error {
-	var inputTags []string
-	inputType := reflect.TypeOf(input).Kind()
-	switch inputType {
-	case reflect.String:
-		if input.(string) == "" {
+const (
+	awsReservedTagKeyPrefix = "aws:"
+	userTagEmptyKeyOrValue  = "invalid tag format, tag key or tag value can not be empty"
+)
+
+// UserTagOptions controls user-tag parsing and validation policy.
+type UserTagOptions struct {
+	// AllowEmptyValues permits empty tag values (ROSA Classic). Hosted Control Plane must leave this false.
+	AllowEmptyValues bool
+}
+
+// UserTagValidator returns a validator that checks user tag format and policy for the given options.
+func UserTagValidator(opts UserTagOptions) func(interface{}) error {
+	return func(input interface{}) error {
+		inputTags, err := normalizeUserTagInput(input)
+		if err != nil {
+			return err
+		}
+		if len(inputTags) == 0 {
 			return nil
 		}
-		inputTags = strings.Split(input.(string), ",")
-	case reflect.Slice:
-		if reflect.TypeOf(input).Elem().Kind() != reflect.String {
-			return fmt.Errorf("unable to verify tags, incompatible type, expected slice of string got: '%s'",
-				inputType.String())
+		_, err = ParseUserTags(inputTags, opts)
+		return err
+	}
+}
+
+// UserTagDuplicateValidator returns a validator that checks user tag keys are unique.
+// Options are accepted for API consistency with UserTagValidator; duplicate detection does not use them.
+func UserTagDuplicateValidator(_ UserTagOptions) func(interface{}) error {
+	return func(input interface{}) error {
+		if str, ok := input.(string); ok {
+			if str == "" {
+				return nil
+			}
+			splitTags := ExpandUserTagArgs([]string{str})
+			sanitizeTags(splitTags)
+			duplicate, found := hasDuplicateTagKey(splitTags)
+			if found {
+				return fmt.Errorf("user tag keys must be unique, duplicate key '%s' found", duplicate)
+			}
+			return nil
 		}
-		inputTags = input.([]string)
-	default:
-		return fmt.Errorf("can only validate string types, got %v", inputType.String())
+		return fmt.Errorf("can only validate strings, got %v", input)
+	}
+}
+
+// ParseUserTags parses a list of user tags into a key/value map according to opts.
+// All-unquoted lists keep the legacy global delimiter behavior. If any tag uses quotes,
+// each tag is parsed independently (quote-aware, or per-tag colon/space fallback).
+// Tag arguments may themselves be comma-separated; commas inside double quotes are preserved.
+func ParseUserTags(tags []string, opts UserTagOptions) (map[string]string, error) {
+	tags = ExpandUserTagArgs(tags)
+	if len(tags) == 0 {
+		return map[string]string{}, nil
+	}
+	sanitizeTags(tags)
+
+	if duplicate, hasDupe := hasDuplicateTagKey(tags); hasDupe {
+		return nil, fmt.Errorf("invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
 	}
 
-	if duplicate, hasDupe := hasDuplicateTagKey(inputTags); hasDupe {
-		return fmt.Errorf("invalid tags, user tag keys must be unique, duplicate key '%s' found", duplicate)
+	result := make(map[string]string, len(tags))
+	if userTagListUsesQuotes(tags) {
+		for _, t := range tags {
+			key, value, err := parseUserTagKeyValue(t, true)
+			if err != nil {
+				return nil, err
+			}
+			if err := validateParsedUserTag(key, value, opts); err != nil {
+				return nil, err
+			}
+			result[key] = value
+		}
+		return result, nil
 	}
 
-	delimiter := GetTagsDelimiter(inputTags)
-	for _, t := range inputTags {
-		tag := strings.Split(t, delimiter)
-		if len(tag) != 2 {
-			return fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", tag)
+	delimiter := GetTagsDelimiter(tags)
+	for _, t := range tags {
+		parts := strings.Split(t, delimiter)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", parts)
 		}
-
-		if tag[0] == "" || tag[1] == "" {
-			return fmt.Errorf("invalid tag format, tag key or tag value can not be empty")
+		if err := validateParsedUserTag(parts[0], parts[1], opts); err != nil {
+			return nil, err
 		}
+		result[parts[0]] = parts[1]
+	}
+	return result, nil
+}
 
-		if !UserTagKeyRE.MatchString(tag[0]) {
-			return fmt.Errorf("expected a valid user tag key '%s' matching %s", tag[0], UserTagKeyRE.String())
-		}
+// ExpandUserTagArgs flattens flag/interactive tag arguments, splitting on commas that are
+// not inside double quotes. This lets StringArray flags accept both repeated --tags values
+// and a single comma-separated list without pflag CSV quote mangling.
+func ExpandUserTagArgs(tags []string) []string {
+	var out []string
+	for _, t := range tags {
+		out = append(out, SplitUserTagList(t)...)
+	}
+	return out
+}
 
-		if !UserTagValueRE.MatchString(tag[1]) {
-			return fmt.Errorf("expected a valid user tag value '%s' matching %s", tag[1], UserTagValueRE.String())
+// SplitUserTagList splits a comma-separated tag list, ignoring commas inside double quotes.
+func SplitUserTagList(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	var parts []string
+	var b strings.Builder
+	inQuotes := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c == '"':
+			inQuotes = !inQuotes
+			b.WriteByte(c)
+		case c == ',' && !inQuotes:
+			parts = append(parts, strings.TrimSpace(b.String()))
+			b.Reset()
+		default:
+			b.WriteByte(c)
 		}
 	}
-	return nil
+	parts = append(parts, strings.TrimSpace(b.String()))
+	filtered := parts[:0]
+	for _, p := range parts {
+		if p != "" {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
+}
+
+// ParseUserTag parses a single user tag string into a key and value.
+func ParseUserTag(tag string, opts UserTagOptions) (string, string, error) {
+	tag = strings.TrimSpace(tag)
+	key, value, err := parseUserTagKeyValue(tag, false)
+	if err != nil {
+		return "", "", err
+	}
+	if err := validateParsedUserTag(key, value, opts); err != nil {
+		return "", "", err
+	}
+	return key, value, nil
+}
+
+// FormatUserTag formats a key/value pair for --tags command replay.
+// Keys/values with spaces, keys containing ':', or values containing ':' are double-quoted
+// so mixed lists round-trip under quote-aware parsing. Otherwise a colon delimiter is used.
+func FormatUserTag(key, value string) string {
+	if strings.Contains(key, " ") || strings.Contains(value, " ") ||
+		strings.Contains(key, ":") || strings.Contains(value, ":") {
+		return `"` + key + `":"` + value + `"`
+	}
+	return key + ":" + value
+}
+
+// FormatUserTagsList formats a tag map as a comma-separated --tags value using FormatUserTag.
+// Keys are sorted for stable command replay.
+func FormatUserTagsList(tags map[string]string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(tags))
+	for k, v := range tags {
+		parts = append(parts, FormatUserTag(k, v))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+// UserTagsFlagHelpSuffix is shared --tags help text covering shell-specific quoting.
+// Prefix with the flag-specific sentence (e.g. "Apply user defined tags...").
+const UserTagsFlagHelpSuffix = "Tags are comma separated, for example: 'key value, foo bar'. " +
+	`Keys or values with spaces use double quotes; quote the whole flag for your shell ` +
+	`(bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'; ` +
+	`Windows cmd.exe: --tags """Cost Center"":""Finance Team"""). ` +
+	"Empty values (key:) are supported for ROSA Classic only, not for Hosted Control Plane."
+
+// QuoteUserTagsForUnixShell wraps a FormatUserTag list for bash, zsh, and PowerShell.
+// Single quotes preserve inner double quotes from FormatUserTag. Windows cmd.exe does not
+// treat single quotes as quoting syntax; use QuoteUserTagsForCmdExe instead.
+func QuoteUserTagsForUnixShell(joined string) string {
+	if joined == "" || (!strings.Contains(joined, `"`) && !strings.Contains(joined, " ")) {
+		return joined
+	}
+	return "'" + joined + "'"
+}
+
+// QuoteUserTagsForCmdExe wraps a FormatUserTag list for Windows cmd.exe.
+// Embedded double quotes are escaped as "".
+func QuoteUserTagsForCmdExe(joined string) string {
+	if joined == "" || (!strings.Contains(joined, `"`) && !strings.Contains(joined, " ")) {
+		return joined
+	}
+	return `"` + strings.ReplaceAll(joined, `"`, `""`) + `"`
+}
+
+// UserTagsCmdExeReplayTip returns a cmd.exe quoting hint when joined tags use FormatUserTag
+// double quotes (which Unix/PowerShell replay wraps in single quotes).
+func UserTagsCmdExeReplayTip(joined string) string {
+	if !strings.Contains(joined, `"`) {
+		return ""
+	}
+	return fmt.Sprintf(
+		"On Windows cmd.exe, single quotes are not quoting syntax; use --tags %s",
+		QuoteUserTagsForCmdExe(joined),
+	)
 }
 
 func GetTagsDelimiter(tags []string) string {
@@ -338,31 +503,184 @@ func GetTagsDelimiter(tags []string) string {
 	return ":"
 }
 
-func UserTagDuplicateValidator(input interface{}) error {
-	if str, ok := input.(string); ok {
-		if str == "" {
-			return nil
-		}
-		splitTags := strings.Split(str, ",")
-		sanitizeTags(splitTags)
-		duplicate, found := hasDuplicateTagKey(splitTags)
-		if found {
-			return fmt.Errorf("user tag keys must be unique, duplicate key '%s' found", duplicate)
-		}
-		return nil
+func normalizeUserTagInput(input interface{}) ([]string, error) {
+	if input == nil {
+		return nil, fmt.Errorf("can only validate string types, got nil")
 	}
-	return fmt.Errorf("can only validate strings, got %v", input)
+	inputType := reflect.TypeOf(input).Kind()
+	switch inputType {
+	case reflect.String:
+		if input.(string) == "" {
+			return nil, nil
+		}
+		return SplitUserTagList(input.(string)), nil
+	case reflect.Slice:
+		if reflect.TypeOf(input).Elem().Kind() != reflect.String {
+			return nil, fmt.Errorf("unable to verify tags, incompatible type, expected slice of string got: '%s'",
+				inputType.String())
+		}
+		return ExpandUserTagArgs(input.([]string)), nil
+	default:
+		return nil, fmt.Errorf("can only validate string types, got %v", inputType.String())
+	}
+}
+
+func userTagListUsesQuotes(tags []string) bool {
+	for _, t := range tags {
+		if strings.Contains(t, `"`) {
+			return true
+		}
+	}
+	return false
+}
+
+// parseUserTagKeyValue splits one tag into key/value without policy checks.
+// Quoted tags use quote-aware parsing with ':' as the separator.
+// Unquoted tags:
+//   - if a space appears before the first ':', split on the first space (legacy
+//     space-delimiter form, e.g. "tag1 value:1")
+//   - else if ':' precedes a space:
+//   - in a mixed quoted list (quotedListMode): reject as ambiguous — quote the
+//     key and/or value (e.g. "tag:2":value2 or key:"value with spaces")
+//   - otherwise: colon-split, unless a space-split key uses the reserved "aws:"
+//     prefix (then space-split so "aws:key value" is validated correctly)
+//   - else if ':' is present with no space, split on the first ':'
+//   - else split on the first space
+func parseUserTagKeyValue(tag string, quotedListMode bool) (string, string, error) {
+	tag = strings.TrimSpace(tag)
+	if strings.Contains(tag, `"`) {
+		return parseQuotedUserTag(tag)
+	}
+	spaceIdx := strings.Index(tag, " ")
+	colonIdx := strings.Index(tag, ":")
+	switch {
+	case spaceIdx >= 0 && colonIdx >= 0 && spaceIdx < colonIdx:
+		// Space before first colon: preserve legacy space-delimiter parsing
+		// (e.g. "tag1 value:1" → key=tag1, value=value:1).
+		parts := strings.SplitN(tag, " ", 2)
+		return parts[0], parts[1], nil
+	case spaceIdx >= 0 && colonIdx >= 0 && colonIdx < spaceIdx:
+		if quotedListMode {
+			return "", "", fmt.Errorf(
+				"invalid tag format for tag '%s': ambiguous unquoted tag with both ':' and ' '; "+
+					"quote the key and/or value (for example '\"key:with:colon\":value' or 'key:\"value with spaces\"')",
+				tag,
+			)
+		}
+		spaceParts := strings.SplitN(tag, " ", 2)
+		if isReservedAWSTagKey(spaceParts[0]) {
+			// Legacy space-delimiter form with ':' in the key (e.g. "aws:key value").
+			return spaceParts[0], spaceParts[1], nil
+		}
+		parts := strings.SplitN(tag, ":", 2)
+		return parts[0], parts[1], nil
+	case colonIdx >= 0:
+		parts := strings.SplitN(tag, ":", 2)
+		return parts[0], parts[1], nil
+	case spaceIdx >= 0:
+		parts := strings.SplitN(tag, " ", 2)
+		if len(parts) != 2 {
+			return "", "", fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", tag)
+		}
+		return parts[0], parts[1], nil
+	default:
+		return "", "", fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", tag)
+	}
+}
+
+func isReservedAWSTagKey(key string) bool {
+	return strings.HasPrefix(strings.ToLower(key), awsReservedTagKeyPrefix)
+}
+
+func parseQuotedUserTag(tag string) (string, string, error) {
+	key, rest, err := consumeTaggedFieldUntilColon(tag)
+	if err != nil {
+		return "", "", err
+	}
+	value, err := consumeTaggedFieldEnd(rest)
+	if err != nil {
+		return "", "", err
+	}
+	return key, value, nil
+}
+
+func consumeTaggedFieldUntilColon(s string) (field string, rest string, err error) {
+	if strings.HasPrefix(s, `"`) {
+		closeIdx := strings.Index(s[1:], `"`)
+		if closeIdx < 0 {
+			return "", "", fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", s)
+		}
+		field = s[1 : 1+closeIdx]
+		rest = s[2+closeIdx:]
+		if !strings.HasPrefix(rest, ":") {
+			return "", "", fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", s)
+		}
+		return field, rest[1:], nil
+	}
+	colonIdx := strings.Index(s, ":")
+	if colonIdx < 0 {
+		return "", "", fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", s)
+	}
+	return s[:colonIdx], s[colonIdx+1:], nil
+}
+
+func consumeTaggedFieldEnd(s string) (string, error) {
+	if strings.HasPrefix(s, `"`) {
+		closeIdx := strings.Index(s[1:], `"`)
+		if closeIdx < 0 {
+			return "", fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", s)
+		}
+		field := s[1 : 1+closeIdx]
+		if s[2+closeIdx:] != "" {
+			return "", fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", s)
+		}
+		return field, nil
+	}
+	return s, nil
+}
+
+func validateParsedUserTag(key, value string, opts UserTagOptions) error {
+	if key == "" {
+		return fmt.Errorf("%s", userTagEmptyKeyOrValue)
+	}
+	if value == "" && !opts.AllowEmptyValues {
+		return fmt.Errorf("%s", userTagEmptyKeyOrValue)
+	}
+	if isReservedAWSTagKey(key) {
+		return fmt.Errorf("invalid tag key '%s': keys starting with 'aws:' are reserved for AWS use", key)
+	}
+	if !UserTagKeyRE.MatchString(key) {
+		return fmt.Errorf("expected a valid user tag key '%s' matching %s", key, UserTagKeyRE.String())
+	}
+	if !UserTagValueRE.MatchString(value) {
+		return fmt.Errorf("expected a valid user tag value '%s' matching %s", value, UserTagValueRE.String())
+	}
+	return nil
 }
 
 func hasDuplicateTagKey(tags []string) (string, bool) {
-	delimiter := GetTagsDelimiter(tags)
+	sanitizeTags(tags)
 	visited := make(map[string]bool)
-	for _, t := range tags {
-		tag := strings.Split(t, delimiter)
-		if visited[tag[0]] {
-			return tag[0], true
+	if userTagListUsesQuotes(tags) {
+		for _, t := range tags {
+			key, _, err := parseUserTagKeyValue(t, true)
+			if err != nil {
+				continue
+			}
+			if visited[key] {
+				return key, true
+			}
+			visited[key] = true
 		}
-		visited[tag[0]] = true
+		return "", false
+	}
+	delimiter := GetTagsDelimiter(tags)
+	for _, t := range tags {
+		parts := strings.Split(t, delimiter)
+		if visited[parts[0]] {
+			return parts[0], true
+		}
+		visited[parts[0]] = true
 	}
 	return "", false
 }

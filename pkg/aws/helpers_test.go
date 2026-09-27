@@ -18,65 +18,70 @@ import (
 	"github.com/openshift/rosa/pkg/fedramp"
 )
 
+var (
+	hcpTagOpts     = UserTagOptions{AllowEmptyValues: false}
+	classicTagOpts = UserTagOptions{AllowEmptyValues: true}
+)
+
 var _ = Describe("UserTagValidator", func() {
 	When("given a string input", func() {
 		When("input is empty", func() {
 			It("should return nil", func() {
-				err := UserTagValidator("")
+				err := UserTagValidator(hcpTagOpts)("")
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("the input contains valid tags", func() {
 			It("should return nil", func() {
-				err := UserTagValidator("tag1 value1, tag2 value2")
+				err := UserTagValidator(hcpTagOpts)("tag1 value1, tag2 value2")
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("the input contains legacy tags format", func() {
 			It("should return nil", func() {
-				err := UserTagValidator("tag1:value1,tag2:value2")
+				err := UserTagValidator(hcpTagOpts)("tag1:value1,tag2:value2")
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("the input contains invalid tags", func() {
 			It("should return an error", func() {
-				err := UserTagValidator("foo bar,tag2=value2")
+				err := UserTagValidator(hcpTagOpts)("foo bar,tag2=value2")
 				Expect(err).To(MatchError("invalid tag format for tag '[tag2=value2]'. Expected tag format: 'key value'"))
 			})
 
 			It("should return an error if the tag has too many elements", func() {
-				err := UserTagValidator("a:b:c")
+				err := UserTagValidator(hcpTagOpts)("a:b:c")
 				Expect(err).To(MatchError("invalid tag format for tag '[a b c]'. Expected tag format: 'key value'"))
 			})
 
 			It("should return an error if a tag is missing a key", func() {
-				err := UserTagValidator(":value1,tag2:value2")
+				err := UserTagValidator(hcpTagOpts)(":value1,tag2:value2")
 				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
-			It("should return an error if a tag is missing a key", func() {
-				err := UserTagValidator("tag1:,tag2:value2")
+			It("should return an error if a tag is missing a value when empty values are disallowed", func() {
+				err := UserTagValidator(hcpTagOpts)("tag1:,tag2:value2")
 				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
 			It("should return an error if a tag key contains invalid characters", func() {
-				err := UserTagValidator("tag1$:value1,tag2:value2")
+				err := UserTagValidator(hcpTagOpts)("tag1$:value1,tag2:value2")
 				Expect(err).To(MatchError(fmt.Sprintf("expected a valid user tag key 'tag1$' matching %s",
 					UserTagKeyRE.String())))
 			})
 
 			It("should return an error if a tag value contains invalid characters", func() {
-				err := UserTagValidator("tag1:value$1,tag2:value2")
+				err := UserTagValidator(hcpTagOpts)("tag1:value$1,tag2:value2")
 				Expect(err).To(MatchError(fmt.Sprintf("expected a valid user tag value 'value$1' matching %s",
 					UserTagValueRE.String())))
 			})
 
 			When("the input contains tags with colon or space in the value", func() {
 				It("should not return an error if the tag is properly formatted", func() {
-					err := UserTagValidator("tag1 value:1,tag:2 value2")
+					err := UserTagValidator(hcpTagOpts)("tag1 value:1,tag:2 value2")
 					Expect(err).To(BeNil())
 				})
 			})
@@ -86,56 +91,56 @@ var _ = Describe("UserTagValidator", func() {
 	When("given a slice of strings", func() {
 		When("input is empty", func() {
 			It("should return nil", func() {
-				err := UserTagValidator([]string{})
+				err := UserTagValidator(hcpTagOpts)([]string{})
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("the input contains valid tags", func() {
 			It("should return nil", func() {
-				err := UserTagValidator([]string{"tag1 value1", "tag2 value2"})
+				err := UserTagValidator(hcpTagOpts)([]string{"tag1 value1", "tag2 value2"})
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("the input contains legacy tags format", func() {
 			It("should return nil", func() {
-				err := UserTagValidator([]string{"tag1:value1", "tag2:value2"})
+				err := UserTagValidator(hcpTagOpts)([]string{"tag1:value1", "tag2:value2"})
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("the input contains invalid tags", func() {
 			It("should return an error", func() {
-				err := UserTagValidator([]string{"foo bar", "tag2=value2"})
+				err := UserTagValidator(hcpTagOpts)([]string{"foo bar", "tag2=value2"})
 				Expect(err).To(MatchError("invalid tag format for tag '[tag2=value2]'. Expected tag format: 'key value'"))
 			})
 
 			It("should return an error if a tag is missing a key", func() {
-				err := UserTagValidator([]string{":value1", "tag2:value2"})
+				err := UserTagValidator(hcpTagOpts)([]string{":value1", "tag2:value2"})
 				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
-			It("should return an error if a tag is missing a key", func() {
-				err := UserTagValidator([]string{"tag1:", "tag2:value2"})
+			It("should return an error if a tag is missing a value when empty values are disallowed", func() {
+				err := UserTagValidator(hcpTagOpts)([]string{"tag1:", "tag2:value2"})
 				Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
 			})
 
 			It("should return an error if a tag key contains invalid characters", func() {
-				err := UserTagValidator([]string{"tag1$:value1", "tag2:value2"})
+				err := UserTagValidator(hcpTagOpts)([]string{"tag1$:value1", "tag2:value2"})
 				Expect(err).To(MatchError(fmt.Sprintf("expected a valid user tag key 'tag1$' matching %s",
 					UserTagKeyRE.String())))
 			})
 
 			It("should return an error if a tag value contains invalid characters", func() {
-				err := UserTagValidator([]string{"tag1:value$1", "tag2:value2"})
+				err := UserTagValidator(hcpTagOpts)([]string{"tag1:value$1", "tag2:value2"})
 				Expect(err).To(MatchError(fmt.Sprintf("expected a valid user tag value 'value$1' matching %s",
 					UserTagValueRE.String())))
 			})
 
 			When("the input contains tags with colon or space in the value", func() {
 				It("should not return an error if the tag is properly formatted", func() {
-					err := UserTagValidator([]string{"tag1 value:1", "tag:2 value2"})
+					err := UserTagValidator(hcpTagOpts)([]string{"tag1 value:1", "tag:2 value2"})
 					Expect(err).To(BeNil())
 				})
 			})
@@ -144,16 +149,240 @@ var _ = Describe("UserTagValidator", func() {
 
 	Describe("when given a non-string input", func() {
 		It("should return an error", func() {
-			err := UserTagValidator(42)
+			err := UserTagValidator(hcpTagOpts)(42)
 			Expect(err).To(MatchError("can only validate string types, got int"))
+		})
+
+		It("should return an error for nil input", func() {
+			err := UserTagValidator(hcpTagOpts)(nil)
+			Expect(err).To(MatchError("can only validate string types, got nil"))
 		})
 	})
 
 	Describe("when given a non-string slice input", func() {
 		It("should return an error", func() {
-			err := UserTagValidator([]int{42})
+			err := UserTagValidator(hcpTagOpts)([]int{42})
 			Expect(err).To(MatchError("unable to verify tags, incompatible type," +
 				" expected slice of string got: 'slice'"))
+		})
+	})
+
+	Describe("quoted tags", func() {
+		It("should accept spaces in keys and values", func() {
+			tags, err := ParseUserTags([]string{`"Cost Center":"Finance Team"`}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{"Cost Center": "Finance Team"}))
+		})
+
+		It("should accept a quoted key with an unquoted value", func() {
+			tags, err := ParseUserTags([]string{`"Cost Center":prod`}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{"Cost Center": "prod"}))
+		})
+
+		It("should accept an unquoted key with a quoted value", func() {
+			tags, err := ParseUserTags([]string{`env:"value with spaces"`}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{"env": "value with spaces"}))
+		})
+
+		It("should accept keys containing colons when quoted", func() {
+			tags, err := ParseUserTags([]string{`"key:with:colons":value`, `"a:b":"c:d"`}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{
+				"key:with:colons": "value",
+				"a:b":             "c:d",
+			}))
+		})
+
+		It("should accept a mixed quoted and unquoted list", func() {
+			tags, err := ParseUserTags([]string{`"Cost Center":"Finance Team"`, "env:prod"}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{
+				"Cost Center": "Finance Team",
+				"env":         "prod",
+			}))
+		})
+
+		It("should space-split unquoted siblings when space precedes colon", func() {
+			tags, err := ParseUserTags([]string{`"Cost Center":finance`, "tag1 value:1"}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{
+				"Cost Center": "finance",
+				"tag1":        "value:1",
+			}))
+		})
+
+		It("should accept quoted values with spaces next to other quoted tags", func() {
+			tags, err := ParseUserTags([]string{`"env":prod`, `key:"value with spaces"`}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{
+				"env": "prod",
+				"key": "value with spaces",
+			}))
+		})
+
+		It("should reject ambiguous unquoted colon-before-space siblings in a mixed list", func() {
+			_, err := ParseUserTags([]string{`"env":prod`, "key:value with spaces"}, hcpTagOpts)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ambiguous unquoted tag"))
+		})
+
+		It("should reject legacy key-with-colon space form in a mixed list", func() {
+			_, err := ParseUserTags([]string{`"env":prod`, "tag:2 value2"}, hcpTagOpts)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ambiguous unquoted tag"))
+		})
+
+		It("should accept quoted keys that contain colons in a mixed list", func() {
+			tags, err := ParseUserTags([]string{`"env":prod`, `"tag:2":value2`}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{
+				"env":   "prod",
+				"tag:2": "value2",
+			}))
+		})
+
+		It("should reject unbalanced quotes", func() {
+			_, err := ParseUserTags([]string{`"Cost Center:Finance`}, hcpTagOpts)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid tag format"))
+		})
+	})
+
+	Describe("reserved aws: prefix", func() {
+		It("should reject quoted keys with aws: prefix", func() {
+			_, err := ParseUserTags([]string{`"aws:owned":true`}, hcpTagOpts)
+			Expect(err).To(MatchError("invalid tag key 'aws:owned': keys starting with 'aws:' are reserved for AWS use"))
+		})
+
+		It("should reject AWS: prefix case-insensitively", func() {
+			_, err := ParseUserTags([]string{`"AWS:Foo":bar`}, hcpTagOpts)
+			Expect(err).To(MatchError("invalid tag key 'AWS:Foo': keys starting with 'aws:' are reserved for AWS use"))
+		})
+
+		It("should reject space-delimited keys with aws: prefix", func() {
+			_, err := ParseUserTags([]string{"aws:key value"}, hcpTagOpts)
+			Expect(err).To(MatchError("invalid tag key 'aws:key': keys starting with 'aws:' are reserved for AWS use"))
+		})
+
+		It("should reject aws: space-delimited keys in a mixed quoted list as ambiguous", func() {
+			_, err := ParseUserTags([]string{`"Cost Center":finance`, "aws:key value"}, hcpTagOpts)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ambiguous unquoted tag"))
+		})
+
+		It("should reject quoted aws: keys in a mixed list", func() {
+			_, err := ParseUserTags([]string{`"Cost Center":finance`, `"aws:key":value`}, hcpTagOpts)
+			Expect(err).To(MatchError("invalid tag key 'aws:key': keys starting with 'aws:' are reserved for AWS use"))
+		})
+
+		It("should allow keys that contain aws elsewhere", func() {
+			tags, err := ParseUserTags([]string{`"my:aws:key":value`}, hcpTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{"my:aws:key": "value"}))
+		})
+	})
+
+	Describe("empty tag values", func() {
+		It("should allow empty values for Classic", func() {
+			tags, err := ParseUserTags([]string{"owner:", `owner2:""`}, classicTagOpts)
+			Expect(err).To(BeNil())
+			Expect(tags).To(Equal(map[string]string{
+				"owner":  "",
+				"owner2": "",
+			}))
+		})
+
+		It("should reject empty values for HCP", func() {
+			_, err := ParseUserTags([]string{"owner:"}, hcpTagOpts)
+			Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
+		})
+
+		It("should always reject empty keys", func() {
+			_, err := ParseUserTags([]string{":value"}, classicTagOpts)
+			Expect(err).To(MatchError("invalid tag format, tag key or tag value can not be empty"))
+		})
+	})
+
+	Describe("FormatUserTag", func() {
+		It("should quote keys and values with spaces", func() {
+			Expect(FormatUserTag("Cost Center", "Finance Team")).To(Equal(`"Cost Center":"Finance Team"`))
+		})
+
+		It("should quote keys containing colons", func() {
+			Expect(FormatUserTag("a:b", "c")).To(Equal(`"a:b":"c"`))
+		})
+
+		It("should quote values containing a colon", func() {
+			Expect(FormatUserTag("key", "value:1")).To(Equal(`"key":"value:1"`))
+		})
+
+		It("should use colon delimiter for simple tags", func() {
+			Expect(FormatUserTag("env", "prod")).To(Equal("env:prod"))
+		})
+	})
+
+	Describe("FormatUserTagsList", func() {
+		It("should format and sort tags for stable replay", func() {
+			Expect(FormatUserTagsList(map[string]string{
+				"env":         "prod",
+				"Cost Center": "Finance Team",
+			})).To(Equal(`"Cost Center":"Finance Team",env:prod`))
+		})
+
+		It("should return empty for nil or empty maps", func() {
+			Expect(FormatUserTagsList(nil)).To(Equal(""))
+			Expect(FormatUserTagsList(map[string]string{})).To(Equal(""))
+		})
+	})
+
+	Describe("QuoteUserTagsForUnixShell", func() {
+		It("should leave simple tags unquoted", func() {
+			Expect(QuoteUserTagsForUnixShell("env:prod,owner:team")).To(Equal("env:prod,owner:team"))
+		})
+
+		It("should single-quote FormatUserTag lists for bash/zsh/PowerShell", func() {
+			Expect(QuoteUserTagsForUnixShell(`"Cost Center":"Finance Team",env:prod`)).
+				To(Equal(`'"Cost Center":"Finance Team",env:prod'`))
+		})
+	})
+
+	Describe("QuoteUserTagsForCmdExe", func() {
+		It("should leave simple tags unquoted", func() {
+			Expect(QuoteUserTagsForCmdExe("env:prod,owner:team")).To(Equal("env:prod,owner:team"))
+		})
+
+		It("should double-quote and escape embedded quotes for cmd.exe", func() {
+			Expect(QuoteUserTagsForCmdExe(`"Cost Center":"Finance Team",env:prod`)).
+				To(Equal(`"""Cost Center"":""Finance Team"",env:prod"`))
+		})
+	})
+
+	Describe("UserTagsCmdExeReplayTip", func() {
+		It("should be empty for simple tags", func() {
+			Expect(UserTagsCmdExeReplayTip("env:prod")).To(Equal(""))
+		})
+
+		It("should hint cmd.exe quoting when FormatUserTag quotes are present", func() {
+			Expect(UserTagsCmdExeReplayTip(`"Cost Center":"Finance Team"`)).
+				To(ContainSubstring(`--tags """Cost Center"":""Finance Team"""`))
+		})
+	})
+
+	Describe("SplitUserTagList", func() {
+		It("should split on commas outside quotes", func() {
+			Expect(SplitUserTagList(`"Cost Center":"Finance Team",env:prod`)).To(Equal([]string{
+				`"Cost Center":"Finance Team"`,
+				"env:prod",
+			}))
+		})
+
+		It("should keep legacy unquoted lists", func() {
+			Expect(SplitUserTagList("tag1 value1, tag2 value2")).To(Equal([]string{
+				"tag1 value1",
+				"tag2 value2",
+			}))
 		})
 	})
 })
@@ -185,14 +414,14 @@ var _ = Describe("GetTagsDelimiter", func() {
 var _ = Describe("UserTagDuplicateValidator", func() {
 	When("given an empty string", func() {
 		It("should return nil", func() {
-			err := UserTagDuplicateValidator("")
+			err := UserTagDuplicateValidator(hcpTagOpts)("")
 			Expect(err).To(BeNil())
 		})
 	})
 
 	Context("when given a non-string input", func() {
 		It("should return an error", func() {
-			err := UserTagDuplicateValidator(123)
+			err := UserTagDuplicateValidator(hcpTagOpts)(123)
 			Expect(err).To(MatchError("can only validate strings, got 123"))
 		})
 	})
@@ -200,28 +429,28 @@ var _ = Describe("UserTagDuplicateValidator", func() {
 	Context("space separated", func() {
 		When("given a string with unique tags", func() {
 			It("should return nil", func() {
-				err := UserTagDuplicateValidator("key1 value1,key2 value2,key3 value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)("key1 value1,key2 value2,key3 value3")
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("given a string with duplicate tags", func() {
 			It("should return an error", func() {
-				err := UserTagDuplicateValidator("key1 value1,key2 value2,key1 value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)("key1 value1,key2 value2,key1 value3")
 				Expect(err).To(MatchError("user tag keys must be unique, duplicate key 'key1' found"))
 			})
 		})
 
 		When("given a string with a space prefix with unique tags", func() {
 			It("should return nil", func() {
-				err := UserTagDuplicateValidator(" key1 value1, key2 value2, key3 value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)(" key1 value1, key2 value2, key3 value3")
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("given a string with a space prefix with duplicate tags", func() {
 			It("should return an error", func() {
-				err := UserTagDuplicateValidator(" key1 value1, key2 value2, key1 value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)(" key1 value1, key2 value2, key1 value3")
 				Expect(err).To(MatchError("user tag keys must be unique, duplicate key 'key1' found"))
 			})
 		})
@@ -230,30 +459,37 @@ var _ = Describe("UserTagDuplicateValidator", func() {
 	Context("colon separated", func() {
 		When("given a string with unique tags", func() {
 			It("should return nil", func() {
-				err := UserTagDuplicateValidator("key1:value1,key2:value2,key3:value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)("key1:value1,key2:value2,key3:value3")
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("given a string with duplicate tags", func() {
 			It("should return an error", func() {
-				err := UserTagDuplicateValidator("key1:value1,key2:value2,key1:value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)("key1:value1,key2:value2,key1:value3")
 				Expect(err).To(MatchError("user tag keys must be unique, duplicate key 'key1' found"))
 			})
 		})
 
 		When("given a string with a space prefix with unique tags", func() {
 			It("should return nil", func() {
-				err := UserTagDuplicateValidator(" key1:value1, key2:value2, key3:value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)(" key1:value1, key2:value2, key3:value3")
 				Expect(err).To(BeNil())
 			})
 		})
 
 		When("given a string with a space prefix with duplicate tags colon separated", func() {
 			It("should return an error", func() {
-				err := UserTagDuplicateValidator(" key1:value1, key2:value2, key1:value3")
+				err := UserTagDuplicateValidator(hcpTagOpts)(" key1:value1, key2:value2, key1:value3")
 				Expect(err).To(MatchError("user tag keys must be unique, duplicate key 'key1' found"))
 			})
+		})
+	})
+
+	Context("quoted tags", func() {
+		It("should detect duplicate quoted keys", func() {
+			err := UserTagDuplicateValidator(hcpTagOpts)(`"Cost Center":a,"Cost Center":b`)
+			Expect(err).To(MatchError("user tag keys must be unique, duplicate key 'Cost Center' found"))
 		})
 	})
 })

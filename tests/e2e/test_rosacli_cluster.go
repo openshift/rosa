@@ -1531,14 +1531,16 @@ var _ = Describe("Classic cluster creation validation",
 					To(ContainSubstring(
 						"invalid tag format for tag '[test1]'. Expected tag format: 'key value'"))
 
-				By("Create cluster with empty tag value")
+				By("Create cluster with empty tag value is allowed for Classic")
 				out, err = clusterService.CreateDryRun(
 					clusterName, "--tags", "foo:",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"invalid tag format, tag key or tag value can not be empty"))
+				combined := out.String()
+				if err != nil {
+					combined = combined + err.Error()
+				}
+				Expect(combined).
+					NotTo(ContainSubstring("tag key or tag value can not be empty"))
 
 				By("Create cluster with invalid tag format")
 				out, err = clusterService.CreateDryRun(
@@ -1548,6 +1550,56 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(out.String()).
 					To(ContainSubstring(
 						"invalid tag format for tag '[name gender age]'. Expected tag format: 'key value'"))
+			})
+
+		It("to validate AWS tags with spaces and quoting for Classic - [id:67145]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := "ocp-67145"
+
+				By("Create cluster dry-run with quoted tags containing spaces")
+				out, err := clusterService.CreateDryRun(
+					clusterName,
+					"--tags", `"Cost Center":"Finance Team",env:prod`,
+				)
+				combined := out.String()
+				if err != nil {
+					combined = combined + err.Error()
+				}
+				Expect(combined).NotTo(ContainSubstring("invalid tag format"))
+				Expect(combined).NotTo(ContainSubstring("expected a valid user tag"))
+				Expect(combined).NotTo(ContainSubstring("reserved for AWS use"))
+				Expect(combined).NotTo(ContainSubstring("ambiguous unquoted tag"))
+
+				By("Create cluster dry-run with reserved aws: key is rejected")
+				out, err = clusterService.CreateDryRun(
+					clusterName,
+					"--tags", `"aws:owned":true`,
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).
+					To(ContainSubstring("keys starting with 'aws:' are reserved for AWS use"))
+
+				By("Create cluster dry-run with ambiguous mixed quoted tags is rejected")
+				out, err = clusterService.CreateDryRun(
+					clusterName,
+					"--tags", `"env":prod,tag:2 value2`,
+				)
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).
+					To(ContainSubstring("ambiguous unquoted tag"))
+
+				By("Create cluster dry-run with empty tag value is allowed for Classic")
+				out, err = clusterService.CreateDryRun(
+					clusterName,
+					"--tags", "owner:",
+				)
+				combined = out.String()
+				if err != nil {
+					combined = combined + err.Error()
+				}
+				Expect(combined).
+					NotTo(ContainSubstring("tag key or tag value can not be empty"))
 			})
 
 		It("Create cluster with invalid volume size [id:66372]",
@@ -2704,6 +2756,33 @@ var _ = Describe("HCP cluster creation negative testing",
 				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+			})
+
+		It("to validate AWS tags with empty values and reserved keys for HCP - [id:67145]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := helper.GenerateRandomName("ocp-67145", 2)
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+
+				By("Create HCP cluster with empty tag value is rejected")
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags("--dry-run", "--tags", "owner:", "-y")
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).
+					To(ContainSubstring("tag key or tag value can not be empty"))
+
+				By("Create HCP cluster with reserved aws: key is rejected")
+				rosalCommand.DeleteFlag("--tags", true)
+				rosalCommand.AddFlags("--tags", `"aws:owned":true`)
+				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).
+					To(ContainSubstring("keys starting with 'aws:' are reserved for AWS use"))
 			})
 
 		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",

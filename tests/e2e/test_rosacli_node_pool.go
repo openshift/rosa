@@ -1114,6 +1114,69 @@ var _ = Describe("Edit nodepool",
 					Expect(tags[k]).To(Equal(v))
 				}
 
+				By("Create a machinepool with quoted tags containing spaces - [id:67145]")
+				machinePoolName_spaces := helper.GenerateRandomName("mp-73492-spaces", 2)
+				quotedTagsReq := `"Cost Center":"Finance Team",mp67145env:prod`
+				quotedTagsMap := map[string]interface{}{
+					"Cost Center": "Finance Team",
+					"mp67145env":  "prod",
+				}
+				for k := range quotedTagsMap {
+					_, exists := clusterTags[k]
+					Expect(exists).To(BeFalse(),
+						"quoted tag key %q must not already exist on the cluster", k)
+				}
+				requiredTags = managedTags(machinePoolName_spaces)
+				if len(clusterTags) > 0 {
+					for k, v := range clusterTags {
+						requiredTags[k] = v
+					}
+				}
+				// User tags override any same-key cluster tags in the expected map.
+				for k, v := range quotedTagsMap {
+					requiredTags[k] = v
+				}
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					machinePoolName_spaces,
+					"--replicas", "3",
+					"--tags", quotedTagsReq)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring(
+						"Machine pool '%s' created successfully on hosted cluster '%s'",
+						machinePoolName_spaces,
+						clusterID))
+
+				By("Describe the machinepool with quoted space tags in json format")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_spaces)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				// DigObject keeps keys/values with spaces; DigString+ParseTagsFronJsonOutput splits on spaces.
+				tagsObj := jsonData.DigObject("aws_node_pool", "tags")
+				Expect(tagsObj).ToNot(BeNil())
+				var ok bool
+				tags, ok = tagsObj.(map[string]interface{})
+				Expect(ok).To(BeTrue(), "aws_node_pool.tags should be a JSON object")
+				for k, v := range requiredTags {
+					Expect(tags[k]).To(Equal(v))
+				}
+				for k, v := range quotedTagsMap {
+					Expect(tags[k]).To(Equal(v))
+				}
+
+				By("Create machinepool with empty tag value is rejected for HCP")
+				output, err = machinePoolService.CreateMachinePool(
+					clusterID,
+					helper.GenerateRandomName("mp-73492-empty", 2),
+					"--replicas", "3",
+					"--tags", "owner:")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring("tag key or tag value can not be empty"))
+
 				By("Create machinepool with invalid tags")
 				machinePoolName_3 := helper.GenerateRandomName("mp-73492-2", 2)
 				output, err = machinePoolService.CreateMachinePool(

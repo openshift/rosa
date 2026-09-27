@@ -106,12 +106,12 @@ func initFlags(cmd *cobra.Command) {
 		"STS Role ARN with get secrets permission.",
 	)
 
-	flags.StringSliceVar(
+	flags.StringArrayVar(
 		&args.tags,
 		"tags",
 		nil,
 		"Supply custom tags to the network verifier. Tags will default to cluster tags if a cluster is supplied. "+
-			"Tags are comma separated, for example: 'key value, foo bar'",
+			aws.UserTagsFlagHelpSuffix,
 	)
 
 	flags.BoolVarP(
@@ -210,13 +210,10 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	tagsList := map[string]string{}
 
 	if len(_tags) > 0 {
-		if err := aws.UserTagValidator(_tags); err != nil {
+		var err error
+		tagsList, err = aws.ParseUserTags(_tags, aws.UserTagOptions{AllowEmptyValues: !args.hostedCp})
+		if err != nil {
 			return fmt.Errorf("%s", err)
-		}
-		delim := aws.GetTagsDelimiter(_tags)
-		for _, tag := range _tags {
-			t := strings.Split(tag, delim)
-			tagsList[t[0]] = strings.TrimSpace(t[1])
 		}
 	}
 

@@ -299,29 +299,60 @@ var _ = Describe("Validate build command", func() {
 	})
 
 	Context("build tags command", func() {
-		When("tag key or values DO contain a colon", func() {
-			It("should build tags command with a space as a delimiter", func() {
+		When("tag values contain a colon", func() {
+			It("should quote those tags for round-trip safety", func() {
 				tags := map[string]string{
-					"key1":   "value1",
-					"key2":   "value2",
-					"key3:4": "value3:4",
-					"key5":   "value5:6",
+					"key1": "value1",
+					"key5": "value5:6",
 				}
 
 				formattedTags := buildTagsCommand(tags)
 
-				Expect(len(formattedTags)).To(Equal(len(tags)),
-					"expected not to lose any tags while formatting")
-				for _, tag := range formattedTags {
-					if strings.Contains(tag, "key3") {
-						Expect(strings.Contains(tag, ":")).To(Equal(true),
-							"expected `:` to not be removed from key/value")
-					}
+				Expect(formattedTags).To(ConsistOf(
+					"key1:value1",
+					`"key5":"value5:6"`,
+				))
+			})
+		})
 
-					Expect(strings.Contains(tag, " ")).To(Equal(true),
-						"expected delim to be ' '")
-
+		When("tag keys contain a colon or spaces", func() {
+			It("should quote tags that need it", func() {
+				tags := map[string]string{
+					"key3:4":      "value3:4",
+					"Cost Center": "Finance Team",
+					"env":         "prod",
 				}
+
+				formattedTags := buildTagsCommand(tags)
+
+				Expect(formattedTags).To(ConsistOf(
+					`"key3:4":"value3:4"`,
+					`"Cost Center":"Finance Team"`,
+					"env:prod",
+				))
+			})
+		})
+
+		When("building the create-cluster command with quoted tags", func() {
+			It("should wrap --tags in single quotes for Unix/PowerShell replay", func() {
+				clusterConfig.Tags = map[string]string{
+					"Cost Center": "Finance Team",
+				}
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(ContainSubstring(`--tags '"Cost Center":"Finance Team"'`))
+			})
+
+			It("should leave simple --tags unquoted", func() {
+				clusterConfig.Tags = map[string]string{
+					"env": "prod",
+				}
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(ContainSubstring("--tags env:prod"))
+				Expect(command).NotTo(ContainSubstring("--tags 'env:prod'"))
 			})
 		})
 

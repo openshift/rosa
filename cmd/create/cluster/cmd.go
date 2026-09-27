@@ -451,12 +451,12 @@ func initFlags(cmd *cobra.Command) {
 		"Enable external authentication configuration for a Hosted Control Plane cluster.",
 	)
 
-	flags.StringSliceVar(
+	flags.StringArrayVar(
 		&args.tags,
 		"tags",
 		nil,
 		"Apply user defined tags to all resources created by ROSA in AWS. "+
-			"Tags are comma separated, for example: 'key value, foo bar'",
+			aws.UserTagsFlagHelpSuffix,
 	)
 
 	flags.BoolVar(
@@ -2039,14 +2039,15 @@ func run(cmd *cobra.Command, _ []string) {
 	// Custom tags for AWS resources
 	_tags := args.tags
 	tagsList := map[string]string{}
+	tagOpts := aws.UserTagOptions{AllowEmptyValues: !isHostedCP}
 	if interactive.Enabled() {
 		tagsInput, err := interactive.GetString(interactive.Input{
 			Question: "Tags",
 			Help:     cmd.Flags().Lookup("tags").Usage,
 			Default:  strings.Join(_tags, ","),
 			Validators: []interactive.Validator{
-				aws.UserTagValidator,
-				aws.UserTagDuplicateValidator,
+				aws.UserTagValidator(tagOpts),
+				aws.UserTagDuplicateValidator(tagOpts),
 			},
 		})
 		if err != nil {
@@ -2054,18 +2055,15 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		if len(tagsInput) > 0 {
-			_tags = strings.Split(tagsInput, ",")
+			_tags = aws.SplitUserTagList(tagsInput)
 		}
 	}
 	if len(_tags) > 0 {
-		if err := aws.UserTagValidator(_tags); err != nil {
+		var err error
+		tagsList, err = aws.ParseUserTags(_tags, tagOpts)
+		if err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
-		}
-		delim := aws.GetTagsDelimiter(_tags)
-		for _, tag := range _tags {
-			t := strings.Split(tag, delim)
-			tagsList[t[0]] = strings.TrimSpace(t[1])
 		}
 	}
 
@@ -3709,6 +3707,9 @@ func run(cmd *cobra.Command, _ []string) {
 			command := buildCommand(clusterConfig, operatorRolesPrefix, expectedOperatorRolePath,
 				isAvailabilityZonesSet || selectAvailabilityZones, labels, args.properties)
 			r.Reporter.Infof("To create this cluster again in the future, you can run:\n   %s", command)
+			if tip := aws.UserTagsCmdExeReplayTip(aws.FormatUserTagsList(clusterConfig.Tags)); tip != "" {
+				r.Reporter.Infof("%s", tip)
+			}
 		}
 		r.Reporter.Infof("To view a list of clusters and their status, run 'rosa list clusters'")
 	}
@@ -4273,7 +4274,9 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 		command += fmt.Sprintf(" --%s", ExternalAuthProvidersEnabledFlag)
 	}
 	if len(spec.Tags) > 0 {
-		command += fmt.Sprintf(" --tags \"%s\"", strings.Join(buildTagsCommand(spec.Tags), ","))
+		// Unix/PowerShell: single-quote wrap so FormatUserTag double quotes round-trip.
+		// cmd.exe does not treat ' as quoting; UserTagsCmdExeReplayTip covers that case.
+		command += " --tags " + aws.QuoteUserTagsForUnixShell(aws.FormatUserTagsList(spec.Tags))
 	}
 	if spec.MultiAZ && !spec.Hypershift.Enabled {
 		command += " --multi-az"
@@ -4489,19 +4492,11 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	return command
 }
 func buildTagsCommand(tags map[string]string) []string {
-	// set correct delim, if a key or value contains `:` the delim should be " "
-	delim := ":"
-	for k, v := range tags {
-		if strings.Contains(k, ":") || strings.Contains(v, ":") {
-			delim = " "
-			break
-		}
-	}
-
-	// build list of formatted tags to return in command
+	// FormatUserTag quotes whenever spaces or ':' appear so mixed lists round-trip.
+	// Pure simple tags stay as key:value.
 	var formattedTags []string
 	for k, v := range tags {
-		formattedTags = append(formattedTags, fmt.Sprintf("%s%s%s", k, delim, v))
+		formattedTags = append(formattedTags, aws.FormatUserTag(k, v))
 	}
 	return formattedTags
 }

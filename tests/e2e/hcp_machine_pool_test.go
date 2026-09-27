@@ -179,7 +179,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			mpID := helper.GenerateRandomName("mp-73638", 2)
 			out, err := machinePoolService.CreateMachinePool(clusterID, mpID, "-h")
 			Expect(err).ToNot(HaveOccurred(), out.String())
-			Expect(out.String()).Should(ContainSubstring("--tags strings"))
+			Expect(out.String()).Should(ContainSubstring("--tags stringArray"))
 
 			By("Create a machinepool with tags set")
 			tags := []string{
@@ -242,7 +242,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(out.String()).Should(ContainSubstring("ERR: expected a valid user tag value 'zzz"))
 
-			By("Create machinepool using aws as a prefix")
+			By("Create machinepool using aws as a prefix with three-part unquoted format")
 			tag = "aws:testKey:" + "testValue"
 			out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
 				"--replicas", "3",
@@ -250,6 +250,22 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(out.String()).Should(ContainSubstring("ERR: invalid tag format for tag '[aws testKey testValue]'"))
+
+			By("Create machinepool using quoted aws: reserved key")
+			out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
+				"--replicas", "3",
+				"--tags", `"aws:testKey":testValue`,
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(ContainSubstring("keys starting with 'aws:' are reserved for AWS use"))
+
+			By("Create machinepool with empty tag value is rejected for HCP")
+			out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
+				"--replicas", "3",
+				"--tags", "owner:",
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(ContainSubstring("tag key or tag value can not be empty"))
 
 			By("Create machinepool with an invalid tag")
 			tag = "#" + ":testValue"
@@ -267,6 +283,29 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(out.String()).Should(ContainSubstring("ERR: expected a valid user tag value '#'"))
+		})
+
+	It("can create HCP machinepool with quoted tags containing spaces - [id:67145]",
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+		func() {
+			mpID := helper.GenerateRandomName("mp-67145", 2)
+
+			By("Create a machinepool with quoted tags containing spaces")
+			out, err := machinePoolService.CreateMachinePool(clusterID, mpID,
+				"--replicas", "3",
+				"--tags", `"Cost Center":"Finance Team",env:prod`,
+			)
+			Expect(err).ToNot(HaveOccurred(), out.String())
+			DeferCleanup(func() error {
+				_, err := machinePoolService.DeleteMachinePool(clusterID, mpID)
+				return err
+			})
+
+			By("Describe the machinepool and verify tags")
+			description, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, mpID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(description.Tags).Should(ContainSubstring("Cost Center=Finance Team"))
+			Expect(description.Tags).Should(ContainSubstring("env=prod"))
 		})
 
 	DescribeTable("Scale up/down a machine pool", labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
