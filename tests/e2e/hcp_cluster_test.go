@@ -53,12 +53,15 @@ var _ = Describe("HCP cluster testing",
 			ocmResourceService = rosaClient.OCMResource
 
 			By("Skip testing if the cluster is not a HCP cluster")
-			// TODO(cdoan): add a check if we're hyperfleet, skip these clusterservice checks?
-			// hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-			// Expect(err).ToNot(HaveOccurred())
-			// if !hostedCluster {
-			// 	SkipNotHosted()
-			// }
+			// Platform API v2 clusters are always hosted; OCM path still needs the check.
+			isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+			if !isHyperfleet {
+				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !hostedCluster {
+					SkipNotHosted()
+				}
+			}
 		})
 
 		AfterEach(func() {
@@ -66,8 +69,12 @@ var _ = Describe("HCP cluster testing",
 			rosaClient.CleanResources(clusterID)
 		})
 		It("Create/Edit/List/Describe/Delete log forwarders on hosted-cp cluster - [id:86415]",
-			labels.Critical, labels.Runtime.Day2,
+			labels.Critical, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
+				// V2: log-forwarder CRUD is OCM-only; no Platform API resource yet.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("Log forwarders are not available on Platform API v2 yet")
+				}
 				var (
 					originalS3Applications []string
 					originalS3Groups       []string
@@ -280,8 +287,23 @@ var _ = Describe("HCP cluster testing",
 
 			})
 		It("create and edit hosted-cp cluster with AuditLog Forwarding enabled/disabled via rosacli - [id:64491]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Validated,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					// auditWebhook is service-set + hidden on V2; HF edit only accepts a
+					// small flag set — confirm unsupported audit edits are rejected.
+					By("V2: --audit-log-arn edit is rejected")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--audit-log-arn", "",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
+
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
 				Expect(err).To(BeNil())
@@ -328,8 +350,12 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create cluster with the KMS and etcd encryption for hypershift clusters by rosa-cli - [id:60083]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				// V2: HF create/describe do not yet surface kms/etcd encryption parity.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("KMS/etcd encryption describe parity not available on Platform API v2 yet")
+				}
 				By("Check the help message of 'rosa create cluster -h'")
 				output, _, err := clusterService.Create("", "-h")
 				Expect(err).To(BeNil())
@@ -370,24 +396,40 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create HCP cluster with network type can work well via rosa cli - [id:71050]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+
 				By("Check the help message of 'rosa create cluster -h'")
-				//It is hiddened now
 				helpOutput, _, err := clusterService.Create("", "-h")
 				Expect(err).To(BeNil())
-				Expect(helpOutput.String()).To(ContainSubstring("--no-cni"))
+				if isHyperfleet {
+					Expect(helpOutput.String()).To(ContainSubstring("--network-type"))
+				} else {
+					// It is hidden now on OCM
+					Expect(helpOutput.String()).To(ContainSubstring("--no-cni"))
+				}
 
 				By("Get cluster description")
 				output, err := clusterService.DescribeCluster(clusterID)
 				Expect(err).To(BeNil())
 				clusterDetail, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
+				Expect(clusterDetail.Network).ToNot(BeEmpty())
 				networkLine := clusterDetail.Network[0]
 
 				By("Get cluster description via json")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
+				if isHyperfleet {
+					// V2 may leave Network Type empty when unset on the HostedCluster;
+					// still require subnet/CIDR fields from describe.
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Subnets")))
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Machine CIDR")))
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Service CIDR")))
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Pod CIDR")))
+					return
+				}
 				Expect(networkLine["Type"]).To(Equal(jsonData.DigString("network", "type")))
 				if clusterConfig.Networking != nil {
 					networkType := clusterConfig.Networking.Type
@@ -398,8 +440,12 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create ROSA HCP cluster with external_auth_config config should work well via rosa client - [id:71945]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				// V2: external auth providers are not exposed on Platform API create/describe yet.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("external_auth_config is not available on Platform API v2 yet")
+				}
 				By("Check the help message of 'rosa create cluster -h'")
 				helpOutput, _, err := clusterService.Create("", "-h")
 				Expect(err).To(BeNil())
@@ -433,12 +479,29 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("can edit ROSA HCP cluster with additional allowed principals - [id:74556]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+
 				By("Check the help message of 'rosa edit cluster -h'")
 				helpOutput, err := clusterService.EditCluster("", "-h")
 				Expect(err).To(BeNil())
 				Expect(helpOutput.String()).To(ContainSubstring("--additional-allowed-principals"))
+
+				if isHyperfleet {
+					// Flag exists on HF create pathbind; cluster edit HF dispatch does not
+					// accept it yet — reject with the supported-flag error.
+					By("V2: --additional-allowed-principals edit is rejected until HF edit wiring")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--additional-allowed-principals",
+						"arn:aws:iam::123456789012:role/unused",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
 
 				By("Check if cluster profile is enabled with additional allowed principals")
 				if !profile.ClusterConfig.AdditionalPrincipals {
@@ -574,8 +637,12 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("create ROSA HCP with registry config can work well via rosa cli  - [id:76394]",
-			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				// V2: registry_config is not on Platform API create/describe yet.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("registry config is not available on Platform API v2 yet")
+				}
 				By("Check the help message of 'rosa create cluster -h'")
 				helpOutput, _, err := clusterService.Create("", "-h")
 				Expect(err).To(BeNil())
@@ -664,8 +731,10 @@ var _ = Describe("HCP cluster testing",
 			})
 
 		It("edit ROSA HCP with registry config can work well via rosa cli  - [id:76395]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+
 				By("Check the help message of 'rosa edit cluster -h'")
 				helpOutput, err := clusterService.EditCluster("", "-h")
 				Expect(err).To(BeNil())
@@ -674,6 +743,19 @@ var _ = Describe("HCP cluster testing",
 				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-blocked-registries"))
 				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries-for-import"))
 				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-additional-trusted-ca"))
+
+				if isHyperfleet {
+					// Registry edit is not wired on HF cluster edit yet.
+					By("V2: registry-config edit is rejected until HF edit wiring")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--registry-config-allowed-registries", "quay.io",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
 
 				By("Edit hcp cluster with registry configs")
 				if clusterConfig.RegistryConfig {
@@ -795,8 +877,25 @@ var _ = Describe("HCP cluster testing",
 				}
 			})
 		It("edit ROSA HCP with autonode configuration via rosa cli  - [id:84981]",
-			labels.High, labels.Runtime.Day2,
+			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Validated,
 			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					// autoNode is mutable on Platform API but HF cluster edit is not
+					// wired for --autonode / --autonode-iam-role-arn yet.
+					By("V2: --autonode edit is rejected until HF edit wiring")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--autonode=enabled",
+						"--autonode-iam-role-arn",
+						"arn:aws:iam::123456789012:role/unused",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
+
 				By("Create the autonode IAM role")
 
 				rosaClient.Runner.JsonFormat()
@@ -921,8 +1020,12 @@ var _ = Describe("hosted-cp cluster creation",
 		})
 
 		It("to create cluster withskip_inflight property - [id:85689]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
 			func() {
+				// V2: OCM properties (skip_inflight_tests) are not on Platform API create.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("skip_inflight_tests property is not available on Platform API v2 yet")
+				}
 				By("Prepare creation command")
 				var command string
 				var rosalCommand config.Command
@@ -958,10 +1061,24 @@ var _ = Describe("hosted-cp cluster creation",
 
 		Describe("Spot termination queue URL lifecycle", func() {
 			It("should edit cluster with spot-termination-queue-url and verify enhanced mode [id:spot-hcp-cluster]",
-				labels.Medium, labels.Runtime.Day2,
+				labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Validated,
 				func() {
-					By("Edit the cluster with a spot-termination-queue-url")
+					isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
 					queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-termination-queue"
+
+					if isHyperfleet {
+						By("V2: --spot-termination-queue-url edit is rejected until HF edit wiring")
+						out, err := clusterService.EditCluster(
+							clusterID,
+							"--spot-termination-queue-url", queueURL,
+							"-y",
+						)
+						Expect(err).To(HaveOccurred())
+						Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+						return
+					}
+
+					By("Edit the cluster with a spot-termination-queue-url")
 					out, err := clusterService.EditCluster(
 						clusterID,
 						"--spot-termination-queue-url", queueURL,

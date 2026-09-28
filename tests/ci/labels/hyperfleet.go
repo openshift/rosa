@@ -21,5 +21,6 @@ func initHyperfleet() *hyperfleetLabels {
 	hLabels.InProgress = Label("hyperfleet-inprog")
 	hLabels.Deferred = Label("hyperfleet-deferred")
 	hLabels.NotApplicable = Label("hyperfleet-na")
+
 	return hLabels
 }

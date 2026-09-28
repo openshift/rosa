@@ -229,7 +229,8 @@ func hfClusterToMap(
 			"oidc_issuer": c.Spec.HostedCluster.IssuerURL,
 			"roles_ref":   rolesRef,
 		},
-		"private": apiListening == "internal",
+		"private":           apiListening == "internal",
+		"delete_protection": hfDeleteProtectionEnabled(c),
 	}
 	if apiURL != "" || apiListening != "" {
 		m["api"] = map[string]interface{}{
@@ -275,13 +276,9 @@ func hfClusterToMap(
 	}
 
 	if c.Status.Version != "" {
-		channel := ""
-		if c.Spec.Properties != nil {
-			channel = c.Spec.Properties["channel_group"]
-		}
 		m["version"] = map[string]interface{}{
 			"raw_id":        c.Status.Version,
-			"channel_group": channel,
+			"channel_group": hfChannelGroup(c),
 		}
 	}
 	if apiURL != "" {
@@ -343,6 +340,10 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 	if c.Spec.HostedCluster.FIPS {
 		fips = "Enabled"
 	}
+	deleteProtection := "Disabled"
+	if hfDeleteProtectionEnabled(c) {
+		deleteProtection = "Enabled"
+	}
 
 	// Format DNS string
 	dnsStr := c.Status.BaseDomain
@@ -355,6 +356,7 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 		"ID:                         %s\n"+
 		"Control Plane:              %s\n"+
 		"OpenShift Version:          %s\n"+
+		"Channel Group:              %s\n"+
 		"DNS:                        %s\n"+
 		"API URL:                    %s\n"+
 		"Region:                     %s\n"+
@@ -363,11 +365,13 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 		"OIDC Endpoint URL:          %s\n"+
 		"State:                      %s\n"+
 		"Private:                    %s\n"+
+		"Delete Protection:          %s\n"+
 		"FIPS mode:                  %s\n",
 		c.Name,
 		string(c.UID),
 		"ROSA Service Hosted",
 		c.Status.Version,
+		hfChannelGroup(c),
 		dnsStr,
 		apiURL,
 		region,
@@ -376,6 +380,7 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 		oidcLine,
 		strings.ToLower(string(c.Status.Phase)), // Normalize to lowercase to match V1 (OCM)
 		output.PrintBool(hfAPIListening(aws) == "internal"),
+		deleteProtection,
 		fips,
 	)
 	if c.Spec.Properties != nil {
@@ -526,6 +531,20 @@ func hfAPIListening(aws *hypershiftv1beta1.AWSPlatformSpec) string {
 		return "internal"
 	}
 	return "external"
+}
+
+func hfDeleteProtectionEnabled(c *v1alpha1.Cluster) bool {
+	return c.Spec.DeleteProtection != nil && *c.Spec.DeleteProtection
+}
+
+func hfChannelGroup(c *v1alpha1.Cluster) string {
+	if c.Spec.HostedCluster.Channel != "" {
+		return c.Spec.HostedCluster.Channel
+	}
+	if c.Spec.Properties != nil {
+		return c.Spec.Properties["channel_group"]
+	}
+	return ""
 }
 
 // conditionSummary returns a concise reason+message string for a condition row.

@@ -6,6 +6,7 @@ import (
 	"io"
 	nets "net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
@@ -60,7 +62,9 @@ var _ = Describe("Healthy check",
 
 		AfterEach(func() {
 			By("Clean the cluster")
-			rosaClient.CleanResources(clusterID)
+			if rosaClient != nil {
+				rosaClient.CleanResources(clusterID)
+			}
 		})
 
 		Context("using cluster configuraion file", func() {
@@ -72,7 +76,7 @@ var _ = Describe("Healthy check",
 			})
 
 			It("the creation of rosa cluster with volume size will work - [id:66359]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					alignDiskSize := func(diskSize string) string {
 						aligned := strings.Join(strings.Split(diskSize, " "), "")
@@ -81,6 +85,14 @@ var _ = Describe("Healthy check",
 
 					By("Set expected worker pool size")
 					expectedDiskSize := clusterConfig.WorkerDiskSize
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						// V2 day1 creates nodepools using the profile's volume_size.
+						if profile.ClusterConfig.VolumeSize != 0 {
+							expectedDiskSize = fmt.Sprintf("%dGiB", profile.ClusterConfig.VolumeSize)
+						}
+						Expect(expectedDiskSize).ToNot(BeEmpty(),
+							"V2 disk check needs volume_size in TEST_PROFILE or worker_disk_size in the original SHARED_DIR/cluster-config")
+					}
 					if expectedDiskSize == "" {
 						expectedDiskSize = "300GiB" // if no worker disk size set, it will use default value
 					}
@@ -104,6 +116,18 @@ var _ = Describe("Healthy check",
 						Expect(err).ToNot(HaveOccurred())
 						Expect(alignDiskSize(npD.DiskSize)).To(Equal(expectedDiskSize))
 
+						if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+							By("Check V2 nodepool identity and disk size in JSON output")
+							rosaClient.Runner.JsonFormat()
+							output, err := machinePoolService.DescribeMachinePool(clusterID, nodePool.ID)
+							rosaClient.Runner.UnsetFormat()
+							Expect(err).ToNot(HaveOccurred())
+							data := rosaClient.Parser.JsonData.Input(output).Parse()
+							Expect(data.DigString("id")).To(Equal(nodePool.ID))
+							Expect(data.DigString("name")).ToNot(BeEmpty())
+							Expect(alignDiskSize(data.DigString("disk_size"))).To(Equal(expectedDiskSize))
+						}
+
 					} else {
 						mplist, err := machinePoolService.ReflectMachinePoolList(output)
 						Expect(err).ToNot(HaveOccurred())
@@ -122,8 +146,12 @@ var _ = Describe("Healthy check",
 				})
 
 			It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("Default machinepool labels in this test apply only to classic clusters")
+					}
+
 					if isHosted {
 						SkipTestOnFeature("default machinepool labels")
 					}
@@ -158,8 +186,13 @@ var _ = Describe("Healthy check",
 
 			It("the additional security groups are working well - [id:68172]",
 				labels.Critical, labels.Runtime.Day1Post,
+				labels.Hyperfleet.Deferred,
 				labels.Exclude, //Exclude it until day1 refactor support this part. It cannot be run with current day1
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 cluster/nodepool describe does not expose additional security groups; day1 setup also excludes this case")
+					}
+
 					By("Run command to check help message of security groups")
 					output, err, _ := clusterService.Create("", "-h")
 					Expect(err).ToNot(HaveOccurred())
@@ -237,8 +270,12 @@ var _ = Describe("Healthy check",
 				})
 
 			It("bring your own kms key functionality works on cluster creation - [id:60082]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 cluster describe does not expose aws.kms_key_arn and day1 setup does not configure customer-managed keys")
+					}
+
 					By("Confirm current cluster profile uses kms keys")
 					if !clusterConfig.EnableCustomerManagedKey {
 						SkipTestOnFeature("byo kms")
@@ -257,8 +294,12 @@ var _ = Describe("Healthy check",
 				})
 
 			It("additional allowed principals work on cluster creation - [id:74408]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 cluster describe does not expose additional allowed principals")
+					}
+
 					By("Confirm current cluster profile uses additional allowed principals")
 					if !profile.ClusterConfig.AdditionalPrincipals {
 						SkipTestOnFeature("additional allowed principals")
@@ -278,8 +319,12 @@ var _ = Describe("Healthy check",
 				})
 
 			It("etcd encryption works on cluster creation - [id:42188]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 cluster describe does not expose etcd_encryption and day1 setup does not configure it")
+					}
+
 					By("Confirm current cluster profile uses etcd encryption")
 					if !clusterConfig.EtcdEncryption {
 						SkipTestOnFeature("etcd encryption")
@@ -297,17 +342,36 @@ var _ = Describe("Healthy check",
 				})
 
 			It("delete protection flag is available on cluster creation - [id:73163]",
-				labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP,
+				labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					By("Check the help message of 'rosa create cluster -h'")
 					output, err := clusterService.CreateDryRun(clusterID, "-h")
 					Expect(err).To(BeNil())
-					Expect(output.String()).To(ContainSubstring("--enable-delete-protection"))
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Expect(output.String()).To(ContainSubstring("--delete-protection"))
+						By("Check V2 delete protection agrees between JSON and text output")
+						data, err := clusterService.GetJSONClusterDescription(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(data.DigObject("delete_protection")).To(BeAssignableToTypeOf(false))
+						description, err := clusterService.DescribeClusterAndReflect(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+						expected := "Disabled"
+						if data.DigBool("delete_protection") {
+							expected = "Enabled"
+						}
+						Expect(description.EnableDeleteProtection).To(Equal(expected))
+					} else {
+						Expect(output.String()).To(ContainSubstring("--enable-delete-protection"))
+					}
 				})
 
 			It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 ingress describe is not implemented; API privacy alone cannot validate this case")
+					}
+
 					private := constants.No
 					ingressPrivate := "false"
 					if clusterConfig.Private {
@@ -331,6 +395,10 @@ var _ = Describe("Healthy check",
 				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 ingress list is not implemented; API privacy alone cannot validate this case")
+					}
+
 					if !isHosted {
 						SkipNotHosted()
 					}
@@ -362,31 +430,43 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("with compute_machine_type will work - [id:75150]",
-				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					By("Check compute machine type")
+					var expectedInstanceType string
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						expectedInstanceType = profile.ClusterConfig.InstanceType
+					} else {
+						Expect(clusterConfig.Nodes).ToNot(BeNil())
+						expectedInstanceType = clusterConfig.Nodes.ComputeInstanceType
+					}
+					Expect(expectedInstanceType).ToNot(BeEmpty(), "The creation profile must specify the expected instance type")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 					Expect(err).To(BeNil())
 					Expect(jsonData.DigString("nodes", "compute_machine_type", "id")).To(
-						Equal(clusterConfig.Nodes.ComputeInstanceType))
+						Equal(expectedInstanceType))
 				})
 
-			It("with multiAZ will work - [id:75535]",
-				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
+					}
+					expectedMultiAZ := clusterConfig.MultiAZ
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						expectedMultiAZ = profile.ClusterConfig.MultiAZ
 					}
 					By("Retrieve cluster description")
 					clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
 					Expect(err).To(BeNil())
 
 					By("Check Data plane")
+					foundDataPlane := false
 					for _, plane := range clusterDesc.Availability {
 						for planeKey, planeValue := range plane {
 							if planeKey == "Data Plane" {
-								if clusterConfig.MultiAZ {
+								foundDataPlane = true
+								if expectedMultiAZ {
 									Expect(planeValue).To(Equal("MultiAZ"))
 								} else {
 									Expect(planeValue).To(Equal("SingleAZ"))
@@ -394,6 +474,8 @@ var _ = Describe("Healthy check",
 							}
 						}
 					}
+
+					Expect(foundDataPlane).To(BeTrue(), "Data Plane availability must be present")
 
 					By("Check the machinepool size and subnets")
 					var mpSize int
@@ -405,7 +487,7 @@ var _ = Describe("Healthy check",
 						subnets = append(subnets, mp.Subnet)
 					}
 
-					if clusterConfig.MultiAZ {
+					if expectedMultiAZ {
 						Expect(mpSize > 1).To(BeTrue(), fmt.Sprintf("MachinePool size is not greater than one: '%d'", mpSize))
 						Expect(len(subnets) > 1).To(BeTrue(), fmt.Sprintf("Subnet size is not greater than one: '%d'", len(subnets)))
 						Expect(len(subnets)).To(Equal(len(helper.UniqueStringValues(subnets))), "Subnet is duplicated")
@@ -418,6 +500,10 @@ var _ = Describe("Healthy check",
 			It("with private will work - [id:75526]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 ingress describe is not implemented; API privacy alone cannot validate this case")
+					}
+
 					private := constants.No
 					ingressPrivate := "false"
 					if clusterConfig.Private {
@@ -436,8 +522,12 @@ var _ = Describe("Healthy check",
 					Expect(ingress.Private).To(Equal(ingressPrivate))
 				})
 
-			It("with autoscaling will work - [id:75527]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
+			It("with autoscaling will work - [id:75527]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 nodepool passthrough and day1 setup do not support autoscaling")
+					}
+
 					isAutoscale := clusterConfig.Autoscaling != nil && clusterConfig.Autoscaling.Enabled
 
 					By("Retrieve cluster description")
@@ -452,8 +542,56 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with subnets will work - [id:37176]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
-				labels.Hyperfleet.Deferred,
+				labels.Hyperfleet.Validated,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						By("Check V2 subnet flag is available")
+						output, _, err := clusterService.Create("cluster-37176", "-h")
+						Expect(err).ToNot(HaveOccurred())
+						Expect(output.String()).To(ContainSubstring("--subnet-id string"))
+
+						By("Check V2 cluster subnet and VPC")
+						Expect(clusterConfig.Subnets).ToNot(BeNil(),
+							"Subnet validation requires the original SHARED_DIR/cluster-config with subnets.private_subnet_ids")
+						privateSubnets := helper.ParseCommaSeparatedStrings(clusterConfig.Subnets.PrivateSubnetIds)
+						Expect(privateSubnets).ToNot(BeEmpty())
+						configuredSubnets := append(append([]string{}, privateSubnets...),
+							helper.ParseCommaSeparatedStrings(clusterConfig.Subnets.PublicSubnetIds)...)
+						data, err := clusterService.GetJSONClusterDescription(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(data.DigString("subnet")).To(BeElementOf(configuredSubnets))
+						Expect(data.DigString("vpc")).ToNot(BeEmpty())
+
+						By("Check V2 default worker subnets using nodepool names, not UUIDs")
+						pools, err := machinePoolService.ListAndReflectNodePools(clusterID)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(pools.NodePools).ToNot(BeEmpty())
+						workerSubnets := []string{}
+						for _, pool := range pools.NodePools {
+							Expect(pool.ID).ToNot(BeEmpty())
+							// Platform API list output is cluster-scoped. Describe-by-name can
+							// resolve a stale nodepool with the same name from another cluster.
+							name := pool.ID
+							isDefaultWorkerPool := name == constants.DefaultHostedWorkerPool
+							isMultiAZWorkerPool := strings.HasPrefix(name, constants.DefaultHostedWorkerPool+"-")
+							isExpectedWorkerPool := (!profile.ClusterConfig.MultiAZ && isDefaultWorkerPool) ||
+								(profile.ClusterConfig.MultiAZ && isMultiAZWorkerPool)
+							if isExpectedWorkerPool {
+								subnet := pool.Subnet
+								Expect(subnet).To(BeElementOf(privateSubnets),
+									"node pool %q must use a configured private subnet", name)
+								workerSubnets = append(workerSubnets, subnet)
+							}
+						}
+						Expect(workerSubnets).ToNot(BeEmpty(), "at least one default worker nodepool must be checked")
+						if profile.ClusterConfig.MultiAZ {
+							Expect(workerSubnets).To(ConsistOf(privateSubnets))
+						} else {
+							Expect(workerSubnets).To(HaveLen(1))
+						}
+						return
+					}
+
 					By("Check the creation command help")
 					output, _, err := clusterService.Create("cluster-37176", "-h")
 					Expect(err).ToNot(HaveOccurred())
@@ -508,8 +646,12 @@ var _ = Describe("Healthy check",
 
 				})
 
-			It("with proxy set will work - [id:45502]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
+			It("with proxy set will work - [id:45502]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 cluster describe does not expose proxy or additional trust bundle settings")
+					}
+
 					By("Check the help message of proxy")
 					output, _, err := clusterService.Create("cl-45502", "-h")
 					Expect(err).ToNot(HaveOccurred())
@@ -542,8 +684,12 @@ var _ = Describe("Healthy check",
 		Context("without using cluster configuration file", func() {
 
 			It("the windows certificates expiration - [id:64040]",
-				labels.Medium, labels.Runtime.Day1Post, labels.Exclude,
+				labels.Medium, labels.Runtime.Day1Post, labels.Exclude, labels.Hyperfleet.NotApplicable,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("This test checks OCM and Red Hat SSO certificates, not Platform API v2")
+					}
+
 					//If the case fails,please open a card to ask dev update windows certificates.
 					//Example card: https://issues.redhat.com/browse/SDA-8990
 					By("Get ROSA windows certificates on ocm-sdk repo")
@@ -574,6 +720,10 @@ var _ = Describe("Healthy check",
 				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
 				labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 nodepool describe does not expose EC2 metadata HTTP tokens and day1 setup does not configure them")
+					}
+
 					if !isHosted {
 						SkipNotHosted()
 					}
@@ -624,9 +774,12 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("cluster is multiarch - [id:75108]",
-				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
+					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						Skip("V2 cluster describe does not expose multi_arch_enabled; an absent field must not count as false validation")
+					}
+
 					By("Check cluster is multiarch")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 					Expect(err).To(BeNil())
@@ -692,11 +845,12 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 
 		BeforeEach(func() {
 			By("Get the cluster")
-			var clusterDetail *handler.ClusterDetail
-			var err error
-			clusterDetail, err = handler.ParseClusterDetail()
-			Expect(err).ToNot(HaveOccurred())
-			clusterID = clusterDetail.ClusterID
+			clusterID = config.GetClusterID()
+			if clusterID == "" {
+				clusterDetail, err := handler.ParseClusterDetail()
+				Expect(err).ToNot(HaveOccurred())
+				clusterID = clusterDetail.ClusterID
+			}
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
 
 			By("Init the client")
@@ -706,15 +860,25 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 
 		AfterEach(func() {
 			By("Clean remaining resources")
-			rosaClient.CleanResources(clusterID)
+			if rosaClient != nil {
+				rosaClient.CleanResources(clusterID)
+			}
 		})
 
 		It("User can create cluster with channel group - [id:35420]",
-			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 
 				By("Check if the cluster using right channel group")
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					data, err := clusterService.GetJSONClusterDescription(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(data.DigString("version", "raw_id")).ToNot(BeEmpty())
+					Expect(data.DigObject("version", "channel_group")).To(BeAssignableToTypeOf(""))
+					Expect(data.DigString("version", "channel_group")).To(Equal(profile.ChannelGroup))
+					return
+				}
 				versionOutput, err := clusterService.GetClusterVersion(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(versionOutput.ChannelGroup).To(Equal(profile.ChannelGroup))
@@ -754,9 +918,8 @@ var _ = Describe("Post-Check testing for cluster deletion",
 		})
 
 		It("to verifiy the byo oidc cluster is deleted successfully - [id:75210]",
-			labels.Critical, labels.Runtime.DestroyPost,
+			labels.Critical, labels.Runtime.DestroyPost, labels.Hyperfleet.Validated,
 			func() {
-
 				By("Check if it is using oidc config")
 				if profile.ClusterConfig.OIDCConfig == "" {
 					Skip("Skip this case as it is only for byo oidc cluster")
@@ -768,10 +931,20 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				rosaClient.Runner.UnsetFormat()
 				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 				AWSAccountID := whoamiData.AWSAccountID
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					// whoami JSON uses display-name keys, including spaces.
+					data := rosaClient.Parser.JsonData.Input(whoamiOutput).Parse()
+					AWSAccountID = data.DigString("AWS Account ID")
+				}
+				Expect(AWSAccountID).To(MatchRegexp(`^\d{12}$`))
 
 				By("Get the oidc config and cluster id from cluster config file")
 				clusterID = config.GetClusterID()
+				Expect(clusterID).ToNot(BeEmpty())
+				Expect(clusterConfig.Aws).ToNot(BeNil())
 				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
+				Expect(oidcConfigC).ToNot(BeEmpty(),
+					"Deletion post-check requires the original SHARED_DIR/cluster-config and must run after teardown")
 
 				By("Get oidc endpoint URL from cluster detail json file")
 				clusterDetail, err := handler.ParseClusterDetail()
@@ -781,6 +954,8 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				oidcEndpointUrlC = parts[0]
 				parsedUrl, err := url.Parse(oidcEndpointUrlC)
 				Expect(err).To(BeNil())
+				Expect(parsedUrl.Scheme).To(Equal("https"))
+				Expect(parsedUrl.Host).ToNot(BeEmpty())
 				oidcEndpointUrl := parsedUrl.String()
 				oidcEndpointUrl, err = helper.ExtractOIDCProviderFromOidcUrl(oidcEndpointUrl)
 				Expect(err).To(BeNil())
@@ -811,8 +986,12 @@ var _ = Describe("Post-Check testing for cluster deletion",
 
 			})
 		It("to verify the sts cluster is deleted successfully - [id:75256]",
-			labels.High, labels.Runtime.DestroyPost, labels.FedRAMP,
+			labels.High, labels.Runtime.DestroyPost, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
 			func() {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("This cleanup check requires V1 account roles, which the V2 setup does not provision")
+				}
+
 				clusterID = config.GetClusterID()
 				By("Skip if the cluster is non-sts")
 				if !profile.ClusterConfig.STS {
@@ -893,6 +1072,11 @@ var _ = Describe("Post-Check testing for cluster creation",
 				profile := handler.LoadProfileYamlFileByENV()
 				Expect(err).ToNot(HaveOccurred())
 
+				if (os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()) &&
+					profile.ClusterConfig.OIDCConfig == "unmanaged" {
+					Skip("V2 describe currently marks every OIDC config as managed; unmanaged parity is deferred")
+				}
+
 				By("Check if it is using oidc config")
 				if profile.ClusterConfig.OIDCConfig == "" {
 					Skip("Skip this case as it is only for byo oidc cluster")
@@ -900,7 +1084,10 @@ var _ = Describe("Post-Check testing for cluster creation",
 
 				By("Retrieve oidc config from cluster config")
 				clusterID = config.GetClusterID()
+				Expect(clusterConfig.Aws).ToNot(BeNil(), "OIDC validation requires the original SHARED_DIR/cluster-config")
 				oidcConfigC = clusterConfig.Aws.Sts.OidcConfigID
+				Expect(oidcConfigC).ToNot(BeEmpty(),
+					"OIDC validation requires aws.sts.oidc_config_id from the original SHARED_DIR/cluster-config")
 
 				By("Get the operator roles")
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -916,7 +1103,13 @@ var _ = Describe("Post-Check testing for cluster creation",
 				Expect(err).To(BeNil())
 
 				OidcUrl := CD.OIDCEndpointURL
-				if profile.ClusterConfig.OIDCConfig == "unmanaged" {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					Expect(oidcConfigID).ToNot(BeEmpty())
+					Expect(oidcConfigIssuerURL).ToNot(BeEmpty())
+					Expect(jsonData.DigString("spec", "oidc_issuer")).To(Equal(oidcConfigIssuerURL))
+					Expect(OidcUrl).To(Equal(oidcConfigIssuerURL + " (Managed)"))
+				} else if profile.ClusterConfig.OIDCConfig == "unmanaged" {
 					Expect(OidcUrl).To(Equal(oidcConfigIssuerURL + " (Unmanaged)"))
 				} else {
 					Expect(OidcUrl).To(ContainSubstring(oidcConfigC))
@@ -924,12 +1117,18 @@ var _ = Describe("Post-Check testing for cluster creation",
 
 				By("Get operator roles from cluster")
 				operatorRolesArns := CD.OperatorIAMRoles
+				Expect(operatorRolesArns).ToNot(BeEmpty())
 				for _, operatorRoleARN := range operatorRolesArns {
 					_, roleName, err := helper.ParseRoleARN(operatorRoleARN)
 					Expect(err).To(BeNil())
 					opRole, err := awsClient.GetRole(roleName)
 					Expect(err).To(BeNil())
-					if profile.ClusterConfig.OIDCConfig == "unmanaged" {
+					if isHyperfleet {
+						trustPolicy, err := url.QueryUnescape(*opRole.AssumeRolePolicyDocument)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(trustPolicy).To(
+							ContainSubstring(strings.TrimPrefix(oidcConfigIssuerURL, "https://")))
+					} else if profile.ClusterConfig.OIDCConfig == "unmanaged" {
 						Expect(*opRole.AssumeRolePolicyDocument).To(
 							ContainSubstring(strings.Replace(oidcConfigIssuerURL, "https://", "", 1)))
 					} else {
@@ -984,6 +1183,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 				CD, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
 				operatorRolesArns := CD.OperatorIAMRoles
+				Expect(operatorRolesArns).ToNot(BeEmpty())
 				for _, policyArn := range operatorRolesArns {
 					By("Check role tag")
 					_, operatorRoleName, err := helper.ParseRoleARN(policyArn)
@@ -1003,6 +1203,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 					By("Check policy is aws managed policy")
 					attachedPolicies, err := awsClient.ListAttachedRolePolicies(operatorRoleName)
 					Expect(err).To(BeNil())
+					Expect(attachedPolicies).ToNot(BeEmpty())
 
 					if len(attachedPolicies) > 1 {
 						managedPolicyFound := false
@@ -1021,8 +1222,12 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 		It("to verify shared-vpc hosted-cp cluster is created successfully and can be edited- [id:78240]",
-			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("V2 shared-VPC setup and additional allowed principals edit/describe parity are not implemented")
+				}
+
 				profile := handler.LoadProfileYamlFileByENV()
 
 				By("Check if it is a shared-vpc hosted-cp cluster")
@@ -1068,6 +1273,10 @@ var _ = Describe("Post-Check testing for cluster creation",
 			labels.Critical, labels.Runtime.Day1Post,
 			labels.Hyperfleet.Deferred,
 			func() {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("V2 cluster describe does not expose AWS billing account settings")
+				}
+
 				profile := handler.LoadProfileYamlFileByENV()
 
 				By("Retrieve oidc config from cluster config")
@@ -1086,8 +1295,12 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 		It("to verify log forward config - [id:86415]",
-			labels.High, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("V2 log-forwarder list is not implemented")
+				}
+
 				By("Check the cluster is with log forwarders config")
 				profile := handler.LoadProfileYamlFileByENV()
 				if !profile.ClusterConfig.LogForward {
@@ -1127,12 +1340,18 @@ var _ = Describe("Post-Check testing for cluster clusters with the --disable-scp
 
 		AfterEach(func() {
 			By("Clean remaining resources")
-			rosaClient.CleanResources(clusterID)
+			if rosaClient != nil {
+				rosaClient.CleanResources(clusterID)
+			}
 		})
 
 		It(" Create MOA clusters with the --disable-scp-check flag - [id:35894]",
-			labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP,
+			labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
 			func() {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("The disable-scp-checks post-check applies only to classic clusters")
+				}
+
 				profile := handler.LoadProfileYamlFileByENV()
 				By("Skip testing if the cluster is not a y-1 STS classic cluster")
 				if profile.ClusterConfig.HCP {

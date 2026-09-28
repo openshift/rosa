@@ -105,6 +105,7 @@ var _ = Describe("hfClusterToMap", func() {
 		Expect(m["name"]).To(Equal("my-cluster"))
 		Expect(m["control_plane"]).To(Equal("ROSA Service Hosted"))
 		Expect(m["state"]).To(Equal("ready"))
+		Expect(m["delete_protection"]).To(BeFalse())
 		version, ok := m["version"].(map[string]interface{})
 		Expect(ok).To(BeTrue())
 		Expect(version["raw_id"]).To(Equal("4.17.0"))
@@ -208,5 +209,26 @@ var _ = Describe("hfClusterToString", func() {
 		}, nil, nil)
 		Expect(out).To(ContainSubstring("Operator IAM Roles:\n - " + arn + "\n"))
 		Expect(out).NotTo(ContainSubstring("Ingress:"))
+	})
+
+	It("shows delete protection enabled/disabled", func() {
+		enabled := true
+		out := hfClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{DeleteProtection: &enabled},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Delete Protection:          Enabled"))
+
+		out = hfClusterToString(&v1alpha1.Cluster{}, nil, nil)
+		Expect(out).To(ContainSubstring("Delete Protection:          Disabled"))
+	})
+
+	It("shows channel group from HostedCluster.Channel", func() {
+		out := hfClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{Channel: "candidate"},
+			},
+			Status: v1alpha1.ClusterStatus{Version: "4.17.0"},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Channel Group:              candidate"))
 	})
 })

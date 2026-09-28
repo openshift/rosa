@@ -150,7 +150,7 @@ func prepareBYOVPCSubnets(
 	rh *resourcesHandler, name string, profile *Profile, cfg *ClusterConfigure.ClusterConfig,
 ) (string, error) {
 	cidr := constants.DefaultVPCCIDRValue
-	if profile.ClusterConfig.NetworkingSet {
+	if profile.ClusterConfig.NetworkingSet && cfg.Networking != nil && cfg.Networking.MachineCIDR != "" {
 		cidr = cfg.Networking.MachineCIDR
 	}
 
