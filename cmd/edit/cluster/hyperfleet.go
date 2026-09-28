@@ -172,10 +172,18 @@ func (h *hyperfleetClusterUpdate) buildSpecPatch(input *hfpathbind.ClusterUpdate
 		spec["deleteProtection"] = *input.DeleteProtection
 	}
 	if h.cmd.Flags().Changed("channel-group") {
+		// Keep OCM-style property for describe parity and set HostedCluster.Channel
+		// (Platform API mutable field) from the same group name.
 		spec["properties"] = map[string]any{"channel_group": args.channelGroup}
+		spec["hostedCluster"] = map[string]any{"channel": args.channelGroup}
 	}
 	if h.cmd.Flags().Changed("channel") {
-		spec["hostedCluster"] = map[string]any{"channel": args.channel}
+		hc, _ := spec["hostedCluster"].(map[string]any)
+		if hc == nil {
+			hc = map[string]any{}
+		}
+		hc["channel"] = args.channel
+		spec["hostedCluster"] = hc
 	}
 
 	if len(spec) == 0 {
