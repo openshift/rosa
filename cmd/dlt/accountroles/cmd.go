@@ -98,7 +98,14 @@ func init() {
 func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
+	err := runWithRuntime(r, cmd)
+	if err != nil {
+		r.Reporter.Errorf("%s", err)
+		os.Exit(1)
+	}
+}
 
+func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	// Determine if interactive mode is needed (if a prefix is not provided, fallback to interactive mode)
 	if !interactive.Enabled() && !cmd.Flags().Changed("mode") || args.prefix == "" {
 		interactive.Enable()
@@ -106,14 +113,12 @@ func run(cmd *cobra.Command, _ []string) {
 
 	mode, err := interactive.GetMode()
 	if err != nil {
-		r.Reporter.Errorf("%s", err)
-		os.Exit(1)
+		return err
 	}
 
 	env, err := ocm.GetEnv()
 	if err != nil {
-		r.Reporter.Errorf("Error getting environment %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting environment %s", err)
 	}
 
 	deleteClassic, deleteHostedCP := setDeleteRoles(cmd.Flags().Changed("classic"),
@@ -121,8 +126,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	clusters, err := r.OCMClient.GetAllClusters(r.Creator)
 	if err != nil {
-		r.Reporter.Errorf("Error getting clusters %s", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting clusters %s", err)
 	}
 
 	prefix := args.prefix
@@ -138,42 +142,38 @@ func run(cmd *cobra.Command, _ []string) {
 			},
 		})
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid role prefix: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid role prefix: %s", err)
 		}
 	}
 	if len(prefix) > 32 {
-		r.Reporter.Errorf("Expected a prefix with no more than 32 characters")
-		os.Exit(1)
+		return fmt.Errorf("expected a prefix with no more than 32 characters")
 	}
 	if !aws.RoleNameRE.MatchString(prefix) {
-		r.Reporter.Errorf("Expected a valid role prefix matching %s", aws.RoleNameRE.String())
-		os.Exit(1)
+		return fmt.Errorf("expected a valid role prefix matching %s", aws.RoleNameRE.String())
 	}
 
 	if interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "Account role deletion mode")
 		if err != nil {
-			r.Reporter.Errorf("Expected a valid Account role deletion mode: %s", err)
-			os.Exit(1)
+			return fmt.Errorf("expected a valid Account role deletion mode: %s", err)
 		}
 	}
 
 	if deleteClassic {
 		err = deleteAccountRoles(r, cmd, env, prefix, clusters, mode, false)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 	}
 
 	if deleteHostedCP {
 		err = deleteAccountRoles(r, cmd, env, prefix, clusters, mode, true)
 		if err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return err
 		}
 	}
+
+	return nil
 }
 
 func setDeleteRoles(isClassicFlagSet bool, isHostedCPFlagSet bool) (bool, bool) {
