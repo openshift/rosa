@@ -190,7 +190,8 @@ var _ = Describe("Healthy check",
 				labels.Exclude, //Exclude it until day1 refactor support this part. It cannot be run with current day1
 				func() {
 					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
-						Skip("V2 cluster/nodepool describe does not expose additional security groups; day1 setup also excludes this case")
+						Skip("V2 cluster/nodepool describe does not expose additional security groups; " +
+							"day1 setup also excludes this case")
 					}
 
 					By("Run command to check help message of security groups")
@@ -273,7 +274,8 @@ var _ = Describe("Healthy check",
 				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
 					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
-						Skip("V2 cluster describe does not expose aws.kms_key_arn and day1 setup does not configure customer-managed keys")
+						Skip("V2 cluster describe does not expose aws.kms_key_arn and " +
+							"day1 setup does not configure customer-managed keys")
 					}
 
 					By("Confirm current cluster profile uses kms keys")
@@ -430,7 +432,8 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("with compute_machine_type will work - [id:75150]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("with compute_machine_type will work - [id:75150]",
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					By("Check compute machine type")
 					var expectedInstanceType string
@@ -447,7 +450,8 @@ var _ = Describe("Healthy check",
 						Equal(expectedInstanceType))
 				})
 
-			It("with multiAZ will work - [id:75535]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
+			It("with multiAZ will work - [id:75535]",
+				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
@@ -522,7 +526,8 @@ var _ = Describe("Healthy check",
 					Expect(ingress.Private).To(Equal(ingressPrivate))
 				})
 
-			It("with autoscaling will work - [id:75527]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			It("with autoscaling will work - [id:75527]",
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
 					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
 						Skip("V2 nodepool passthrough and day1 setup do not support autoscaling")
@@ -646,7 +651,8 @@ var _ = Describe("Healthy check",
 
 				})
 
-			It("with proxy set will work - [id:45502]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			It("with proxy set will work - [id:45502]",
+				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
 					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
 						Skip("V2 cluster describe does not expose proxy or additional trust bundle settings")
@@ -774,7 +780,8 @@ var _ = Describe("Healthy check",
 					}
 				})
 
-			It("cluster is multiarch - [id:75108]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			It("cluster is multiarch - [id:75108]",
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
 				func() {
 					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
 						Skip("V2 cluster describe does not expose multi_arch_enabled; an absent field must not count as false validation")
