@@ -23,3 +23,47 @@ func ResolveClusterUID(
 	}
 	return "", fmt.Errorf("cluster '%s' not found", clusterKey)
 }
+
+// HasClusterUsingOperatorRolesPrefix reports whether any Platform API cluster's
+// RolesRef was created with the given operator-roles prefix.
+func HasClusterUsingOperatorRolesPrefix(
+	ctx context.Context, client hyperfleetclientset.Interface, prefix string,
+) (bool, error) {
+	if prefix == "" {
+		return false, nil
+	}
+	list, err := client.HyperfleetV1alpha1().Clusters().List(ctx, platform.ListOptions{})
+	if err != nil {
+		return false, fmt.Errorf("failed to list clusters: %w", err)
+	}
+	for _, c := range list.Items {
+		aws := c.Spec.HostedCluster.Platform.AWS
+		if aws == nil {
+			continue
+		}
+		if OperatorRolesPrefixFromRolesRef(aws.RolesRef) == prefix {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// HasClusterUsingOidcConfigID reports whether any Platform API cluster references
+// the given OIDC config ID.
+func HasClusterUsingOidcConfigID(
+	ctx context.Context, client hyperfleetclientset.Interface, oidcConfigID string,
+) (bool, error) {
+	if oidcConfigID == "" {
+		return false, nil
+	}
+	list, err := client.HyperfleetV1alpha1().Clusters().List(ctx, platform.ListOptions{})
+	if err != nil {
+		return false, fmt.Errorf("failed to list clusters: %w", err)
+	}
+	for _, c := range list.Items {
+		if c.Spec.OidcConfigID == oidcConfigID {
+			return true, nil
+		}
+	}
+	return false, nil
+}

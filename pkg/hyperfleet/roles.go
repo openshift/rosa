@@ -70,6 +70,16 @@ func OperatorRoleNames(prefix string) []string {
 // RolesRef by extracting the operator roles prefix from the NodePoolManagementARN.
 // Returns an empty string if the ARN is not set or cannot be parsed.
 func InstanceProfileFromRolesRef(rolesRef hypershiftv1beta1.AWSRolesRef) string {
+	prefix := OperatorRolesPrefixFromRolesRef(rolesRef)
+	if prefix == "" {
+		return ""
+	}
+	return ComputeInstanceProfile(prefix)
+}
+
+// OperatorRolesPrefixFromRolesRef extracts the operator-roles prefix from a cluster's
+// RolesRef (from the NodePoolManagementARN role name). Returns "" if unset/unparseable.
+func OperatorRolesPrefixFromRolesRef(rolesRef hypershiftv1beta1.AWSRolesRef) string {
 	arn := rolesRef.NodePoolManagementARN
 	slash := strings.LastIndex(arn, "/")
 	if slash < 0 {
@@ -81,5 +91,5 @@ func InstanceProfileFromRolesRef(rolesRef hypershiftv1beta1.AWSRolesRef) string 
 	if !found {
 		return ""
 	}
-	return ComputeInstanceProfile(prefix)
+	return prefix
 }

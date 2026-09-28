@@ -64,7 +64,6 @@ var _ = Describe("runHyperfleetDescribe (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetDescribe(t.RosaRuntime, &DescribeMachinepoolUserOptions{machinepool: "my-np"}, nil)
@@ -86,7 +85,6 @@ var _ = Describe("runHyperfleetDescribe (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetDescribe(t.RosaRuntime, &DescribeMachinepoolUserOptions{}, []string{"my-np"})
@@ -111,7 +109,6 @@ var _ = Describe("runHyperfleetDescribe (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetDescribe(t.RosaRuntime, &DescribeMachinepoolUserOptions{machinepool: "my-np"}, nil)
@@ -178,22 +175,17 @@ var _ = Describe("runHyperfleetDescribe (machinepool)", func() {
 		}).To(Panic())
 	})
 
-	It("fails when get node pool fails", func() {
+	It("fails when listing node pools fails", func() {
 		orig := exitFn
 		exitFn = func(_ int) { panic("exit") }
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newDescribeMPMocks(ctrl)
-		np := v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
-		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
-			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(nil, fmt.Errorf("get failed"))
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("list failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {

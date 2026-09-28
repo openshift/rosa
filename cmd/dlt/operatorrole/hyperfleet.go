@@ -1,6 +1,7 @@
 package operatorrole
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -54,6 +55,27 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 	if spin != nil {
 		r.Reporter.Infof("%s", fetchingReporterOutput)
 		spin.Start()
+	}
+
+	inUse, err := hyperfleet.HasClusterUsingOperatorRolesPrefix(
+		context.Background(), r.HyperFleetClient, args.prefix)
+	if err != nil {
+		if spin != nil {
+			spin.Stop()
+		}
+		r.Reporter.Errorf("There was a problem checking if any clusters"+
+			" are using Operator Roles Prefix '%s' : %v", args.prefix, err)
+		hfExitFn(1)
+		return
+	}
+	if inUse {
+		if spin != nil {
+			spin.Stop()
+		}
+		r.Reporter.Errorf("There are clusters using Operator Roles Prefix '%s', can't delete the IAM roles",
+			args.prefix)
+		hfExitFn(1)
+		return
 	}
 
 	var foundOperatorRoles []string
