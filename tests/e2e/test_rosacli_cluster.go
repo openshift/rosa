@@ -1653,17 +1653,34 @@ var _ = Describe("Classic cluster creation validation",
 					To(ContainSubstring(
 						"Found duplicate Availability Zone: us-west-2b"))
 
-				By("Create cluster with both zone and subnet set")
+				By("Prepare BYO VPC subnets to assert availability-zones warning")
+				testingRegion := constants.CommonAWSRegion
+				vpc, err := vpc_client.PrepareVPC("rosacli-52692", testingRegion, "", true, "")
+				Expect(err).ToNot(HaveOccurred())
+				defer func() {
+					Expect(vpc.DeleteVPCChain(true)).To(Succeed())
+				}()
+
+				zone := testingRegion + "a"
+				subnetMap, err := vpc.PreparePairSubnetByZone(zone)
+				Expect(err).ToNot(HaveOccurred())
+				subnetIDs := strings.Join([]string{
+					subnetMap["private"].ID,
+					subnetMap["public"].ID,
+				}, ",")
+
+				By("Create classic cluster with both zone and subnet set")
 				out, err = clusterService.CreateDryRun(
 					clusterName,
-					"--availability-zones", "us-west-2b",
-					"--subnet-ids", "subnet-039f2a2a2d2d83e7f",
+					"--region", testingRegion,
+					"--availability-zones", zone,
+					"--subnet-ids", subnetIDs,
 				)
-				Expect(err).NotTo(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(out.String()).
 					To(ContainSubstring(
-						"Setting availability zones is not supported for BYO VPC. " +
-							"ROSA autodetects availability zones from subnet IDs provided"))
+						"WARN: ROSA determines availability zones from the existing VPC or provided subnets; " +
+							"--availability-zones does not select them."))
 			})
 
 		It("Validate --worker-mp-labels option for ROSA cluster creation - [id:71329]",
@@ -2766,6 +2783,30 @@ var _ = Describe("HCP cluster creation negative testing",
 				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+			})
+
+		It("to warn when --availability-zones is set with BYO VPC for HCP - [id:52692]",
+			labels.Medium, labels.Runtime.Day1Negative,
+			func() {
+				clusterName := helper.GenerateRandomName("ocp-52692", 2)
+				replacingFlags := map[string]string{
+					"-c":              clusterName,
+					"--cluster-name":  clusterName,
+					"--domain-prefix": clusterName,
+				}
+				rosalCommand.ReplaceFlagValue(replacingFlags)
+				rosalCommand.AddFlags(
+					"--dry-run",
+					"--availability-zones", constants.CommonAWSRegion+"a",
+					"-y",
+				)
+
+				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).
+					To(ContainSubstring(
+						"WARN: ROSA determines availability zones from the existing VPC or provided subnets; " +
+							"--availability-zones does not select them."))
 			})
 
 		It("Create a hosted cluster cluster with invalid volume size [id:66372]",
