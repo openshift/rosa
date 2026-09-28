@@ -272,4 +272,7 @@ class Cluster {
 	// The AutoNode settings for this cluster.
 	// This is currently only supported for ROSA HCP
 	AutoNode ClusterAutoNode
+
+	// Maintenance configuration
+	Maintenance Maintenance
 }

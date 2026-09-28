@@ -222,4 +222,8 @@ resource Cluster {
 	locator ImageMirrors {
 		target ImageMirrors
 	}
+
+	locator Maintenance {
+		target Maintenance
+	}
 }

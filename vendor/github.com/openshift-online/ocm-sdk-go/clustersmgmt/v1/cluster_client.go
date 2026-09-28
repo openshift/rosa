@@ -351,6 +351,14 @@ func (c *ClusterClient) MachinePools() *MachinePoolsClient {
 	)
 }
 
+// Maintenance returns the target 'maintenance' resource.
+func (c *ClusterClient) Maintenance() *MaintenanceClient {
+	return NewMaintenanceClient(
+		c.transport,
+		path.Join(c.path, "maintenance"),
+	)
+}
+
 // MetricQueries returns the target 'metric_queries' resource.
 //
 // Reference to the resource that manages metrics queries for the cluster.

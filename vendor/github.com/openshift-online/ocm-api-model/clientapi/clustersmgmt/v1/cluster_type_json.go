@@ -466,7 +466,16 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectEnd()
 		count++
 	}
-	present_ = len(object.fieldSet_) > 45 && object.fieldSet_[45]
+	present_ = len(object.fieldSet_) > 45 && object.fieldSet_[45] && object.maintenance != nil
+	if present_ {
+		if count > 0 {
+			stream.WriteMore()
+		}
+		stream.WriteObjectField("maintenance")
+		WriteMaintenance(object.maintenance, stream)
+		count++
+	}
+	present_ = len(object.fieldSet_) > 46 && object.fieldSet_[46]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -475,7 +484,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteBool(object.managed)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 46 && object.fieldSet_[46] && object.managedService != nil
+	present_ = len(object.fieldSet_) > 47 && object.fieldSet_[47] && object.managedService != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -484,7 +493,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteManagedService(object.managedService, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 47 && object.fieldSet_[47]
+	present_ = len(object.fieldSet_) > 48 && object.fieldSet_[48]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -493,7 +502,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteBool(object.multiAZ)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 48 && object.fieldSet_[48]
+	present_ = len(object.fieldSet_) > 49 && object.fieldSet_[49]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -502,7 +511,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteBool(object.multiArchEnabled)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 49 && object.fieldSet_[49]
+	present_ = len(object.fieldSet_) > 50 && object.fieldSet_[50]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -511,7 +520,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.name)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 50 && object.fieldSet_[50] && object.network != nil
+	present_ = len(object.fieldSet_) > 51 && object.fieldSet_[51] && object.network != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -520,7 +529,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteNetwork(object.network, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 51 && object.fieldSet_[51] && object.nodeDrainGracePeriod != nil
+	present_ = len(object.fieldSet_) > 52 && object.fieldSet_[52] && object.nodeDrainGracePeriod != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -529,7 +538,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteValue(object.nodeDrainGracePeriod, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 52 && object.fieldSet_[52] && object.nodePools != nil
+	present_ = len(object.fieldSet_) > 53 && object.fieldSet_[53] && object.nodePools != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -541,7 +550,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteObjectEnd()
 		count++
 	}
-	present_ = len(object.fieldSet_) > 53 && object.fieldSet_[53] && object.nodes != nil
+	present_ = len(object.fieldSet_) > 54 && object.fieldSet_[54] && object.nodes != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -550,7 +559,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteClusterNodes(object.nodes, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 54 && object.fieldSet_[54]
+	present_ = len(object.fieldSet_) > 55 && object.fieldSet_[55]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -559,7 +568,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(object.openshiftVersion)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 55 && object.fieldSet_[55] && object.product != nil
+	present_ = len(object.fieldSet_) > 56 && object.fieldSet_[56] && object.product != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -568,7 +577,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteProduct(object.product, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 56 && object.fieldSet_[56] && object.properties != nil
+	present_ = len(object.fieldSet_) > 57 && object.fieldSet_[57] && object.properties != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -597,7 +606,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		}
 		count++
 	}
-	present_ = len(object.fieldSet_) > 57 && object.fieldSet_[57] && object.provisionShard != nil
+	present_ = len(object.fieldSet_) > 58 && object.fieldSet_[58] && object.provisionShard != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -606,7 +615,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteProvisionShard(object.provisionShard, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 58 && object.fieldSet_[58] && object.proxy != nil
+	present_ = len(object.fieldSet_) > 59 && object.fieldSet_[59] && object.proxy != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -615,7 +624,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteProxy(object.proxy, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 59 && object.fieldSet_[59] && object.region != nil
+	present_ = len(object.fieldSet_) > 60 && object.fieldSet_[60] && object.region != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -624,7 +633,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteCloudRegion(object.region, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 60 && object.fieldSet_[60] && object.registryConfig != nil
+	present_ = len(object.fieldSet_) > 61 && object.fieldSet_[61] && object.registryConfig != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -633,7 +642,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteClusterRegistryConfig(object.registryConfig, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 61 && object.fieldSet_[61]
+	present_ = len(object.fieldSet_) > 62 && object.fieldSet_[62]
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -642,7 +651,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		stream.WriteString(string(object.state))
 		count++
 	}
-	present_ = len(object.fieldSet_) > 62 && object.fieldSet_[62] && object.status != nil
+	present_ = len(object.fieldSet_) > 63 && object.fieldSet_[63] && object.status != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -651,7 +660,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteClusterStatus(object.status, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 63 && object.fieldSet_[63] && object.storageQuota != nil
+	present_ = len(object.fieldSet_) > 64 && object.fieldSet_[64] && object.storageQuota != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -660,7 +669,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteValue(object.storageQuota, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 64 && object.fieldSet_[64] && object.subscription != nil
+	present_ = len(object.fieldSet_) > 65 && object.fieldSet_[65] && object.subscription != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -669,7 +678,7 @@ func WriteCluster(object *Cluster, stream *jsoniter.Stream) {
 		WriteSubscription(object.subscription, stream)
 		count++
 	}
-	present_ = len(object.fieldSet_) > 65 && object.fieldSet_[65] && object.version != nil
+	present_ = len(object.fieldSet_) > 66 && object.fieldSet_[66] && object.version != nil
 	if present_ {
 		if count > 0 {
 			stream.WriteMore()
@@ -695,7 +704,7 @@ func UnmarshalCluster(source interface{}) (object *Cluster, err error) {
 // ReadCluster reads a value of the 'cluster' type from the given iterator.
 func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 	object := &Cluster{
-		fieldSet_: make([]bool, 66),
+		fieldSet_: make([]bool, 67),
 	}
 	for {
 		field := iterator.ReadObject()
@@ -1011,34 +1020,38 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 			}
 			object.machinePools = value
 			object.fieldSet_[44] = true
+		case "maintenance":
+			value := ReadMaintenance(iterator)
+			object.maintenance = value
+			object.fieldSet_[45] = true
 		case "managed":
 			value := iterator.ReadBool()
 			object.managed = value
-			object.fieldSet_[45] = true
+			object.fieldSet_[46] = true
 		case "managed_service":
 			value := ReadManagedService(iterator)
 			object.managedService = value
-			object.fieldSet_[46] = true
+			object.fieldSet_[47] = true
 		case "multi_az":
 			value := iterator.ReadBool()
 			object.multiAZ = value
-			object.fieldSet_[47] = true
+			object.fieldSet_[48] = true
 		case "multi_arch_enabled":
 			value := iterator.ReadBool()
 			object.multiArchEnabled = value
-			object.fieldSet_[48] = true
+			object.fieldSet_[49] = true
 		case "name":
 			value := iterator.ReadString()
 			object.name = value
-			object.fieldSet_[49] = true
+			object.fieldSet_[50] = true
 		case "network":
 			value := ReadNetwork(iterator)
 			object.network = value
-			object.fieldSet_[50] = true
+			object.fieldSet_[51] = true
 		case "node_drain_grace_period":
 			value := ReadValue(iterator)
 			object.nodeDrainGracePeriod = value
-			object.fieldSet_[51] = true
+			object.fieldSet_[52] = true
 		case "node_pools":
 			value := &NodePoolList{}
 			for {
@@ -1059,19 +1072,19 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				}
 			}
 			object.nodePools = value
-			object.fieldSet_[52] = true
+			object.fieldSet_[53] = true
 		case "nodes":
 			value := ReadClusterNodes(iterator)
 			object.nodes = value
-			object.fieldSet_[53] = true
+			object.fieldSet_[54] = true
 		case "openshift_version":
 			value := iterator.ReadString()
 			object.openshiftVersion = value
-			object.fieldSet_[54] = true
+			object.fieldSet_[55] = true
 		case "product":
 			value := ReadProduct(iterator)
 			object.product = value
-			object.fieldSet_[55] = true
+			object.fieldSet_[56] = true
 		case "properties":
 			value := map[string]string{}
 			for {
@@ -1083,44 +1096,44 @@ func ReadCluster(iterator *jsoniter.Iterator) *Cluster {
 				value[key] = item
 			}
 			object.properties = value
-			object.fieldSet_[56] = true
+			object.fieldSet_[57] = true
 		case "provision_shard":
 			value := ReadProvisionShard(iterator)
 			object.provisionShard = value
-			object.fieldSet_[57] = true
+			object.fieldSet_[58] = true
 		case "proxy":
 			value := ReadProxy(iterator)
 			object.proxy = value
-			object.fieldSet_[58] = true
+			object.fieldSet_[59] = true
 		case "region":
 			value := ReadCloudRegion(iterator)
 			object.region = value
-			object.fieldSet_[59] = true
+			object.fieldSet_[60] = true
 		case "registry_config":
 			value := ReadClusterRegistryConfig(iterator)
 			object.registryConfig = value
-			object.fieldSet_[60] = true
+			object.fieldSet_[61] = true
 		case "state":
 			text := iterator.ReadString()
 			value := ClusterState(text)
 			object.state = value
-			object.fieldSet_[61] = true
+			object.fieldSet_[62] = true
 		case "status":
 			value := ReadClusterStatus(iterator)
 			object.status = value
-			object.fieldSet_[62] = true
+			object.fieldSet_[63] = true
 		case "storage_quota":
 			value := ReadValue(iterator)
 			object.storageQuota = value
-			object.fieldSet_[63] = true
+			object.fieldSet_[64] = true
 		case "subscription":
 			value := ReadSubscription(iterator)
 			object.subscription = value
-			object.fieldSet_[64] = true
+			object.fieldSet_[65] = true
 		case "version":
 			value := ReadVersion(iterator)
 			object.version = value
-			object.fieldSet_[65] = true
+			object.fieldSet_[66] = true
 		default:
 			iterator.ReadAny()
 		}
