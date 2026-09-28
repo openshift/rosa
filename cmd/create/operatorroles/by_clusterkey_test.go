@@ -6,6 +6,7 @@ package operatorroles
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"go.uber.org/mock/gomock"
 
@@ -546,6 +547,28 @@ var _ = Describe("create operator-roles by cluster key", func() {
 		})
 
 		Context("manual mode", func() {
+			var (
+				tempDir    string
+				originalWd string
+			)
+
+			BeforeEach(func() {
+				var err error
+				tempDir, err = os.MkdirTemp("", "rosa-operatorroles-test-*")
+				Expect(err).ToNot(HaveOccurred())
+				originalWd, err = os.Getwd()
+				Expect(err).ToNot(HaveOccurred())
+				err = os.Chdir(tempDir)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := os.Chdir(originalWd)
+				Expect(err).ToNot(HaveOccurred())
+				err = os.RemoveAll(tempDir)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
 			It("generates IAM commands from credential requests", func() {
 				operatorPolicy, err := cmv1.NewAWSSTSPolicy().
 					ID("operator_iam_role_policy").
