@@ -78,3 +78,68 @@ profiles:
       customized_prefix: false
       path: ""
       permission_boundary: ""
+  - as: rosa-hyperfleet-advanced
+    version: latest
+    region: "us-east-1"
+    cluster:
+      multi_az: true
+      instance_type: "c5.xlarge"
+      hcp: true
+      sts: true
+      byo_vpc: true
+      additional_principals: false
+      imdsv2: "required"
+      private: false
+      default_ingress_private: false
+      etcd_encryption: true
+      autoscale: true
+      kms_key: true
+      networking: true
+      proxy_enabled: true
+      label_enabled: false
+      zones: ""
+      tag_enabled: true
+      etcd_kms: true
+      fips: false
+      oidc_config: managed
+      auditlog_forward: false
+      admin_enabled: false
+      volume_size: 75
+      disable_uwm: true
+      autoscaler_enabled: false
+      additional_sg_number: 3
+      registries_config: true
+      allowed_registries: true
+      log_forward: false
+    account-role:
+      customized_prefix: true
+      path: ""
+      permission_boundary: ""
+  - as: rosa-hyperfleet-private
+    version: latest
+    region: "us-east-1"
+    cluster:
+      multi_az: true
+      instance_type: "m5.xlarge"
+      hcp: true
+      sts: true
+      byo_vpc: true
+      private: true
+      default_ingress_private: true
+      additional_principals: true
+      imdsv2: ""
+      etcd_encryption: false
+      autoscale: false
+      kms_key: false
+      oidc_config: managed
+      networking: false
+      proxy_enabled: false
+      label_enabled: false
+      tag_enabled: false
+      zones: ""
+      registries_config: false
+      allowed_registries: false
+      log_forward: false
+    account-role:
+      path: ""
+      permission_boundary: ""
