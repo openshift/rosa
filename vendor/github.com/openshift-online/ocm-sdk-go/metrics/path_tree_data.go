@@ -337,6 +337,7 @@ var pathTreeData = `{
             "machine_pools": {
               "-": null
             },
+            "maintenance": null,
             "metric_queries": {
               "alerts": null,
               "cluster_operators": null,
