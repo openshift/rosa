@@ -25,6 +25,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -33,6 +34,15 @@ import (
 var args struct {
 	version string
 }
+
+var (
+	hfEnabled          = hyperfleet.Enabled
+	hfListAccountRoles = func() {
+		r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
+		defer r.Cleanup()
+		runHyperfleetList(r)
+	}
+)
 
 var Cmd = &cobra.Command{
 	Use:     "account-roles",
@@ -58,6 +68,11 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
+	if hfEnabled() {
+		hfListAccountRoles()
+		return
+	}
+
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
@@ -74,6 +89,19 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	listAccountRoles(r)
+}
+
+func runHyperfleetList(r *rosa.Runtime) {
+	if args.version != "" {
+		r.Reporter.Errorf("--version is not supported when listing account roles in HyperFleet mode")
+		os.Exit(1)
+	}
+
+	listAccountRoles(r)
+}
+
+func listAccountRoles(r *rosa.Runtime) {
 	var spin *spinner.Spinner
 	if r.Reporter.IsTerminal() {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -88,27 +116,24 @@ func run(_ *cobra.Command, _ []string) {
 	if spin != nil {
 		spin.Stop()
 	}
-
 	if err != nil {
 		r.Reporter.Errorf("Failed to get account roles: %v", err)
 		os.Exit(1)
 	}
 
 	if output.HasFlag() {
-		err = output.Print(accountRoles)
-		if err != nil {
+		if err := output.Print(accountRoles); err != nil {
 			r.Reporter.Errorf("%s", err)
 			os.Exit(1)
 		}
-		os.Exit(0)
+		return
 	}
 
 	if len(accountRoles) == 0 {
 		r.Reporter.Infof("No account roles available")
-		os.Exit(0)
+		return
 	}
 
-	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(writer, "ROLE NAME\tROLE TYPE\tROLE ARN\tOPENSHIFT VERSION\tAWS Managed\n")
 	for _, accountRole := range accountRoles {
@@ -116,9 +141,7 @@ func run(_ *cobra.Command, _ []string) {
 		if accountRole.ManagedPolicy {
 			awsManaged = "Yes"
 		}
-		fmt.Fprintf(
-			writer,
-			"%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
 			accountRole.RoleName,
 			accountRole.RoleType,
 			accountRole.RoleARN,

@@ -185,8 +185,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("the additional security groups are working well - [id:68172]",
-				labels.Critical, labels.Runtime.Day1Post,
-				labels.Hyperfleet.Deferred,
+				labels.Critical, labels.Runtime.Day1Post, labels.Hyperfleet.Deferred,
 				labels.Exclude, //Exclude it until day1 refactor support this part. It cannot be run with current day1
 				func() {
 					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
@@ -393,7 +392,7 @@ var _ = Describe("Healthy check",
 					Expect(ingress.Private).To(Equal(ingressPrivate))
 
 				})
-			It("with API private and ingress pravate works on hosted-cp cluster - [id:83155]",
+			It("with API private and ingress private works on hosted-cp cluster - [id:83155]",
 				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
 				labels.Hyperfleet.Deferred,
 				func() {
@@ -674,6 +673,8 @@ var _ = Describe("Healthy check",
 					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
 					Expect(err).ToNot(HaveOccurred())
 					if profile.ClusterConfig.ProxyEnabled {
+						Expect(clusterConfig.Proxy).ToNot(BeNil(),
+							"proxy-enabled profile requires proxy settings in the original SHARED_DIR/cluster-config")
 						clusterHTTPProxy, clusterHTTPSProxy, clusterNoProxy :=
 							clusterService.DetectProxy(clusterDescription)
 						Expect(clusterConfig.Proxy.Http).To(Equal(clusterHTTPProxy))
