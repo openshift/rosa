@@ -6,6 +6,7 @@ package machinepool
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/securitygroups"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -246,12 +247,12 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 			"This flag is only supported for Hosted Control Planes.",
 	)
 
-	flags.StringSliceVar(
+	flags.StringArrayVar(
 		&options.Tags,
 		"tags",
 		nil,
 		"Apply user defined tags to all resources created by ROSA in AWS. "+
-			"Tags are comma separated, for example: 'key value, foo bar'",
+			aws.UserTagsFlagHelpSuffix,
 	)
 
 	flags.StringVar(

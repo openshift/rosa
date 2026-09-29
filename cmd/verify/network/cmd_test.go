@@ -386,15 +386,54 @@ INFO: subnet-0f87f640e56934cbc, platform: aws, tags: {"t1":"v1"}: passed
 		Expect(stderr).To(Equal(""))
 		Expect(stdout).To(Equal(successOutputComplete))
 	})
+	It("Succeeds if quoted custom --tags with spaces are supplied", func() {
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetsComplete,
+			),
+		)
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetPassedSuccess,
+			),
+		)
+		apiServer.AppendHandlers(
+			RespondWithJSON(
+				http.StatusOK,
+				subnetPassedSuccess,
+			),
+		)
+		Expect(cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")).To(Succeed())
+		// StringArray preserves quotes; comma-separated list is expanded by ParseUserTags.
+		Expect(cmd.Flags().Set("tags", `"Cost Center":"Finance Team",env:prod`)).To(Succeed())
+		Expect(cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")).To(Succeed())
+		Expect(cmd.Flags().Set("region", "us-east-1")).To(Succeed())
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, r, cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(Equal(""))
+		Expect(stdout).To(Equal(successOutputComplete))
+	})
 	It("Fails if --tags are formatted incorrectly", func() {
-		cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")
-		cmd.Flags().Set("tags", "test val1 test2 val2")
-		cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")
-		cmd.Flags().Set("region", "us-east-1")
+		Expect(cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")).To(Succeed())
+		Expect(cmd.Flags().Set("tags", "test val1 test2 val2")).To(Succeed())
+		Expect(cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")).To(Succeed())
+		Expect(cmd.Flags().Set("region", "us-east-1")).To(Succeed())
 		err := runWithRuntime(r, cmd)
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("invalid tag format"))
+	})
+	It("Fails if --tags use a reserved aws: key", func() {
+		Expect(cmd.Flags().Set(roleArnFlag, "arn:aws:iam::765374464689:role/tomckay-Installer-Role")).To(Succeed())
+		Expect(cmd.Flags().Set("tags", `"aws:owned":true`)).To(Succeed())
+		Expect(cmd.Flags().Set(subnetIDsFlag, "subnet-0b761d44d3d9a4663,subnet-0f87f640e56934cbc")).To(Succeed())
+		Expect(cmd.Flags().Set("region", "us-east-1")).To(Succeed())
+		err := runWithRuntime(r, cmd)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(
+			ContainSubstring("keys starting with 'aws:' are reserved for AWS use"))
 	})
 	It("Fails if --cluster with --hosted-cp flag", func() {
 		// GET /api/clusters_mgmt/v1/clusters

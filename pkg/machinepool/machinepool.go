@@ -412,7 +412,7 @@ func (m *machinePool) CreateMachinePool(r *rosa.Runtime, cmd *cobra.Command, clu
 		maxPrice = &price
 	}
 
-	awsTags := mpHelpers.GetAwsTags(cmd, r, args.Tags)
+	awsTags := mpHelpers.GetAwsTags(cmd, r, args.Tags, true)
 
 	mpBuilder := cmv1.NewMachinePool().
 		ID(name).
@@ -700,7 +700,7 @@ func (m *machinePool) CreateNodePools(r *rosa.Runtime, cmd *cobra.Command, clust
 		securityGroupIds[i] = strings.TrimSpace(sg)
 	}
 
-	awsTags := mpHelpers.GetAwsTags(cmd, r, args.Tags)
+	awsTags := mpHelpers.GetAwsTags(cmd, r, args.Tags, false)
 
 	npBuilder := cmv1.NewNodePool()
 	npBuilder.ID(name).Labels(labelMap).

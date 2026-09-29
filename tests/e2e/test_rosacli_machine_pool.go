@@ -389,7 +389,7 @@ var _ = Describe("Create machinepool",
 				By("Check the help message of machinepool creation")
 				out, err := machinePoolService.CreateMachinePool(clusterID, "mp-73469", "-h")
 				Expect(err).ToNot(HaveOccurred(), out.String())
-				Expect(out.String()).Should(ContainSubstring("--tags strings"))
+				Expect(out.String()).Should(ContainSubstring("--tags stringArray"))
 
 				By("Create a machinepool with tags set")
 				tags := []string{
@@ -413,7 +413,6 @@ var _ = Describe("Create machinepool",
 				By("Create with invalid tags")
 				invalidTagMap := map[string]string{
 					"invalidFmt": "invalid",
-					"noTagValue": "notagvalue:",
 					"noTagKey":   ":notagkey",
 					"nonAscii":   "non-ascii:值",
 				}
@@ -428,10 +427,6 @@ var _ = Describe("Create machinepool",
 						Expect(out.String()).
 							Should(ContainSubstring(
 								"invalid tag format for tag"))
-					case "noTagValue":
-						Expect(out.String()).
-							Should(ContainSubstring(
-								"invalid tag format, tag key or tag value can not be empty"))
 					case "noTagKey":
 						Expect(out.String()).
 							Should(ContainSubstring(
@@ -442,6 +437,40 @@ var _ = Describe("Create machinepool",
 								"Invalid Machine Pool AWS tags"))
 					}
 				}
+			})
+
+		It("can create machinepool with quoted tags containing spaces - [id:67145]",
+			labels.Runtime.Day2,
+			labels.High,
+			labels.FedRAMP,
+			func() {
+				mpName := helper.GenerateRandomName("mp-67145", 2)
+
+				By("Create a machinepool with quoted tags containing spaces and an empty Classic value")
+				out, err := machinePoolService.CreateMachinePool(clusterID, mpName,
+					"--replicas", "3",
+					"--tags", `"Cost Center":"Finance Team",owner:`,
+				)
+				Expect(err).ToNot(HaveOccurred(), out.String())
+				DeferCleanup(func() error {
+					_, err := machinePoolService.DeleteMachinePool(clusterID, mpName)
+					return err
+				})
+
+				By("Describe the machinepool and verify tags")
+				description, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(description.Tags).Should(ContainSubstring("Cost Center=Finance Team"))
+				Expect(description.Tags).To(MatchRegexp(`(^|, )owner=(,|$)`))
+
+				By("Reject reserved aws: key")
+				out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-67145",
+					"--replicas", "3",
+					"--tags", `"aws:owned":true`,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).
+					Should(ContainSubstring("keys starting with 'aws:' are reserved for AWS use"))
 			})
 
 		It("can create machinepool with availibility zone - [id:52352]",

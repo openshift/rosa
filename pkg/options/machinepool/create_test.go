@@ -126,7 +126,8 @@ var _ = Describe("BuildMachinePoolCreateCommandWithOptions", func() {
 		nodeDrainGracePeriod, _ := flags.GetString("node-drain-grace-period")
 		Expect(nodeDrainGracePeriod).To(Equal(""))
 
-		tags, _ := flags.GetStringSlice("tags")
+		tags, err := flags.GetStringArray("tags")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(tags).To(BeEmpty())
 
 		maxSurge, _ := flags.GetString("max-surge")
