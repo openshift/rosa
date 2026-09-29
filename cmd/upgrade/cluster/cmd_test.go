@@ -9,12 +9,16 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/mock/gomock"
+
 	. "github.com/onsi/ginkgo/v2/dsl/core"
 	. "github.com/onsi/ginkgo/v2/dsl/decorators"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
+	mock "github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -298,6 +302,166 @@ var _ = Describe("Upgrade", Ordered, func() {
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(
 			ContainSubstring("node-drain-grace-period flag is not supported to hosted clusters"))
+	})
+
+	Context("HCP managed policies IAM upgrade gating", func() {
+		const operatorCredRequests = `{
+			"kind":"STSCredentialRequestList","page":1,"size":1,"total":1,
+			"items":[{
+				"kind":"STSCredentialRequest",
+				"name":"operator-1",
+				"operator":{"name":"cloud-credentials","namespace":"openshift-ingress-operator"}
+			}]
+		}`
+		var hypershiftManagedSTSCluster string
+		var mockAWS *mock.MockClient
+
+		BeforeEach(func() {
+			interactive.SetModeKey("")
+			Expect(Cmd.Flags().Set("mode", "")).To(Succeed())
+			Cmd.Flag("mode").Changed = false
+			Expect(Cmd.Flags().Set("node-drain-grace-period", "")).To(Succeed())
+			Cmd.Flag("node-drain-grace-period").Changed = false
+
+			mockAWS = testRuntime.RosaRuntime.AWSClient.(*mock.MockClient)
+
+			managedCluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.AWS(cmv1.NewAWS().STS(cmv1.NewSTS().
+					RoleARN("arn:aws:iam::123456789012:role/ManagedOpenShift-HCP-ROSA-Installer-Role").
+					ManagedPolicies(true)))
+				c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+				c.State(cmv1.ClusterStateReady)
+				c.Hypershift(cmv1.NewHypershift().Enabled(true))
+				c.Version(version4130)
+			})
+			hypershiftManagedSTSCluster = test.FormatClusterList([]*cmv1.Cluster{managedCluster})
+		})
+
+		AfterEach(func() {
+			interactive.SetModeKey("")
+			Expect(Cmd.Flags().Set("mode", "")).To(Succeed())
+			Cmd.Flag("mode").Changed = false
+			args.schedule = ""
+			args.scheduleDate = ""
+			args.scheduleTime = ""
+			args.version = ""
+			args.dryRun = false
+		})
+
+		appendManagedPolicyValidationHandlers := func() {
+			policy, err := cmv1.NewAWSSTSPolicy().ID("123").Type("").Build()
+			Expect(err).NotTo(HaveOccurred())
+			opPolicy, err := cmv1.NewAWSSTSPolicy().ID("123").Type("OperatorRole").Build()
+			Expect(err).NotTo(HaveOccurred())
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatAWSSTSPolicyList([]*cmv1.AWSSTSPolicy{policy})))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, operatorCredRequests))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatAWSSTSPolicyList([]*cmv1.AWSSTSPolicy{opPolicy})))
+			mockAWS.EXPECT().ValidateHCPAccountRolesManagedPolicies("ManagedOpenShift", gomock.Any()).Return(nil)
+			mockAWS.EXPECT().ValidateOperatorRolesManagedPolicies(
+				gomock.Any(), gomock.Any(), gomock.Any(), true,
+			).Return(nil)
+		}
+
+		It("warns and discards --mode for HCP managed policies", func() {
+			args.schedule = "20 5 * * *"
+			args.scheduleDate = ""
+			args.scheduleTime = ""
+			args.version = ""
+			interactive.SetModeKey(interactive.ModeAuto)
+			Expect(Cmd.Flags().Set("mode", interactive.ModeAuto)).To(Succeed())
+
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+			appendManagedPolicyValidationHandlers()
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, ""))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+
+			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			Expect(err).To(BeNil())
+			Expect(stdout).To(ContainSubstring("INFO: Upgrade successfully scheduled for cluster 'cluster1'"))
+			Expect(stderr).To(ContainSubstring(
+				"The '--mode' flag is not applicable for Hosted Control Plane clusters " +
+					"with managed policies and will be ignored"))
+			Expect(stdout).NotTo(ContainSubstring("compatible with upgrade"))
+			Expect(stdout).NotTo(ContainSubstring("An upgrade isn't needed"))
+		})
+
+		It("warns and continues when an unsupported --mode is set for HCP managed policies", func() {
+			args.schedule = "20 5 * * *"
+			args.scheduleDate = ""
+			args.scheduleTime = ""
+			args.version = ""
+			interactive.SetModeKey("unsupported-mode")
+			Expect(Cmd.Flags().Set("mode", "unsupported-mode")).To(Succeed())
+
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+			appendManagedPolicyValidationHandlers()
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, ""))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+
+			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			Expect(err).To(BeNil())
+			Expect(stdout).To(ContainSubstring("INFO: Upgrade successfully scheduled for cluster 'cluster1'"))
+			Expect(stderr).To(ContainSubstring(
+				"The '--mode' flag is not applicable for Hosted Control Plane clusters " +
+					"with managed policies and will be ignored"))
+		})
+
+		It("skips IAM mode prompt noise when --mode is not set for HCP managed policies", func() {
+			args.schedule = "20 5 * * *"
+			args.scheduleDate = ""
+			args.scheduleTime = ""
+			args.version = ""
+
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+			appendManagedPolicyValidationHandlers()
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusCreated, ""))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+
+			stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			Expect(err).To(BeNil())
+			Expect(stdout).To(ContainSubstring("INFO: Upgrade successfully scheduled for cluster 'cluster1'"))
+			Expect(stderr).NotTo(ContainSubstring("The '--mode' flag is not applicable"))
+			Expect(stdout).NotTo(ContainSubstring("compatible with upgrade"))
+			Expect(stdout).NotTo(ContainSubstring("An upgrade isn't needed"))
+			Expect(stdout).NotTo(ContainSubstring("have attached managed policies"))
+		})
+
+		It("fails when managed policy attachments are missing", func() {
+			args.schedule = "20 5 * * *"
+			args.scheduleDate = ""
+			args.scheduleTime = ""
+			args.version = ""
+
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftManagedSTSCluster))
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
+
+			policy, err := cmv1.NewAWSSTSPolicy().ID("123").Type("").Build()
+			Expect(err).NotTo(HaveOccurred())
+			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+				test.FormatAWSSTSPolicyList([]*cmv1.AWSSTSPolicy{policy})))
+			mockAWS.EXPECT().ValidateHCPAccountRolesManagedPolicies("ManagedOpenShift", gomock.Any()).
+				Return(fmt.Errorf("role 'x' is missing the attached managed policy 'y'"))
+
+			_, _, runErr := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+			Expect(runErr).ToNot(BeNil())
+			Expect(runErr.Error()).To(ContainSubstring("failed while validating managed policies"))
+			Expect(runErr.Error()).To(ContainSubstring("missing the attached managed policy"))
+		})
 	})
 })
 

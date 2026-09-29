@@ -195,4 +195,104 @@ var _ = Describe("Roles Helper", func() {
 			Expect(err).To(MatchError(ContainSubstring("could not find")))
 		})
 	})
+
+	Context("ValidateHostedCPManagedPoliciesAttached", func() {
+		var cluster *cmv1.Cluster
+		var t test.TestingRuntime
+		var mockAWS *mock.MockClient
+		const emptyCredRequests = `{"kind":"STSCredentialRequestList","page":1,"size":0,"total":0,"items":[]}`
+		const operatorCredRequests = `{
+			"kind":"STSCredentialRequestList","page":1,"size":1,"total":1,
+			"items":[{
+				"kind":"STSCredentialRequest",
+				"name":"operator-1",
+				"operator":{"name":"cloud-credentials","namespace":"openshift-ingress-operator"}
+			}]
+		}`
+
+		BeforeEach(func() {
+			t.InitRuntime()
+
+			mockCtrl := gomock.NewController(GinkgoT())
+			mockAWS = mock.NewMockClient(mockCtrl)
+			t.RosaRuntime.AWSClient = mockAWS
+
+			version := cmv1.NewVersion().ID("openshift-v4.13.0").RawID("4.13.0").
+				ReleaseImage("1").HREF("/api/clusters_mgmt/v1/versions/openshift-v4.13.0").
+				Enabled(true).ChannelGroup("stable").ROSAEnabled(true).
+				HostedControlPlaneEnabled(true)
+
+			cluster = test.MockCluster(func(c *cmv1.ClusterBuilder) {
+				c.AWS(cmv1.NewAWS().STS(cmv1.NewSTS().
+					RoleARN("arn:aws:iam::123456789012:role/ManagedOpenShift-HCP-ROSA-Installer-Role").
+					ManagedPolicies(true)))
+				c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+				c.State(cmv1.ClusterStateReady)
+				c.Hypershift(cmv1.NewHypershift().Enabled(true))
+				c.Version(version)
+			})
+		})
+
+		appendPolicyHandlers := func(credRequestsJSON string) {
+			policy, _ := cmv1.NewAWSSTSPolicy().ID("123").Type("").Build()
+			policiesResponse := test.FormatAWSSTSPolicyList([]*cmv1.AWSSTSPolicy{policy})
+			opPolicy, _ := cmv1.NewAWSSTSPolicy().ID("123").Type("OperatorRole").Build()
+			opPoliciesResponse := test.FormatAWSSTSPolicyList([]*cmv1.AWSSTSPolicy{opPolicy})
+
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, policiesResponse))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, credRequestsJSON))
+			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, opPoliciesResponse))
+		}
+
+		It("validates managed policy attachments without success messages", func() {
+			appendPolicyHandlers(operatorCredRequests)
+			mockAWS.EXPECT().ValidateHCPAccountRolesManagedPolicies(
+				"ManagedOpenShift", gomock.Any(),
+			).Return(nil)
+			mockAWS.EXPECT().ValidateOperatorRolesManagedPolicies(
+				cluster, gomock.Any(), gomock.Any(), true,
+			).Return(nil)
+
+			err := ValidateHostedCPManagedPoliciesAttached(t.RosaRuntime, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("returns an error when account managed policies are missing", func() {
+			appendPolicyHandlers(operatorCredRequests)
+			mockAWS.EXPECT().ValidateHCPAccountRolesManagedPolicies(
+				"ManagedOpenShift", gomock.Any(),
+			).Return(fmt.Errorf("role 'x' is missing the attached managed policy 'y'"))
+
+			err := ValidateHostedCPManagedPoliciesAttached(t.RosaRuntime, cluster)
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("failed while validating managed policies")))
+			Expect(err).To(MatchError(ContainSubstring("missing the attached managed policy")))
+		})
+
+		It("returns an error when operator managed policies are missing", func() {
+			appendPolicyHandlers(operatorCredRequests)
+			mockAWS.EXPECT().ValidateHCPAccountRolesManagedPolicies(
+				"ManagedOpenShift", gomock.Any(),
+			).Return(nil)
+			mockAWS.EXPECT().ValidateOperatorRolesManagedPolicies(
+				cluster, gomock.Any(), gomock.Any(), true,
+			).Return(fmt.Errorf("role 'x' is missing the attached managed policy 'y'"))
+
+			err := ValidateHostedCPManagedPoliciesAttached(t.RosaRuntime, cluster)
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("failed while validating managed policies")))
+			Expect(err).To(MatchError(ContainSubstring("missing the attached managed policy")))
+		})
+
+		It("returns an error when operator credential requests are empty", func() {
+			appendPolicyHandlers(emptyCredRequests)
+			mockAWS.EXPECT().ValidateHCPAccountRolesManagedPolicies(
+				"ManagedOpenShift", gomock.Any(),
+			).Return(nil)
+
+			err := ValidateHostedCPManagedPoliciesAttached(t.RosaRuntime, cluster)
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("no operator credential requests found")))
+		})
+	})
 })

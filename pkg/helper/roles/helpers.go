@@ -126,7 +126,7 @@ func BuildMissingOperatorRoleCommand(
 func ValidateAccountRolesManagedPolicies(r *rosa.Runtime, prefix string, hostedCPPolicies bool) error {
 	policies, err := r.OCMClient.GetPolicies("")
 	if err != nil {
-		return fmt.Errorf("Failed to fetch policies: %v", err)
+		return fmt.Errorf("failed to fetch policies: %w", err)
 	}
 
 	if hostedCPPolicies {
@@ -219,6 +219,42 @@ func ValidateAccountAndOperatorRolesManagedPolicies(
 		accountRolePrefix, unifiedPath, upgradeVersion, hostedCPPolicies)
 	if err != nil {
 		return fmt.Errorf("Failed while validating managed policies: %v", err)
+	}
+
+	return nil
+}
+
+// ValidateHostedCPManagedPoliciesAttached checks that Hosted Control Plane account and
+// operator roles still have the expected AWS managed policies attached. It does not print
+// success messages or create missing roles; callers use it during cluster upgrade when no
+// customer IAM policy action is required.
+func ValidateHostedCPManagedPoliciesAttached(r *rosa.Runtime, cluster *cmv1.Cluster) error {
+	accountRolePrefix, err := aws.GetPrefixFromAccountRole(cluster, aws.InstallerAccountRoleType)
+	if err != nil {
+		return fmt.Errorf("failed while trying to get account role prefix: %w", err)
+	}
+
+	err = ValidateAccountRolesManagedPolicies(r, accountRolePrefix, true)
+	if err != nil {
+		return fmt.Errorf("failed while validating managed policies: %w", err)
+	}
+
+	credRequests, err := r.OCMClient.GetCredRequests(true)
+	if err != nil {
+		return fmt.Errorf("error getting operator credential request from OCM: %w", err)
+	}
+	if len(credRequests) == 0 {
+		return fmt.Errorf("failed while validating managed policies: no operator credential requests found")
+	}
+
+	policies, err := r.OCMClient.GetPolicies("OperatorRole")
+	if err != nil {
+		return fmt.Errorf("failed to get operator role policies: %w", err)
+	}
+
+	err = r.AWSClient.ValidateOperatorRolesManagedPolicies(cluster, credRequests, policies, true)
+	if err != nil {
+		return fmt.Errorf("failed while validating managed policies: %w", err)
 	}
 
 	return nil

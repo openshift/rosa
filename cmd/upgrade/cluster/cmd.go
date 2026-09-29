@@ -244,19 +244,31 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	// Start processing parameters
 	// Mode
-	mode, err := interactive.GetMode()
-	if err != nil {
-		return fmt.Errorf("%s", err)
-	}
 	_, isSTS := cluster.AWS().STS().GetRoleARN()
-	if !isSTS && mode != "" {
-		return fmt.Errorf("the 'mode' option is only supported for STS clusters")
-	}
-	if isSTS && mode == "" {
-		mode, err = interactive.GetOptionMode(cmd, mode, "IAM Roles/Policies upgrade mode")
+	hostedCPManagedPolicies := aws.IsHostedCPManagedPolicies(cluster)
+	var mode string
+	var err error
+	if hostedCPManagedPolicies {
+		// HCP managed policies are maintained by Red Hat/AWS; no customer IAM upgrade action.
+		// Warn and ignore --mode even when the supplied value is unsupported.
+		if cmd.Flags().Changed("mode") {
+			r.Reporter.Warnf("The '--mode' flag is not applicable for Hosted Control Plane clusters " +
+				"with managed policies and will be ignored")
+		}
+	} else {
+		mode, err = interactive.GetMode()
 		if err != nil {
-			r.Reporter.Errorf("expected a valid role upgrade mode: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("%s", err)
+		}
+		if !isSTS && mode != "" {
+			return fmt.Errorf("the 'mode' option is only supported for STS clusters")
+		}
+		if isSTS && mode == "" {
+			mode, err = interactive.GetOptionMode(cmd, mode, "IAM Roles/Policies upgrade mode")
+			if err != nil {
+				r.Reporter.Errorf("expected a valid role upgrade mode: %v", err)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -326,7 +338,13 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	// if cluster is sts validate roles are compatible with upgrade version
 	// for automatic upgrades, version is not available
 	if isSTS {
-		if currentUpgradeScheduling.AutomaticUpgrades {
+		if hostedCPManagedPolicies {
+			// HCP managed policies need only an attachment check; no IAM upgrade or mode.
+			err := rolesHelper.ValidateHostedCPManagedPoliciesAttached(r, cluster)
+			if err != nil {
+				return fmt.Errorf("%w", err)
+			}
+		} else if currentUpgradeScheduling.AutomaticUpgrades {
 			// We do not know the upgrade version client side when scheduling an
 			// automatic upgrade. Passing "" will still perform the role check.
 			err := checkRolesManagedPolicies(r, cluster, mode, "")
