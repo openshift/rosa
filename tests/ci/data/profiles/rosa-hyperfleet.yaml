@@ -92,7 +92,7 @@ profiles:
       private: false
       default_ingress_private: false
       etcd_encryption: true
-      autoscale: true
+      autoscale: false
       kms_key: true
       networking: true
       proxy_enabled: true
