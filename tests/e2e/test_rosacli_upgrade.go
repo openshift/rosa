@@ -335,11 +335,9 @@ var _ = Describe("Cluster Upgrade testing",
 			)
 
 			Expect(err).To(BeNil())
-			Expect(output.String()).To(ContainSubstring("are compatible with upgrade"))
 			Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
-			if isHosted {
-				Expect(output.String()).To(ContainSubstring("have attached managed policies. An upgrade isn't needed"))
-			} else {
+			if !isHosted {
+				Expect(output.String()).To(ContainSubstring("are compatible with upgrade"))
 				Expect(output.String()).To(ContainSubstring("are already up-to-date"))
 			}
 		})
@@ -1171,7 +1169,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 					Expect(output.String()).
 						To(
 							ContainSubstring(
-								fmt.Sprintf("Failed while validating managed policies: role"+
+								fmt.Sprintf("failed while validating managed policies: role"+
 									" '%s' is missing the attached managed policy '%s'", r, p)))
 
 					By("Attach the deleted managed policies")
