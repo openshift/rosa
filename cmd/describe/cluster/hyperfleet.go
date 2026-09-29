@@ -34,10 +34,7 @@ var (
 // V2 (Hyperfleet) stores only subnet ID, requiring AWS lookup.
 // TODO: Consider adding AZ field to Hyperfleet NodePool status to avoid AWS API calls during describe.
 func deriveNodePoolAvailabilityZones(
-	ctx context.Context,
-	r *rosa.Runtime,
-	cluster *v1alpha1.Cluster,
-	npList *v1alpha1.NodePoolList,
+	ctx context.Context, r *rosa.Runtime, cluster *v1alpha1.Cluster, npList *v1alpha1.NodePoolList,
 ) map[string]struct{} {
 	azMap := make(map[string]struct{})
 	if npList == nil || len(npList.Items) == 0 {
@@ -159,10 +156,8 @@ func hfDefaultNodePoolInstanceTypeFromList(list *v1alpha1.NodePoolList) string {
 // hfClusterToMap converts a hyperfleet Cluster to a generic map suitable for
 // JSON/YAML structured output, mirroring the shape of formatClusterHypershift.
 func hfClusterToMap(
-	c *v1alpha1.Cluster,
-	dataPlaneAZs map[string]struct{},
-	npList *v1alpha1.NodePoolList,
-	defaultNodePoolInstanceType string,
+	c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{},
+	npList *v1alpha1.NodePoolList, defaultNodePoolInstanceType string,
 ) map[string]interface{} {
 	aws := c.Spec.HostedCluster.Platform.AWS
 
@@ -456,10 +451,8 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 
 	// Get subnet from cluster AWS config
 	subnetID := ""
-	if aws != nil &&
-		aws.CloudProviderConfig != nil &&
-		aws.CloudProviderConfig.Subnet != nil &&
-		aws.CloudProviderConfig.Subnet.ID != nil {
+	if aws != nil && aws.CloudProviderConfig != nil &&
+		aws.CloudProviderConfig.Subnet != nil && aws.CloudProviderConfig.Subnet.ID != nil {
 		subnetID = *aws.CloudProviderConfig.Subnet.ID
 	}
 
