@@ -1138,14 +1138,7 @@ func run(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	isBYOVPC := cmd.Flags().Changed("subnet-ids")
 	isAvailabilityZonesSet := cmd.Flags().Changed("availability-zones")
-	// Setting subnet IDs is choosing BYOVPC implicitly,
-	// and selecting availability zones is only allowed for non-BYOVPC clusters
-	if isBYOVPC && isAvailabilityZonesSet {
-		r.Reporter.Errorf("Setting availability zones is not supported for BYO VPC. " +
-			"ROSA autodetects availability zones from subnet IDs provided")
-	}
 
 	// Select a multi-AZ cluster implicitly by providing three availability zones
 	if len(args.availabilityZones) == clustervalidations.MultiAZCount {
@@ -2764,6 +2757,10 @@ func run(cmd *cobra.Command, _ []string) {
 				os.Exit(1)
 			}
 		}
+	} else if isAvailabilityZonesSet {
+		// Final path is existing VPC / --subnet-ids; zones come from selected subnets.
+		r.Reporter.Warnf("ROSA determines availability zones from the existing VPC or provided subnets; " +
+			"--availability-zones does not select them.")
 	}
 
 	enableCustomerManagedKey := args.enableCustomerManagedKey
