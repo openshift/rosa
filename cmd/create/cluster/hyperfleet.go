@@ -12,6 +12,7 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -38,6 +39,12 @@ var (
 	hfCreateCluster = func(cmd *cobra.Command) {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
+		// HF create bypasses the classic hosted-cp validation in run(); reject UWM here.
+		if err := rejectUnsupportedHyperfleetCreateFlags(cmd); err != nil {
+			r.Reporter.Errorf("%v", err)
+			hfExitFn(1)
+			return
+		}
 		if err := hfpathbind.RunCreateCluster(context.Background(), r, cmd, &hfClusterInput,
 			&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets},
 		); err != nil {
@@ -46,6 +53,15 @@ var (
 		}
 	}
 )
+
+// rejectUnsupportedHyperfleetCreateFlags rejects classic/HCP flags that must not reach
+// Platform API create (same policy as hosted-cp OCM create).
+func rejectUnsupportedHyperfleetCreateFlags(cmd *cobra.Command) error {
+	if cmd != nil && cmd.Flags().Changed("disable-workload-monitoring") {
+		return fmt.Errorf("%s", arguments.UwmNotSupportedMessage)
+	}
+	return nil
+}
 
 // runHyperfleet is a thin wrapper for direct test invocation without a real cobra.Command.
 func runHyperfleet(r *rosa.Runtime) {
@@ -103,6 +119,12 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	}
 	if input.SubnetID == "" {
 		return fmt.Errorf("--subnet-id (or --subnet-ids) is required")
+	}
+	if err := validateNetworkType(args.networkType); err != nil {
+		return err
+	}
+	if args.noCni && args.networkType != "" {
+		return fmt.Errorf("--no-cni and --network-type are mutually exclusive parameters")
 	}
 
 	// OIDC config ID is optional but recommended

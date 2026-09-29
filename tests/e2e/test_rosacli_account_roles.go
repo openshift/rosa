@@ -20,6 +20,7 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
 	raws "github.com/openshift/rosa/pkg/aws"
+	rosaconfig "github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -54,7 +55,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 	})
 
 	It("can create/list/delete account-roles - [id:43070]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			defer func() {
 				By("Cleanup created account-roles in high level of the test case")
@@ -231,7 +232,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		})
 
 	It("can validate that upgrade account-roles with the managed policies should be forbidden - [id:57441]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			defer func() {
 				By("Cleanup created account-roles in high level of the test case")
@@ -290,7 +291,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		})
 
 	It("can delete account-roles with --hosted-cp and --classic - [id:62083]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			defer func() {
 				By("Cleanup created account-roles in high level of the test case")
@@ -344,7 +345,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		})
 
 	It("create/delete hypershift account roles with managed policies - [id:61322]",
-		labels.Critical, labels.Runtime.OCMResources,
+		labels.Critical, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			defer func() {
 				By("Cleanup created account-roles in the test case")
@@ -675,7 +676,7 @@ var _ = Describe("Edit account roles", labels.Feature.AccountRoles, func() {
 		})
 
 	It("Validation for account-role creation by user - [id:43067]",
-		labels.Medium, labels.Runtime.OCMResources,
+		labels.Medium, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			var (
 				validRolePrefix                   = "valid"
@@ -763,8 +764,22 @@ var _ = Describe("List account roles", labels.Feature.AccountRoles, func() {
 	})
 
 	It("to list account-roles by rosa-cli - [id:44511]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
+			cliConfig, err := rosaconfig.Load()
+			Expect(err).ToNot(HaveOccurred())
+			hyperfleetURL := os.Getenv("HYPERFLEET_URL")
+			if hyperfleetURL == "" && cliConfig != nil {
+				hyperfleetURL = cliConfig.HyperfleetURL
+			}
+			if hyperfleetURL != "" {
+				By("List account roles using HyperFleet and AWS only")
+				output, err := rosaClient.Runner.Cmd("list", "account-roles").
+					CmdFlags("--hyperfleet-url", hyperfleetURL).Run()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("ROLE NAME"))
+				return
+			}
 
 			accrolePrefix := "arPrefix44511"
 			path := "/a/b/"
@@ -858,7 +873,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 		rosaClient.Runner.SetDir(defaultDir)
 	})
 	It("to check the trust policy attach information when create account-roles multiple times - [id:75904]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			accountRoleNames := []string{
 				"ControlPlane-Role",
@@ -962,7 +977,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 		})
 
 	It("to create account-roles with invalid version/channel group - [id:75246]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			By("Create account roles with invalid version")
 			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
@@ -1001,7 +1016,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 		})
 
 	It("to create/Upgrade account-roles by setting version and channel-group via rosacli - [id:54469]",
-		labels.High, labels.Runtime.OCMResources,
+		labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			var defaultDir string
 			By("Get the default dir")
@@ -1198,7 +1213,7 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 		}
 	})
 	It("Create/Delete account roles for hosted-cp shared vpc cluster in manual mode - [id:77962]",
-		labels.Critical, labels.Runtime.OCMResources,
+		labels.Critical, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			var (
 				accrolePrefix1     string
@@ -1278,7 +1293,7 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 		})
 
 	It("Create/Delete account roles for hosted-cp shared vpc cluster in auto mode - [id:77829]",
-		labels.Critical, labels.Runtime.OCMResources,
+		labels.Critical, labels.Runtime.OCMResources, labels.Hyperfleet.InProgress,
 		func() {
 			var (
 				accrolePrefix1            string

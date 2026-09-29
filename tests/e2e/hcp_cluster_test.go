@@ -1,0 +1,1095 @@
+package e2e
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+	"time"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/pkg/hyperfleet"
+	ciConfig "github.com/openshift/rosa/tests/ci/config"
+	"github.com/openshift/rosa/tests/ci/labels"
+	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
+	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/handler"
+	"github.com/openshift/rosa/tests/utils/helper"
+)
+
+var _ = Describe("HCP cluster testing",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			clusterID          string
+			rosaClient         *rosacli.Client
+			clusterService     rosacli.ClusterService
+			clusterConfig      *config.ClusterConfig
+			profile            *handler.Profile
+			machinePoolService rosacli.MachinePoolService
+			ocmResourceService rosacli.OCMResourceService
+		)
+
+		BeforeEach(func() {
+			By("Get the cluster")
+			clusterID = config.GetClusterID()
+			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")
+
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			profile = handler.LoadProfileYamlFileByENV()
+			var err error
+			clusterConfig, err = config.ParseClusterProfile()
+			Expect(err).ToNot(HaveOccurred())
+			machinePoolService = rosaClient.MachinePool
+			ocmResourceService = rosaClient.OCMResource
+
+			By("Skip testing if the cluster is not a HCP cluster")
+			// Platform API v2 clusters are always hosted; OCM path still needs the check.
+			isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+			if !isHyperfleet {
+				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if !hostedCluster {
+					SkipNotHosted()
+				}
+			}
+		})
+
+		AfterEach(func() {
+			By("Clean the cluster")
+			rosaClient.CleanResources(clusterID)
+		})
+		It("Create/Edit/List/Describe/Delete log forwarders on hosted-cp cluster - [id:86415]",
+			labels.Critical, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
+			func() {
+				// V2: log-forwarder CRUD is OCM-only; no Platform API resource yet.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("Log forwarders are not available on Platform API v2 yet")
+				}
+				var (
+					originalS3Applications []string
+					originalS3Groups       []string
+					originalS3Name         string
+					originalS3Prefix       string
+					originalCWApplications []string
+					originalCWGroups       []string
+					originalCWARN          string
+					originCWLogGroupName   string
+				)
+				if !profile.ClusterConfig.LogForward {
+					Skip("This case is only for the cluster with log forwarder config")
+				}
+				logForwarderService := rosaClient.LogForwarderService
+				By("List log forwarders")
+
+				out, err := logForwarderService.ListLogForwarder(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				logforwarders, err := logForwarderService.ReflectLogForwarderList(out)
+
+				s3logForwarderID := logforwarders.GetLogForwarderByType("S3").ID
+				cloudWatchForwarderID := logforwarders.GetLogForwarderByType("CloudWatch").ID
+
+				By("Decribe s3 log forwarder")
+				rosaClient.Runner.JsonFormat()
+				s3lfwJsonOut, err := logForwarderService.DescribeLogForwarder(
+					clusterID,
+					s3logForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				rosaClient.Runner.UnsetFormat()
+				s3lfwJsonData := rosaClient.Parser.JsonData.Input(s3lfwJsonOut).Parse()
+
+				// s3 nested fields
+				if s3lfwJsonData.DigObject("groups") != nil {
+					for _, value := range s3lfwJsonData.DigObject("groups").([]interface{}) {
+						m, ok := value.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						if idv, ok := m["id"].(string); ok {
+							originalS3Groups = append(originalS3Groups, idv)
+						}
+					}
+				}
+
+				if s3lfwJsonData.DigObject("applications") != nil {
+					for _, v := range s3lfwJsonData.DigObject("applications").([]interface{}) {
+						if s, ok := v.(string); ok {
+							originalS3Applications = append(originalS3Applications, s)
+						}
+					}
+				}
+
+				if s3lfwJsonData.DigObject("s3", "bucket_name") != nil {
+					originalS3Name = s3lfwJsonData.DigString("s3", "bucket_name")
+				}
+
+				if s3lfwJsonData.DigObject("s3", "bucket_prefix") != nil {
+					originalS3Prefix = s3lfwJsonData.DigString("s3", "bucket_prefix")
+				}
+
+				By("Decribe cloudwatch log forwarder")
+				rosaClient.Runner.JsonFormat()
+				cwlfwJsonOut, err := logForwarderService.DescribeLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				rosaClient.Runner.UnsetFormat()
+				cwlfwJsonData := rosaClient.Parser.JsonData.Input(cwlfwJsonOut).Parse()
+
+				// cloudwatch nested fields
+				if cwlfwJsonData.DigObject("applications") != nil {
+					for _, v := range cwlfwJsonData.DigObject("applications").([]interface{}) {
+						if s, ok := v.(string); ok {
+							originalCWApplications = append(originalCWApplications, s)
+						}
+					}
+				}
+				if cwlfwJsonData.DigObject("cloudwatch", "log_distribution_role_arn") != nil {
+					originalCWARN = cwlfwJsonData.DigString("cloudwatch", "log_distribution_role_arn")
+				}
+				if cwlfwJsonData.DigObject("cloudwatch", "log_group_name") != nil {
+					originCWLogGroupName = cwlfwJsonData.DigString("cloudwatch", "log_group_name")
+				}
+
+				if cwlfwJsonData.DigObject("groups") != nil {
+					for _, value := range cwlfwJsonData.DigObject("groups").([]interface{}) {
+						m, ok := value.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						if idv, ok := m["id"].(string); ok {
+							originalCWGroups = append(originalCWGroups, idv)
+						}
+					}
+				}
+
+				By("Edit log forwarders")
+				editGroups := []string{"scheduler"}
+				editApplications := []string{"etcd", "cluster-api"}
+
+				testLFConfig := &handler.LogForwardConigs{
+					S3:         &handler.S3LogForward{},
+					Cloudwatch: &handler.CloudWatchLogForward{},
+				}
+
+				testLFConfig.Cloudwatch.Groups = editGroups
+				testLFConfig.Cloudwatch.Applications = editApplications
+				testLFConfig.Cloudwatch.CloudwatchLogGroupName = originCWLogGroupName
+				testLFConfig.Cloudwatch.CloudwatchLogRoleArn = originalCWARN
+				testLFConfig.S3.Applications = editApplications
+				testLFConfig.S3.Groups = editGroups
+				testLFConfig.S3.S3ConfigBucketPrefix = "rosa/test/s3log_forward/edit"
+				testLFConfig.S3.S3ConfigBucketName = originalS3Name
+
+				tmpDirForEdit, err := os.MkdirTemp("", "*")
+				Expect(err).ToNot(HaveOccurred())
+				tmpFilePath1 := filepath.Join(tmpDirForEdit, "log_forward_config_edit.yaml")
+				_, _ = handler.DumpLogForwardConfigYAML(testLFConfig, tmpFilePath1)
+
+				out, err = logForwarderService.EditLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+					"--log-fwd-config", tmpFilePath1,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully edited log forwarder"))
+
+				out, err = logForwarderService.EditLogForwarder(
+					clusterID,
+					s3logForwarderID,
+					"--log-fwd-config", tmpFilePath1,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully edited log forwarder"))
+
+				By("Descirbe log forwarders")
+				s3lfwJsonOut, err = logForwarderService.DescribeLogForwarder(
+					clusterID,
+					s3logForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				for _, g := range editGroups {
+					Expect(s3lfwJsonOut.String()).To(ContainSubstring(g))
+				}
+				Expect(s3lfwJsonOut.String()).To(ContainSubstring(testLFConfig.S3.S3ConfigBucketPrefix))
+
+				for _, a := range editApplications {
+					Expect(s3lfwJsonOut.String()).To(ContainSubstring(a))
+				}
+
+				cwlfwJsonOut, err = logForwarderService.DescribeLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				for _, g := range editGroups {
+					Expect(cwlfwJsonOut.String()).To(ContainSubstring(g))
+				}
+
+				for _, a := range editApplications {
+					Expect(cwlfwJsonOut.String()).To(ContainSubstring(a))
+				}
+
+				By("Delete log forwarders")
+				out, err = logForwarderService.DeleteLogForwarder(
+					clusterID,
+					cloudWatchForwarderID,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully deleted log forwarder"))
+				out, err = logForwarderService.DeleteLogForwarder(
+					clusterID, s3logForwarderID,
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Successfully deleted log forwarder"))
+				defer func() {
+					By("Create log forwarders back")
+					testLFConfig2 := &handler.LogForwardConigs{
+						S3:         &handler.S3LogForward{},
+						Cloudwatch: &handler.CloudWatchLogForward{},
+					}
+					testLFConfig2.S3.S3ConfigBucketPrefix = originalS3Prefix
+					testLFConfig2.S3.S3ConfigBucketName = originalS3Name
+					testLFConfig2.S3.Applications = originalS3Applications
+					testLFConfig2.S3.Groups = originalS3Groups
+					testLFConfig2.Cloudwatch.Groups = originalCWGroups
+					testLFConfig2.Cloudwatch.Applications = originalCWApplications
+					testLFConfig2.Cloudwatch.CloudwatchLogGroupName = originCWLogGroupName
+					testLFConfig2.Cloudwatch.CloudwatchLogRoleArn = originalCWARN
+
+					tmpDirForEdit2, err := os.MkdirTemp("", "*")
+					Expect(err).ToNot(HaveOccurred())
+					tmpFilePath2 := filepath.Join(tmpDirForEdit2, "log_forward_config_create.yaml")
+					_, _ = handler.DumpLogForwardConfigYAML(testLFConfig, tmpFilePath2)
+
+					out, err = logForwarderService.CreateLogForwarder(
+						clusterID,
+						"--log-fwd-config", tmpFilePath2,
+						"-y",
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("Successfully created S3 log forwarder"))
+					Expect(out.String()).To(ContainSubstring("Successfully created CloudWatch log forwarder"))
+				}()
+
+			})
+		It("create and edit hosted-cp cluster with AuditLog Forwarding enabled/disabled via rosacli - [id:64491]",
+			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					// auditWebhook is service-set + hidden on V2; HF edit only accepts a
+					// small flag set — confirm unsupported audit edits are rejected.
+					By("V2: --audit-log-arn edit is rejected")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--audit-log-arn", "",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
+
+				By("Get cluster description")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				if clusterConfig.AuditLogArn == "" {
+					SkipTestOnFeature("audit log")
+				}
+				role := clusterDetail.AuditLogRoleARN
+				Expect(clusterConfig.AuditLogArn).To(Equal(role))
+				Expect(role).ToNot(BeEmpty())
+
+				By("Edit the cluster to disable audit log forwarding")
+				_, err = clusterService.EditCluster(
+					clusterID,
+					"--audit-log-arn", "",
+					"-y",
+				)
+				Expect(err).To(BeNil())
+
+				By("Get cluster description")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				_, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				By("Edit the cluster to enable audit log forwarding")
+				_, err = clusterService.EditCluster(
+					clusterID,
+					"--audit-log-arn", role,
+					"-y",
+				)
+				Expect(err).To(BeNil())
+
+				By("Get cluster description")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err = clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(clusterDetail.AuditLogForwarding).To(Equal("Enabled"))
+				Expect(role).To(Equal(role))
+
+			})
+
+		It("create cluster with the KMS and etcd encryption for hypershift clusters by rosa-cli - [id:60083]",
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			func() {
+				// V2: HF create/describe do not yet surface kms/etcd encryption parity.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("KMS/etcd encryption describe parity not available on Platform API v2 yet")
+				}
+				By("Check the help message of 'rosa create cluster -h'")
+				output, _, err := clusterService.Create("", "-h")
+				Expect(err).To(BeNil())
+				Expect(output.String()).To(ContainSubstring("--kms-key-arn"))
+				Expect(output.String()).To(ContainSubstring("--etcd-encryption"))
+				Expect(output.String()).To(ContainSubstring("--enable-customer-managed-key"))
+
+				By("Get cluster description")
+				output, err = clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				if clusterConfig.EtcdEncryption {
+					Expect(clusterDetail.EnableEtcdEncryption).To(Equal("Enabled"))
+					Expect(clusterDetail.EtcdKmsKeyARN).To(Equal(clusterConfig.Encryption.EtcdEncryptionKmsArn))
+				} else {
+					Expect(clusterDetail.EnableEtcdEncryption).To(Equal("Disabled"))
+				}
+
+				By("Get cluster description in JSON format")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+
+				enableEtcdEncryption := jsonData.DigBool("etcd_encryption")
+				Expect(clusterConfig.EtcdEncryption).To(Equal(enableEtcdEncryption))
+
+				ectdKMS := jsonData.DigString("aws", "etcd_encryption", "kms_key_arn")
+				npKMS := jsonData.DigString("aws", "kms_key_arn")
+
+				if clusterConfig.EtcdEncryption {
+					Expect(clusterConfig.Encryption.EtcdEncryptionKmsArn).To(Equal(ectdKMS))
+				}
+				if clusterConfig.EnableCustomerManagedKey {
+					Expect(clusterConfig.Encryption.KmsKeyArn).To(Equal(npKMS))
+				}
+
+			})
+
+		It("create HCP cluster with network type can work well via rosa cli - [id:71050]",
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+
+				By("Check the help message of 'rosa create cluster -h'")
+				helpOutput, _, err := clusterService.Create("", "-h")
+				Expect(err).To(BeNil())
+				if isHyperfleet {
+					Expect(helpOutput.String()).To(ContainSubstring("--network-type"))
+				} else {
+					// It is hidden now on OCM
+					Expect(helpOutput.String()).To(ContainSubstring("--no-cni"))
+				}
+
+				By("Get cluster description")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				Expect(clusterDetail.Network).ToNot(BeEmpty())
+				networkLine := clusterDetail.Network[0]
+
+				By("Get cluster description via json")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				if isHyperfleet {
+					// V2 may leave Network Type empty when unset on the HostedCluster;
+					// still require subnet/CIDR fields from describe.
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Subnets")))
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Machine CIDR")))
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Service CIDR")))
+					Expect(clusterDetail.Network).To(ContainElement(HaveKey("Pod CIDR")))
+					return
+				}
+				Expect(networkLine["Type"]).To(Equal(jsonData.DigString("network", "type")))
+				if clusterConfig.Networking != nil {
+					networkType := clusterConfig.Networking.Type
+					if networkType != "" && networkType == "Other" {
+						Expect(networkLine["Type"]).To(Equal("Other"))
+					}
+				}
+			})
+
+		It("create ROSA HCP cluster with external_auth_config config should work well via rosa client - [id:71945]",
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			func() {
+				// V2: external auth providers are not exposed on Platform API create/describe yet.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("external_auth_config is not available on Platform API v2 yet")
+				}
+				By("Check the help message of 'rosa create cluster -h'")
+				helpOutput, _, err := clusterService.Create("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--external-auth-providers-enabled"))
+
+				By("Check if cluster enable external_auth_config")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				if !clusterConfig.ExternalAuthentication {
+					Skip("It is only for external_auth_config enabled clusters")
+				}
+				Expect(clusterDetail.ExternalAuthentication).To(Equal("Enabled"))
+
+				By("Check some cmds that are not supportted")
+				output, err = rosaClient.User.CreateAdmin(clusterID)
+				Expect(err).ToNot(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured"))
+
+				_, output, err = rosaClient.IDP.ListIDP(clusterID)
+				Expect(err).ToNot(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Listing identity providers is not supported for clusters with external authentication configured"))
+			})
+
+		It("can edit ROSA HCP cluster with additional allowed principals - [id:74556]",
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+
+				By("Check the help message of 'rosa edit cluster -h'")
+				helpOutput, err := clusterService.EditCluster("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--additional-allowed-principals"))
+
+				if isHyperfleet {
+					// Flag exists on HF create pathbind; cluster edit HF dispatch does not
+					// accept it yet — reject with the supported-flag error.
+					By("V2: --additional-allowed-principals edit is rejected until HF edit wiring")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--additional-allowed-principals",
+						"arn:aws:iam::123456789012:role/unused",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
+
+				By("Check if cluster profile is enabled with additional allowed principals")
+				if !profile.ClusterConfig.AdditionalPrincipals {
+					SkipTestOnFeature("additional allowed principals")
+				}
+
+				output, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
+
+				By("Get the installer role arn")
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				rosaClient.Runner.UnsetFormat()
+				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+				installRoleArn := jsonData.DigString("aws", "sts", "role_arn")
+
+				By("Create additional account roles")
+				accrolePrefix := "arPrefix74556"
+
+				resourcesHandler, err := handler.NewTempResourcesHandler(rosaClient, profile.Region,
+					ciConfig.Test.GlobalENV.AWSCredetialsFile,
+					ciConfig.Test.GlobalENV.SVPC_CREDENTIALS_FILE)
+				Expect(err).ToNot(HaveOccurred())
+				additionalPrincipalRoleName := fmt.Sprintf("%s-%s", accrolePrefix, "additional-principal-role")
+				additionalPrincipalRoleArn, err := resourcesHandler.PrepareAdditionalPrincipalsRole(
+					additionalPrincipalRoleName,
+					installRoleArn)
+				Expect(err).To(BeNil())
+				defer func() {
+					By("Delete the additional principal account-roles")
+					err = resourcesHandler.DeleteAdditionalPrincipalsRole(true)
+					Expect(err).To(BeNil())
+				}()
+
+				additionalPrincipalsFlag := fmt.Sprintf(
+					"%s,%s", clusterConfig.AdditionalPrincipals, additionalPrincipalRoleArn)
+
+				By("Edit the cluster with additional allowed principals")
+				out, err := clusterService.EditCluster(clusterID,
+					"--additional-allowed-principals",
+					additionalPrincipalsFlag)
+				Expect(err).ToNot(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+				By("Confirm additional principals is edited successfully")
+				output, err = clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+				Expect(output.AdditionalPrincipals).
+					To(
+						ContainSubstring(
+							"%s,%s", clusterConfig.AdditionalPrincipals, additionalPrincipalRoleArn))
+
+				By("Edit the cluster with additional allowed principals")
+				out, err = clusterService.EditCluster(clusterID,
+					"--additional-allowed-principals",
+					clusterConfig.AdditionalPrincipals)
+				Expect(err).ToNot(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+				Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+			})
+
+		It("rosacli can show the details of HCP cluster well when describe - [id:54869]",
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			func() {
+				By("Get cluster description")
+				clusterDesc, err := clusterService.DescribeClusterAndReflect(clusterID)
+				Expect(err).To(BeNil())
+
+				By("Check values of description")
+				Expect(clusterDesc.Name).ToNot(BeEmpty())
+				Expect(clusterDesc.ID).ToNot(BeEmpty())
+				Expect(clusterDesc.ControlPlane).To(Equal("ROSA Service Hosted"))
+				Expect(clusterDesc.OpenshiftVersion).ToNot(BeEmpty())
+				Expect(clusterDesc.DNS).ToNot(BeEmpty())
+				Expect(clusterDesc.APIURL).ToNot(BeEmpty())
+				Expect(clusterDesc.Region).ToNot(BeEmpty())
+				Expect(clusterDesc.Availability[0]).To(HaveKeyWithValue("Control Plane", MatchRegexp("MultiAZ")))
+
+				By("List nodepools")
+				npList, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				if len(npList.NodePools) == 1 {
+					Expect(clusterDesc.Availability[1]).To(HaveKeyWithValue("Data Plane", MatchRegexp("SingleAZ")))
+				} else {
+					Expect(clusterDesc.Availability[1]).To(HaveKeyWithValue("Data Plane", MatchRegexp("MultiAZ")))
+				}
+
+				Expect(clusterDesc.Nodes).To(HaveEach(HaveKey(MatchRegexp("Compute.*"))))
+				for _, v := range clusterDesc.Nodes {
+					for _, value := range v {
+						switch value.(type) {
+						case int:
+							Expect(value).To(BeNumerically(">=", 0))
+						case string:
+							Expect(value).To(MatchRegexp("^[0-9]+-[0-9]+$"))
+						default:
+							Expect(value).To(BeNil())
+						}
+					}
+				}
+				Expect(clusterDesc.Network).To(ContainElements(HaveKey("Type"), HaveKey("Service CIDR"), HaveKey("Machine CIDR"),
+					HaveKey("Pod CIDR"), HaveKey("Host Prefix"), HaveKeyWithValue("Subnets", MatchRegexp("^subnet-.{17}"))))
+
+				// V2 (Hyperfleet) clusters don't use account-level STS roles yet
+				// Skip these checks for V2 clusters
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if !isHyperfleet {
+					Expect(clusterDesc.STSRoleArn).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Installer-Role"))
+					Expect(clusterDesc.SupportRoleARN).To(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Support-Role"))
+					Expect(clusterDesc.InstanceIAMRoles[0]).To(HaveKeyWithValue("Worker",
+						MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+-HCP-ROSA-Worker-Role")))
+				}
+
+				// V2 (Hyperfleet) operator roles are cluster-specific and already shown in describe output
+				// V1 (OCM) operator roles need separate verification via ListOperatorRoles
+				if !isHyperfleet {
+					By("List Operator roles")
+					roles, err := ocmResourceService.ListOperatorRoles("--prefix", clusterConfig.Aws.Sts.OperatorRolesPrefix)
+					Expect(err).ToNot(HaveOccurred())
+					operRolesList, err := ocmResourceService.ReflectOperatorRoleList(roles)
+					Expect(err).ToNot(HaveOccurred())
+					for _, role := range operRolesList.OperatorRoleList {
+						Expect(clusterDesc.OperatorIAMRoles).To(ContainElement(ContainSubstring(role.RoleName)))
+					}
+				}
+
+				// Both V1 and V2 should have operator roles in the describe output
+				Expect(clusterDesc.OperatorIAMRoles).To(HaveEach(MatchRegexp("arn:aws[-\\w]*:iam::[0-9]{12}:role/.+")))
+				Expect(clusterDesc.State).To(Equal(constants.Ready))
+			})
+
+		It("create ROSA HCP with registry config can work well via rosa cli  - [id:76394]",
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			func() {
+				// V2: registry_config is not on Platform API create/describe yet.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("registry config is not available on Platform API v2 yet")
+				}
+				By("Check the help message of 'rosa create cluster -h'")
+				helpOutput, _, err := clusterService.Create("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-insecure-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-blocked-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries-for-import"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-additional-trusted-ca"))
+
+				By("Check if cluster enable registry config")
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+
+				if clusterConfig.RegistryConfig {
+					Skip("It is only for registry config enabled clusters")
+				}
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+
+				for _, v := range clusterDetail.RegistryConfiguration {
+					if v["Allowed Registries"] != nil {
+						allowedList := jsonData.DigString("registry_config", "registry_sources", "allowed_registries")
+						if len(allowedList) > 2 {
+							result := strings.ReplaceAll(allowedList, " ", ",")
+							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Allowed Registries"])))
+						}
+					}
+					if v["Blocked Registries"] != nil {
+						blockedList := jsonData.DigString("registry_config", "registry_sources", "blocked_registries")
+						if len(blockedList) > 2 {
+							result := strings.ReplaceAll(blockedList, " ", ",")
+							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Blocked Registries"])))
+						}
+					}
+					if v["Insecure Registries"] != nil {
+						insecureList := jsonData.DigString("registry_config", "registry_sources", "insecure_registries")
+						if len(insecureList) > 2 {
+							result := strings.ReplaceAll(insecureList, " ", ",")
+							Expect(result).To(Equal(fmt.Sprintf("[%s]", v["Insecure Registries"])))
+						}
+					}
+					if v["Allowed Registries for Import"] != nil {
+						clusterData := jsonData.DigObject("registry_config", "allowed_registries_for_import")
+						if clusterData != "" {
+							allowedImport := v["Allowed Registries for Import"].([]interface{})
+							for _, a := range clusterData.([]interface{}) {
+								importListFromJson := a.(map[string]interface{})
+								insecureValue := false
+								if importListFromJson["insecure"] != nil {
+									insecureValue = importListFromJson["insecure"].(bool)
+								}
+								value1 := map[string]interface{}{
+									"Domain Name": importListFromJson["domain_name"],
+								}
+								value2 := map[string]interface{}{
+									"Insecure": insecureValue,
+								}
+								Expect(allowedImport).To(ContainElement(value1))
+								Expect(allowedImport).To(ContainElement(value2))
+							}
+						}
+					}
+					if v["Platform Allowlist"] != nil {
+						platformListID := jsonData.DigString("registry_config", "platform_allowlist", "id")
+						pList := v["Platform Allowlist"].([]interface{})
+						for _, p := range pList {
+							pMap := p.(map[string]interface{})
+							if pMap["ID"] != nil {
+								Expect(pMap["ID"].(string)).To(Equal(platformListID))
+							}
+						}
+					}
+
+					if v["Additional Trusted CA"] != nil {
+						caContent := jsonData.DigObject("registry_config", "additional_trusted_ca")
+						if caContent != "" {
+							caFromc := caContent.(map[string]interface{})
+							for _, ca := range v["Additional Trusted CA"].([]interface{}) {
+								Expect(caFromc).To(Equal(ca))
+							}
+						}
+					}
+				}
+			})
+
+		It("edit ROSA HCP with registry config can work well via rosa cli  - [id:76395]",
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+
+				By("Check the help message of 'rosa edit cluster -h'")
+				helpOutput, err := clusterService.EditCluster("", "-h")
+				Expect(err).To(BeNil())
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-insecure-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-blocked-registries"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-allowed-registries-for-import"))
+				Expect(helpOutput.String()).To(ContainSubstring("--registry-config-additional-trusted-ca"))
+
+				if isHyperfleet {
+					// Registry edit is not wired on HF cluster edit yet.
+					By("V2: registry-config edit is rejected until HF edit wiring")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--registry-config-allowed-registries", "quay.io",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
+
+				By("Edit hcp cluster with registry configs")
+				if clusterConfig.RegistryConfig {
+					Skip("It is only for registry config enabled clusters")
+				}
+
+				output, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).To(BeNil())
+				clusterDetail, err := clusterService.ReflectClusterDescription(output)
+				Expect(err).To(BeNil())
+				for _, v := range clusterDetail.RegistryConfiguration {
+					if v["Allowed Registries"] != nil {
+						By("Remove allowed registry config")
+						originValue := v["Allowed Registries"].(string)
+						out, err := clusterService.EditCluster(clusterID,
+							"--registry-config-allowed-registries", "",
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err := clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(BeNil())
+
+						By("Add blocked registry config")
+						blockedValue := "test.blocked.com,*.example.com"
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", blockedValue,
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[1]["Blocked Registries"]).To(Equal(blockedValue))
+
+						By("Update it back")
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", "",
+							"--registry-config-allowed-registries", originValue,
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(Equal(originValue))
+						Expect(clusterDetail.RegistryConfiguration[1]["Blocked Registries"]).To(BeNil())
+
+					}
+					if v["Blocked Registries"] != nil {
+						By("Remove blocked registry config")
+						originValue := v["Blocked Registries"].(string)
+						out, err := clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", "",
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err := clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Blocked Registries"]).To(BeNil())
+
+						By("Add allowed registry config")
+						allowedValue := "test.allowed.com,*.example.com"
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-allowed-registries", allowedValue,
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(Equal(allowedValue))
+
+						By("Update it back")
+						out, err = clusterService.EditCluster(clusterID,
+							"--registry-config-blocked-registries", originValue,
+							"--registry-config-allowed-registries", "",
+							"-y",
+						)
+						Expect(err).ToNot(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(out).Parse().Tip()
+						Expect(textData).To(ContainSubstring("Updated cluster '%s'", clusterID))
+
+						By("Describe cluster to check the value")
+						output, err = clusterService.DescribeCluster(clusterID)
+						Expect(err).To(BeNil())
+						clusterDetail, err = clusterService.ReflectClusterDescription(output)
+						Expect(err).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[0]["Allowed Registries"]).To(BeNil())
+						Expect(clusterDetail.RegistryConfiguration[1]["Blocked Registries"]).To(Equal(originValue))
+					}
+				}
+			})
+		It("edit ROSA HCP with autonode configuration via rosa cli  - [id:84981]",
+			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+			func() {
+				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				if isHyperfleet {
+					// autoNode is mutable on Platform API but HF cluster edit is not
+					// wired for --autonode / --autonode-iam-role-arn yet.
+					By("V2: --autonode edit is rejected until HF edit wiring")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--autonode=enabled",
+						"--autonode-iam-role-arn",
+						"arn:aws:iam::123456789012:role/unused",
+						"-y",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+					return
+				}
+
+				By("Create the autonode IAM role")
+
+				rosaClient.Runner.JsonFormat()
+				jsonOutput, err := clusterService.DescribeCluster(clusterID)
+				rosaClient.Runner.UnsetFormat()
+				Expect(err).To(BeNil())
+				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+
+				autonodeEnabled := jsonData.DigString("auto_node", "mode")
+				if autonodeEnabled == "enabled" {
+					Skip("Autonode is already enabled on this cluster (and currently can't be disabled)")
+				}
+
+				oidcProviderURL := jsonData.DigString("aws", "sts", "oidc_config", "issuer_url")
+				autonodePrefix1 := clusterID + "-1"
+				autonodePrefix2 := clusterID + "-2"
+				autonodeRoleARN, err := config.PrepareAutonodeRoleAndPolicy(autonodePrefix1, oidcProviderURL, profile.Region)
+				defer func() {
+					err := config.DeleteAutonodeRoleAndPolicy(autonodePrefix1, profile.Region)
+					Expect(err).ToNot(HaveOccurred())
+				}()
+				Expect(err).ToNot(HaveOccurred())
+
+				autonodeRoleARN2, err := config.PrepareAutonodeRoleAndPolicy(autonodePrefix2, oidcProviderURL, profile.Region)
+				defer func() {
+					err := config.DeleteAutonodeRoleAndPolicy(autonodePrefix2, profile.Region)
+					Expect(err).ToNot(HaveOccurred())
+				}()
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Edit cluster autonode configuration with invalid flag value")
+				out, err := clusterService.EditCluster(
+					clusterID,
+					"--autonode=invalid",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("only 'enabled' is supported"))
+
+				By("Edit cluster autonode configuration with invalid arn format")
+				out, err = clusterService.EditCluster(
+					clusterID,
+					"--autonode=enabled",
+					"--autonode-iam-role-arn", "aaaaa",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("invalid IAM role ARN format"))
+
+				By("Edit role arn when autonode configuration is not enabled")
+				out, err = clusterService.EditCluster(
+					clusterID,
+					"--autonode-iam-role-arn", autonodeRoleARN,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("cannot update IAM role ARN when AutoNode is not enabled"))
+
+				By("Edit then describe cluster with autonode configuration")
+				out, err = config.RetryOnIAMPropagationError(func() (bytes.Buffer, error) {
+					return clusterService.EditCluster(
+						clusterID,
+						"--autonode=enabled",
+						"--autonode-iam-role-arn", autonodeRoleARN,
+					)
+				}, 3, 10*time.Second)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Updated cluster"))
+
+				jsonData, err = clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				Expect(jsonData.DigString("auto_node", "mode")).To(Equal("enabled"))
+				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(autonodeRoleARN))
+
+				By("Update the autonode configuration on cluster")
+				out, err = config.RetryOnIAMPropagationError(func() (bytes.Buffer, error) {
+					return clusterService.EditCluster(
+						clusterID,
+						"--autonode-iam-role-arn", autonodeRoleARN2,
+					)
+				}, 3, 10*time.Second)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Updated cluster"))
+
+				jsonData, err = clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).To(BeNil())
+				Expect(jsonData.DigString("auto_node", "mode")).To(Equal("enabled"))
+				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(autonodeRoleARN2))
+			})
+	})
+var _ = Describe("hosted-cp cluster creation",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			profilesMap    map[string]*handler.Profile
+			profile        *handler.Profile
+			clusterService rosacli.ClusterService
+			clusterHandler handler.ClusterHandler
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			// Init the client
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			// Get a random profile
+			profilesMap = handler.ParseProfilesByFile(path.Join(ciConfig.Test.YAMLProfilesDir, "rosa-hcp.yaml"))
+			profilesNames := make([]string, 0, len(profilesMap))
+			for k, v := range profilesMap {
+				if !v.ClusterConfig.SharedVPC && !v.ClusterConfig.AutoscalerEnabled {
+					profilesNames = append(profilesNames, k)
+				}
+			}
+			profile = profilesMap["rosa-hcp-basic"]
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			clusterHandler.Destroy()
+		})
+
+		It("to create cluster withskip_inflight property - [id:85689]",
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			func() {
+				// V2: OCM properties (skip_inflight_tests) are not on Platform API create.
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					Skip("skip_inflight_tests property is not available on Platform API v2 yet")
+				}
+				By("Prepare creation command")
+				var command string
+				var rosalCommand config.Command
+				profile.NamePrefix = helper.GenerateRandomName("ci856890", 3)
+
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
+				Expect(err).To(BeNil())
+
+				command = "rosa create cluster --cluster-name " + profile.ClusterConfig.Name + " " + strings.Join(flags, " ")
+				rosalCommand = config.GenerateCommand(command)
+
+				rosalCommand.AddFlags("--properties", "skip_inflight_tests:true")
+
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				Expect(err).To(BeNil())
+				Expect(stdout.String()).To(ContainSubstring("has been created"))
+
+				rosaClient.Runner.UnsetArgs()
+				clusterListout, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(clusterListout)
+				Expect(err).To(BeNil())
+				clusterID = clusterList.ClusterByName(profile.ClusterConfig.Name).ID
+
+				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 20)
+				Expect(err).To(BeNil())
+
+				By("Check the properties of the cluster")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(jsonData.DigBool("properties", "skip_inflight_tests")).To(BeTrue())
+			})
+
+		Describe("Spot termination queue URL lifecycle", func() {
+			It("should edit cluster with spot-termination-queue-url and verify enhanced mode [id:spot-hcp-cluster]",
+				labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+				func() {
+					isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+					queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-termination-queue"
+
+					if isHyperfleet {
+						By("V2: --spot-termination-queue-url edit is rejected until HF edit wiring")
+						out, err := clusterService.EditCluster(
+							clusterID,
+							"--spot-termination-queue-url", queueURL,
+							"-y",
+						)
+						Expect(err).To(HaveOccurred())
+						Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
+						return
+					}
+
+					By("Edit the cluster with a spot-termination-queue-url")
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--spot-termination-queue-url", queueURL,
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("Updated cluster"))
+
+					By("Describe the cluster and verify the queue URL is set")
+					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(jsonData.DigString("aws", "termination_handler_queue_url")).To(Equal(queueURL))
+				})
+		})
+	})

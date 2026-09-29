@@ -19,6 +19,7 @@ import (
 
 	pkgaws "github.com/openshift/rosa/pkg/aws"
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 )
@@ -50,6 +51,31 @@ var _ = Describe("hyperfleet dispatch", func() {
 	})
 })
 
+var _ = Describe("rejectUnsupportedHyperfleetCreateFlags", func() {
+	It("rejects --disable-workload-monitoring", func() {
+		cmd := &cobra.Command{}
+		var disableUWM bool
+		cmd.Flags().BoolVar(&disableUWM, "disable-workload-monitoring", false, "")
+		Expect(cmd.Flags().Set("disable-workload-monitoring", "true")).To(Succeed())
+
+		err := rejectUnsupportedHyperfleetCreateFlags(cmd)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+	})
+
+	It("allows create when UWM flag is unset", func() {
+		cmd := &cobra.Command{}
+		var disableUWM bool
+		cmd.Flags().BoolVar(&disableUWM, "disable-workload-monitoring", false, "")
+
+		Expect(rejectUnsupportedHyperfleetCreateFlags(cmd)).To(Succeed())
+	})
+
+	It("allows nil command", func() {
+		Expect(rejectUnsupportedHyperfleetCreateFlags(nil)).To(Succeed())
+	})
+})
+
 var _ = Describe("runHyperfleet", func() {
 	var (
 		origExitFn          func(int)
@@ -58,6 +84,8 @@ var _ = Describe("runHyperfleet", func() {
 			clusterName         string
 			operatorRolesPrefix string
 			subnetIDs           []string
+			networkType         string
+			noCni               bool
 		}
 		exited bool
 		t      *test.TestingRuntime
@@ -69,6 +97,8 @@ var _ = Describe("runHyperfleet", func() {
 		origArgs.clusterName = args.clusterName
 		origArgs.operatorRolesPrefix = args.operatorRolesPrefix
 		origArgs.subnetIDs = args.subnetIDs
+		origArgs.networkType = args.networkType
+		origArgs.noCni = args.noCni
 
 		exited = false
 		hfExitFn = func(int) { exited = true }
@@ -76,6 +106,8 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = "test-cluster"
 		args.operatorRolesPrefix = "test-cluster"
 		args.subnetIDs = []string{"subnet-abc123"}
+		args.networkType = ""
+		args.noCni = false
 
 		t = test.NewTestRuntime()
 		t.RosaRuntime.Creator = &pkgaws.Creator{
@@ -91,6 +123,8 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = origArgs.clusterName
 		args.operatorRolesPrefix = origArgs.operatorRolesPrefix
 		args.subnetIDs = origArgs.subnetIDs
+		args.networkType = origArgs.networkType
+		args.noCni = origArgs.noCni
 	})
 
 	stubSubnets := func(vpcID, az string) {
@@ -148,6 +182,22 @@ var _ = Describe("runHyperfleet", func() {
 		args.subnetIDs = nil
 		runHyperfleet(&rosa.Runtime{Reporter: t.RosaRuntime.Reporter})
 		Expect(exited).To(BeTrue())
+	})
+
+	It("rejects an invalid network type before creating a cluster", func() {
+		args.networkType = "invalid-network-type"
+		handler := &hyperfleetClusterCreate{}
+		err := handler.PreRequest(context.Background(), t.RosaRuntime, &hfpathbind.ClusterCreateInput{})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("expected a valid network type"))
+	})
+
+	It("rejects no CNI together with a network type before creating a cluster", func() {
+		args.noCni = true
+		args.networkType = "OVNKubernetes"
+		handler := &hyperfleetClusterCreate{}
+		err := handler.PreRequest(context.Background(), t.RosaRuntime, &hfpathbind.ClusterCreateInput{})
+		Expect(err).To(MatchError("--no-cni and --network-type are mutually exclusive parameters"))
 	})
 
 	It("exits when DescribeSubnets fails", func() {

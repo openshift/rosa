@@ -144,6 +144,7 @@ type AccountsInfo struct {
 	AWSArn                    string `yaml:"AWS ARN,omitempty"`
 	AWSAccountID              string `yaml:"AWS Account ID,omitempty"`
 	AWSDefaultRegion          string `yaml:"AWS Default Region,omitempty"`
+	V2API                     string `yaml:"V2 API,omitempty"`
 	OCMApi                    string `yaml:"OCM API,omitempty"`
 	OCMAccountEmail           string `yaml:"OCM Account Email,omitempty"`
 	OCMAccountID              string `yaml:"OCM Account ID,omitempty"`
