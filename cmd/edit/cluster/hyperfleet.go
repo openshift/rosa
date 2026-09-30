@@ -33,7 +33,6 @@ var supportedChannelGroups = map[string]struct{}{
 }
 
 var (
-	hfEnabled     = hyperfleet.Enabled
 	exitFn        = func(code int) { os.Exit(code) }
 	hfEditCluster = func(cmd *cobra.Command) {
 		r := rosa.NewRuntime().WithHyperFleet()

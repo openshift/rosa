@@ -21,7 +21,6 @@ const (
 )
 
 var (
-	hfEnabled       = hyperfleet.Enabled
 	exitFn          = func(code int) { os.Exit(code) }
 	confirmFn       = confirm.Confirm
 	hfDeleteCluster = func(cmd *cobra.Command) {
