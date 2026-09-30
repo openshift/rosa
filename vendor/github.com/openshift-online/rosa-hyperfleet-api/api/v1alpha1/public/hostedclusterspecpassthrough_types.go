@@ -15,12 +15,12 @@ type HostedClusterSpecPassthrough struct {
 	Release hypershiftv1beta1.Release `json:"release"`
 	// channel is an identifier for explicitly requesting that a non-default set of updates be applied to this cluster.
 	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=service-set
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	Channel string `json:"channel,omitempty"`
 	// platform specifies the underlying infrastructure provider for the cluster
-	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=mutable
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
 	// +required
 	Platform PlatformSpec `json:"platform"`
 	// dns specifies the DNS configuration for the hosted cluster ingress.
@@ -29,8 +29,8 @@ type HostedClusterSpecPassthrough struct {
 	// +optional
 	DNS hypershiftv1beta1.DNSSpec `json:"dns,omitempty"`
 	// networking specifies network configuration for the hosted cluster.
-	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=mutable
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
 	// +required
 	Networking hypershiftv1beta1.ClusterNetworking `json:"networking"`
 	// autoNode specifies the configuration for automatic node provisioning and lifecycle management.
