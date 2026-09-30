@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	hfEnabled          = hyperfleet.Enabled
 	exitFn             = func(code int) { os.Exit(code) }
 	hfListMachinePools = func(_ *cobra.Command, _ []string) {
 		r := rosa.NewRuntime().WithHyperFleet()

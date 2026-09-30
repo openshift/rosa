@@ -53,7 +53,7 @@ var Cmd = &cobra.Command{
 	Long:  "Show details of a cluster",
 	Example: `  # Describe a cluster named "mycluster"
   rosa describe cluster --cluster=mycluster`,
-	Run:  run,
+	Run:  dispatch,
 	Args: cobra.MaximumNArgs(1),
 }
 
@@ -74,10 +74,6 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	if hfEnabled() {
-		hfDescribeCluster(cmd, argv)
-		return
-	}
 	r := rosa.NewRuntime().WithOCM().WithAWS()
 	defer r.Cleanup()
 

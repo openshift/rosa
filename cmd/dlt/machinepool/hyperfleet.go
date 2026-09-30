@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	hfEnabled           = hyperfleet.Enabled
 	exitFn              = func(code int) { os.Exit(code) }
 	confirmFn           = confirm.Confirm
 	hfDeleteMachinePool = func(cmd *cobra.Command, userOptions *DeleteMachinepoolUserOptions, argv []string) {

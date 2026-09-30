@@ -17,7 +17,6 @@ import (
 )
 
 var (
-	hfEnabled             = hyperfleet.Enabled
 	exitFn                = func(code int) { os.Exit(code) }
 	hfDescribeMachinePool = func(userOptions *DescribeMachinepoolUserOptions, argv []string) {
 		r := rosa.NewRuntime().WithHyperFleet()
