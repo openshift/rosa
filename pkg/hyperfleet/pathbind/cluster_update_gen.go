@@ -18,6 +18,7 @@ type ClusterUpdateInput struct {
 	RoleARN                        string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.aws.roleARN"`
 	Platform                       string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.platform"`
 	ProvisionerConfigName          string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.name"`
+	Channel                        string `hfsdk:"spec.hostedCluster.channel"`
 	ContainerLogMaxFiles           *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxFiles"`
 	ContainerLogMaxSize            string `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxSize"`
 	ImageGCHighThresholdPercent    *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.imageGCHighThresholdPercent"`
@@ -29,6 +30,9 @@ type ClusterUpdateInput struct {
 	RegistryPullQPS                *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.registryPullQPS"`
 	SerializeImagePulls            *bool  `hfsdk:"spec.hostedCluster.configuration.kubelet.serializeImagePulls"`
 	StreamingConnectionIdleTimeout string `hfsdk:"spec.hostedCluster.configuration.kubelet.streamingConnectionIdleTimeout"`
+	HttpProxy                      string `hfsdk:"spec.hostedCluster.configuration.proxy.httpProxy"`
+	HttpsProxy                     string `hfsdk:"spec.hostedCluster.configuration.proxy.httpsProxy"`
+	NoProxy                        string `hfsdk:"spec.hostedCluster.configuration.proxy.noProxy"`
 	ImageContentSources            string `hfsdk:"spec.hostedCluster.imageContentSources"`
 	AllocateNodeCIDRs              string `hfsdk:"spec.hostedCluster.networking.allocateNodeCIDRs"`
 	AdvertiseAddress               string `hfsdk:"spec.hostedCluster.networking.apiServer.advertiseAddress"`
@@ -68,6 +72,7 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"role-arn",
 	"platform",
 	"provisioner-config-name",
+	"channel",
 	"container-log-max-files",
 	"container-log-max-size",
 	"image-gc-high-threshold-percent",
@@ -79,6 +84,9 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"registry-pull-qps",
 	"serialize-image-pulls",
 	"streaming-connection-idle-timeout",
+	"http-proxy",
+	"https-proxy",
+	"no-proxy",
 	"image-content-sources",
 	"allocate-node-cidrs",
 	"advertise-address",
@@ -125,6 +133,7 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "role-arn", func() { f.StringVar(&input.RoleARN, "role-arn", "", "") })
 	registerIfNew(f, "platform", func() { f.StringVar(&input.Platform, "platform", "", "") })
 	registerIfNew(f, "provisioner-config-name", func() { f.StringVar(&input.ProvisionerConfigName, "provisioner-config-name", "", "") })
+	registerIfNew(f, "channel", func() { f.StringVar(&input.Channel, "channel", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
 		input.ContainerLogMaxFiles = new(int32)
 		f.Int32Var(input.ContainerLogMaxFiles, "container-log-max-files", 0, "")
@@ -153,6 +162,9 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "streaming-connection-idle-timeout", func() {
 		f.StringVar(&input.StreamingConnectionIdleTimeout, "streaming-connection-idle-timeout", "", "")
 	})
+	registerIfNew(f, "http-proxy", func() { f.StringVar(&input.HttpProxy, "http-proxy", "", "") })
+	registerIfNew(f, "https-proxy", func() { f.StringVar(&input.HttpsProxy, "https-proxy", "", "") })
+	registerIfNew(f, "no-proxy", func() { f.StringVar(&input.NoProxy, "no-proxy", "", "") })
 	registerIfNew(f, "image-content-sources", func() { f.StringVar(&input.ImageContentSources, "image-content-sources", "", "") })
 	registerIfNew(f, "allocate-node-cidrs", func() { f.StringVar(&input.AllocateNodeCIDRs, "allocate-node-cidrs", "", "") })
 	registerIfNew(f, "advertise-address", func() { f.StringVar(&input.AdvertiseAddress, "advertise-address", "", "") })

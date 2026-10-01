@@ -16,6 +16,7 @@ var _ = Describe("Cluster destroy", labels.Feature.Cluster, func() {
 	It("by profile",
 		labels.Runtime.Destroy,
 		labels.Critical,
+		labels.Hyperfleet.Validated,
 		func() {
 			client := rosacli.NewClient()
 			profile := handler.LoadProfileYamlFileByENV()

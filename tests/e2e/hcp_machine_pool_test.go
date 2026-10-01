@@ -21,10 +21,9 @@ import (
 )
 
 var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
-	// It doesn't check whether node pool instances ready in default.
-	// If needed for verify hcp node pool's changes, pls set the ENV CLUSTER_NODE_POOL_GLOBAL_CHECK to true,
-	// which will wait for node pool instances ready until timeout.
-	isNodePoolGlobalCheck := config.IsNodePoolGlobalCheck()
+	// HyperFleet exposes observed replicas through the Platform API, so check
+	// node pool readiness automatically on that path. OCM remains opt-in.
+	shouldCheckNodePoolReplicas := config.ShouldCheckNodePoolReplicas()
 
 	var (
 		rosaClient         *rosacli.Client
@@ -56,7 +55,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	})
 
 	Describe("Create/delete/view a machine pool", func() {
-		It("should succeed with additional security group IDs [id:72195]", labels.Critical, labels.Runtime.Day2, labels.FedRAMP, func() {
+		It("should succeed with additional security group IDs [id:72195]", labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated, func() {
 			By("check the throttle version")
 			throttleVersion, _ := semver.NewVersion("4.15.0-a.0")
 			clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
@@ -125,7 +124,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 	DescribeTable("create machinepool with volume size set - [id:66872]",
 		labels.Runtime.Day2, labels.FedRAMP,
-		labels.Critical,
+		labels.Critical, labels.Hyperfleet.Validated,
 		func(diskSize, instanceType, expectedDiskSize string) {
 			npID := helper.GenerateRandomName("np-66872", 2)
 
@@ -169,7 +168,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	)
 
 	It("machinepool AWS preflight tag validation[id:73638]",
-		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 		func() {
 
 			By("Check the help message of machinepool creation")
@@ -213,7 +212,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--tags", strings.Join(tooManyTags, ","),
 			)
 			Expect(err).To(HaveOccurred())
-			Expect(out.String()).Should(ContainSubstring("Invalid Node Pool AWS tags: Resource has too many AWS tags"))
+			Expect(out.String()).Should(ContainSubstring("Invalid machine pool AWS tags: Resource has too many AWS tags"))
 
 			By("Create machinepool with a tag too long")
 			maxKeyTagLength := 128
@@ -266,7 +265,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(out.String()).Should(ContainSubstring("ERR: expected a valid user tag value '#'"))
 		})
 
-	DescribeTable("Scale up/down a machine pool", labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
+	DescribeTable("Scale up/down a machine pool", labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 		func(instanceType string, amdOrArm string) {
 			if !isMultiArch && amdOrArm == constants.ARM {
 				SkipNotMultiArch()
@@ -289,7 +288,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(mpDesc.DesiredReplicas).Should(Equal(desiredReplicas))
 			Expect(mpDesc.InstanceType).Should(Equal(instanceType))
 
-			if isNodePoolGlobalCheck {
+			if shouldCheckNodePoolReplicas {
 				By("Check if current replicas reach the desired replicas after creating a machine pool")
 				err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
 					clusterID,
@@ -324,7 +323,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		Entry("For arm64 cpu architecture [id:60278]", constants.M6gXLarge, constants.ARM),
 	)
 
-	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+	// TODO(cdoan): V2 defer for now until we add validation to the API
+	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 		func(instanceType string, updatedReplicas string, expectedErrMsg string) {
 			By("Create machinepool with instance " + instanceType)
 			mpName := helper.GenerateRandomName("mp-60278", 2)
@@ -350,7 +350,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	)
 
 	Describe("Scale up/down a machine pool enabling autoscale", func() {
-		It("should succeed to scale with valid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
+		It("should succeed to scale with valid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated, func() {
 			instanceType := constants.M52XLarge
 			By("Create machinepool with " + " instance " + instanceType + " and enable autoscale")
 
@@ -368,7 +368,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-			if isNodePoolGlobalCheck {
+			if shouldCheckNodePoolReplicas {
 				By("Check current replicas reach the min replicas after creating a autoscaled machine pool")
 				err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
 					clusterID,
@@ -400,7 +400,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should raise error message with the invalid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
+		// TODO(cdoan): defer because validation
+		It("should raise error message with the invalid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred, func() {
 			instanceType := constants.M52XLarge
 			By("Create machinepool with" + " instance " + instanceType + " and enable autoscale")
 
@@ -468,8 +469,9 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		})
 	})
 
+	// TODO(cdoan): We don't have any field validation now, defer until this is ready to test
 	Describe("Validate machinepool", func() {
-		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, func() {
+		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred, func() {
 			By("with negative replicas number")
 			_, err := machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "-9")
 			Expect(err).To(HaveOccurred())
@@ -597,7 +599,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 					ContainSubstring("setting `multi-availability-zone` flag is not supported for HCP clusters"))
 		})
 
-		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
+		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated, func() {
 			By("with no machinepool id")
 			_, err := machinePoolService.DeleteMachinePool(clusterID, "")
 			helper.ExpectErrorWithMessage(err, "you need to specify a machine pool name")
@@ -626,7 +628,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		})
 
 		It("creation in local zone subnet - [id:71319]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				if profile.ClusterConfig.SharedVPC {
 					Skip("This test only run on the cluster not using shared-vpc")
@@ -682,7 +684,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 							fmt.Sprintf("Creating a node pool a in local zone '%s' isn't supported", localZone)))
 			})
 
-		It("upgrade - [id:67419]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
+		It("upgrade - [id:67419]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred, func() {
 			var err error
 
 			clusterService := rosaClient.Cluster
@@ -851,7 +853,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		})
 
 		It("will validate root volume size - [id:66874]",
-			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
+			labels.Runtime.Day2, labels.Medium, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				npName := helper.GenerateRandomName("np-66874", 2)
 				By("Create with too small disk size will fail")
@@ -899,7 +901,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 					" maximum size exceeded"))
 			})
 
-		It("validate maximum number of nodes - [id:78277]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
+		// TODO(cdoan): validation check
+		It("validate maximum number of nodes - [id:78277]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred, func() {
 			By("Prepare testing machinepool")
 			instanceType := constants.M5XLarge
 			mpPrefix := "mp78277na"
@@ -989,7 +992,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 	Describe("Spot instance node pool lifecycle", func() {
 		It("should create, describe, edit, and delete a Spot node pool [id:spot-hcp-np]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create a node pool with spot instances enabled")
 				mpName := helper.GenerateRandomName("spot-np", 2)
@@ -1002,7 +1005,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-				if isNodePoolGlobalCheck {
+				if shouldCheckNodePoolReplicas {
 					err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
 						clusterID, mpName, false, constants.NodePoolCheckPoll, constants.NodePoolCheckTimeout)
 					Expect(err).ToNot(HaveOccurred())
@@ -1012,6 +1015,11 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				description, err := rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(description.String()).To(ContainSubstring("Yes (max $0.05)"))
+				if shouldCheckNodePoolReplicas {
+					nodePoolDescription, err := rosaClient.MachinePool.ReflectNodePoolDescription(description)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(nodePoolDescription.CurrentReplicas).To(Equal("1"))
+				}
 
 				By("Edit the node pool spot-max-price")
 				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
@@ -1027,7 +1035,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			})
 
 		It("should create a Spot node pool with on-demand fallback (no max price) [id:spot-hcp-np-ondemand]",
-			labels.Medium, labels.Runtime.Day2,
+			labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
 				By("Create a node pool with spot instances but no max price (on-demand price)")
 				mpName := helper.GenerateRandomName("spot-od", 2)

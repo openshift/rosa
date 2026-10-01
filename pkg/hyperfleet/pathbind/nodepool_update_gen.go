@@ -15,6 +15,10 @@ type NodePoolUpdateInput struct {
 	AutoRepair                    *bool  `hfsdk:"spec.autoRepair"`
 	DisplayName                   string `hfsdk:"spec.displayName"`
 	Labels                        string `hfsdk:"spec.labels"`
+	Max                           *int32 `hfsdk:"spec.nodePool.autoScaling.max"`
+	Min                           *int32 `hfsdk:"spec.nodePool.autoScaling.min"`
+	Config                        string `hfsdk:"spec.nodePool.config"`
+	NodeDrainTimeout              string `hfsdk:"spec.nodePool.nodeDrainTimeout"`
 	Ami                           string `hfsdk:"spec.nodePool.platform.aws.ami"`
 	ImageType                     string `hfsdk:"spec.nodePool.platform.aws.imageType"`
 	InstanceProfile               string `hfsdk:"spec.nodePool.platform.aws.instanceProfile"`
@@ -34,6 +38,8 @@ type NodePoolUpdateInput struct {
 	Filters                       string `hfsdk:"spec.nodePool.platform.aws.subnet.filters"`
 	Image                         string `hfsdk:"spec.nodePool.release.image"`
 	Replicas                      *int32 `hfsdk:"spec.nodePool.replicas"`
+	Taints                        string `hfsdk:"spec.nodePool.taints"`
+	TuningConfig                  string `hfsdk:"spec.nodePool.tuningConfig"`
 }
 
 // NodePoolUpdatePlatformAPIFlags lists the cobra flag names registered by

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/tests/ci/config"
 	. "github.com/openshift/rosa/tests/utils/log"
 )
@@ -185,12 +186,14 @@ func getClusterIDENVExisted() string {
 	return os.Getenv("CLUSTER_ID")
 }
 
-// IsNodePoolGlobalCheck Get the nodepool global check flag
+// IsNodePoolGlobalCheck reports whether node pool replica checks were opted into.
 func IsNodePoolGlobalCheck() bool {
 	nodePoolGlobalCheck := os.Getenv("CLUSTER_NODE_POOL_GLOBAL_CHECK")
-	if nodePoolGlobalCheck == "true" {
-		return true
-	} else {
-		return false
-	}
+	return nodePoolGlobalCheck == "true"
+}
+
+// ShouldCheckNodePoolReplicas enables observed replica checks when the
+// HyperFleet API is active, while preserving the opt-in behavior for OCM.
+func ShouldCheckNodePoolReplicas() bool {
+	return IsNodePoolGlobalCheck() || os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
 }

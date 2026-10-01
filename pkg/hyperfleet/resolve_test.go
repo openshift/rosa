@@ -121,7 +121,7 @@ var _ = Describe("ResolveNodePoolUID", func() {
 
 		_, err := ResolveNodePoolUID(ctx, hf, "cluster-uid", "my-nodepool")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("not found"))
+		Expect(err.Error()).To(Equal("machine pool 'my-nodepool' does not exist"))
 	})
 
 	It("returns an error when the node pool list call fails", func() {

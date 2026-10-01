@@ -313,6 +313,23 @@ func toFieldValue(goValue any, targetType reflect.Type) (reflect.Value, error) {
 		}
 		return reflect.ValueOf(metav1.NewTime(t)), nil
 	}
+	if targetType == reflect.TypeOf(metav1.Duration{}) {
+		if duration, ok := goValue.(metav1.Duration); ok {
+			return reflect.ValueOf(duration), nil
+		}
+		s, ok := goValue.(string)
+		if !ok {
+			return reflect.Value{}, fmt.Errorf("expected string for metav1.Duration, got %T", goValue)
+		}
+		duration, err := time.ParseDuration(s)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("cannot parse %q as a duration: %w", s, err)
+		}
+		return reflect.ValueOf(metav1.Duration{Duration: duration}), nil
+	}
+	if targetType.Kind() == reflect.String && src.Type() == reflect.TypeOf(metav1.Duration{}) {
+		return reflect.ValueOf(goValue.(metav1.Duration).Duration.String()), nil
+	}
 
 	if src.Type().AssignableTo(targetType) {
 		return src, nil

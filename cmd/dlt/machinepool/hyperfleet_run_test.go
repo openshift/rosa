@@ -109,6 +109,24 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		}).To(Panic())
 	})
 
+	It("fails when machinepool name is invalid", func() {
+		orig := exitFn
+		exitFn = func(_ int) { panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, _ := newDltMPMocks(ctrl)
+		t.RosaRuntime.HyperFleetClient = hf
+		Expect(func() {
+			runHyperfleetDelete(
+				t.RosaRuntime,
+				testCmd(),
+				&DeleteMachinepoolUserOptions{machinepool: "anything%^"},
+				nil,
+			)
+		}).To(Panic())
+	})
+
 	It("fails when cluster key is not set", func() {
 		orig := exitFn
 		exitFn = func(_ int) { panic("exit") }
