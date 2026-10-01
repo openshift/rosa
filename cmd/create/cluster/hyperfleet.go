@@ -24,7 +24,7 @@ var hfClusterInput hfpathbind.ClusterCreateInput
 // hfExitFn, hfDescribeSubnets, and hfCreateCluster are package-level
 // vars so tests can stub the hyperfleet path without real AWS calls.
 var (
-	hfExitFn  = func(code int) { os.Exit(code) }
+	hfExitFn = func(code int) { os.Exit(code) }
 
 	hfDescribeSubnets = func(
 		ctx context.Context, cfg awssdk.Config, subnetID string,
