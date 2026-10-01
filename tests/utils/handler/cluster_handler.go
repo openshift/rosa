@@ -469,6 +469,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			flags = append(flags, "--additional-allowed-principals", sharedVPCAdditionalPrincipalsForHostedCP)
 		}
 
+	} else {
+		log.Logger.Info("Creating cluster in IAM mode")
+		flags = append(flags, "--non-sts")
 	}
 
 	// Put this part before the BYOVPC preparation so the subnets is prepared based on PrivateLink
