@@ -11,13 +11,13 @@ override_rosacli_build () {
 
   if [[ "$ROSACLI_BUILD" == "latest" ]]; then
     # get the latest rosa binary from release page
-    wget $(curl -s https://api.github.com/repos/openshift/rosa/releases/latest | jq -r '.assets[] | select(.name == "rosa_Linux_x86_64.tar.gz") | .browser_download_url')
+    wget $(curl -s https://api.github.com/repos/openshift/rosa/releases/latest | jq -r '.assets[] | select(.name == "rosa_linux_amd64.zip") | .browser_download_url')
   else
     # get the rosa downboad binary according to the version
-    wget https://github.com/openshift/rosa/releases/download/$ROSACLI_BUILD/rosa_Linux_x86_64.tar.gz
+    wget https://github.com/openshift/rosa/releases/download/$ROSACLI_BUILD/rosa_linux_amd64.zip
   fi
 
-  tar -xvf rosa_Linux_x86_64.tar.gz
+  unzip rosa_linux_amd64.zip
   chmod +x ./rosa
 
   # override the PATH 
