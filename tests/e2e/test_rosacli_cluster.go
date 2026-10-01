@@ -39,6 +39,42 @@ const (
 	UWMDisabled = "Disabled"
 )
 
+// hyperfleetEndpointForTests resolves the endpoint from the explicit flag,
+// environment, active runtime configuration, or saved ROSA configuration.
+func hyperfleetEndpointForTests() string {
+	if hyperfleet.FromFlag() && hyperfleet.ExplicitURL() != "" {
+		return hyperfleet.ExplicitURL()
+	}
+	if endpoint := os.Getenv("HYPERFLEET_URL"); endpoint != "" {
+		return endpoint
+	}
+	if hyperfleet.ExplicitURL() != "" {
+		return hyperfleet.ExplicitURL()
+	}
+
+	cliConfig, err := rosaconfig.Load()
+	Expect(err).NotTo(HaveOccurred())
+	if cliConfig == nil {
+		return ""
+	}
+	return cliConfig.HyperfleetURL
+}
+
+func isHyperfleetMode() bool {
+	return hyperfleetEndpointForTests() != ""
+}
+
+func hyperfleetRegionForTests(defaultRegion string) string {
+	endpoint := hyperfleetEndpointForTests()
+	if endpoint == "" {
+		return defaultRegion
+	}
+
+	region, err := hyperfleet.ExtractRegion(endpoint)
+	Expect(err).NotTo(HaveOccurred())
+	return region
+}
+
 var _ = Describe("Edit cluster",
 	labels.Feature.Cluster,
 	func() {
@@ -74,10 +110,7 @@ var _ = Describe("Edit cluster",
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
 
-				cliConfig, err := rosaconfig.Load()
-				Expect(err).ToNot(HaveOccurred())
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() ||
-					(cliConfig != nil && cliConfig.HyperfleetURL != "")
+				isHyperfleet := isHyperfleetMode()
 
 				By("Check help message contains channel-group flag")
 				output, err := clusterService.EditCluster("", "-h")
@@ -234,7 +267,7 @@ var _ = Describe("Edit cluster",
 				Expect(CD.ID).To(Equal(jsonData.DigString("id")))
 
 				// V2 (Hyperfleet) clusters don't have external_id in the same way as V1
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if !isHyperfleet {
 					Expect(CD.ExternalID).To(Equal(jsonData.DigString("external_id")))
 				}
@@ -332,7 +365,7 @@ var _ = Describe("Edit cluster",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --private yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--private is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -401,7 +434,7 @@ var _ = Describe("Edit cluster",
 		It("can disable workload monitoring on/off - [id:45159]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -489,7 +522,7 @@ var _ = Describe("Edit cluster",
 			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --private yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--private is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -582,7 +615,7 @@ var _ = Describe("Edit cluster",
 		It("can verify delete protection on a rosa cluster - [id:73161]",
 			labels.High, labels.Runtime.Day2, labels.Exclude, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if !isHyperfleet {
 					Skip("Excluded until bug on OCP-73161 is resolved")
 				}
@@ -634,7 +667,7 @@ var _ = Describe("Edit cluster",
 		It("can verify delete protection on a rosa cluster negative - [id:74656]",
 			labels.Medium, labels.Runtime.Day2, labels.Exclude, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if !isHyperfleet {
 					Skip("Excluded until bug on OCP-74656 is resolved")
 				}
@@ -658,7 +691,7 @@ var _ = Describe("Edit cluster",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support proxy flags yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("proxy edit flags are not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -753,7 +786,7 @@ var _ = Describe("Edit cluster",
 			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --billing-account yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--billing-account is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -818,7 +851,7 @@ var _ = Describe("Edit cluster",
 			labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --billing-account yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--billing-account is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -1159,7 +1192,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.InProgress,
 		func() {
 			By("Skip testing for V2 clusters - registry config flags not yet supported")
-			isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+			isHyperfleet := isHyperfleetMode()
 			if isHyperfleet {
 				Skip("Registry config editing (--registry-config-*) is not available on Platform API v2 yet")
 			}
@@ -1193,12 +1226,8 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			Expect(err).ToNot(HaveOccurred())
 
 			roleArn := clusterConfig.Aws.Sts.RoleArn
-			if roleArn == "" {
-				cliConfig, err := rosaconfig.Load()
-				Expect(err).ToNot(HaveOccurred())
-				if hyperfleet.Enabled() || (cliConfig != nil && cliConfig.HyperfleetURL != "") {
-					roleArn = "arn:aws:iam::123456789012:role/test-role"
-				}
+			if roleArn == "" && isHyperfleetMode() {
+				roleArn = "arn:aws:iam::123456789012:role/test-role"
 			}
 
 			By("Autonode is only suppored for hosted-cp cluster")
@@ -1288,12 +1317,7 @@ var _ = Describe("Additional security groups validation",
 				}
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
-			cliConfig, err := rosaconfig.Load()
-			Expect(err).ToNot(HaveOccurred())
-			hyperfleetURL := hyperfleet.ExplicitURL()
-			if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-				hyperfleetURL = cliConfig.HyperfleetURL
-			}
+			hyperfleetURL := hyperfleetEndpointForTests()
 			hyperfleetMode = hyperfleetURL != ""
 			if hyperfleetMode {
 				profile.Region, err = hyperfleet.ExtractRegion(hyperfleetURL)
@@ -1316,7 +1340,7 @@ var _ = Describe("Additional security groups validation",
 			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				By("Skip testing for V2 clusters - additional security groups validation not yet supported")
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("Additional security groups validation is not available on Platform API v2 yet")
 				}
@@ -1492,7 +1516,7 @@ var _ = Describe("Classic cluster creation validation",
 
 		BeforeEach(func() {
 			By("Skip testing for V2 clusters - classic cluster validation tests")
-			isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+			isHyperfleet := isHyperfleetMode()
 			if isHyperfleet {
 				Skip("Classic cluster validation tests are not applicable to Platform API v2 (HCP only)")
 			}
@@ -2080,7 +2104,7 @@ var _ = Describe("Create cluster delete protection",
 		)
 
 		verifyDeleteProtection := func() {
-			isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+			isHyperfleet := isHyperfleetMode()
 			createFlag := "--enable-delete-protection"
 			disableEditFlag := "--enable-delete-protection=false"
 			disableHint := "--enable-delete-protection=false"
@@ -2137,7 +2161,7 @@ var _ = Describe("Create cluster delete protection",
 			})
 
 			AfterEach(func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if clusterID != "" {
 					By("Disable delete protection")
 					disableFlag := "--enable-delete-protection=false"
@@ -2187,7 +2211,7 @@ var _ = Describe("Create cluster delete protection",
 				region := constants.CommonAWSRegion
 				multiAZ := true
 				networkingSet := true
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if isHyperfleetMode() {
 					// Platform API URL region must match --region used for OIDC/cluster create.
 					region = "us-east-1"
 					// V2 (Hyperfleet) doesn't support multi-AZ or custom networking in the same way as V1
@@ -2273,7 +2297,7 @@ var _ = Describe("Create cluster with invalid options will",
 		It("validate enable-delete-protection flag when create cluster - [id:74657]",
 			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				flagName := "--enable-delete-protection"
 				if isHyperfleet {
 					flagName = "--delete-protection"
@@ -2303,17 +2327,7 @@ var _ = Describe("Create cluster with invalid options will",
 			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				By("Setup vpc with list azs")
-				testingTegion := "us-east-2"
-				cliConfig, err := rosaconfig.Load()
-				Expect(err).ToNot(HaveOccurred())
-				hyperfleetURL := hyperfleet.ExplicitURL()
-				if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-					hyperfleetURL = cliConfig.HyperfleetURL
-				}
-				if hyperfleetURL != "" {
-					testingTegion, err = hyperfleet.ExtractRegion(hyperfleetURL)
-					Expect(err).ToNot(HaveOccurred())
-				}
+				testingTegion := hyperfleetRegionForTests("us-east-2")
 				By("Prepare subnets for the coming testing")
 				vpc, err := vpc_client.PrepareVPC("rosacli-37177", testingTegion, "", true, "")
 				Expect(err).ToNot(HaveOccurred())
@@ -2502,17 +2516,8 @@ var _ = Describe("Create cluster with invalid options will",
 		It("to validate the invalid proxy when create cluster - [id:45509]",
 			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
-				region := constants.CommonAWSRegion
-				cliConfig, err := rosaconfig.Load()
-				Expect(err).ToNot(HaveOccurred())
-				hyperfleetURL := hyperfleet.ExplicitURL()
-				if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-					hyperfleetURL = cliConfig.HyperfleetURL
-				}
-				if hyperfleetURL != "" {
-					region, err = hyperfleet.ExtractRegion(hyperfleetURL)
-					Expect(err).ToNot(HaveOccurred())
-				}
+				region := hyperfleetRegionForTests(constants.CommonAWSRegion)
+				hyperfleetURL := hyperfleetEndpointForTests()
 				hyperfleetMode := hyperfleetURL != ""
 				zone := region + "a"
 				clusterName := "rosacli-45509"
@@ -2969,15 +2974,12 @@ var _ = Describe("HCP cluster creation negative testing",
 			hyperfleetMode bool
 		)
 		BeforeEach(func() {
+			var err error
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
-			cliConfig, err := rosaconfig.Load()
-			Expect(err).ToNot(HaveOccurred())
-			hyperfleetURL := hyperfleet.ExplicitURL()
-			if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-				hyperfleetURL = cliConfig.HyperfleetURL
-			}
+			hyperfleetURL := hyperfleetEndpointForTests()
 			hyperfleetMode = hyperfleetURL != ""
 			region := constants.CommonAWSRegion
 			if hyperfleetMode {
@@ -3513,16 +3515,13 @@ var _ = Describe("HCP cluster creation subnets validation",
 			command            string
 		)
 		BeforeEach(func() {
+			var err error
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
-			cliConfig, err := rosaconfig.Load()
-			Expect(err).ToNot(HaveOccurred())
-			hyperfleetURL := hyperfleet.ExplicitURL()
-			if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-				hyperfleetURL = cliConfig.HyperfleetURL
-			}
+			hyperfleetURL := hyperfleetEndpointForTests()
 			hyperfleetMode = hyperfleetURL != ""
 			region := constants.CommonAWSRegion
 			if hyperfleetMode {
@@ -4039,7 +4038,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 
 		BeforeEach(func() {
 			By("Skip OCM account-role / manual STS flows on Platform API v2")
-			if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+			if isHyperfleetMode() {
 				Skip("Account-role and OCM-manual operator-role flows are not applicable to Platform API v2")
 			}
 
@@ -4225,7 +4224,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 
 	BeforeEach(func() {
 		By("Skip OCM reusable OIDC/operator-prefix flows on Platform API v2")
-		if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+		if isHyperfleetMode() {
 			Skip("Reusing OCM OIDC config / operator-prefix is not applicable to Platform API v2")
 		}
 
@@ -4604,12 +4603,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			rosaClient.Runner.UnsetFormat()
 			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 			AWSAccountID = whoamiData.AWSAccountID
-			cliConfig, err := rosaconfig.Load()
-			Expect(err).ToNot(HaveOccurred())
-			hyperfleetURL := hyperfleet.ExplicitURL()
-			if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-				hyperfleetURL = cliConfig.HyperfleetURL
-			}
+			hyperfleetURL := hyperfleetEndpointForTests()
 			hyperfleetMode = hyperfleetURL != ""
 			region := constants.CommonAWSRegion
 			if hyperfleetMode {
@@ -4984,12 +4978,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			Expect(err).To(BeNil())
 			rosaClient.Runner.UnsetFormat()
 			accountInfo := rosaClient.OCMResource.ReflectAccountsInfo(whoamiOutput)
-			cliConfig, err := rosaconfig.Load()
-			Expect(err).ToNot(HaveOccurred())
-			hyperfleetURL := hyperfleet.ExplicitURL()
-			if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-				hyperfleetURL = cliConfig.HyperfleetURL
-			}
+			hyperfleetURL := hyperfleetEndpointForTests()
 			hyperfleetMode = hyperfleetURL != ""
 			region := accountInfo.AWSDefaultRegion
 			Expect(region).ToNot(BeEmpty())
@@ -5266,12 +5255,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
-			cliConfig, err := rosaconfig.Load()
-			Expect(err).ToNot(HaveOccurred())
-			hyperfleetURL := hyperfleet.ExplicitURL()
-			if cliConfig != nil && cliConfig.HyperfleetURL != "" {
-				hyperfleetURL = cliConfig.HyperfleetURL
-			}
+			hyperfleetURL := hyperfleetEndpointForTests()
 			hyperfleetMode = hyperfleetURL != ""
 			region := "us-east-2"
 			if hyperfleetMode {

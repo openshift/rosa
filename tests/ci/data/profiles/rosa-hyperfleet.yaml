@@ -105,7 +105,7 @@ profiles:
       auditlog_forward: false
       admin_enabled: false
       volume_size: 75
-      disable_uwm: true
+      disable_uwm: false
       autoscaler_enabled: false
       additional_sg_number: 3
       registries_config: true

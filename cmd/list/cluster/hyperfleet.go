@@ -22,20 +22,23 @@ type clusterListItem struct {
 
 var (
 	hfEnabled      = hyperfleet.Enabled
+	hfExitFn       = func(code int) { os.Exit(code) }
 	hfListClusters = func() {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
-		runHyperfleetList(r)
+		if err := runHyperfleetList(r); err != nil {
+			r.Reporter.Errorf("%v", err)
+			hfExitFn(1)
+		}
 	}
 )
 
-func runHyperfleetList(r *rosa.Runtime) {
+func runHyperfleetList(r *rosa.Runtime) error {
 	ctx := context.Background()
 
 	list, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().List(ctx, platform.ListOptions{})
 	if err != nil {
-		r.Reporter.Errorf("Failed to list clusters: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to list clusters: %w", err)
 	}
 
 	if output.HasFlag() {
@@ -49,26 +52,32 @@ func runHyperfleetList(r *rosa.Runtime) {
 			})
 		}
 		if err := output.Print(items); err != nil {
-			r.Reporter.Errorf("%s", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to print clusters: %w", err)
 		}
-		return
+		return nil
 	}
 
 	if len(list.Items) == 0 {
 		r.Reporter.Infof("No clusters available")
-		return
+		return nil
 	}
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTOPOLOGY\n")
+	if _, err := fmt.Fprintf(writer, "ID\tNAME\tSTATE\tTOPOLOGY\n"); err != nil {
+		return fmt.Errorf("failed to format cluster list header: %w", err)
+	}
 	for _, c := range list.Items {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
 			string(c.UID),
 			c.Name,
 			string(c.Status.Phase),
 			"Hosted CP",
-		)
+		); err != nil {
+			return fmt.Errorf("failed to format cluster list: %w", err)
+		}
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to write cluster list: %w", err)
+	}
+	return nil
 }
