@@ -48,14 +48,8 @@ func NewDeleteMachinePoolCommand() *cobra.Command {
 		Short:   short,
 		Long:    long,
 		Example: example,
-		Run: func(c *cobra.Command, argv []string) {
-			if hfEnabled() {
-				hfDeleteMachinePool(c, options, argv)
-				return
-			}
-			rosa.DefaultRunner(rosa.RuntimeWithOCM(), DeleteMachinePoolRunner(options))(c, argv)
-		},
-		Args: cobra.MaximumNArgs(1),
+		Run:     dispatch(options),
+		Args:    cobra.MaximumNArgs(1),
 	}
 	flags := cmd.Flags()
 	flags.StringVar(

@@ -8,6 +8,7 @@ type hyperfleetLabels struct {
 	Validated     Labels
 	Sanity        Labels
 	InProgress    Labels
+	One           Labels
 	Deferred      Labels
 	NotApplicable Labels
 }
@@ -19,6 +20,7 @@ func initHyperfleet() *hyperfleetLabels {
 	hLabels.Validated = Label("hyperfleet-validated")
 	hLabels.Sanity = Label("hyperfleet-sanity")
 	hLabels.InProgress = Label("hyperfleet-inprog")
+	hLabels.One = Label("hyperfleet-one")
 	hLabels.Deferred = Label("hyperfleet-deferred")
 	hLabels.NotApplicable = Label("hyperfleet-na")
 

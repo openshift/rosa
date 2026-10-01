@@ -53,13 +53,7 @@ func NewListMachinePoolCommand() *cobra.Command {
 		Aliases: aliases,
 		Example: example,
 		Args:    cobra.NoArgs,
-		Run: func(c *cobra.Command, argv []string) {
-			if hfEnabled() {
-				hfListMachinePools(c, argv)
-				return
-			}
-			rosa.DefaultRunner(rosa.RuntimeWithOCM(), ListMachinePoolRunner())(c, argv)
-		},
+		Run:     dispatch(),
 	}
 
 	flags := cmd.Flags()

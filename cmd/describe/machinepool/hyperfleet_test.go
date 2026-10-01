@@ -52,18 +52,18 @@ var _ = Describe("hyperfleet dispatch", func() {
 	var origDescribe func(*DescribeMachinepoolUserOptions, []string)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origDescribe = hfDescribeMachinePool
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfDescribeMachinePool = origDescribe
 	})
 
 	It("routes to hfDescribeMachinePool when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfDescribeMachinePool = func(_ *DescribeMachinepoolUserOptions, _ []string) { called = true }
 
 		cmd := NewDescribeMachinePoolCommand()
@@ -149,6 +149,21 @@ var _ = Describe("hfNodePoolToString", func() {
 		Expect(s).To(ContainSubstring("Conditions:"))
 		Expect(s).To(ContainSubstring("Ready:"))
 		Expect(s).To(ContainSubstring("True"))
+	})
+
+	It("formats autoscaling replicas like the OCM output", func() {
+		np := buildTestNodePool()
+		minReplicas := int32(2)
+		maxReplicas := int32(5)
+		np.Spec.NodePool.Replicas = nil
+		np.Spec.NodePool.AutoScaling = &hypershiftv1beta1.NodePoolAutoScaling{
+			Min: &minReplicas,
+			Max: maxReplicas,
+		}
+
+		s := hfNodePoolToString(np, "my-cluster")
+
+		Expect(s).To(ContainSubstring("Desired replicas:                      \n - Min replicas: 2\n - Max replicas: 5"))
 	})
 
 	It("omits conditions block when none present", func() {

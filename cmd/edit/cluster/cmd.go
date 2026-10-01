@@ -105,7 +105,7 @@ func makeCmd() *cobra.Command {
 
   # Edit all options interactively
   rosa edit cluster -c mycluster --interactive`,
-		Run:  run,
+		Run:  dispatch,
 		Args: cobra.NoArgs,
 	}
 }
@@ -281,10 +281,6 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	if hfEnabled() {
-		hfEditCluster(cmd)
-		return
-	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 	err := runWithRuntime(r, cmd)

@@ -20,21 +20,21 @@ var _ = Describe("hyperfleet dispatch", func() {
 	)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origDescribeCluster = hfDescribeCluster
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfDescribeCluster = origDescribeCluster
 	})
 
 	It("routes to hfDescribeCluster when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfDescribeCluster = func(_ *cobra.Command, _ []string) { called = true }
 
-		run(Cmd, nil)
+		dispatch(Cmd, nil)
 
 		Expect(called).To(BeTrue())
 	})

@@ -8,12 +8,12 @@ import (
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	rosamachinepool "github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
 var (
-	hfEnabled           = hyperfleet.Enabled
 	exitFn              = func(code int) { os.Exit(code) }
 	confirmFn           = confirm.Confirm
 	hfDeleteMachinePool = func(cmd *cobra.Command, userOptions *DeleteMachinepoolUserOptions, argv []string) {
@@ -33,7 +33,11 @@ func runHyperfleetDelete(
 		nodePoolName = argv[0]
 	}
 	if nodePoolName == "" {
-		r.Reporter.Errorf("--machinepool is required")
+		r.Reporter.Errorf("you need to specify a machine pool name")
+		exitFn(1)
+	}
+	if !rosamachinepool.MachinePoolKeyRE.MatchString(nodePoolName) {
+		r.Reporter.Errorf("expected a valid identifier for the machine pool")
 		exitFn(1)
 	}
 

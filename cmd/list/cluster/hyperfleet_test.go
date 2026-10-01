@@ -12,21 +12,21 @@ var _ = Describe("hyperfleet dispatch", func() {
 	)
 
 	BeforeEach(func() {
-		origEnabled = hfEnabled
+		origEnabled = hyperfleetEnabled
 		origListClusters = hfListClusters
 	})
 
 	AfterEach(func() {
-		hfEnabled = origEnabled
+		hyperfleetEnabled = origEnabled
 		hfListClusters = origListClusters
 	})
 
 	It("routes to hfListClusters when hyperfleet is enabled", func() {
 		called := false
-		hfEnabled = func() bool { return true }
+		hyperfleetEnabled = func() bool { return true }
 		hfListClusters = func() { called = true }
 
-		run(nil, nil)
+		dispatch(nil, nil)
 
 		Expect(called).To(BeTrue())
 	})

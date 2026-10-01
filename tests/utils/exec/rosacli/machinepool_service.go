@@ -358,12 +358,30 @@ func (m *machinepoolService) GetNodePoolAutoScaledReplicas(clusterID string, mpN
 		return nil, err
 	}
 
-	desiredReplicaList := mpDesc.DesiredReplicas.([]interface{})
+	desiredReplicaList, ok := mpDesc.DesiredReplicas.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf(
+			"machine pool %q does not report autoscaling min/max replicas (autoscaling: %q, desired replicas: %v)",
+			mpName,
+			mpDesc.AutoScaling,
+			mpDesc.DesiredReplicas,
+		)
+	}
 	// Parse replicas of autoscaled machine/node pool
 	replicas, err := parseAutoscaledReplicas(desiredReplicaList)
-	// For node pool, it has current replicas which will be used to compare.
-	replicas["Current replicas"], _ = strconv.Atoi(fmt.Sprintf("%v", mpDesc.CurrentReplicas))
-	return replicas, err
+	if err != nil {
+		return nil, err
+	}
+	// An absent status value means the API has not reported current replicas yet;
+	// preserve that distinction from a reported count of zero.
+	if mpDesc.CurrentReplicas != "" {
+		currentReplicas, err := strconv.Atoi(mpDesc.CurrentReplicas)
+		if err != nil {
+			return nil, fmt.Errorf("invalid current replicas %q: %w", mpDesc.CurrentReplicas, err)
+		}
+		replicas["Current replicas"] = currentReplicas
+	}
+	return replicas, nil
 }
 
 // Parse replicas(Min replicas and Max replicas) of autoscaled machine/node pool
@@ -371,7 +389,10 @@ func parseAutoscaledReplicas(desiredReplicaList []interface{}) (map[string]int, 
 	// Parse replicas of autoscaled machine pool
 	replicas := make(map[string]int)
 	for _, data := range desiredReplicaList {
-		valMap := data.(map[string]interface{})
+		valMap, ok := data.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("unexpected autoscaling replica data %T", data)
+		}
 		for key, value := range valMap {
 			replica, err := strconv.Atoi(fmt.Sprintf("%v", value))
 			if err != nil {
@@ -403,7 +424,8 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 					return false, err
 				}
 
-				if replicas["Current replicas"] == replicas["Min replicas"] {
+				if currentReplicas, reported := replicas["Current replicas"]; reported &&
+					currentReplicas == replicas["Min replicas"] {
 					return true, nil
 				}
 
@@ -447,7 +469,7 @@ func (m *machinepoolService) ScaleNodePool(
 		return errors.New("replicas does not match when scaling node pool")
 	}
 
-	if waitForNPInstancesReady && config.IsNodePoolGlobalCheck() {
+	if waitForNPInstancesReady && config.ShouldCheckNodePoolReplicas() {
 		// Check current replicas reach the desired replicas after scale
 		err = m.WaitForNodePoolReplicasReady(
 			clusterID,
@@ -491,7 +513,7 @@ func (m *machinepoolService) ScaleAutoScaledNodePool(
 		return errors.New("max replicas does not match when scaling autoscaled node pool")
 	}
 
-	if waitForNPInstancesReady && config.IsNodePoolGlobalCheck() {
+	if waitForNPInstancesReady && config.ShouldCheckNodePoolReplicas() {
 		// Check current replicas reach the min_replica in desired replicas after scale
 		err = m.WaitForNodePoolReplicasReady(
 			clusterID,
