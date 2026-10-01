@@ -4,6 +4,8 @@
 package e2e
 
 import (
+	"fmt"
+
 	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck
@@ -44,7 +46,7 @@ var _ = Describe("OIDC provider",
 		})
 
 		It("validate when user create oidc-provider to cluster - [id:43046]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				By("Check if cluster is sts cluster")
 				StsCluster, err := clusterService.IsSTSCluster(clusterID)
@@ -82,6 +84,11 @@ var _ = Describe("OIDC provider",
 					"-y")
 				Expect(err).NotTo(BeNil())
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("There is no cluster with identifier or name"))
+				fmt.Println(textData)
+
+				Expect(textData).To(SatisfyAny(
+					ContainSubstring("There is no cluster with identifier or name"),
+					ContainSubstring("cluster '"+notExistedClusterID+"' not found"),
+				))
 			})
 	})
