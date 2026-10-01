@@ -7,7 +7,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/tests/ci/config"
-	. "github.com/openshift/rosa/tests/utils/log"
+	rosalog "github.com/openshift/rosa/tests/utils/log"
 )
 
 type Version struct {
@@ -173,7 +173,7 @@ func GetClusterID() (clusterID string) {
 	}
 
 	if _, err := os.Stat(config.Test.ClusterIDFile); err != nil {
-		Logger.Errorf("Cluster detail file not existing")
+		rosalog.Logger.Errorf("Cluster detail file not existing")
 		return ""
 	}
 	fileCont, _ := os.ReadFile(config.Test.ClusterIDFile)

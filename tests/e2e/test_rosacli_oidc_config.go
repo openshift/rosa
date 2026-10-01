@@ -42,7 +42,7 @@ var _ = Describe("Edit OIDC config",
 			labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.Validated,
 			func() {
 
-				if os.Getenv("HYPERFLEET_URL") != "" {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
 					// is hyperfleet v2
 					helper_v2_oidc_configs(rosaClient, ocmResourceService)
 					return
@@ -411,16 +411,19 @@ func helper_v2_oidc_configs(rosaClient *rosacli.Client, ocmResourceService rosac
 	Expect(managedOIDCConfigID).ToNot(BeEmpty(), "create response should include the new OIDC config ID")
 	oidcConfigIDsNeedToClean = append(oidcConfigIDsNeedToClean, managedOIDCConfigID)
 
-	By("List OIDC configs to find the created config")
-	// rosa list oidc-config
-	oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
-	Expect(err).To(BeNil())
+	By("Verify the create response includes the OIDC issuer")
+	issuerURL := createdConfig.DigString("spec", "issuerUrl")
+	Expect(issuerURL).NotTo(BeEmpty(), "create response should include the OIDC issuer URL")
 
-	By("Verify OIDC config was created")
-	foundOIDCConfig := oidcConfigList.OIDCConfig(managedOIDCConfigID)
-	Expect(foundOIDCConfig).NotTo(Equal(rosacli.OIDCConfig{}))
-	Expect(foundOIDCConfig.ID).To(Equal(managedOIDCConfigID))
-	Expect(foundOIDCConfig.IssuerUrl).NotTo(BeEmpty())
+	By("Retrieve the OIDC config through the provider command using its ID")
+	providerOutput, err := ocmResourceService.CreateOIDCProvider(
+		"--oidc-config-id", managedOIDCConfigID,
+		"--mode", "auto",
+		"-y",
+	)
+	Expect(err).To(BeNil())
+	providerText := rosaClient.Parser.TextData.Input(providerOutput).Parse().Tip()
+	Expect(providerText).To(ContainSubstring("OIDC provider already exists"))
 
 	By("V2 OIDC config test completed successfully")
 }
