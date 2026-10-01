@@ -130,7 +130,7 @@ func run(cmd *cobra.Command, argv []string) {
 
 		// Platform API v2 (hyperfleet) handling
 		if r.IsUsingHyperfleet() {
-			handleHyperfleetOIDCProvider(r, clusterKey, mode)
+			handleHyperfleetOIDCProvider(r, clusterKey, args.oidcConfigId, mode)
 			return
 		}
 
@@ -323,27 +323,35 @@ func runHyperfleet(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
 	defer r.Cleanup()
 
-	// Get cluster key
+	clusterFlagChanged := cmd.Flags().Changed("cluster")
+	configIDFlagChanged := args.oidcConfigId != ""
+	if configIDFlagChanged && (clusterFlagChanged || (len(argv) > 0 && argv[0] != "")) {
+		r.Reporter.Errorf("A cluster key and an OIDC Config ID cannot be specified alongside each other.")
+		os.Exit(1)
+	}
+
+	// Resolve a cluster key only when the caller did not provide an OIDC config ID.
 	var clusterKey string
-	if len(argv) >= 1 && !cmd.Flag("cluster").Changed {
+	if configIDFlagChanged {
+		clusterKey = ""
+	} else if len(argv) >= 1 && !clusterFlagChanged {
 		clusterKey = argv[0]
 	} else {
 		clusterKey = r.GetClusterKey()
 	}
 
 	// Get mode
+	if len(argv) >= 2 && argv[1] != "" && !cmd.Flags().Changed("mode") {
+		interactive.SetModeKey(argv[1])
+	}
 	mode, err := interactive.GetMode()
 	if err != nil {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
 
-	// Handle interactive mode
-	if !interactive.Enabled() && !cmd.Flags().Changed("mode") {
+	if mode == "" {
 		interactive.Enable()
-	}
-
-	if !cmd.Flags().Changed("mode") && interactive.Enabled() {
 		mode, err = interactive.GetOptionMode(cmd, mode, "OIDC provider creation mode")
 		if err != nil {
 			r.Reporter.Errorf("Expected a valid OIDC provider creation mode: %s", err)
@@ -351,36 +359,52 @@ func runHyperfleet(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	handleHyperfleetOIDCProvider(r, clusterKey, mode)
+	handleHyperfleetOIDCProvider(r, clusterKey, args.oidcConfigId, mode)
 }
 
 // handleHyperfleetOIDCProvider handles OIDC provider operations for Platform API v2 (hyperfleet) clusters.
-// For v2 clusters with managed OIDC configs, the provider is created automatically during cluster creation.
-// This function verifies the provider exists and reports the status.
-func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey string, mode string) {
-	r.Reporter.Debugf("Handling OIDC provider for hyperfleet cluster '%s'", clusterKey)
+func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcConfigID, mode string) {
+	r.Reporter.Debugf("Handling HyperFleet OIDC provider for cluster '%s' and config '%s'", clusterKey, oidcConfigID)
 
 	ctx := context.Background()
 
-	// Resolve cluster key to UID
-	clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
-	if err != nil {
-		r.Reporter.Errorf("Failed to resolve cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
+	var (
+		clusterUID    string
+		oidcIssuerURL string
+		err           error
+	)
+	if oidcConfigID != "" {
+		// An OIDC config ID is an alternate issuer source. The provider check
+		// and auto/manual recovery below are shared with the cluster path.
+		config, getErr := r.HyperFleetClient.HyperfleetV1alpha1().OidcConfigs().Get(
+			ctx, oidcConfigID, platform.GetOptions{})
+		if getErr != nil {
+			r.Reporter.Errorf("Failed to get OIDC config '%s': %v", oidcConfigID, getErr)
+			os.Exit(1)
+		}
+		oidcIssuerURL = config.Spec.IssuerUrl
+	} else {
+		// Resolve the key and retain the cluster returned by the list operation.
+		// Fetching it again by UID would make a second Platform API request.
+		cluster, getErr := hyperfleet.GetCluster(ctx, r.HyperFleetClient, clusterKey)
+		if getErr != nil {
+			r.Reporter.Errorf("Failed to resolve cluster '%s': %v", clusterKey, getErr)
+			os.Exit(1)
+		}
+		if cluster == nil {
+			r.Reporter.Errorf("Failed to resolve cluster '%s': cluster '%s' not found", clusterKey, clusterKey)
+			os.Exit(1)
+		}
+		clusterUID = string(cluster.UID)
+		oidcIssuerURL = extractOIDCIssuerFromHyperfleetCluster(cluster)
 	}
 
-	// Fetch cluster using hyperfleet client
-	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().Get(
-		ctx, clusterUID, platform.GetOptions{})
-	if err != nil {
-		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
-		os.Exit(1)
-	}
-
-	// Extract OIDC issuer URL from v2 cluster
-	oidcIssuerURL := extractOIDCIssuerFromHyperfleetCluster(cluster)
 	if oidcIssuerURL == "" {
-		r.Reporter.Errorf("Cluster '%s' does not have an OIDC issuer URL configured", clusterKey)
+		if oidcConfigID != "" {
+			r.Reporter.Errorf("OIDC config '%s' does not have an issuer URL configured", oidcConfigID)
+		} else {
+			r.Reporter.Errorf("Cluster '%s' does not have an OIDC issuer URL configured", clusterKey)
+		}
 		os.Exit(1)
 	}
 
@@ -406,11 +430,58 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey string, mode strin
 		return
 	}
 
-	// Provider doesn't exist - this is unexpected for v2 managed OIDC
-	r.Reporter.Errorf("OIDC provider does not exist for cluster '%s'. "+
-		"Platform API v2 clusters with managed OIDC configs should have the provider "+
-		"created automatically during cluster creation. Please verify cluster status.", clusterKey)
-	os.Exit(1)
+	// The provider may need to be recreated after manual deletion. Match the V1
+	// command's auto/manual behavior for both a cluster issuer and an OIDC config.
+	switch mode {
+	case interactive.ModeAuto:
+		confirmMessage := "Create the OIDC provider?"
+		if clusterKey != "" {
+			confirmMessage = fmt.Sprintf("Create the OIDC provider for cluster '%s'?", clusterKey)
+		}
+		if !confirm.Prompt(true, "%s", confirmMessage) {
+			return
+		}
+
+		thumbprint, err := aws.GetOIDCThumbprint(oidcIssuerURL)
+		if err != nil {
+			r.Reporter.Errorf("Failed to compute OIDC provider thumbprint: %v", err)
+			os.Exit(1)
+		}
+		providerARN, err := r.AWSClient.CreateOpenIDConnectProvider(oidcIssuerURL, thumbprint, clusterUID)
+		if err != nil {
+			r.Reporter.Errorf("There was an error creating the OIDC provider: %v", err)
+			os.Exit(1)
+		}
+		r.Reporter.Infof("Created OIDC provider with ARN '%s'", providerARN)
+	case interactive.ModeManual:
+		thumbprint, err := aws.GetOIDCThumbprint(oidcIssuerURL)
+		if err != nil {
+			r.Reporter.Errorf("Failed to compute OIDC provider thumbprint: %v", err)
+			os.Exit(1)
+		}
+		commands := buildHyperfleetOIDCProviderCommand(oidcIssuerURL, thumbprint, clusterUID)
+		r.Reporter.Infof("Run the following commands to create the OIDC provider:\n")
+		fmt.Println(commands)
+	default:
+		r.Reporter.Errorf("Invalid mode. Allowed values are %s", interactive.Modes)
+		os.Exit(1)
+	}
+}
+
+func buildHyperfleetOIDCProviderCommand(issuerURL, thumbprint, clusterID string) string {
+	iamTags := map[string]string{tags.RedHatManaged: tags.True}
+	if clusterID != "" {
+		iamTags[tags.ClusterID] = clusterID
+	}
+	clientIDList := strings.Join([]string{aws.OIDCClientIDOpenShift, aws.OIDCClientIDSTSAWS}, " ")
+
+	return awscb.NewIAMCommandBuilder().
+		SetCommand(awscb.CreateOpenIdConnectProvider).
+		AddParam(awscb.Url, issuerURL).
+		AddParam(awscb.ClientIdList, clientIDList).
+		AddParam(awscb.ThumbprintList, thumbprint).
+		AddTags(iamTags).
+		Build()
 }
 
 // extractOIDCIssuerFromHyperfleetCluster extracts the OIDC issuer URL from a hyperfleet cluster object.
