@@ -16,6 +16,8 @@ reporter code currently in `pkg/` is being migrated to `internal/cli/`.
   these are CLI-layer concerns under `internal/cli/`.
 - `cmd/docs/` and `make generate-docs` cover generated CLI docs.
 - `cmd/rosa/structure_test/` guards the command tree and supported flag contracts.
+- `templates/` contains CloudFormation and other templated assets.
+- `tests/e2e/` contains environment-dependent end-to-end tests.
 
 ## Command Layering
 
