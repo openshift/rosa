@@ -7039,9 +7039,176 @@ components:
                           NodePool contains the upstream HyperShift fields, mirrored as
                           passthrough types with per-field visibility and write-mode markers.
                       properties:
+                          autoScaling:
+                              description: autoScaling specifies auto-scaling behavior for the NodePool.
+                              properties:
+                                  max:
+                                      description: max is the maximum number of nodes allowed in the pool. Must be >= 1 and >= Min.
+                                      format: int32
+                                      minimum: 1
+                                      type: integer
+                                  min:
+                                      description: |-
+                                          min is the minimum number of nodes to maintain in the pool.
+                                          Can be set to 0 for scale-from-zero for AWS platform.
+                                          Must be >= 0 and <= .Max.
+                                      format: int32
+                                      minimum: 0
+                                      type: integer
+                              required:
+                                  - max
+                                  - min
+                              type: object
+                              x-kubernetes-validations:
+                                  - message: max must be equal or greater than min
+                                    rule: self.max >= self.min
                           clusterName:
                               description: clusterName is the name of the HostedCluster this NodePool belongs to.
                               type: string
+                          config:
+                              description: config is a list of references to ConfigMaps containing serialized
+                              items:
+                                  description: |-
+                                      LocalObjectReference contains enough information to let you locate the
+                                      referenced object inside the same namespace.
+                                  properties:
+                                      name:
+                                          default: ""
+                                          description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: array
+                          management:
+                              description: management specifies behavior for managing nodes in the pool, such as
+                              properties:
+                                  autoRepair:
+                                      default: false
+                                      description: |-
+                                          autoRepair specifies whether health checks should be enabled for machines in the NodePool. The default is false.
+                                          Enabling this feature will cause the controller to automatically delete unhealthy machines.
+                                          The unhealthy criteria is reserved for the controller implementation and subject to change.
+                                          But generally it's determined by checking the Node ready condition is true and a timeout that might vary depending on the platform provider.
+                                          AutoRepair will no-op when more than 2 Nodes are unhealthy at the same time. Giving time for the cluster to stabilize or to the user to manually intervene.
+                                      type: boolean
+                                  inPlace:
+                                      description: inPlace is the configuration for in-place upgrades.
+                                      properties:
+                                          maxUnavailable:
+                                              anyOf:
+                                                  - type: integer
+                                                  - type: string
+                                              description: |-
+                                                  maxUnavailable is the maximum number of nodes that can be unavailable
+                                                  during the update.
+                                                  Value can be an absolute number (ex: 5) or a percentage of desired nodes
+                                                  (ex: 10%).
+                                                  Absolute number is calculated from percentage by rounding down.
+                                                  Defaults to 1.
+                                                  Example: when this is set to 30%, a max of 30% of the nodes can be made
+                                                  unschedulable/unavailable immediately when the update starts. Once a set
+                                                  of nodes is updated, more nodes can be made unschedulable for update,
+                                                  ensuring that the total number of nodes schedulable at all times during
+                                                  the update is at least 70% of desired nodes.
+                                              x-kubernetes-int-or-string: true
+                                      type: object
+                                  replace:
+                                      default:
+                                          rollingUpdate:
+                                              maxSurge: 1
+                                              maxUnavailable: 0
+                                          strategy: RollingUpdate
+                                      description: |-
+                                          replace is the configuration for rolling upgrades.
+                                          It defaults to a RollingUpdate strategy with maxSurge of 1 and maxUnavailable of 0.
+                                      properties:
+                                          rollingUpdate:
+                                              description: |-
+                                                  rollingUpdate specifies a rolling update strategy which upgrades nodes by
+                                                  creating new nodes and deleting the old ones.
+                                              properties:
+                                                  maxSurge:
+                                                      anyOf:
+                                                          - type: integer
+                                                          - type: string
+                                                      description: |-
+                                                          maxSurge is the maximum number of nodes that can be provisioned above the
+                                                          desired number of nodes.
+                                                          Value can be an absolute number (ex: 5) or a percentage of desired nodes
+                                                          (ex: 10%).
+                                                          Absolute number is calculated from percentage by rounding up.
+                                                          This can not be 0 if MaxUnavailable is 0.
+                                                          Defaults to 1.
+                                                          Example: when this is set to 30%, new nodes can be provisioned immediately
+                                                          when the rolling update starts, such that the total number of old and new
+                                                          nodes do not exceed 130% of desired nodes. Once old nodes have been
+                                                          deleted, new nodes can be provisioned, ensuring that total number of nodes
+                                                          running at any time during the update is at most 130% of desired nodes.
+                                                      x-kubernetes-int-or-string: true
+                                                  maxUnavailable:
+                                                      anyOf:
+                                                          - type: integer
+                                                          - type: string
+                                                      description: |-
+                                                          maxUnavailable is the maximum number of nodes that can be unavailable
+                                                          during the update.
+                                                          Value can be an absolute number (ex: 5) or a percentage of desired nodes
+                                                          (ex: 10%).
+                                                          Absolute number is calculated from percentage by rounding down.
+                                                          This can not be 0 if MaxSurge is 0.
+                                                          Defaults to 0.
+                                                          Example: when this is set to 30%, old nodes can be deleted down to 70% of
+                                                          desired nodes immediately when the rolling update starts. Once new nodes
+                                                          are ready, more old nodes be deleted, followed by provisioning new nodes,
+                                                          ensuring that the total number of nodes available at all times during the
+                                                          update is at least 70% of desired nodes.
+                                                      x-kubernetes-int-or-string: true
+                                              type: object
+                                          strategy:
+                                              description: |-
+                                                  strategy is the node replacement strategy for nodes in the pool.
+                                                  In can be either "RollingUpdate" or "OnDelete". RollingUpdate will rollout Nodes honoring maxSurge and maxUnavailable.
+                                                  OnDelete provide more granular control and will replace nodes as the old ones are manually deleted.
+                                              enum:
+                                                  - RollingUpdate
+                                                  - OnDelete
+                                              type: string
+                                      type: object
+                                      x-kubernetes-validations:
+                                          - message: The 'rollingUpdate' field can only be set when 'strategy' is 'RollingUpdate'
+                                            rule: '!has(self.rollingUpdate) || self.strategy == ''RollingUpdate'''
+                                  upgradeType:
+                                      description: |-
+                                          upgradeType specifies the type of strategy for handling upgrades.
+                                          This can be either "Replace" or "InPlace".
+                                          "Replace" will update Nodes by recreating the underlying instances.
+                                          "InPlace" will update Nodes by applying changes to the existing instances. This might or might not result in a reboot.
+                                      enum:
+                                          - Replace
+                                          - InPlace
+                                      type: string
+                                      x-kubernetes-validations:
+                                          - message: UpgradeType is immutable
+                                            rule: self == oldSelf
+                              required:
+                                  - upgradeType
+                              type: object
+                              x-kubernetes-validations:
+                                  - message: The 'inPlace' field can only be set when 'upgradeType' is 'InPlace'
+                                    rule: '!has(self.inPlace) || self.upgradeType == ''InPlace'''
+                          nodeDrainTimeout:
+                              description: nodeDrainTimeout is the maximum amount of time that the controller will spend on retrying to drain a node until it succeeds.
+                              type: string
+                          nodeLabels:
+                              additionalProperties:
+                                  type: string
+                              description: nodeLabels propagates a list of labels to Nodes, only once on creation.
+                              type: object
                           platform:
                               description: platform specifies the underlying infrastructure provider for the NodePool
                               properties:
@@ -7371,8 +7538,67 @@ components:
                               description: replicas is the desired number of nodes the pool should maintain. If unset, the controller default value is 0.
                               format: int32
                               type: integer
+                          taints:
+                              description: taints if specified, propagates a list of taints to Nodes, only once on creation.
+                              items:
+                                  description: |-
+                                      taint is as v1 Core but without TimeAdded.
+                                      https://github.com/kubernetes/kubernetes/blob/ed8cad1e80d096257921908a52ac69cf1f41a098/staging/src/k8s.io/api/core/v1/types.go#L3037-L3053
+                                      Validation replicates the same validation as the upstream https://github.com/kubernetes/kubernetes/blob/9a2a7537f035969a68e432b4cc276dbce8ce1735/pkg/util/taints/taints.go#L273.
+                                      See also https://kubernetes.io/docs/concepts/overview/working-with-objects/names/.
+                                  properties:
+                                      effect:
+                                          description: |-
+                                              effect is the effect of the taint on pods
+                                              that do not tolerate the taint.
+                                              Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
+                                          enum:
+                                              - NoSchedule
+                                              - PreferNoSchedule
+                                              - NoExecute
+                                          type: string
+                                      key:
+                                          description: key is the taint key to be applied to a node.
+                                          maxLength: 253
+                                          minLength: 1
+                                          type: string
+                                          x-kubernetes-validations:
+                                              - message: key must be a qualified name with an optional subdomain prefix e.g. example.com/MyName
+                                                rule: self.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/)?[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$')
+                                      value:
+                                          description: value is the taint value corresponding to the taint key.
+                                          maxLength: 253
+                                          type: string
+                                          x-kubernetes-validations:
+                                              - message: Value must start and end with alphanumeric characters and can only contain '-', '_', '.' in the middle
+                                                rule: self.matches('^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$')
+                                  required:
+                                      - effect
+                                      - key
+                                  type: object
+                              type: array
+                          tuningConfig:
+                              description: tuningConfig is a list of references to ConfigMaps containing serialized
+                              items:
+                                  description: |-
+                                      LocalObjectReference contains enough information to let you locate the
+                                      referenced object inside the same namespace.
+                                  properties:
+                                      name:
+                                          default: ""
+                                          description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: array
                       required:
                           - clusterName
+                          - management
                           - platform
                           - release
                       type: object
@@ -7455,6 +7681,10 @@ components:
                           - Ready
                           - Deleting
                       type: string
+                  replicas:
+                      description: Replicas is the latest observed number of nodes in the pool.
+                      format: int32
+                      type: integer
               type: object
       required:
           - spec
@@ -7516,9 +7746,176 @@ components:
                                       NodePool contains the upstream HyperShift fields, mirrored as
                                       passthrough types with per-field visibility and write-mode markers.
                                   properties:
+                                      autoScaling:
+                                          description: autoScaling specifies auto-scaling behavior for the NodePool.
+                                          properties:
+                                              max:
+                                                  description: max is the maximum number of nodes allowed in the pool. Must be >= 1 and >= Min.
+                                                  format: int32
+                                                  minimum: 1
+                                                  type: integer
+                                              min:
+                                                  description: |-
+                                                      min is the minimum number of nodes to maintain in the pool.
+                                                      Can be set to 0 for scale-from-zero for AWS platform.
+                                                      Must be >= 0 and <= .Max.
+                                                  format: int32
+                                                  minimum: 0
+                                                  type: integer
+                                          required:
+                                              - max
+                                              - min
+                                          type: object
+                                          x-kubernetes-validations:
+                                              - message: max must be equal or greater than min
+                                                rule: self.max >= self.min
                                       clusterName:
                                           description: clusterName is the name of the HostedCluster this NodePool belongs to.
                                           type: string
+                                      config:
+                                          description: config is a list of references to ConfigMaps containing serialized
+                                          items:
+                                              description: |-
+                                                  LocalObjectReference contains enough information to let you locate the
+                                                  referenced object inside the same namespace.
+                                              properties:
+                                                  name:
+                                                      default: ""
+                                                      description: |-
+                                                          Name of the referent.
+                                                          This field is effectively required, but due to backwards compatibility is
+                                                          allowed to be empty. Instances of this type with an empty value here are
+                                                          almost certainly wrong.
+                                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                      type: string
+                                              type: object
+                                              x-kubernetes-map-type: atomic
+                                          type: array
+                                      management:
+                                          description: management specifies behavior for managing nodes in the pool, such as
+                                          properties:
+                                              autoRepair:
+                                                  default: false
+                                                  description: |-
+                                                      autoRepair specifies whether health checks should be enabled for machines in the NodePool. The default is false.
+                                                      Enabling this feature will cause the controller to automatically delete unhealthy machines.
+                                                      The unhealthy criteria is reserved for the controller implementation and subject to change.
+                                                      But generally it's determined by checking the Node ready condition is true and a timeout that might vary depending on the platform provider.
+                                                      AutoRepair will no-op when more than 2 Nodes are unhealthy at the same time. Giving time for the cluster to stabilize or to the user to manually intervene.
+                                                  type: boolean
+                                              inPlace:
+                                                  description: inPlace is the configuration for in-place upgrades.
+                                                  properties:
+                                                      maxUnavailable:
+                                                          anyOf:
+                                                              - type: integer
+                                                              - type: string
+                                                          description: |-
+                                                              maxUnavailable is the maximum number of nodes that can be unavailable
+                                                              during the update.
+                                                              Value can be an absolute number (ex: 5) or a percentage of desired nodes
+                                                              (ex: 10%).
+                                                              Absolute number is calculated from percentage by rounding down.
+                                                              Defaults to 1.
+                                                              Example: when this is set to 30%, a max of 30% of the nodes can be made
+                                                              unschedulable/unavailable immediately when the update starts. Once a set
+                                                              of nodes is updated, more nodes can be made unschedulable for update,
+                                                              ensuring that the total number of nodes schedulable at all times during
+                                                              the update is at least 70% of desired nodes.
+                                                          x-kubernetes-int-or-string: true
+                                                  type: object
+                                              replace:
+                                                  default:
+                                                      rollingUpdate:
+                                                          maxSurge: 1
+                                                          maxUnavailable: 0
+                                                      strategy: RollingUpdate
+                                                  description: |-
+                                                      replace is the configuration for rolling upgrades.
+                                                      It defaults to a RollingUpdate strategy with maxSurge of 1 and maxUnavailable of 0.
+                                                  properties:
+                                                      rollingUpdate:
+                                                          description: |-
+                                                              rollingUpdate specifies a rolling update strategy which upgrades nodes by
+                                                              creating new nodes and deleting the old ones.
+                                                          properties:
+                                                              maxSurge:
+                                                                  anyOf:
+                                                                      - type: integer
+                                                                      - type: string
+                                                                  description: |-
+                                                                      maxSurge is the maximum number of nodes that can be provisioned above the
+                                                                      desired number of nodes.
+                                                                      Value can be an absolute number (ex: 5) or a percentage of desired nodes
+                                                                      (ex: 10%).
+                                                                      Absolute number is calculated from percentage by rounding up.
+                                                                      This can not be 0 if MaxUnavailable is 0.
+                                                                      Defaults to 1.
+                                                                      Example: when this is set to 30%, new nodes can be provisioned immediately
+                                                                      when the rolling update starts, such that the total number of old and new
+                                                                      nodes do not exceed 130% of desired nodes. Once old nodes have been
+                                                                      deleted, new nodes can be provisioned, ensuring that total number of nodes
+                                                                      running at any time during the update is at most 130% of desired nodes.
+                                                                  x-kubernetes-int-or-string: true
+                                                              maxUnavailable:
+                                                                  anyOf:
+                                                                      - type: integer
+                                                                      - type: string
+                                                                  description: |-
+                                                                      maxUnavailable is the maximum number of nodes that can be unavailable
+                                                                      during the update.
+                                                                      Value can be an absolute number (ex: 5) or a percentage of desired nodes
+                                                                      (ex: 10%).
+                                                                      Absolute number is calculated from percentage by rounding down.
+                                                                      This can not be 0 if MaxSurge is 0.
+                                                                      Defaults to 0.
+                                                                      Example: when this is set to 30%, old nodes can be deleted down to 70% of
+                                                                      desired nodes immediately when the rolling update starts. Once new nodes
+                                                                      are ready, more old nodes be deleted, followed by provisioning new nodes,
+                                                                      ensuring that the total number of nodes available at all times during the
+                                                                      update is at least 70% of desired nodes.
+                                                                  x-kubernetes-int-or-string: true
+                                                          type: object
+                                                      strategy:
+                                                          description: |-
+                                                              strategy is the node replacement strategy for nodes in the pool.
+                                                              In can be either "RollingUpdate" or "OnDelete". RollingUpdate will rollout Nodes honoring maxSurge and maxUnavailable.
+                                                              OnDelete provide more granular control and will replace nodes as the old ones are manually deleted.
+                                                          enum:
+                                                              - RollingUpdate
+                                                              - OnDelete
+                                                          type: string
+                                                  type: object
+                                                  x-kubernetes-validations:
+                                                      - message: The 'rollingUpdate' field can only be set when 'strategy' is 'RollingUpdate'
+                                                        rule: '!has(self.rollingUpdate) || self.strategy == ''RollingUpdate'''
+                                              upgradeType:
+                                                  description: |-
+                                                      upgradeType specifies the type of strategy for handling upgrades.
+                                                      This can be either "Replace" or "InPlace".
+                                                      "Replace" will update Nodes by recreating the underlying instances.
+                                                      "InPlace" will update Nodes by applying changes to the existing instances. This might or might not result in a reboot.
+                                                  enum:
+                                                      - Replace
+                                                      - InPlace
+                                                  type: string
+                                                  x-kubernetes-validations:
+                                                      - message: UpgradeType is immutable
+                                                        rule: self == oldSelf
+                                          required:
+                                              - upgradeType
+                                          type: object
+                                          x-kubernetes-validations:
+                                              - message: The 'inPlace' field can only be set when 'upgradeType' is 'InPlace'
+                                                rule: '!has(self.inPlace) || self.upgradeType == ''InPlace'''
+                                      nodeDrainTimeout:
+                                          description: nodeDrainTimeout is the maximum amount of time that the controller will spend on retrying to drain a node until it succeeds.
+                                          type: string
+                                      nodeLabels:
+                                          additionalProperties:
+                                              type: string
+                                          description: nodeLabels propagates a list of labels to Nodes, only once on creation.
+                                          type: object
                                       platform:
                                           description: platform specifies the underlying infrastructure provider for the NodePool
                                           properties:
@@ -7848,8 +8245,67 @@ components:
                                           description: replicas is the desired number of nodes the pool should maintain. If unset, the controller default value is 0.
                                           format: int32
                                           type: integer
+                                      taints:
+                                          description: taints if specified, propagates a list of taints to Nodes, only once on creation.
+                                          items:
+                                              description: |-
+                                                  taint is as v1 Core but without TimeAdded.
+                                                  https://github.com/kubernetes/kubernetes/blob/ed8cad1e80d096257921908a52ac69cf1f41a098/staging/src/k8s.io/api/core/v1/types.go#L3037-L3053
+                                                  Validation replicates the same validation as the upstream https://github.com/kubernetes/kubernetes/blob/9a2a7537f035969a68e432b4cc276dbce8ce1735/pkg/util/taints/taints.go#L273.
+                                                  See also https://kubernetes.io/docs/concepts/overview/working-with-objects/names/.
+                                              properties:
+                                                  effect:
+                                                      description: |-
+                                                          effect is the effect of the taint on pods
+                                                          that do not tolerate the taint.
+                                                          Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
+                                                      enum:
+                                                          - NoSchedule
+                                                          - PreferNoSchedule
+                                                          - NoExecute
+                                                      type: string
+                                                  key:
+                                                      description: key is the taint key to be applied to a node.
+                                                      maxLength: 253
+                                                      minLength: 1
+                                                      type: string
+                                                      x-kubernetes-validations:
+                                                          - message: key must be a qualified name with an optional subdomain prefix e.g. example.com/MyName
+                                                            rule: self.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/)?[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$')
+                                                  value:
+                                                      description: value is the taint value corresponding to the taint key.
+                                                      maxLength: 253
+                                                      type: string
+                                                      x-kubernetes-validations:
+                                                          - message: Value must start and end with alphanumeric characters and can only contain '-', '_', '.' in the middle
+                                                            rule: self.matches('^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$')
+                                              required:
+                                                  - effect
+                                                  - key
+                                              type: object
+                                          type: array
+                                      tuningConfig:
+                                          description: tuningConfig is a list of references to ConfigMaps containing serialized
+                                          items:
+                                              description: |-
+                                                  LocalObjectReference contains enough information to let you locate the
+                                                  referenced object inside the same namespace.
+                                              properties:
+                                                  name:
+                                                      default: ""
+                                                      description: |-
+                                                          Name of the referent.
+                                                          This field is effectively required, but due to backwards compatibility is
+                                                          allowed to be empty. Instances of this type with an empty value here are
+                                                          almost certainly wrong.
+                                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                      type: string
+                                              type: object
+                                              x-kubernetes-map-type: atomic
+                                          type: array
                                   required:
                                       - clusterName
+                                      - management
                                       - platform
                                       - release
                                   type: object
@@ -7932,6 +8388,10 @@ components:
                                       - Ready
                                       - Deleting
                                   type: string
+                              replicas:
+                                  description: Replicas is the latest observed number of nodes in the pool.
+                                  format: int32
+                                  type: integer
                           type: object
                   required:
                       - spec
@@ -8084,9 +8544,48 @@ components:
       additionalProperties: true
       description: NodePoolSpecPassthrough mirrors NodePoolSpec from upstream HyperShift
       properties:
+          autoScaling:
+              description: autoScaling specifies auto-scaling behavior for the NodePool.
+              type: object
+              x-kubernetes-validations:
+                  - message: max must be equal or greater than min
+                    rule: self.max >= self.min
           clusterName:
               description: clusterName is the name of the HostedCluster this NodePool belongs to.
               type: string
+          config:
+              description: config is a list of references to ConfigMaps containing serialized
+              items:
+                  description: |-
+                      LocalObjectReference contains enough information to let you locate the
+                      referenced object inside the same namespace.
+                  properties:
+                      name:
+                          default: ""
+                          description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          type: string
+                  type: object
+                  x-kubernetes-map-type: atomic
+              type: array
+          management:
+              description: management specifies behavior for managing nodes in the pool, such as
+              type: object
+              x-kubernetes-validations:
+                  - message: The 'inPlace' field can only be set when 'upgradeType' is 'InPlace'
+                    rule: '!has(self.inPlace) || self.upgradeType == ''InPlace'''
+          nodeDrainTimeout:
+              description: nodeDrainTimeout is the maximum amount of time that the controller will spend on retrying to drain a node until it succeeds.
+              type: string
+          nodeLabels:
+              additionalProperties:
+                  type: string
+              description: nodeLabels propagates a list of labels to Nodes, only once on creation.
+              type: object
           platform:
               $ref: '#/components/schemas/NodePoolPlatform'
           release:
@@ -8096,8 +8595,67 @@ components:
               description: replicas is the desired number of nodes the pool should maintain. If unset, the controller default value is 0.
               format: int32
               type: integer
+          taints:
+              description: taints if specified, propagates a list of taints to Nodes, only once on creation.
+              items:
+                  description: |-
+                      taint is as v1 Core but without TimeAdded.
+                      https://github.com/kubernetes/kubernetes/blob/ed8cad1e80d096257921908a52ac69cf1f41a098/staging/src/k8s.io/api/core/v1/types.go#L3037-L3053
+                      Validation replicates the same validation as the upstream https://github.com/kubernetes/kubernetes/blob/9a2a7537f035969a68e432b4cc276dbce8ce1735/pkg/util/taints/taints.go#L273.
+                      See also https://kubernetes.io/docs/concepts/overview/working-with-objects/names/.
+                  properties:
+                      effect:
+                          description: |-
+                              effect is the effect of the taint on pods
+                              that do not tolerate the taint.
+                              Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
+                          enum:
+                              - NoSchedule
+                              - PreferNoSchedule
+                              - NoExecute
+                          type: string
+                      key:
+                          description: key is the taint key to be applied to a node.
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                          x-kubernetes-validations:
+                              - message: key must be a qualified name with an optional subdomain prefix e.g. example.com/MyName
+                                rule: self.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/)?[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$')
+                      value:
+                          description: value is the taint value corresponding to the taint key.
+                          maxLength: 253
+                          type: string
+                          x-kubernetes-validations:
+                              - message: Value must start and end with alphanumeric characters and can only contain '-', '_', '.' in the middle
+                                rule: self.matches('^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$')
+                  required:
+                      - effect
+                      - key
+                  type: object
+              type: array
+          tuningConfig:
+              description: tuningConfig is a list of references to ConfigMaps containing serialized
+              items:
+                  description: |-
+                      LocalObjectReference contains enough information to let you locate the
+                      referenced object inside the same namespace.
+                  properties:
+                      name:
+                          default: ""
+                          description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          type: string
+                  type: object
+                  x-kubernetes-map-type: atomic
+              type: array
       required:
           - clusterName
+          - management
           - platform
           - release
       type: object
@@ -8434,6 +8992,10 @@ components:
                   - Ready
                   - Deleting
               type: string
+          replicas:
+              description: Replicas is the latest observed number of nodes in the pool.
+              format: int32
+              type: integer
       type: object
 
     OidcConfig:

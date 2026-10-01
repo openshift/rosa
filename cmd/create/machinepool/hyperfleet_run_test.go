@@ -77,6 +77,10 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
 				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
 				Expect(np.Spec.NodePool.Platform.AWS.RootVolume.Size).To(Equal(int64(75)))
+				Expect(np.Spec.NodePool.Platform.AWS.ResourceTags).To(ConsistOf(
+					hypershiftv1beta1.AWSResourceTag{Key: "test", Value: "testvalue"},
+					hypershiftv1beta1.AWSResourceTag{Key: "test2", Value: "testValue/openshift"},
+				))
 				return created, nil
 			})
 
@@ -87,6 +91,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			InstanceType: "m5.xlarge",
 			Subnet:       "subnet-abc123",
 			RootDiskSize: "75GiB",
+			Tags:         []string{"test:testvalue", "test2:testValue/openshift"},
 		}, nil)
 	})
 
@@ -206,11 +211,13 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		DeferCleanup(func() { exitFn = orig })
 
 		ctrl := gomock.NewController(GinkgoT())
-		hf, clusters, _ := newCreateMPMocks(ctrl)
+		hf, clusters, nodePools := newCreateMPMocks(ctrl)
 		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		// Get is NOT called when subnet is missing: PreRequest fails before PostExpand.
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.NodePoolList{}, nil)
+		// Get is not called when no subnet can be selected: PreRequest fails before PostExpand.
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
@@ -269,5 +276,18 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 
 		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
 		Expect(err).To(MatchError(ContainSubstring("--disk-size and --size cannot be used together")))
+	})
+
+	It("returns an error when too many AWS tags are supplied", func() {
+		tags := make([]string, maxAWSResourceTags+1)
+		for i := range tags {
+			tags[i] = fmt.Sprintf("tag%d:value", i)
+		}
+		h := &hyperfleetNodePoolCreate{
+			userOptions: &mpOpts.CreateMachinepoolUserOptions{Tags: tags},
+		}
+
+		err := h.validateAndParseUserOptions()
+		Expect(err).To(MatchError("Invalid machine pool AWS tags: Resource has too many AWS tags"))
 	})
 })

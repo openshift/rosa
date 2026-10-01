@@ -127,6 +127,25 @@ resources:
 
   nodePool:
     aliases:
+      # Existing machinepool flags cover these fields under their established names.
+      - path: spec.nodePool.autoScaling.max
+        flag: ""
+      - path: spec.nodePool.autoScaling.min
+        flag: ""
+      - path: spec.nodePool.nodeDrainTimeout
+        flag: ""
+
+      # Keep complex API fields JSON-backed internally without adding new CLI flags.
+      - path: spec.nodePool.config
+        type: string
+        flag: ""
+      - path: spec.nodePool.taints
+        type: string
+        flag: ""
+      - path: spec.nodePool.tuningConfig
+        type: string
+        flag: ""
+
       - path: spec.labels
         type: string
       - path: spec.nodePool.platform.aws.resourceTags

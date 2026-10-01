@@ -8,6 +8,9 @@ import (
 
 // NodePoolStatus defines the observed state of a NodePool.
 type NodePoolStatus struct {
+	// Replicas is the latest observed number of nodes in the pool.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
 	// Conditions represent the latest observations of the node pool's state.
 	// Known condition types: Synced, Ready.
 	// +listType=map

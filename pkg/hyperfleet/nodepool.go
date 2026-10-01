@@ -23,7 +23,7 @@ func ResolveNodePoolUID(
 			return string(np.UID), nil
 		}
 	}
-	return "", fmt.Errorf("node pool '%s' not found", nodePoolName)
+	return "", fmt.Errorf("machine pool '%s' does not exist", nodePoolName)
 }
 
 // FormatNodePoolDiskSize returns the disk size column for list/describe output.

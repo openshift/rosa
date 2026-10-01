@@ -118,7 +118,17 @@ func runHyperfleetDeleteOidcConfig(r *rosa.Runtime) {
 		platform.DeleteOptions{},
 	)
 	if err != nil {
-		r.Reporter.Errorf("Failed to delete OIDC config from Platform API: %v", err)
+		// Translate API error to user-friendly message for consistency with OCM path
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "Cannot delete OIDC config referenced by clusters") ||
+			strings.Contains(errMsg, "OIDCCONFIGS-MGMT-DELETE-003") {
+			r.Reporter.Errorf(
+				"There are clusters using OIDC config '%s', can't delete the configuration",
+				oidcConfig.Spec.IssuerUrl,
+			)
+		} else {
+			r.Reporter.Errorf("Failed to delete OIDC config from Platform API: %v", err)
+		}
 		hfExitFn(1)
 		return
 	}

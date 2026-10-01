@@ -31,8 +31,8 @@ require (
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.470
 	github.com/openshift-online/ocm-common v0.0.46
 	github.com/openshift-online/ocm-sdk-go v0.1.517
-	github.com/openshift-online/rosa-hyperfleet-api/api v0.1.11
-	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.11
+	github.com/openshift-online/rosa-hyperfleet-api/api v0.1.13
+	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.13
 	github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.2
@@ -41,6 +41,7 @@ require (
 	github.com/zgalor/weberr v0.9.0
 	go.uber.org/mock v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
+	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
 	k8s.io/client-go v0.37.1
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
@@ -84,7 +85,6 @@ require (
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
-	k8s.io/api v0.37.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
@@ -159,7 +159,3 @@ require (
 )
 
 replace github.com/golang/glog => github.com/kubermatic/glog-logrus v0.0.0-20180829085450-3fa5b9870d1d
-
-replace github.com/openshift-online/rosa-hyperfleet-api/api v0.1.10 => github.com/cdoan1/rosa-hyperfleet-api/api v0.0.0-20260918213311-d7908b960ed3
-
-replace github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.10 => github.com/cdoan1/rosa-hyperfleet-api/clientset v0.0.0-20260918213311-d7908b960ed3

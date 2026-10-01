@@ -38,7 +38,7 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 		return
 	}
 
-	// In hyperfleet mode, only --prefix is supported (no cluster lookup via OCM)
+	// --prefix is required in hyperfleet mode
 	if args.prefix == "" {
 		r.Reporter.Errorf("--prefix is required in hyperfleet mode")
 		r.Reporter.Infof("Use 'rosa list operator-roles' to see available prefixes")
@@ -51,7 +51,24 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 		spin = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	}
 
-	fetchingReporterOutput := fmt.Sprintf("Fetching operator roles for prefix: %s", args.prefix)
+	// Prefix-based deletion: verify no cluster is using this prefix
+	ctx := context.Background()
+	r.Reporter.Debugf("Checking if any cluster is using prefix '%s'", args.prefix)
+	hasClusterUsingPrefix, err := hyperfleet.HasClusterUsingOperatorRolesPrefix(ctx, r.HyperFleetClient, args.prefix)
+	if err != nil {
+		r.Reporter.Errorf("There was a problem checking if any clusters are using Operator Roles Prefix '%s': %v",
+			args.prefix, err)
+		hfExitFn(1)
+		return
+	}
+	if hasClusterUsingPrefix {
+		r.Reporter.Errorf("There are clusters using Operator Roles Prefix '%s', can't delete the IAM roles", args.prefix)
+		hfExitFn(1)
+		return
+	}
+	prefix := args.prefix
+
+	fetchingReporterOutput := fmt.Sprintf("Fetching operator roles for prefix: %s", prefix)
 	if spin != nil {
 		r.Reporter.Infof("%s", fetchingReporterOutput)
 		spin.Start()
@@ -79,7 +96,7 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 	}
 
 	var foundOperatorRoles []string
-	for _, roleName := range hyperfleet.OperatorRoleNames(args.prefix) {
+	for _, roleName := range hyperfleet.OperatorRoleNames(prefix) {
 		exists, _, err := r.AWSClient.CheckRoleExists(roleName)
 		if err != nil {
 			if spin != nil {
@@ -98,11 +115,11 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 	}
 
 	if len(foundOperatorRoles) == 0 {
-		r.Reporter.Infof("There are no operator roles to delete for prefix '%s'", args.prefix)
+		r.Reporter.Infof("There are no operator roles to delete for prefix '%s'", prefix)
 		return
 	}
 
-	r.Reporter.Infof("Found %d operator role(s) with prefix '%s'", len(foundOperatorRoles), args.prefix)
+	r.Reporter.Infof("Found %d operator role(s) with prefix '%s'", len(foundOperatorRoles), prefix)
 
 	// Check if roles have managed policies
 	_, roleARN, err := r.AWSClient.CheckRoleExists(foundOperatorRoles[0])

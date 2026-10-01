@@ -4,6 +4,8 @@ package public
 
 import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NodePoolSpecPassthrough mirrors NodePoolSpec from upstream HyperShift
@@ -19,8 +21,8 @@ type NodePoolSpecPassthrough struct {
 	// +required
 	Release hypershiftv1beta1.Release `json:"release"`
 	// platform specifies the underlying infrastructure provider for the NodePool
-	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=mutable
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
 	// +required
 	Platform NodePoolPlatform `json:"platform"`
 	// replicas is the desired number of nodes the pool should maintain. If unset, the controller default value is 0.
@@ -28,4 +30,39 @@ type NodePoolSpecPassthrough struct {
 	// +hyperfleet:write-mode=mutable
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+	// management specifies behavior for managing nodes in the pool, such as
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=service-set
+	// +required
+	Management hypershiftv1beta1.NodePoolManagement `json:"management"`
+	// autoScaling specifies auto-scaling behavior for the NodePool.
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
+	// +optional
+	AutoScaling *hypershiftv1beta1.NodePoolAutoScaling `json:"autoScaling,omitempty"`
+	// config is a list of references to ConfigMaps containing serialized
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
+	// +optional
+	Config []corev1.LocalObjectReference `json:"config,omitempty"`
+	// nodeDrainTimeout is the maximum amount of time that the controller will spend on retrying to drain a node until it succeeds.
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
+	// +optional
+	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
+	// nodeLabels propagates a list of labels to Nodes, only once on creation.
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=service-set
+	// +optional
+	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
+	// taints if specified, propagates a list of taints to Nodes, only once on creation.
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
+	// +optional
+	Taints []hypershiftv1beta1.Taint `json:"taints,omitempty"`
+	// tuningConfig is a list of references to ConfigMaps containing serialized
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
+	// +optional
+	TuningConfig []corev1.LocalObjectReference `json:"tuningConfig,omitempty"`
 }

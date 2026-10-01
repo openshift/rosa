@@ -8,6 +8,10 @@ resources:
               goType: string
               operations:
                 - create
+            - path: metadata.uid
+              goType: string
+              operations:
+                - read
             - path: spec.deleteProtection
               goType: boolean
               operations:
@@ -34,6 +38,11 @@ resources:
                 - create
                 - update
             - path: spec.hostedCluster.autoNode.provisionerConfig.name
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.channel
               goType: string
               operations:
                 - create
@@ -102,11 +111,26 @@ resources:
               operations:
                 - create
             - path: spec.hostedCluster.configuration.machineConfig.allowedKernelArguments
-              goType: array
+              goType: array(string)
               operations:
                 - create
+            - path: spec.hostedCluster.configuration.proxy.httpProxy
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.configuration.proxy.httpsProxy
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.configuration.proxy.noProxy
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.hostedCluster.imageContentSources
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -121,7 +145,7 @@ resources:
                 - create
                 - update
             - path: spec.hostedCluster.networking.apiServer.allowedCIDRBlocks
-              goType: array
+              goType: array(string)
               operations:
                 - create
                 - update
@@ -131,12 +155,12 @@ resources:
                 - create
                 - update
             - path: spec.hostedCluster.networking.clusterNetwork
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
             - path: spec.hostedCluster.networking.machineNetwork
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -146,17 +170,17 @@ resources:
                 - create
                 - update
             - path: spec.hostedCluster.networking.serviceNetwork
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
             - path: spec.hostedCluster.platform.aws.additionalAllowedPrincipals
-              goType: array
+              goType: array(string)
               operations:
                 - create
                 - update
             - path: spec.hostedCluster.platform.aws.cloudProviderConfig.subnet.filters
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -191,7 +215,7 @@ resources:
                 - create
                 - update
             - path: spec.hostedCluster.platform.aws.resourceTags
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -231,7 +255,7 @@ resources:
                 - create
                 - update
             - path: spec.hostedCluster.platform.aws.serviceEndpoints
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -285,6 +309,10 @@ resources:
               goType: string
               operations:
                 - create
+            - path: metadata.uid
+              goType: string
+              operations:
+                - read
             - path: spec.autoRepair
               goType: boolean
               operations:
@@ -300,7 +328,27 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.nodePool.autoScaling.max
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.autoScaling.min
+              goType: integer(int32)
+              operations:
+                - create
+                - update
             - path: spec.nodePool.clusterName
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.config
+              goType: array(object)
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.nodeDrainTimeout
               goType: string
               operations:
                 - create
@@ -356,7 +404,7 @@ resources:
                 - create
                 - update
             - path: spec.nodePool.platform.aws.resourceTags
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -386,12 +434,12 @@ resources:
                 - create
                 - update
             - path: spec.nodePool.platform.aws.securityGroups
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
             - path: spec.nodePool.platform.aws.subnet.filters
-              goType: array
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -414,6 +462,16 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.nodePool.taints
+              goType: array(object)
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.tuningConfig
+              goType: array(object)
+              operations:
+                - create
+                - update
     oidcConfig:
         sdkType: v1alpha1.OidcConfig
         fields:
@@ -421,6 +479,10 @@ resources:
               goType: string
               operations:
                 - create
+            - path: metadata.uid
+              goType: string
+              operations:
+                - read
             - path: spec.installerRoleArn
               goType: string
               operations:
