@@ -5,23 +5,18 @@ description: "Keep CLI docs, structure tests, and user-facing guidance in sync w
 
 # ROSA Docs And Structure Tests
 
-Use this skill when:
+Use this skill for command tree, flag, help, generated CLI documentation,
+agent guidance, PR template, or issue form changes.
 
-- Command tree or flag changes are part of the task
-- Help text or generated CLI docs changed
-- `AGENTS.md`, `CONTRIBUTING.md`, `guidelines/*-guidelines.md`, PR templates, or issue forms are being updated
-
-## Workflow
-
-1. If the command tree changes, update `cmd/rosa/structure_test/command_structure.yml`.
-2. If flags change, update the matching `cmd/rosa/structure_test/command_args/**/command_args.yml`.
-3. If command help text or generated docs should change, run `make generate-docs`.
-4. Keep `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `CONTRIBUTING.md`, `guidelines/ARCHITECTURE.md`, and `.github/pull_request_template.md` aligned when workflow wording changes.
-5. Keep issue templates specific to real ROSA workflows and reproducible reports.
-6. For AWS-facing docs, cross-check the official ROSA and AWS docs linked from `AGENTS.md`.
-
-## Verification
-
-- Re-read the edited docs for stale commands, placeholders, and drift from the real workflow.
-- Confirm command and flag docs match the structure-test files.
-- Run any required local verification from `CONTRIBUTING.md`.
+1. Read [AGENTS.md](../../../AGENTS.md), then the guides for each changed
+   topic. Use [command guidelines](../../../guidelines/command-guidelines.md)
+   for command contracts and CLI documentation generation.
+2. Follow [testing guidelines](../../../guidelines/testing-guidelines.md)
+   for generated files and verification. Keep linked entrypoints and
+   contributor documentation aligned when their workflow wording changes.
+3. Check issue and PR templates against
+   [change review](../../../guidelines/change-review.md).
+4. For AWS-facing wording, use the official sources in
+   [AWS guidelines](../../../guidelines/aws-guidelines.md).
+5. Re-read edited documentation for stale paths, placeholders, and workflow
+   drift; run the relevant checks from [CONTRIBUTING.md](../../../CONTRIBUTING.md).
