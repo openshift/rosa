@@ -860,6 +860,8 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.InstanceType != "" {
 		flags = append(flags, "--compute-machine-type", ch.profile.ClusterConfig.InstanceType)
 		ch.clusterConfig.Nodes.ComputeInstanceType = ch.profile.ClusterConfig.InstanceType
+	} else if ch.profile.ClusterConfig.HCP {
+		ch.clusterConfig.Nodes.ComputeInstanceType = constants.DefaultHCPInstanceType
 	} else {
 		ch.clusterConfig.Nodes.ComputeInstanceType = constants.DefaultInstanceType
 	}

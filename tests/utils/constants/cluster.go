@@ -65,8 +65,9 @@ var (
 
 // instance type
 const (
-	DefaultInstanceType = "m5.xlarge"
-	CommonAWSRegion     = "us-west-2"
+	DefaultInstanceType    = "m5.xlarge"
+	DefaultHCPInstanceType = "m7i.xlarge"
+	CommonAWSRegion        = "us-west-2"
 
 	R5XLarge  = "r5.xlarge"
 	M5XLarge  = "m5.xlarge"

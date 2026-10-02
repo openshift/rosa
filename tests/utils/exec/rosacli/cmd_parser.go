@@ -17,6 +17,13 @@ import (
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
+// reMessageField matches the start of a node pool's "Message:" field in
+// 'rosa describe machinepool'/nodepool output (see pkg/machinepool/output.go).
+// It's free-form text passed through verbatim from the service, so it gets
+// special handling in both textData.Parse (to avoid being misclassified as
+// CLI tip output) and blockScalarizeMessageField (to survive YAML parsing).
+var reMessageField = regexp.MustCompile(`(?m)^Message:[ \t]*`)
+
 type Parser struct {
 	JsonData  *jsonData
 	TableData *tableData
@@ -100,9 +107,23 @@ func (td *textData) Parse() *textData {
 	lines := ReadLines(input)
 	reg1 := regexp.MustCompile(`.*[IEW].*:\x20\S.*\s+\S+`)
 	reg2 := regexp.MustCompile("^```\\s*")
+	inMessage := false
 	for _, line := range lines {
 		strline := string(line)
 		if reg2.FindString(strline) != "" {
+			continue
+		}
+		if !inMessage && reMessageField.MatchString(strline) {
+			inMessage = true
+		}
+		if inMessage {
+			// "Message:" (a node pool's free-form status message, see
+			// pkg/machinepool/output.go) is passed through verbatim from the
+			// service and can legitimately contain text like "Error: ..." or
+			// "Warning: ..."; once it begins, keep it and everything after it
+			// rather than risking the log-noise heuristic below misclassifying
+			// it as CLI tip output.
+			results.WriteString(strline)
 			continue
 		}
 		result := reg1.FindString(strline)
@@ -157,14 +178,30 @@ func escapeYamlStringValues(input string) (string, error) {
 	var lines []string
 	scanner := bufio.NewScanner(strings.NewReader(input))
 	reLeadingZeroNum := regexp.MustCompile(`^0\d+$`)
+	inBlockScalar := false
 	for scanner.Scan() {
 		line := scanner.Text()
+
+		if inBlockScalar {
+			if line == "" || strings.HasPrefix(line, " ") {
+				// Literal block scalar content (e.g. a node pool's free-form status
+				// Message, injected by blockScalarizeMessageField) is raw text, not
+				// its own YAML mapping entry; the heuristics below would corrupt it
+				// by inserting quotes into the value, so pass it through untouched.
+				lines = append(lines, line)
+				continue
+			}
+			inBlockScalar = false
+		}
+
 		key, value, found := strings.Cut(line, ":")
 		if found {
 			value = strings.TrimSpace(value)
 
 			// Checks to perform
-			if reLeadingZeroNum.MatchString(value) {
+			if value == "|" || value == "|-" || value == "|+" {
+				inBlockScalar = true
+			} else if reLeadingZeroNum.MatchString(value) {
 				// If the value is a number with leading zero, add quotes
 				line = fmt.Sprintf("%s: \"%s\"", key, value)
 			} else if !strings.HasPrefix(value, "'") && strings.Contains(value, ": ") {

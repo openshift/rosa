@@ -1186,6 +1186,7 @@ var _ = Describe("Additional security groups validation",
 						"--region", resourcesHandler.GetVPC().Region,
 						"--replicas", "3",
 						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					index = strings.Index(additionalSecurityGroupFlag, "a")
@@ -1206,6 +1207,7 @@ var _ = Describe("Additional security groups validation",
 						"--version", ocpVersionBelow4_14,
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
 						"-y",
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					index = strings.Index(additionalSecurityGroupFlag, "a")
@@ -1225,6 +1227,7 @@ var _ = Describe("Additional security groups validation",
 						additionalSecurityGroupFlag, value,
 						"--version", ocpVersion,
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
@@ -1241,6 +1244,7 @@ var _ = Describe("Additional security groups validation",
 						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
 						"--version", ocpVersion,
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring(
@@ -1497,7 +1501,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with invalid tag key")
 				out, err := clusterService.CreateDryRun(
-					clusterName, "--tags=~~~:cluster",
+					clusterName, "--tags=~~~:cluster", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1506,7 +1510,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with invalid tag value")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--tags=name:****",
+					clusterName, "--tags=name:****", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1515,7 +1519,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with duplicate tag key")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--tags=name:test1,op:clound,name:test2",
+					clusterName, "--tags=name:test1,op:clound,name:test2", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1524,7 +1528,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with invalid tag format")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--tags=test1,test2,test4",
+					clusterName, "--tags=test1,test2,test4", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1533,7 +1537,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with empty tag value is allowed for Classic")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--tags", "foo:",
+					clusterName, "--tags", "foo:", "--non-sts",
 				)
 				combined := out.String()
 				if err != nil {
@@ -1544,7 +1548,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with invalid tag format")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--tags=name:gender:age",
+					clusterName, "--tags=name:gender:age", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1561,6 +1565,7 @@ var _ = Describe("Classic cluster creation validation",
 				out, err := clusterService.CreateDryRun(
 					clusterName,
 					"--tags", `"Cost Center":"Finance Team",env:prod`,
+					"--non-sts",
 				)
 				combined := out.String()
 				if err != nil {
@@ -1575,6 +1580,7 @@ var _ = Describe("Classic cluster creation validation",
 				out, err = clusterService.CreateDryRun(
 					clusterName,
 					"--tags", `"aws:owned":true`,
+					"--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1584,6 +1590,7 @@ var _ = Describe("Classic cluster creation validation",
 				out, err = clusterService.CreateDryRun(
 					clusterName,
 					"--tags", `"env":prod,tag:2 value2`,
+					"--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1593,6 +1600,7 @@ var _ = Describe("Classic cluster creation validation",
 				out, err = clusterService.CreateDryRun(
 					clusterName,
 					"--tags", "owner:",
+					"--non-sts",
 				)
 				combined = out.String()
 				if err != nil {
@@ -1613,7 +1621,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Try a worker disk size that's too small")
 				out, err := clusterService.CreateDryRun(
-					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", minSize-1),
+					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", minSize-1), "--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				stdout := client.Parser.TextData.Input(out).Parse().Tip()
@@ -1622,7 +1630,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Try a worker disk size that's a little bigger")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", maxSize+1),
+					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", maxSize+1), "--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
@@ -1632,7 +1640,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Try a worker disk size that's very big")
 				veryBigData := "34567865467898765789"
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--worker-disk-size", fmt.Sprintf("%sGiB", veryBigData),
+					clusterName, "--worker-disk-size", fmt.Sprintf("%sGiB", veryBigData), "--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
@@ -1644,7 +1652,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Try a worker disk size that's negative")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--worker-disk-size", "-1GiB",
+					clusterName, "--worker-disk-size", "-1GiB", "--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
@@ -1657,7 +1665,7 @@ var _ = Describe("Classic cluster creation validation",
 				By("Try a worker disk size that's a string")
 				invalidStr := "invalid"
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--worker-disk-size", invalidStr,
+					clusterName, "--worker-disk-size", invalidStr, "--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				stdout = client.Parser.TextData.Input(out).Parse().Tip()
@@ -1678,7 +1686,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with the zone not available in the region")
 				out, err := clusterService.CreateDryRun(
-					clusterName, "--availability-zones", "us-east-2e", "--region", "us-east-2",
+					clusterName, "--availability-zones", "us-east-2e", "--region", "us-east-2", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1687,7 +1695,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with zones not match region")
 				out, err = clusterService.CreateDryRun(
-					clusterName, "--availability-zones", "us-west-2b", "--region", "us-east-2",
+					clusterName, "--availability-zones", "us-west-2b", "--region", "us-east-2", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1699,6 +1707,7 @@ var _ = Describe("Classic cluster creation validation",
 					clusterName,
 					"--availability-zones", "us-west-2b,us-west-2b,us-west-2b",
 					"--region", "us-west-2",
+					"--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).
@@ -1727,6 +1736,7 @@ var _ = Describe("Classic cluster creation validation",
 					"--region", testingRegion,
 					"--availability-zones", zone,
 					"--subnet-ids", subnetIDs,
+					"--non-sts",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(out.String()).
@@ -1855,7 +1865,7 @@ var _ = Describe("Classic cluster creation validation",
 
 				By("Create cluster with fips flag but '--etcd-encryption=false")
 				errorOutput, err := clusterService.CreateDryRun(
-					clusterName, "--fips", "--etcd-encryption=false",
+					clusterName, "--fips", "--etcd-encryption=false", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
@@ -2099,6 +2109,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				output, _, err := clusterService.Create(clusterName,
 					"--subnet-ids", "subnet-nonexisting",
+					"--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
@@ -2109,6 +2120,7 @@ var _ = Describe("Create cluster with invalid options will",
 					"--subnet-ids", subnetMap["private"].ID,
 					"--multi-az",
 					"--region", testingTegion,
+					"--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
@@ -2128,6 +2140,7 @@ var _ = Describe("Create cluster with invalid options will",
 							},
 							","),
 						"--region", testingTegion,
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
@@ -2153,6 +2166,7 @@ var _ = Describe("Create cluster with invalid options will",
 							","),
 						"--region", testingTegion,
 						"--multi-az",
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
@@ -2180,6 +2194,7 @@ var _ = Describe("Create cluster with invalid options will",
 						sameZoneSubnets, ","),
 					"--region", testingTegion,
 					"--multi-az",
+					"--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
@@ -2198,6 +2213,7 @@ var _ = Describe("Create cluster with invalid options will",
 				for flag, invalidValue := range illegalCIDRMap {
 					output, err := clusterService.CreateDryRun(clusterName,
 						flag, invalidValue,
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
@@ -2208,6 +2224,7 @@ var _ = Describe("Create cluster with invalid options will",
 				output, err := clusterService.CreateDryRun(clusterName,
 					"--service-cidr", "1.0.0.0/16",
 					"--pod-cidr", "1.0.0.0/16",
+					"--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
@@ -2222,6 +2239,7 @@ var _ = Describe("Create cluster with invalid options will",
 				for flag, invalidValue := range invalidCIDRMap {
 					output, err := clusterService.CreateDryRun(clusterName,
 						flag, invalidValue,
+						"--non-sts",
 					)
 					Expect(err).To(HaveOccurred())
 					switch flag {
@@ -2242,6 +2260,7 @@ var _ = Describe("Create cluster with invalid options will",
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--multi-az",
+					"--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
@@ -2251,6 +2270,7 @@ var _ = Describe("Create cluster with invalid options will",
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "28",
+					"--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
@@ -2260,6 +2280,7 @@ var _ = Describe("Create cluster with invalid options will",
 				output, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "invalid",
+					"--non-sts",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
@@ -2589,7 +2610,7 @@ var _ = Describe("Classic cluster creation negative testing",
 
 				By("Create cluster with invalid subnets")
 				out, err := clusterService.CreateDryRun(
-					clusterName, "--subnet-ids", "subnet-xxx",
+					clusterName, "--subnet-ids", "subnet-xxx", "--non-sts",
 				)
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
@@ -2841,7 +2862,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(output.String()).To(ContainSubstring("ERR: --no-cni and --network-type are mutually exclusive parameters"))
 
 				By("Create non-HCP cluster with --no-cni flag")
-				output, err = clusterService.CreateDryRun("ocp-73725", "--no-cni")
+				output, err = clusterService.CreateDryRun("ocp-73725", "--no-cni", "--non-sts")
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).To(ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
 			})
@@ -3098,6 +3119,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					clusterName,
 					"--additional-allowed-principals", "zzzz",
 					"--debug",
+					"--non-sts",
 				)
 				helper.ExpectErrorWithMessage(err, "ERR: Additional Allowed Principals is supported only for Hosted Control Planes")
 			})
@@ -3139,7 +3161,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					rosalCommand.DeleteFlag("--audit-log-arn", true)
 				}
 
-				output, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "dummy-arn")
+				output, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "dummy-arn", "--non-sts")
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).
 					To(
@@ -3305,7 +3327,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					if rosalCommand.CheckFlagExist(flag) {
 						rosalCommand.DeleteFlag(flag, true)
 					}
-					_, err := clusterService.CreateDryRun(clusterName, flag, "dummy-value")
+					_, err := clusterService.CreateDryRun(clusterName, flag, "dummy-value", "--non-sts")
 					helper.ExpectErrorWithMessage(err,
 						"setting the registry config is only supported for hosted clusters")
 				}
