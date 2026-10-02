@@ -363,6 +363,34 @@ exit 1
 	})
 })
 
+var _ = Describe("ReflectClusterDescription", func() {
+	It("parses a description whose Failed Inflight Checks block scalar has indented, dash-less content", func() {
+		output := `
+Name:                       mycluster
+ID:                         1234abcd
+State:                      error
+Failed Inflight Checks:
+  ID:                 1a2b3c4d
+  Last run:           Jan  2 2026 15:04:05 UTC
+    - Details for 'subnet-abc':
+        - Invalid configurations on subnet 'subnet-abc' have been identified:
+            - no route to NAT gateway
+
+  Please run ` + "`rosa verify network -c 1234abcd`" + ` after adjusting the configuration.
+`
+		c := &clusterService{ResourcesService: ResourcesService{client: &Client{Parser: NewParser()}}}
+		var buf bytes.Buffer
+		buf.WriteString(output)
+
+		description, err := c.ReflectClusterDescription(buf)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(description.Name).To(Equal("mycluster"))
+		Expect(description.FailedInflightChecks).To(ContainSubstring("1a2b3c4d"))
+		Expect(description.FailedInflightChecks).To(ContainSubstring("no route to NAT gateway"))
+	})
+})
+
 func prependPathEnv(prefix string) []string {
 	envs := os.Environ()
 	for index, env := range envs {

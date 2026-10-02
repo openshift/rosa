@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -338,7 +339,9 @@ func (m *machinepoolService) RetrieveHelpForEdit() (output bytes.Buffer, err err
 
 // Pasrse the result of 'rosa describe cluster' to the RosaClusterDescription struct
 func (m *machinepoolService) ReflectNodePoolDescription(result bytes.Buffer) (*NodePoolDescription, error) {
-	theMap, err := m.client.Parser.TextData.Input(result).Parse().YamlToMap()
+	theMap, err := m.client.Parser.TextData.Input(result).Parse().
+		TransformOutput(blockScalarizeMessageField).
+		YamlToMap()
 	if err != nil {
 		return nil, err
 	}
@@ -349,6 +352,41 @@ func (m *machinepoolService) ReflectNodePoolDescription(result bytes.Buffer) (*N
 	npd := new(NodePoolDescription)
 	err = yaml.Unmarshal(data, npd)
 	return npd, err
+}
+
+// blockScalarizeMessageField rewrites the "Message:" field of a 'rosa describe
+// machinepool'/nodepool output into a YAML literal block scalar. The node pool
+// status Message is passed through verbatim from the service and can be
+// free-form, multi-line text (e.g. bullet-point health conditions like
+// "* Machine foo:\n  * NodeHealthy: ..."), which otherwise breaks the line-based
+// YAML escaping in escapeYamlStringValues (e.g. a value starting with "*" is
+// parsed as a YAML alias). "Message:" is always the last field in
+// nodePoolOutputString (pkg/machinepool/output.go), so everything after it
+// belongs to the message and is safe to re-indent uniformly as block content.
+func blockScalarizeMessageField(str string) string {
+	loc := reMessageField.FindStringIndex(str)
+	if loc == nil {
+		return str
+	}
+	before, value := str[:loc[0]], str[loc[1]:]
+	if strings.TrimSpace(value) == "" {
+		return str
+	}
+
+	lines := strings.Split(value, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	var body strings.Builder
+	body.WriteString(before)
+	body.WriteString("Message: |-\n")
+	for _, line := range lines {
+		body.WriteString("  ")
+		body.WriteString(line)
+		body.WriteString("\n")
+	}
+	return body.String()
 }
 
 // GetNodePoolAutoScaledReplicas Get autoscaled replicas of node pool

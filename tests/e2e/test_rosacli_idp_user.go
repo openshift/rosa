@@ -204,6 +204,7 @@ var _ = Describe("Validate user", // TODO could be transformed as day1 negative
 					clusterID,
 					"--cluster-admin-password", invalidPassword,
 					"--region", region,
+					"--non-sts",
 				)
 				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 				Expect(err).To(HaveOccurred())
