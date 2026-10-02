@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -12,7 +13,6 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -25,7 +25,7 @@ var hfClusterInput hfpathbind.ClusterCreateInput
 // hfExitFn, hfDescribeSubnets, and hfCreateCluster are package-level
 // vars so tests can stub the hyperfleet path without real AWS calls.
 var (
-	hfExitFn  = func(code int) { os.Exit(code) }
+	hfExitFn = func(code int) { os.Exit(code) }
 
 	hfDescribeSubnets = func(
 		ctx context.Context, cfg awssdk.Config, subnetID string,
@@ -38,7 +38,7 @@ var (
 	hfCreateCluster = func(cmd *cobra.Command) {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
-		// HF create bypasses the classic hosted-cp validation in run(); reject UWM here.
+		// HF create bypasses the classic hosted-cp validation in run(); reject classic-only flags here.
 		if err := rejectUnsupportedHyperfleetCreateFlags(cmd); err != nil {
 			r.Reporter.Errorf("%v", err)
 			hfExitFn(1)
@@ -53,13 +53,19 @@ var (
 	}
 )
 
-// rejectUnsupportedHyperfleetCreateFlags rejects classic/HCP flags that must not reach
-// Platform API create (same policy as hosted-cp OCM create).
+// rejectUnsupportedHyperfleetCreateFlags rejects flags that select classic-only
+// behavior and must not reach Platform API create.
 func rejectUnsupportedHyperfleetCreateFlags(cmd *cobra.Command) error {
-	if cmd != nil && cmd.Flags().Changed("disable-workload-monitoring") {
-		return fmt.Errorf("%s", arguments.UwmNotSupportedMessage)
+	if cmd == nil {
+		return nil
 	}
-	return nil
+
+	unsupportedFlags := classicOnlyFlagsChanged(cmd)
+	if len(unsupportedFlags) == 0 {
+		return nil
+	}
+	return fmt.Errorf("the following flags are not supported for HyperFleet cluster creation: %s",
+		strings.Join(unsupportedFlags, ", "))
 }
 
 // runHyperfleet is a thin wrapper for direct test invocation without a real cobra.Command.

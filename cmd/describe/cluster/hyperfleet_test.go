@@ -105,6 +105,7 @@ var _ = Describe("hfClusterToMap", func() {
 		Expect(m["name"]).To(Equal("my-cluster"))
 		Expect(m["control_plane"]).To(Equal("ROSA Service Hosted"))
 		Expect(m["state"]).To(Equal("ready"))
+		Expect(m["delete_protection"]).To(BeFalse())
 		version, ok := m["version"].(map[string]interface{})
 		Expect(ok).To(BeTrue())
 		Expect(version["raw_id"]).To(Equal("4.17.0"))

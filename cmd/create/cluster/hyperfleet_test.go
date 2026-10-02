@@ -52,21 +52,29 @@ var _ = Describe("hyperfleet dispatch", func() {
 })
 
 var _ = Describe("rejectUnsupportedHyperfleetCreateFlags", func() {
-	It("rejects --disable-workload-monitoring", func() {
+	It("rejects all explicitly set classic-only flags", func() {
 		cmd := &cobra.Command{}
 		var disableUWM bool
+		var controlPlaneRoleARN string
 		cmd.Flags().BoolVar(&disableUWM, "disable-workload-monitoring", false, "")
+		cmd.Flags().StringVar(&controlPlaneRoleARN, "controlplane-iam-role-arn", "", "")
 		Expect(cmd.Flags().Set("disable-workload-monitoring", "true")).To(Succeed())
+		Expect(cmd.Flags().Set(
+			"controlplane-iam-role-arn", "arn:aws:iam::123456789012:role/control-plane",
+		)).To(Succeed())
 
 		err := rejectUnsupportedHyperfleetCreateFlags(cmd)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+		Expect(err.Error()).To(ContainSubstring("not supported for HyperFleet cluster creation"))
+		Expect(err.Error()).To(ContainSubstring("--disable-workload-monitoring"))
+		Expect(err.Error()).To(ContainSubstring("--controlplane-iam-role-arn"))
 	})
 
-	It("allows create when UWM flag is unset", func() {
+	It("allows create when classic-only flags are unset", func() {
 		cmd := &cobra.Command{}
 		var disableUWM bool
 		cmd.Flags().BoolVar(&disableUWM, "disable-workload-monitoring", false, "")
+		cmd.Flags().String("controlplane-iam-role-arn", "", "")
 
 		Expect(rejectUnsupportedHyperfleetCreateFlags(cmd)).To(Succeed())
 	})

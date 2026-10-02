@@ -35,20 +35,13 @@ var args struct {
 	version string
 }
 
-var (
-	hfEnabled          = hyperfleet.Enabled
-	hfListAccountRoles = func() {
-		r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
-		defer r.Cleanup()
-		runHyperfleetList(r)
-	}
-)
+var hfEnabled = hyperfleet.Enabled
 
 var Cmd = &cobra.Command{
 	Use:     "account-roles",
 	Aliases: []string{"accountrole", "account-role", "accountroles"},
-	Short:   "List account roles and policies",
-	Long:    "List account roles and policies for the current AWS account.",
+	Short:   "List ROSA account-role IAM resources",
+	Long:    "List ROSA account-role IAM resources found in the current AWS account. Not available in HyperFleet mode.",
 	Example: `  # List all account roles
   rosa list account-roles`,
 	Run:  run,
@@ -69,8 +62,9 @@ func init() {
 
 func run(_ *cobra.Command, _ []string) {
 	if hfEnabled() {
-		hfListAccountRoles()
-		return
+		r := rosa.NewRuntime()
+		r.Reporter.Errorf("Account roles are not supported in HyperFleet mode")
+		os.Exit(1)
 	}
 
 	r := rosa.NewRuntime().WithAWS().WithOCM()
@@ -86,15 +80,6 @@ func run(_ *cobra.Command, _ []string) {
 		r.Cluster.Version().ChannelGroup(), r.Cluster.AWS().STS().RoleARN() == "", r.Cluster.Hypershift().Enabled())
 	if err != nil {
 		r.Reporter.Errorf("Version '%s' is invalid", args.version)
-		os.Exit(1)
-	}
-
-	listAccountRoles(r)
-}
-
-func runHyperfleetList(r *rosa.Runtime) {
-	if args.version != "" {
-		r.Reporter.Errorf("--version is not supported when listing account roles in HyperFleet mode")
 		os.Exit(1)
 	}
 
