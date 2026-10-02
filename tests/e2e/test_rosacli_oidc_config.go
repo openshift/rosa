@@ -42,7 +42,7 @@ var _ = Describe("Edit OIDC config",
 			labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.Validated,
 			func() {
 
-				if isHyperfleetMode() {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
 					// is hyperfleet v2
 					helper_v2_oidc_configs(rosaClient, ocmResourceService)
 					return
