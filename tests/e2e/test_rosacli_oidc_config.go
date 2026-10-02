@@ -12,6 +12,7 @@ import (
 	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
@@ -204,20 +205,26 @@ var _ = Describe("Edit OIDC config",
 				Expect(textData).To(ContainSubstring("not found"))
 			})
 	})
-var _ = Describe("Register ummanaged oidc config testing",
+var _ = Describe("Register OIDC config testing",
 	labels.Feature.OIDCConfig,
 	func() {
 		defer GinkgoRecover()
 		var (
-			accountRolePrefix  string
-			oidcConfigID       string
-			rosaClient         *rosacli.Client
-			ocmResourceService rosacli.OCMResourceService
-			defaultDir         string
-			dirToClean         string
+			accountRolePrefix   string
+			accountRolesCreated bool
+			oidcConfigID        string
+			rosaClient          *rosacli.Client
+			ocmResourceService  rosacli.OCMResourceService
+			defaultDir          string
+			dirToClean          string
 		)
 
 		BeforeEach(func() {
+			accountRolePrefix = ""
+			accountRolesCreated = false
+			oidcConfigID = ""
+			dirToClean = ""
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
@@ -242,116 +249,124 @@ var _ = Describe("Register ummanaged oidc config testing",
 			}
 
 			By("Cleanup created account-roles")
-			if accountRolePrefix == "" {
+			if accountRolesCreated {
 				_, err := ocmResourceService.DeleteAccountRole("--mode", "auto",
 					"--prefix", accountRolePrefix,
 					"-y")
 				Expect(err).To(BeNil())
 			}
 		})
-		It("to register successfully - [id:64620]", labels.High, labels.Runtime.OCMResources, func() {
-			var (
-				secretArn string
-				issuerUrl string
-			)
-			By("Create account-roles for testing")
-			accountRolePrefix = fmt.Sprintf("QEAuto-ar64620-%s", time.Now().UTC().Format("20060102"))
-			_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
-				"--prefix", accountRolePrefix,
-				"-y")
-			Expect(err).To(BeNil())
-
-			By("Get the installer role arn")
-			accountRoleList, _, err := ocmResourceService.ListAccountRole()
-			Expect(err).To(BeNil())
-			installerRole := accountRoleList.InstallerRole(accountRolePrefix, false)
-			Expect(installerRole).ToNot(BeNil())
-			roleArn := installerRole.RoleArn
-
-			By("Create a temp dir to execute the create commands")
-			dirToClean, err = os.MkdirTemp("", "*")
-			Expect(err).To(BeNil())
-
-			By("Go to the temp dir by setting Dir")
-			rosaClient.Runner.SetDir(dirToClean)
-
-			By("Create unmanaged oidc config")
-			oidcConfigPrefix := "ocp64620oc"
-			output, err := ocmResourceService.CreateOIDCConfig(
-				"--mode", "manual",
-				"--prefix", oidcConfigPrefix,
-				"--role-arn", roleArn,
-				"--managed=false",
-				"-y")
-			Expect(err).To(BeNil())
-			commands := helper.ExtractCommandsFromOIDCRegister(output)
-
-			By("Execute commands to create unmanaged oidc-config")
-			var commandArgs []string
-			for _, command := range commands {
-				if strings.Contains(command, "aws secretsmanager create-secret") {
-					commandArgs = helper.ParseCommandToArgs(command)
-					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
-					Expect(err).To(BeNil())
-					secretArn = helper.ParseSecretArnFromOutput(stdout.String())
-					continue
+		It("to register successfully - [id:64620]", labels.High, labels.Runtime.OCMResources,
+			labels.Hyperfleet.Validated, func() {
+				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					By("Use the managed OIDC config flow supported by HyperFleet")
+					helper_v2_oidc_configs(rosaClient, ocmResourceService)
+					return
 				}
-				if strings.Contains(command, "aws s3api create-bucket") {
-					type S3BucketOutPut struct {
-						Location string `json:"Location"`
-					}
-					var s3cmdOutput S3BucketOutPut
-					commandArgs = helper.ParseCommandToArgs(command)
-					// Add '--output json' to the commandArgs
-					jsonOutputArgs := []string{"--output", "json"}
-					commandArgs = append(commandArgs, jsonOutputArgs...)
 
-					stdout, err := rosaClient.Runner.RunCMD(commandArgs)
-					Expect(err).To(BeNil())
-
-					err = json.Unmarshal(stdout.Bytes(), &s3cmdOutput)
-					Expect(err).To(BeNil())
-
-					//Get region from `rosa whoami`
-					whoamiOutput, err := ocmResourceService.Whoami()
-					Expect(err).To(BeNil())
-					rosaClient.Runner.UnsetFormat()
-					whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
-					awsRegion := whoamiData.AWSDefaultRegion
-
-					if awsRegion == "us-east-1" {
-						issuerUrl = fmt.Sprintf("https:/%s.s3.amazonaws.com", s3cmdOutput.Location)
-					} else {
-						issuerUrl = strings.Replace(s3cmdOutput.Location, "http://", "https://", 1)
-					}
-
-					Expect(issuerUrl).ToNot(BeEmpty(),
-						"extracted issuerUrl from %s is empty which will block coming steps.",
-						stdout.String(),
-					)
-					continue
-				}
-				_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+				var (
+					secretArn string
+					issuerUrl string
+				)
+				By("Create account-roles for testing")
+				accountRolePrefix = fmt.Sprintf("QEAuto-ar64620-%s", time.Now().UTC().Format("20060102"))
+				_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+					"--prefix", accountRolePrefix,
+					"-y")
 				Expect(err).To(BeNil())
-			}
-			Expect(secretArn).ToNot(BeEmpty(), "secretArn is empty which will block coming steps.")
+				accountRolesCreated = true
 
-			By("Register oidc config")
-			_, err = ocmResourceService.RegisterOIDCConfig(
-				"--mode", "auto",
-				"--issuer-url", issuerUrl,
-				"--role-arn", roleArn,
-				"--secret-arn", secretArn,
-				"-y")
-			Expect(err).To(BeNil())
+				By("Get the installer role arn")
+				accountRoleList, _, err := ocmResourceService.ListAccountRole()
+				Expect(err).To(BeNil())
+				installerRole := accountRoleList.InstallerRole(accountRolePrefix, false)
+				Expect(installerRole).ToNot(BeNil())
+				roleArn := installerRole.RoleArn
 
-			By("List oidc config to check if above one is registered")
-			oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
-			Expect(err).To(BeNil())
-			foundOIDCConfig := oidcConfigList.IssuerUrl(issuerUrl)
-			Expect(foundOIDCConfig).ToNot(Equal(rosacli.OIDCConfig{}))
-			oidcConfigID = foundOIDCConfig.ID
-		})
+				By("Create a temp dir to execute the create commands")
+				dirToClean, err = os.MkdirTemp("", "*")
+				Expect(err).To(BeNil())
+
+				By("Go to the temp dir by setting Dir")
+				rosaClient.Runner.SetDir(dirToClean)
+
+				By("Create unmanaged oidc config")
+				oidcConfigPrefix := "ocp64620oc"
+				output, err := ocmResourceService.CreateOIDCConfig(
+					"--mode", "manual",
+					"--prefix", oidcConfigPrefix,
+					"--role-arn", roleArn,
+					"--managed=false",
+					"-y")
+				Expect(err).To(BeNil())
+				commands := helper.ExtractCommandsFromOIDCRegister(output)
+
+				By("Execute commands to create unmanaged oidc-config")
+				var commandArgs []string
+				for _, command := range commands {
+					if strings.Contains(command, "aws secretsmanager create-secret") {
+						commandArgs = helper.ParseCommandToArgs(command)
+						stdout, err := rosaClient.Runner.RunCMD(commandArgs)
+						Expect(err).To(BeNil())
+						secretArn = helper.ParseSecretArnFromOutput(stdout.String())
+						continue
+					}
+					if strings.Contains(command, "aws s3api create-bucket") {
+						type S3BucketOutPut struct {
+							Location string `json:"Location"`
+						}
+						var s3cmdOutput S3BucketOutPut
+						commandArgs = helper.ParseCommandToArgs(command)
+						// Add '--output json' to the commandArgs
+						jsonOutputArgs := []string{"--output", "json"}
+						commandArgs = append(commandArgs, jsonOutputArgs...)
+
+						stdout, err := rosaClient.Runner.RunCMD(commandArgs)
+						Expect(err).To(BeNil())
+
+						err = json.Unmarshal(stdout.Bytes(), &s3cmdOutput)
+						Expect(err).To(BeNil())
+
+						//Get region from `rosa whoami`
+						whoamiOutput, err := ocmResourceService.Whoami()
+						Expect(err).To(BeNil())
+						rosaClient.Runner.UnsetFormat()
+						whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+						awsRegion := whoamiData.AWSDefaultRegion
+
+						if awsRegion == "us-east-1" {
+							issuerUrl = fmt.Sprintf("https:/%s.s3.amazonaws.com", s3cmdOutput.Location)
+						} else {
+							issuerUrl = strings.Replace(s3cmdOutput.Location, "http://", "https://", 1)
+						}
+
+						Expect(issuerUrl).ToNot(BeEmpty(),
+							"extracted issuerUrl from %s is empty which will block coming steps.",
+							stdout.String(),
+						)
+						continue
+					}
+					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
+					Expect(err).To(BeNil())
+				}
+				Expect(secretArn).ToNot(BeEmpty(), "secretArn is empty which will block coming steps.")
+
+				By("Register oidc config")
+				_, err = ocmResourceService.RegisterOIDCConfig(
+					"--mode", "auto",
+					"--issuer-url", issuerUrl,
+					"--role-arn", roleArn,
+					"--secret-arn", secretArn,
+					"-y")
+				Expect(err).To(BeNil())
+
+				By("List oidc config to check if above one is registered")
+				oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
+				Expect(err).To(BeNil())
+				foundOIDCConfig := oidcConfigList.IssuerUrl(issuerUrl)
+				Expect(foundOIDCConfig).ToNot(Equal(rosacli.OIDCConfig{}))
+				oidcConfigID = foundOIDCConfig.ID
+			})
 	})
 
 // helper_v2_oidc_configs tests V2 OIDC config creation
@@ -384,32 +399,31 @@ func helper_v2_oidc_configs(rosaClient *rosacli.Client, ocmResourceService rosac
 	}()
 
 	By("Create V2 managed OIDC config in auto mode")
-	// rosa create oidc-config --mode auto -y
+	// rosa create oidc-config --mode auto --output json -y
 	// NOTE: Managed OIDC configs don't require installer-role-arn (V2 doesn't use account-roles)
-	output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-y")
+	output, err := ocmResourceService.CreateOIDCConfig("--mode", "auto", "-o", "json", "-y")
 	Expect(err).To(BeNil())
-	textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-	Expect(textData).Should(Or(
-		ContainSubstring("created successfully"),
-		ContainSubstring("OIDC config"),
-	))
-
-	By("List OIDC configs to find the created config")
-	// rosa list oidc-config
-	oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
-	Expect(err).To(BeNil())
-
-	// V2 uses "TYPE" column (not "MANAGED"), and the table parser won't populate the Managed field
-	// Just grab the first config since we just created it
-	Expect(len(oidcConfigList.OIDCConfigList)).To(BeNumerically(">", 0), "No OIDC configs found after creation")
-	managedOIDCConfigID = oidcConfigList.OIDCConfigList[0].ID
+	createdConfig := rosaClient.Parser.JsonData.Input(output).Parse()
+	managedOIDCConfigID = createdConfig.DigString("id")
+	if managedOIDCConfigID == "" {
+		managedOIDCConfigID = createdConfig.DigString("metadata", "name")
+	}
+	Expect(managedOIDCConfigID).ToNot(BeEmpty(), "create response should include the new OIDC config ID")
 	oidcConfigIDsNeedToClean = append(oidcConfigIDsNeedToClean, managedOIDCConfigID)
 
-	By("Verify OIDC config was created")
-	foundOIDCConfig := oidcConfigList.OIDCConfig(managedOIDCConfigID)
-	Expect(foundOIDCConfig).NotTo(Equal(rosacli.OIDCConfig{}))
-	Expect(foundOIDCConfig.ID).To(Equal(managedOIDCConfigID))
-	Expect(foundOIDCConfig.IssuerUrl).NotTo(BeEmpty())
+	By("Verify the create response includes the OIDC issuer")
+	issuerURL := createdConfig.DigString("spec", "issuerUrl")
+	Expect(issuerURL).NotTo(BeEmpty(), "create response should include the OIDC issuer URL")
+
+	By("Retrieve the OIDC config through the provider command using its ID")
+	providerOutput, err := ocmResourceService.CreateOIDCProvider(
+		"--oidc-config-id", managedOIDCConfigID,
+		"--mode", "auto",
+		"-y",
+	)
+	Expect(err).To(BeNil())
+	providerText := rosaClient.Parser.TextData.Input(providerOutput).Parse().Tip()
+	Expect(providerText).To(ContainSubstring("OIDC provider already exists"))
 
 	By("V2 OIDC config test completed successfully")
 }

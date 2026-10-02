@@ -256,3 +256,8 @@ func (r *Runtime) FetchCluster() *cmv1.Cluster {
 	r.Cluster = cluster
 	return cluster
 }
+
+// IsUsingHyperfleet returns true if the runtime is configured to use Platform API v2 (hyperfleet).
+func (r *Runtime) IsUsingHyperfleet() bool {
+	return r.HyperFleetClient != nil
+}
