@@ -464,7 +464,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).
 				Should(ContainSubstring(
-					"Either a cluster key for STS cluster or an operator roles prefix must be specified"))
+					"either a cluster key for STS cluster or an operator roles prefix must be specified"))
 		})
 })
 
