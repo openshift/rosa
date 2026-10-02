@@ -5005,7 +5005,6 @@ var _ = Describe("Non-STS cluster with local credentials",
 
 			customProfile      *handler.Profile
 			clusterID          string
-			ocmResourceService rosacli.OCMResourceService
 			testingClusterName string
 			clusterHandler     handler.ClusterHandler
 		)
@@ -5015,7 +5014,6 @@ var _ = Describe("Non-STS cluster with local credentials",
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
-			ocmResourceService = rosaClient.OCMResource
 
 			By("Get AWS account id")
 			rosaClient.Runner.JsonFormat()
@@ -5058,14 +5056,6 @@ var _ = Describe("Non-STS cluster with local credentials",
 
 			rosaClient.Runner.UnsetArgs()
 			err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
-			Expect(err).To(BeNil())
-
-			By("Delete operator-roles")
-			_, err = ocmResourceService.DeleteOperatorRoles(
-				"-c", clusterID,
-				"--mode", "auto",
-				"-y",
-			)
 			Expect(err).To(BeNil())
 		})
 

@@ -973,7 +973,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				"--version", "4.8",
 				"-y")
 			Expect(err).ToNot(BeNil())
-			Expect(output.String()).To(ContainSubstring("Error getting version: A valid policy version number " +
+			Expect(output.String()).To(ContainSubstring("error getting version: A valid policy version number " +
 				"must be specified"))
 
 			By("Create account roles with invalid version format")
