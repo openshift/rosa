@@ -5,29 +5,11 @@ description: "Add or edit Cobra commands in openshift/rosa while keeping command
 
 # ROSA Command Authoring
 
-Use this skill when:
+Use this skill for new or changed commands, flags, help text, or command flow.
 
-- Adding a new `rosa` command or subcommand
-- Changing flags or command help
-- Moving logic between `cmd/` and `pkg/`
-- Refactoring command execution flow
-
-## Workflow
-
-1. Read `AGENTS.md` and `guidelines/command-guidelines.md`, then inspect the nearest similar command implementation.
-2. Keep Cobra command files thin and move non-Cobra logic into `pkg/`.
-3. Follow the entrypoint and exit pattern already established in the nearest similar command area.
-4. Many ROSA commands use `Run: run`; do not switch a command area between `Run` and `RunE`, or add/remove direct `os.Exit()` calls, unless the surrounding pattern already does so and the change keeps behavior consistent.
-5. Reuse `output`, `reporter`, and `interactive` patterns already used by the surrounding command area.
-6. If the command tree changes, update `cmd/rosa/structure_test/command_structure.yml`.
-7. If supported flags change, update the matching `cmd/rosa/structure_test/command_args/**/command_args.yml`.
-8. When command help or docs change, check whether `make generate-docs` is part of the required verification.
-
-## Verification
-
-- `make fmt`
-- relevant package tests or `make test`
-- `make rosa`
-- `make generate-docs` when command docs or help output changed
-
-Follow `CONTRIBUTING.md` for the exact contributor workflow and hook expectations.
+1. Read [AGENTS.md](../../../AGENTS.md) and its command, architecture, and
+   error guides. Inspect the nearest comparable command implementation.
+2. Apply the command guide to wiring, entrypoint, output, and prompt behavior.
+3. Check the command tree and flag contracts named in the command guide.
+4. Follow the guide's documentation generation rule when help text changes.
+5. Select and run the relevant checks from [CONTRIBUTING.md](../../../CONTRIBUTING.md).
