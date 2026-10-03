@@ -1546,7 +1546,7 @@ func run(cmd *cobra.Command, _ []string) {
 		r.Reporter.Errorf("%s", err)
 		os.Exit(1)
 	}
-	if err := r.OCMClient.IsVersionCloseToEol(ocm.CloseToEolDays, version, channelGroup); err != nil {
+	if err := r.OCMClient.IsVersionCloseToEol(ocm.CloseToEolDays, version, channelGroup, isHostedCP); err != nil {
 		r.Reporter.Warnf("%v", err)
 		if !confirm.Confirm("continue with version '%s'", ocm.GetRawVersionId(version)) {
 			os.Exit(0)

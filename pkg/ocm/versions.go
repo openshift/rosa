@@ -502,11 +502,17 @@ func CheckAndParseVersion(availableUpgrades []string, version string, cluster *c
 	return availableUpgrades[0], nil
 }
 
-func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channelGroup string) error {
+// IsVersionCloseToEol checks whether a version's support end-of-life date is within the given
+// day threshold. isHostedCP restricts the lookup to HCP-enabled versions so that an HCP-exclusive
+// version's EOL data is found even when a classic version shares the same raw ID.
+func (c *Client) IsVersionCloseToEol(daysAwayToCheck int, version string, channelGroup string, isHostedCP bool) error {
 	collection := c.ocm.ClustersMgmt().V1().Versions()
 	filter := fmt.Sprintf("raw_id='%s'", GetRawVersionId(version))
 	if channelGroup != "" {
 		filter = fmt.Sprintf("%s AND channel_group = '%s'", filter, channelGroup)
+	}
+	if isHostedCP {
+		filter = fmt.Sprintf("%s AND hosted_control_plane_enabled = 't'", filter)
 	}
 	response, err := collection.List().
 		Search(filter).
