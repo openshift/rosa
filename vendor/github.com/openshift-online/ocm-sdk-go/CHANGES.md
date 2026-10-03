@@ -3,6 +3,16 @@
 This document describes the relevant changes between releases of the OCM API
 SDK.
 
+## 0.1.517 Sep 30 2026
+
+- ROSAENG-65574 | fix: change hardcoded InsecureSkipVerify in OAuth2 auth code flow
+
+
+## 0.1.516 Sep 29 2026
+
+- chore: bump ocm-api-model to v0.0.470
+
+
 ## 0.1.515 Sep 25 2026
 
 - chore: bump ocm-api-model to v0.0.469
