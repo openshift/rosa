@@ -18,19 +18,25 @@ package ocmrole
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"go.uber.org/mock/gomock"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	internalocmrole "github.com/openshift/rosa/internal/ocmrole"
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 func TestOCMRole(t *testing.T) {
@@ -593,5 +599,99 @@ var _ = Describe("checkRoleExists", func() {
 			Expect(exists).To(BeTrue())
 			Expect(arn).To(Equal("arn:aws:iam::123456789012:role/custom/path/test-role"))
 		})
+	})
+})
+
+var currentAccountResponse = `{
+	"kind": "Account",
+	"id": "acct-123",
+	"username": "testuser",
+	"organization": {
+		"id": "org-123",
+		"external_id": "ext-1",
+		"kind": "Organization"
+	}
+}`
+
+var _ = Describe("runWithRuntime", func() {
+	var (
+		t      *test.TestingRuntime
+		tmpdir string
+	)
+
+	saveTestConfig := func() {
+		Expect(os.Setenv("OCM_CONFIG", tmpdir+"/ocm_config.json")).To(Succeed())
+		cfg := &config.Config{
+			AccessToken: MakeTokenString("Bearer", 15*time.Minute),
+			URL:         "https://api.openshift.com",
+			TokenURL:    t.SsoServer.URL(),
+		}
+		Expect(config.Save(cfg)).To(Succeed())
+	}
+
+	BeforeEach(func() {
+		t = test.NewTestRuntime()
+		t.RosaRuntime.Creator = &aws.Creator{
+			ARN:       "arn:aws:iam::123456789012:user/test",
+			AccountID: "123456789012",
+			Partition: "aws",
+		}
+
+		var err error
+		tmpdir, err = os.MkdirTemp("", "rosa-create-ocmrole-test-*")
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(os.RemoveAll, tmpdir)
+
+		args = struct {
+			prefix              string
+			permissionsBoundary string
+			admin               bool
+			path                string
+			managed             bool
+			noConsole           bool
+		}{}
+		interactive.SetEnabled(false)
+		interactive.SetModeKey("")
+		Expect(Cmd.Flags().Set("mode", "")).To(Succeed())
+	})
+
+	It("returns error when mode is invalid", func() {
+		interactive.SetModeKey("invalid_mode")
+		Expect(Cmd.Flags().Set("mode", "invalid_mode")).To(Succeed())
+
+		err := runWithRuntime(t.RosaRuntime, Cmd)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("Invalid mode"))
+	})
+
+	It("returns error when prefix is invalid", func() {
+		saveTestConfig()
+		interactive.SetModeKey(interactive.ModeManual)
+		Expect(Cmd.Flags().Set("mode", interactive.ModeManual)).To(Succeed())
+		args.prefix = "invalid prefix!"
+
+		err := runWithRuntime(t.RosaRuntime, Cmd)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("expected a valid role prefix matching"))
+	})
+
+	It("returns error when role already exists on OCM", func() {
+		saveTestConfig()
+		interactive.SetModeKey(interactive.ModeManual)
+		Expect(Cmd.Flags().Set("mode", interactive.ModeManual)).To(Succeed())
+		args.prefix = aws.DefaultPrefix
+
+		t.ApiServer.AppendHandlers(
+			RespondWithJSON(http.StatusOK, currentAccountResponse),
+			RespondWithJSON(http.StatusOK, `{
+				"key": "sts_ocm_role",
+				"value": "arn:aws:iam::123456789012:role/existing-OCM-Role"
+			}`),
+		)
+
+		err := runWithRuntime(t.RosaRuntime, Cmd)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("only one ocm-role can be created per AWS account"))
+		Expect(err.Error()).To(ContainSubstring("arn:aws:iam::123456789012:role/existing-OCM-Role"))
 	})
 })
