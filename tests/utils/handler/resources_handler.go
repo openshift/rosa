@@ -95,7 +95,7 @@ type ResourcesHandler interface {
 	DeleteAccountRoles() error
 	GetCurrentEnv() (string, error)
 	CheckAvailableUpgrade(versionRequirement string, hcp bool) (bool, bool, error)
-	GetCurrentChannel(version string) (string, error)
+	GetCurrentChannel(version string, hcp bool) (string, error)
 }
 
 type resourcesHandler struct {

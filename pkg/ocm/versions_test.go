@@ -269,7 +269,8 @@ var _ = Describe("OCMClient", func() {
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v5.1.0-candidate"),
 					verifyProduct,
-					RespondWithJSON(http.StatusOK, `{"raw_id":"5.1.0","rosa_enabled":true}`),
+					RespondWithJSON(http.StatusOK,
+						`{"raw_id":"5.1.0","rosa_enabled":true,"hosted_control_plane_enabled":true}`),
 				),
 			)
 
@@ -278,6 +279,57 @@ var _ = Describe("OCMClient", func() {
 
 			Expect(err).NotTo(HaveOccurred(), "expected HCP upgrade lookup to succeed")
 			Expect(upgrades).To(HaveExactElements("5.1.0"), "expected the ROSA-enabled HCP upgrade")
+		})
+
+		It("excludes upgrade candidates without hosted control plane support when HCP is requested", func() {
+			// The versions GET-by-ID endpoint ignores the "product" request parameter (ROSAENG-67928),
+			// so this filtering must happen client-side against hosted_control_plane_enabled.
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v4.22.13-candidate"),
+					RespondWithJSON(http.StatusOK,
+						`{"raw_id":"4.22.13","channel_group":"candidate","available_upgrades":["4.22.14","4.9.9"]}`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v4.22.14-candidate"),
+					RespondWithJSON(http.StatusOK,
+						`{"raw_id":"4.22.14","rosa_enabled":true,"hosted_control_plane_enabled":true}`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v4.9.9-candidate"),
+					RespondWithJSON(http.StatusOK,
+						`{"raw_id":"4.9.9","rosa_enabled":true,"hosted_control_plane_enabled":false}`),
+				),
+			)
+
+			upgrades, err := ocmClient.GetAvailableUpgradesWithProduct(
+				HcpProduct, "openshift-v4.22.13-candidate")
+
+			Expect(err).NotTo(HaveOccurred(), "expected HCP upgrade lookup to succeed")
+			Expect(upgrades).To(HaveExactElements("4.22.14"),
+				"expected the classic-only upgrade candidate to be excluded from the HCP upgrade list")
+		})
+
+		It("includes ROSA-enabled candidates regardless of HCP support for the classic topology", func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v4.22.13-candidate"),
+					RespondWithJSON(http.StatusOK,
+						`{"raw_id":"4.22.13","channel_group":"candidate","available_upgrades":["4.9.9"]}`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest(http.MethodGet, "/api/clusters_mgmt/v1/versions/openshift-v4.9.9-candidate"),
+					RespondWithJSON(http.StatusOK,
+						`{"raw_id":"4.9.9","rosa_enabled":true,"hosted_control_plane_enabled":false}`),
+				),
+			)
+
+			upgrades, err := ocmClient.GetAvailableUpgradesWithProduct(
+				"", "openshift-v4.22.13-candidate")
+
+			Expect(err).NotTo(HaveOccurred(), "expected classic upgrade lookup to succeed")
+			Expect(upgrades).To(HaveExactElements("4.9.9"),
+				"expected the classic topology to keep its unfiltered behavior")
 		})
 
 		It("returns transport errors from the initial upgrade request", func() {
