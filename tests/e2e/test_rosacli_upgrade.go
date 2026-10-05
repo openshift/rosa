@@ -358,8 +358,9 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Upgrade cluster")
-			scheduledDate := time.Now().Format("2006-01-02")
-			scheduledTime := time.Now().Add(200 * time.Minute).UTC().Format("15:04")
+			scheduledAt := time.Now().Add(200 * time.Minute).UTC()
+			scheduledDate := scheduledAt.Format("2006-01-02")
+			scheduledTime := scheduledAt.Format("15:04")
 			output, err := upgradeService.Upgrade(
 				"-c", clusterID,
 				"--version", upgradingVersion,

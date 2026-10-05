@@ -1060,6 +1060,9 @@ func (c *awsClient) ValidateIfRosaOperatorRole(role iamtypes.Role,
 		RoleName: role.RoleName,
 	})
 	if err != nil {
+		if awserr.IsNoSuchEntityException(err) {
+			return false, nil
+		}
 		return false, err
 	}
 	role.Tags = listRoleTags.Tags
@@ -1539,6 +1542,9 @@ func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 				RoleName: role.RoleName,
 			})
 		if err != nil {
+			if awserr.IsNoSuchEntityException(err) {
+				continue
+			}
 			return roleList, err
 		}
 		isTagged := false

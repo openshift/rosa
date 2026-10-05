@@ -2408,3 +2408,136 @@ var _ = Describe("DeleteInlineRolePolicies", func() {
 		})
 	})
 })
+
+var _ = Describe("ValidateIfRosaOperatorRole", func() {
+	var (
+		client      awsClient
+		mockIamAPI  *mocks.MockIamApiClient
+		mockCtrl    *gomock.Controller
+		credRequest map[string]*cmv1.STSOperator
+		role        iamtypes.Role
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+
+		stsOperator, err := cmv1.NewSTSOperator().Namespace("openshift-ns").Build()
+		Expect(err).NotTo(HaveOccurred())
+		credRequest = map[string]*cmv1.STSOperator{"operator-1": stsOperator}
+		role = iamtypes.Role{RoleName: aws.String("test-role-openshift-ns")}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("the role no longer exists", func() {
+		It("returns false without an error", func() {
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				nil, &iamtypes.NoSuchEntityException{Message: awsSdk.String("not found")})
+
+			isValid, err := client.ValidateIfRosaOperatorRole(role, credRequest)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isValid).To(BeFalse())
+		})
+	})
+
+	When("ListRoleTags returns an unrelated error", func() {
+		It("propagates the error", func() {
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), gomock.Any()).Return(
+				nil, fmt.Errorf("throttled"))
+
+			isValid, err := client.ValidateIfRosaOperatorRole(role, credRequest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("throttled"))
+			Expect(isValid).To(BeFalse())
+		})
+	})
+})
+
+var _ = Describe("GetOperatorRolesFromAccountByClusterID", func() {
+	var (
+		client      awsClient
+		mockIamAPI  *mocks.MockIamApiClient
+		mockCtrl    *gomock.Controller
+		credRequest map[string]*cmv1.STSOperator
+	)
+
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockIamAPI = mocks.NewMockIamApiClient(mockCtrl)
+		client = awsClient{iamClient: mockIamAPI}
+
+		stsOperator, err := cmv1.NewSTSOperator().Namespace("openshift-ns").Build()
+		Expect(err).NotTo(HaveOccurred())
+		credRequest = map[string]*cmv1.STSOperator{"operator-1": stsOperator}
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	When("a role is deleted between enumeration and the cluster ID tag lookup", func() {
+		It("skips the deleted role instead of failing the whole scan", func() {
+			deletedRole := "deleted-role-openshift-ns"
+			keptRole := "kept-role-openshift-ns"
+
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					Roles: []iamtypes.Role{
+						{RoleName: &deletedRole},
+						{RoleName: &keptRole},
+					},
+				}, nil)
+
+			// Name match alone satisfies checkIfROSAOperatorRole, so the first
+			// (ValidateIfRosaOperatorRole) ListRoleTags call can return empty tags.
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &deletedRole,
+			}).Return(&iam.ListRoleTagsOutput{}, nil)
+			// The second, direct ListRoleTags call finds the role already gone.
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &deletedRole,
+			}).Return(nil, &iamtypes.NoSuchEntityException{Message: awsSdk.String("not found")})
+
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &keptRole,
+			}).Return(&iam.ListRoleTagsOutput{}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &keptRole,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: aws.String(tags.ClusterID), Value: aws.String("cluster-123")},
+				},
+			}, nil)
+
+			roleList, err := client.GetOperatorRolesFromAccountByClusterID("cluster-123", credRequest)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(roleList).To(ConsistOf(keptRole))
+		})
+	})
+
+	When("ListRoleTags returns an unrelated error on the cluster ID tag lookup", func() {
+		It("propagates the error", func() {
+			roleName := "some-role-openshift-ns"
+
+			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&iam.ListRolesOutput{
+					Roles: []iamtypes.Role{{RoleName: &roleName}},
+				}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &roleName,
+			}).Return(&iam.ListRoleTagsOutput{}, nil)
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &roleName,
+			}).Return(nil, fmt.Errorf("throttled"))
+
+			roleList, err := client.GetOperatorRolesFromAccountByClusterID("cluster-123", credRequest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("throttled"))
+			Expect(roleList).To(BeEmpty())
+		})
+	})
+})
