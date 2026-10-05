@@ -34,13 +34,7 @@ const (
 	//
 	SeverityImportant Severity = "Important"
 	//
-	SeverityInfo Severity = "Info"
-	//
 	SeverityLow Severity = "Low"
 	//
-	SeverityMajor Severity = "Major"
-	//
 	SeverityModerate Severity = "Moderate"
-	//
-	SeverityWarning Severity = "Warning"
 )
