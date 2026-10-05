@@ -1,3 +1,61 @@
+## 1.2.66 (05 Oct, 2026)
+
+FEATURES:
+   * Default interactive cluster creation to HCP (#3584)
+   * Support spaces in AWS tag keys and values via quoting (#3587)
+   * Inject DefaultVersion from git tag at build time (#3512)
+   * Add notification-contacts flag to CLI (#3500)
+   * Add dispatch routing skeleton as new infrastructure for hyperfleet/Platform API v2 (#3503)
+   * Generate release metadata JSON for Konflux (#3486)
+
+ENHANCEMENTS:
+ * Bug fixes
+   * Enable source image build (#3609)
+   * Skip IAM upgrade mode for HCP managed policies (#3597)
+   * Warn when --availability-zones is ignored with --subnet-ids (#3591)
+   * Isolate manual-mode operator-roles test to temp directory (#3588)
+   * Omit classic flavour default for HCP compute type (#3578)
+   * Resolve Vale linting errors in generated CLI docs (#3582)
+   * Add missing OIDC provider recovery guidance (#3566)
+   * Display warning about non-linked OCM role on AWS account (#3567)
+   * Select upgrade role versions by topology
+   * Fix logic for tearing down shared VPC resources to fix (#3575)
+   * Select operator role versions by topology
+   * Select role versions by cluster topology
+   * Add product-aware OCM version helpers
+   * Ensure ROSA can verify and download v5 oc clients (#3547)
+   * Pass installer role ARN when listing instance types by region (#3542)
+   * Fix rosa describe ingress when component route is set (#3505)
+   * Local zone and wavelength zone subnets no longer listed when creating machine pool (#3462)
+   * Preserve add-on availability semantics (#3443)
+   * Derive channel group from --channel flag before version ID construction (#3493)
+   * Fetch tags in Konflux clone task for release versioning (#3487)
+   * Include version in SHA256SUMS filename (#3481)
+   * Fix .govulncheck-ignore.yaml GO-2026-5932 reasoning and add new ignored vulnerabilities (#3475)
+ * Chores
+   * Change default ec2-metadata-http-tokens to required (#3580)
+   * Default to STS without prompting (#3568)
+   * Add license and documentation checks (#3541)
+   * Add golang.org/x package group to renovate.json (#3544)
+   * Separate validation concerns and classify workflow errors for the CLI boundary (#3482)
+   * Generate SHA256SUMS file for Konflux GitHub releases (#3480)
+   * Add zip archives and sast-snyk-check for Konflux releases (#3479)
+   * Create reusable request/response conventions (#3452)
+   * Add zip archives for Konflux GitHub releases (#3478)
+   * Upgrade ocm-common to v0.0.45 (#3477)
+ * Documentation
+   * PercentageValidator must require value greater than 0 and less than 1 (#3398)
+ * Build
+   * Emit legacy CDN archive names at build time (#3532)
+ * Ci
+   * Verify release asset checksum in release image
+   * Align release image with v1.2.65 assets
+   * Align prerelease pipeline with EC policy (#3471)
+ * Day1-negative
+   * OCP-73725 OCP-73755 OCP-38857 (#3472)
+ * E2e
+   * Align registry asserts and retry AWS region flakes (#3460)
+
 ## 1.2.65 (11 Sep, 2026)
 
 FEATURES:
