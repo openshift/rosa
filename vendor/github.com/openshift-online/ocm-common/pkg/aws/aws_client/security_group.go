@@ -14,7 +14,7 @@ func (client *AWSClient) ListSecurityGroups(vpcID string) ([]types.SecurityGroup
 	vpcFilter := "vpc-id"
 	customizedSGs := []types.SecurityGroup{}
 	filter := []types.Filter{
-		types.Filter{
+		{
 			Name: &vpcFilter,
 			Values: []string{
 				vpcID,
@@ -40,7 +40,7 @@ func (client *AWSClient) ListSecurityGroups(vpcID string) ([]types.SecurityGroup
 func (client *AWSClient) ReleaseInboundOutboundRules(sgID string) error {
 	filterKey := "group-id"
 	filter := []types.Filter{
-		types.Filter{
+		{
 			Name: &filterKey,
 			Values: []string{
 				sgID,

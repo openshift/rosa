@@ -35,7 +35,7 @@ func (client *AWSClient) TagResource(resourceID string, tags map[string]string) 
 
 func (client *AWSClient) RemoveResourceTag(resourceID string, tagKey string, tagValue string) (*ec2.DeleteTagsOutput, error) {
 	tags := []types.Tag{
-		types.Tag{
+		{
 			Key:   &tagKey,
 			Value: &tagValue,
 		},

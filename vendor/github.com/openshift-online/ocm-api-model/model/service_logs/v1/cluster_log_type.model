@@ -18,20 +18,11 @@ enum Severity {
 	@json(name = "Debug")
 	Debug
 
-	@json(name = "Info")
-	Info
-
-	@json(name = "Warning")
-	Warning
-
 	@json(name = "Error")
 	Error
 
 	@json(name = "Fatal")
 	Fatal
-
-	@json(name = "Major")
-	Major
 
 	@json(name = "Critical")
 	Critical

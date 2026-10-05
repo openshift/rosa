@@ -56,7 +56,7 @@ func (client *AWSClient) DetachInternetGateway(internetGatewayID string, vpcID s
 func (client *AWSClient) ListInternetGateWay(vpcID string) ([]types.InternetGateway, error) {
 	vpcFilter := "attachment.vpc-id"
 	filter := []types.Filter{
-		types.Filter{
+		{
 			Name: &vpcFilter,
 			Values: []string{
 				vpcID,

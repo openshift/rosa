@@ -14,7 +14,7 @@ func (client *AWSClient) ListNetWorkAcls(vpcID string) ([]types.NetworkAcl, erro
 	vpcFilter := "vpc-id"
 	customizedAcls := []types.NetworkAcl{}
 	filter := []types.Filter{
-		types.Filter{
+		{
 			Name: &vpcFilter,
 			Values: []string{
 				vpcID,
