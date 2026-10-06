@@ -968,21 +968,18 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 		labels.High, labels.Runtime.OCMResources,
 		func() {
 			By("Create account roles with invalid version")
-			output, err := ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err := ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", "ocp75246",
 				"--version", "4.8",
 				"-y")
-			Expect(err).ToNot(BeNil())
-			Expect(output.String()).To(ContainSubstring("error getting version: A valid policy version number " +
-				"must be specified"))
+			helper.ExpectErrorWithMessage(err, "error getting version: A valid policy version number must be specified")
 
 			By("Create account roles with invalid version format")
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", "ocp75246",
 				"--version", "4.8.10",
 				"-y")
-			Expect(err).ToNot(BeNil())
-			Expect(output.String()).To(ContainSubstring("A valid policy version number must be specified"))
+			helper.ExpectErrorWithMessage(err, "A valid policy version number must be specified")
 
 			By("Create account roles with invalid channel group")
 			versionService := rosaClient.Version
@@ -992,15 +989,13 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 			defaultVersion := versionList.DefaultVersion()
 			Expect(defaultVersion).ToNot(BeNil())
 
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", "ocp75246",
 				"--version", defaultVersion.Version,
 				"--channel-group", "fakecg",
 				"-y")
-			Expect(err).ToNot(BeNil())
-			Expect(output.String()).To(ContainSubstring("Error getting version: could not find versions for the " +
-				"provided channel-group: 'fakecg'"))
-
+			helper.ExpectErrorWithMessage(err, "Error getting version: "+
+				"could not find versions for the provided channel-group: 'fakecg'")
 		})
 
 	It("to create/Upgrade account-roles by setting version and channel-group via rosacli - [id:54469]",

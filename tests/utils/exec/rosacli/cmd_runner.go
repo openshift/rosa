@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
@@ -19,7 +19,19 @@ const (
 	defaultRunnerFormat = "text"
 	jsonRunnerFormat    = "json"
 	yamlRunnerFormat    = "yaml"
+
+	redactedValue = "<redacted>"
 )
+
+// sensitiveKeys are the config keys and flag names whose value must never reach
+// the logs. Matching uses the normalized form, so "client_secret",
+// "--client-secret" and "--client-secret=value" all resolve to one entry.
+var sensitiveKeys = []string{
+	"accesstoken",
+	"clientsecret",
+	"refreshtoken",
+	"token",
+}
 
 type runner struct {
 	cmds      []string
@@ -194,47 +206,98 @@ func (r *runner) CMDString() string {
 	return fmt.Sprintf("rosa %s", strings.Join(r.CmdElements(), " "))
 }
 
-func (r *runner) Run() (bytes.Buffer, error) {
+// normalizeKey reduces a command element to a comparable key by dropping any
+// inline value, leading dashes, and "-"/"_" separators, so the flag and
+// positional spellings of a key match the same sensitiveKeys entry.
+func normalizeKey(elem string) string {
+	key, _, _ := strings.Cut(elem, "=")
+	key = strings.TrimLeft(key, "-")
+	return strings.ToLower(strings.NewReplacer("-", "", "_", "").Replace(key))
+}
+
+// redactedCMDString returns the command with every sensitive value replaced,
+// keeping the remaining flags visible so a failed run stays debuggable.
+// redactOutput reports whether the command's own output must be withheld, which
+// is only true when a sensitive key is read back rather than assigned.
+func (r *runner) redactedCMDString() (cmd string, redactOutput bool) {
+	elements := slices.Clone(r.CmdElements())
+	for i, elem := range elements {
+		if !slices.Contains(sensitiveKeys, normalizeKey(elem)) {
+			continue
+		}
+		if key, _, inline := strings.Cut(elem, "="); inline {
+			elements[i] = key + "=" + redactedValue
+			continue
+		}
+		// A following flag, or no following element, means the key is read.
+		if i+1 >= len(elements) || strings.HasPrefix(elements[i+1], "-") {
+			redactOutput = true
+			continue
+		}
+		elements[i+1] = redactedValue
+	}
+	return fmt.Sprintf("rosa %s", strings.Join(elements, " ")), redactOutput
+}
+
+func (r *runner) run(combinedOutput bool) (bytes.Buffer, bytes.Buffer, error) {
 	rosacmd := "rosa"
 	cmdElements := r.CmdElements()
+	cmdString, redactOutput := r.redactedCMDString()
 	var output bytes.Buffer
+	var stderr bytes.Buffer
 	var err error
 	retry := 0
 	for {
 		if retry > 4 {
-			err = fmt.Errorf("executing failed: %s", output.String())
-			return output, err
+			err = fmt.Errorf("executing failed: %s", output.String()+"\n"+stderr.String())
+			return output, stderr, err
 		}
 
-		log.Logger.Infof("Running command: rosa %s", strings.Join(cmdElements, " "))
+		log.Logger.Infof("Running command: %s", cmdString)
 
 		output.Reset()
+		stderr.Reset()
 		cmd := exec.Command(rosacmd, cmdElements...)
 		cmd.Env = append(cmd.Env, r.envs...)
 		cmd.Stdout = &output
-		cmd.Stderr = cmd.Stdout
+		if combinedOutput {
+			cmd.Stderr = cmd.Stdout
+		} else {
+			cmd.Stderr = &stderr
+		}
 		cmd.Dir = r.dir
 
 		err = cmd.Run()
 		if err != nil {
-			err = fmt.Errorf("%s: %s", err.Error(), output.String())
+			err = fmt.Errorf("%s: %s", err.Error(), output.String()+"\n"+stderr.String())
 		}
-		if helper.SliceContains(cmdElements, "access_token") ||
-			helper.SliceContains(cmdElements, "token") ||
-			helper.SliceContains(cmdElements, "refresh_token") {
-			log.Logger.Warnf("There is sensitive output possibility with token keyword in command line. Hide the output.")
-		} else {
+		if redactOutput {
+			log.Logger.Warnf("Command reads a sensitive value. Hiding the output.")
+		} else if combinedOutput {
 			log.Logger.Infof("Get Combining Stdout and Stderr is :\n%s", output.String())
+		} else {
+			log.Logger.Infof("Get stdout is:\n%s", output.String())
+			log.Logger.Infof("Get stderr is:\n%s", stderr.String())
 		}
 
-		if strings.Contains(output.String(), "Not able to get authentication token") {
+		tokenErr := "Not able to get authentication token"
+		if strings.Contains(output.String(), tokenErr) || strings.Contains(stderr.String(), tokenErr) {
 			retry = retry + 1
 			log.Logger.Warnf("[Retry] Not able to get authentication token!! Wait and sleep 5s to do the %d retry", retry)
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		return output, err
+		return output, stderr, err
 	}
+}
+
+func (r *runner) Run() (bytes.Buffer, error) {
+	output, _, err := r.run(true)
+	return output, err
+}
+
+func (r *runner) RunSeparateOutput() (bytes.Buffer, bytes.Buffer, error) {
+	return r.run(false)
 }
 
 func (r *runner) RunCMD(command []string) (bytes.Buffer, error) {
