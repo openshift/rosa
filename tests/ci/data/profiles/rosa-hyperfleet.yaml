@@ -94,13 +94,13 @@ profiles:
       default_ingress_private: false
       etcd_encryption: true
       autoscale: false
-      kms_key: true
+      kms_key: false
       networking: true
       proxy_enabled: true
       label_enabled: false
       zones: ""
       tag_enabled: true
-      etcd_kms: true
+      etcd_kms: false
       fips: false
       oidc_config: managed
       auditlog_forward: false

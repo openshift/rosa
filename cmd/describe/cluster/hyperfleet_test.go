@@ -12,7 +12,63 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/hyperfleet"
 )
+
+var _ = Describe("Hyperfleet trust-bundle describe output", func() {
+	It("reports the redacted bundle in text and structured output", func() {
+		description := &hyperfleet.ClusterDescription{
+			Cluster: &v1alpha1.Cluster{}, AdditionalTrustBundle: "REDACTED",
+		}
+		Expect(hfClusterDescriptionToMap(description, nil, nil, "")).To(
+			HaveKeyWithValue("additional_trust_bundle", "REDACTED"))
+		Expect(hfClusterDescriptionToString(description, nil, nil)).To(
+			ContainSubstring("Additional trust bundle:    REDACTED"))
+	})
+
+	It("omits the bundle after it is cleared", func() {
+		description := &hyperfleet.ClusterDescription{Cluster: &v1alpha1.Cluster{}}
+		Expect(hfClusterDescriptionToMap(description, nil, nil, "")).NotTo(HaveKey("additional_trust_bundle"))
+		Expect(hfClusterDescriptionToString(description, nil, nil)).NotTo(ContainSubstring("Additional trust bundle:"))
+	})
+})
+
+var _ = Describe("Hyperfleet proxy describe output", func() {
+	DescribeTable("exposes proxy settings from API responses", func(response string) {
+		description, err := hyperfleet.DecodeClusterDescription([]byte(response))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(hfClusterDescriptionToMap(description, nil, nil, "")).To(HaveKeyWithValue("proxy", map[string]string{
+			"http_proxy":  "http://10.0.0.68:8080",
+			"https_proxy": "http://10.0.0.68:8080",
+			"no_proxy":    ".example.com",
+		}))
+		text := hfClusterDescriptionToString(description, nil, nil)
+		Expect(text).To(ContainSubstring("HTTPProxy:               http://10.0.0.68:8080"))
+		Expect(text).To(ContainSubstring("HTTPSProxy:              http://10.0.0.68:8080"))
+		Expect(text).To(ContainSubstring("NoProxy:                 .example.com"))
+	},
+		Entry("top-level projection", `{"proxy":{"http_proxy":"http://10.0.0.68:8080","https_proxy":"http://10.0.0.68:8080","no_proxy":".example.com"}}`),
+		Entry("nested configuration", `{"spec":{"hostedCluster":{"configuration":{"proxy":{"httpProxy":"http://10.0.0.68:8080","httpsProxy":"http://10.0.0.68:8080","noProxy":".example.com"}}}}}`),
+	)
+
+	It("uses the projection when both response locations are present", func() {
+		description, err := hyperfleet.DecodeClusterDescription([]byte(`{"proxy":{"no_proxy":".current.example.com"},"spec":{"hostedCluster":{"configuration":{"proxy":{"noProxy":".old.example.com"}}}}}`))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(hfClusterDescriptionToMap(description, nil, nil, "")).To(HaveKeyWithValue("proxy", map[string]string{
+			"no_proxy": ".current.example.com",
+		}))
+		text := hfClusterDescriptionToString(description, nil, nil)
+		Expect(text).To(ContainSubstring("Proxy:\n - NoProxy:                 .current.example.com"))
+		Expect(text).NotTo(ContainSubstring(".old.example.com"))
+	})
+
+	It("omits proxy output when the API reports no settings", func() {
+		c := &v1alpha1.Cluster{}
+		Expect(hfClusterToMap(c, nil, nil, "")).NotTo(HaveKey("proxy"))
+		Expect(hfClusterToString(c, nil, nil)).NotTo(ContainSubstring("Proxy:\n"))
+	})
+})
 
 var _ = Describe("hyperfleet dispatch", func() {
 	var (

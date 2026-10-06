@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -13,8 +14,10 @@ import (
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
+	rosainput "github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -83,7 +86,7 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 	updated, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().Patch(
 		cmd.Context(), clusterUID, types.MergePatchType, patch, platform.PatchOptions{})
 	if err != nil {
-		r.Reporter.Errorf("Failed to update cluster: %v", err)
+		r.Reporter.Errorf("Failed to update cluster: %v", hyperfleet.WithAPIErrorDetails(err))
 		exitFn(1)
 		return
 	}
@@ -95,12 +98,13 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 
 // hyperfleetClusterUpdate implements pre/post hooks for rosa edit cluster (HF).
 type hyperfleetClusterUpdate struct {
-	clusterKey string
-	clusterUID string
-	cmd        *cobra.Command
+	clusterKey            string
+	clusterUID            string
+	cmd                   *cobra.Command
+	additionalTrustBundle *string
 }
 
-func (h *hyperfleetClusterUpdate) PreRequest(_ context.Context, _ *rosa.Runtime,
+func (h *hyperfleetClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 	input *hfpathbind.ClusterUpdateInput) error {
 	// spec.tags is applied at provisioning time only — AWS resources created by
 	// OpenShift cannot be retagged afterwards — so the Platform API treats it as
@@ -114,10 +118,13 @@ func (h *hyperfleetClusterUpdate) PreRequest(_ context.Context, _ *rosa.Runtime,
 	schedulerProfileChanged := h.cmd.Flags().Changed("scheduler-profile")
 	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
 		!h.cmd.Flags().Changed("display-name") && !h.cmd.Flags().Changed("delete-protection") &&
-		!channelChanged && !schedulerProfileChanged {
+		!channelChanged && !schedulerProfileChanged && !h.cmd.Flags().Changed("no-proxy") &&
+		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") &&
+		!h.cmd.Flags().Changed("additional-trust-bundle-file") {
 		return fmt.Errorf(
 			"specify at least one supported flag: --expiration, --expiration-time, " +
-				"--display-name, --delete-protection, --channel-group, --channel, --scheduler-profile",
+				"--display-name, --delete-protection, --channel-group, --channel, --scheduler-profile, " +
+				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file",
 		)
 	}
 
@@ -151,6 +158,74 @@ func (h *hyperfleetClusterUpdate) PreRequest(_ context.Context, _ *rosa.Runtime,
 				"unsupported scheduler profile %q; valid values are LowNodeUtilization, "+
 					"HighNodeUtilization, and NoScoring", input.SchedulerProfile,
 			)
+		}
+	}
+	if h.cmd.Flags().Changed("http-proxy") {
+		input.HttpProxy = args.httpProxy
+		if input.HttpProxy == rosainput.DoubleQuotesToRemove {
+			input.HttpProxy = ""
+		}
+		if err := ocm.ValidateHTTPProxy(input.HttpProxy); err != nil {
+			return err
+		}
+	}
+	if h.cmd.Flags().Changed("https-proxy") {
+		input.HttpsProxy = args.httpsProxy
+		if input.HttpsProxy == rosainput.DoubleQuotesToRemove {
+			input.HttpsProxy = ""
+		}
+		if err := ocm.ValidateHTTPSProxy(input.HttpsProxy); err != nil {
+			return err
+		}
+	}
+	if h.cmd.Flags().Changed("no-proxy") {
+		noProxy := strings.Join(args.noProxySlice, ",")
+		if noProxy == rosainput.DoubleQuotesToRemove {
+			noProxy = ""
+		}
+		if err := aws.UserNoProxyValidator(noProxy); err != nil {
+			return err
+		}
+		if err := aws.UserNoProxyDuplicateValidator(noProxy); err != nil {
+			return err
+		}
+		input.NoProxy = noProxy
+	}
+	if input.NoProxy != "" && h.cmd.Flags().Changed("no-proxy") &&
+		h.cmd.Flags().Changed("http-proxy") && h.cmd.Flags().Changed("https-proxy") &&
+		input.HttpProxy == "" && input.HttpsProxy == "" {
+		return fmt.Errorf( //nolint:staticcheck // OCM parity
+			"Failed to update cluster: no-proxy requires http-proxy or https-proxy")
+	}
+	if h.cmd.Flags().Changed("additional-trust-bundle-file") {
+		bundleFile := args.additionalTrustBundleFile
+		if bundleFile == rosainput.DoubleQuotesToRemove {
+			bundleFile = ""
+		}
+		if err := ocm.ValidateAdditionalTrustBundle(bundleFile); err != nil {
+			return err
+		}
+		bundle := ""
+		if bundleFile != "" {
+			data, err := os.ReadFile(bundleFile)
+			if err != nil {
+				return fmt.Errorf("failed to read additional trust bundle file: %w", err)
+			}
+			bundle = string(data)
+		}
+		h.additionalTrustBundle = &bundle
+	}
+	if input.NoProxy != "" && h.cmd.Flags().Changed("no-proxy") &&
+		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") {
+		description, err := hyperfleet.GetClusterDescription(ctx, r.HyperFleetClient, h.clusterUID)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve cluster proxy settings: %w", hyperfleet.WithAPIErrorDetails(err))
+		}
+		proxy := description.Proxy
+		hasProxy := proxy != nil && (proxy.HTTPProxy != "" || proxy.HTTPSProxy != "")
+		if !hasProxy {
+			return fmt.Errorf( //nolint:staticcheck // OCM parity
+				"Expected at least one of the following: http-proxy, https-proxy")
 		}
 	}
 	return nil
@@ -205,17 +280,36 @@ func (h *hyperfleetClusterUpdate) buildSpecPatch(input *hfpathbind.ClusterUpdate
 		hc["channel"] = args.channel
 		spec["hostedCluster"] = hc
 	}
+	configuration := map[string]any{}
 	if h.cmd.Flags().Changed("scheduler-profile") {
+		configuration["scheduler"] = map[string]any{"profile": input.SchedulerProfile}
+	}
+	proxy := map[string]any{}
+	if h.cmd.Flags().Changed("http-proxy") {
+		proxy["httpProxy"] = input.HttpProxy
+	}
+	if h.cmd.Flags().Changed("https-proxy") {
+		proxy["httpsProxy"] = input.HttpsProxy
+	}
+	if h.cmd.Flags().Changed("no-proxy") {
+		proxy["noProxy"] = input.NoProxy
+	}
+	if len(proxy) > 0 {
+		configuration["proxy"] = proxy
+	}
+	if len(configuration) > 0 {
 		hc, _ := spec["hostedCluster"].(map[string]any)
 		if hc == nil {
 			hc = map[string]any{}
 		}
-		hc["configuration"] = map[string]any{
-			"scheduler": map[string]any{
-				"profile": input.SchedulerProfile,
-			},
-		}
+		hc["configuration"] = configuration
 		spec["hostedCluster"] = hc
+	}
+	if h.cmd.Flags().Changed("additional-trust-bundle-file") {
+		if h.additionalTrustBundle == nil {
+			return nil, fmt.Errorf("additional trust bundle flag was set but value is missing")
+		}
+		spec["additionalTrustBundle"] = *h.additionalTrustBundle
 	}
 
 	if len(spec) == 0 {
