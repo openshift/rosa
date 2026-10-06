@@ -17,6 +17,7 @@ limitations under the License.
 package login
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -52,6 +53,13 @@ const oauthClientId = "ocm-cli"
 var reAttempt bool
 
 var env string
+
+var initiateAuthCode = func(ctx context.Context, clientID string, insecure bool) (string, error) {
+	return authentication.NewAuthCodeConfig().
+		Client(clientID).
+		Insecure(insecure).
+		InitiateAuthCode(ctx)
+}
 
 var args struct {
 	tokenURL      string
@@ -137,8 +145,9 @@ func init() {
 		&args.insecure,
 		"insecure",
 		false,
-		"Enables insecure communication with the server. This disables verification of TLS "+
-			"certificates and host names.",
+		"Enables insecure communication for CLI authentication exchanges and later OCM requests. "+
+			"This disables verification of TLS certificates and host names, does not affect the browser, "+
+			"and is not recommended for production environments.",
 	)
 	flags.BoolVar(
 		&args.useAuthCode,
@@ -219,7 +228,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		if spin != nil {
 			spin.Stop()
 		}
-		token, err := authentication.InitiateAuthCode(oauthClientId)
+		token, err := initiateAuthCode(ctx, oauthClientId, args.insecure)
 		if err != nil {
 			return fmt.Errorf("an error occurred while retrieving the token: %v", err)
 		}
