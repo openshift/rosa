@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -37,6 +38,12 @@ var (
 	hfCreateCluster = func(cmd *cobra.Command) {
 		r := rosa.NewRuntime().WithHyperFleet()
 		defer r.Cleanup()
+		// HF create bypasses the classic hosted-cp validation in run(); reject classic-only flags here.
+		if err := rejectUnsupportedHyperfleetCreateFlags(cmd); err != nil {
+			r.Reporter.Errorf("%v", err)
+			hfExitFn(1)
+			return
+		}
 		if err := hfpathbind.RunCreateCluster(context.Background(), r, cmd, &hfClusterInput,
 			&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets},
 		); err != nil {
@@ -45,6 +52,47 @@ var (
 		}
 	}
 )
+
+// rejectUnsupportedHyperfleetCreateFlags rejects flags that select classic-only
+// behavior and must not reach Platform API create.
+func rejectUnsupportedHyperfleetCreateFlags(cmd *cobra.Command) error {
+	if cmd == nil {
+		return nil
+	}
+
+	unsupportedFlags := classicOnlyFlagsChanged(cmd)
+	if len(unsupportedFlags) == 0 {
+		return nil
+	}
+	return fmt.Errorf("the following flags are not supported for HyperFleet cluster creation: %s",
+		strings.Join(unsupportedFlags, ", "))
+}
+
+// classicOnlyFlagsChanged identifies explicit flags that require classic architecture.
+func classicOnlyFlagsChanged(cmd *cobra.Command) []string {
+	var changed []string
+	for _, name := range []string{"non-sts", "mint-mode", privateLinkFlagName, "disable-workload-monitoring"} {
+		flag := cmd.Flags().Lookup(name)
+		if flag != nil && flag.Changed && flag.Value.String() == "true" {
+			changed = append(changed, "--"+name)
+		}
+	}
+	if flag := cmd.Flags().Lookup("sts"); flag != nil && flag.Changed && flag.Value.String() == "false" {
+		changed = append(changed, "--sts=false")
+	}
+	for _, name := range []string{
+		"additional-infra-security-group-ids", "additional-control-plane-security-group-ids",
+		"controlplane-iam-role-arn", "master-iam-role", "worker-mp-labels",
+		"default-ingress-route-selector", "default-ingress-excluded-namespaces",
+		"default-ingress-wildcard-policy", "default-ingress-namespace-ownership-policy", "availability-zones",
+	} {
+		flag := cmd.Flags().Lookup(name)
+		if flag != nil && flag.Changed && flag.Value.String() != flag.DefValue {
+			changed = append(changed, "--"+name)
+		}
+	}
+	return changed
+}
 
 // runHyperfleet is a thin wrapper for direct test invocation without a real cobra.Command.
 func runHyperfleet(r *rosa.Runtime) {
@@ -104,6 +152,12 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	}
 	if input.SubnetID == "" {
 		return fmt.Errorf("--subnet-id (or --subnet-ids) is required")
+	}
+	if err := validateNetworkType(args.networkType); err != nil {
+		return err
+	}
+	if args.noCni && args.networkType != "" {
+		return fmt.Errorf("--no-cni and --network-type are mutually exclusive parameters")
 	}
 
 	// OIDC config ID is optional but recommended
