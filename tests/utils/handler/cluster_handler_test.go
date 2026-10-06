@@ -85,4 +85,20 @@ var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 		Expect(ch.profile.ClusterConfig.Name).To(Equal("hf-e2e-12345"))
 		Expect(flags).To(ContainElement("hf-e2e-12345"))
 	})
+
+	It("passes the release image configured in the profile", func() {
+		const releaseImage = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "hf-e2e-12345")
+		GinkgoT().Setenv("HYPERFLEET_VERSION", "")
+		ch := &clusterHandler{
+			profile:          &Profile{Version: releaseImage, Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
+			clusterConfig:    &ClusterConfigure.ClusterConfig{},
+			clusterDetail:    &ClusterDetail{},
+			resourcesHandler: &resourcesHandler{persist: false, resources: &Resources{}},
+		}
+		flags, err := ch.GenerateClusterCreateFlags()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(flags).To(ContainElements("--version", releaseImage))
+	})
 })

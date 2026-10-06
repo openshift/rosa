@@ -24,7 +24,7 @@ var hfClusterInput hfpathbind.ClusterCreateInput
 // hfExitFn, hfDescribeSubnets, and hfCreateCluster are package-level
 // vars so tests can stub the hyperfleet path without real AWS calls.
 var (
-	hfExitFn  = func(code int) { os.Exit(code) }
+	hfExitFn = func(code int) { os.Exit(code) }
 
 	hfDescribeSubnets = func(
 		ctx context.Context, cfg awssdk.Config, subnetID string,
@@ -70,7 +70,9 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	// Bridge flags that conflict with OCM v1 registrations (registerIfNew skips them,
 	// so they remain backed by args.* rather than hfClusterInput.*).
 	input.Name = args.clusterName
-	input.Version = args.version
+	if args.version != "" {
+		input.Version = args.version
+	}
 	input.OperatorRolesPrefix = args.operatorRolesPrefix
 
 	// --subnet-id is a new HF-only flag (no OCM equivalent) so it IS registered on
