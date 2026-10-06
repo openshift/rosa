@@ -19,6 +19,7 @@ import (
 
 	pkgaws "github.com/openshift/rosa/pkg/aws"
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 )
@@ -50,6 +51,63 @@ var _ = Describe("hyperfleet dispatch", func() {
 	})
 })
 
+var _ = Describe("rejectUnsupportedHyperfleetCreateFlags", func() {
+	DescribeTable("checks effective values of explicitly set flags", func(name, value string, boolean, reject bool) {
+		cmd := &cobra.Command{}
+		if boolean {
+			cmd.Flags().Bool(name, name == "sts", "")
+		} else {
+			cmd.Flags().String(name, "", "")
+		}
+		Expect(cmd.Flags().Set(name, value)).To(Succeed())
+		err := rejectUnsupportedHyperfleetCreateFlags(cmd)
+		if reject {
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("--" + name))
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	},
+		Entry("classic boolean enabled", "non-sts", "true", true, true),
+		Entry("classic boolean disabled", "non-sts", "false", true, false),
+		Entry("STS disabled", "sts", "false", true, true),
+		Entry("STS enabled", "sts", "true", true, false),
+		Entry("classic string supplied", "controlplane-iam-role-arn", "arn:aws:iam::123456789012:role/control-plane", false, true),
+		Entry("classic string unchanged", "controlplane-iam-role-arn", "", false, false),
+	)
+
+	It("rejects all explicitly set classic-only flags", func() {
+		cmd := &cobra.Command{}
+		var disableUWM bool
+		var controlPlaneRoleARN string
+		cmd.Flags().BoolVar(&disableUWM, "disable-workload-monitoring", false, "")
+		cmd.Flags().StringVar(&controlPlaneRoleARN, "controlplane-iam-role-arn", "", "")
+		Expect(cmd.Flags().Set("disable-workload-monitoring", "true")).To(Succeed())
+		Expect(cmd.Flags().Set(
+			"controlplane-iam-role-arn", "arn:aws:iam::123456789012:role/control-plane",
+		)).To(Succeed())
+
+		err := rejectUnsupportedHyperfleetCreateFlags(cmd)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("not supported for HyperFleet cluster creation"))
+		Expect(err.Error()).To(ContainSubstring("--disable-workload-monitoring"))
+		Expect(err.Error()).To(ContainSubstring("--controlplane-iam-role-arn"))
+	})
+
+	It("allows create when classic-only flags are unset", func() {
+		cmd := &cobra.Command{}
+		var disableUWM bool
+		cmd.Flags().BoolVar(&disableUWM, "disable-workload-monitoring", false, "")
+		cmd.Flags().String("controlplane-iam-role-arn", "", "")
+
+		Expect(rejectUnsupportedHyperfleetCreateFlags(cmd)).To(Succeed())
+	})
+
+	It("allows nil command", func() {
+		Expect(rejectUnsupportedHyperfleetCreateFlags(nil)).To(Succeed())
+	})
+})
+
 var _ = Describe("runHyperfleet", func() {
 	var (
 		origExitFn          func(int)
@@ -58,6 +116,8 @@ var _ = Describe("runHyperfleet", func() {
 			clusterName         string
 			operatorRolesPrefix string
 			subnetIDs           []string
+			networkType         string
+			noCni               bool
 			version             string
 		}
 		exited bool
@@ -70,6 +130,8 @@ var _ = Describe("runHyperfleet", func() {
 		origArgs.clusterName = args.clusterName
 		origArgs.operatorRolesPrefix = args.operatorRolesPrefix
 		origArgs.subnetIDs = args.subnetIDs
+		origArgs.networkType = args.networkType
+		origArgs.noCni = args.noCni
 		origArgs.version = args.version
 
 		exited = false
@@ -78,6 +140,8 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = "test-cluster"
 		args.operatorRolesPrefix = "test-cluster"
 		args.subnetIDs = []string{"subnet-abc123"}
+		args.networkType = ""
+		args.noCni = false
 		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
 
 		t = test.NewTestRuntime()
@@ -94,6 +158,8 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = origArgs.clusterName
 		args.operatorRolesPrefix = origArgs.operatorRolesPrefix
 		args.subnetIDs = origArgs.subnetIDs
+		args.networkType = origArgs.networkType
+		args.noCni = origArgs.noCni
 		args.version = origArgs.version
 	})
 
@@ -153,6 +219,22 @@ var _ = Describe("runHyperfleet", func() {
 		args.subnetIDs = nil
 		runHyperfleet(&rosa.Runtime{Reporter: t.RosaRuntime.Reporter})
 		Expect(exited).To(BeTrue())
+	})
+
+	It("rejects an invalid network type before creating a cluster", func() {
+		args.networkType = "invalid-network-type"
+		handler := &hyperfleetClusterCreate{}
+		err := handler.PreRequest(context.Background(), t.RosaRuntime, &hfpathbind.ClusterCreateInput{})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("expected a valid network type"))
+	})
+
+	It("rejects no CNI together with a network type before creating a cluster", func() {
+		args.noCni = true
+		args.networkType = "OVNKubernetes"
+		handler := &hyperfleetClusterCreate{}
+		err := handler.PreRequest(context.Background(), t.RosaRuntime, &hfpathbind.ClusterCreateInput{})
+		Expect(err).To(MatchError("--no-cni and --network-type are mutually exclusive parameters"))
 	})
 
 	It("exits when DescribeSubnets fails", func() {
