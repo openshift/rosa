@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
+	rosaconfig "github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
@@ -36,6 +38,42 @@ const (
 	UWMEnabled  = "Enabled"
 	UWMDisabled = "Disabled"
 )
+
+// hyperfleetEndpointForTests resolves the endpoint from the explicit flag,
+// environment, active runtime configuration, or saved ROSA configuration.
+func hyperfleetEndpointForTests() string {
+	if hyperfleet.FromFlag() && hyperfleet.ExplicitURL() != "" {
+		return hyperfleet.ExplicitURL()
+	}
+	if endpoint := os.Getenv("HYPERFLEET_URL"); endpoint != "" {
+		return endpoint
+	}
+	if hyperfleet.ExplicitURL() != "" {
+		return hyperfleet.ExplicitURL()
+	}
+
+	cliConfig, err := rosaconfig.Load()
+	Expect(err).NotTo(HaveOccurred())
+	if cliConfig == nil {
+		return ""
+	}
+	return cliConfig.HyperfleetURL
+}
+
+func isHyperfleetMode() bool {
+	return hyperfleetEndpointForTests() != ""
+}
+
+func hyperfleetRegionForTests(defaultRegion string) string {
+	endpoint := hyperfleetEndpointForTests()
+	if endpoint == "" {
+		return defaultRegion
+	}
+
+	region, err := hyperfleet.ExtractRegion(endpoint)
+	Expect(err).NotTo(HaveOccurred())
+	return region
+}
 
 var _ = Describe("Edit cluster",
 	labels.Feature.Cluster,
@@ -67,12 +105,12 @@ var _ = Describe("Edit cluster",
 			rosaClient.CleanResources(clusterID)
 		})
 		It("can edit cluster channel group - [id:81399]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				const STABLE_CHANNEL = "stable"
 				const CANDIDATE_CHANNEL = "candidate"
 
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 
 				By("Check help message contains channel-group flag")
 				output, err := clusterService.EditCluster("", "-h")
@@ -229,7 +267,7 @@ var _ = Describe("Edit cluster",
 				Expect(CD.ID).To(Equal(jsonData.DigString("id")))
 
 				// V2 (Hyperfleet) clusters don't have external_id in the same way as V1
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if !isHyperfleet {
 					Expect(CD.ExternalID).To(Equal(jsonData.DigString("external_id")))
 				}
@@ -327,7 +365,7 @@ var _ = Describe("Edit cluster",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --private yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--private is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -396,7 +434,7 @@ var _ = Describe("Edit cluster",
 		It("can disable workload monitoring on/off - [id:45159]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				isHostedCP, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -484,7 +522,7 @@ var _ = Describe("Edit cluster",
 			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --private yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--private is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -577,7 +615,7 @@ var _ = Describe("Edit cluster",
 		It("can verify delete protection on a rosa cluster - [id:73161]",
 			labels.High, labels.Runtime.Day2, labels.Exclude, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if !isHyperfleet {
 					Skip("Excluded until bug on OCP-73161 is resolved")
 				}
@@ -629,7 +667,7 @@ var _ = Describe("Edit cluster",
 		It("can verify delete protection on a rosa cluster negative - [id:74656]",
 			labels.Medium, labels.Runtime.Day2, labels.Exclude, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if !isHyperfleet {
 					Skip("Excluded until bug on OCP-74656 is resolved")
 				}
@@ -653,7 +691,7 @@ var _ = Describe("Edit cluster",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support proxy flags yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("proxy edit flags are not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -748,7 +786,7 @@ var _ = Describe("Edit cluster",
 			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --billing-account yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--billing-account is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -813,7 +851,7 @@ var _ = Describe("Edit cluster",
 			labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
 			func() {
 				// V2 edit cluster does not support --billing-account yet
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if isHyperfleet {
 					Skip("--billing-account is not yet supported for V2 (Hyperfleet) clusters")
 				}
@@ -1151,8 +1189,14 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		})
 
 	It("can validate cluster registry config patching well - [id:77149]",
-		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.InProgress,
 		func() {
+			By("Skip testing for V2 clusters - registry config flags not yet supported")
+			isHyperfleet := isHyperfleetMode()
+			if isHyperfleet {
+				Skip("Registry config editing (--registry-config-*) is not available on Platform API v2 yet")
+			}
+
 			By("edit non-hcp with registry config")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
@@ -1175,13 +1219,16 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			helper.ExpectErrorWithMessage(err, "expected valid allowed registries for import values")
 		})
 	It("can validate autonode edit - [id:84982]",
-		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.InProgress,
 		func() {
 			By("Load the original cluster config")
 			clusterConfig, err := config.ParseClusterProfile()
 			Expect(err).ToNot(HaveOccurred())
 
 			roleArn := clusterConfig.Aws.Sts.RoleArn
+			if roleArn == "" && isHyperfleetMode() {
+				roleArn = "arn:aws:iam::123456789012:role/test-role"
+			}
 
 			By("Autonode is only suppored for hosted-cp cluster")
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
@@ -1252,6 +1299,7 @@ var _ = Describe("Additional security groups validation",
 			profilesMap    map[string]*handler.Profile
 			profile        *handler.Profile
 			clusterHandler handler.ClusterHandler
+			hyperfleetMode bool
 		)
 
 		BeforeEach(func() {
@@ -1269,6 +1317,18 @@ var _ = Describe("Additional security groups validation",
 				}
 			}
 			profile = profilesMap[profilesNames[helper.RandomInt(len(profilesNames))]]
+			hyperfleetURL := hyperfleetEndpointForTests()
+			hyperfleetMode = hyperfleetURL != ""
+			if hyperfleetMode {
+				profile.Region, err = hyperfleet.ExtractRegion(hyperfleetURL)
+				Expect(err).ToNot(HaveOccurred())
+				profile.Version = "latest"
+				profile.ClusterConfig.HCP = true
+				profile.ClusterConfig.STS = true
+				profile.ClusterConfig.OIDCConfig = "managed"
+				profile.ClusterConfig.NetworkingSet = true
+				profile.ClusterConfig.BYOVPC = true
+			}
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
 			Expect(err).To(BeNil())
 		})
@@ -1277,8 +1337,14 @@ var _ = Describe("Additional security groups validation",
 			clusterHandler.Destroy()
 		})
 		It("Create rosa cluster with additional security groups will validate well via rosacli - [id:68971]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
+				By("Skip testing for V2 clusters - additional security groups validation not yet supported")
+				isHyperfleet := isHyperfleetMode()
+				if isHyperfleet {
+					Skip("Additional security groups validation is not available on Platform API v2 yet")
+				}
+
 				var (
 					ocpVersionBelow4_14 string
 					ocpVersion          string
@@ -1301,7 +1367,10 @@ var _ = Describe("Additional security groups validation",
 
 				By("Get cluster upgrade version")
 				versionService := rosaClient.Version
-				versionList, err := versionService.ListAndReflectVersions(rosacli.VersionChannelGroupCandidate, false)
+				versionList, err := versionService.ListAndReflectVersions(
+					rosacli.VersionChannelGroupCandidate,
+					hyperfleetMode,
+				)
 				Expect(err).To(BeNil())
 				defaultVersion := versionList.DefaultVersion()
 				Expect(defaultVersion).ToNot(BeNil())
@@ -1309,10 +1378,12 @@ var _ = Describe("Additional security groups validation",
 
 				pickedVersions, err := versionList.FilterVersionsSameMajorAndEqualOrLowerThanMinor(4, 13, false)
 				Expect(err).To(BeNil())
-				if len(pickedVersions.OpenShiftVersions) <= 0 {
+				if len(pickedVersions.OpenShiftVersions) <= 0 && !hyperfleetMode {
 					Skip("There is no version bellow 4.14.0, skip this case")
 				}
-				ocpVersionBelow4_14 = pickedVersions.OpenShiftVersions[0].Version
+				if len(pickedVersions.OpenShiftVersions) > 0 {
+					ocpVersionBelow4_14 = pickedVersions.OpenShiftVersions[0].Version
+				}
 
 				By("Prepare a vpc for the testing")
 				resourcesHandler := clusterHandler.GetResourcesHandler()
@@ -1355,40 +1426,44 @@ var _ = Describe("Additional security groups validation",
 				subnetsFlagValue := strings.Join(append(subnetMap["private"], subnetMap["public"]...), ",")
 				rosaclient := rosacli.NewClient()
 
-				By("Try creating cluster with additional security groups but no subnet-ids")
-				for additionalSecurityGroupFlag := range securityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
-						clusterName,
-						"--region", resourcesHandler.GetVPC().Region,
-						"--replicas", "3",
-						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-					)
-					Expect(err).To(HaveOccurred())
-					index = strings.Index(additionalSecurityGroupFlag, "a")
-					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
-						"setting the `%s` flag is only allowed for BYO VPC clusters",
-						flagName))
+				if !hyperfleetMode {
+					By("Try creating cluster with additional security groups but no subnet-ids")
+					for additionalSecurityGroupFlag := range securityGroups {
+						output, err, _ := rosaclient.Cluster.Create(
+							clusterName,
+							"--region", resourcesHandler.GetVPC().Region,
+							"--replicas", "3",
+							additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
+						)
+						Expect(err).To(HaveOccurred())
+						index = strings.Index(additionalSecurityGroupFlag, "a")
+						flagName = additionalSecurityGroupFlag[index:]
+						Expect(output.String()).To(ContainSubstring(
+							"setting the `%s` flag is only allowed for BYO VPC clusters",
+							flagName))
+					}
 				}
 
-				By("Try creating cluster with additional security groups and ocp version lower than 4.14")
-				for additionalSecurityGroupFlag := range securityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
-						clusterName,
-						"--region", resourcesHandler.GetVPC().Region,
-						"--replicas", "3",
-						"--subnet-ids", subnetsFlagValue,
-						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
-						"--version", ocpVersionBelow4_14,
-						"--channel-group", rosacli.VersionChannelGroupCandidate,
-						"-y",
-					)
-					Expect(err).To(HaveOccurred())
-					index = strings.Index(additionalSecurityGroupFlag, "a")
-					flagName = additionalSecurityGroupFlag[index:]
-					Expect(output.String()).To(ContainSubstring(
-						"parameter '%s' is not supported prior to version '4.14.0'",
-						flagName))
+				if !hyperfleetMode {
+					By("Try creating cluster with additional security groups and ocp version lower than 4.14")
+					for additionalSecurityGroupFlag := range securityGroups {
+						output, err, _ := rosaclient.Cluster.Create(
+							clusterName,
+							"--region", resourcesHandler.GetVPC().Region,
+							"--replicas", "3",
+							"--subnet-ids", subnetsFlagValue,
+							additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
+							"--version", ocpVersionBelow4_14,
+							"--channel-group", rosacli.VersionChannelGroupCandidate,
+							"-y",
+						)
+						Expect(err).To(HaveOccurred())
+						index = strings.Index(additionalSecurityGroupFlag, "a")
+						flagName = additionalSecurityGroupFlag[index:]
+						Expect(output.String()).To(ContainSubstring(
+							"parameter '%s' is not supported prior to version '4.14.0'",
+							flagName))
+					}
 				}
 
 				By("Try creating cluster with invalid additional security groups")
@@ -1440,6 +1515,12 @@ var _ = Describe("Classic cluster creation validation",
 		)
 
 		BeforeEach(func() {
+			By("Skip testing for V2 clusters - classic cluster validation tests")
+			isHyperfleet := isHyperfleetMode()
+			if isHyperfleet {
+				Skip("Classic cluster validation tests are not applicable to Platform API v2 (HCP only)")
+			}
+
 			var err error
 
 			// Init the client
@@ -2023,7 +2104,7 @@ var _ = Describe("Create cluster delete protection",
 		)
 
 		verifyDeleteProtection := func() {
-			isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+			isHyperfleet := isHyperfleetMode()
 			createFlag := "--enable-delete-protection"
 			disableEditFlag := "--enable-delete-protection=false"
 			disableHint := "--enable-delete-protection=false"
@@ -2080,7 +2161,7 @@ var _ = Describe("Create cluster delete protection",
 			})
 
 			AfterEach(func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				if clusterID != "" {
 					By("Disable delete protection")
 					disableFlag := "--enable-delete-protection=false"
@@ -2130,7 +2211,7 @@ var _ = Describe("Create cluster delete protection",
 				region := constants.CommonAWSRegion
 				multiAZ := true
 				networkingSet := true
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if isHyperfleetMode() {
 					// Platform API URL region must match --region used for OIDC/cluster create.
 					region = "us-east-1"
 					// V2 (Hyperfleet) doesn't support multi-AZ or custom networking in the same way as V1
@@ -2216,7 +2297,7 @@ var _ = Describe("Create cluster with invalid options will",
 		It("validate enable-delete-protection flag when create cluster - [id:74657]",
 			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+				isHyperfleet := isHyperfleetMode()
 				flagName := "--enable-delete-protection"
 				if isHyperfleet {
 					flagName = "--delete-protection"
@@ -2243,10 +2324,10 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate subnet well when create cluster - [id:37177]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				By("Setup vpc with list azs")
-				testingTegion := "us-east-2"
+				testingTegion := hyperfleetRegionForTests("us-east-2")
 				By("Prepare subnets for the coming testing")
 				vpc, err := vpc_client.PrepareVPC("rosacli-37177", testingTegion, "", true, "")
 				Expect(err).ToNot(HaveOccurred())
@@ -2352,7 +2433,7 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate the network when create cluster - [id:38857]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				clusterName := "rosaci-38857"
 				By("illegal machine/service/pod cidr when create cluster")
@@ -2433,23 +2514,30 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate the invalid proxy when create cluster - [id:45509]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
-				zone := constants.CommonAWSRegion + "a"
+				region := hyperfleetRegionForTests(constants.CommonAWSRegion)
+				hyperfleetURL := hyperfleetEndpointForTests()
+				hyperfleetMode := hyperfleetURL != ""
+				zone := region + "a"
 				clusterName := "rosacli-45509"
+				var output bytes.Buffer
+				var err error
 				By("Create rosa cluster which has proxy without subnets set by command ")
-				output, err := clusterService.CreateDryRun(
-					"cl-45509",
-					"--http-proxy", "http://example.com",
-					"--https-proxy", "https://example.com",
-				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring(
-					"cluster_wide_proxy is only supported if subnetIDs exist"),
-				)
+				if !hyperfleetMode {
+					output, err = clusterService.CreateDryRun(
+						"cl-45509",
+						"--http-proxy", "http://example.com",
+						"--https-proxy", "https://example.com",
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring(
+						"cluster_wide_proxy is only supported if subnetIDs exist"),
+					)
+				}
 
 				By("Prepare vpc with subnets")
-				vpc, err := vpc_client.PrepareVPC(clusterName, constants.CommonAWSRegion, "", true, "")
+				vpc, err := vpc_client.PrepareVPC(clusterName, region, "", true, "")
 				Expect(err).ToNot(HaveOccurred())
 				defer vpc.DeleteVPCChain(true)
 
@@ -2460,7 +2548,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create ccs existing cluster with invalid http_proxy set")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", constants.CommonAWSRegion,
+					"--region", region,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -2472,7 +2560,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create ccs existing cluster with invalid http_proxy not started with http")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", constants.CommonAWSRegion,
+					"--region", region,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -2485,7 +2573,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create ccs existing cluster with invalid https_proxy set")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", constants.CommonAWSRegion,
+					"--region", region,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -2504,7 +2592,7 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(err).ToNot(HaveOccurred())
 
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", constants.CommonAWSRegion,
+					"--region", region,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -2517,7 +2605,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", constants.CommonAWSRegion,
+					"--region", region,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -2530,7 +2618,7 @@ var _ = Describe("Create cluster with invalid options will",
 
 				By("Create wide-proxy cluster with only no_proxy set")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", constants.CommonAWSRegion,
+					"--region", region,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -2542,7 +2630,7 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
 
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", constants.CommonAWSRegion,
+					"--region", region,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
 						publicSubnet,
@@ -2884,12 +2972,21 @@ var _ = Describe("HCP cluster creation negative testing",
 			command        string
 			rosalCommand   config.Command
 			clusterHandler handler.ClusterHandler
-			err            error
+			hyperfleetMode bool
 		)
 		BeforeEach(func() {
+			var err error
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
+			hyperfleetURL := hyperfleetEndpointForTests()
+			hyperfleetMode = hyperfleetURL != ""
+			region := constants.CommonAWSRegion
+			if hyperfleetMode {
+				region, err = hyperfleet.ExtractRegion(hyperfleetURL)
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			By("Prepare custom profile")
 			customProfile = &handler.Profile{
@@ -2911,7 +3008,10 @@ var _ = Describe("HCP cluster creation negative testing",
 				},
 				Version:      "y-1",
 				ChannelGroup: "stable",
-				Region:       constants.CommonAWSRegion,
+				Region:       region,
+			}
+			if hyperfleetMode {
+				customProfile.Version = "latest"
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
@@ -2931,7 +3031,7 @@ var _ = Describe("HCP cluster creation negative testing",
 		})
 
 		It("creating HCP cluster with UWM should fail - [id:86119]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				clusterName := helper.GenerateRandomName("cluster-86119", 2)
 				By("Create HCP cluster with --disable-workload-monitoring")
@@ -2943,7 +3043,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				clusterName := helper.GenerateRandomName("ocp-73725", 2)
 				By("Create HCP cluster with --no-cni and \"--network-type={OVNKubernetes, OpenshiftSDN}\" at the same time")
@@ -2959,7 +3059,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(output.String()).
 					To(
 						ContainSubstring(
-							"ERR: expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
+							"expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
 
 				By("Create HCP cluster with invalid --no-cni value")
 				rosalCommand.DeleteFlag("--network-type", true)
@@ -2978,16 +3078,18 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.AddFlags("--no-cni", "--network-type=OVNKubernetes")
 				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: --no-cni and --network-type are mutually exclusive parameters"))
+				Expect(output.String()).To(ContainSubstring("--no-cni and --network-type are mutually exclusive parameters"))
 
-				By("Create non-HCP cluster with --no-cni flag")
-				output, err = clusterService.CreateDryRun("ocp-73725", "--no-cni")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
+				if !hyperfleetMode {
+					By("Create non-HCP cluster with --no-cni flag")
+					output, err = clusterService.CreateDryRun("ocp-73725", "--no-cni")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
+				}
 			})
 
 		It("to validate creating a hosted cluster with invalid subnets - [id:75916]",
-			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				clusterName := "ocp-75916"
 				replacingFlags := map[string]string{
@@ -3006,7 +3108,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 		It("Create a hosted cluster cluster with invalid volume size [id:66372]",
 			labels.Medium,
-			labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				minSize := constants.MinHCPDiskSize
 				maxSize := constants.MaxDiskSize
@@ -3086,7 +3188,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
-			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				clusterName := "ocp-70970"
 				replacingFlags := map[string]string{
@@ -3153,7 +3255,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 		It("to validate '--ec2-metadata-http-tokens' flag during creating cluster - [id:64078]",
 			labels.Medium,
-			labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				clusterName := "ocp-64078"
 
@@ -3350,7 +3452,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate hcp creation with registry config via rosacli - [id:76396]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
 			func() {
 				By("Create non-HCP cluster with registry config")
 				clusterName := helper.GenerateRandomName("ocp-76396", 2)
@@ -3410,14 +3512,23 @@ var _ = Describe("HCP cluster creation subnets validation",
 			testingClusterName string
 			clusterHandler     handler.ClusterHandler
 			rosalCommand       config.Command
-			err                error
+			hyperfleetMode     bool
 			command            string
 		)
 		BeforeEach(func() {
+			var err error
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
+			hyperfleetURL := hyperfleetEndpointForTests()
+			hyperfleetMode = hyperfleetURL != ""
+			region := constants.CommonAWSRegion
+			if hyperfleetMode {
+				region, err = hyperfleet.ExtractRegion(hyperfleetURL)
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			By("Prepare custom profile")
 			customProfile = &handler.Profile{
@@ -3439,7 +3550,7 @@ var _ = Describe("HCP cluster creation subnets validation",
 				},
 				Version:      "latest",
 				ChannelGroup: "stable",
-				Region:       constants.CommonAWSRegion,
+				Region:       region,
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
@@ -3494,7 +3605,7 @@ var _ = Describe("HCP cluster creation subnets validation",
 					"-c":              clusterName,
 					"--cluster-name":  clusterName,
 					"--domain-prefix": clusterName,
-					"--region":        constants.CommonAWSRegion,
+					"--region":        customProfile.Region,
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				if rosalCommand.CheckFlagExist("--subnet-ids") {
@@ -3862,7 +3973,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 		})
 
 		It("to validate to create cluster with existing operator roles prefix - [id:45742]",
-			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar45742", 2)
@@ -3927,6 +4038,11 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 		)
 
 		BeforeEach(func() {
+			By("Skip OCM account-role / manual STS flows on Platform API v2")
+			if isHyperfleetMode() {
+				Skip("Account-role and OCM-manual operator-role flows are not applicable to Platform API v2")
+			}
+
 			By("Init the client")
 			rosaClient = rosacli.NewClient()
 			ocmResourceService = rosaClient.OCMResource
@@ -3937,6 +4053,9 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 		})
 
 		AfterEach(func() {
+			if rosaClient == nil || clusterID == "" {
+				return
+			}
 			By("Go back original by setting runner dir")
 			rosaClient.Runner.SetDir(defaultDir)
 
@@ -3976,7 +4095,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 		})
 
 		It("to create/delete operator-roles and oidc-provider to cluster in manual mode - [id:43053]",
-			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar43053", 2)
@@ -4105,6 +4224,11 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	const versionTagName = "rosa_openshift_version"
 
 	BeforeEach(func() {
+		By("Skip OCM reusable OIDC/operator-prefix flows on Platform API v2")
+		if isHyperfleetMode() {
+			Skip("Reusing OCM OIDC config / operator-prefix is not applicable to Platform API v2")
+		}
+
 		By("Init the client")
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
@@ -4121,8 +4245,14 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	})
 
 	AfterEach(func() {
+		if rosaClient == nil || clusterID == "" {
+			return
+		}
 		hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			// Stale CLUSTER_ID (cluster already gone) — skip recover steps.
+			return
+		}
 		if !hostedCluster {
 			By("Recover the operator role policy version")
 			keysToUntag := []string{versionTagName}
@@ -4148,7 +4278,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	})
 
 	It("to reuse operator-roles prefix and oidc config - [id:60688]",
-		labels.Critical, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
+		labels.Critical, labels.Runtime.Day2, labels.Hyperfleet.NotApplicable,
 		func() {
 			By("Check if it is using oidc config")
 			if profile.ClusterConfig.OIDCConfig == "" {
@@ -4325,7 +4455,7 @@ var _ = Describe("Sts cluster creation with external id",
 		})
 
 		It("Creating cluster with sts external id should succeed - [id:75603]",
-			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {
 				By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75603", 2)
@@ -4459,6 +4589,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			AWSAccountID       string
 			testingClusterName string
 			clusterHandler     handler.ClusterHandler
+			hyperfleetMode     bool
 		)
 		BeforeEach(func() {
 			By("Init the client")
@@ -4473,6 +4604,13 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			rosaClient.Runner.UnsetFormat()
 			whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 			AWSAccountID = whoamiData.AWSAccountID
+			hyperfleetURL := hyperfleetEndpointForTests()
+			hyperfleetMode = hyperfleetURL != ""
+			region := constants.CommonAWSRegion
+			if hyperfleetMode {
+				region, err = hyperfleet.ExtractRegion(hyperfleetURL)
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			By("Prepare custom profile")
 			customProfile = &handler.Profile{
@@ -4491,7 +4629,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				},
 				Version:      "latest",
 				ChannelGroup: "candidate",
-				Region:       constants.CommonAWSRegion,
+				Region:       region,
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
@@ -4518,24 +4656,48 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
 				Expect(err).To(BeNil())
 
-				By("Delete operator-roles")
-				_, err = ocmResourceService.DeleteOperatorRoles(
-					"-c", clusterID,
-					"--mode", "auto",
-					"-y",
-				)
-				Expect(err).To(BeNil())
+				if !hyperfleetMode {
+					By("Delete operator-roles")
+					_, err = ocmResourceService.DeleteOperatorRoles(
+						"-c", clusterID,
+						"--mode", "auto",
+						"-y",
+					)
+					Expect(err).To(BeNil())
+				}
 			} else if testingClusterName != "" {
-				// At least try to delete testing cluster
-				By("Delete cluster by name")
-				rosaClient.Runner.UnsetArgs()
-				_, err := clusterService.DeleteCluster(testingClusterName, "-y")
-				Expect(err).To(BeNil())
+				if hyperfleetMode {
+					// Resolve the ID first so cleanup can wait until deletion completes
+					// before removing resources that the cluster may still use.
+					rosaClient.Runner.UnsetArgs()
+					clusterListOutput, err := clusterService.List()
+					if err == nil {
+						clusterList, reflectErr := clusterService.ReflectClusterList(clusterListOutput)
+						if reflectErr == nil {
+							clusterID = clusterList.ClusterByName(testingClusterName).ID
+						}
+					}
+					if clusterID != "" {
+						By("Delete cluster by id")
+						rosaClient.Runner.UnsetArgs()
+						_, err = clusterService.DeleteCluster(clusterID, "-y")
+						Expect(err).To(BeNil())
+						rosaClient.Runner.UnsetArgs()
+						err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+						Expect(err).To(BeNil())
+					}
+				} else {
+					// At least try to delete testing cluster
+					By("Delete cluster by name")
+					rosaClient.Runner.UnsetArgs()
+					_, err := clusterService.DeleteCluster(testingClusterName, "-y")
+					Expect(err).To(BeNil())
+				}
 			}
 		})
 
 		It("Check the output of the STS cluster creation with new oidc flow - [id:75925]",
-			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Validated,
 			func() {
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75925", 2)
@@ -4545,23 +4707,47 @@ var _ = Describe("HCP cluster creation supplemental testing",
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
-				rosalCommand.ReplaceFlagValue(map[string]string{
-					"--operator-roles-prefix": testOperatorRolePrefix,
-				})
+				if !hyperfleetMode {
+					rosalCommand.ReplaceFlagValue(map[string]string{
+						"--operator-roles-prefix": testOperatorRolePrefix,
+					})
+				}
 
 				rosalCommand.AddFlags("--mode", "auto")
 				rosalCommand.AddFlags("--billing-account", AWSAccountID)
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
 
-				rosaClient.Runner.UnsetArgs()
-				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
-				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
-				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				if hyperfleetMode {
+					Eventually(func() (bool, error) {
+						rosaClient.Runner.UnsetArgs()
+						clusterListOutput, err := clusterService.List()
+						if err != nil {
+							return false, err
+						}
+						clusterList, err := clusterService.ReflectClusterList(clusterListOutput)
+						if err != nil {
+							return false, err
+						}
+						clusterID = clusterList.ClusterByName(testingClusterName).ID
+						return clusterID != "", nil
+					}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+				} else {
+					rosaClient.Runner.UnsetArgs()
+					clusterListOutput, err := clusterService.List()
+					Expect(err).To(BeNil())
+					clusterList, err := clusterService.ReflectClusterList(clusterListOutput)
+					Expect(err).To(BeNil())
+					clusterID = clusterList.ClusterByName(testingClusterName).ID
+					Expect(clusterID).ToNot(BeEmpty())
+				}
+
+				if hyperfleetMode {
+					Expect(stdout.String()).To(ContainSubstring("INFO: Using OIDC config ID:"))
+					Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf(`Cluster %q created with ID`, testingClusterName)))
+				} else {
+					Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+				}
 			})
 
 		It("ROSA CLI cluster creation should show install/uninstall logs - [id:75534]",
@@ -4619,7 +4805,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			})
 
 		It("Check single AZ hosted cluster can be created - [id:54413]",
-			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Validated,
 			func() {
 				testingClusterName = helper.GenerateRandomName("c54413", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
@@ -4646,7 +4832,11 @@ var _ = Describe("HCP cluster creation supplemental testing",
 
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+				if hyperfleetMode {
+					Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster %q created with ID", testingClusterName)))
+				} else {
+					Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+				}
 
 				By("Retrieve cluster ID")
 				rosaClient.Runner.UnsetArgs()
@@ -4657,12 +4847,29 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				clusterID = clusterList.ClusterByName(testingClusterName).ID
 
 				By("Wait for Cluster")
-				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
-				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+				if hyperfleetMode {
+					Eventually(func() (bool, error) {
+						description, err := clusterService.DescribeClusterAndReflect(clusterID)
+						if err != nil {
+							return false, err
+						}
+						state := strings.TrimSpace(description.State)
+						if strings.EqualFold(state, constants.Ready) {
+							return true, nil
+						}
+						if strings.EqualFold(state, constants.Error) {
+							return false, fmt.Errorf("cluster %s entered error state", clusterID)
+						}
+						return false, nil
+					}, time.Minute*60, time.Minute*3).Should(BeTrue())
+				} else {
+					err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
+					Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+				}
 			})
 
 		It("Create hosted cluster in manual mode - [id:75536]",
-			labels.High, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.High, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Validated,
 			func() {
 				customProfile.ClusterConfig.ManualCreationMode = true
 				By("Prepare command for testing")
@@ -4684,7 +4891,11 @@ var _ = Describe("HCP cluster creation supplemental testing",
 				By("Run create cluster command")
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+				if hyperfleetMode {
+					Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster %q created with ID", testingClusterName)))
+				} else {
+					Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf("Cluster '%s' has been created", testingClusterName)))
+				}
 
 				By("Run individual manual commands")
 				commands := helper.ExtractAWSCmdsForClusterCreation(stdout)
@@ -4695,15 +4906,48 @@ var _ = Describe("HCP cluster creation supplemental testing",
 
 				By("Retrieve cluster ID")
 				rosaClient.Runner.UnsetArgs()
-				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
-				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
-				clusterID = clusterList.ClusterByName(testingClusterName).ID
+				if hyperfleetMode {
+					Eventually(func() (bool, error) {
+						rosaClient.Runner.UnsetArgs()
+						clusterListOutput, err := clusterService.List()
+						if err != nil {
+							return false, err
+						}
+						clusterList, err := clusterService.ReflectClusterList(clusterListOutput)
+						if err != nil {
+							return false, err
+						}
+						clusterID = clusterList.ClusterByName(testingClusterName).ID
+						return clusterID != "", nil
+					}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+				} else {
+					clusterListout, err := clusterService.List()
+					Expect(err).To(BeNil())
+					clusterList, err := clusterService.ReflectClusterList(clusterListout)
+					Expect(err).To(BeNil())
+					clusterID = clusterList.ClusterByName(testingClusterName).ID
+				}
 
 				By("Wait for Cluster")
-				err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
-				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+				if hyperfleetMode {
+					Eventually(func() (bool, error) {
+						description, err := clusterService.DescribeClusterAndReflect(clusterID)
+						if err != nil {
+							return false, err
+						}
+						state := strings.TrimSpace(description.State)
+						if strings.EqualFold(state, constants.Ready) {
+							return true, nil
+						}
+						if strings.EqualFold(state, constants.Error) {
+							return false, fmt.Errorf("cluster %s entered error state", clusterID)
+						}
+						return false, nil
+					}, time.Minute*60, time.Minute*3).Should(BeTrue())
+				} else {
+					err = clusterService.WaitClusterStatus(clusterID, constants.Ready, 3, 60)
+					Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to ready status")
+				}
 			})
 	})
 
@@ -4720,6 +4964,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			customProfile      *handler.Profile
 			clusterID          string
 			testingClusterName string
+			hyperfleetMode     bool
 		)
 		BeforeEach(func() {
 			var err error
@@ -4730,7 +4975,18 @@ var _ = Describe("Sts cluster creation supplemental testing",
 
 			By("Get AWS account id")
 			rosaClient.Runner.JsonFormat()
+			whoamiOutput, err := rosaClient.OCMResource.Whoami()
+			Expect(err).To(BeNil())
 			rosaClient.Runner.UnsetFormat()
+			accountInfo := rosaClient.OCMResource.ReflectAccountsInfo(whoamiOutput)
+			hyperfleetURL := hyperfleetEndpointForTests()
+			hyperfleetMode = hyperfleetURL != ""
+			region := accountInfo.AWSDefaultRegion
+			Expect(region).ToNot(BeEmpty())
+			if hyperfleetMode {
+				region, err = hyperfleet.ExtractRegion(hyperfleetURL)
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			By("Prepare custom profile")
 			customProfile = &handler.Profile{
@@ -4748,11 +5004,19 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				},
 				Version:      "latest",
 				ChannelGroup: "candidate",
-				Region:       "us-east-2",
+				Region:       region,
+			}
+			if hyperfleetMode {
+				customProfile.ClusterConfig.HCP = true
+				customProfile.ClusterConfig.OIDCConfig = "managed"
+				customProfile.ClusterConfig.NetworkingSet = true
+				customProfile.ClusterConfig.BYOVPC = true
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
 			Expect(err).ToNot(HaveOccurred())
+			clusterID = ""
+			testingClusterName = ""
 		})
 
 		AfterEach(func() {
@@ -4761,7 +5025,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 		})
 
 		It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
-			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Validated,
 			func() {
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75927", 2)
@@ -4771,27 +5035,56 @@ var _ = Describe("Sts cluster creation supplemental testing",
 
 				command := "rosa create cluster --cluster-name " + testingClusterName + " " + strings.Join(flags, " ")
 				rosalCommand := config.GenerateCommand(command)
-				rosalCommand.ReplaceFlagValue(map[string]string{
-					"--operator-roles-prefix": testOperatorRolePrefix,
-				})
+				if !hyperfleetMode {
+					rosalCommand.ReplaceFlagValue(map[string]string{
+						"--operator-roles-prefix": testOperatorRolePrefix,
+					})
+				}
 
 				rosalCommand.AddFlags("--mode", "auto")
 				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
 				defer func() {
 					By("Delete cluster")
-					_, err := clusterService.DeleteCluster(testingClusterName, "-y")
-					Expect(err).To(BeNil())
+					if hyperfleetMode && clusterID != "" {
+						rosaClient.Runner.UnsetArgs()
+						_, err := clusterService.DeleteCluster(clusterID, "-y")
+						Expect(err).To(BeNil())
+						rosaClient.Runner.UnsetArgs()
+						err = clusterService.WaitClusterDeleted(clusterID, 3, 30)
+						Expect(err).To(BeNil())
+					} else {
+						_, err := clusterService.DeleteCluster(testingClusterName, "-y")
+						Expect(err).To(BeNil())
+					}
 				}()
-				Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
 
-				rosaClient.Runner.UnsetArgs()
-				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
-				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
-				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				if hyperfleetMode {
+					Eventually(func() (bool, error) {
+						rosaClient.Runner.UnsetArgs()
+						clusterListOutput, err := clusterService.List()
+						if err != nil {
+							return false, err
+						}
+						clusterList, err := clusterService.ReflectClusterList(clusterListOutput)
+						if err != nil {
+							return false, err
+						}
+						clusterID = clusterList.ClusterByName(testingClusterName).ID
+						return clusterID != "", nil
+					}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+					Expect(stdout.String()).To(ContainSubstring("INFO: Using OIDC config ID:"))
+					Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf(`Cluster %q created with ID`, testingClusterName)))
+				} else {
+					rosaClient.Runner.UnsetArgs()
+					clusterListOutput, err := clusterService.List()
+					Expect(err).To(BeNil())
+					clusterList, err := clusterService.ReflectClusterList(clusterListOutput)
+					Expect(err).To(BeNil())
+					clusterID = clusterList.ClusterByName(testingClusterName).ID
+					Expect(clusterID).ToNot(BeEmpty())
+					Expect(stdout.String()).To(ContainSubstring("Attached trust policy"))
+				}
 			})
 
 		It("User can set availability zones to create rosa multi-az STS cluster - [id:56224]",
@@ -4799,6 +5092,10 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			func() {
 				By("Create classic sts cluster in auto mode")
 				customProfile.ClusterConfig.Zones = "us-east-2a,us-east-2b,us-east-2c"
+				customProfile.Region = strings.TrimRight(
+					strings.Split(customProfile.ClusterConfig.Zones, ",")[0],
+					"abcdefghijklmnopqrstuvwxyz",
+				)
 				customProfile.NamePrefix = helper.GenerateRandomName("rosa56224", 2)
 				testingClusterName = helper.GenerateRandomName("cluster56224", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
@@ -4950,6 +5247,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 			clusterID          string
 			ocmResourceService rosacli.OCMResourceService
 			testingClusterName string
+			hyperfleetMode     bool
 		)
 		BeforeEach(func() {
 			var err error
@@ -4958,6 +5256,13 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 			rosaClient = rosacli.NewClient()
 			clusterService = rosaClient.Cluster
 			ocmResourceService = rosaClient.OCMResource
+			hyperfleetURL := hyperfleetEndpointForTests()
+			hyperfleetMode = hyperfleetURL != ""
+			region := "us-east-2"
+			if hyperfleetMode {
+				region, err = hyperfleet.ExtractRegion(hyperfleetURL)
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			By("Prepare custom profile")
 			customProfile = &handler.Profile{
@@ -4975,7 +5280,12 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 				},
 				Version:      "latest",
 				ChannelGroup: "candidate",
-				Region:       "us-east-2",
+				Region:       region,
+			}
+			if hyperfleetMode {
+				customProfile.ClusterConfig.HCP = true
+				customProfile.ClusterConfig.NetworkingSet = true
+				customProfile.ClusterConfig.BYOVPC = true
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
@@ -5000,7 +5310,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 		})
 
 		It("Create STS cluster with oidc config id but no oidc provider via rosacli in auto mode - [id:76093]",
-			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Deferred,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Validated,
 			func() {
 				By("Prepare command for custom cluster creation")
 				testingClusterName = helper.GenerateRandomName("c76093", 2)
@@ -5011,46 +5321,67 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 				rosalCommand := config.GenerateCommand(command)
 				rosalCommand.AddFlags("--mode", "auto", "-y")
 
-				By("Delete the oidc provider")
-				ocmResourceService = rosaClient.OCMResource
-				rosaClient.Runner.JsonFormat()
-				whoamiOutput, err := ocmResourceService.Whoami()
-				Expect(err).To(BeNil())
-				rosaClient.Runner.UnsetFormat()
-				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
-				AWSAccountID := whoamiData.AWSAccountID
+				if !hyperfleetMode {
+					By("Delete the oidc provider")
+					rosaClient.Runner.JsonFormat()
+					whoamiOutput, err := ocmResourceService.Whoami()
+					Expect(err).To(BeNil())
+					rosaClient.Runner.UnsetFormat()
+					whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
+					AWSAccountID := whoamiData.AWSAccountID
 
-				oidcConfigID := clusterHandler.GetResourcesHandler().GetOIDCConfigID()
-				oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
-				Expect(err).To(BeNil())
-				foundOIDCConfig := oidcConfigList.OIDCConfig(oidcConfigID)
-				Expect(foundOIDCConfig).ToNot(Equal(rosacli.OIDCConfig{}))
-				issueURL := foundOIDCConfig.IssuerUrl
-				oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s",
-					AWSAccountID, strings.TrimPrefix(issueURL, "https://"))
+					oidcConfigID := clusterHandler.GetResourcesHandler().GetOIDCConfigID()
+					oidcConfigList, _, err := ocmResourceService.ListOIDCConfig()
+					Expect(err).To(BeNil())
+					foundOIDCConfig := oidcConfigList.OIDCConfig(oidcConfigID)
+					Expect(foundOIDCConfig).ToNot(Equal(rosacli.OIDCConfig{}))
+					issueURL := foundOIDCConfig.IssuerUrl
+					oidcProviderARN := fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s",
+						AWSAccountID, strings.TrimPrefix(issueURL, "https://"))
 
-				awsClient, err := aws_client.CreateAWSClient("", "")
-				Expect(err).To(BeNil())
-				_, err = awsClient.IamClient.DeleteOpenIDConnectProvider(context.TODO(), &iam.DeleteOpenIDConnectProviderInput{
-					OpenIDConnectProviderArn: aws.String(oidcProviderARN),
-				})
-				Expect(err).To(BeNil())
+					awsClient, err := aws_client.CreateAWSClient("", "")
+					Expect(err).To(BeNil())
+					_, err = awsClient.IamClient.DeleteOpenIDConnectProvider(context.TODO(), &iam.DeleteOpenIDConnectProviderInput{
+						OpenIDConnectProviderArn: aws.String(oidcProviderARN),
+					})
+					Expect(err).To(BeNil())
+				} else {
+					By("Use the managed OIDC config directly; HyperFleet does not require a separately created OIDC provider")
+				}
 
 				By("Create the custom cluster")
-				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
 
-				rosaClient.Runner.UnsetArgs()
-				clusterListout, err := clusterService.List()
-				Expect(err).To(BeNil())
-				clusterList, err := clusterService.ReflectClusterList(clusterListout)
-				Expect(err).To(BeNil())
-				clusterID = clusterList.ClusterByName(testingClusterName).ID
-				Expect(clusterID).ToNot(BeNil())
+				if hyperfleetMode {
+					Expect(stdout.String()).To(ContainSubstring("INFO: Using OIDC config ID:"))
+					Expect(stdout.String()).To(ContainSubstring(fmt.Sprintf(`Cluster %q created with ID`, testingClusterName)))
+					Eventually(func() (bool, error) {
+						rosaClient.Runner.UnsetArgs()
+						clusterListOutput, err := clusterService.List()
+						if err != nil {
+							return false, err
+						}
+						clusterList, err := clusterService.ReflectClusterList(clusterListOutput)
+						if err != nil {
+							return false, err
+						}
+						clusterID = clusterList.ClusterByName(testingClusterName).ID
+						return clusterID != "", nil
+					}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+				} else {
+					rosaClient.Runner.UnsetArgs()
+					clusterListout, err := clusterService.List()
+					Expect(err).To(BeNil())
+					clusterList, err := clusterService.ReflectClusterList(clusterListout)
+					Expect(err).To(BeNil())
+					clusterID = clusterList.ClusterByName(testingClusterName).ID
+					Expect(clusterID).ToNot(BeEmpty())
 
-				By("Wait cluster to instaling status")
-				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
-				Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+					By("Wait cluster to installing status")
+					err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
+					Expect(err).To(BeNil(), "It met error or timeout when waiting cluster to installing status")
+				}
 			})
 	})
 
