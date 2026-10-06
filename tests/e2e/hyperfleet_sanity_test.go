@@ -530,14 +530,15 @@ var _ = Describe("Hyperfleet sanity",
 
 			By("Creating cluster via CLI")
 			version := os.Getenv("HYPERFLEET_VERSION")
+			if version == "" {
+				version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+			}
 			createArgs := []string{
 				"--cluster-name", clusterName,
 				"--subnet-ids", subnetID,
 				"--operator-roles-prefix", rolesPrefix,
 				"--oidc-config-id", oidcConfigID,
-			}
-			if version != "" {
-				createArgs = append(createArgs, "--version", version)
+				"--version", version,
 			}
 			_, err = rosacli.NewClient().Runner.
 				Cmd("create", "cluster").

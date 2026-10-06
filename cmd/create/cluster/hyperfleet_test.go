@@ -58,6 +58,7 @@ var _ = Describe("runHyperfleet", func() {
 			clusterName         string
 			operatorRolesPrefix string
 			subnetIDs           []string
+			version             string
 		}
 		exited bool
 		t      *test.TestingRuntime
@@ -69,6 +70,7 @@ var _ = Describe("runHyperfleet", func() {
 		origArgs.clusterName = args.clusterName
 		origArgs.operatorRolesPrefix = args.operatorRolesPrefix
 		origArgs.subnetIDs = args.subnetIDs
+		origArgs.version = args.version
 
 		exited = false
 		hfExitFn = func(int) { exited = true }
@@ -76,6 +78,7 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = "test-cluster"
 		args.operatorRolesPrefix = "test-cluster"
 		args.subnetIDs = []string{"subnet-abc123"}
+		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
 
 		t = test.NewTestRuntime()
 		t.RosaRuntime.Creator = &pkgaws.Creator{
@@ -91,6 +94,7 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = origArgs.clusterName
 		args.operatorRolesPrefix = origArgs.operatorRolesPrefix
 		args.subnetIDs = origArgs.subnetIDs
+		args.version = origArgs.version
 	})
 
 	stubSubnets := func(vpcID, az string) {
@@ -125,6 +129,7 @@ var _ = Describe("runHyperfleet", func() {
 
 		Expect(exited).To(BeFalse())
 		Expect(capturedCluster).NotTo(BeNil())
+		Expect(capturedCluster.Spec.HostedCluster.Release.Image).To(Equal(args.version))
 		rolesRef := capturedCluster.Spec.HostedCluster.Platform.AWS.RolesRef
 		Expect(rolesRef.IngressARN).To(HavePrefix("arn:aws-us-gov:iam::"),
 			"role ARNs must use the GovCloud partition")

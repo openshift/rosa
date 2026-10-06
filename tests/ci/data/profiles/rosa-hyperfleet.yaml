@@ -5,7 +5,7 @@
 # Day1 create uses the hyperfleet handler (oidc_config: managed).
 profiles:
   - as: rosa-hyperfleet-basic
-    version: latest
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
     region: "us-east-1"
     cluster:
       multi_az: true
@@ -42,7 +42,7 @@ profiles:
       path: ""
       permission_boundary: ""
   - as: rosa-hyperfleet-fips
-    version: latest
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
     region: "us-east-1"
     cluster:
       multi_az: true
