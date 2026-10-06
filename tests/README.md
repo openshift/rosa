@@ -68,6 +68,10 @@ var _ = Describe("Create Machine Pool", func() {
     * Case id must be included in the PR/commit title if new automated or updated. Comma-separated if multiple included in same PR/commit. For example
     `<card id> | test: automated cases id:123456,123457`
 
+### Test IDs
+
+Give every E2E case an `[id:<value>]` suffix. Use the Jira ID when the test has one; otherwise, use a unique, short, lowercase, hyphen-delimited description of the tested behavior, for example `[id:cluster-create-with-external-id]`. IDs are used with `ginkgo --focus`, so use only lowercase letters, digits, and hyphens in descriptive IDs and check that the ID is not already used under `tests/e2e`.
+
 ### Labels
 Label Design Doc: [ROSA CLI Automation labels](./ci/labels/labels.md).
 
