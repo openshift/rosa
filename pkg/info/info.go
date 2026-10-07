@@ -22,7 +22,7 @@ package info
 // -ldflags with the value derived from the git tag. The fallback here is kept
 // current by Renovate after GitHub releases.
 // renovate: datasource=github-releases depName=openshift/rosa versioning=semver
-var DefaultVersion = "1.2.65"
+var DefaultVersion = "1.2.66"
 
 // Build contains the short Git SHA of the CLI at the point it was built. Set via `-ldflags` at build time.
 var Build = "local"
