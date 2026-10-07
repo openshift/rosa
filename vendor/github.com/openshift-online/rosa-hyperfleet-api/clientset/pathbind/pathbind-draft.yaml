@@ -129,6 +129,11 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.hostedCluster.configuration.scheduler.profile
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.hostedCluster.imageContentSources
               goType: array(object)
               operations:

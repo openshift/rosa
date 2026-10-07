@@ -103,12 +103,13 @@ type hyperfleetClusterUpdate struct {
 func (h *hyperfleetClusterUpdate) PreRequest(_ context.Context, _ *rosa.Runtime,
 	input *hfpathbind.ClusterUpdateInput) error {
 	channelChanged := h.cmd.Flags().Changed("channel-group") || h.cmd.Flags().Changed("channel")
+	schedulerProfileChanged := h.cmd.Flags().Changed("scheduler-profile")
 	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
 		!h.cmd.Flags().Changed("display-name") && !h.cmd.Flags().Changed("delete-protection") &&
-		!channelChanged {
+		!channelChanged && !schedulerProfileChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --expiration, --expiration-time, " +
-				"--display-name, --delete-protection, --channel-group, --channel",
+				"--display-name, --delete-protection, --channel-group, --channel, --scheduler-profile",
 		)
 	}
 
@@ -130,6 +131,18 @@ func (h *hyperfleetClusterUpdate) PreRequest(_ context.Context, _ *rosa.Runtime,
 	if channelChanged {
 		if err := validateHyperfleetChannelArgs(); err != nil {
 			return err
+		}
+	}
+	if schedulerProfileChanged {
+		switch input.SchedulerProfile {
+		case hyperfleet.SchedulerProfileLowNodeUtilization,
+			hyperfleet.SchedulerProfileHighNodeUtilization,
+			hyperfleet.SchedulerProfileNoScoring:
+		default:
+			return fmt.Errorf(
+				"unsupported scheduler profile %q; valid values are LowNodeUtilization, "+
+					"HighNodeUtilization, and NoScoring", input.SchedulerProfile,
+			)
 		}
 	}
 	return nil
@@ -182,6 +195,18 @@ func (h *hyperfleetClusterUpdate) buildSpecPatch(input *hfpathbind.ClusterUpdate
 			hc = map[string]any{}
 		}
 		hc["channel"] = args.channel
+		spec["hostedCluster"] = hc
+	}
+	if h.cmd.Flags().Changed("scheduler-profile") {
+		hc, _ := spec["hostedCluster"].(map[string]any)
+		if hc == nil {
+			hc = map[string]any{}
+		}
+		hc["configuration"] = map[string]any{
+			"scheduler": map[string]any{
+				"profile": input.SchedulerProfile,
+			},
+		}
 		spec["hostedCluster"] = hc
 	}
 

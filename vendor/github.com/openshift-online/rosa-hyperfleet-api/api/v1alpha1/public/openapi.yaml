@@ -2645,6 +2645,36 @@ components:
                                               maxItems: 128
                                               type: array
                                       type: object
+                                  proxy:
+                                      description: proxy contains the configuration for the cluster-wide proxy.
+                                      properties:
+                                          httpProxy:
+                                              description: httpProxy is the URL of the proxy for HTTP requests.
+                                              maxLength: 2048
+                                              type: string
+                                          httpsProxy:
+                                              description: httpsProxy is the URL of the proxy for HTTPS requests.
+                                              maxLength: 2048
+                                              type: string
+                                          noProxy:
+                                              description: |-
+                                                  noProxy is a comma-separated list of hostnames, domains, IP addresses, or CIDRs
+                                                  to exclude from proxying.
+                                              maxLength: 8192
+                                              type: string
+                                      type: object
+                                  scheduler:
+                                      description: scheduler contains the configuration for scheduler.
+                                      properties:
+                                          profile:
+                                              description: profile configures how the scheduler makes pod placement decisions.
+                                              enum:
+                                                  - ""
+                                                  - LowNodeUtilization
+                                                  - HighNodeUtilization
+                                                  - NoScoring
+                                              type: string
+                                      type: object
                               type: object
                           dns:
                               description: dns specifies the DNS configuration for the hosted cluster ingress.
@@ -5019,6 +5049,36 @@ components:
                                                               type: string
                                                           maxItems: 128
                                                           type: array
+                                                  type: object
+                                              proxy:
+                                                  description: proxy contains the configuration for the cluster-wide proxy.
+                                                  properties:
+                                                      httpProxy:
+                                                          description: httpProxy is the URL of the proxy for HTTP requests.
+                                                          maxLength: 2048
+                                                          type: string
+                                                      httpsProxy:
+                                                          description: httpsProxy is the URL of the proxy for HTTPS requests.
+                                                          maxLength: 2048
+                                                          type: string
+                                                      noProxy:
+                                                          description: |-
+                                                              noProxy is a comma-separated list of hostnames, domains, IP addresses, or CIDRs
+                                                              to exclude from proxying.
+                                                          maxLength: 8192
+                                                          type: string
+                                                  type: object
+                                              scheduler:
+                                                  description: scheduler contains the configuration for scheduler.
+                                                  properties:
+                                                      profile:
+                                                          description: profile configures how the scheduler makes pod placement decisions.
+                                                          enum:
+                                                              - ""
+                                                              - LowNodeUtilization
+                                                              - HighNodeUtilization
+                                                              - NoScoring
+                                                          type: string
                                                   type: object
                                           type: object
                                       dns:
@@ -8669,6 +8729,36 @@ components:
               $ref: '#/components/schemas/KubeletConfig'
           machineConfig:
               $ref: '#/components/schemas/MachineConfigSpec'
+          proxy:
+              description: proxy contains the configuration for the cluster-wide proxy.
+              properties:
+                  httpProxy:
+                      description: httpProxy is the URL of the proxy for HTTP requests.
+                      maxLength: 2048
+                      type: string
+                  httpsProxy:
+                      description: httpsProxy is the URL of the proxy for HTTPS requests.
+                      maxLength: 2048
+                      type: string
+                  noProxy:
+                      description: |-
+                          noProxy is a comma-separated list of hostnames, domains, IP addresses, or CIDRs
+                          to exclude from proxying.
+                      maxLength: 8192
+                      type: string
+              type: object
+          scheduler:
+              description: scheduler contains the configuration for scheduler.
+              properties:
+                  profile:
+                      description: profile configures how the scheduler makes pod placement decisions.
+                      enum:
+                          - ""
+                          - LowNodeUtilization
+                          - HighNodeUtilization
+                          - NoScoring
+                      type: string
+              type: object
       type: object
     KubeletConfig:
       description: KubeletConfig specifies kubelet configuration with granular markers for customer control.

@@ -88,6 +88,12 @@ resources:
         description: "Cluster expiration time (RFC3339)."
         operations: [create, update]
 
+      - path: spec.hostedCluster.configuration.scheduler.profile
+        alias: schedulerProfile
+        flag: scheduler-profile
+        description: "Scheduler profile. Valid values are LowNodeUtilization, HighNodeUtilization, and NoScoring."
+        operations: [create, update]
+
       # ── Derived fields: in struct for PreRequest use, no cobra flag ─────────
       - path: spec.hostedCluster.platform.aws.region
         alias: region

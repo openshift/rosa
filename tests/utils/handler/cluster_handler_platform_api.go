@@ -106,6 +106,9 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 	if pc.VolumeSize != 0 {
 		ch.clusterConfig.WorkerDiskSize = fmt.Sprintf("%dGiB", pc.VolumeSize)
 	}
+	if pc.SchedulerProfile != "" {
+		flags = append(flags, "--scheduler-profile", pc.SchedulerProfile)
+	}
 
 	log.Logger.Info("V2 Add Networking defaults.")
 	// V2 always set networking defaults

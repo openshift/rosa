@@ -32,8 +32,9 @@ require (
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.464
 	github.com/openshift-online/ocm-common v0.0.45
 	github.com/openshift-online/ocm-sdk-go v0.1.509
-	github.com/openshift-online/rosa-hyperfleet-api/api v0.1.13
-	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.13
+	github.com/openshift-online/rosa-hyperfleet-api/api v0.1.14
+	github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.15
+	github.com/openshift/api v0.0.0-20260715165912-72066cc9718b
 	github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.1
@@ -124,7 +125,6 @@ require (
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.464 // indirect
-	github.com/openshift/api v0.0.0-20260715165912-72066cc9718b // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
