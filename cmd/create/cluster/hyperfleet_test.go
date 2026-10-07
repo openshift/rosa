@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"go.uber.org/mock/gomock"
 
@@ -49,6 +50,39 @@ var _ = Describe("hyperfleet dispatch", func() {
 
 		Expect(called).To(BeTrue())
 	})
+})
+
+var _ = Describe("validateHyperfleetNetwork", func() {
+	DescribeTable("rejects invalid network options before creating a cluster",
+		func(machine, service, pod string, multiAZ bool, hostPrefix int, expectedError string) {
+			cidr := func(value string) net.IPNet {
+				if value == "" {
+					return net.IPNet{}
+				}
+				return *mustParseCIDR(value)
+			}
+
+			err := validateHyperfleetNetwork(cidr(machine), cidr(service), cidr(pod), multiAZ, hostPrefix)
+			if expectedError == "" {
+				Expect(err).NotTo(HaveOccurred())
+			} else {
+				Expect(err).To(MatchError(expectedError))
+			}
+		},
+		Entry("detects overlapping service and pod ranges", "", "1.0.0.0/16", "1.0.0.0/16", false, 0,
+			"Service CIDR '1.0.0.0/16' and pod CIDR '1.0.0.0/16' overlap"),
+		Entry("rejects an oversized machine range", "2.0.0.0/8", "", "", false, 0,
+			"The allowed block size must be between a /16 netmask and /25"),
+		Entry("rejects a small service range", "", "1.0.0.0/25", "", false, 0,
+			"Service CIDR value range is too small for correct provisioning."),
+		Entry("rejects a small pod range", "", "", "1.0.0.0/28", false, 0,
+			"Pod CIDR value range is too small for correct provisioning"),
+		Entry("requires a larger machine range for multi-AZ", "2.0.0.0/25", "", "", true, 0,
+			"The allowed block size must be between a /16 netmask and /24"),
+		Entry("rejects an invalid host prefix", "2.0.0.0/25", "", "", false, 28,
+			"invalid Network Host Prefix /28: Subnet length should be between 23 and 26"),
+		Entry("accepts a valid HCP network", "10.0.0.0/16", "172.30.0.0/24", "10.128.0.0/14", false, 23, ""),
+	)
 })
 
 var _ = Describe("rejectUnsupportedHyperfleetCreateFlags", func() {
@@ -116,9 +150,15 @@ var _ = Describe("runHyperfleet", func() {
 			clusterName         string
 			operatorRolesPrefix string
 			subnetIDs           []string
+			machineCIDR         net.IPNet
+			serviceCIDR         net.IPNet
+			podCIDR             net.IPNet
+			multiAZ             bool
+			hostPrefix          int
 			networkType         string
 			noCni               bool
 			version             string
+			dryRun              bool
 		}
 		exited bool
 		t      *test.TestingRuntime
@@ -130,9 +170,15 @@ var _ = Describe("runHyperfleet", func() {
 		origArgs.clusterName = args.clusterName
 		origArgs.operatorRolesPrefix = args.operatorRolesPrefix
 		origArgs.subnetIDs = args.subnetIDs
+		origArgs.machineCIDR = args.machineCIDR
+		origArgs.serviceCIDR = args.serviceCIDR
+		origArgs.podCIDR = args.podCIDR
+		origArgs.multiAZ = args.multiAZ
+		origArgs.hostPrefix = args.hostPrefix
 		origArgs.networkType = args.networkType
 		origArgs.noCni = args.noCni
 		origArgs.version = args.version
+		origArgs.dryRun = args.dryRun
 
 		exited = false
 		hfExitFn = func(int) { exited = true }
@@ -140,9 +186,15 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = "test-cluster"
 		args.operatorRolesPrefix = "test-cluster"
 		args.subnetIDs = []string{"subnet-abc123"}
+		args.machineCIDR = net.IPNet{}
+		args.serviceCIDR = net.IPNet{}
+		args.podCIDR = net.IPNet{}
+		args.multiAZ = false
+		args.hostPrefix = 0
 		args.networkType = ""
 		args.noCni = false
 		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+		args.dryRun = false
 
 		t = test.NewTestRuntime()
 		t.RosaRuntime.Creator = &pkgaws.Creator{
@@ -158,16 +210,27 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = origArgs.clusterName
 		args.operatorRolesPrefix = origArgs.operatorRolesPrefix
 		args.subnetIDs = origArgs.subnetIDs
+		args.machineCIDR = origArgs.machineCIDR
+		args.serviceCIDR = origArgs.serviceCIDR
+		args.podCIDR = origArgs.podCIDR
+		args.multiAZ = origArgs.multiAZ
+		args.hostPrefix = origArgs.hostPrefix
 		args.networkType = origArgs.networkType
 		args.noCni = origArgs.noCni
 		args.version = origArgs.version
+		args.dryRun = origArgs.dryRun
 	})
 
 	stubSubnets := func(vpcID, az string) {
 		hfDescribeSubnets = func(_ context.Context, _ awssdk.Config, _ string) (*ec2svc.DescribeSubnetsOutput, error) {
 			return &ec2svc.DescribeSubnetsOutput{
 				Subnets: []ec2types.Subnet{
-					{VpcId: awssdk.String(vpcID), AvailabilityZone: awssdk.String(az)},
+					{
+						VpcId:            awssdk.String(vpcID),
+						AvailabilityZone: awssdk.String(az),
+						SubnetId:         awssdk.String("subnet-abc123"),
+						CidrBlock:        awssdk.String("10.0.0.0/24"),
+					},
 				},
 			}, nil
 		}
@@ -201,6 +264,37 @@ var _ = Describe("runHyperfleet", func() {
 			"role ARNs must use the GovCloud partition")
 		Expect(rolesRef.NodePoolManagementARN).To(HavePrefix("arn:aws-us-gov:iam::"),
 			"role ARNs must use the GovCloud partition")
+	})
+
+	It("does not submit a Platform API create request for a dry run", func() {
+		args.dryRun = true
+		stubSubnets("vpc-123", "us-gov-east-1a")
+
+		err := runHyperfleetCreate(t.RosaRuntime, nil)
+
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("rejects a machine CIDR that does not contain the selected subnet in dry-run mode", func() {
+		args.dryRun = true
+		args.machineCIDR = *mustParseCIDR("192.168.1.0/23")
+		stubSubnets("vpc-123", "us-gov-east-1a")
+
+		err := runHyperfleetCreate(t.RosaRuntime, nil)
+
+		Expect(err).To(MatchError(
+			"All Hosted Control Plane clusters need a pre-configured VPC. Please check: " + createVpcForHcpDoc,
+		))
+	})
+
+	It("validates network errors before requiring Platform API create inputs in dry-run mode", func() {
+		args.dryRun = true
+		args.serviceCIDR = *mustParseCIDR("1.0.0.0/16")
+		args.podCIDR = *mustParseCIDR("1.0.0.0/16")
+
+		err := runHyperfleetCreate(t.RosaRuntime, nil)
+
+		Expect(err).To(MatchError("Service CIDR '1.0.0.0/16' and pod CIDR '1.0.0.0/16' overlap"))
 	})
 
 	It("exits when cluster name is missing", func() {
