@@ -278,6 +278,50 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		Expect(err).To(MatchError(ContainSubstring("--disk-size and --size cannot be used together")))
 	})
 
+	It("bridges --additional-security-group-ids into AWS.SecurityGroups", func() {
+		h := &hyperfleetNodePoolCreate{
+			userOptions: &mpOpts.CreateMachinepoolUserOptions{
+				SecurityGroupIds: []string{"sg-1", "sg-2"},
+			},
+			clusterKey: "cluster1",
+			clusterUID: "cluster-uid",
+		}
+		obj := &v1alpha1.NodePool{}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, _ := newCreateMPMocks(ctrl)
+		cluster := makeCluster("cluster1", "cluster-uid")
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).NotTo(HaveOccurred())
+
+		sg1, sg2 := "sg-1", "sg-2"
+		Expect(obj.Spec.NodePool.Platform.AWS.SecurityGroups).To(Equal(
+			[]hypershiftv1beta1.AWSResourceReference{{ID: &sg1}, {ID: &sg2}},
+		))
+	})
+
+	It("leaves AWS.SecurityGroups unset when no security group IDs are supplied", func() {
+		h := &hyperfleetNodePoolCreate{
+			userOptions: &mpOpts.CreateMachinepoolUserOptions{},
+			clusterKey:  "cluster1",
+			clusterUID:  "cluster-uid",
+		}
+		obj := &v1alpha1.NodePool{}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, _ := newCreateMPMocks(ctrl)
+		cluster := makeCluster("cluster1", "cluster-uid")
+		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(obj.Spec.NodePool.Platform.AWS.SecurityGroups).To(BeEmpty())
+	})
+
 	It("returns an error when too many AWS tags are supplied", func() {
 		tags := make([]string, maxAWSResourceTags+1)
 		for i := range tags {

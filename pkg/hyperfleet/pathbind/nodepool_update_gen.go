@@ -34,7 +34,6 @@ type NodePoolUpdateInput struct {
 	Iops                          *int64 `hfsdk:"spec.nodePool.platform.aws.rootVolume.iops"`
 	Size                          *int64 `hfsdk:"spec.nodePool.platform.aws.rootVolume.size"`
 	RootVolumeType                string `hfsdk:"spec.nodePool.platform.aws.rootVolume.type"`
-	SecurityGroups                string `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
 	Filters                       string `hfsdk:"spec.nodePool.platform.aws.subnet.filters"`
 	Image                         string `hfsdk:"spec.nodePool.release.image"`
 	Replicas                      *int32 `hfsdk:"spec.nodePool.replicas"`
@@ -63,7 +62,6 @@ var NodePoolUpdatePlatformAPIFlags = []string{
 	"iops",
 	"size",
 	"root-volume-type",
-	"security-groups",
 	"filters",
 	"image",
 	"replicas",
@@ -90,7 +88,6 @@ func RegisterNodePoolUpdateFlags(cmd *cobra.Command, input *NodePoolUpdateInput)
 	registerIfNew(f, "iops", func() { input.Iops = new(int64); f.Int64Var(input.Iops, "iops", 0, "") })
 	registerIfNew(f, "size", func() { input.Size = new(int64); f.Int64Var(input.Size, "size", 0, "") })
 	registerIfNew(f, "root-volume-type", func() { f.StringVar(&input.RootVolumeType, "root-volume-type", "", "") })
-	registerIfNew(f, "security-groups", func() { f.StringVar(&input.SecurityGroups, "security-groups", "", "") })
 	registerIfNew(f, "filters", func() { f.StringVar(&input.Filters, "filters", "", "") })
 	registerIfNew(f, "image", func() { f.StringVar(&input.Image, "image", "", "") })
 	registerIfNew(f, "replicas", func() {
