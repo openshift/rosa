@@ -145,6 +145,28 @@ var _ = Describe("Healthy check",
 					}
 				})
 
+			It("the scheduler profile configured during cluster creation is applied",
+				labels.High, labels.Runtime.Day1Post, labels.Hyperfleet.Validated,
+				func() {
+					if !isHyperfleetMode() {
+						Skip("scheduler profile is currently supported only for V2 (Hyperfleet) clusters")
+					}
+					expectedProfile := profile.ClusterConfig.SchedulerProfile
+					if expectedProfile == "" {
+						Skip("scheduler_profile is not configured in the selected test profile")
+					}
+
+					By("Verify scheduler profile in JSON describe output")
+					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(jsonData.DigString("scheduler_profile")).To(Equal(expectedProfile))
+
+					By("Verify scheduler profile in text describe output")
+					description, err := clusterService.DescribeClusterAndReflect(clusterID)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(description.SchedulerProfile).To(Equal(expectedProfile))
+				})
+
 			It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",
 				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
 				func() {

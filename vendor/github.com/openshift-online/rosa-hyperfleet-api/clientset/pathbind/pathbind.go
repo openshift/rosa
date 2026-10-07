@@ -40,19 +40,32 @@ func Expand(_ context.Context, src any, dst any) error {
 		return fmt.Errorf("pathbind.Expand: dst must be a non-nil pointer to a struct")
 	}
 
+	return expandStruct(srcVal, dstVal)
+}
+
+func expandStruct(srcVal, dstVal reflect.Value) error {
 	srcType := srcVal.Type()
 	for i := 0; i < srcType.NumField(); i++ {
 		field := srcType.Field(i)
+		srcField := srcVal.Field(i)
 		tag := field.Tag.Get("hfsdk")
-		if tag == "" || tag == "-" {
+		if tag == "" {
+			nested := indirect(srcField)
+			if nested.IsValid() && nested.Kind() == reflect.Struct {
+				if err := expandStruct(nested, dstVal); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		if tag == "-" {
 			continue
 		}
 
-		goValue, isSet := unwrap(srcVal.Field(i))
+		goValue, isSet := unwrap(srcField)
 		if !isSet {
 			continue
 		}
-
 		if err := setAtPath(dstVal, strings.Split(tag, "."), goValue); err != nil {
 			return fmt.Errorf("pathbind.Expand: field %s (path %q): %w", field.Name, tag, err)
 		}
@@ -74,11 +87,25 @@ func Flatten(_ context.Context, src any, dst any) error {
 		return fmt.Errorf("pathbind.Flatten: dst must be a non-nil pointer to a struct")
 	}
 
+	return flattenStruct(srcVal, dstVal)
+}
+
+func flattenStruct(srcVal, dstVal reflect.Value) error {
 	dstType := dstVal.Type()
 	for i := 0; i < dstType.NumField(); i++ {
 		field := dstType.Field(i)
+		dstField := dstVal.Field(i)
 		tag := field.Tag.Get("hfsdk")
-		if tag == "" || tag == "-" {
+		if tag == "" {
+			nested := indirect(dstField)
+			if nested.IsValid() && nested.Kind() == reflect.Struct {
+				if err := flattenStruct(srcVal, nested); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		if tag == "-" {
 			continue
 		}
 
@@ -89,12 +116,11 @@ func Flatten(_ context.Context, src any, dst any) error {
 		if goValue == nil {
 			continue
 		}
-
 		converted, err := toFieldValue(goValue, field.Type)
 		if err != nil {
 			return fmt.Errorf("pathbind.Flatten: field %s: %w", field.Name, err)
 		}
-		dstVal.Field(i).Set(converted)
+		dstField.Set(converted)
 	}
 	return nil
 }
