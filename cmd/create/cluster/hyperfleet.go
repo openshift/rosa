@@ -3,12 +3,14 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
@@ -44,9 +46,7 @@ var (
 			hfExitFn(1)
 			return
 		}
-		if err := hfpathbind.RunCreateCluster(context.Background(), r, cmd, &hfClusterInput,
-			&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets},
-		); err != nil {
+		if err := runHyperfleetCreate(r, cmd); err != nil {
 			r.Reporter.Errorf("Failed to create cluster: %v", err)
 			hfExitFn(1)
 		}
@@ -96,11 +96,21 @@ func classicOnlyFlagsChanged(cmd *cobra.Command) []string {
 
 // runHyperfleet is a thin wrapper for direct test invocation without a real cobra.Command.
 func runHyperfleet(r *rosa.Runtime) {
-	if err := hfpathbind.RunCreateCluster(context.Background(), r, nil, &hfClusterInput,
-		&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets},
-	); err != nil {
+	if err := runHyperfleetCreate(r, nil); err != nil {
 		hfExitFn(1)
 	}
+}
+
+func runHyperfleetCreate(r *rosa.Runtime, cmd *cobra.Command) error {
+	handler := &hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets}
+	if args.dryRun {
+		if err := handler.PreRequest(context.Background(), r, &hfClusterInput); err != nil {
+			return err
+		}
+		r.Reporter.Infof("Cluster %q passed HyperFleet preflight checks; no Platform API create request was sent.", hfClusterInput.Name)
+		return nil
+	}
+	return hfpathbind.RunCreateCluster(context.Background(), r, cmd, &hfClusterInput, handler)
 }
 
 // hyperfleetClusterCreate implements hfpathbind.ClusterCreateHandler for rosa create cluster.
@@ -115,6 +125,16 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	r *rosa.Runtime,
 	input *hfpathbind.ClusterCreateInput,
 ) error {
+	if err := validateHyperfleetNetwork(
+		args.machineCIDR,
+		args.serviceCIDR,
+		args.podCIDR,
+		args.multiAZ,
+		args.hostPrefix,
+	); err != nil {
+		return err
+	}
+
 	// Bridge flags that conflict with OCM v1 registrations (registerIfNew skips them,
 	// so they remain backed by args.* rather than hfClusterInput.*).
 	input.Name = args.clusterName
@@ -176,6 +196,9 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	if len(subnetOut.Subnets) == 0 {
 		return fmt.Errorf("subnet %q not found", input.SubnetID)
 	}
+	if err := validateHyperfleetSubnets(args.machineCIDR, args.serviceCIDR, subnetOut.Subnets); err != nil {
+		return err
+	}
 	input.VPC = awssdk.ToString(subnetOut.Subnets[0].VpcId)
 	if input.VPC == "" {
 		return fmt.Errorf("subnet %q has no VPC ID", input.SubnetID)
@@ -190,6 +213,35 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	// Convert individual networking flags to JSON format if provided
 	if err := convertNetworkingFlags(input); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// validateHyperfleetSubnets ensures the selected subnet is usable with the requested
+// machine and service networks, matching the subnet filtering performed by the v1 flow.
+func validateHyperfleetSubnets(
+	machineCIDR, serviceCIDR net.IPNet,
+	subnets []ec2types.Subnet,
+) error {
+	if isEmptyCIDR(&machineCIDR) {
+		return nil
+	}
+
+	for _, subnet := range subnets {
+		if subnet.CidrBlock == nil {
+			return fmt.Errorf("subnet %q has no CIDR block", awssdk.ToString(subnet.SubnetId))
+		}
+		subnetIP, subnetNetwork, err := net.ParseCIDR(awssdk.ToString(subnet.CidrBlock))
+		if err != nil {
+			return fmt.Errorf("unable to parse subnet CIDR: %w", err)
+		}
+		if !isValidCidrRange(subnetIP, subnetNetwork, &machineCIDR, &serviceCIDR) {
+			return fmt.Errorf(
+				"All Hosted Control Plane clusters need a pre-configured VPC. Please check: %s",
+				createVpcForHcpDoc,
+			)
+		}
 	}
 
 	return nil
@@ -250,4 +302,48 @@ func convertNetworkingFlags(input *hfpathbind.ClusterCreateInput) error {
 func isEmptyCIDR(cidr interface{ String() string }) bool {
 	s := cidr.String()
 	return s == "" || s == "<nil>"
+}
+
+// validateHyperfleetNetwork applies the create-time CIDR checks used by the
+// Platform API flow before any AWS or Platform API request is made.
+func validateHyperfleetNetwork(
+	machineCIDR, serviceCIDR, podCIDR net.IPNet,
+	multiAZ bool,
+	hostPrefix int,
+) error {
+	if !isEmptyCIDR(&serviceCIDR) && !isEmptyCIDR(&podCIDR) &&
+		(serviceCIDR.Contains(podCIDR.IP) || podCIDR.Contains(serviceCIDR.IP)) {
+		return fmt.Errorf("Service CIDR '%s' and pod CIDR '%s' overlap", serviceCIDR.String(), podCIDR.String())
+	}
+
+	if !isEmptyCIDR(&machineCIDR) {
+		prefix, _ := machineCIDR.Mask.Size()
+		maxPrefix := 25
+		if multiAZ {
+			maxPrefix = 24
+		}
+		if prefix < 16 || prefix > maxPrefix {
+			return fmt.Errorf("The allowed block size must be between a /16 netmask and /%d", maxPrefix)
+		}
+	}
+
+	if !isEmptyCIDR(&serviceCIDR) {
+		prefix, _ := serviceCIDR.Mask.Size()
+		if prefix > 24 {
+			return fmt.Errorf("Service CIDR value range is too small for correct provisioning.")
+		}
+	}
+
+	if !isEmptyCIDR(&podCIDR) {
+		prefix, _ := podCIDR.Mask.Size()
+		maxPrefix := hostPrefix
+		if maxPrefix == 0 {
+			maxPrefix = HostPrefixMin
+		}
+		if prefix > maxPrefix {
+			return fmt.Errorf("Pod CIDR value range is too small for correct provisioning")
+		}
+	}
+
+	return hostPrefixValidator(hostPrefix)
 }

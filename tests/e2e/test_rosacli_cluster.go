@@ -2433,7 +2433,7 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate the network when create cluster - [id:38857]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Validated,
 			func() {
 				clusterName := "rosaci-38857"
 				By("illegal machine/service/pod cidr when create cluster")
@@ -3188,7 +3188,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
-			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
+			labels.Low, labels.Runtime.Day1Negative, labels.Hyperfleet.Validated,
 			func() {
 				clusterName := "ocp-70970"
 				replacingFlags := map[string]string{
@@ -3205,7 +3205,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(out.String()).
 					To(
 						ContainSubstring(
-							"ERR: All Hosted Control Plane clusters need a pre-configured VPC. " +
+							"All Hosted Control Plane clusters need a pre-configured VPC. " +
 								"Please check: " +
 								"https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"))
 			})
