@@ -68,32 +68,6 @@ func rejectUnsupportedHyperfleetCreateFlags(cmd *cobra.Command) error {
 		strings.Join(unsupportedFlags, ", "))
 }
 
-// classicOnlyFlagsChanged identifies explicit flags that require classic architecture.
-func classicOnlyFlagsChanged(cmd *cobra.Command) []string {
-	var changed []string
-	for _, name := range []string{"non-sts", "mint-mode", privateLinkFlagName, "disable-workload-monitoring"} {
-		flag := cmd.Flags().Lookup(name)
-		if flag != nil && flag.Changed && flag.Value.String() == "true" {
-			changed = append(changed, "--"+name)
-		}
-	}
-	if flag := cmd.Flags().Lookup("sts"); flag != nil && flag.Changed && flag.Value.String() == "false" {
-		changed = append(changed, "--sts=false")
-	}
-	for _, name := range []string{
-		"additional-infra-security-group-ids", "additional-control-plane-security-group-ids",
-		"controlplane-iam-role-arn", "master-iam-role", "worker-mp-labels",
-		"default-ingress-route-selector", "default-ingress-excluded-namespaces",
-		"default-ingress-wildcard-policy", "default-ingress-namespace-ownership-policy", "availability-zones",
-	} {
-		flag := cmd.Flags().Lookup(name)
-		if flag != nil && flag.Changed && flag.Value.String() != flag.DefValue {
-			changed = append(changed, "--"+name)
-		}
-	}
-	return changed
-}
-
 // runHyperfleet is a thin wrapper for direct test invocation without a real cobra.Command.
 func runHyperfleet(r *rosa.Runtime) {
 	if err := hfpathbind.RunCreateCluster(context.Background(), r, nil, &hfClusterInput,

@@ -245,10 +245,10 @@ github.com/openshift-online/ocm-common v0.0.46 h1:WeVJbFGTo96hVDz2D/DSdvn2Ky7z9V
 github.com/openshift-online/ocm-common v0.0.46/go.mod h1:pCEWPrKkcE23Nw9eHIaFHYvlJPXxQRbH9O1R5bk4Ve0=
 github.com/openshift-online/ocm-sdk-go v0.1.517 h1:79KiFTqWHds1FanFByIEqo/485VqXB7LHQiN8XOTdJw=
 github.com/openshift-online/ocm-sdk-go v0.1.517/go.mod h1:3rNVzZ86jRbpFtdQUqbdlxmpR+MhKs87szY45bLg3EI=
-github.com/openshift-online/rosa-hyperfleet-api/api v0.1.13 h1:rLZCV0CccdsxA9amxqUaWv+SDfNDOfUwzeBnBAQrkyM=
-github.com/openshift-online/rosa-hyperfleet-api/api v0.1.13/go.mod h1:cpCKxdqSOkuvY6WIaIk68w3z0sTtPMNqxXTXYa83SEA=
-github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.13 h1:RK/7oC3Lm6Xxh/lrl331aWN2gX6SvyqYNMylQBaBtks=
-github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.13/go.mod h1:VY3mJxMqAktMY9T5UUqMYcNht/2sa4sSn8HyAfGKmy4=
+github.com/openshift-online/rosa-hyperfleet-api/api v0.1.14 h1:N7cTq+/2KZ18ju7RCF+ZdNKL0tS79kuaXGn46QUBp6Q=
+github.com/openshift-online/rosa-hyperfleet-api/api v0.1.14/go.mod h1:cpCKxdqSOkuvY6WIaIk68w3z0sTtPMNqxXTXYa83SEA=
+github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.15 h1:DBJIcz7VWadI9AkzvJw3aCWO4/vlgEIeUMhNAk3GxrA=
+github.com/openshift-online/rosa-hyperfleet-api/clientset v0.1.15/go.mod h1:VY3mJxMqAktMY9T5UUqMYcNht/2sa4sSn8HyAfGKmy4=
 github.com/openshift/api v0.0.0-20260715165912-72066cc9718b h1:gN3SihCYEwoIksD+f24wHhwiEgvaV0RxNjgmkDvBBeg=
 github.com/openshift/api v0.0.0-20260715165912-72066cc9718b/go.mod h1:k6qH5QOVa5GDln2VVm8Jz4NV3Z7R2SATHFLwGS6Wh3M=
 github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7 h1:OGkFqZZyTWpXyB8KVQRXVJRmal5bXAQ35Z9tXa3PyuQ=

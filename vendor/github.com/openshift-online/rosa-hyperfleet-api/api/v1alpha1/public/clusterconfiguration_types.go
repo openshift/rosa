@@ -7,6 +7,14 @@ package public
 // us to add granular markers to nested fields like kubelet config.
 // +hyperfleet:upstream-reduced-object=hypershiftv1beta1.ClusterConfiguration
 type ClusterConfiguration struct {
+	// scheduler contains the configuration for scheduler.
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
+	Scheduler *SchedulerConfiguration `json:"scheduler,omitempty"`
+	// proxy contains the configuration for the cluster-wide proxy.
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=service-set
+	Proxy *ProxyConfiguration `json:"proxy,omitempty"`
 	// kubelet contains the configuration for kubelet on nodes.
 	// +hyperfleet:write-mode=service-set
 	Kubelet *KubeletConfig `json:"kubelet,omitempty"`

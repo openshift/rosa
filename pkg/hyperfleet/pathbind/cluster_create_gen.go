@@ -42,6 +42,7 @@ type ClusterCreateInput struct {
 	HttpProxy                      string `hfsdk:"spec.hostedCluster.configuration.proxy.httpProxy"`
 	HttpsProxy                     string `hfsdk:"spec.hostedCluster.configuration.proxy.httpsProxy"`
 	NoProxy                        string `hfsdk:"spec.hostedCluster.configuration.proxy.noProxy"`
+	SchedulerProfile               string `hfsdk:"spec.hostedCluster.configuration.scheduler.profile"`
 	ImageContentSources            string `hfsdk:"spec.hostedCluster.imageContentSources"`
 	AllocateNodeCIDRs              string `hfsdk:"spec.hostedCluster.networking.allocateNodeCIDRs"`
 	AdvertiseAddress               string `hfsdk:"spec.hostedCluster.networking.apiServer.advertiseAddress"`
@@ -109,6 +110,7 @@ var ClusterCreatePlatformAPIFlags = []string{
 	"http-proxy",
 	"https-proxy",
 	"no-proxy",
+	"scheduler-profile",
 	"image-content-sources",
 	"allocate-node-cidrs",
 	"advertise-address",
@@ -200,6 +202,9 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 	registerIfNew(f, "http-proxy", func() { f.StringVar(&input.HttpProxy, "http-proxy", "", "") })
 	registerIfNew(f, "https-proxy", func() { f.StringVar(&input.HttpsProxy, "https-proxy", "", "") })
 	registerIfNew(f, "no-proxy", func() { f.StringVar(&input.NoProxy, "no-proxy", "", "") })
+	registerIfNew(f, "scheduler-profile", func() {
+		f.StringVar(&input.SchedulerProfile, "scheduler-profile", "", "Scheduler profile. Valid values are LowNodeUtilization, HighNodeUtilization, and NoScoring.")
+	})
 	registerIfNew(f, "image-content-sources", func() { f.StringVar(&input.ImageContentSources, "image-content-sources", "", "") })
 	registerIfNew(f, "allocate-node-cidrs", func() { f.StringVar(&input.AllocateNodeCIDRs, "allocate-node-cidrs", "", "") })
 	registerIfNew(f, "advertise-address", func() { f.StringVar(&input.AdvertiseAddress, "advertise-address", "", "") })

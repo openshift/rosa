@@ -35,6 +35,7 @@ profiles:
       autoscaler_enabled: false
       additional_sg_number: 3
       registries_config: false
+      scheduler_profile: HighNodeUtilization
       allowed_registries: false
       log_forward: false
     account-role:

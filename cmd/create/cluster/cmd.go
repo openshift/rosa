@@ -351,7 +351,7 @@ func classicOnlyFlagsChanged(cmd *cobra.Command) []string {
 			changed = append(changed, "--"+flag)
 		}
 	}
-	if cmd.Flags().Changed("sts") && !args.sts {
+	if flag := cmd.Flags().Lookup("sts"); flag != nil && flag.Changed && flag.Value.String() == "false" {
 		changed = append(changed, "--sts=false")
 	}
 	for _, flag := range classicOnlyValueFlags {
