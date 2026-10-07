@@ -102,6 +102,14 @@ type hyperfleetClusterUpdate struct {
 
 func (h *hyperfleetClusterUpdate) PreRequest(_ context.Context, _ *rosa.Runtime,
 	input *hfpathbind.ClusterUpdateInput) error {
+	// spec.tags is applied at provisioning time only — AWS resources created by
+	// OpenShift cannot be retagged afterwards — so the Platform API treats it as
+	// immutable. Reject the flag explicitly instead of silently dropping it.
+	if f := h.cmd.Flags().Lookup("tags"); f != nil && f.Changed {
+		return fmt.Errorf("AWS tags cannot be changed after the cluster is created; " +
+			"set --tags when running 'rosa create cluster'")
+	}
+
 	channelChanged := h.cmd.Flags().Changed("channel-group") || h.cmd.Flags().Changed("channel")
 	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
 		!h.cmd.Flags().Changed("display-name") && !h.cmd.Flags().Changed("delete-protection") &&
