@@ -1552,6 +1552,7 @@ var _ = Describe("Classic cluster creation validation",
 
 		BeforeEach(func() {
 			By("Skip testing for V2 clusters - classic cluster validation tests")
+			clusterHandler = nil
 			isHyperfleet := isHyperfleetMode()
 			if isHyperfleet {
 				Skip("Classic cluster validation tests are not applicable to Platform API v2 (HCP only)")
@@ -1576,7 +1577,9 @@ var _ = Describe("Classic cluster creation validation",
 		})
 
 		AfterEach(func() {
-			clusterHandler.Destroy()
+			if clusterHandler != nil {
+				clusterHandler.Destroy()
+			}
 		})
 
 		It("to check the basic validation for the classic rosa cluster creation by the rosa cli - [id:38770]",

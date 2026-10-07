@@ -239,3 +239,39 @@ var _ = Describe("hfConditionSummary", func() {
 		Expect(hfConditionSummary("MyReason", "some detail")).To(Equal("MyReason: some detail"))
 	})
 })
+
+var _ = Describe("HyperFleet nodepool label and taint output", func() {
+	It("reads customer labels instead of operator-managed nodeLabels", func() {
+		pool := buildTestNodePool()
+		pool.Spec.Labels = map[string]string{"z": "last", "a": ""}
+		pool.Spec.NodePool.NodeLabels = map[string]string{"operator": "managed"}
+		pool.Spec.NodePool.Taints = []hypershiftv1beta1.Taint{{Key: "dedicated", Value: "", Effect: "NoSchedule"}}
+		securityGroupID := "sg-customer"
+		pool.Spec.NodePool.Platform.AWS.SecurityGroups = []hypershiftv1beta1.AWSResourceReference{{ID: &securityGroupID}}
+		mapped := hfNodePoolToMap(pool)
+		Expect(mapped["labels"]).To(Equal(pool.Spec.Labels))
+		Expect(mapped["taints"]).To(Equal(pool.Spec.NodePool.Taints))
+		Expect(mapped["security_group_ids"]).To(Equal([]string{securityGroupID}))
+		text := hfNodePoolToString(pool, "cluster")
+		Expect(text).To(ContainSubstring("Labels:                                a=, z=last"))
+		Expect(text).To(ContainSubstring("Taints:                                dedicated=:NoSchedule"))
+		Expect(text).To(ContainSubstring("Additional security group IDs:         sg-customer"))
+		Expect(text).NotTo(ContainSubstring("operator=managed"))
+	})
+	It("shows no customer labels after clearing even with stale operator labels", func() {
+		pool := buildTestNodePool()
+		pool.Spec.NodePool.NodeLabels = map[string]string{"old": "value"}
+		Expect(hfNodePoolToMap(pool)["labels"]).To(BeEmpty())
+		Expect(hfNodePoolToString(pool, "cluster")).NotTo(ContainSubstring("old=value"))
+	})
+})
+
+var _ = Describe("HyperFleet autorepair display", func() {
+	It("shows the customer setting even when rendered management is stale", func() {
+		np := buildTestNodePool()
+		disabled := false
+		np.Spec.AutoRepair = &disabled
+		np.Spec.NodePool.Management.AutoRepair = true
+		Expect(hfNodePoolToString(np, "cluster")).To(ContainSubstring("Autorepair:                            No"))
+	})
+})

@@ -11,6 +11,7 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -70,7 +71,12 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 		return
 	}
 
-	if err := hfpathbind.RunUpdateNodePool(ctx, r, cmd, nodePoolUID, &hfNodePoolUpdateInput,
+	runtime := *r
+	if cmd.Flags().Changed("labels") || cmd.Flags().Changed("taints") {
+		runtime.HyperFleetClient = hyperfleet.WithNodePoolMetadataUpdates(r.HyperFleetClient,
+			cmd.Flags().Changed("labels"), cmd.Flags().Changed("taints"))
+	}
+	if err := hfpathbind.RunUpdateNodePool(ctx, &runtime, cmd, nodePoolUID, &hfNodePoolUpdateInput,
 		&hyperfleetNodePoolUpdate{
 			clusterKey:  clusterKey,
 			clusterUID:  clusterUID,
@@ -95,6 +101,8 @@ type hyperfleetNodePoolUpdate struct {
 	nodePoolUID string
 	userOptions *EditMachinepoolUserOptions
 	cmd         *cobra.Command
+	labels      map[string]string
+	taints      []hypershiftv1beta1.Taint
 }
 
 func (h *hyperfleetNodePoolUpdate) PreRequest(
@@ -108,11 +116,28 @@ func (h *hyperfleetNodePoolUpdate) PreRequest(
 		h.cmd.Flags().Changed("min-replicas") ||
 		h.cmd.Flags().Changed("max-replicas")
 
-	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged {
+	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
+		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
+		!h.cmd.Flags().Changed("autorepair") {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
-				"--min-replicas, --max-replicas, --spot-max-price",
+				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair",
 		)
+	}
+
+	if h.cmd.Flags().Changed("labels") {
+		labels, err := mpHelpers.ParseHyperfleetLabels(h.userOptions.labels)
+		if err != nil {
+			return err
+		}
+		h.labels = labels
+	}
+	if h.cmd.Flags().Changed("taints") {
+		taints, err := mpHelpers.ParseHyperfleetTaints(h.userOptions.taints)
+		if err != nil {
+			return err
+		}
+		h.taints = taints
 	}
 
 	// Validate autoscaling and replicas are mutually exclusive
@@ -207,6 +232,19 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 			return fmt.Errorf("cannot update spot-max-price on a node pool that is not using spot instances")
 		}
 		merged.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = h.userOptions.spotMaxPrice
+	}
+
+	if h.cmd.Flags().Changed("autorepair") {
+		// Management is service-set; the operator renders it from spec.autoRepair.
+		autorepair := h.userOptions.autorepair
+		merged.Spec.AutoRepair = &autorepair
+	}
+
+	if h.cmd.Flags().Changed("labels") {
+		merged.Spec.Labels = h.labels
+	}
+	if h.cmd.Flags().Changed("taints") {
+		merged.Spec.NodePool.Taints = h.taints
 	}
 
 	// The Platform API rejects non-zero service-set management values on PUT,

@@ -471,7 +471,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 	// TODO(cdoan): We don't have any field validation now, defer until this is ready to test
 	Describe("Validate machinepool", func() {
-		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred, func() {
+		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Validated, func() {
 			By("with negative replicas number")
 			_, err := machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "-9")
 			Expect(err).To(HaveOccurred())

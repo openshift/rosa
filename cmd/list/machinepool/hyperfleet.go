@@ -50,12 +50,9 @@ func runHyperfleetList(r *rosa.Runtime) {
 	}
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tNAME\tREPLICAS\tINSTANCE TYPE\tSUBNET\tDISK SIZE\tSTATE\n")
+	fmt.Fprintf(writer, "ID\tNAME\tREPLICAS\tINSTANCE TYPE\tSUBNET\tDISK SIZE\tSTATE\tLABELS\tTAINTS\t"+
+		"AUTOSCALING\tAUTOREPAIR\tVERSION\n")
 	for _, np := range list.Items {
-		replicas := int32(0)
-		if np.Spec.NodePool.Replicas != nil {
-			replicas = *np.Spec.NodePool.Replicas
-		}
 		instanceType := ""
 		subnetID := ""
 		if np.Spec.NodePool.Platform.AWS != nil {
@@ -65,14 +62,19 @@ func runHyperfleetList(r *rosa.Runtime) {
 			}
 		}
 		diskSize := hyperfleet.FormatNodePoolDiskSize(np.Spec.NodePool.Platform.AWS)
-		fmt.Fprintf(writer, "%s\t%s\t%d\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			string(np.UID),
 			np.Name,
-			replicas,
+			hyperfleet.FormatNodePoolReplicas(&np),
 			instanceType,
 			subnetID,
 			diskSize,
 			string(np.Status.Phase),
+			hyperfleet.FormatNodePoolLabels(np.Spec.Labels),
+			hyperfleet.FormatNodePoolTaints(np.Spec.NodePool.Taints),
+			hyperfleet.FormatNodePoolAutoscaling(&np),
+			hyperfleet.FormatNodePoolAutorepair(&np),
+			np.Spec.NodePool.Release.Image,
 		)
 	}
 	writer.Flush()

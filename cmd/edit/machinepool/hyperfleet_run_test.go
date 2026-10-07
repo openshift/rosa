@@ -1,6 +1,7 @@
 package machinepool
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -8,10 +9,13 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -77,6 +81,60 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		runHyperfleetEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np", replicas: 5},
 			makeEditCmd("5"), nil)
 	})
+
+	DescribeTable("forwards explicit autorepair edits", func(enabled, autoscaling bool) {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, pools := newEditMPMocks(ctrl)
+		current := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: "pool-uid"},
+			Spec: v1alpha1.NodePoolSpec{
+				AutoRepair: ptr.To(!enabled), Labels: map[string]string{"team": "test"},
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas:   ptr.To(int32(3)),
+					Management: hypershiftv1beta1.NodePoolManagement{AutoRepair: !enabled},
+				},
+			},
+		}
+		original := current.DeepCopy()
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: "cluster-uid"},
+		}}}, nil)
+		pools.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.NodePoolList{
+			Items: []v1alpha1.NodePool{*current},
+		}, nil)
+		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, updated *v1alpha1.NodePool, _ platform.UpdateOptions) (*v1alpha1.NodePool, error) {
+				Expect(updated.Spec.AutoRepair).To(Equal(ptr.To(enabled)))
+				Expect(updated.Spec.Labels).To(Equal(original.Spec.Labels))
+				Expect(updated.Spec.NodePool.Management).To(Equal(hypershiftv1beta1.NodePoolManagement{}))
+				if autoscaling {
+					Expect(updated.Spec.NodePool.Replicas).To(BeNil())
+					Expect(updated.Spec.NodePool.AutoScaling).To(Equal(&hypershiftv1beta1.NodePoolAutoScaling{
+						Min: ptr.To(int32(3)), Max: 6,
+					}))
+				} else {
+					Expect(updated.Spec.NodePool.Replicas).To(Equal(original.Spec.NodePool.Replicas))
+				}
+				return updated, nil
+			})
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("autorepair", fmt.Sprint(enabled))).To(Succeed())
+		opts := &EditMachinepoolUserOptions{machinepool: "workers", autorepair: enabled}
+		if autoscaling {
+			Expect(cmd.Flags().Set("enable-autoscaling", "true")).To(Succeed())
+			Expect(cmd.Flags().Set("min-replicas", "3")).To(Succeed())
+			Expect(cmd.Flags().Set("max-replicas", "6")).To(Succeed())
+			opts.autoscalingEnabled, opts.minReplicas, opts.maxReplicas = true, 3, 6
+		}
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleetEdit(t.RosaRuntime, opts, cmd, nil)
+		Expect(current).To(Equal(original))
+	},
+		Entry("enable only", true, false),
+		Entry("disable only", false, false),
+		Entry("enable together with autoscaling (56778)", true, true),
+	)
 
 	It("resolves node pool name from argv when machinepool option is empty", func() {
 		ctrl := gomock.NewController(GinkgoT())

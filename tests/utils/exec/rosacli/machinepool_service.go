@@ -106,6 +106,7 @@ type MachinePoolDescription struct {
 
 // Struct for the 'rosa list machinepool' output for hosted-cp clusters
 type NodePool struct {
+	Name             string `json:"NAME,omitempty"`
 	ID               string `json:"ID,omitempty"`
 	AutoScaling      string `json:"AUTOSCALING,omitempty"`
 	Replicas         string `json:"REPLICAS,omitempty"`
@@ -529,7 +530,7 @@ func (m *machinepoolService) ScaleAutoScaledNodePool(
 // Get specified nodepool by nodepool id
 func (npl NodePoolList) Nodepool(id string) (np *NodePool) {
 	for _, npItem := range npl.NodePools {
-		if npItem.ID == id {
+		if npItem.ID == id || (npItem.Name != "" && npItem.Name == id) {
 			np = npItem
 			return
 		}
