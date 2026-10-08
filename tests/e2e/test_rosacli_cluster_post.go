@@ -176,6 +176,8 @@ var _ = Describe("Healthy check",
 						Expect(data.DigString("aws", "tags", key)).To(Equal(value),
 							fmt.Sprintf("expected AWS tag %s=%s on cluster %s", key, value, clusterID))
 					}
+				})
+
 			It("the scheduler profile configured during cluster creation is applied",
 				labels.High, labels.Runtime.Day1Post, labels.Hyperfleet.Validated,
 				func() {
@@ -704,11 +706,8 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with proxy set will work - [id:45502]",
-				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Deferred,
+				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
-						Skip("V2 cluster describe does not expose proxy or additional trust bundle settings")
-					}
 
 					By("Check the help message of proxy")
 					output, _, err := clusterService.Create("cl-45502", "-h")
@@ -734,7 +733,9 @@ var _ = Describe("Healthy check",
 						Expect(clusterConfig.Proxy.Https).To(Equal(clusterHTTPSProxy))
 						// Here is workaround in e2e_setup_test.go for HCP with proxy
 						Expect(clusterNoProxy).To(ContainSubstring(clusterConfig.Proxy.NoProxy))
-						Expect(clusterDescription.AdditionalTrustBundle).To(Equal("REDACTED"))
+						if os.Getenv("HYPERFLEET_URL") == "" && !hyperfleet.Enabled() {
+							Expect(clusterDescription.AdditionalTrustBundle).To(Equal("REDACTED"))
+						}
 					} else {
 						Expect(clusterDescription.Proxy).To(BeEmpty())
 					}

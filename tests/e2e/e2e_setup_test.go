@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	"path"
 	"time"
 
@@ -65,9 +64,13 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
 				Expect(err).To(BeNil())
 				clusterNoProxy := jsonData.DigString("proxy", "no_proxy")
-				clusterDNS := fmt.Sprintf("%s.%s", clusterDetails.Name, jsonData.DigString("dns", "base_domain"))
+				baseDomain, ok := jsonData.DigObject("dns").(string)
+				if !ok {
+					baseDomain = jsonData.DigString("dns", "base_domain")
+				}
+				Expect(baseDomain).ToNot(BeEmpty(), "cluster DNS base domain must be available")
 				_, err = clusterService.EditCluster(clusterID, "--no-proxy",
-					fmt.Sprintf("%s,.%s", clusterNoProxy, clusterDNS))
+					handler.AddClusterDomainToNoProxy(clusterNoProxy, clusterDetails.Name, baseDomain))
 				Expect(err).To(BeNil())
 			}
 			// For HCP cluster with other network type,it is required to set one configure:cilium

@@ -71,6 +71,35 @@ var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 		hyperfleet.Reset()
 	})
 
+	DescribeTable("rejects custom KMS before preparing any resources",
+		func(kmsKey, etcdKMS bool) {
+			hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+			GinkgoT().Setenv("CLUSTER_NAME", "hf-kms-test")
+			ch := &clusterHandler{
+				profile: &Profile{ClusterConfig: &ClusterConfig{
+					KMSKey: kmsKey, EtcdKMS: etcdKMS, STS: true, BYOVPC: true, OIDCConfig: "managed",
+				}},
+				clusterConfig: &ClusterConfigure.ClusterConfig{},
+			}
+			flags, err := ch.GenerateClusterCreateFlags()
+			Expect(err).To(MatchError(hyperfleetCustomKMSError))
+			Expect(flags).To(BeEmpty())
+		},
+		Entry("EBS key", true, false),
+		Entry("etcd key", false, true),
+		Entry("both keys", true, true),
+	)
+
+	DescribeTable("returns an error instead of parsing OCM KMS data on HyperFleet",
+		func(etcdKMS bool) {
+			hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+			ch := &clusterHandler{}
+			Expect(ch.elaborateKMSKeyForSTSCluster(etcdKMS)).To(MatchError(hyperfleetCustomKMSError))
+		},
+		Entry("EBS key", false),
+		Entry("etcd key", true),
+	)
+
 	It("skips NAME_PREFIX when CLUSTER_NAME is set", func() {
 		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
 		GinkgoT().Setenv("CLUSTER_NAME", "hf-e2e-12345")

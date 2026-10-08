@@ -730,14 +730,8 @@ var _ = Describe("Edit cluster",
 			})
 
 		It("can edit proxy successfully - [id:46308]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
-				// V2 edit cluster does not support proxy flags yet
-				isHyperfleet := isHyperfleetMode()
-				if isHyperfleet {
-					Skip("proxy edit flags are not yet supported for V2 (Hyperfleet) clusters")
-				}
-
 				By("Load the original cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -1110,7 +1104,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		})
 
 	It("can validate cluster proxy well - [id:46310]",
-		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 		func() {
 			By("Load the original cluster config")
 			clusterConfig, err := config.ParseClusterProfile()
@@ -2556,7 +2550,7 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate the invalid proxy when create cluster - [id:45509]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Hyperfleet.Validated,
 			func() {
 				region := hyperfleetRegionForTests(constants.CommonAWSRegion)
 				hyperfleetURL := hyperfleetEndpointForTests()
@@ -2587,26 +2581,28 @@ var _ = Describe("Create cluster with invalid options will",
 				Expect(err).ToNot(HaveOccurred())
 				privateSubnet := subnetMap["private"].ID
 				publicSubnet := subnetMap["public"].ID
+				baseCreateFlags := []string{
+					"--region", region,
+					"--subnet-ids", strings.Join([]string{privateSubnet, publicSubnet}, ","),
+				}
+				if hyperfleetMode {
+					baseCreateFlags = append(baseCreateFlags,
+						"--operator-roles-prefix", helper.TrimNameByLength(clusterName, constants.MaxRolePrefixLength))
+				}
+				runCreateDryRun := func(extraFlags ...string) (bytes.Buffer, error) {
+					flags := append(append([]string{}, baseCreateFlags...), extraFlags...)
+					return clusterService.CreateDryRun(clusterName, flags...)
+				}
 
 				By("Create ccs existing cluster with invalid http_proxy set")
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", region,
-					"--subnet-ids", strings.Join([]string{
-						privateSubnet,
-						publicSubnet,
-					}, ","),
+				output, err = runCreateDryRun(
 					"--http-proxy", "invalid",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(ContainSubstring("invalid http-proxy value: URL is missing scheme"))
 
 				By("Create ccs existing cluster with invalid http_proxy not started with http")
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", region,
-					"--subnet-ids", strings.Join([]string{
-						privateSubnet,
-						publicSubnet,
-					}, ","),
+				output, err = runCreateDryRun(
 					"--http-proxy", "nohttp.prefix.com",
 				)
 				Expect(err).To(HaveOccurred())
@@ -2614,17 +2610,12 @@ var _ = Describe("Create cluster with invalid options will",
 					ContainSubstring("invalid http-proxy value: URL is missing scheme"))
 
 				By("Create ccs existing cluster with invalid https_proxy set")
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", region,
-					"--subnet-ids", strings.Join([]string{
-						privateSubnet,
-						publicSubnet,
-					}, ","),
+				output, err = runCreateDryRun(
 					"--https-proxy", "invalid",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("ERR: invalid https-proxy value: URL is missing scheme"))
+					ContainSubstring("invalid https-proxy value: URL is missing scheme"))
 
 				By("Create wide-proxy cluster with invalid additional_trust_bundle set")
 				tempDir, err := os.MkdirTemp("", "*")
@@ -2633,57 +2624,37 @@ var _ = Describe("Create cluster with invalid options will",
 				tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
 				Expect(err).ToNot(HaveOccurred())
 
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", region,
-					"--subnet-ids", strings.Join([]string{
-						privateSubnet,
-						publicSubnet,
-					}, ","),
+				output, err = runCreateDryRun(
 					"--additional-trust-bundle-file", tempFile,
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("ERR: Failed to parse additional trust bundle"))
+					ContainSubstring("Failed to parse additional trust bundle"))
 
 				By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", region,
-					"--subnet-ids", strings.Join([]string{
-						privateSubnet,
-						publicSubnet,
-					}, ","),
+				output, err = runCreateDryRun(
 					"--additional-trust-bundle-file", "/not/existing",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("ERR: open /not/existing: no such file or directory"))
+					ContainSubstring("open /not/existing: no such file or directory"))
 
 				By("Create wide-proxy cluster with only no_proxy set")
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", region,
-					"--subnet-ids", strings.Join([]string{
-						privateSubnet,
-						publicSubnet,
-					}, ","),
+				output, err = runCreateDryRun(
 					"--no-proxy", "nohttp.prefix.com",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
+					ContainSubstring("Expected at least one of the following: http-proxy, https-proxy"))
 
-				output, err = clusterService.CreateDryRun(clusterName,
-					"--region", region,
-					"--subnet-ids", strings.Join([]string{
-						privateSubnet,
-						publicSubnet,
-					}, ","),
+				output, err = runCreateDryRun(
 					"--http-proxy", "http://example.com",
 					"--https-proxy", "https://example.com",
 					"--no-proxy", "*",
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
-					ContainSubstring("ERR: expected a valid user no-proxy value"))
+					ContainSubstring("expected a valid user no-proxy value"))
 			})
 	})
 

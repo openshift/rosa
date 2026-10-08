@@ -1297,6 +1297,9 @@ func (ch *clusterHandler) Destroy() (errors []error) {
 }
 
 func (ch *clusterHandler) elaborateKMSKeyForSTSCluster(etcdKMS bool) error {
+	if usesHyperfleet() {
+		return errors.New(hyperfleetCustomKMSError)
+	}
 	clusterID := ch.clusterDetail.ClusterID
 	jsonData, err := ch.rosaClient.Cluster.GetJSONClusterDescription(clusterID)
 	if err != nil {

@@ -14,9 +14,10 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
+	rosaaws "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
+	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -52,10 +53,8 @@ var (
 			hfExitFn(1)
 			return
 		}
-		if err := hfpathbind.RunCreateCluster(context.Background(), r, cmd, &hfClusterInput,
-			&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets},
-		); err != nil {
-			r.Reporter.Errorf("Failed to create cluster: %v", err)
+		if err := runHyperfleetCreate(context.Background(), r, cmd); err != nil {
+			r.Reporter.Errorf("Failed to create cluster: %v", hyperfleet.WithAPIErrorDetails(err))
 			hfExitFn(1)
 		}
 	}
@@ -104,11 +103,26 @@ func classicOnlyFlagsChanged(cmd *cobra.Command) []string {
 
 // runHyperfleet is a thin wrapper for direct test invocation without a real cobra.Command.
 func runHyperfleet(r *rosa.Runtime) {
-	if err := hfpathbind.RunCreateCluster(context.Background(), r, nil, &hfClusterInput,
-		&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets},
-	); err != nil {
+	if err := runHyperfleetCreate(context.Background(), r, nil); err != nil {
 		hfExitFn(1)
 	}
+}
+
+// runHyperfleetCreate retains the generated workflow and extends requests for
+// proxy fields that the pinned SDK does not yet represent.
+func runHyperfleetCreate(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command) error {
+	runtime := *r
+	var proxy *hyperfleet.ClusterProxy
+	if args.httpProxy != "" || args.httpsProxy != "" || len(args.noProxySlice) > 0 {
+		proxy = &hyperfleet.ClusterProxy{
+			HTTPProxy: args.httpProxy, HTTPSProxy: args.httpsProxy, NoProxy: strings.Join(args.noProxySlice, ","),
+		}
+	}
+	if proxy != nil || args.additionalTrustBundleFile != "" {
+		runtime.HyperFleetClient = hyperfleet.WithClusterProxy(r.HyperFleetClient, proxy, args.additionalTrustBundleFile)
+	}
+	return hfpathbind.RunCreateCluster(ctx, &runtime, cmd, &hfClusterInput,
+		&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets})
 }
 
 // hyperfleetClusterCreate implements hfpathbind.ClusterCreateHandler for rosa create cluster.
@@ -167,6 +181,9 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	if args.noCni && args.networkType != "" {
 		return fmt.Errorf("--no-cni and --network-type are mutually exclusive parameters")
 	}
+	if err := validateHyperfleetClusterProxyFlags(); err != nil {
+		return err
+	}
 
 	// OIDC config ID is optional but recommended
 	if args.oidcConfigId == "" {
@@ -220,6 +237,32 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	return nil
 }
 
+func validateHyperfleetClusterProxyFlags() error {
+	if err := ocm.ValidateHTTPProxy(args.httpProxy); err != nil {
+		return err
+	}
+	if err := ocm.ValidateHTTPSProxy(args.httpsProxy); err != nil {
+		return err
+	}
+	if len(args.noProxySlice) > 0 {
+		duplicate, found := rosaaws.HasDuplicates(args.noProxySlice)
+		if found {
+			//nolint:staticcheck // Preserve the v1 validation message.
+			return fmt.Errorf("Invalid no-proxy list, duplicate key '%s' found", duplicate)
+		}
+		for _, domain := range args.noProxySlice {
+			if err := rosaaws.UserNoProxyValidator(domain); err != nil {
+				return err
+			}
+		}
+		if args.httpProxy == "" && args.httpsProxy == "" {
+			//nolint:staticcheck // Preserve the v1 validation message.
+			return fmt.Errorf("Expected at least one of the following: http-proxy, https-proxy")
+		}
+	}
+	return ocm.ValidateAdditionalTrustBundle(args.additionalTrustBundleFile)
+}
+
 func (h *hyperfleetClusterCreate) PostExpand(
 	_ context.Context,
 	r *rosa.Runtime,
@@ -229,6 +272,7 @@ func (h *hyperfleetClusterCreate) PostExpand(
 	obj.Spec.HostedCluster.Platform.Type = hypershiftv1beta1.AWSPlatform
 	obj.Spec.HostedCluster.Platform.AWS.RolesRef =
 		hyperfleet.ComputeRolesRef(input.OperatorRolesPrefix, r.Creator.AccountID, r.Creator.Partition)
+
 	return nil
 }
 
@@ -249,11 +293,11 @@ func parseHyperfleetClusterTags(input []string) (map[string]string, error) {
 		return nil, fmt.Errorf("invalid cluster AWS tags: a maximum of %d tags is supported, got %d",
 			maxHyperfleetClusterTags, len(input))
 	}
-	if err := aws.UserTagValidator(input); err != nil {
+	if err := rosaaws.UserTagValidator(input); err != nil {
 		return nil, err
 	}
 
-	delimiter := aws.GetTagsDelimiter(input)
+	delimiter := rosaaws.GetTagsDelimiter(input)
 	tags := make(map[string]string, len(input))
 	for _, tag := range input {
 		parts := strings.SplitN(tag, delimiter, 2)

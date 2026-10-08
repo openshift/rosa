@@ -2,12 +2,19 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 
 	"go.uber.org/mock/gomock"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	ec2svc "github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -15,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	hfscheme "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/scheme"
 	"github.com/spf13/cobra"
 
 	pkgaws "github.com/openshift/rosa/pkg/aws"
@@ -287,6 +295,51 @@ var _ = Describe("runHyperfleet", func() {
 		args.clusterName = ""
 		runHyperfleet(&rosa.Runtime{Reporter: t.RosaRuntime.Reporter})
 		Expect(exited).To(BeTrue())
+	})
+
+	It("sends proxy settings in the serialized create request", func() {
+		originalArgs := args
+		DeferCleanup(func() { args = originalArgs })
+		args.httpProxy = "http://10.0.0.226:8080"
+		args.httpsProxy = "https://10.0.0.226:8080"
+		args.noProxySlice = []string{"quay.io"}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf := hfmocks.NewMockInterface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
+		clusters := hfmocks.NewMockClusterInterface(ctrl)
+		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusters).AnyTimes()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			defer GinkgoRecover()
+			Expect(req.Method).To(Equal(http.MethodPost))
+			Expect(req.URL.Path).To(Equal("/clusters"))
+			var request map[string]any
+			Expect(json.NewDecoder(req.Body).Decode(&request)).To(Succeed())
+			spec := request["spec"].(map[string]any)
+			hosted := spec["hostedCluster"].(map[string]any)
+			configuration := hosted["configuration"].(map[string]any)
+			Expect(configuration["proxy"]).To(Equal(map[string]any{
+				"httpProxy":  "http://10.0.0.226:8080",
+				"httpsProxy": "https://10.0.0.226:8080",
+				"noProxy":    "quay.io",
+			}))
+			Expect(hosted["platform"].(map[string]any)["type"]).To(Equal("AWS"))
+			Expect(request).NotTo(HaveKey("proxy"), "the top-level proxy field is response-only")
+			w.Header().Set("Content-Type", "application/json")
+			Expect(json.NewEncoder(w).Encode(request)).To(Succeed())
+		}))
+		DeferCleanup(server.Close)
+		baseURL, err := url.Parse(server.URL)
+		Expect(err).NotTo(HaveOccurred())
+		client, err := rest.NewRESTClient(baseURL, "", rest.ClientContentConfig{Negotiator: runtime.NewClientNegotiator(hfscheme.Codecs.WithoutConversion(), schema.GroupVersion{Version: "v1"})}, nil, server.Client())
+		Expect(err).NotTo(HaveOccurred())
+		v1.EXPECT().RESTClient().Return(client).AnyTimes()
+		stubSubnets("vpc-123", "us-east-1a")
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleet(t.RosaRuntime)
+		Expect(exited).To(BeFalse())
+		Expect(t.RosaRuntime.HyperFleetClient).To(BeIdenticalTo(hf))
 	})
 
 	It("exits when operator roles prefix is missing", func() {
