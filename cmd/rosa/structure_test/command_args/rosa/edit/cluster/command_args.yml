@@ -36,6 +36,7 @@
 - name: "provisioner-config-name"
 - name: "delete-protection"
 - name: "display-name"
+- name: "scheduler-profile"
 - name: "container-log-max-files"
 - name: "container-log-max-size"
 - name: "image-gc-high-threshold-percent"

@@ -194,6 +194,38 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		runHyperfleetEdit(t.RosaRuntime, makeChannelGroupCmd("candidate"))
 	})
 
+	It("updates the scheduler profile", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters := newEditClusterMocks(ctrl)
+
+		cluster := &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+		clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
+				var body map[string]any
+				Expect(json.Unmarshal(data, &body)).To(Succeed())
+				spec := body["spec"].(map[string]any)
+				hc := spec["hostedCluster"].(map[string]any)
+				configuration := hc["configuration"].(map[string]any)
+				scheduler := configuration["scheduler"].(map[string]any)
+				Expect(scheduler["profile"]).To(Equal("HighNodeUtilization"))
+				return cluster, nil
+			})
+
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleetEdit(t.RosaRuntime, makeSchedulerProfileCmd("HighNodeUtilization"))
+	})
+
+	It("rejects an invalid scheduler profile", func() {
+		cmd := makeSchedulerProfileCmd("NOSCORING")
+		h := &hyperfleetClusterUpdate{cmd: cmd}
+		Expect(h.PreRequest(context.Background(), t.RosaRuntime, &hfClusterUpdateInput)).To(
+			MatchError(ContainSubstring("unsupported scheduler profile")))
+	})
+
 	It("rejects unsupported channel group", func() {
 		Expect(validateHyperfleetChannelArgsFor("fakecg")).To(MatchError(ContainSubstring("Unsupported channel group")))
 	})
@@ -209,6 +241,16 @@ func makeChannelGroupCmd(group string) *cobra.Command {
 	cmd.SetContext(context.Background())
 	cmd.Flags().StringVar(&args.channelGroup, "channel-group", "", "")
 	if err := cmd.Flags().Set("channel-group", group); err != nil {
+		panic(err)
+	}
+	return cmd
+}
+
+func makeSchedulerProfileCmd(profile string) *cobra.Command {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(context.Background())
+	hfpathbind.RegisterClusterUpdateFlags(cmd, &hfClusterUpdateInput)
+	if err := cmd.Flags().Set("scheduler-profile", profile); err != nil {
 		panic(err)
 	}
 	return cmd

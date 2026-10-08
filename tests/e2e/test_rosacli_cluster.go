@@ -240,6 +240,48 @@ var _ = Describe("Edit cluster",
 				)
 				helper.ExpectErrorWithMessage(err, "Unsupported channel group")
 			})
+		It("can edit the scheduler profile of a Hyperfleet cluster",
+			labels.High, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+			func() {
+				if !isHyperfleetMode() {
+					Skip("scheduler profile is currently supported only for V2 (Hyperfleet) clusters")
+				}
+
+				By("Get the original scheduler profile")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).NotTo(HaveOccurred())
+				originalProfile := jsonData.DigString("scheduler_profile")
+				if originalProfile == "" {
+					Skip("scheduler profile is not configured on the selected cluster")
+				}
+
+				updatedProfile := hyperfleet.SchedulerProfileLowNodeUtilization
+				if originalProfile == updatedProfile {
+					updatedProfile = hyperfleet.SchedulerProfileHighNodeUtilization
+				}
+				defer func() {
+					By("Restore the original scheduler profile")
+					_, restoreErr := clusterService.EditCluster(
+						clusterID, "--scheduler-profile", originalProfile, "-y")
+					Expect(restoreErr).NotTo(HaveOccurred())
+				}()
+
+				By("Edit the scheduler profile")
+				output, err := clusterService.EditCluster(
+					clusterID, "--scheduler-profile", updatedProfile, "-y")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Updated cluster"))
+
+				By("Verify the updated scheduler profile")
+				Eventually(func() string {
+					jsonData, describeErr := clusterService.GetJSONClusterDescription(clusterID)
+					if describeErr != nil {
+						return ""
+					}
+					return jsonData.DigString("scheduler_profile")
+				}, 2*time.Minute, 10*time.Second).Should(Equal(updatedProfile))
+			})
+
 		It("can check the description of the cluster - [id:34102]",
 			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {

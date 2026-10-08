@@ -226,6 +226,10 @@ func hfClusterToMap(
 		"private":           apiListening == "internal",
 		"delete_protection": hfDeleteProtectionEnabled(c),
 	}
+	if configuration := c.Spec.HostedCluster.Configuration; configuration != nil && configuration.Scheduler != nil &&
+		configuration.Scheduler.Profile != "" {
+		m["scheduler_profile"] = string(configuration.Scheduler.Profile)
+	}
 	if apiURL != "" || apiListening != "" {
 		m["api"] = map[string]interface{}{
 			"url":       apiURL,
@@ -343,6 +347,11 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 	deleteProtection := "Disabled"
 	if hfDeleteProtectionEnabled(c) {
 		deleteProtection = "Enabled"
+	}
+	schedulerProfileStr := ""
+	if configuration := c.Spec.HostedCluster.Configuration; configuration != nil && configuration.Scheduler != nil &&
+		configuration.Scheduler.Profile != "" {
+		schedulerProfileStr = fmt.Sprintf("Scheduler Profile:          %s\n", configuration.Scheduler.Profile)
 	}
 
 	// Format DNS string
@@ -511,6 +520,7 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 				conditionSummary(cond.Reason, cond.Message))
 		}
 	}
+	s += schedulerProfileStr
 
 	return s
 }

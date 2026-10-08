@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	configv1 "github.com/openshift/api/config/v1"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 )
@@ -53,6 +54,11 @@ var _ = Describe("hfClusterToMap", func() {
 				ExpirationTimestamp: &expiry,
 				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					IssuerURL: "https://oidc.example.com/issuer",
+					Configuration: &v1alpha1.ClusterConfiguration{
+						Scheduler: &v1alpha1.SchedulerConfiguration{
+							Profile: configv1.HighNodeUtilization,
+						},
+					},
 					Platform: v1alpha1.PlatformSpec{
 						AWS: &hypershiftv1beta1.AWSPlatformSpec{
 							Region: "us-east-1",
@@ -114,6 +120,7 @@ var _ = Describe("hfClusterToMap", func() {
 		Expect(m["subnet"]).To(Equal("subnet-abc123"))
 		Expect(m["api_url"]).To(Equal("https://api.my-cluster.example.com:6443"))
 		Expect(m["management_cluster"]).To(Equal("mc01"))
+		Expect(m["scheduler_profile"]).To(Equal("HighNodeUtilization"))
 	})
 
 	It("reports customer AWS tags under aws.tags", func() {
@@ -216,6 +223,21 @@ var _ = Describe("hfDefaultNodePoolInstanceTypeFromList", func() {
 })
 
 var _ = Describe("hfClusterToString", func() {
+	It("shows the scheduler profile when configured", func() {
+		out := hfClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
+					Configuration: &v1alpha1.ClusterConfiguration{
+						Scheduler: &v1alpha1.SchedulerConfiguration{
+							Profile: configv1.HighNodeUtilization,
+						},
+					},
+				},
+			},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Scheduler Profile:          HighNodeUtilization"))
+	})
+
 	It("lists operator role ARNs like OCM describe output", func() {
 		arn := "arn:aws:iam::123456789012:role/my-cluster-ingress"
 		out := hfClusterToString(&v1alpha1.Cluster{
