@@ -9,6 +9,7 @@ import (
 
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
+	"github.com/openshift/rosa/tests/ci/config"
 	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/helper"
@@ -17,7 +18,13 @@ import (
 
 const rosaAutoConfirmFlag = "-y" // skip interactive rosa prompts in FVT
 
+const hyperfleetCustomKMSError = "HyperFleet e2e setup does not support custom KMS keys; " +
+	"set kms_key and etcd_kms to false"
+
 func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
+	if ch.profile.ClusterConfig.KMSKey || ch.profile.ClusterConfig.EtcdKMS {
+		return nil, errors.New(hyperfleetCustomKMSError)
+	}
 	clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
 	if clusterName == "" || len(clusterName) > 18 {
 		return nil, fmt.Errorf("CLUSTER_NAME is required and must be ≤18 chars")
@@ -127,6 +134,48 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 	ch.clusterConfig.Networking = networking
 	log.Logger.Info("V2 Add Networking.Type")
 	ch.clusterConfig.Networking.Type = "OVNKubernetes"
+
+	if pc.ProxyEnabled {
+		proxyName := ch.resourcesHandler.vpc.VPCName
+		if proxyName == "" {
+			proxyName = clusterName
+		}
+		var proxy *ProxyDetail
+		var err error
+		if pc.ProxyType == "auth" {
+			log.Logger.Infof("Proxy auth is enabled. Going to generate the user and password and record in %s",
+				config.Test.ProxyAuthFile)
+			username := "proxyuser"
+			password := helper.GenerateRandomString(10)
+			_, err = helper.CreateFileWithContent(config.Test.ProxyAuthFile, fmt.Sprintf("%s:%s", username, password))
+			if err != nil {
+				return flags, err
+			}
+			proxy, err = ch.resourcesHandler.PrepareProxyWithAuth(
+				ch.profile.Region, proxyName, config.Test.OutputDir,
+				config.Test.ProxyCABundleFile, username, password)
+		} else {
+			proxy, err = ch.resourcesHandler.
+				PrepareProxy(ch.profile.Region, proxyName, config.Test.OutputDir, config.Test.ProxyCABundleFile)
+		}
+		if err != nil {
+			return flags, err
+		}
+
+		ch.clusterConfig.Proxy = &ClusterConfigure.Proxy{
+			Enabled:         pc.ProxyEnabled,
+			Http:            proxy.HTTPProxy,
+			Https:           proxy.HTTPsProxy,
+			NoProxy:         proxy.NoProxy,
+			TrustBundleFile: proxy.CABundleFilePath,
+		}
+		flags = append(flags,
+			"--http-proxy", proxy.HTTPProxy,
+			"--https-proxy", proxy.HTTPsProxy,
+			"--no-proxy", proxy.NoProxy,
+			"--additional-trust-bundle-file", proxy.CABundleFilePath,
+		)
+	}
 
 	return flags, ch.saveToFile()
 }

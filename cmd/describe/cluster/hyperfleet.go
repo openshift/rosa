@@ -103,12 +103,12 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 		exitFn(1)
 	}
 
-	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
-	cluster, err := clusters.Get(ctx, clusterID, platform.GetOptions{})
+	description, err := hyperfleet.GetClusterDescription(ctx, r.HyperFleetClient, clusterID)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		exitFn(1)
 	}
+	cluster := description.Cluster
 
 	// Get nodepools to determine data plane availability
 	nodePools := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(string(cluster.UID))
@@ -128,7 +128,7 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 		if npList != nil {
 			instanceType = hfDefaultNodePoolInstanceTypeFromList(npList)
 		}
-		m := hfClusterToMap(cluster, dataPlaneAZs, npList, instanceType)
+		m := hfClusterDescriptionToMap(description, dataPlaneAZs, npList, instanceType)
 		if err := output.Print(m); err != nil {
 			r.Reporter.Errorf("%s", err)
 			exitFn(1)
@@ -136,7 +136,56 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 		return
 	}
 
-	fmt.Print(hfClusterToString(cluster, dataPlaneAZs, npList))
+	fmt.Print(hfClusterDescriptionToString(description, dataPlaneAZs, npList))
+}
+
+func hfClusterDescriptionToMap(description *hyperfleet.ClusterDescription,
+	dataPlaneAZs map[string]struct{}, npList *v1alpha1.NodePoolList, instanceType string) map[string]interface{} {
+	result := hfClusterToMap(description.Cluster, dataPlaneAZs, npList, instanceType)
+	if settings := description.Proxy; settings != nil {
+		proxy := map[string]string{}
+		if settings.HTTPProxy != "" {
+			proxy["http_proxy"] = settings.HTTPProxy
+		}
+		if settings.HTTPSProxy != "" {
+			proxy["https_proxy"] = settings.HTTPSProxy
+		}
+		if settings.NoProxy != "" {
+			proxy["no_proxy"] = settings.NoProxy
+		}
+		if len(proxy) > 0 {
+			result["proxy"] = proxy
+		}
+	}
+
+	if description.AdditionalTrustBundle != "" {
+		result["additional_trust_bundle"] = description.AdditionalTrustBundle
+	}
+	return result
+}
+
+func hfClusterDescriptionToString(description *hyperfleet.ClusterDescription,
+	dataPlaneAZs map[string]struct{}, npList *v1alpha1.NodePoolList) string {
+	result := hfClusterToString(description.Cluster, dataPlaneAZs, npList)
+	if proxy := description.Proxy; proxy != nil {
+		if proxy.HTTPProxy != "" || proxy.HTTPSProxy != "" || proxy.NoProxy != "" {
+			result += "Proxy:\n"
+			if proxy.HTTPProxy != "" {
+				result += fmt.Sprintf(" - HTTPProxy:               %s\n", proxy.HTTPProxy)
+			}
+			if proxy.HTTPSProxy != "" {
+				result += fmt.Sprintf(" - HTTPSProxy:              %s\n", proxy.HTTPSProxy)
+			}
+			if proxy.NoProxy != "" {
+				result += fmt.Sprintf(" - NoProxy:                 %s\n", proxy.NoProxy)
+			}
+		}
+	}
+
+	if description.AdditionalTrustBundle != "" {
+		result += fmt.Sprintf("Additional trust bundle:    %s\n", description.AdditionalTrustBundle)
+	}
+	return result
 }
 
 func hfDefaultNodePoolInstanceTypeFromList(list *v1alpha1.NodePoolList) string {
