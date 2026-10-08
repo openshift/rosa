@@ -113,6 +113,23 @@ var _ = Describe("hfNodePoolToMap", func() {
 		np.Spec.NodePool.Platform.AWS = nil
 		m := hfNodePoolToMap(np)
 		Expect(m["instanceType"]).To(Equal(""))
+		Expect(m["security_group_ids"]).To(BeEmpty())
+	})
+
+	It("maps security group IDs", func() {
+		np := buildTestNodePool()
+		sg1, sg2 := "sg-1", "sg-2"
+		np.Spec.NodePool.Platform.AWS.SecurityGroups = []hypershiftv1beta1.AWSResourceReference{
+			{ID: &sg1}, {ID: &sg2},
+		}
+		m := hfNodePoolToMap(np)
+		Expect(m["security_group_ids"]).To(Equal([]string{"sg-1", "sg-2"}))
+	})
+
+	It("returns an empty slice when no security groups are set", func() {
+		np := buildTestNodePool()
+		m := hfNodePoolToMap(np)
+		Expect(m["security_group_ids"]).To(Equal([]string{}))
 	})
 
 	It("returns empty conditions slice when no conditions", func() {
@@ -123,6 +140,27 @@ var _ = Describe("hfNodePoolToMap", func() {
 		conds, ok := m["conditions"].([]map[string]interface{})
 		Expect(ok).To(BeTrue())
 		Expect(conds).To(BeEmpty())
+	})
+})
+
+var _ = Describe("hfSecurityGroupIDs", func() {
+	It("returns an empty slice when aws is nil", func() {
+		Expect(hfSecurityGroupIDs(nil)).To(Equal([]string{}))
+	})
+
+	It("returns an empty slice when no security groups are set", func() {
+		aws := &hypershiftv1beta1.AWSNodePoolPlatform{}
+		Expect(hfSecurityGroupIDs(aws)).To(Equal([]string{}))
+	})
+
+	It("extracts IDs in order, skipping entries with a nil ID", func() {
+		sg1, sg3 := "sg-1", "sg-3"
+		aws := &hypershiftv1beta1.AWSNodePoolPlatform{
+			SecurityGroups: []hypershiftv1beta1.AWSResourceReference{
+				{ID: &sg1}, {ID: nil}, {ID: &sg3},
+			},
+		}
+		Expect(hfSecurityGroupIDs(aws)).To(Equal([]string{"sg-1", "sg-3"}))
 	})
 })
 

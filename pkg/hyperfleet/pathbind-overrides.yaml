@@ -156,8 +156,6 @@ resources:
         type: string
       - path: spec.nodePool.platform.aws.resourceTags
         type: string
-      - path: spec.nodePool.platform.aws.securityGroups
-        type: string
       - path: spec.nodePool.platform.aws.subnet.filters
         type: string
 
@@ -187,6 +185,13 @@ resources:
         flag: subnet
         description: "Subnet ID for the node pool."
         required: true
+        operations: [create]
+
+      - path: spec.nodePool.platform.aws.securityGroups
+        alias: securityGroupIds
+        type: string
+        flag: additional-security-group-ids
+        description: "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list."
         operations: [create]
 
       # ── Derived: no flag
